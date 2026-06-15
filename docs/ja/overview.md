@@ -1,0 +1,79 @@
+![UE Version](https://img.shields.io/badge/Unreal%20Engine-5.8-0e1128?logo=unrealengine&logoColor=white)
+[![License: Fab Standard License (Fab EULA)](https://img.shields.io/badge/License-Fab%20Standard%20License%20%28Fab%20EULA%29-blue)](https://www.fab.com/ja/eula)
+[![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/Naotsun_UE?style=social)](https://twitter.com/Naotsun_UE)
+
+**[English](../../README.md)**
+
+# UnrealAIIntegrationPlatform
+
+<!--ts-->
+   * [概要](#概要)
+   * [動作環境](#動作環境)
+   * [インストール](#インストール)
+   * [セットアップ](#セットアップ)
+   * [ドキュメント](#ドキュメント)
+   * [ライセンス](#ライセンス)
+   * [作者](#作者)
+   * [履歴](#履歴)
+<!--te-->
+
+## 概要
+
+**UnrealAIIntegrationPlatform (UAIP)** は、AI エージェントが UE Editor と Runtime を **操作・観測・実行・検証** できるようにする Unreal Engine プラグインです。
+
+Claude Code、Cursor、Windsurf、GitHub Copilot などの AI ツールが **Model Context Protocol (MCP)** 経由で接続し、意味的なコマンドを発行できます。座標クリックや脆弱な UI スクリプトは不要です。
+
+主な機能：
+- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御など、200 以上の登録済みコマンドで Editor のほぼすべての機能を網羅
+- **視覚的・構造的な観測** — 任意の Editor タブやビューポートのスクリーンショット取得、ワールド状態・Slate ウィジェットツリー・エディタ状態の JSON ダンプ
+- **Runtime / PIE 制御** — PIE の開始・停止、アクターのスポーン、入力インジェクト、Gauntlet テストの実行、アクタープロパティのアサート
+- **シナリオ実行** — 複数コマンドを順序付きリストとして一括送信。失敗時の中断・リトライ・ステップごとのタイムアウトに対応
+- **マルチ Transport** — MCP・HTTP・WebSocket・CLI から操作可能
+- **Safety & Capability Policy** — セッション単位の Capability ゲートとプロセス単位の SafetyPolicy スイッチ
+
+## 動作環境
+
+対象バージョン : UE 5.8  
+対象プラットフォーム : Windows  
+Python : 3.10 以降（MCP Bridge に必要）
+
+## インストール
+
+プロジェクトの `Plugins` フォルダに `Plugins/UnrealAIIntegrationPlatform` フォルダを入れてください。  
+プラグインのインストール後に機能が使用できない場合は、**編集 > プラグイン** からプラグインが有効になっているかご確認ください。
+
+## セットアップ
+
+MCP Bridge（`Scripts/MCPBridge/`）は UE Editor と AI クライアントを HTTP 経由でつなぐ Python プロキシです。
+
+1. `Scripts/MCPBridge/install/install.ps1`（Windows）または `install.sh`（macOS / Linux）を実行
+2. AI クライアントの設定ファイルに MCP サーバーを登録
+3. `Scripts/MCPBridge/install/guides/` の AI 使用ガイドを配置（推奨）
+4. AI に「UAIP の HealthCheck を実行して」と聞いて動作確認
+
+詳細な手順は [セットアップガイド](setup.md) を参照してください。
+
+## ドキュメント
+
+| ドキュメント | 内容 |
+|---|---|
+| [セットアップガイド](setup.md) | MCP Bridge のインストール・クライアント設定・トラブルシューティング |
+| [コマンドリファレンス](commands.md) | ドメイン別 200 以上のコマンド一覧 |
+| [シナリオ実行](scenario.md) | 複数ステップのコマンド一括実行 |
+| [Artifacts（成果物）](artifacts.md) | スクリーンショット・JSON ダンプ・ログの読み方 |
+| [Safety & Capabilities](safety.md) | SafetyPolicy と Capability の設定リファレンス |
+
+## ライセンス
+
+本リポジトリの Releases で配布するデモバイナリは、リリースアーカイブに同梱の `EULA.txt` に従って提供されます。  
+Fab で配布される製品版は [Fab Standard License (Fab EULA)](https://www.fab.com/ja/eula) に基づいて提供されます。  
+特に明記がない限り、本リポジトリ内のドキュメントの著作権は © 2026 Naotsun に帰属し、無断転載は禁止です。
+
+## 作者
+
+[Naotsun](https://twitter.com/Naotsun_UE)
+
+## 履歴
+
+- (2026/06/16) v1.0  
+  初版公開
