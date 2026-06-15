@@ -49,6 +49,9 @@ Optional editor tabs for monitoring AI activity: Command History (timeline of co
 ### EDA Transport
 Optional transport for connecting UAIP to Epic's Epic Developer Assistant (EDA), alongside the existing MCP, HTTP, WebSocket, and CLI transports.
 
+### Support for UE 5.6 and Earlier
+UAIP currently targets UE 5.7 and 5.8. Support for older engine versions (UE 5.6 and below) is under consideration based on demand.
+
 ---
 
 > Feature requests and bug reports: open an [Issue](../../issues) in this repository.
