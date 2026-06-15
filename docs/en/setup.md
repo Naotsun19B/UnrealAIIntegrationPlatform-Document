@@ -2,6 +2,8 @@
 
 # Setup Guide
 
+This guide covers the **MCP Bridge** transport — the recommended approach for AI clients (Claude Code, Cursor, Windsurf, GitHub Copilot). For HTTP API, WebSocket, and CLI connections, see [Connection Methods](connections.md).
+
 This guide walks you through connecting your AI client to the UE Editor via the UAIP MCP Bridge.
 
 ---

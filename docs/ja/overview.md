@@ -82,6 +82,7 @@ MCP Bridge（`Scripts/MCPBridge/`）は UE Editor と AI クライアントを H
 | ドキュメント | 内容 |
 |---|---|
 | [セットアップガイド](setup.md) | MCP Bridge のインストール・クライアント設定・トラブルシューティング |
+| [接続方法](connections.md) | HTTP API・WebSocket・CLI トランスポートの使い方（Pro 版） |
 | [コマンドリファレンス](commands.md) | ドメイン別 200 以上のコマンド一覧 |
 | [シナリオ実行](scenario.md) | 複数ステップのコマンド一括実行 |
 | [Artifacts（成果物）](artifacts.md) | スクリーンショット・JSON ダンプ・ログの読み方 |

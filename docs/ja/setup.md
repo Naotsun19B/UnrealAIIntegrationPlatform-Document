@@ -2,6 +2,8 @@
 
 # セットアップガイド
 
+このガイドでは AI クライアント（Claude Code、Cursor、Windsurf、GitHub Copilot）向けの推奨接続方法である **MCP Bridge** のセットアップを説明します。HTTP API・WebSocket・CLI での接続については [接続方法](connections.md) を参照してください。
+
 このガイドでは、UAIP MCP Bridge を使って AI クライアントを UE Editor に接続する手順を説明します。
 
 ---

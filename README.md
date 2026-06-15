@@ -82,6 +82,7 @@ See [Demo Version Guide](docs/en/demo.md) for the full command list, limitations
 | Document | Description |
 |---|---|
 | [Setup Guide](docs/en/setup.md) | MCP Bridge installation, client config, troubleshooting |
+| [Connection Methods](docs/en/connections.md) | HTTP API, WebSocket, and CLI transport options (Pro) |
 | [Commands Reference](docs/en/commands.md) | All 200+ commands organized by domain |
 | [Scenario Execution](docs/en/scenario.md) | Multi-step ordered command batches |
 | [Artifacts](docs/en/artifacts.md) | Screenshots, JSON dumps, logs — how to read them |
