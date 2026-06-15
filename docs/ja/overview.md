@@ -1,4 +1,4 @@
-![UE Version](https://img.shields.io/badge/Unreal%20Engine-5.8-0e1128?logo=unrealengine&logoColor=white)
+![UE Version](https://img.shields.io/badge/Unreal%20Engine-5.7%20%2F%205.8-0e1128?logo=unrealengine&logoColor=white)
 [![License: Fab Standard License (Fab EULA)](https://img.shields.io/badge/License-Fab%20Standard%20License%20%28Fab%20EULA%29-blue)](https://www.fab.com/ja/eula)
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/Naotsun_UE?style=social)](https://twitter.com/Naotsun_UE)
 
@@ -34,7 +34,7 @@ Claude Code、Cursor、Windsurf、GitHub Copilot などの AI ツールが **Mod
 
 ## 動作環境
 
-対象バージョン : UE 5.8  
+対象バージョン : UE 5.7 / 5.8  
 対象プラットフォーム : Windows  
 Python : 3.10 以降（MCP Bridge に必要）
 
@@ -73,7 +73,7 @@ MCP Bridge（`Scripts/MCPBridge/`）は UE Editor と AI クライアントを H
 | Python スクリプト実行 | — | ✅ |
 | キャプチャ画像への透かし | ✅ | — |
 | ユーザー拡張ポイント（`ICommandProvider`） | ✅ | ✅ |
-| 対応 UE バージョン | 5.7 / 5.8 | 5.8 |
+| 対応 UE バージョン | 5.7 / 5.8 | 5.7 / 5.8 |
 
 コマンド全一覧・制限事項・インストール手順は [デモ版ガイド](demo.md) を参照してください。
 

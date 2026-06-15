@@ -32,7 +32,7 @@ The UAIP demo binary is a free, feature-limited build distributed via GitHub Rel
 | Watermark on captured images | ✅ | — |
 | User extension points (`ICommandProvider`) | ✅ | ✅ |
 | Optional plugin dependencies (Toolset, GAS, Niagara, …) | — | ✅ |
-| UE version | 5.7 / 5.8 | 5.8 |
+| UE version | 5.7 / 5.8 | 5.7 / 5.8 |
 
 ---
 

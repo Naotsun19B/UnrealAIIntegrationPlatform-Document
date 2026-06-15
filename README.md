@@ -1,4 +1,4 @@
-![UE Version](https://img.shields.io/badge/Unreal%20Engine-5.8-0e1128?logo=unrealengine&logoColor=white)
+![UE Version](https://img.shields.io/badge/Unreal%20Engine-5.7%20%2F%205.8-0e1128?logo=unrealengine&logoColor=white)
 [![License: Fab Standard License (Fab EULA)](https://img.shields.io/badge/License-Fab%20Standard%20License%20%28Fab%20EULA%29-blue)](https://www.fab.com/eula)
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/Naotsun_UE?style=social)](https://twitter.com/Naotsun_UE)
 
@@ -34,7 +34,7 @@ Key capabilities:
 
 ## Requirement
 
-Target version : UE 5.8  
+Target version : UE 5.7 / 5.8  
 Target platform : Windows  
 Python : 3.10 or newer (required for the MCP Bridge)
 
@@ -73,7 +73,7 @@ The demo provides observation, PIE control, assertion, scenario execution, and U
 | Python script execution | — | ✅ |
 | Watermark on captured images | ✅ | — |
 | User extension points (`ICommandProvider`) | ✅ | ✅ |
-| UE version | 5.7 / 5.8 | 5.8 |
+| UE version | 5.7 / 5.8 | 5.7 / 5.8 |
 
 See [Demo Version Guide](docs/en/demo.md) for the full command list, limitations, and installation steps.
 
