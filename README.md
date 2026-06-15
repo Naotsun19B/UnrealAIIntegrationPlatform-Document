@@ -88,6 +88,7 @@ See [Demo Version Guide](docs/en/demo.md) for the full command list, limitations
 | [Artifacts](docs/en/artifacts.md) | Screenshots, JSON dumps, logs — how to read them |
 | [Safety & Capabilities](docs/en/safety.md) | SafetyPolicy and Capability configuration reference |
 | [Demo Version Guide](docs/en/demo.md) | Demo command list, limitations, and installation |
+| [Roadmap](docs/en/roadmap.md) | Planned features and future direction |
 
 ## License
 

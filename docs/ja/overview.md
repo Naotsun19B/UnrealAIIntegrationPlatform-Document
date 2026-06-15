@@ -88,6 +88,7 @@ MCP Bridge（`Scripts/MCPBridge/`）は UE Editor と AI クライアントを H
 | [Artifacts（成果物）](artifacts.md) | スクリーンショット・JSON ダンプ・ログの読み方 |
 | [Safety & Capabilities](safety.md) | SafetyPolicy と Capability の設定リファレンス |
 | [デモ版ガイド](demo.md) | デモ版コマンド一覧・制限事項・インストール手順 |
+| [ロードマップ](roadmap.md) | 今後追加予定の機能と開発方針 |
 
 ## ライセンス
 
