@@ -11,6 +11,7 @@
    * [Requirement](#Requirement)
    * [Installation](#Installation)
    * [Setup](#Setup)
+   * [Demo Version](#Demo-Version)
    * [Documentation](#Documentation)
    * [License](#License)
    * [Author](#Author)
@@ -53,6 +54,29 @@ The MCP Bridge (`Scripts/MCPBridge/`) is a thin Python proxy that connects your 
 
 For the full setup walkthrough, see [Setup Guide](docs/en/setup.md).
 
+## Demo Version
+
+A free demo binary is available in the [Releases](../../releases) of this repository.
+
+The demo provides observation, PIE control, assertion, scenario execution, and UI automation commands — enough to integrate an AI agent into your review and testing workflow.
+
+| | Demo | Pro (Fab) |
+|---|:---:|:---:|
+| MCP connection | ✅ | ✅ |
+| HTTP / WebSocket / CLI | — | ✅ |
+| Observation commands | ✅ | ✅ |
+| PIE control | ✅ | ✅ |
+| Scenario execution | ✅ | ✅ |
+| UI automation | ✅ | ✅ |
+| Editor editing (Blueprint, Level, Assets, …) | — | ✅ |
+| Runtime world editing (Spawn, GAS, Input, …) | — | ✅ |
+| Python script execution | — | ✅ |
+| Watermark on captured images | ✅ | — |
+| User extension points (`ICommandProvider`) | ✅ | ✅ |
+| UE version | 5.7 / 5.8 | 5.8 |
+
+See [Demo Version Guide](docs/en/demo.md) for the full command list, limitations, and installation steps.
+
 ## Documentation
 
 | Document | Description |
@@ -62,6 +86,7 @@ For the full setup walkthrough, see [Setup Guide](docs/en/setup.md).
 | [Scenario Execution](docs/en/scenario.md) | Multi-step ordered command batches |
 | [Artifacts](docs/en/artifacts.md) | Screenshots, JSON dumps, logs — how to read them |
 | [Safety & Capabilities](docs/en/safety.md) | SafetyPolicy and Capability configuration reference |
+| [Demo Version Guide](docs/en/demo.md) | Demo command list, limitations, and installation |
 
 ## License
 
