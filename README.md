@@ -1,5 +1,5 @@
 ![UE Version](https://img.shields.io/badge/Unreal%20Engine-5.8-0e1128?logo=unrealengine&logoColor=white)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Fab Standard License (Fab EULA)](https://img.shields.io/badge/License-Fab%20Standard%20License%20%28Fab%20EULA%29-blue)](https://www.fab.com/eula)
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/Naotsun_UE?style=social)](https://twitter.com/Naotsun_UE)
 
 # UnrealAIIntegrationPlatform
@@ -221,7 +221,8 @@ AllowKeyboardModifierInput=True
 
 ## License
 
-Source code is available under the [MIT License](https://opensource.org/licenses/MIT).  
+The demo binary available in the Releases of this repository is provided under the terms of `EULA.txt` included in the release archive.  
+The full product distributed on Fab is provided under the [Fab Standard License (Fab EULA)](https://www.fab.com/eula).  
 Unless explicitly stated otherwise, all documentation content in this repository is © 2026 Naotsun. All rights reserved.
 
 ## Author
