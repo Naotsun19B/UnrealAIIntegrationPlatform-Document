@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 600+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 730+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -58,12 +58,16 @@ In addition to UAIP-native commands, the Pro version exposes **Toolset bridge** 
 | Editor WorldConditions **†** | `UAIP.Editor.WorldConditions` | 6 | — | — |
 | Editor Conversation **†** | `UAIP.Editor.Conversation` | 12 | — | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 44 | — |
+| Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
+| Editor GAS **†** | `UAIP.Editor.GAS` | 11 | 11 | — |
 | Editor Python Extension **†** | `UAIP.Editor.PythonExtension` | 2 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 10 | — | partial (5/10) |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
+| Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
 | Runtime GAS **†** | `UAIP.Runtime.GAS` | 6 | — | — |
+| Runtime Niagara **†** | `UAIP.Runtime.Niagara` | 4 | 4 | — |
 
 ---
 
@@ -959,6 +963,51 @@ Mirror of native commands via `AnimationAssistantToolset` (UE 5.8+). Provider: `
 
 ---
 
+## UAIP.Editor.EnhancedInput
+
+Enhanced Input asset editing — Input Actions and Input Mapping Contexts.
+
+| Command | Description |
+|---|---|
+| `ListInputActions` | List Enhanced Input Action assets in the project |
+| `ListMappingContexts` | List Input Mapping Context assets in the project |
+| `GetInputActionInfo` | Get an Input Action's details (ValueType, Triggers, Modifiers) |
+| `GetMappingContextInfo` | Get a Mapping Context's details (entries, keys, modifiers, triggers) |
+| `DeleteInputAction` | Delete an Input Action asset |
+| `DeleteMappingContext` | Delete an Input Mapping Context asset |
+| `AddInputMapping` | Add a key mapping to an Input Mapping Context |
+| `RemoveInputMapping` | Remove a key mapping by index |
+| `SetInputMappingKey` | Update a mapping's key |
+| `SetInputMappingModifier` | Set / replace modifiers on a mapping |
+| `SetInputMappingTrigger` | Set / replace triggers on a mapping |
+| `SetInputActionModifier` | Set / replace modifiers on an Input Action |
+| `SetInputActionTrigger` | Set / replace triggers on an Input Action |
+
+---
+
+## UAIP.Editor.GAS **†**
+
+Editor-time GameplayAbilities asset editing — GameplayCue tags and Cue Notify assets. Requires `GameplayAbilities` plugin (plus `GASToolsets` for the bridge variants).
+
+### Native (11)
+
+| Command | Description |
+|---|---|
+| `AddCueTag` | Add a `GameplayCue.*` tag to the project tag tables |
+| `RemoveCueTag` | Remove a `GameplayCue.*` tag |
+| `ListCues` | List all GameplayCue tags |
+| `GetCueInfo` | Get a GameplayCue tag's details and registered Cue Notify assets |
+| `FindCueNotifyAssets` | Find Cue Notify assets that handle a tag |
+| `FindCueTagsWithoutNotifies` | Find GameplayCue tags that have no associated Notify asset |
+| `CreateCueNotifyAsset` | Create a new GameplayCueNotify asset (Actor / Static / Burst) |
+| `ExecuteCueOnSelectedActor` | Execute a GameplayCue on the currently selected actor (testing convenience) |
+
+### Toolset bridges (11) **†**
+
+Mirror of native commands via the `GASToolsets` plugin (UE 5.8+). Provider: `Toolset.Editor.GAS.*`. Also bridges runtime inspection helpers: `GetAttributeValuesToolset`, `GetActiveEffectsToolset`, `GetGrantedAbilitiesToolset`, `GetActiveTagsToolset`, `FindAttributeSetClassesToolset`, `ListAttributesToolset`.
+
+---
+
 ## UAIP.Editor.PythonExtension **†**
 
 Python command extension. Requires `PythonScriptPlugin`.
@@ -1043,6 +1092,45 @@ GameplayAbilities state inspection. Requires `GameplayAbilities` plugin. PIE req
 | `GetActiveTags` **†** | Owned GameplayTags on an actor |
 | `FindAttributeSetClasses` **†** | Scan PIE world actors and list UAttributeSet classes (MaxActors limit) |
 | `ListAttributes` **†** | List all attribute names defined on an AttributeSet class |
+
+---
+
+## UAIP.Runtime.Input
+
+Runtime input injection and Enhanced Input state inspection. PIE required.
+
+| Command | Description |
+|---|---|
+| `InjectInputKey` | Inject a raw key press / release into the active PIE viewport |
+| `InjectEnhancedInputAction` | Fire an Enhanced Input Action with a value (Bool / Axis1D / Axis2D / Axis3D) |
+| `InjectLegacyAction` | Inject a legacy action mapping event |
+| `InjectLegacyAxisInput` | Inject a legacy axis input |
+| `InjectLegacySpeechInput` | Inject a legacy speech input |
+| `AddMappingContext` | Add an Input Mapping Context to the local player |
+| `RemoveMappingContext` | Remove an Input Mapping Context from the local player |
+| `SetInputMode` | Set the input mode (GameOnly / UIOnly / GameAndUI) |
+| `FlushInput` | Flush pressed-key state at the end of a test |
+| `DumpInputState` | Dump current Enhanced Input state (active contexts, mappings, action values) |
+| `GetEnhancedInputActionValue` | Get the current value of an Enhanced Input Action |
+
+---
+
+## UAIP.Runtime.Niagara **†**
+
+Runtime inspection and parameter override for Niagara components in PIE. Requires `Niagara` plugin.
+
+### Native (4)
+
+| Command | Description |
+|---|---|
+| `GetUserVariables` **†** | Get user-exposed variables on a Niagara System Component |
+| `GetVariable` **†** | Get a specific user variable value |
+| `SetVariable` **†** | Set a user variable value at runtime |
+| `SetSystem` **†** | Replace the Niagara System asset on a component at runtime |
+
+### Toolset bridges (4) **†**
+
+Provider: `Toolset.Runtime.Niagara.*`. Requires UE 5.8+ and `NiagaraToolsets`. Mirrors the native commands above.
 
 ---
 

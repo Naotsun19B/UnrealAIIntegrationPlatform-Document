@@ -46,6 +46,7 @@ These are active in every session without any configuration. They cover read-onl
 | `RuntimeCapture` | Runtime captures — `CaptureViewportImage`, `CheckpointCapture` |
 | `RuntimeExecution` | Run functional tests and automation tests in PIE or Standalone |
 | `RuntimeGASInspect` **†** | Read GAS state during PIE — `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses` (requires `GameplayAbilities` plugin) |
+| `RuntimeNiagaraInspect` **†** | Read Niagara component state during PIE — `GetUserVariables`, `GetVariable` (requires `Niagara` plugin) |
 
 ---
 
@@ -174,6 +175,8 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `GameplayTagEdit` | Add, remove, and rename tags in project tag tables |
 | `GameplayTagRestrictedEdit` | Modify restricted tag lists |
 | `GameFeatureCreate` **†** | Create and scaffold GameFeature Plugin definitions (requires `GameFeatures` + `GameFeaturesEditor` plugins) |
+| `GameplayCueMutation` **†** | Add / remove GameplayCue tags, create GameplayCueNotify assets, execute Cues on actors (requires `GameplayAbilities` plugin) |
+| `EnhancedInputEdit` | Edit Input Action / Input Mapping Context assets — add / remove / modify mappings, modifiers, and triggers |
 
 #### Editor operations
 
@@ -196,6 +199,8 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 |---|---|
 | `RuntimeActorManipulation` | Spawn, destroy, teleport, and possess actors during PIE |
 | `RuntimeExecCommand` | Execute console commands at runtime via `UWorld` |
+| `RuntimeInputInjection` | Inject keyboard / Enhanced Input / legacy input events into PIE (`InjectInputKey`, `InjectEnhancedInputAction`, `AddMappingContext`, `SetInputMode`, `FlushInput`, …) |
+| `RuntimeNiagaraMutation` **†** | Set Niagara user variables / replace Niagara system at runtime (`SetVariable`, `SetSystem`; requires `Niagara` plugin) |
 | `GauntletExecution` | Launch Gauntlet automated test sessions |
 
 #### Optional graph editors

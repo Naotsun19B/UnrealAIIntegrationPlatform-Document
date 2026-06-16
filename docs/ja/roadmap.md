@@ -2,72 +2,136 @@
 
 # ロードマップ
 
-以下は現在計画中または検討中の機能です。リリース時期は未確定であり、内容は変更される場合があります。
+以下は今後追加予定 / 調査中の項目です。具体的なリリース時期は約束しておらず、ユーザー要望や上流の UE バージョンの API 安定性次第で変更される可能性があります。
 
 ---
 
 ## エンジンバージョン対応
 
-### UE 5.5 以前への後方対応
-現在は UE 5.7 / 5.8 に対応しています。UE 5.5 程度までは積極的に後方対応を進める予定です。それ以前のバージョン（5.4 以下）については要望状況を見て判断します。
+### UE 5.5 までの後方互換
+UAIP は現在 UE 5.7 / 5.8 を対象としています。UE 5.5 までの対応は積極的に進める予定です。5.4 以下は要望ベースで判断します。
 
 ---
 
-## 新規コマンド実装
+## Editor — アセット・プロジェクト管理
 
-### Sandbox Editing（サンドボックス編集）
-AI が提案した編集をサンドボックスに仮置きし、人間が確認・承認してからディスクに反映するワークフロー。変更を選択的に受け入れ・破棄でき、Undo に頼る必要がありません。
+### Sandbox Editing
+AI による変更を Sandbox に仮置きし、人間が確認・承認してから本体に反映する仕組み。Undo に頼らず変更を選択的に承認・却下できます。UE 5.8 の `FileSandboxCore` 基盤を活用予定。
 
-### アセット監査・依存関係解析
-アセット依存グラフの取得、未参照アセットの検出、循環参照の特定、コンテンツツリー全体のサイズマップ生成。
+### アセット参照解析・SizeMap
+アセット参照グラフ取得・未参照アセット検出・循環参照検出・コンテンツツリー全体の SizeMap 生成。
 
-### アセットバリデーション
-`UEditorValidatorSubsystem` に登録済みのバリデーターを単一アセットやフォルダ単位で実行。結果は JSON の Artifact として返却されるため、CI/CD ゲートとして利用できます。
+### アセット検証（Validation）
+登録済みの `UEditorValidatorSubsystem` Validator を個別アセット / フォルダ単位で実行。結果は構造化された JSON Artifact で返却。
 
 ### Asset Manager 設定
-PrimaryAssetType 定義・アセットバンドル・アセットタグのプログラマブルな管理。DLC・コンテンツバンドル・クック対象制御を対象にしています。
+PrimaryAssetType 定義・アセットバンドル・アセットタグをプログラムから管理。DLC・ContentBundle・Cook ルール用ワークフローを想定。
 
-### ローカライゼーションパイプライン自動化
-ソーステキストのギャザー・コンパイル・カルチャー管理・StringTable エントリの追加/編集/削除・エディタ表示言語切替まで、ローカライゼーション全工程の自動化。
+### Asset Redirector 修正
+リネーム・移動で生成された Redirector を一括修正 — 全 Redirector の列挙、フォルダ指定の一括修正、参照先のクリーンアップを AI 主導のリファクタリングフロー内で完結。
 
-### ビルド・パッケージパイプライン
-コンテンツのクック・プロジェクトのパッケージング・Project Launcher プロファイルの実行。長時間処理の進捗報告とキャンセルに対応し、CI/CD パイプラインへの組み込みを想定しています。
+### ローカライズパイプライン
+ローカライズワークフロー全体の自動化：テキスト収集、ローカライズデータコンパイル、Culture 管理、StringTable エントリの追加/編集/削除、検証用の Editor 表示言語切替。
 
-### パフォーマンス Insights トレーシング
-チャンネル指定で UE Trace セッションを開始・停止し、フレーム統計・ヒッチサマリ・ドメイン別トレース（HTTP イベント・Niagara タイミング・レンダーコマンド）を照会。結果は JSON Artifact として返却されます。
-
-### マテリアルバリデーション・テンプレート
-マテリアルをプロジェクトルールに照らして検証、類似マテリアルの検出、ワークフローテンプレートからの新規マテリアル作成。
-
-### MVVM サポート
-`ModelViewViewModel` プラグインを利用するプロジェクト向けに、ViewModel クラスの作成・View Binding の追加/削除/設定を AI から操作できるコマンド群。
-
-### Enhanced Input 状態診断
-現在の Enhanced Input 状態の取得（`DumpInputState`）と Input Action の仮想発火（`SimulateInputAction`）。UI 自動化テストのデバッグを対象にしています。
-
-### セマンティックアセット検索
-ファイル名ではなく意味でアセットを検索できる AI 駆動のコンテンツブラウザ検索。現時点では埋め込み生成の安定性の問題により開発を一時停止しています。
-
-### 追加グラフエディタ統合
-- **Niagara Subsonic**：MetaSound・Niagara グラフへの Subsonic オーディオイベントノード対応
-- **ControlRig Dynamics**：ControlRig グラフ内の簡易物理シミュレーションノード設定
-- **Mixed Control Rig トラック**：Level Sequence への Mixed Control Rig トラック追加
-- **AnimationLayering / UAF**：Anim Blueprint でのボーンマスクレイヤーと UAF ノード操作
-- **MeshPartition（MegaMesh）**：大規模メッシュへの空間分割・非破壊モディファイア設定
-- **ChaosCloth Asset**：Weight Map・Sim/Render Mesh・クロス物理シミュレーション設定
-- **CustomizableSequencerTracks**：Blueprint 定義のカスタム Sequencer トラック型への対応
-- **DataPrep Asset**：DataPrep インポートパイプラインアセットの実行・検査
+### Build / Package パイプライン
+コンテンツの Cook、プロジェクトのパッケージング、Project Launcher プロファイルの AI 経由実行。長時間処理は進捗報告とキャンセル対応。
 
 ---
 
-## 環境・インフラ
+## Editor — 編集ドメイン拡張
 
-### 人間向けエディタ GUI
-AI の活動を人間がモニタリングするためのオプショナルエディタタブ。CommandHistory（コマンドとレスポンスのタイムライン）・ArtifactViewer（スクリーンショット・JSON ダンプ・レポートのインラインプレビュー）を想定しています。
+### Blueprint Compile / コンパイルエラー取得
+Blueprint の強制コンパイルとエラー / 警告一覧の取得。AI による「編集 → 検証 → 修正」ループを閉じるための必須機能。
+
+### World Partition / DataLayer 操作
+World Partition マップでの DataLayer 管理 — 作成、削除、初期状態設定、アクターの紐付け。HLOD レイヤー割り当て・External Actor 一覧も含む。
+
+### Foliage 編集
+レベル内の FoliageType 一覧取得、座標指定でのインスタンス追加、領域指定での一括削除、FoliageType の設定変更（密度・スケール・カリング）。
+
+### マテリアル検証・テンプレート
+プロジェクトルールに対するマテリアル検証、類似マテリアル検索、ワークフローテンプレートからのマテリアル作成。
+
+### MVVM 対応
+`ModelViewViewModel` プラグイン採用プロジェクト向けに、ViewModel クラス作成・View Binding の追加 / 削除 / 設定を AI から実行可能に。
+
+### Mixed Control Rig トラック
+Level Sequence への Mixed Control Rig トラック追加（AnimMixer 部分は既に実装済み、本項目は残る `MovieSceneMixedControlRig` ネイティブコマンドが対象）。
+
+### Motion Matching（PoseSearch）
+UE の Motion Matching 採用プロジェクト向けに、PoseSearchDatabase の内容、Schema 設定、ノーマライゼーションパラメータを管理。
+
+### サウンドアーキテクチャ（SoundClass / Attenuation / Mix）
+既存の SoundCue コマンドを拡張し、SoundClass（ボリューム階層）・SoundAttenuation（空間設定）・SoundMix（EQ・ピッチ変調）の操作をカバー。
+
+### Chaos Destruction（Geometry Collection）
+Geometry Collection アセットの編集 — メッシュのフラクチャ、ダメージ閾値設定、クラスタ構造の検査。
+
+### Groom（Strand-Based Hair）
+Groom Asset の設定 — シミュレーションパラメータ・LOD 設定・SkeletalMesh バインディング。
+
+### 追加のオプショングラフエディタ
+- **MetaSound 向け Subsonic**（UE 5.8）: イベント駆動オーディオ統合
+- **ControlRig Dynamics**（UE 5.8）: ControlRig グラフ内の簡易物理シミュレーションノード
+- **AnimationLayering / UAF**（UE 5.8）: ボーンマスクレイヤーと Unified Animation Framework ノード
+- **MeshPartition（MegaMesh）**（UE 5.8）: 大規模メッシュの空間分割と非破壊モディファイア
+- **ChaosCloth Asset**（UE 5.8）: Weight Map、Sim / Render Mesh、Cloth シミュレーション設定
+- **CustomizableSequencerTracks**: Blueprint 定義のカスタム Sequencer トラック型対応
+- **DataPrep Asset**: DataPrep インポートパイプライン Asset の実行と検査
+
+---
+
+## Runtime — 検査・デバッグ
+
+### BehaviorTree / StateTree Runtime 状態
+PIE 中の現在アクティブノード、遷移履歴、Blackboard 値のダンプ — 既存の Editor 側 BT / StateTree コマンドと組み合わせて「設計 → プレイテスト → デバッグ」ループを完結。
+
+### AnimInstance Runtime 状態
+PIE 中のアクターのアクティブステートマシン状態、ブレンドウェイト、再生中モンタージュ、Anim Curve 値のダンプ。
+
+### AI Perception 観測
+`UAIPerceptionComponent` のセンサー状態、現在感知中のアクター、アクターが発している Stimuli のダンプ — 「なぜ敵が気づかなかったか」のデバッグに対応。
+
+### Navigation Runtime クエリ
+2 点間のパス計算、到達可能性テスト、NavMesh タイルカバレッジダンプ、NavModifier ゾーンの検査 — 観測専用、NavMesh 編集は含まない。
+
+### GameViewport Widget 観測
+`UGameViewportClient` をルートとした Widget ツリーのダンプ（HUD / メニュー / Runtime UI）— Editor 全体を対象とする `DumpSlateTree` よりも絞られたノイズの少ない結果。
+
+### CommonUI スタック観測
+`UCommonUISubsystem` のアクティブ Widget スタック・フォーカス状態・現在の入力モードのダンプ。CommonUI 採用プロジェクト向け。
+
+### Subsystem 列挙・状態
+登録済みの `UGameInstanceSubsystem` / `UWorldSubsystem` / `ULocalPlayerSubsystem` の列挙と `UPROPERTY` 値のダンプ — 現在の Subsystem 検査フローにおける Discovery ギャップを埋める。
+
+### Network / Replication 観測
+NetConnection 統計（RTT、パケットロス、帯域）、NetDriver 情報、アクター単位の Replicated プロパティダンプ — マルチプレイヤーデバッグ用。
+
+### Chaos Runtime 状態
+PIE 中の `UGeometryCollectionComponent` のクラスタ状態、破壊イベントログ、Chaos Field System 状態のダンプ — Editor 側の Geometry Collection 編集と組み合わせて使用。
+
+### パフォーマンス Insights Tracing
+UE Trace セッションのチャネル指定での開始 / 停止、フレーム統計と Hitch サマリの取得、ドメイン別 Trace（HTTP イベント、Niagara タイミング、レンダリングコマンド）の検査。
+
+### GameplayMessage Subsystem
+イベント駆動アーキテクチャ向けに `UGameplayMessageSubsystem` メッセージのリッスンと注入 — 疎結合なゲームプレイシステムのテストに有用。
+
+### SaveGame 操作
+`USaveGame` スロットの一覧 / ロード / 保存 / 削除 — テストを特定セーブ状態から開始したり、既知のベースラインへリセットしたりが可能に。
+
+### Semantic Asset Search（凍結中）
+AI による Content Browser のセマンティック検索。**現在凍結中**。`SemanticSearch` プラグインの埋め込みパイプラインの安定性改善待ち。
+
+---
+
+## インフラ
+
+### 人間向け Editor GUI
+AI アクティビティ監視用のオプショナル Editor タブ：Command History（コマンドとレスポンスのタイムライン表示）、Artifact Viewer（スクリーンショット・JSON ダンプ・レポートのインラインプレビュー）。
 
 ### EDA トランスポート
-既存の MCP・HTTP・WebSocket・CLI に加え、Epic の Epic Developer Assistant（EDA）へ接続するオプショナルトランスポート。
+既存の MCP / HTTP / WebSocket / CLI に加えて、Epic の Epic Developer Assistant (EDA) と UAIP を接続するオプショナルトランスポート。Epic 側の `window.eda.*` JavaScript API の安定化が前提。
 
 ---
 
-> 機能リクエストやバグ報告は、このリポジトリの [Issue](../../issues) からお願いします。
+> 機能リクエスト・バグ報告は、リポジトリの [Issue](../../issues) からお願いします。

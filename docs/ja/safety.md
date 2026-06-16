@@ -46,6 +46,7 @@ UAIP はコマンドごとの認可を 3 つの層で管理します。層を理
 | `RuntimeCapture` | ランタイムキャプチャ — `CaptureViewportImage`、`CheckpointCapture` |
 | `RuntimeExecution` | PIE または Standalone での機能テスト・Automation Test の実行 |
 | `RuntimeGASInspect` **†** | PIE 中の GAS 状態読み取り — `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`（`GameplayAbilities` プラグイン必須） |
+| `RuntimeNiagaraInspect` **†** | PIE 中の Niagara コンポーネント状態読み取り — `GetUserVariables`、`GetVariable`（`Niagara` プラグイン必須） |
 
 ---
 
@@ -174,6 +175,8 @@ UAIP はコマンドごとの認可を 3 つの層で管理します。層を理
 | `GameplayTagEdit` | プロジェクトタグテーブルへのタグ追加・削除・リネーム |
 | `GameplayTagRestrictedEdit` | Restricted タグリストの修正 |
 | `GameFeatureCreate` **†** | GameFeature Plugin 定義の作成・スキャフォールディング（`GameFeatures` + `GameFeaturesEditor` プラグイン必須） |
+| `GameplayCueMutation` **†** | GameplayCue タグの追加・削除、GameplayCueNotify アセットの作成、アクターへの Cue 実行（`GameplayAbilities` プラグイン必須） |
+| `EnhancedInputEdit` | Input Action / Input Mapping Context アセットの編集 — マッピング・Modifier・Trigger の追加・削除・変更 |
 
 #### エディタ操作
 
@@ -196,6 +199,8 @@ UAIP はコマンドごとの認可を 3 つの層で管理します。層を理
 |---|---|
 | `RuntimeActorManipulation` | PIE 中のアクタースポーン・破棄・テレポート・Possess |
 | `RuntimeExecCommand` | `UWorld` 経由のランタイムコンソールコマンド実行 |
+| `RuntimeInputInjection` | PIE へのキーボード / Enhanced Input / レガシー入力イベントの注入（`InjectInputKey`、`InjectEnhancedInputAction`、`AddMappingContext`、`SetInputMode`、`FlushInput` など） |
+| `RuntimeNiagaraMutation` **†** | Runtime での Niagara ユーザー変数設定・Niagara システム差し替え（`SetVariable`、`SetSystem`；`Niagara` プラグイン必須） |
 | `GauntletExecution` | Gauntlet 自動テストセッションの起動 |
 
 #### オプショングラフエディタ

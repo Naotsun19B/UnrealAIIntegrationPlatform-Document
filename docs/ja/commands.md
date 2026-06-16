@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP はドメイン別に整理された 600 以上のコマンドを提供します。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP はドメイン別に整理された 730 以上のコマンドを提供します。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -58,12 +58,16 @@ UAIP ネイティブコマンドに加えて、Pro 版では公式 UE 5.8 Toolse
 | Editor WorldConditions **†** | `UAIP.Editor.WorldConditions` | 6 | — | — |
 | Editor Conversation **†** | `UAIP.Editor.Conversation` | 12 | — | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 44 | — |
+| Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
+| Editor GAS **†** | `UAIP.Editor.GAS` | 11 | 11 | — |
 | Editor Python Extension **†** | `UAIP.Editor.PythonExtension` | 2 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 10 | — | 一部（5/10） |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
+| Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
 | Runtime GAS **†** | `UAIP.Runtime.GAS` | 6 | — | — |
+| Runtime Niagara **†** | `UAIP.Runtime.Niagara` | 4 | 4 | — |
 
 ---
 
@@ -959,6 +963,51 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 
 ---
 
+## UAIP.Editor.EnhancedInput
+
+Enhanced Input アセット編集 — Input Action と Input Mapping Context。
+
+| コマンド | 説明 |
+|---|---|
+| `ListInputActions` | プロジェクト内の Enhanced Input Action アセット一覧 |
+| `ListMappingContexts` | プロジェクト内の Input Mapping Context アセット一覧 |
+| `GetInputActionInfo` | Input Action の詳細（ValueType・Triggers・Modifiers） |
+| `GetMappingContextInfo` | Mapping Context の詳細（エントリ・キー・Modifier・Trigger） |
+| `DeleteInputAction` | Input Action アセットを削除 |
+| `DeleteMappingContext` | Input Mapping Context アセットを削除 |
+| `AddInputMapping` | Mapping Context にキーマッピングを追加 |
+| `RemoveInputMapping` | インデックス指定でキーマッピングを削除 |
+| `SetInputMappingKey` | マッピングのキーを変更 |
+| `SetInputMappingModifier` | マッピングの Modifier を設定/置換 |
+| `SetInputMappingTrigger` | マッピングの Trigger を設定/置換 |
+| `SetInputActionModifier` | Input Action の Modifier を設定/置換 |
+| `SetInputActionTrigger` | Input Action の Trigger を設定/置換 |
+
+---
+
+## UAIP.Editor.GAS **†**
+
+エディタ時の GameplayAbilities アセット編集 — GameplayCue タグと Cue Notify アセット。`GameplayAbilities` プラグインが必要（Toolset 版は `GASToolsets` も必要）。
+
+### ネイティブ（11）
+
+| コマンド | 説明 |
+|---|---|
+| `AddCueTag` | `GameplayCue.*` タグをプロジェクトタグテーブルに追加 |
+| `RemoveCueTag` | `GameplayCue.*` タグを削除 |
+| `ListCues` | 全 GameplayCue タグを列挙 |
+| `GetCueInfo` | GameplayCue タグの詳細と登録済み Cue Notify アセットを取得 |
+| `FindCueNotifyAssets` | タグを扱う Cue Notify アセットを検索 |
+| `FindCueTagsWithoutNotifies` | Notify アセットが紐づいていない GameplayCue タグを検出 |
+| `CreateCueNotifyAsset` | GameplayCueNotify アセットを新規作成（Actor / Static / Burst） |
+| `ExecuteCueOnSelectedActor` | 選択中アクターで GameplayCue を実行（テスト用簡易コマンド） |
+
+### Toolset ブリッジ（11）**†**
+
+`GASToolsets`（UE 5.8+）経由でネイティブコマンドを委譲。プロバイダ：`Toolset.Editor.GAS.*`。Runtime 検査ヘルパも併せて橋渡し：`GetAttributeValuesToolset` / `GetActiveEffectsToolset` / `GetGrantedAbilitiesToolset` / `GetActiveTagsToolset` / `FindAttributeSetClassesToolset` / `ListAttributesToolset`。
+
+---
+
 ## UAIP.Editor.PythonExtension **†**
 
 Python コマンド拡張。`PythonScriptPlugin` が必要です。
@@ -1043,6 +1092,45 @@ GameplayAbilities 状態の検査。`GameplayAbilities` プラグインが必要
 | `GetActiveTags` **†** | アクターが所有する GameplayTags |
 | `FindAttributeSetClasses` **†** | PIE ワールド内アクターを走査し UAttributeSet クラス一覧を返す（MaxActors 上限） |
 | `ListAttributes` **†** | AttributeSet クラスに定義されている全属性名 |
+
+---
+
+## UAIP.Runtime.Input
+
+Runtime での入力注入と Enhanced Input 状態検査。PIE 必須。
+
+| コマンド | 説明 |
+|---|---|
+| `InjectInputKey` | アクティブな PIE ビューポートに生のキー押下/解放を注入 |
+| `InjectEnhancedInputAction` | Enhanced Input Action を値付きで発火（Bool / Axis1D / Axis2D / Axis3D） |
+| `InjectLegacyAction` | レガシーアクションマッピングイベントを注入 |
+| `InjectLegacyAxisInput` | レガシー軸入力を注入 |
+| `InjectLegacySpeechInput` | レガシー音声入力を注入 |
+| `AddMappingContext` | ローカルプレイヤーに Input Mapping Context を追加 |
+| `RemoveMappingContext` | ローカルプレイヤーから Input Mapping Context を削除 |
+| `SetInputMode` | 入力モードを設定（GameOnly / UIOnly / GameAndUI） |
+| `FlushInput` | テスト終了時の押下中キー状態をフラッシュ |
+| `DumpInputState` | 現在の Enhanced Input 状態（有効 Context・Mapping・Action 値）をダンプ |
+| `GetEnhancedInputActionValue` | Enhanced Input Action の現在値を取得 |
+
+---
+
+## UAIP.Runtime.Niagara **†**
+
+PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Niagara` プラグインが必要。
+
+### ネイティブ（4）
+
+| コマンド | 説明 |
+|---|---|
+| `GetUserVariables` **†** | Niagara System Component のユーザー公開変数を取得 |
+| `GetVariable` **†** | 特定のユーザー変数の値を取得 |
+| `SetVariable` **†** | ユーザー変数の値を Runtime で設定 |
+| `SetSystem` **†** | コンポーネントの Niagara System アセットを Runtime で差し替え |
+
+### Toolset ブリッジ（4）**†**
+
+プロバイダ：`Toolset.Runtime.Niagara.*`。UE 5.8+ と `NiagaraToolsets` が必要。ネイティブコマンドをミラー。
 
 ---
 
