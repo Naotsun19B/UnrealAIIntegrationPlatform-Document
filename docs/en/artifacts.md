@@ -100,7 +100,7 @@ To view a PNG screenshot, use the `Read` tool with the file path — do not rely
 | `CaptureViewportImage` | One PNG — PIE / game viewport |
 | `CaptureEditorTabImage` | One PNG — specific editor tab |
 | `CaptureGraphViewportImage` | One PNG — graph editor (Blueprint, Material, …) |
-| `CaptureCanonicalGraphImage` | One PNG — full-graph layout (requires GraphPrinter) |
+| `CaptureCanonicalGraphImage` | One PNG — full-graph layout (requires a registered external capture provider) |
 | `DumpEditorState` | One JSON — open assets, active tab, window dimensions |
 | `DumpWorldState` | One JSON — all actors, components, transforms (can be large) |
 | `DumpSlateTree` | One JSON — Slate widget tree |

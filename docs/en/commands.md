@@ -118,7 +118,7 @@ Capture screenshots and dump editor state — all read-only.
 | 🆓 `CaptureActiveWindowImage` | Screenshot of the active top-level editor window (PNG artifact) |
 | 🆓 `CaptureEditorTabImage` | Screenshot of a specified editor tab's widget area |
 | 🆓 `CaptureGraphViewportImage` | Screenshot of an SGraphEditor viewport |
-| `CaptureCanonicalGraphImage` **†** | Full canonical graph image via GraphPrinter integration |
+| `CaptureCanonicalGraphImage` **†** | Full canonical graph image via a registered external capture provider |
 | 🆓 `DumpEditorState` | Active tab, open assets, window dimensions, etc. (JSON) |
 | 🆓 `DumpSelectionState` | Current editor selection — actors, objects, graph nodes (JSON) |
 | 🆓 `DumpOpenTabs` | List of open asset editor tabs (JSON) |

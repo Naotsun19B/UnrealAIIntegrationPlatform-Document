@@ -118,7 +118,7 @@ UAIP ネイティブコマンドに加えて、Pro 版では公式 UE 5.8 Toolse
 | 🆓 `CaptureActiveWindowImage` | アクティブな最上位ウィンドウのスクリーンショット（PNG Artifact） |
 | 🆓 `CaptureEditorTabImage` | 指定エディタタブのウィジェット領域のスクリーンショット |
 | 🆓 `CaptureGraphViewportImage` | SGraphEditor ビューポートのスクリーンショット |
-| `CaptureCanonicalGraphImage` **†** | GraphPrinter 連携経由でグラフ全体画像を取得 |
+| `CaptureCanonicalGraphImage` **†** | 登録済み外部キャプチャプロバイダ経由でグラフ全体画像を取得 |
 | 🆓 `DumpEditorState` | アクティブタブ・開いているアセット・ウィンドウサイズ等（JSON） |
 | 🆓 `DumpSelectionState` | 現在の選択状態 — アクター・オブジェクト・グラフノード（JSON） |
 | 🆓 `DumpOpenTabs` | 開いているアセットエディタタブ一覧（JSON） |
