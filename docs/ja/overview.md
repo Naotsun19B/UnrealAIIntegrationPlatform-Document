@@ -24,17 +24,17 @@
 
 ## 概要
 
-**UnrealAIIntegrationPlatform (UAIP)** は、AI エージェントが UE Editor と Runtime を **操作・観測・実行・検証** できるようにする Unreal Engine プラグインです。
+**UnrealAIIntegrationPlatform (UAIP)** は、AI エージェントから UE Editor と Runtime を **操作・観測・実行・検証** するための Unreal Engine プラグインです。
 
-Claude Code、Cursor、Windsurf、GitHub Copilot などの AI ツールが **Model Context Protocol (MCP)** 経由で接続し、意味的なコマンドを発行できます。座標クリックや脆弱な UI スクリプトは不要です。
+Claude Code・Cursor・Windsurf・GitHub Copilot といった AI ツールが **Model Context Protocol (MCP)** 経由で接続し、意味レベルのコマンドを発行できます。座標クリックや壊れやすい UI スクリプトに頼る必要はありません。
 
 主な機能：
-- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御など、200 以上の登録済みコマンドで Editor のほぼすべての機能を網羅
-- **視覚的・構造的な観測** — 任意の Editor タブやビューポートのスクリーンショット取得、ワールド状態・Slate ウィジェットツリー・エディタ状態の JSON ダンプ
-- **Runtime / PIE 制御** — PIE の開始・停止、アクターのスポーン、入力インジェクト、Gauntlet テストの実行、アクタープロパティのアサート
-- **シナリオ実行** — 複数コマンドを順序付きリストとして一括送信。失敗時の中断・リトライ・ステップごとのタイムアウトに対応
-- **マルチ Transport** — MCP・HTTP・WebSocket・CLI から操作可能
-- **Safety & Capability Policy** — セッション単位の Capability ゲートとプロセス単位の SafetyPolicy スイッチ
+- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御まで、200 以上の登録済みコマンドで Editor のほとんどの機能をカバー
+- **視覚的・構造的な観測** — 任意の Editor タブやビューポートのスクリーンショット取得、ワールド状態 / Slate ウィジェットツリー / エディタ状態の JSON ダンプ
+- **Runtime / PIE 制御** — PIE の開始と停止、アクターのスポーン、入力の注入、Gauntlet テストの実行、アクタープロパティのアサート
+- **シナリオ実行** — 複数のコマンドを順序付きリストとして一括送信。失敗時の中断・リトライ・ステップごとのタイムアウトに対応
+- **マルチ Transport** — MCP・HTTP・WebSocket・CLI のいずれからでも操作可能
+- **Safety & Capability Policy** — セッション単位の Capability ゲートと、プロセス単位の SafetyPolicy スイッチで権限を細かく制御
 
 ### アーキテクチャ
 
@@ -51,7 +51,7 @@ flowchart LR
     Artifacts -.->|/uaip/artifacts/*| Bridge
 ```
 
-MCP Bridge は AI クライアントのツール呼び出しをエディタへの HTTP リクエストに変換します。キャプチャ・ダンプ系コマンドは結果を Artifact として書き出し、Bridge が ID で AI クライアントに返却します。HTTP API・WebSocket・CLI を直接使う方法は [接続方法](connections.md) を参照してください。
+MCP Bridge は AI クライアントからのツール呼び出しを、エディタへの HTTP リクエストへと変換します。キャプチャやダンプ系のコマンドは結果を Artifact として書き出し、Bridge は ID で AI クライアントへ返却します。HTTP API・WebSocket・CLI を直接使う方法は [接続方法](connections.md) を参照してください。
 
 ## 動作環境
 

@@ -2,7 +2,7 @@
 
 # アーキテクチャ
 
-このページは UAIP の内部構造を解説します。UAIP を使うだけなら [クイックスタート](quickstart.md) と [コマンドリファレンス](commands.md) で十分です。本ページはツールプログラマー・プラグイン拡張者・レビュアー向けです。
+このページでは UAIP の内部構造を解説します。UAIP を使うだけであれば [クイックスタート](quickstart.md) と [コマンドリファレンス](commands.md) で十分です。本ページは、ツールプログラマー・プラグインを拡張する人・レビュアー向けの内容になっています。
 
 ---
 
@@ -62,7 +62,7 @@ flowchart TB
     Scenario --> Dispatcher
 ```
 
-絶対ルール：**依存は下位方向のみ**。Transport レイヤーは Domain ハンドラをインポートしないし、Domain ハンドラは Transport をインポートしない。Core が中央。
+大原則として、**依存は下位方向にしか流れません**。Transport レイヤーは Domain ハンドラをインポートしませんし、Domain ハンドラも Transport をインポートしません。Core が両者の中間に立っています。
 
 ---
 
@@ -93,12 +93,12 @@ flowchart LR
     B -.->|"CommandResponse"| A
 ```
 
-- Transport は Domain を直接呼ばない
-- Domain は他の Domain をインポートしない（例: `UAIPEditorBlueprint` は `UAIPEditorMaterial` に依存しない）
-- ドメイン横断の共通処理は `UAIPEditorShared` / `UAIPRuntimeShared` 経由
-- `UAIPScenario` は `uaip_execute` と並列のルート。各 step は Domain を直接叩かず `CommandDispatcher` 経由で再送
+- Transport が Domain を直接呼ぶことはありません
+- Domain どうしも互いをインポートしません（例：`UAIPEditorBlueprint` は `UAIPEditorMaterial` に依存しません）
+- ドメイン横断で必要な処理は `UAIPEditorShared` / `UAIPRuntimeShared` を経由します
+- `UAIPScenario` は `uaip_execute` と並列のルートです。各ステップは Domain を直接叩かず、いったん `CommandDispatcher` を経由して再ディスパッチされます
 
-循環依存は禁止。UE の `.Build.cs` システムが強制するため、循環を作るとコンパイルが通らない。
+循環依存は禁止されています。UE の `.Build.cs` システムが強制するため、循環を作ろうとするとそもそもコンパイルが通りません。
 
 ---
 
@@ -139,7 +139,7 @@ sequenceDiagram
     end
 ```
 
-**デフォルトはすべてゲームスレッド実行**。長時間処理が必要なハンドラは自身を非同期マークし、完了時にゲームスレッドへポストバックしてからコールバックを呼ぶ。
+**デフォルトではすべてゲームスレッド上で実行されます**。長時間の処理が必要なハンドラは自身を非同期としてマークし、完了時にゲームスレッドへポストバックしてからコールバックを呼ぶ仕組みになっています。
 
 ---
 
@@ -169,7 +169,7 @@ flowchart TB
     D -- はい --> E
 ```
 
-ゲート 2 種類（Capability と SafetyPolicy）、結果コード 3 種類（`CapabilityNotAvailable`・`PolicyViolation`・`Success`）。`ErrorMessage` には常に該当する Capability 名やフラグ名が含まれ、AI / ユーザーが推測なく対処できます。詳細は [Safety & Capabilities](safety.md)。
+ゲートが 2 種類（Capability と SafetyPolicy）、結果コードが 3 種類（`CapabilityNotAvailable`・`PolicyViolation`・`Success`）あります。`ErrorMessage` には該当する Capability 名やフラグ名が常に含まれているので、AI もユーザーも推測なしに対処できます。詳細は [Safety & Capabilities](safety.md) を参照してください。
 
 ---
 
@@ -184,21 +184,21 @@ stateDiagram-v2
     GC --> [*]: artifact が GC 対象に
 ```
 
-セッションは以下を所有する単位：
+セッションは次のものを所有する単位です：
 - Capability セット（spawn 時に SafetyPolicy から決定）
-- Widget 観測キャッシュ（`ObserveWidget` 用）
-- Artifact サブフォルダ（`Saved/UAIP/<SessionId>/`）
-- セッション単位レートリミタ（例：シナリオ submit）
+- Widget 観測のキャッシュ（`ObserveWidget` 用）
+- Artifact のサブフォルダ（`Saved/UAIP/<SessionId>/`）
+- セッション単位のレートリミタ（例：シナリオ submit）
 
-匿名セッション（`SessionId` 未指定）は自動生成 `MCP-Anonymous-<guid>` ID — 単発呼び出しには便利ですが、タスク単位でセッションを分けると artifact 検索が容易。
+匿名セッション（`SessionId` を指定しない場合）には `MCP-Anonymous-<guid>` という ID が自動付与されます。単発の呼び出しには便利ですが、タスクごとにセッションを分けたほうが Artifact を後から探しやすくなります。
 
 ---
 
 ## 7. Artifact ライフサイクル
 
-出力を生成するコマンド（キャプチャ・ダンプ・ログ・レポート）はすべて、1 つ以上の **artifact** を `Saved/UAIP/<SessionId>/` に書き出し、レスポンスに artifact ID を返します。クライアントは ID 経由で内容を取得 — ファイルパスはレスポンスペイロードに含めません。これにより path leak 攻撃を防ぎ、transport 間で契約を一貫させます。
+出力を生成するコマンド（キャプチャ・ダンプ・ログ・レポート）はすべて、1 つ以上の **Artifact** を `Saved/UAIP/<SessionId>/` に書き出し、レスポンスには Artifact ID を返します。クライアントは ID を介して内容を取得する仕組みで、ファイルパス自体はレスポンスペイロードに含めません。これによりパスリーク攻撃を防ぎ、トランスポート間で契約も一貫させています。
 
-詳細は [Artifacts](artifacts.md) を参照（ディスクレイアウト・インライン vs フェッチの挙動・型ごとのポリシー）。
+ディスクレイアウト・インライン埋め込みとフェッチの判定・型ごとのポリシーといった詳細は [Artifacts](artifacts.md) を参照してください。
 
 ---
 
@@ -227,20 +227,20 @@ sequenceDiagram
     end
 ```
 
-Bridge がエディタプロセスのライフサイクルを所有するため、クライアントは管理不要。AI クライアントは **`taskkill` / `Stop-Process` を使ってはいけません** — 他プロジェクトのエディタも巻き込みで落ちます。代わりに `UAIP.Workspace.RestartEditor` を使用してください。詳細は [トラブルシューティング → MCP が固まっている](troubleshooting.md#mcp-が固まっている--エディタを-kill-すべき)。
+エディタプロセスのライフサイクルは Bridge 側が管理するため、クライアント側で気にする必要はありません。AI クライアントは **`taskkill` や `Stop-Process` を使ってはいけません** — 他プロジェクトのエディタまで巻き添えで落ちてしまいます。代わりに `UAIP.Workspace.RestartEditor` を使ってください。詳細は [トラブルシューティング → MCP が固まっている](troubleshooting.md#mcp-が固まったように見える--エディタを-kill-するべき) を参照してください。
 
 ---
 
 ## 9. 拡張ポイント
 
-UAIP はフォークせずにプロジェクト独自のコマンドを追加できる小さな拡張フックを公開しています：
+UAIP は、本体をフォークしなくてもプロジェクト独自のコマンドを追加できるよう、いくつかの拡張フックを公開しています：
 
-- **`ICommandProvider`** — モジュール起動時に実装・登録することで、独自ハンドラ付きの新規コマンドグループを追加
-- **`ICaptureProvider`** — 外部のグラフ画像ソース（GraphPrinter など）をブリッジし、`CaptureCanonicalGraphImage` から利用可能に
-- **`IToolsetCommandHandler`** — Toolset フレームワークコマンドを UAIP のリクエスト / レスポンス形式に適応（製品版、UE 5.8+）
-- **Python `@uaip_command`** — Python 関数を UAIP コマンドとして登録（`PythonScriptPlugin` + `PythonExtensionReload` Capability が必要）
+- **`ICommandProvider`** — モジュール起動時に実装して登録すると、独自ハンドラつきの新しいコマンドグループを追加できます
+- **`ICaptureProvider`** — 外部のグラフ画像ソース（GraphPrinter など）を橋渡しし、`CaptureCanonicalGraphImage` から利用できるようにします
+- **`IToolsetCommandHandler`** — Toolset フレームワークのコマンドを UAIP のリクエスト / レスポンス形式に適応させます（製品版・UE 5.8 以降）
+- **Python `@uaip_command`** — Python の関数を UAIP のコマンドとして登録できます（`PythonScriptPlugin` と `PythonExtensionReload` Capability が必要）
 
-プロジェクト固有の拡張は **別プラグイン / 別モジュール** に置くこと（UAIP のソースツリーに入れない）。UAIP アップデート時の `git pull` をクリーンに保つためです。
+プロジェクト固有の拡張は、UAIP のソースツリーに入れず、**別プラグインまたは別モジュール** として作成してください。UAIP をアップデートしたときに `git pull` がきれいに通るようにするためです。
 
 ---
 

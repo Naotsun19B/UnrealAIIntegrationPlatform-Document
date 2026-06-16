@@ -2,78 +2,78 @@
 
 # 用語集
 
-UAIP ドキュメントで頻出する用語の定義です。アルファベット順。
+UAIP のドキュメントで繰り返し登場する用語の定義です。アルファベット順に並べています。
 
 ---
 
 ### Artifact（アーティファクト）
-コマンドが生成するファイル（PNG スクリーンショット・JSON ダンプ・テキストログ・レポートバンドル）。パスではなく ID 参照（`ArtifactId`）で返却。`Saved/UAIP/<SessionId>/` 配下に保存。詳細は [Artifacts](artifacts.md)。
+コマンドが生成するファイルのことです（PNG スクリーンショット、JSON ダンプ、テキストログ、レポートバンドルなど）。レスポンスにはファイルパスではなく ID（`ArtifactId`）が含まれ、`Saved/UAIP/<SessionId>/` 配下に保存されます。詳細は [Artifacts](artifacts.md) を参照してください。
 
 ### Bearer Token
-HTTP / WebSocket リクエスト認証用に UAIP が起動時に生成・書き出す 32 文字のランダムトークン。`Saved/UAIP/EditorHttpAuthToken.txt` および `EditorWsAuthToken.txt` に保存。HTTP は `Authorization: Bearer <token>` ヘッダ、WebSocket は最初のハンドシェイクフレームで渡す。詳細は [接続方法](connections.md)。
+HTTP / WebSocket リクエストの認証に使う、32 文字のランダムな文字列です。エディタ起動時に生成され、`Saved/UAIP/EditorHttpAuthToken.txt` と `EditorWsAuthToken.txt` に書き出されます。HTTP は `Authorization: Bearer <token>` ヘッダで、WebSocket は最初のハンドシェイクフレームで渡します。詳細は [接続方法](connections.md) を参照してください。
 
 ### Capability
-コマンド毎・セッション毎の認可タグ（例：`BlueprintEdit`、`PIEControl`）。各コマンドハンドラは必要 Capability を宣言し、セッションが必要 Capability すべてを所有する場合のみ実行可能。2 種類：**DefaultAllow**（自動付与）と **DefaultDenied**（`Config/DefaultUAIP.ini` で明示的に有効化が必要）。詳細は [Safety & Capabilities](safety.md)。
+コマンド単位・セッション単位の認可タグのことです（例：`BlueprintEdit`、`PIEControl`）。各コマンドハンドラは必要な Capability を宣言しており、セッションがそれらをすべて所有しているときだけコマンドを実行できます。Capability には 2 種類あります — **DefaultAllow**（自動付与）と **DefaultDenied**（`Config/DefaultUAIP.ini` で明示的に有効化が必要）。詳細は [Safety & Capabilities](safety.md) を参照してください。
 
 ### Capability Set
-セッションが所有する Capability のコレクション。spawn 時にプロジェクトの SafetyPolicy から計算。`UAIP.Core.QueryCapabilities` で問い合わせ可能。
+セッションが所有する Capability の集合のことです。セッション生成時に、プロジェクトの SafetyPolicy をもとに決まります。`UAIP.Core.QueryCapabilities` で問い合わせ可能です。
 
 ### CommandDispatcher
-`CommandRequest` を受け取り、Capability + Policy をチェックし、ハンドラを解決し、ゲームスレッドで実行し、`CommandResponse` を返す Core コンポーネント。4 transport すべてとシナリオルートが共用。
+`CommandRequest` を受け取り、Capability と Policy をチェックし、ハンドラを解決してゲームスレッドで実行し、`CommandResponse` を返す Core コンポーネントです。4 つのトランスポートとシナリオルートが共通して使います。
 
 ### CommandRegistry
-完全修飾コマンド名（例：`UAIP.Editor.Blueprint.CompileBlueprint`）を実装ハンドラにマップする Core コンポーネント。モジュール起動時に登録。`uaip_list_commands` / `uaip_describe_command` で問い合わせ。
+完全修飾コマンド名（例：`UAIP.Editor.Blueprint.CompileBlueprint`）と実装ハンドラを対応付ける Core コンポーネントです。モジュールの起動時に登録され、`uaip_list_commands` / `uaip_describe_command` から問い合わせできます。
 
 ### DefaultAllow / DefaultDenied
-Capability の 2 クラス。**DefaultAllow** は新規セッションに自動付与（例：`EditorInspect`、`PIEControl`）。**DefaultDenied** は `Config/DefaultUAIP.ini` に `+AllowedCapabilities=<名前>` を明示的に追加する必要があります。この区別はおおよそ「読み取り vs 書き込み」に対応。
+Capability の 2 つのクラスを指します。**DefaultAllow** は新規セッションに自動で付与されます（例：`EditorInspect`、`PIEControl`）。**DefaultDenied** は `Config/DefaultUAIP.ini` に `+AllowedCapabilities=<名前>` を明示的に書く必要があります。この区別はおおまかに「読み取り」と「書き込み」の境界に対応しています。
 
 ### Demo / Pro（デモ版 / 製品版）
-UAIP の 2 つの配布チャネル。**デモ版** は GitHub Releases で配布する無償・機能制限版（MCP transport のみ、観測 + PIE + アサート + UI 自動化、キャプチャに透かし）。**製品版** は [Fab](https://www.fab.com) で配布する完全版（全 transport、完全な Editor + Runtime 編集、透かしなし）。詳細は [デモ版ガイド](demo.md)。
+UAIP には 2 つの配布チャネルがあります。**デモ版** は GitHub Releases で配布している無償の機能制限版です（MCP トランスポートのみ、観測 / PIE / アサート / UI 自動化、キャプチャに透かしあり）。**製品版** は [Fab](https://www.fab.com) で配布する完全版です（全トランスポート、Editor と Runtime の完全な編集機能、透かしなし）。詳細は [デモ版ガイド](demo.md) を参照してください。
 
 ### ErrorCode
-失敗レスポンス内の機械可読エラーカテゴリ（`CommandNotFound`・`CapabilityNotAvailable`・`PolicyViolation`・`InvalidParams`・`NotFound`・`ExecutionFailed`・`NotAllowed`・`Timeout`・`TooManyRequests`・`InternalError`）。`ErrorMessage` フィールドに人間可読な詳細が入る。詳細は [トラブルシューティング](troubleshooting.md)。
+失敗時のレスポンスに含まれる、機械可読なエラーカテゴリです（`CommandNotFound`・`CapabilityNotAvailable`・`PolicyViolation`・`InvalidParams`・`NotFound`・`ExecutionFailed`・`NotAllowed`・`Timeout`・`TooManyRequests`・`InternalError`）。人間向けの詳細は `ErrorMessage` フィールドに入ります。詳細は [トラブルシューティング](troubleshooting.md) を参照してください。
 
 ### Fully-Qualified Command Name（完全修飾コマンド名）
-コマンド呼び出しに使うドット区切りの完全名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）。短縮名（`CaptureActiveWindowImage` 単独）は `CommandNotFound` を返す。最初のセグメントは `UAIP`・`Toolset`・またはプロジェクト定義のプレフィックス。
+コマンドを呼び出すときに使う、ドット区切りの完全な名前です（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）。短縮名（`CaptureActiveWindowImage` だけなど）は `CommandNotFound` を返します。先頭セグメントは `UAIP`、`Toolset`、またはプロジェクト独自のプレフィックスのいずれかになります。
 
 ### Handler（ハンドラ）
-1 つのコマンドを実装する C++ クラス（例：`FCaptureActiveWindowImageHandler`）。起動時に親モジュールが `CommandRegistry` に登録。対応する `UAIPEditor*` / `UAIPRuntime*` モジュール内に配置。
+1 つのコマンドを実装する C++ クラスのことです（例：`FCaptureActiveWindowImageHandler`）。起動時に親モジュールが `CommandRegistry` に登録し、対応する `UAIPEditor*` / `UAIPRuntime*` モジュール内に置かれます。
 
 ### MCP（Model Context Protocol）
-AI クライアント（Claude Code・Cursor・Windsurf・Copilot）がツール発見・呼び出しに使うオープンプロトコル。UAIP は **MCP Bridge**（`thin_proxy.py`）経由で MCP サーバとして自身を公開。詳細は [接続方法](connections.md)。
+AI クライアント（Claude Code・Cursor・Windsurf・Copilot など）がツールを発見・呼び出しするときに使うオープンプロトコルです。UAIP は **MCP Bridge**（`thin_proxy.py`）を介して MCP サーバとして自身を公開します。詳細は [接続方法](connections.md) を参照してください。
 
 ### MCP Bridge
-AI クライアントと UE Editor をつなぐ薄い Python プロキシ（`Scripts/MCPBridge/thin_proxy.py`）。MCP ツール呼び出しを内部で UAIP HTTP リクエストに変換し、エディタライフサイクル（自動起動・クラッシュ / ハング復旧）を管理し、artifact のインライン化を処理。
+AI クライアントと UE Editor をつなぐ薄い Python プロキシ（`Scripts/MCPBridge/thin_proxy.py`）です。MCP のツール呼び出しを内部で UAIP の HTTP リクエストに変換し、エディタのライフサイクル（自動起動、クラッシュやハングからの復旧）も管理します。Artifact のインライン化処理もここで行います。
 
 ### Operational Constraints
-`UAIP.Core.QueryCapabilities` が返す SafetyPolicy フラグのスナップショット — AI が事前に「特定アクションが許可されるか」（例：`ReadOnly=True` ならすべての書き込みが失敗する）を知るために使用。
+`UAIP.Core.QueryCapabilities` が返す SafetyPolicy フラグのスナップショットです。AI が事前に「この操作が許可されるか」を判断するために使います（例：`ReadOnly=True` ならすべての書き込みが失敗することが事前にわかる）。
 
 ### PIE（Play in Editor）
-エディタ内でゲームを実行する UE のモード。UAIP は `UAIP.Runtime.PIE.*` で start / stop / pause / resume / map-load を、PIE 中に Runtime 観測 / アサート / 入力コマンドを公開。
+エディタ内でゲームを実行する UE のモードです。UAIP は `UAIP.Runtime.PIE.*` で start / stop / pause / resume / map-load を公開しており、PIE 実行中には Runtime の観測・アサート・入力コマンドも利用できます。
 
 ### Provider
-関連コマンドをまとめる名前空間（例：`UAIP.Editor.Observation`、`Toolset.AnimationAssistant`）。各 Provider はモジュールが起動時に登録。`uaip_list_commands` を `ProviderPrefix` でフィルタすると 1 つの Provider のコマンドを列挙可能。
+関連するコマンドをまとめる名前空間のことです（例：`UAIP.Editor.Observation`、`Toolset.AnimationAssistant`）。各 Provider は起動時にモジュールが登録します。`uaip_list_commands` を `ProviderPrefix` でフィルタすれば、特定 Provider のコマンドだけを列挙できます。
 
 ### SafetyPolicy
-プロセス全体に適用される設定（`Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` セクション）で、Capability セットに関係なくカテゴリ全体の操作をゲート — Read-Only モード・ログダンプ許可・キーボード入力許可・シナリオ opt-in 等。AI は Runtime で SafetyPolicy を解除できない。オペレーターのみが変更可能（通常はエディタ再起動も必要）。詳細は [Safety & Capabilities](safety.md)。
+プロセス全体に適用される設定です（`Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` セクション）。Capability セットの内容に関係なく、カテゴリ全体の操作をゲートできます — Read-Only モード、ログダンプ許可、キーボード入力許可、シナリオ opt-in などです。AI が Runtime で SafetyPolicy を解除することはできず、変更できるのはオペレーターだけです（通常はエディタの再起動も必要）。詳細は [Safety & Capabilities](safety.md) を参照してください。
 
 ### Scenario（シナリオ）
-`uaip_run_scenario`・`POST /uaip/scenarios`・WebSocket の `ScenarioRequest` フレーム・`-uaip-scenario-file=…` CLI フラグで 1 リクエストとして送信される、順序付きコマンドリスト。ステップ毎の `AbortOnFailure`・`RetryCount`・`TimeoutSeconds`、および前ステップの出力を後ステップにパイプするテンプレート式（`${StepName.Data.x}`）をサポート。詳細は [シナリオ実行](scenario.md)。
+順序付きのコマンドリストを 1 リクエストで送信する仕組みのことです（`uaip_run_scenario`、`POST /uaip/scenarios`、WebSocket の `ScenarioRequest` フレーム、CLI の `-uaip-scenario-file=…` フラグから利用可能）。ステップごとの `AbortOnFailure`・`RetryCount`・`TimeoutSeconds`、および前ステップの出力を後ステップに渡すテンプレート式（`${StepName.Data.x}`）に対応しています。詳細は [シナリオ実行](scenario.md) を参照してください。
 
 ### Session（セッション）
-サーバ側のタスク単位スコープ。Capability セット・artifact サブフォルダ（`Saved/UAIP/<SessionId>/`）・Widget 観測キャッシュ・レートリミタを所有。新しい `SessionId` での最初のリクエストで作成。`EndSession` または TTL 切れで GC。論理タスク毎に新しい `SessionId` を使うと artifact が整理されやすい。
+サーバ側のタスク単位のスコープです。Capability セット・Artifact のサブフォルダ（`Saved/UAIP/<SessionId>/`）・Widget 観測キャッシュ・レートリミタを所有します。新しい `SessionId` を使った最初のリクエストで作成され、`EndSession` または TTL 切れで GC されます。論理的なタスクごとに新しい `SessionId` を使うと、Artifact が整理しやすくなります。
 
 ### Stability（安定性）
-各コマンドの記述子（`Stable`・`Experimental`・`Deprecated`）で、`uaip_describe_command` が返却。Experimental コマンドは予告なく変わる可能性あり。Deprecated コマンドには代替を示す `MigrationTarget` フィールドが付く。
+各コマンドに付く記述子（`Stable`・`Experimental`・`Deprecated`）で、`uaip_describe_command` の結果に含まれます。Experimental は予告なしに変更される可能性があり、Deprecated には代替コマンドを示す `MigrationTarget` フィールドが付きます。
 
 ### Toolset / Toolset Bridge
-**Toolset** は UE 5.8 のファーストパーティ Toolset フレームワーク — 一部のプラグインが公開する別のエンジン側サーフェス。**Toolset bridge** コマンド（`Toolset.*` プレフィックス付きの UAIP コマンド）はその面を UAIP のリクエスト / レスポンス形式に適応し、ほとんどの場合対応する UAIP ネイティブコマンドをミラーします。UE 5.8+ と該当 Toolset プラグイン（例：`NiagaraToolsets`・`PhysicsToolsets`・`AnimationAssistantToolset`）が必要。
+**Toolset** は UE 5.8 のファーストパーティ Toolset フレームワークのことで、一部のプラグインが公開する独立したエンジン側サーフェスです。**Toolset bridge** コマンド（UAIP コマンドのうち `Toolset.*` プレフィックスを持つもの）は、その面を UAIP のリクエスト / レスポンス形式に適応するものです。ほとんどの場合、対応する UAIP ネイティブコマンドと同等の機能を提供します。UE 5.8 以降と、該当する Toolset プラグイン（`NiagaraToolsets`・`PhysicsToolsets`・`AnimationAssistantToolset` など）の導入が必要です。
 
 ### Transport（トランスポート）
-外部クライアントと UAIP Core の間の通信チャネル。4 種類：**MCP**（Bridge 経由）・**HTTP**・**WebSocket**・**CLI**。4 つすべてが同じ `CommandDispatcher` にフィードし、Capability + Policy 判定は transport に関わらず同一。詳細は [接続方法](connections.md)。
+外部クライアントと UAIP Core の間の通信チャネルのことです。次の 4 種類があります — **MCP**（Bridge 経由）・**HTTP**・**WebSocket**・**CLI**。4 つすべてが同じ `CommandDispatcher` に到達するため、Capability と Policy の判定はトランスポートに関係なく同一です。詳細は [接続方法](connections.md) を参照してください。
 
 ### UAIP
-**Unreal AI Integration Platform** — 本リポジトリで文書化しているプラグイン。
+**Unreal AI Integration Platform** の略称で、本リポジトリで扱っているプラグインそのものを指します。
 
 ### Watermark（透かし）
-デモバイナリがキャプチャ出力（`CaptureActiveWindowImage`・`CaptureEditorTabImage`・`CaptureGraphViewportImage`・`CaptureViewportImage`）の右下にアルファブレンドで合成する `UAIP Demo` テキスト + プラグインアイコンバナー。DLL にコンパイル済み、ファイル差し替えで除去不可。フェイルクローズ：透かし合成失敗時は `ExecutionFailed` を返す。
+デモバイナリがキャプチャ出力（`CaptureActiveWindowImage`・`CaptureEditorTabImage`・`CaptureGraphViewportImage`・`CaptureViewportImage`）の右下にアルファブレンドで合成する、`UAIP Demo` のテキストとプラグインアイコンのバナーのことです。DLL にコンパイル済みなのでファイルを差し替えても除去できません。透かしの合成に失敗した場合は、透かしなし画像を保存せずに `ExecutionFailed` を返す（フェイルクローズ）仕様です。

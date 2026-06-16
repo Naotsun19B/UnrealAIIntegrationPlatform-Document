@@ -2,7 +2,7 @@
 
 # Claude Code
 
-[Claude Code](https://claude.com/claude-code) は Anthropic 製の CLI / IDE 拡張。本ページ掲載クライアントの中で MCP サポートが最も成熟しており、プロジェクトローカルの `.mcp.json` を自動的に読みます。
+[Claude Code](https://claude.com/claude-code) は Anthropic が提供する CLI / IDE 拡張です。本ページで紹介しているクライアントのなかでも MCP サポートがもっとも成熟しており、プロジェクトローカルの `.mcp.json` を自動で読み込んでくれます。
 
 ---
 
@@ -37,31 +37,31 @@ Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/config.json
 }
 ```
 
-- `uaip-MyGame` は自分のサーバーキーに置き換え（[セットアップ ステップ 2](../setup.md#ステップ-2--mcp-サーバーキーを決定) 参照）
-- **絶対パスをフォワードスラッシュで** 使用（Windows でも JSON はフォワードスラッシュを受理）
-- `python` が `PATH` にない場合は Python インタプリタの完全パスに置換
+- `uaip-MyGame` は自分のサーバキーに置き換えてください（[セットアップ ステップ 2](../setup.md#ステップ-2--mcp-サーバーキーを決定) を参照）
+- パスは **絶対パスを、フォワードスラッシュ区切りで** 書いてください（Windows でも JSON ではフォワードスラッシュをそのまま受け付けます）
+- `python` が `PATH` に通っていない場合は、Python インタプリタの完全パスに置き換えてください
 
-Claude Code はプロジェクトディレクトリから起動した次回からこれを読み込みます。
+Claude Code は次回プロジェクトディレクトリから起動したときに、この設定を読み込みます。
 
 ---
 
-## オプション B — グローバル（複数プロジェクトで共通サーバー）
+## オプション B — グローバル（複数プロジェクトで共通のサーバを使う）
 
-`~/.claude.json` を編集してトップレベルに同じ `mcpServers` ブロックを追加。`editor_path` と `uproject_path` が複数プロジェクトで同じ場合のみ — 通常は当てはまりません。
+`~/.claude.json` を編集し、トップレベルに同じ `mcpServers` ブロックを追加します。ただしこれが有効なのは、`editor_path` と `uproject_path` が複数プロジェクトで共通になる場合に限られます — 通常はそうならないので、プロジェクトごとの設定（オプション A）が無難です。
 
 ---
 
 ## ステップ — AI 利用ガイドを配置（推奨）
 
-`Scripts/MCPBridge/install/guides/` には Claude に UAIP の慣用的な使い方（シナリオ・Capability・artifact・グラフ編集・安全性）を教える Markdown が含まれます。配置しないと Claude が会話毎に手探りでターン消費します。
+`Scripts/MCPBridge/install/guides/` には、Claude に UAIP の使い方（シナリオ・Capability・Artifact・グラフ編集・安全性）を教えるための Markdown が同梱されています。配置しないと、Claude は会話のたびに手探りでターンを消費してしまいます。
 
 ```powershell
-# ガイドファイルをグローバル Claude ルールフォルダにコピー
+# ガイドファイルを、グローバルの Claude ルールフォルダにコピー
 mkdir -Force ~/.claude/rules/uaip
 cp Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guides/*.md ~/.claude/rules/uaip/
 ```
 
-`~/.claude/CLAUDE.md` で参照し、毎会話でロード：
+`~/.claude/CLAUDE.md` から参照しておけば、すべての会話で自動的にロードされます：
 
 ```markdown
 @rules/uaip/usage.md
@@ -76,10 +76,10 @@ cp Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guides/*.md ~/.
 
 ## 動作確認
 
-1. プロジェクトディレクトリで新しい Claude Code セッションを開始
-2. サーバーが表示されているか確認：`claude mcp list` で `uaip-MyGame: ✔ connected` が出る
-3. Claude に依頼：**「UAIP の HealthCheck を実行して」**
-4. 初回呼び出しでエディタ起動（30〜60 秒）。以降は高速
+1. プロジェクトディレクトリで Claude Code を新しいセッションとして起動する
+2. サーバが認識されているか `claude mcp list` で確認する（`uaip-MyGame: ✔ connected` が表示されれば OK）
+3. Claude に「UAIP の HealthCheck を実行して」と依頼する
+4. 初回の呼び出しでエディタが起動します（30〜60 秒ほど）。次回以降は高速です
 
 期待されるレスポンス：
 
@@ -100,9 +100,9 @@ cp Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guides/*.md ~/.
 
 | 症状 | 対処 |
 |---|---|
-| `claude mcp list` でサーバーが failed | `python <thin_proxy.py のパス>` を直接実行 — stderr にエラーが出ます |
-| `thin_proxy.py` 起動時に `TypeError: ...` | Python バージョンが古い。`python --version` が 3.10+ か確認 |
-| `HealthCheck` は 1 回成功、その後ハング | エディタクラッシュで Bridge が再接続中。60 秒待つか `Saved/Crashes/` を確認 |
-| エディタ再起動後に "Couldn't reach MCP" | 前回の `taskkill` で残った `mcp_proxy.lock` が原因。`Saved/UAIP/` から削除して再起動 |
+| `claude mcp list` でサーバが Failed と表示される | `python <thin_proxy.py のパス>` を直接実行してみてください。stderr にエラーが出力されます |
+| `thin_proxy.py` 起動時に `TypeError: ...` が出る | Python のバージョンが古い可能性があります。`python --version` で 3.10 以上か確認してください |
+| `HealthCheck` は 1 回成功したのに、その後ハングする | エディタがクラッシュして Bridge が再接続中の可能性があります。60 秒ほど待つか `Saved/Crashes/` を確認してください |
+| エディタ再起動後に "Couldn't reach MCP" になる | 前回の `taskkill` で `mcp_proxy.lock` が残っているのが原因です。`Saved/UAIP/` から削除して再起動してください |
 
 完全なエラーコードリファレンスは [トラブルシューティング](../troubleshooting.md) を参照。

@@ -2,7 +2,7 @@
 
 # セットアップガイド
 
-UAIP のインストールと MCP Bridge を AI クライアントに登録するためのハブページです。5 分でセットアップしたい場合は [クイックスタート](quickstart.md) を先に参照。HTTP API・WebSocket・CLI 接続は [接続方法](connections.md) を参照。
+本ページは、UAIP のインストールと MCP Bridge の AI クライアント登録までを扱うハブです。5 分で動かすところまで進めたい場合は、先に [クイックスタート](quickstart.md) を参照してください。HTTP API・WebSocket・CLI 経由の接続については [接続方法](connections.md) を参照してください。
 
 ---
 
@@ -65,13 +65,13 @@ E:\MyProjects\MyGame\MyGame.uproject
 | プロジェクトプラグイン | `uaip-<プロジェクト名>` | `uaip-MyGame` |
 | エンジンプラグイン | `uaip-<バージョン>` | `uaip-5.8` |
 
-プロジェクト名は `.uproject` ファイル名から拡張子を除いたもの。キーはクライアントでのサーバー表示にしか影響せず、Bridge 側と一致させる必要はありません。
+プロジェクト名は `.uproject` ファイル名から拡張子を除いたものを使ってください。このキーは AI クライアント上でのサーバ表示にだけ影響するもので、Bridge 側と一致させる必要はありません。
 
 ---
 
 ## クライアント別設定ファイル
 
-使用クライアントを選び、対応ページに進んでください：
+使用するクライアントを選び、対応ページに進んでください：
 
 | クライアント | ページ | 備考 |
 |---|---|---|
@@ -81,13 +81,13 @@ E:\MyProjects\MyGame\MyGame.uproject
 | **Windsurf** | [windsurf.md](clients/windsurf.md) | `~/.codeium/windsurf/mcp_config.json` |
 | **GitHub Copilot（VS Code）** | [copilot.md](clients/copilot.md) | `.vscode/mcp.json` |
 
-各クライアント別ページに、正確な設定 JSON、`Scripts/MCPBridge/install/guides/` 配下の AI 利用ガイドの配置方法、動作確認手順（「AI に HealthCheck を実行させる」）が含まれます。
+各クライアント別ページには、設定 JSON のサンプル、`Scripts/MCPBridge/install/guides/` 配下にある AI 利用ガイドの配置方法、動作確認の手順（「AI に HealthCheck を実行させる」）がそろっています。
 
 ---
 
 ## ステップ 4 — シナリオ実行を有効化（オプション）
 
-`uaip_run_scenario` はデフォルト無効です。有効化するには `config.json` を編集：
+`uaip_run_scenario` はデフォルトでは無効です。有効化するには `config.json` を以下のように編集してください：
 
 ```json
 {
@@ -100,7 +100,7 @@ E:\MyProjects\MyGame\MyGame.uproject
 }
 ```
 
-変更後 MCP クライアントを再接続。シナリオで何ができるかは [シナリオ実行](scenario.md) を参照。
+変更したあとは MCP クライアントを再接続してください。シナリオで何ができるかは [シナリオ実行](scenario.md) を参照してください。
 
 ---
 

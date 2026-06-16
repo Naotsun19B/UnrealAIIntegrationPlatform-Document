@@ -2,7 +2,7 @@
 
 # Cursor
 
-[Cursor](https://cursor.sh/) は VS Code ベースの AI ファースト IDE。MCP サポートは `mcp.json` 経由。
+[Cursor](https://cursor.sh/) は VS Code ベースの AI ファースト IDE です。MCP サーバの登録は `mcp.json` 経由で行います。
 
 ---
 
@@ -13,7 +13,7 @@
 | ユーザー全体 | `~/.cursor/mcp.json` |
 | プロジェクト | `.cursor/mcp.json`（`.uproject` の隣） |
 
-プロジェクトスコープが推奨 — 複数 UE プロジェクトが衝突しません。
+プロジェクトスコープがおすすめです — 複数の UE プロジェクトを使い分けても衝突しません。
 
 ---
 
@@ -36,11 +36,11 @@
 }
 ```
 
-- `uaip-MyGame` は自分のサーバーキーに置き換え
-- **絶対パスをフォワードスラッシュで** JSON に記述
-- `python` が `PATH` にない場合は Python インタプリタの完全パスに置換
+- `uaip-MyGame` は自分のサーバキーに置き換えてください
+- パスは **絶対パスを、フォワードスラッシュ区切りで** JSON に書いてください
+- `python` が `PATH` に通っていない場合は、Python インタプリタの完全パスに置き換えてください
 
-保存後、**Cursor → Settings → Cursor Settings → Features → MCP** に `uaip-MyGame` が表示されます。表示されない場合は更新アイコンクリックか Cursor 再起動。
+保存できたら、**Cursor → Settings → Cursor Settings → Features → MCP** に `uaip-MyGame` が表示されているはずです。表示されない場合は、更新アイコンをクリックするか Cursor を再起動してみてください。
 
 ---
 
@@ -55,16 +55,16 @@ Get-ChildItem Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guid
 }
 ```
 
-`.mdc` 拡張子が Cursor のルールとしてロードされる必須条件。Cursor はプロジェクト毎にこのフォルダ内の `.mdc` ファイルを自動読み込みします — 手動の `@include` は不要。
+Cursor がルールとして読み込んでくれるためには `.mdc` 拡張子であることが必須です。プロジェクトごとにこのフォルダ内の `.mdc` ファイルを自動的に読み込むため、`@include` のような手動の指定は要りません。
 
 ---
 
 ## 動作確認
 
-1. Cursor を再起動（またはサーバー横の更新アイコンをクリック）
-2. Cursor チャットパネルを開く
-3. 依頼：**「UAIP の HealthCheck を実行して」**
-4. Cursor が UAIP を呼ぶときに tool-use インジケータが表示される
+1. Cursor を再起動するか、サーバ横の更新アイコンをクリックする
+2. Cursor のチャットパネルを開く
+3. 「UAIP の HealthCheck を実行して」と依頼する
+4. Cursor が UAIP を呼び出すタイミングで、tool-use インジケータが表示されます
 
 ---
 
@@ -72,9 +72,9 @@ Get-ChildItem Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guid
 
 | 症状 | 対処 |
 |---|---|
-| サーバーが Settings → MCP に出ない | JSON 構文エラーまたはパス誤り。JSON 検証して Cursor 再起動 |
-| サーバーは出るが "Failed to start" | サーバー名クリックで stderr 確認。よくある原因：Python パス誤りや `mcp` パッケージ未導入 |
-| ツール呼び出しは成功するがルールが適用されない | ガイドファイルの `.mdc` 拡張子忘れ。リネームして再起動 |
-| 初回呼び出しでエディタ起動せず | `env` ブロックの `UAIP_UE_EDITOR_PATH` と `UAIP_UPROJECT_PATH` を検証 |
+| サーバが Settings → MCP に表示されない | JSON の構文エラーかパスの誤りが原因です。JSON を検証してから Cursor を再起動してください |
+| サーバは表示されるが "Failed to start" になる | サーバ名をクリックすると stderr を確認できます。Python のパス誤りや `mcp` パッケージ未導入がよくある原因です |
+| ツール呼び出しは成功するが、ルールが効いていない | ガイドファイルの拡張子を `.mdc` にし忘れている可能性があります。リネームしてから再起動してください |
+| 初回呼び出しでエディタが起動しない | `env` ブロックの `UAIP_UE_EDITOR_PATH` と `UAIP_UPROJECT_PATH` を再確認してください |
 
 完全なエラーコードリファレンスは [トラブルシューティング](../troubleshooting.md) を参照。
