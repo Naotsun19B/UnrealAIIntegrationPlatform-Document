@@ -30,9 +30,9 @@
 
 | Transport | Listen / ワイヤ形式 | エディタポート | パッケージポート | 認証 |
 |---|---|---|---|---|
-| HTTP（Pro） | localhost 限定 REST + JSON | 8765 | 8767 | `Authorization: Bearer <token>` |
-| WebSocket（Pro） | localhost 限定 JSON フレーム | 8766 | 8768 | 最初のフレームの `Token` フィールド |
-| CLI（Pro） | stdin/stdout + CLI フラグ | — | — | なし（プロセス内） |
+| HTTP（製品版） | localhost 限定 REST + JSON | 8765 | 8767 | `Authorization: Bearer <token>` |
+| WebSocket（製品版） | localhost 限定 JSON フレーム | 8766 | 8768 | 最初のフレームの `Token` フィールド |
+| CLI（製品版） | stdin/stdout + CLI フラグ | — | — | なし（プロセス内） |
 | MCP | AI クライアントの stdio 子プロセス | — | — | なし（子プロセス） |
 
 トークンファイル（エディタ起動時に自動生成）：

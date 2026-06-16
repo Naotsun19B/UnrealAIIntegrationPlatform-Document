@@ -2,115 +2,117 @@
 
 # トラブルシューティング
 
-失敗時はレスポンスに `ErrorCode` と `ErrorMessage` が含まれます。本ページではこれらのコードと対処方法、よくある環境的問題をまとめます。
+UAIP のコマンドが失敗すると、レスポンスに `ErrorCode` と `ErrorMessage` が含まれます。本ページではエラーコードごとの対処方法と、環境周りでよく遭遇する問題への対処をまとめています。
 
 ---
 
 ## エラーコード一覧
 
-| ErrorCode | 意味 | 主な対処 |
+| ErrorCode | 何が起きているか | 主な対処 |
 |---|---|---|
-| `CommandNotFound` | 完全修飾コマンド名が未登録 | `uaip_list_commands(ProviderPrefix="UAIP.Core")` で名前確認。**†** マークのコマンドはオプションプラグインが必要 |
-| `CapabilityNotAvailable` | セッションに必要 Capability がない | `ErrorMessage` から不足 Capability 名を読み、`Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy] +AllowedCapabilities=<名前>` に追加。エディタ再起動か `UAIP.Core.ReloadCapabilities` を呼び出す |
-| `PolicyViolation` | SafetyPolicy ゲートによる拒否 | `"is denied by SafetyPolicy"` → ini フラグが OFF；`"is not enabled"` → CLI opt-in（`-uaip-enable-scenario`、`-uaip-http-enable` 等）が起動時に未指定 |
-| `InvalidParams` | パラメータの誤り / 不足 | `uaip_describe_command(CommandName="...")` でスキーマを再確認 |
-| `NotFound` | 対象アセット / アクター / オブジェクトが存在しない | パスや名前を確認、`SearchAssets` や `ListLevelActors` で確認 |
-| `ExecutionFailed` | コマンド内部での Runtime 失敗 | `ErrorMessage` を確認。シナリオでは step に `RetryCount` を設定 |
-| `NotAllowed` | 禁止パス（`/Engine/`）または禁止タイミング（PIE 中の Editor 編集） | 別のパス、または PIE 停止後に再試行 |
-| `Timeout` | 壁時計上限を超過 | シナリオ step の `TimeoutSeconds` を増やすかシナリオを分割 |
-| `TooManyRequests` | 並行性制限（シナリオは同時に 1 つ） | 先行 submit の完了を待つ |
-| `InternalError` | プロセス障害レベル | まず `UAIP.Workspace.RestartEditor` を試す。継続するなら `Saved/Crashes/` のクラッシュログを添えて Issue 起票 |
+| `CommandNotFound` | 完全修飾コマンド名が登録されていない | `uaip_list_commands(ProviderPrefix="UAIP.Core")` で正しい名前を確認してください。**†** マーク付きのコマンドはオプションプラグインの有効化が必要です |
+| `CapabilityNotAvailable` | セッションに必要な Capability がない | `ErrorMessage` に不足している Capability 名が含まれます。`Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy] +AllowedCapabilities=<名前>` に追加し、エディタを再起動するか `UAIP.Core.ReloadCapabilities` を呼び出してください |
+| `PolicyViolation` | SafetyPolicy ゲートで拒否された | `"is denied by SafetyPolicy"` の場合は ini フラグがオフ、`"is not enabled"` の場合は CLI の opt-in フラグ（`-uaip-enable-scenario`・`-uaip-http-enable` など）が起動時に指定されていません |
+| `InvalidParams` | パラメータの誤りや欠落 | `uaip_describe_command(CommandName="...")` でスキーマを再確認してください |
+| `NotFound` | 対象のアセット・アクター・オブジェクトが存在しない | パスや名前を確認し、`SearchAssets` や `ListLevelActors` で実在を確かめてください |
+| `ExecutionFailed` | コマンド内部の Runtime 処理で失敗 | `ErrorMessage` の詳細を確認してください。シナリオの中で起きた場合は該当ステップに `RetryCount` を設定するのが有効です |
+| `NotAllowed` | 禁止パス（`/Engine/` など）や禁止タイミング（PIE 中の Editor 編集） | 別のパスを選ぶか、PIE を停止してから再試行してください |
+| `Timeout` | 壁時計の上限を超えた | シナリオステップの `TimeoutSeconds` を増やすか、シナリオ自体を分割してください |
+| `TooManyRequests` | 並行性制限に達した（シナリオは同時 1 つまで） | 先行する送信の完了を待ってください |
+| `InternalError` | プロセス障害レベルの問題 | まずは `UAIP.Editor.Workspace.RestartEditor` を試してください。それでも続く場合は `Saved/Crashes/` のクラッシュログを添えて Issue を起票してください |
 
 ---
 
 ## よくあるケース
 
-### 「コマンドを呼んだのにエディタが起動しない」
+### コマンドを呼んでもエディタが起動しない
 
-MCP Bridge は初回呼び出し時にエディタを立ち上げます。立ち上がらない場合：
+MCP Bridge は最初の呼び出しでエディタを立ち上げます。立ち上がらない場合は以下を確認してください：
 
-1. Bridge の設定を確認: `Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/config.json` — `editor_path` と `uproject_path` が絶対パスで正しいか
-2. 同じ `uproject` を手動でエディタを起動して開けるか確認。開けないなら UE 側の問題で UAIP の問題ではない
-3. Python が PATH に通っており、`python --version` が 3.10+ を返すか確認
-4. "Editor restart limit exceeded" と出たら、60 秒に 3 回までの再起動ガードに引っかかっている。60 秒待って再試行
+1. Bridge の設定を確認する：`Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/config.json` の `editor_path` と `uproject_path` が絶対パスで正しく設定されているか
+2. 同じ `uproject` を手動でエディタから開けるか確認する：開けない場合は UE 側の問題で、UAIP の問題ではありません
+3. Python が `PATH` に通っているか、`python --version` が 3.10 以上を返すかを確認する
+4. `"Editor restart limit exceeded"` と出る場合は、60 秒に 3 回までの再起動ガードに引っかかっています。60 秒待ってから再試行してください
 
-### 「初回呼び出しはタイムアウトするが、それ以降は動く」
+### 初回呼び出しはタイムアウトするが、それ以降は動く
 
-初回エディタ起動は 30〜90 秒かかります（シェーダー再コンパイル、プラグインロード）。デフォルトの MCP タイムアウトは初回に余裕を持たせていますが、非常に重いプロジェクトでは超過することもあります。最初の AI 呼び出し前にエディタを手動起動して暖機するか、Bridge はタイムアウト後もエディタを生かしているので再試行してください。
+初回のエディタ起動には 30〜90 秒かかります（シェーダーの再コンパイルとプラグインのロードのため）。デフォルトの MCP タイムアウトは初回向けに余裕を持たせていますが、非常に重いプロジェクトでは超過することがあります。最初の AI 呼び出し前にエディタを手動で起動して暖機しておくか、Bridge はタイムアウト後もエディタを生かしたままなので、もう一度同じコマンドを呼んでみてください。
 
-### 「スクリーンショットが真っ黒」
+### スクリーンショットが真っ黒になる
 
-主な原因：
-- キャプチャ対象ウィンドウがフォーカスされていない → タブベースのキャプチャでは先に `FocusEditorTab` を実行
-- エディタが `-nullrhi` / `-RenderOffscreen` で起動された → キャプチャコマンドは実 RHI が必要
-- PIE キャプチャ（`CaptureViewportImage`）で実際には PIE が動いていない → `DumpEditorState` で確認
+主な原因は次の 3 つです：
 
-### 「アセット編集を依頼したが `PolicyViolation: Capability '...' is denied by SafetyPolicy`」
+- キャプチャ対象のウィンドウがフォーカスされていない → タブベースのキャプチャでは先に `FocusEditorTab` を呼んでください
+- エディタが `-nullrhi` / `-RenderOffscreen` で起動されている → キャプチャコマンドは実 RHI が必要です
+- PIE キャプチャ（`CaptureViewportImage`）を呼んだが、実際には PIE が動いていない → `DumpEditorState` で確認してください
 
-その Capability が `[UAIP.SafetyPolicy] DeniedCapabilities=...` にあり、`AllowedCapabilities` よりも deny-wins で優先されています。`DeniedCapabilities` から削除してエディタを再起動してください。
+### アセット編集を依頼したのに `PolicyViolation: Capability '...' is denied by SafetyPolicy` が返る
 
-### 「シナリオが常に `PolicyViolation: Scenario execution is not enabled in this environment` で拒否される」
+その Capability が `[UAIP.SafetyPolicy] DeniedCapabilities=...` に含まれており、`AllowedCapabilities` よりも deny-wins で優先されています。`DeniedCapabilities` から削除してエディタを再起動してください。
 
-シナリオルートは **安全のためデフォルト無効** です。`-uaip-enable-scenario` を付けてエディタを再起動するか、MCP Bridge 経由なら `Scripts/MCPBridge/config.json` に `"enable_scenario": true` を追加して Bridge を再起動してください。
+### シナリオが常に `PolicyViolation: Scenario execution is not enabled in this environment` で拒否される
 
-### 「キャプチャ / ダンプが理由不明の `ExecutionFailed` で返る」
+シナリオルートは **安全のためデフォルトで無効** になっています。`-uaip-enable-scenario` を付けてエディタを再起動するか、MCP Bridge 経由なら `Scripts/MCPBridge/config.json` に `"enable_scenario": true` を追加して Bridge を再起動してください。
 
-`Saved/UAIP/<session>/Logs/` 内のそのコマンドの最新ログ行を確認すると、UE 側の正確な失敗理由が記録されています。よくある原因：
+### キャプチャ / ダンプが理由不明の `ExecutionFailed` で返る
 
-- デモ版キャプチャ: 透かし合成失敗（フォントキャッシュ破損、`Saved/UAIP/` 書き込み不可）— フェイルクローズします
-- Slate ツリーダンプ: root widget path フィルタが何にもマッチしなかった → `RootWidgetPath` なしで試す
-- 非同期ロード中のワールドダンプ: ワールドが未準備 → シナリオフロー内で `LoadMap` 完了を待つ
+`Saved/UAIP/<session>/Logs/` に該当コマンドの最新ログがあり、UE 側の正確な失敗理由が記録されています。よくある原因は次のとおりです：
 
-### 「AI の編集が本当にファイルに反映されたのか分からない」
+- デモ版のキャプチャで透かしの合成に失敗（フォントキャッシュ破損、`Saved/UAIP/` への書き込み不可など）→ フェイルクローズします
+- Slate ツリーダンプの `RootWidgetPath` フィルタが何にもマッチしていない → `RootWidgetPath` なしで試してください
+- 非同期ロード中のワールドダンプ：ワールドがまだ準備できていない → シナリオで `LoadMap` の完了を待ってから実行してください
 
-UAIP の編集は `MarkPackageDirty`（または同等）を呼びますが、ディスク上のファイルが変わるのは保存時です。対処：
+### AI の編集がファイルに反映されているのか分からない
 
-- シナリオの最後に `UAIP.Editor.Workspace.SaveAllPackages` ステップを追加
-- 操作後に `git status` で確認（プロジェクトがバージョン管理下にある場合）
-- `DumpEditorState` を使用 — `OpenAssets` フィールドに Dirty フラグが含まれる
+UAIP の編集は `MarkPackageDirty`（または同等の処理）を呼んでいますが、ディスク上のファイルが実際に変わるのは保存時です。対処は以下のとおりです：
 
-### 「Live Coding リビルドがブロックされる」
+- シナリオの最後に `UAIP.Editor.Workspace.SaveAllPackages` のステップを追加する
+- 操作後に `git status` で確認する（バージョン管理下にあるプロジェクトの場合）
+- `DumpEditorState` を使う — `OpenAssets` フィールドに Dirty フラグが含まれています
 
-Live Coding がビルド中でエディタが他のコマンドを受け付けない場合、AI に先に `UAIP.Workspace.GetLiveCodingStatus` を呼ばせて、ビルド進行中なら待たせます。Live Coding ビルド中に他の操作を強制すると未定義動作になります。フルリビルドのためにシャットダウンする場合は `taskkill` ではなく `UAIP.Workspace.ShutdownEditor` を使ってください — `taskkill` だと `mcp_proxy.lock` が残り、次回セッションが MCP 切断します。
+### Live Coding のリビルドがブロックされる
 
-### 「ドキュメントに載っているコマンドが `CommandNotFound` になる」
+Live Coding がビルド中でエディタが他のコマンドを受け付けないときは、まず AI に `UAIP.Editor.Workspace.GetLiveCodingStatus` を呼ばせて、ビルド中なら待たせるようにしてください。Live Coding のビルド中に他の操作を強引に実行すると未定義の動作になります。フルリビルドのために一度シャットダウンしたい場合は、`taskkill` ではなく `UAIP.Editor.Workspace.ShutdownEditor` を使ってください — `taskkill` だと `mcp_proxy.lock` が残ってしまい、次のセッションで MCP が切断する原因になります。
 
-考えられる原因：
-- そのコマンドのオプションプラグインが `.uproject` で未有効（[コマンドリファレンス](commands.md) の **†** マーク参照）
-- デモ版で Pro 版限定のコマンドを呼んでいる（🆓 マークなし）
-- Toolset ブリッジコマンド（例: `Toolset.Editor.UMG.GetWidgets`）は UE 5.8+ と対応 Toolset プラグインが必要
+### ドキュメントに載っているコマンドが `CommandNotFound` になる
 
-`uaip_describe_command(CommandName="...")` で確認 — `Available: false` だと前提条件が欠けていることが分かります。
+考えられる原因は次のとおりです：
 
-### 「MCP が固まっている — エディタを kill すべき？」
+- そのコマンドのオプションプラグインが `.uproject` で有効になっていない（[コマンドリファレンス](commands.md) の **†** マークを参照）
+- デモ版で製品版限定のコマンドを呼んでいる（🆓 マークが付いていないもの）
+- Toolset ブリッジコマンド（例：`Toolset.Editor.UMG.GetWidgets`）は UE 5.8+ と対応する Toolset プラグインが必要
 
-**`taskkill` で kill するのは避けてください。** 同一ホストの UE エディタ全インスタンス（他プロジェクト含む）が落ち、`mcp_proxy.lock` が残ります。正しい順序：
+`uaip_describe_command(CommandName="...")` で確認すると、`Available: false` だった場合に前提条件が欠けていることが分かります。
 
-1. まず `uaip_execute(CommandName="UAIP.Workspace.RestartEditor")` を試す — Bridge がきれいに再起動を処理
-2. MCP 自体が応答しないなら Bridge プロセスだけを再起動（エディタは生かしたまま）
-3. 最終手段として、AI クライアントを閉じてから対象エディタの PID を狙って `Stop-Process`
+### MCP が固まったように見える — エディタを kill するべき？
+
+**`taskkill` は避けてください。** 同一ホストの UE エディタが全インスタンス（他プロジェクト分も含む）落ちてしまい、`mcp_proxy.lock` が残ります。正しい順序は次のとおりです：
+
+1. まず `uaip_execute(CommandName="UAIP.Editor.Workspace.RestartEditor")` を試す — Bridge がきれいに再起動処理を行います
+2. MCP 自体が応答しない場合は、Bridge プロセスだけを再起動する（エディタは生かしたままで OK）
+3. 最終手段として、AI クライアントを閉じてから対象エディタの PID を狙って `Stop-Process` を呼ぶ
 
 ---
 
-## パフォーマンス・リソース
+## パフォーマンスとリソース
 
-### 「Artifact がディスクを食いつぶす」
+### Artifact がディスクを圧迫する
 
-`Saved/UAIP/` は時間とともに肥大化します。手動削除で問題ありません — セッション終了後の artifact は参照されません。セッション単位での保持を強制したい場合は `UAIP.Core.EndSession` を明示的に呼んでください。
+`Saved/UAIP/` は時間とともに肥大化していきます。手動で削除しても問題ありません — セッション終了後の Artifact は参照されないためです。セッション単位での保持を確実にしたい場合は `UAIP.Core.EndSession` を明示的に呼んでください。
 
-### 「コマンドを大量に呼ぶとエディタのメモリ使用量が増える」
+### コマンドを大量に呼ぶとエディタのメモリ使用量が増えていく
 
-長時間の AI セッションでは Widget 観測登録・キャッシュされた Slate ツリー等が蓄積する可能性があります。定期的に `UAIP.Core.EndSession` を呼んで artifact を GC し Widget 参照を解放しましょう。大きなタスク毎に新しい `SessionId` を発行するのも有効。
+AI セッションを長時間続けると、Widget の観測登録やキャッシュされた Slate ツリーが蓄積していくことがあります。定期的に `UAIP.Core.EndSession` を呼んで Artifact を GC し、Widget の参照を解放しましょう。大きなタスクごとに新しい `SessionId` を割り当てるのも有効です。
 
-### 「コマンドが遅い」
+### コマンドが遅い
 
-「遅い」の大半は実際にエディタの処理コストです（シェーダーコンパイル、アセットロード、PIE 起動）。`uaip_describe_command` で確認 — 読み取り専用コマンドは通常 100 ms 未満、キャプチャはフレーム予算依存、PIE 起動は秒オーダーかかります。
+「遅い」と感じるケースの大半は、実際にはエディタ自体の処理コストです（シェーダーコンパイル・アセットロード・PIE 起動など）。`uaip_describe_command` で確認できますが、読み取り専用のコマンドは通常 100ms 未満、キャプチャはフレーム予算依存、PIE 起動は秒単位かかります。
 
 ---
 
 ## それでも解決しない場合
 
-1. 該当する `ErrorCode` + `ErrorMessage` を控える
-2. `Saved/UAIP/<session>/Logs/` で該当コマンドのログを確認
-3. UE バージョン、プラグインバージョン（`UAIP.Core.GetSystemInfo`）、デモ / Pro を確認
-4. 上記情報を添えて [Issue](../../issues) 起票。エディタクラッシュ時は `Saved/Crashes/` のダンプも添付してください
+1. 該当する `ErrorCode` と `ErrorMessage` を控える
+2. `Saved/UAIP/<session>/Logs/` で該当コマンドのログを確認する
+3. UE バージョン・プラグインバージョン（`UAIP.Core.GetSystemInfo`）・デモ版か製品版かを確認する
+4. これらの情報を添えて [Issue](../../issues) を起票してください。エディタがクラッシュした場合は `Saved/Crashes/` のダンプも添付してください

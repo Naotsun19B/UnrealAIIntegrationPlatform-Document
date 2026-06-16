@@ -237,7 +237,7 @@ UAIP はフォークせずにプロジェクト独自のコマンドを追加で
 
 - **`ICommandProvider`** — モジュール起動時に実装・登録することで、独自ハンドラ付きの新規コマンドグループを追加
 - **`ICaptureProvider`** — 外部のグラフ画像ソース（GraphPrinter など）をブリッジし、`CaptureCanonicalGraphImage` から利用可能に
-- **`IToolsetCommandHandler`** — Toolset フレームワークコマンドを UAIP のリクエスト / レスポンス形式に適応（Pro 版、UE 5.8+）
+- **`IToolsetCommandHandler`** — Toolset フレームワークコマンドを UAIP のリクエスト / レスポンス形式に適応（製品版、UE 5.8+）
 - **Python `@uaip_command`** — Python 関数を UAIP コマンドとして登録（`PythonScriptPlugin` + `PythonExtensionReload` Capability が必要）
 
 プロジェクト固有の拡張は **別プラグイン / 別モジュール** に置くこと（UAIP のソースツリーに入れない）。UAIP アップデート時の `git pull` をクリーンに保つためです。
