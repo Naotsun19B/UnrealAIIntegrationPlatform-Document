@@ -104,15 +104,20 @@ MCP Bridge（`Scripts/MCPBridge/`）は UE Editor と AI クライアントを H
 |---|---|
 | [クイックスタート](quickstart.md) | インストールから最初のコマンド実行まで 5 分 |
 | [セットアップガイド](setup.md) | MCP Bridge のインストール・クライアント別設定 |
+| &nbsp;&nbsp;↳ [Claude Code](clients/claude-code.md) / [Claude Desktop](clients/claude-desktop.md) / [Cursor](clients/cursor.md) / [Windsurf](clients/windsurf.md) / [Copilot](clients/copilot.md) | クライアント別設定 JSON と動作確認手順 |
 | [接続方法](connections.md) | HTTP API・WebSocket・CLI トランスポートの使い方（Pro 版） |
+| [ユースケース](use-cases.md) | 誰が UAIP を何のために使うか — テスト・レビュー・監査・ペアプロ |
 | [Examples / Cookbook](cookbook.md) | レシピ集 — PIE スモーク・AI レビュー・アセット監査・BP 編集・UI 自動化 |
 | [コマンドリファレンス](commands.md) | ドメイン別 730 以上のコマンド一覧 |
 | [シナリオ実行](scenario.md) | 複数ステップのコマンド一括実行 |
 | [Artifacts（成果物）](artifacts.md) | スクリーンショット・JSON ダンプ・ログの読み方 |
 | [Safety & Capabilities](safety.md) | SafetyPolicy と Capability の設定リファレンス |
+| [セキュリティ](security.md) | 脅威モデル・認証・推奨セキュリティプロファイル |
+| [アーキテクチャ](architecture.md) | レイヤー・ディスパッチシーケンス・Capability 決定フロー |
 | [デモ版ガイド](demo.md) | デモ版コマンド一覧・制限事項・インストール手順 |
 | [FAQ](faq.md) | デモ/Pro・Capability・ワークフロー・CI などのよくある質問 |
 | [トラブルシューティング](troubleshooting.md) | エラーコードリファレンスと典型的な失敗パターン |
+| [用語集](glossary.md) | Capability・Artifact・Scenario・Toolset 等の定義 |
 | [ロードマップ](roadmap.md) | 今後追加予定の機能と開発方針 |
 
 ## ライセンス

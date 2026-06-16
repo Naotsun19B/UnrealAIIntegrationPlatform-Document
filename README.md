@@ -104,15 +104,20 @@ See [Demo Version Guide](docs/en/demo.md) for the full command list, limitations
 |---|---|
 | [Quickstart](docs/en/quickstart.md) | 5-minute path from install to first command |
 | [Setup Guide](docs/en/setup.md) | MCP Bridge installation and per-client configuration |
+| &nbsp;&nbsp;↳ [Claude Code](docs/en/clients/claude-code.md) / [Claude Desktop](docs/en/clients/claude-desktop.md) / [Cursor](docs/en/clients/cursor.md) / [Windsurf](docs/en/clients/windsurf.md) / [Copilot](docs/en/clients/copilot.md) | Per-client config JSON and verification |
 | [Connection Methods](docs/en/connections.md) | HTTP API, WebSocket, and CLI transport options (Pro) |
+| [Use Cases](docs/en/use-cases.md) | Who uses UAIP for what — testing, review, audits, pair programming |
 | [Examples / Cookbook](docs/en/cookbook.md) | Recipes — PIE smoke, AI review, asset audit, BP edit, UI automation |
 | [Commands Reference](docs/en/commands.md) | All 730+ commands organized by domain |
 | [Scenario Execution](docs/en/scenario.md) | Multi-step ordered command batches |
 | [Artifacts](docs/en/artifacts.md) | Screenshots, JSON dumps, logs — how to read them |
 | [Safety & Capabilities](docs/en/safety.md) | SafetyPolicy and Capability configuration reference |
+| [Security](docs/en/security.md) | Threat model, auth, recommended hardening profiles |
+| [Architecture](docs/en/architecture.md) | Layers, dispatch sequence, capability decision flow |
 | [Demo Version Guide](docs/en/demo.md) | Demo command list, limitations, and installation |
 | [FAQ](docs/en/faq.md) | Common questions on demo/Pro, capabilities, workflows, CI |
 | [Troubleshooting](docs/en/troubleshooting.md) | Error code reference and common failure modes |
+| [Glossary](docs/en/glossary.md) | Definitions of Capability, Artifact, Scenario, Toolset, etc. |
 | [Roadmap](docs/en/roadmap.md) | Planned features and future direction |
 
 ## License
