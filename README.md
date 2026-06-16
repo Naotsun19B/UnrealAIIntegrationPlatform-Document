@@ -36,6 +36,23 @@ Key capabilities:
 - **Multi-transport** — reachable over MCP, HTTP, WebSocket, or CLI from within the same process
 - **Safety & capability policy** — per-session capability gates and process-wide SafetyPolicy switches
 
+### Architecture
+
+```mermaid
+flowchart LR
+    AI["AI Client<br/>Claude Code / Cursor / Windsurf / Copilot"]
+    Bridge["MCP Bridge<br/>(thin_proxy.py)"]
+    Editor["UE Editor<br/>UAIP Plugin"]
+    Artifacts[("Artifacts<br/>PNG / JSON / Log / Report")]
+
+    AI <-->|MCP| Bridge
+    Bridge <-->|HTTP /mcp| Editor
+    Editor -->|writes| Artifacts
+    Artifacts -.->|/uaip/artifacts/*| Bridge
+```
+
+The MCP Bridge translates AI client tool calls into HTTP requests against the editor. Capture / dump commands write their results as artifacts that the bridge can stream back to the AI client by id. For HTTP API, WebSocket, and CLI alternatives, see [Connection Methods](docs/en/connections.md).
+
 ## Requirement
 
 Target version : UE 5.7 / 5.8  

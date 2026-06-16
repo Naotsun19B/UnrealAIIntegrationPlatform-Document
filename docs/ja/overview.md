@@ -36,6 +36,23 @@ Claude Code、Cursor、Windsurf、GitHub Copilot などの AI ツールが **Mod
 - **マルチ Transport** — MCP・HTTP・WebSocket・CLI から操作可能
 - **Safety & Capability Policy** — セッション単位の Capability ゲートとプロセス単位の SafetyPolicy スイッチ
 
+### アーキテクチャ
+
+```mermaid
+flowchart LR
+    AI["AI クライアント<br/>Claude Code / Cursor / Windsurf / Copilot"]
+    Bridge["MCP Bridge<br/>(thin_proxy.py)"]
+    Editor["UE Editor<br/>UAIP プラグイン"]
+    Artifacts[("Artifacts<br/>PNG / JSON / Log / Report")]
+
+    AI <-->|MCP| Bridge
+    Bridge <-->|HTTP /mcp| Editor
+    Editor -->|生成| Artifacts
+    Artifacts -.->|/uaip/artifacts/*| Bridge
+```
+
+MCP Bridge は AI クライアントのツール呼び出しをエディタへの HTTP リクエストに変換します。キャプチャ・ダンプ系コマンドは結果を Artifact として書き出し、Bridge が ID で AI クライアントに返却します。HTTP API・WebSocket・CLI を直接使う方法は [接続方法](connections.md) を参照してください。
+
 ## 動作環境
 
 対象バージョン : UE 5.7 / 5.8  

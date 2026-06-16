@@ -153,6 +153,14 @@ The following capture commands embed a **"UAIP Demo"** watermark (alpha-blended,
 - `CaptureGraphViewportImage`
 - `CaptureViewportImage`
 
+<p align="center">
+  <img src="../../images/demo-watermark-full.png" alt="Demo capture with watermark in the bottom-right corner" width="80%">
+</p>
+
+<p align="center">
+  <img src="../../images/demo-watermark-zoom.png" alt="Watermark close-up" width="40%">
+</p>
+
 The watermark data is compiled directly into the DLL and cannot be removed by replacing files. If watermark compositing fails, the command returns `ExecutionFailed` rather than producing an unmarked image.
 
 ### Excluded commands
