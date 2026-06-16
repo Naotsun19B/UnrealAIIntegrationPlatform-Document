@@ -15,6 +15,25 @@ UAIP は 4 つのトランスポートをサポートしています。用途に
 
 ---
 
+## トランスポート比較
+
+```mermaid
+flowchart LR
+    AI["AI クライアント<br/>Claude / Cursor / …"] -->|stdio| MCP[MCP Bridge]
+    MCP -->|"HTTP /mcp"| Ed[(UE Editor)]
+    Tool[CI / スクリプト] -->|"HTTP POST"| Ed
+    WSC[WebSocket クライアント] -->|"WS フレーム"| Ed
+    Shell[シェル / バッチ] -->|"-uaip-request / stdin-stream"| Ed
+    Ed -->|書き込み| Artifacts[(Saved/UAIP/&lt;Session&gt;)]
+
+    style MCP fill:#dfe
+    style Ed fill:#eef
+```
+
+4 transport すべてがエディタ内の同じディスパッチコアで終端するため（[アーキテクチャ](architecture.md) 参照）、どの transport を使っても Capability + Policy のセマンティクスは同一です。
+
+---
+
 ## MCP Bridge
 
 AI クライアント統合には MCP Bridge を推奨します。Python プロキシ（`thin_proxy.py`）が AI クライアントと UE Editor の間に介在し、MCP ツール呼び出しを内部的に UAIP HTTP リクエストへ変換します。
@@ -163,6 +182,29 @@ Saved/UAIP/EditorWsAuthToken.txt
 -uaip-ws-no-auth
 ```
 
+### ハンドシェイクとメッセージフロー
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as WS クライアント
+    participant S as Editor WS サーバ
+
+    C->>S: WebSocket upgrade（ws://127.0.0.1:8766/）
+    S-->>C: AuthChallenge
+    C->>S: 最初のフレーム { Type: "CommandRequest", Token, SessionId, ... }
+    alt 認証成功
+        S-->>C: Welcome { SessionId, Capabilities }
+        loop 接続中
+            C->>S: CommandRequest / ScenarioRequest
+            S-->>C: CommandResponse / ScenarioResponse
+            S-->>C: OutputLogEntry（非同期にストリーム）
+        end
+    else 認証失敗
+        S-->>C: close 1008
+    end
+```
+
 ### メッセージタイプ
 
 **Inbound（クライアント → サーバー）：**
@@ -241,6 +283,26 @@ UnrealEditor.exe MyProject.uproject -uaip-scenario-file="path/to/scenario.json"
 ```
 UnrealEditor.exe MyProject.uproject -uaip-stdin-stream
 ```
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Br as Bridge / ラッパー
+    participant Ed as UnrealEditor.exe
+
+    Br->>Ed: 起動（-uaip-stdin-stream）
+    Ed-->>Br: stdout: __UAIP_STREAM_READY__
+    loop エディタ生存中
+        Br->>Ed: stdin: { "CommandName": "...", ... }\n
+        Ed-->>Br: stdout: __UAIP_RESPONSE_BEGIN__
+        Ed-->>Br: stdout: { "Success": true, ... }
+        Ed-->>Br: stdout: __UAIP_RESPONSE_END__
+    end
+    Br->>Ed: stdin EOF（または kill）
+    Ed-->>Br: プロセス終了
+```
+
+マーカー（`__UAIP_*__`）により、通常の UE ログ出力と request/response を同じ stdout で混在させられます。
 
 **stdout マーカー：**
 

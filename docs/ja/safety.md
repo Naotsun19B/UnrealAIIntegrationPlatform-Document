@@ -14,6 +14,43 @@ UAIP はコマンドごとの認可を 3 つの層で管理します。層を理
 | 2 | `FSafetyPolicy` のブールスイッチ / DeniedCapabilities — プロセス全体 | `PolicyViolation` |
 | 3 | ルート単位のオプトイン（シナリオルートなど）— プロセス全体 | `PolicyViolation` |
 
+```mermaid
+flowchart TB
+    Cmd([CommandRequest])
+    L1[Layer 1: セッション Capability セット]
+    L2[Layer 2: SafetyPolicy + DeniedCapabilities + DeniedCommands]
+    L3[Layer 3: ルート opt-in フラグ]
+    Exec([ゲームスレッドで実行])
+
+    Cmd --> L1
+    L1 -- "必要 Capability 不足" --> E1([CapabilityNotAvailable])
+    L1 -- ok --> L2
+    L2 -- "Capability 拒否 / ReadOnly / DisableSave 等" --> E2([PolicyViolation])
+    L2 -- ok --> L3
+    L3 -- "起動時にルートフラグなし" --> E3([PolicyViolation])
+    L3 -- ok --> Exec
+
+    style E1 fill:#fdd
+    style E2 fill:#fdd
+    style E3 fill:#fdd
+```
+
+`AllowedCapabilities` と `DeniedCapabilities` は Layer 1 / 2 で **deny-wins** セマンティクスで相互作用します：
+
+```mermaid
+flowchart LR
+    Reg[モジュール登録の Capability] --> Allow{"AllowedCapabilities<br/>に含まれる?"}
+    Allow -- "含む" --> Active(セッションで有効)
+    Allow -- "含まない" --> S1{"DefaultAllow か?"}
+    S1 -- はい --> Active
+    S1 -- いいえ --> X1(無効)
+    Active --> Deny{"DeniedCapabilities<br/>に含まれる?"}
+    Deny -- "含む" --> Final([Layer 2 で拒否: PolicyViolation])
+    Deny -- "含まない" --> OK([Layer 2 通過])
+    style Final fill:#fdd
+    style OK fill:#dfd
+```
+
 ---
 
 ## Capability リファレンス

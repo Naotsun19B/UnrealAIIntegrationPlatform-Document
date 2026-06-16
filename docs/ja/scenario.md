@@ -32,6 +32,44 @@
 
 ---
 
+## 実行フロー
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Cli as クライアント
+    participant Sc as シナリオルート
+    participant Di as CommandDispatcher
+    participant Hd as Step ハンドラ
+    participant Ar as ArtifactManager
+
+    Cli->>Sc: uaip_run_scenario(Steps[])
+    Sc->>Sc: 検証（opt-in / サイズ / 形式）
+
+    loop 各 Step を順に
+        Sc->>Sc: ${...} テンプレート解決
+        Sc->>Di: DispatchAsync(StepCommand)
+        Di->>Hd: Execute(params)
+        Hd->>Ar: WriteArtifact(...)
+        Ar-->>Hd: ArtifactId
+        Hd-->>Di: StepResult
+        Di-->>Sc: StepResult
+        alt StepResult.Success == false
+            alt AbortOnFailure == true
+                Note over Sc: 残り Step をスキップ
+            else AbortOnFailure == false
+                Note over Sc: 継続
+            end
+        end
+    end
+
+    Sc-->>Cli: ScenarioResponse(StepResults[], ArtifactIds[])
+```
+
+シナリオルートは認可をバイパスしません — 各 Step は直接 `uaip_execute` を呼ぶ場合と同じ `CommandDispatcher` を通り、同じ Capability + Policy チェックを受けます。詳細は [アーキテクチャ](architecture.md)。
+
+---
+
 ## 呼び出し形式
 
 ```
@@ -68,6 +106,19 @@ uaip_run_scenario(
 | `${Variables.<key>}` | `Variables` マップの値 |
 
 テンプレートはステップ実行直前に 1 回だけ解決されます。`Variables` に `${...}` を書いても再展開はされません（循環展開防止のための仕様）。
+
+### 単一パス解決
+
+```mermaid
+flowchart LR
+    A["Variables &nbsp;{Hop: '${B.Data.x}'}"] --> R[Resolver]
+    B["Step B 出力<br/>Data.x = 42"] --> R
+    R --> C["Step C params<br/>Field: '${Variables.Hop}'"]
+    C --> Result["Field = '${B.Data.x}'<br/>(リテラル — 再展開なし)"]
+    style Result fill:#fee,stroke:#c66
+```
+
+`Field` に実際の値 `42` を入れたい場合は、`Variables` を経由せず Step C のパラメータから直接 `${B.Data.x}` を参照してください。
 
 ---
 

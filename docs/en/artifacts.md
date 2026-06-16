@@ -64,6 +64,62 @@ Scenarios return only artifact **ids**, not file paths. Use the id to fetch the 
 
 ---
 
+## Lifecycle — write, fetch, GC
+
+```mermaid
+flowchart LR
+    H[Command handler] -->|"WriteArtifact"| AM[ArtifactManager]
+    AM -->|"file"| FS[("Saved/UAIP/&lt;Session&gt;/")]
+    AM -->|"ArtifactId"| Resp[CommandResponse]
+    Resp -->|"id only"| Cli[Client]
+    Cli -->|"fetch by id<br/>(MCP / HTTP /uaip/artifacts/:id)"| AM
+    AM -->|"bytes"| Cli
+
+    Session(["EndSession or TTL expiry"]) -.->|"mark for GC"| AM
+    AM -.->|"delete"| FS
+
+    style FS fill:#eef,stroke:#88c
+```
+
+The handler writes to disk and returns only an id. Clients fetch by id — paths are not exposed in the response.
+
+---
+
+## Inline-vs-fetch decision
+
+When the MCP Bridge ships a `CommandResponse` to the AI client, small artifacts may be base64-inlined under `_inlined_artifacts`. The decision is per-artifact:
+
+```mermaid
+flowchart TB
+    A[Artifact produced]
+    B{Inline policy<br/>for this type?}
+    C{Size within<br/>inline budget?}
+    I([Inline as base64<br/>in _inlined_artifacts])
+    F([Return id only<br/>client fetches on demand])
+    L([Save as .txt<br/>client reads with offset/limit])
+    G{Response would<br/>exceed token cap?}
+
+    A --> B
+    B -- "off (e.g. PNG default)" --> F
+    B -- "on (JSON / Text)" --> C
+    C -- no --> F
+    C -- yes --> G
+    G -- yes --> L
+    G -- no --> I
+```
+
+Default policy:
+
+| Type | Inlined by default | Reason |
+|---|---|---|
+| `Image` (PNG) | **No** | Multi-MB PNGs blow past the AI client's token budget |
+| `Json` | Yes | Usually small (KB); useful inline |
+| `Text` | Yes | Log slices, usually small |
+
+To view a PNG screenshot, use the `Read` tool with the file path — do not rely on inlining for images.
+
+---
+
 ## Automatic inlining
 
 The MCP Bridge may inline small artifacts directly in the response under `_inlined_artifacts`:

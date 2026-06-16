@@ -14,6 +14,43 @@ UAIP applies per-command authorization in three layers. Understanding the layers
 | 2 | `FSafetyPolicy` bool switches / DeniedCapabilities — process-wide | `PolicyViolation` |
 | 3 | Route-specific opt-in (e.g. scenario route) — process-wide | `PolicyViolation` |
 
+```mermaid
+flowchart TB
+    Cmd([CommandRequest])
+    L1[Layer 1: Session Capability Set]
+    L2[Layer 2: SafetyPolicy + DeniedCapabilities + DeniedCommands]
+    L3[Layer 3: Route opt-in flags]
+    Exec([Execute on game thread])
+
+    Cmd --> L1
+    L1 -- "missing required capability" --> E1([CapabilityNotAvailable])
+    L1 -- ok --> L2
+    L2 -- "capability denied / ReadOnly / DisableSave / etc." --> E2([PolicyViolation])
+    L2 -- ok --> L3
+    L3 -- "route flag not set at launch" --> E3([PolicyViolation])
+    L3 -- ok --> Exec
+
+    style E1 fill:#fdd
+    style E2 fill:#fdd
+    style E3 fill:#fdd
+```
+
+`AllowedCapabilities` and `DeniedCapabilities` interact at Layer 1 / 2 with **deny-wins** semantics:
+
+```mermaid
+flowchart LR
+    Reg[Module-registered capabilities] --> Allow{"AllowedCapabilities<br/>list"}
+    Allow -- "in list" --> Active(Active in session)
+    Allow -- "not in list" --> S1{"DefaultAllow?"}
+    S1 -- yes --> Active
+    S1 -- no --> X1(Inactive)
+    Active --> Deny{"DeniedCapabilities<br/>list?"}
+    Deny -- "listed" --> Final([Layer 2 rejects: PolicyViolation])
+    Deny -- "not listed" --> OK([Layer 2 passes])
+    style Final fill:#fdd
+    style OK fill:#dfd
+```
+
 ---
 
 ## Capability reference

@@ -34,6 +34,44 @@ Reconnect the MCP client after saving.
 
 ---
 
+## Execution flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Cli as Client
+    participant Sc as Scenario route
+    participant Di as CommandDispatcher
+    participant Hd as Step handler
+    participant Ar as ArtifactManager
+
+    Cli->>Sc: uaip_run_scenario(Steps[])
+    Sc->>Sc: validate (opt-in / size / shape)
+
+    loop for each Step in order
+        Sc->>Sc: resolve ${...} templates
+        Sc->>Di: DispatchAsync(StepCommand)
+        Di->>Hd: Execute(params)
+        Hd->>Ar: WriteArtifact(...)
+        Ar-->>Hd: ArtifactId
+        Hd-->>Di: StepResult
+        Di-->>Sc: StepResult
+        alt StepResult.Success == false
+            alt AbortOnFailure == true
+                Note over Sc: skip remaining steps
+            else AbortOnFailure == false
+                Note over Sc: continue
+            end
+        end
+    end
+
+    Sc-->>Cli: ScenarioResponse(StepResults[], ArtifactIds[])
+```
+
+The scenario route never bypasses authorization — each step goes through the same `CommandDispatcher` and same capability + policy check as a direct `uaip_execute` call. See [Architecture](architecture.md) for the dispatch path.
+
+---
+
 ## Invocation shape
 
 ```
@@ -70,6 +108,19 @@ Use `${StepName.Data.<path>}` to pass output from an earlier step into a later s
 | `${Variables.<key>}` | Value from the `Variables` map |
 
 Templates are resolved once before the step runs. They are **not** re-evaluated — a template inside `Variables` is passed as a literal string, not re-expanded.
+
+### Single-pass resolution
+
+```mermaid
+flowchart LR
+    A["Variables &nbsp;{Hop: '${B.Data.x}'}"] --> R[Resolver]
+    B["Step B output<br/>Data.x = 42"] --> R
+    R --> C["Step C params<br/>Field: '${Variables.Hop}'"]
+    C --> Result["Field = '${B.Data.x}'<br/>(literal — not re-expanded)"]
+    style Result fill:#fee,stroke:#c66
+```
+
+If you want `Field` to actually receive `42`, reference `${B.Data.x}` directly from Step C's params instead of hopping through `Variables`.
 
 ---
 

@@ -109,6 +109,7 @@ MCP Bridge（`Scripts/MCPBridge/`）は UE Editor と AI クライアントを H
 | [ユースケース](use-cases.md) | 誰が UAIP を何のために使うか — テスト・レビュー・監査・ペアプロ |
 | [Examples / Cookbook](cookbook.md) | レシピ集 — PIE スモーク・AI レビュー・アセット監査・BP 編集・UI 自動化 |
 | [コマンドリファレンス](commands.md) | ドメイン別 730 以上のコマンド一覧 |
+| [API リファレンス](api.md) | コマンド完全スキーマ（JSON）— ツール作成・コード生成・バリデーション用 |
 | [シナリオ実行](scenario.md) | 複数ステップのコマンド一括実行 |
 | [Artifacts（成果物）](artifacts.md) | スクリーンショット・JSON ダンプ・ログの読み方 |
 | [Safety & Capabilities](safety.md) | SafetyPolicy と Capability の設定リファレンス |

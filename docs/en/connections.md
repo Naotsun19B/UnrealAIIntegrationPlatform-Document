@@ -15,6 +15,25 @@ UAIP supports four transport options. Choose the one that fits your integration 
 
 ---
 
+## Transport comparison
+
+```mermaid
+flowchart LR
+    AI["AI client<br/>Claude / Cursor / …"] -->|stdio| MCP[MCP Bridge]
+    MCP -->|"HTTP /mcp"| Ed[(UE Editor)]
+    Tool[CI / scripts] -->|"HTTP POST"| Ed
+    WSC[WebSocket client] -->|"WS frames"| Ed
+    Shell[Shell / batch] -->|"-uaip-request / stdin-stream"| Ed
+    Ed -->|writes| Artifacts[(Saved/UAIP/&lt;Session&gt;)]
+
+    style MCP fill:#dfe
+    style Ed fill:#eef
+```
+
+All four transports terminate at the same dispatch core inside the editor (see [Architecture](architecture.md)) so capability + policy semantics are identical regardless of which transport you use.
+
+---
+
 ## MCP Bridge
 
 The MCP Bridge is the recommended transport for AI client integration. A thin Python proxy (`thin_proxy.py`) sits between the AI client and the UE Editor, translating MCP tool calls into UAIP HTTP requests internally.
@@ -163,7 +182,28 @@ To disable authentication (development / CI only):
 -uaip-ws-no-auth
 ```
 
-### Message types
+### Handshake & message flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as WS client
+    participant S as Editor WS server
+
+    C->>S: WebSocket upgrade (ws://127.0.0.1:8766/)
+    S-->>C: AuthChallenge
+    C->>S: First frame { Type: "CommandRequest", Token, SessionId, ... }
+    alt auth ok
+        S-->>C: Welcome { SessionId, Capabilities }
+        loop while connected
+            C->>S: CommandRequest / ScenarioRequest
+            S-->>C: CommandResponse / ScenarioResponse
+            S-->>C: OutputLogEntry (streamed, async)
+        end
+    else auth failed
+        S-->>C: close 1008
+    end
+```
 
 **Inbound (client → server):**
 
@@ -237,6 +277,26 @@ UnrealEditor.exe MyProject.uproject -uaip-scenario-file="path/to/scenario.json"
 ### Stream mode
 
 In stream mode the editor reads JSON requests from stdin and writes responses to stdout. This is the mode used internally by the MCP Bridge.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Br as Bridge / wrapper
+    participant Ed as UnrealEditor.exe
+
+    Br->>Ed: spawn (-uaip-stdin-stream)
+    Ed-->>Br: stdout: __UAIP_STREAM_READY__
+    loop while editor alive
+        Br->>Ed: stdin: { "CommandName": "...", ... }\n
+        Ed-->>Br: stdout: __UAIP_RESPONSE_BEGIN__
+        Ed-->>Br: stdout: { "Success": true, ... }
+        Ed-->>Br: stdout: __UAIP_RESPONSE_END__
+    end
+    Br->>Ed: stdin EOF (or kill)
+    Ed-->>Br: process exit
+```
+
+The markers (`__UAIP_*__`) make it possible to mix request/response with normal UE log output on stdout.
 
 ```
 UnrealEditor.exe MyProject.uproject -uaip-stdin-stream

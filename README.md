@@ -109,6 +109,7 @@ See [Demo Version Guide](docs/en/demo.md) for the full command list, limitations
 | [Use Cases](docs/en/use-cases.md) | Who uses UAIP for what — testing, review, audits, pair programming |
 | [Examples / Cookbook](docs/en/cookbook.md) | Recipes — PIE smoke, AI review, asset audit, BP edit, UI automation |
 | [Commands Reference](docs/en/commands.md) | All 730+ commands organized by domain |
+| [API Reference](docs/en/api.md) | Full per-command schemas as JSON — for tooling, codegen, validation |
 | [Scenario Execution](docs/en/scenario.md) | Multi-step ordered command batches |
 | [Artifacts](docs/en/artifacts.md) | Screenshots, JSON dumps, logs — how to read them |
 | [Safety & Capabilities](docs/en/safety.md) | SafetyPolicy and Capability configuration reference |
