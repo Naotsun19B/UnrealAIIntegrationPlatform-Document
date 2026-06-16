@@ -37,7 +37,7 @@ In addition to UAIP-native commands, the Pro version exposes **Toolset bridge** 
 | Editor Level | `UAIP.Editor.Level` | 7 | — | — |
 | Editor Property | `UAIP.Editor.Property` | 13 | — | — |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 16 | — | — |
-| Editor UMG | `UAIP.Editor.UMG` | 23 | 13 | — |
+| Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 9 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | — | — |
 | Editor GameFeatures **†** | `UAIP.Editor.GameFeatures` | 3 | — | — |
@@ -51,7 +51,7 @@ In addition to UAIP-native commands, the Pro version exposes **Toolset bridge** 
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 12 | — | — |
 | Editor MetaSound **†** | `UAIP.Editor.MetaSound` | 9 | — | — |
 | Editor EQS **†** | `UAIP.Editor.EQS` | 7 | — | — |
-| Editor Sequencer | `UAIP.Editor.Sequencer` | 93 | 61 | — |
+| Editor Sequencer | `UAIP.Editor.Sequencer` | 92 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 9 | — | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
 | Editor PCG **†** | `UAIP.Editor.PCG` | 13 | — | — |
@@ -266,12 +266,11 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 
 Widget Blueprint editing — tree, variables, animation, bindings.
 
-### Native (23)
+### Native (22)
 
 | Command | Description |
 |---|---|
 | `CreateWidgetBlueprint` | Create a new Widget Blueprint asset |
-| `ListWidgetBlueprints` | List Widget Blueprints from AssetRegistry (max 500) |
 | `AddWidget` | Add a widget to a Widget Blueprint's tree |
 | `RemoveWidget` | Remove a widget from a Widget Blueprint's tree |
 | `MoveWidget` | Reorder a widget within a panel or move it to another panel |
@@ -604,9 +603,9 @@ EQS query editing. Requires `EnvironmentQueryEditor` plugin.
 
 LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 
-### Native (93)
+### Native (92)
 
-#### Structure (16)
+#### Structure (15)
 
 | Command | Description |
 |---|---|
@@ -616,7 +615,6 @@ LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 | `RemoveSection` | Remove a section by SectionIndex |
 | `SetPlaybackRange` | Set the sequence's playback range |
 | `FlushSequencerChanges` | Flush deferred change notifications |
-| `CreateLevelSequence` | Create a new LevelSequence asset |
 | `GetAvailableSequencerTrackClasses` | List allowed track classes |
 | `SetSectionRange` | Set a section's frame range |
 | `DuplicateSection` | Duplicate a section |

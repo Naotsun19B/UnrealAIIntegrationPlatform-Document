@@ -103,7 +103,7 @@ uaip_execute(
 
 ## 4. Blueprint 編集→検証ループ
 
-**ゴール**: Blueprint にメンバー変数を追加・ノードグラフを配線・コンパイル・検証する。
+**ゴール**: Blueprint にメンバー変数を追加・ノードグラフを配線・保存・検証する。
 
 **シナリオ**:
 
@@ -126,13 +126,17 @@ uaip_execute(
         "VariableName":  "Health",
         "NodeX": 0, "NodeY": 200
       } },
-    { "StepName": "Compile", "CommandName": "UAIP.Editor.Blueprint.CompileBlueprint",
-      "Params": { "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter" } }
+    { "StepName": "Inspect", "CommandName": "UAIP.Editor.Blueprint.ListBlueprintPins",
+      "Params": {
+        "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
+        "NodeId":        "${AddGet.Data.NodeId}"
+      } },
+    { "StepName": "Save",   "CommandName": "UAIP.Editor.Workspace.SaveAllPackages" }
   ]
 }
 ```
 
-`Compile` がエラーを返したら、結果を AI に確認してもらい修正案を提案させる。再試行前のグラフ確認には `ListBlueprintPins` を組み合わせます。
+保存後、AI に `CaptureGraphViewportImage` で Blueprint グラフを視覚的に検査し、配線が意図通りか確認してもらう。構造化されたエラー取得付きの専用 `CompileBlueprint` コマンドは計画中 — [ロードマップ → Blueprint Compile / コンパイルエラー取得](roadmap.md#blueprint-compile--コンパイルエラー取得) を参照。
 
 **必要 Capability**: `BlueprintEdit`、`BlueprintVariableEdit`、`BlueprintGraphEdit` — すべて **DefaultDenied**。`Config/DefaultUAIP.ini` に以下を追加：
 

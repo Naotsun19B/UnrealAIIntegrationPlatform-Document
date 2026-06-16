@@ -103,7 +103,7 @@ For dependency-style audits (unused assets, circular references, size maps), see
 
 ## 4. Blueprint edit-verify loop
 
-**Goal**: add a member variable to a Blueprint, wire up a node graph, compile, and verify.
+**Goal**: add a member variable to a Blueprint, wire up a node graph, save, and verify.
 
 **Scenario**:
 
@@ -126,13 +126,17 @@ For dependency-style audits (unused assets, circular references, size maps), see
         "VariableName":  "Health",
         "NodeX": 0, "NodeY": 200
       } },
-    { "StepName": "Compile", "CommandName": "UAIP.Editor.Blueprint.CompileBlueprint",
-      "Params": { "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter" } }
+    { "StepName": "Inspect", "CommandName": "UAIP.Editor.Blueprint.ListBlueprintPins",
+      "Params": {
+        "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
+        "NodeId":        "${AddGet.Data.NodeId}"
+      } },
+    { "StepName": "Save",   "CommandName": "UAIP.Editor.Workspace.SaveAllPackages" }
   ]
 }
 ```
 
-If `Compile` returns errors, ask the AI to inspect the result and propose a fix. Pair with `ListBlueprintPins` to introspect the graph before re-trying.
+After save, ask the AI to inspect the Blueprint graph visually with `CaptureGraphViewportImage` and confirm the wiring matches intent. A dedicated `CompileBlueprint` command with structured error retrieval is planned — see [Roadmap → Blueprint Compile & Error Retrieval](roadmap.md#blueprint-compile--error-retrieval).
 
 **Capabilities**: `BlueprintEdit`, `BlueprintVariableEdit`, `BlueprintGraphEdit` — all **DefaultDenied**. Add to `Config/DefaultUAIP.ini`:
 
