@@ -102,13 +102,17 @@ See [Demo Version Guide](docs/en/demo.md) for the full command list, limitations
 
 | Document | Description |
 |---|---|
-| [Setup Guide](docs/en/setup.md) | MCP Bridge installation, client config, troubleshooting |
+| [Quickstart](docs/en/quickstart.md) | 5-minute path from install to first command |
+| [Setup Guide](docs/en/setup.md) | MCP Bridge installation and per-client configuration |
 | [Connection Methods](docs/en/connections.md) | HTTP API, WebSocket, and CLI transport options (Pro) |
-| [Commands Reference](docs/en/commands.md) | All 200+ commands organized by domain |
+| [Examples / Cookbook](docs/en/cookbook.md) | Recipes — PIE smoke, AI review, asset audit, BP edit, UI automation |
+| [Commands Reference](docs/en/commands.md) | All 730+ commands organized by domain |
 | [Scenario Execution](docs/en/scenario.md) | Multi-step ordered command batches |
 | [Artifacts](docs/en/artifacts.md) | Screenshots, JSON dumps, logs — how to read them |
 | [Safety & Capabilities](docs/en/safety.md) | SafetyPolicy and Capability configuration reference |
 | [Demo Version Guide](docs/en/demo.md) | Demo command list, limitations, and installation |
+| [FAQ](docs/en/faq.md) | Common questions on demo/Pro, capabilities, workflows, CI |
+| [Troubleshooting](docs/en/troubleshooting.md) | Error code reference and common failure modes |
 | [Roadmap](docs/en/roadmap.md) | Planned features and future direction |
 
 ## License
