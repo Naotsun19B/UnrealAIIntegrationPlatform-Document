@@ -6,6 +6,15 @@ The items below are planned or under investigation. No specific release dates ar
 
 ---
 
+## Engine Version Support
+
+### Backward compatibility to UE 5.5
+UAIP currently targets UE 5.7 and 5.8. Support down to approximately UE 5.5 is being actively pursued. Versions below 5.4 will be evaluated based on demand.
+
+---
+
+## New Commands
+
 ### Sandbox Editing
 AI-proposed edits are staged in a sandbox and require human approval before being written to disk. All changes can be inspected and selectively accepted or rejected without relying on Undo.
 
@@ -30,6 +39,12 @@ Start and stop UE Trace sessions with channel selection, query frame stats and h
 ### Material Validation & Templates
 Validate materials against project rules, find similar materials to prevent duplication, and create materials from workflow templates.
 
+### MVVM Support
+Commands for projects using the `ModelViewViewModel` plugin — create ViewModel classes and add, remove, and configure View Bindings from AI agents.
+
+### Enhanced Input State Diagnostics
+Dump the current Enhanced Input state (`DumpInputState`) and virtually fire Input Actions (`SimulateInputAction`). Designed for debugging UI automation tests.
+
 ### Semantic Asset Search
 AI-powered semantic search across the Content Browser — find assets by meaning rather than by filename. Currently suspended pending stability improvements in the underlying embedding pipeline.
 
@@ -43,14 +58,15 @@ AI-powered semantic search across the Content Browser — find assets by meaning
 - **CustomizableSequencerTracks**: Blueprint-defined custom Sequencer track type support
 - **DataPrep Asset**: Execute and inspect DataPrep import-pipeline assets
 
+---
+
+## Environment & Infrastructure
+
 ### Human-facing Editor GUI
-Optional editor tabs for monitoring AI activity: Command History (timeline of commands and responses), Artifact Viewer (inline preview of screenshots, JSON dumps, and reports), and Scenario Builder (visually assemble and run scenarios without writing JSON by hand).
+Optional editor tabs for monitoring AI activity: Command History (timeline of commands and responses) and Artifact Viewer (inline preview of screenshots, JSON dumps, and reports).
 
 ### EDA Transport
 Optional transport for connecting UAIP to Epic's Epic Developer Assistant (EDA), alongside the existing MCP, HTTP, WebSocket, and CLI transports.
-
-### Support for UE 5.6 and Earlier
-UAIP currently targets UE 5.7 and 5.8. Support for older engine versions (UE 5.6 and below) is under consideration based on demand.
 
 ---
 
