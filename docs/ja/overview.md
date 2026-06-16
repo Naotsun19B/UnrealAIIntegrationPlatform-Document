@@ -1,12 +1,12 @@
-<p align="center">
-  <img src="../../images/hero-banner.png" alt="Unreal AI Integration Platform" width="100%">
-</p>
-
 ![UE Version](https://img.shields.io/badge/Unreal%20Engine-5.7%20%2F%205.8-0e1128?logo=unrealengine&logoColor=white)
 [![License: Fab Standard License (Fab EULA)](https://img.shields.io/badge/License-Fab%20Standard%20License%20%28Fab%20EULA%29-blue)](https://www.fab.com/ja/eula)
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/Naotsun_UE?style=social)](https://twitter.com/Naotsun_UE)
 
 **[English](../../README.md)**
+
+<p align="center">
+  <img src="../../images/hero-banner.png" alt="Unreal AI Integration Platform" width="100%">
+</p>
 
 # UnrealAIIntegrationPlatform
 
