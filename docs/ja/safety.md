@@ -60,6 +60,7 @@ UAIP はコマンドごとの認可を 3 つの層で管理します。層を理
 | `BlueprintEdit` | Blueprint アセットのコンパイルと構造検査 |
 | `BlueprintVariableEdit` | Blueprint 変数の追加・削除・変更 |
 | `BlueprintGraphEdit` | Blueprint イベントグラフへのノード追加・削除・接続 |
+| `BlueprintComponentEdit` | Blueprint SCS コンポーネントの追加・削除・リネーム・親変更・複製・プロパティ編集 |
 | `AnimBlueprintGraphEdit` | AnimGraph へのノード追加・削除・接続、Anim Blueprint のコンパイル |
 | `AnimStateMachineEdit` | Anim ステートマシンへの State・Transition の追加・削除 |
 

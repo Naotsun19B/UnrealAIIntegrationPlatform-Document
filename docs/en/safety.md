@@ -60,6 +60,7 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `BlueprintEdit` | Compile Blueprint assets and inspect their structure |
 | `BlueprintVariableEdit` | Add, remove, and modify Blueprint variables |
 | `BlueprintGraphEdit` | Add, delete, and connect nodes in Blueprint event graphs |
+| `BlueprintComponentEdit` | Add, remove, rename, reparent, duplicate, and edit properties of Blueprint SCS components |
 | `AnimBlueprintGraphEdit` | Add, delete, and connect nodes in AnimGraph; compile Anim Blueprints |
 | `AnimStateMachineEdit` | Add and remove States and Transitions in Anim State Machines |
 

@@ -36,7 +36,7 @@ In addition to UAIP-native commands, the Pro version exposes **Toolset bridge** 
 | Editor Assets | `UAIP.Editor.Assets` | 10 | — | — |
 | Editor Level | `UAIP.Editor.Level` | 7 | — | — |
 | Editor Property | `UAIP.Editor.Property` | 13 | — | — |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 8 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 16 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 23 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 9 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | — | — |
@@ -228,7 +228,9 @@ Read and write properties on actors, assets, Blueprint defaults, DataTable rows,
 
 ## UAIP.Editor.Blueprint
 
-Edit Blueprint variables and event graph nodes.
+Edit Blueprint variables, event graph nodes, and SCS components.
+
+### Variables & graph (8)
 
 | Command | Description |
 |---|---|
@@ -240,6 +242,19 @@ Edit Blueprint variables and event graph nodes.
 | `ConnectBlueprintPins` | Connect two pins in a Blueprint graph |
 | `DisconnectBlueprintPins` | Disconnect a pin connection |
 | `ListBlueprintPins` | List pins of a Blueprint graph node |
+
+### Components — SCS (8)
+
+| Command | Description |
+|---|---|
+| `ListBlueprintComponents` | List all components visible from a Blueprint (SCS, Inherited, Native) |
+| `AddBlueprintComponent` | Add a new SCS component node to a Blueprint |
+| `DeleteBlueprintComponent` | Delete an SCS component from a Blueprint |
+| `RenameBlueprintComponent` | Rename an SCS component |
+| `ReparentBlueprintComponent` | Change an SCS component's parent |
+| `DuplicateBlueprintComponent` | Duplicate an SCS component |
+| `GetBlueprintComponentProperty` | Get a property value from an SCS component |
+| `SetBlueprintComponentProperty` | Set a property on an SCS component |
 
 ---
 
