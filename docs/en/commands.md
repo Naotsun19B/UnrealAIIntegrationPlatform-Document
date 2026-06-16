@@ -29,11 +29,11 @@ In addition to UAIP-native commands, the Pro version exposes **Toolset bridge** 
 | Domain | Provider prefix | Native | Toolset bridge | Demo |
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 6 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 17 | — | partial |
+| Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | partial (13/18) |
 | Editor Observation | `UAIP.Editor.Observation` | 13 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 8 | — | — |
+| Editor Assets | `UAIP.Editor.Assets` | 10 | — | — |
 | Editor Level | `UAIP.Editor.Level` | 7 | — | — |
 | Editor Property | `UAIP.Editor.Property` | 13 | — | — |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 8 | — | — |
@@ -84,27 +84,28 @@ System-level commands for discovery, health, and session management.
 
 ## UAIP.Editor.Workspace
 
-Editor lifecycle, tab management, graph layout, and shader compilation.
+Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 
 | Command | Description |
 |---|---|
-| `OpenAsset` | Open the specified asset in its editor |
-| `CloseAsset` | Close all editors for the specified asset |
-| `FocusEditorTab` | Bring the editor tab for an asset to the front |
-| `CloseEditorTab` | Close the editor tab for an asset |
-| `SetGraphZoom` | Set graph viewport zoom level |
-| `FrameGraphAll` | Zoom the graph viewport to fit all nodes |
-| `FrameGraphSelection` | Zoom the graph viewport to fit selected nodes |
-| `SetGraphSelection` | Select graph nodes by ID list |
-| `NormalizeEditorLayout` | Focus the main graph tab and hide transient panels |
-| `ShutdownEditor` | Shut down the UE Editor (optionally save packages) |
-| `RestartEditor` | Restart the UE Editor (optionally save packages) |
-| `SaveAllPackages` | Save all modified packages (optionally include maps) |
-| `TriggerLiveCoding` | Trigger Live Coding recompilation and wait for completion |
-| `Undo` | Undo the last editor operation |
-| `Redo` | Redo the last undone operation |
+| 🆓 `FocusEditorTab` | Bring the editor tab for an asset to the front |
+| 🆓 `CloseEditorTab` | Close the editor tab for an asset |
+| 🆓 `NormalizeEditorLayout` | Focus the main graph tab and hide transient panels |
+| 🆓 `SetGraphZoom` | Set graph viewport zoom level |
+| 🆓 `FrameGraphAll` | Zoom the graph viewport to fit all nodes |
+| 🆓 `FrameGraphSelection` | Zoom the graph viewport to fit selected nodes |
+| 🆓 `SetGraphSelection` | Select graph nodes by ID list |
+| 🆓 `ShutdownEditor` | Shut down the UE Editor (optionally save packages) |
+| 🆓 `RestartEditor` | Restart the UE Editor (optionally save packages) |
+| 🆓 `SaveAllPackages` | Save all modified packages (optionally include maps) |
+| 🆓 `Undo` | Undo the last editor operation |
+| 🆓 `Redo` | Redo the last undone operation |
+| 🆓 `GetLastCrashReport` | Get the most recent crash report |
 | `WaitForShaderCompilation` | Wait until shader compilation completes |
 | `RecompileGlobalShaders` | Force-recompile all global shaders and wait for completion |
+| `CompileLiveCoding` | Trigger Live Coding recompilation |
+| `GetLiveCodingStatus` | Get the current Live Coding status |
+| `EnableLiveCodingForSession` | Enable Live Coding for the current session |
 
 ---
 
@@ -170,10 +171,12 @@ Drive the editor UI — click, type, select, drag.
 
 ## UAIP.Editor.Assets
 
-Search, create, duplicate, rename, delete assets and folders.
+Open, search, create, duplicate, rename, delete assets and folders.
 
 | Command | Description |
 |---|---|
+| `OpenAsset` | Open the specified asset in its editor |
+| `CloseAsset` | Close all editors for the specified asset |
 | `SearchAssets` | Search assets by path / class / tag |
 | `CreateAsset` | Create a new asset of the specified class |
 | `DuplicateAsset` | Duplicate an existing asset |
@@ -314,7 +317,7 @@ Manage project tag tables.
 
 ## UAIP.Editor.GameFeatures **†**
 
-GameFeature Plugin management. Requires `GameFeatures` + `GameFeaturesEditor` plugins (the create command requires both).
+GameFeature Plugin management. Requires `GameFeatures` + `GameFeaturesEditor` plugins.
 
 | Command | Description |
 |---|---|
@@ -330,11 +333,45 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins.
 
 ### Native (30)
 
-**Observation**: `GetSystemTopology` / `GetSystemCompileState` / `GetAssetDiscoveryInfo` / `GetScriptAssets` / `GetNiagaraParameterCollections` / `GetUserVariables` / `GetSystemInfo` / `GetSystemData` / `GetEmitterData` / `GetRendererData` / `GetStackInputData` / `UEnum_Info`
+#### Observation (12)
 
-**Editing**: `AddEmitter` / `RemoveEmitter` / `DuplicateEmitter` / `SetEmitterEnabled` / `SetEmitterName` / `SetEmitterData` / `AddRenderer` / `RemoveRenderer` / `SetRendererData` / `AddModule` / `RemoveModule` / `MoveModule` / `SetModuleEnabled` / `SetStackInputData` / `SetSystemData` / `AddUserVariables` / `RemoveUserVariables` / `CompileNiagaraSystem`
+| Command | Description |
+|---|---|
+| `GetSystemTopology` **†** | Niagara system emitter structure |
+| `GetSystemCompileState` **†** | System compilation state |
+| `GetAssetDiscoveryInfo` **†** | Niagara asset discovery info |
+| `GetScriptAssets` **†** | Niagara script asset list |
+| `GetNiagaraParameterCollections` **†** | Niagara parameter collection list |
+| `GetUserVariables` **†** | User variable list of a system |
+| `GetSystemInfo` **†** | System detail info (with metadata) |
+| `GetSystemData` **†** | System data structure |
+| `GetEmitterData` **†** | Emitter data structure |
+| `GetRendererData` **†** | Renderer data structure |
+| `GetStackInputData` **†** | Module stack input value |
+| `UEnum_Info` **†** | UEnum information |
 
-Note: `CreateNiagaraSystem` and `CreateNiagaraParameterCollection` are exposed via the standard `CreateAsset` command (no separate commands).
+#### Editing (18)
+
+| Command | Description |
+|---|---|
+| `AddEmitter` **†** | Add an emitter to a Niagara system |
+| `RemoveEmitter` **†** | Remove an emitter |
+| `DuplicateEmitter` **†** | Duplicate an emitter |
+| `SetEmitterEnabled` **†** | Toggle emitter enabled state |
+| `SetEmitterName` **†** | Change emitter name |
+| `SetEmitterData` **†** | Set emitter data |
+| `AddRenderer` **†** | Add a renderer to an emitter |
+| `RemoveRenderer` **†** | Remove a renderer |
+| `SetRendererData` **†** | Set renderer data |
+| `AddModule` **†** | Add a module to an emitter module stack |
+| `RemoveModule` **†** | Remove a module |
+| `MoveModule` **†** | Move a module within the stack |
+| `SetModuleEnabled` **†** | Toggle module enabled state |
+| `SetStackInputData` **†** | Set a module stack input value |
+| `SetSystemData` **†** | Set system data |
+| `AddUserVariables` **†** | Add user variables to a system |
+| `RemoveUserVariables` **†** | Remove user variables |
+| `CompileNiagaraSystem` **†** | Compile the Niagara system |
 
 ### Toolset bridges (45) **†**
 
@@ -348,13 +385,56 @@ Physics Asset editing — bodies, shapes, constraints.
 
 ### Native (31)
 
-**Asset / observation**: `CreatePhysicsAsset` / `GetPhysicsAssetSummary` / `ValidatePhysicsAsset`
+#### Asset / observation (3)
 
-**Bodies**: `GetBodyNames` / `AddBody` / `RemoveBody` / `GetBodyPhysicsMode` / `SetBodyPhysicsMode` / `SetAllBodiesPhysicsMode` / `GetBodyMassScale` / `SetBodyMassScale` / `GetBodyCollisionProfile` / `SetBodyCollisionProfile` / `SetBodyLinearDamping` / `SetBodyAngularDamping` / `GetBodyOffset` / `SetBodyOffset` / `MirrorBodies`
+| Command | Description |
+|---|---|
+| `CreatePhysicsAsset` | Generate and link a Physics Asset from a SkeletalMesh |
+| `GetPhysicsAssetSummary` | Body / constraint counts and issue summary |
+| `ValidatePhysicsAsset` | Detect orphan constraints, shapeless bodies, etc. |
 
-**Shapes**: `GetBodyShapes` / `SetSphere` / `SetCapsule` / `SetBox` / `RemoveShape` / `RegenerateBodyShapes` / `CopyBodyShapes` / `SetPhysicalMaterial`
+#### Bodies (15)
 
-**Constraints**: `GetConstraints` / `ListConstraintsForBody` / `AddConstraint` / `SetConstraintLimits` / `RemoveConstraint`
+| Command | Description |
+|---|---|
+| `GetBodyNames` | List body names in the Physics Asset |
+| `AddBody` | Add a body to the specified bone |
+| `RemoveBody` | Remove a body (cascades constraint deletion) |
+| `GetBodyPhysicsMode` | Get a body's PhysicsMode (Default / Kinematic / Simulated) |
+| `SetBodyPhysicsMode` | Set a body's PhysicsMode |
+| `SetAllBodiesPhysicsMode` | Bulk-set PhysicsMode for bodies matching a name pattern |
+| `GetBodyMassScale` | Get a body's MassScale |
+| `SetBodyMassScale` | Set a body's MassScale |
+| `GetBodyCollisionProfile` | Get a body's Collision Profile name |
+| `SetBodyCollisionProfile` | Set a body's Collision Profile |
+| `SetBodyLinearDamping` | Set a body's Linear Damping |
+| `SetBodyAngularDamping` | Set a body's Angular Damping |
+| `GetBodyOffset` | Get a body's center-of-mass offset (COMNudge) |
+| `SetBodyOffset` | Set a body's center-of-mass offset |
+| `MirrorBodies` | Mirror-copy left / right bone bodies and shapes by naming convention |
+
+#### Shapes (8)
+
+| Command | Description |
+|---|---|
+| `GetBodyShapes` | List collision shapes of a body (with ShapeName) |
+| `SetSphere` | Set a body's shape to Sphere |
+| `SetCapsule` | Set a body's shape to Capsule |
+| `SetBox` | Set a body's shape to Box |
+| `RemoveShape` | Remove a shape by ShapeName |
+| `RegenerateBodyShapes` | Auto-regenerate shapes from bone geometry |
+| `CopyBodyShapes` | Copy shapes from one bone to another |
+| `SetPhysicalMaterial` | Set Physical Material on a body or all bodies |
+
+#### Constraints (5)
+
+| Command | Description |
+|---|---|
+| `GetConstraints` | Get all constraints in the asset (max 256) |
+| `ListConstraintsForBody` | Get constraints attached to a specific bone (max 256) |
+| `AddConstraint` | Add a rigid-body constraint |
+| `SetConstraintLimits` | Set a constraint's angular limits |
+| `RemoveConstraint` | Remove a constraint |
 
 ### Toolset bridges (17) **†**
 
@@ -507,27 +587,154 @@ LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 
 ### Native (93)
 
-**Structure (16)**: `AddTrack` / `RemoveTrack` / `AddSection` / `RemoveSection` / `SetPlaybackRange` / `FlushSequencerChanges` / `CreateLevelSequence` / `GetAvailableSequencerTrackClasses` / `SetSectionRange` / `DuplicateSection` / `MoveSection` / `AddCameraCut` / `SetTrackEnabled` / `IsTrackEnabled` / `SetSectionActive` / `IsSectionActive`
+#### Structure (16)
 
-**Keyframes (7)**: `AddKeyframe` / `RemoveKeyframe` / `SetKeyframeValue` / `SetKeyframeInterpolation` / `SetKeyframeTangents` / `OffsetKeyframes` / `GetKeyframeTangents`
+| Command | Description |
+|---|---|
+| `AddTrack` | Add a track to a Level Sequence (TrackClass-specified) |
+| `RemoveTrack` | Remove a track by TrackClass / BindingGuid |
+| `AddSection` | Add a section to a track (StartFrame / EndFrame in DisplayRate) |
+| `RemoveSection` | Remove a section by SectionIndex |
+| `SetPlaybackRange` | Set the sequence's playback range |
+| `FlushSequencerChanges` | Flush deferred change notifications |
+| `CreateLevelSequence` | Create a new LevelSequence asset |
+| `GetAvailableSequencerTrackClasses` | List allowed track classes |
+| `SetSectionRange` | Set a section's frame range |
+| `DuplicateSection` | Duplicate a section |
+| `MoveSection` | Move a section by a frame offset |
+| `AddCameraCut` | Add a camera-cut section to the CameraCutTrack |
+| `SetTrackEnabled` | Toggle a track's enabled state |
+| `IsTrackEnabled` | Get a track's enabled state |
+| `SetSectionActive` | Toggle a section's active state |
+| `IsSectionActive` | Get a section's active state |
 
-**Bindings (4)**: `BindActor` / `UnbindActor` / `GetActorBindingGuid` / `GetBoundActors`
+#### Keyframes (7)
 
-**Observation (12)**: `GetSequenceInfo` / `GetBindings` / `GetTracks` / `GetSections` / `GetDisplayRate` / `GetTickResolution` / `GetPlaybackRange` / `GetKeyframes` / `ValidateSequenceBindings` / `GetCameraCutSections` / `GetCurrentSequence` / `GetFocusedSequence`
+| Command | Description |
+|---|---|
+| `AddKeyframe` | Add a keyframe to a channel |
+| `RemoveKeyframe` | Remove a keyframe by FrameNumber |
+| `SetKeyframeValue` | Update a keyframe's value |
+| `SetKeyframeInterpolation` | Change a keyframe's interpolation mode |
+| `SetKeyframeTangents` | Set a keyframe's tangents |
+| `OffsetKeyframes` | Bulk-shift all keyframes on a channel by a time offset |
+| `GetKeyframeTangents` | Get a keyframe's tangents (arrive / leave) |
 
-**Playback (10)**: `Play` / `Pause` / `IsPlaying` / `SetPlayheadFrame` / `GetPlayheadFrame` / `SetPlaybackSpeed` / `GetPlaybackSpeed` / `SetLoopMode` / `GetLoopMode` / `ForceEvaluate`
+#### Bindings (4)
 
-**Section properties (4)**: `GetSectionProperty` / `SetSectionProperty` / `GetSectionWeight` / `SetSectionWeight`
+| Command | Description |
+|---|---|
+| `BindActor` | Bind an editor-world actor as a Possessable |
+| `UnbindActor` | Remove an actor binding by BindingGuid |
+| `GetActorBindingGuid` | Look up BindingGuid by actor name |
+| `GetBoundActors` | Get actors bound to a BindingGuid |
 
-**UI / state (10)**: `SetCameraLock` / `IsCameraLockActive` / `GetSelectionRange` / `SetSelectionRange` / `ClearSelection` / `GetTrackFilterNames` / `IsTrackFilterActive` / `SetTrackFilterActive` / `SetLocked` / `IsLocked`
+#### Observation (12)
 
-**Sequence properties (6)**: `SetDisplayRate` / `GetViewRange` / `SetViewRange` / `GetWorkRange` / `SetWorkRange` / `SetTickResolution`
+| Command | Description |
+|---|---|
+| `GetSequenceInfo` | Track / section / channel / binding / DisplayRate / playback range |
+| `GetBindings` | List Possessable bindings (GUID, name, class) |
+| `GetTracks` | List tracks for a BindingGuid |
+| `GetSections` | List sections (with frame range) for a track |
+| `GetDisplayRate` | Get the sequence's DisplayRate |
+| `GetTickResolution` | Get the sequence's TickResolution |
+| `GetPlaybackRange` | Get the current playback range |
+| `GetKeyframes` | Get keyframes on a channel (time, value, interp) |
+| `ValidateSequenceBindings` | Validate all bindings (actor existence, type match) |
+| `GetCameraCutSections` | List CameraCutTrack sections |
+| `GetCurrentSequence` | Get the currently open LevelSequence |
+| `GetFocusedSequence` | Get the focused Sequencer's LevelSequence |
 
-**Marked frames (5)**: `AddMarkedFrame` / `GetMarkedFrames` / `DeleteMarkedFrame` / `DeleteAllMarkedFrames` / `FindMarkedFrameByLabel`
+#### Playback (10)
 
-**Sub-sequences (2)**: `GetSubSequences` / `AddSubSequenceTrack`
+| Command | Description |
+|---|---|
+| `Play` | Start Sequencer playback |
+| `Pause` | Pause playback |
+| `IsPlaying` | Get the playback state |
+| `SetPlayheadFrame` | Move the playhead to a frame |
+| `GetPlayheadFrame` | Get the current playhead position |
+| `SetPlaybackSpeed` | Set the playback speed multiplier |
+| `GetPlaybackSpeed` | Get the current playback speed multiplier |
+| `SetLoopMode` | Set the loop mode (NoLoop / Loop / LoopExactly) |
+| `GetLoopMode` | Get the current loop mode |
+| `ForceEvaluate` | Force-evaluate the current frame |
 
-**AnimMixer (17, optional `MovieSceneAnimMixer`)**: `GetAnimMixerTrackInfo` / `GetLayerBlendWeight` / `SetLayerBlendWeight` / `IsLayerMuted` / `SetLayerMuted` / `IsLayerEnabled` / `SetLayerEnabled` / `ClearMixerLayer` / `AddMixerLayer` / `RemoveMixerLayer` / `MoveMixerLayer` / `AddMixerSection` / `RemoveMixerSection` / `SetMixerSectionRange` / `SetMixerSectionAnimation` / `AddMixerTransition` / `RemoveMixerTransition` / `GetMixerSectionInfo`
+#### Section properties (4)
+
+| Command | Description |
+|---|---|
+| `GetSectionProperty` | Get a UMovieSceneSection property value |
+| `SetSectionProperty` | Set a UMovieSceneSection property value |
+| `GetSectionWeight` | Get a section's weight |
+| `SetSectionWeight` | Set a section's weight |
+
+#### UI / state (10)
+
+| Command | Description |
+|---|---|
+| `SetCameraLock` | Toggle camera lock |
+| `IsCameraLockActive` | Get camera lock state |
+| `GetSelectionRange` | Get the selection range |
+| `SetSelectionRange` | Set the selection range |
+| `ClearSelection` | Clear the selection range |
+| `GetTrackFilterNames` | List available track filter names |
+| `IsTrackFilterActive` | Get a filter's enabled state |
+| `SetTrackFilterActive` | Toggle a filter's enabled state |
+| `SetLocked` | Toggle sequence lock |
+| `IsLocked` | Get the lock state |
+
+#### Sequence properties (6)
+
+| Command | Description |
+|---|---|
+| `SetDisplayRate` | Change the sequence's DisplayRate |
+| `GetViewRange` | Get the Sequencer timeline view range |
+| `SetViewRange` | Set the view range |
+| `GetWorkRange` | Get the work range |
+| `SetWorkRange` | Set the work range |
+| `SetTickResolution` | Change TickResolution (warns if keyframes exist) |
+
+#### Marked frames (5)
+
+| Command | Description |
+|---|---|
+| `AddMarkedFrame` | Add a labeled marked frame |
+| `GetMarkedFrames` | List all marked frames |
+| `DeleteMarkedFrame` | Delete a marked frame by index |
+| `DeleteAllMarkedFrames` | Delete all marked frames |
+| `FindMarkedFrameByLabel` | Find a marked frame by label |
+
+#### Sub-sequences (2)
+
+| Command | Description |
+|---|---|
+| `GetSubSequences` | List SubSequence track sections |
+| `AddSubSequenceTrack` | Add a SubSequence track |
+
+#### AnimMixer (17, optional `MovieSceneAnimMixer`)
+
+| Command | Description |
+|---|---|
+| `GetAnimMixerTrackInfo` | Get AnimMixer track info |
+| `GetLayerBlendWeight` | Get a layer's blend weight |
+| `SetLayerBlendWeight` | Set a layer's blend weight |
+| `IsLayerMuted` | Get a layer's mute state |
+| `SetLayerMuted` | Toggle a layer's mute state |
+| `IsLayerEnabled` | Get a layer's enabled state |
+| `SetLayerEnabled` | Toggle a layer's enabled state |
+| `ClearMixerLayer` | Clear all sections on a layer |
+| `AddMixerLayer` | Add a new AnimMixer layer |
+| `RemoveMixerLayer` | Remove an AnimMixer layer |
+| `MoveMixerLayer` | Move an AnimMixer layer |
+| `AddMixerSection` | Add an AnimMixer section |
+| `RemoveMixerSection` | Remove an AnimMixer section |
+| `SetMixerSectionRange` | Set an AnimMixer section's frame range (raw FFrameNumber ticks) |
+| `SetMixerSectionAnimation` | Set an AnimMixer section's animation |
+| `AddMixerTransition` | Add a transition |
+| `RemoveMixerTransition` | Remove a transition |
+| `GetMixerSectionInfo` | Get AnimMixer section info |
 
 ### Toolset bridges (61) **†**
 
@@ -632,23 +839,104 @@ ControlRig hierarchy and RigVM graph editing.
 
 ### Native (59)
 
-**Hierarchy observation (10)**: `GetElements` / `GetAllBones` / `GetAllNulls` / `GetAllControls` / `GetGlobalTransform` / `GetLocalTransform` / `GetParent` / `GetChildren` / `GetModuleInstances` / `GetControlSettings`
+#### Hierarchy observation (10)
 
-**Hierarchy editing (11)**: `AddElement` / `AddBone` / `AddNull` / `AddControl` / `RemoveElement` / `RemoveBone` / `RemoveNull` / `RemoveControl` / `ReparentElement` / `SetControlOffset` / `SetControlSettings`
+| Command | Description |
+|---|---|
+| `GetElements` | List all hierarchy elements |
+| `GetAllBones` | List all bones |
+| `GetAllNulls` | List all Null elements |
+| `GetAllControls` | List all Control elements |
+| `GetGlobalTransform` | Get an element's global transform |
+| `GetLocalTransform` | Get an element's local transform |
+| `GetParent` | Get an element's parent |
+| `GetChildren` | List an element's children |
+| `GetModuleInstances` | List ModularRig module instances |
+| `GetControlSettings` | Get a Control's `FRigControlSettings` (Gizmo, Limits) |
 
-**Transforms (3)**: `SetGlobalTransform` / `SetLocalTransform` / `ImportBonesFromAsset`
+#### Hierarchy editing (11)
 
-**Graph management (11)**: `ListGraphs` / `GetGraph` / `AddGraph` / `DeleteGraph` / `GetForwardSolveGraph` / `GetBackwardSolveGraph` / `GetInteractionGraph` / `GetEventGraph` / `AddEventGraph` / `AddBackwardSolveGraph` / `AddInteractionGraph`
+| Command | Description |
+|---|---|
+| `AddElement` | Add a generic element (ElementType-specified) |
+| `AddBone` | Add a bone |
+| `AddNull` | Add a Null element |
+| `AddControl` | Add a Control element (ControlType allowlist) |
+| `RemoveElement` | Remove an element |
+| `RemoveBone` | Remove a bone |
+| `RemoveNull` | Remove a Null element |
+| `RemoveControl` | Remove a Control element |
+| `ReparentElement` | Change an element's parent (MaintainGlobalTransform option) |
+| `SetControlOffset` | Set a Control's initial local transform |
+| `SetControlSettings` | Set a Control's `FRigControlSettings` |
 
-**Nodes (10)**: `AddGraphNode` / `RemoveGraphNode` / `ListNodes` / `GetNodeInfo` / `FindNodes` / `GetNodePosition` / `SetNodePosition` / `DuplicateNode` / `AddEventNode` / `AddVariableNode`
+#### Transforms (3)
 
-**Pins (7)**: `ListPins` / `GetPinValue` / `SetPinValue` / `ResetPinValue` / `GetConnectedPins` / `ConnectControlRigPins` / `DisconnectControlRigPins`
+| Command | Description |
+|---|---|
+| `SetGlobalTransform` | Set an element's global transform |
+| `SetLocalTransform` | Set an element's local transform |
+| `ImportBonesFromAsset` | Import bone hierarchy from a SkeletalMesh / Skeleton asset |
 
-**Variables (5)**: `AddVariable` / `ListVariables` / `GetVariable` / `ChangeVariableType` / `RemoveVariable`
+#### Graph management (11)
 
-**Other (2)**: `CompileControlRig` / `GetAvailableRigVMUnitStructs`
+| Command | Description |
+|---|---|
+| `ListGraphs` | List all RigVM graphs |
+| `GetGraph` | Get a graph's info |
+| `AddGraph` | Add a custom graph |
+| `DeleteGraph` | Delete a custom graph (built-ins rejected) |
+| `GetForwardSolveGraph` | Get the ForwardSolve graph |
+| `GetBackwardSolveGraph` | Get the BackwardSolve graph |
+| `GetInteractionGraph` | Get the Interaction graph |
+| `GetEventGraph` | Get the graph for a specified event |
+| `AddEventGraph` | Add an event graph |
+| `AddBackwardSolveGraph` | Add a BackwardSolve graph |
+| `AddInteractionGraph` | Add an Interaction graph |
 
-ControlRigBlueprint creation is exposed via the standard `CreateAsset` command (with the `ControlRigBlueprintCreate` capability).
+#### Nodes (10)
+
+| Command | Description |
+|---|---|
+| `AddGraphNode` | Add a node to the RigVM graph (StructPath + SolveEventName) |
+| `RemoveGraphNode` | Remove a node by NodeName |
+| `ListNodes` | List nodes in a graph |
+| `GetNodeInfo` | Get a node's StructPath, pin types, metadata |
+| `FindNodes` | Search nodes by StructPath / NamePattern |
+| `GetNodePosition` | Get a node's graph position |
+| `SetNodePosition` | Set a node's position |
+| `DuplicateNode` | Duplicate a node (returns the duplicate's name) |
+| `AddEventNode` | Add an event node |
+| `AddVariableNode` | Add a variable node |
+
+#### Pins (7)
+
+| Command | Description |
+|---|---|
+| `ListPins` | List a node's pins |
+| `GetPinValue` | Get a pin's value |
+| `SetPinValue` | Set a pin's value |
+| `ResetPinValue` | Reset a pin's value to default |
+| `GetConnectedPins` | Get a pin's connection info |
+| `ConnectControlRigPins` | Connect two pins in the RigVM graph |
+| `DisconnectControlRigPins` | Disconnect a pin connection |
+
+#### Variables (5)
+
+| Command | Description |
+|---|---|
+| `AddVariable` | Add a RigVM variable |
+| `ListVariables` | List RigVM variables |
+| `GetVariable` | Get a RigVM variable's value |
+| `ChangeVariableType` | Change a RigVM variable's type |
+| `RemoveVariable` | Remove a RigVM variable |
+
+#### Other (2)
+
+| Command | Description |
+|---|---|
+| `CompileControlRig` | Compile the ControlRig (per-session 1 s rate limit) |
+| `GetAvailableRigVMUnitStructs` | List FRigUnit-derived UScriptStructs (max 1000) |
 
 ### Toolset bridges (44) **†**
 
