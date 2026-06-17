@@ -41,12 +41,12 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Assets | `UAIP.Editor.Assets` | 10 | — | — |
 | Editor Level | `UAIP.Editor.Level` | 7 | — | — |
 | Editor Property | `UAIP.Editor.Property` | 13 | — | — |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 16 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 18 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 9 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | — | — |
 | Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 3 | — | — |
-| Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 30 | 45 | — |
+| Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 36 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
 | Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 7 | — | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
@@ -264,6 +264,13 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 | `GetBlueprintComponentProperty` | Get a property value from an SCS component |
 | `SetBlueprintComponentProperty` | Set a property on an SCS component |
 
+### Compile (2)
+
+| Command | Description |
+|---|---|
+| `CompileBlueprint` | Compile a Blueprint and return CompileStatus + structured message log (AnimBlueprint / WidgetBlueprint not supported) |
+| `GetBlueprintCompileStatus` | Read the current Blueprint compile status without triggering a compile |
+
 ---
 
 ## UAIP.Editor.UMG
@@ -353,13 +360,13 @@ GameFeature Plugin management. Requires `GameFeatures` + `GameFeaturesEditor` pl
 
 Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins.
 
-### Native (30)
+### Native (36)
 
-#### Observation (12)
+#### Observation (13)
 
 | Command | Description |
 |---|---|
-| `GetSystemTopology` 🧩 | Niagara system emitter structure |
+| `GetSystemTopology` 🧩 | Niagara system emitter structure. **UE 5.8 note:** `data` and `dynamic_input_children` are absent from the response; only the `is_dynamic` flag is present. Use `GetStackInputData` for resolved values. |
 | `GetSystemCompileState` 🧩 | System compilation state |
 | `GetAssetDiscoveryInfo` 🧩 | Niagara asset discovery info |
 | `GetScriptAssets` 🧩 | Niagara script asset list |
@@ -371,8 +378,9 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins.
 | `GetRendererData` 🧩 | Renderer data structure |
 | `GetStackInputData` 🧩 | Module stack input value |
 | `UEnum_Info` 🧩 | UEnum information |
+| `GetAvailableNiagaraRendererClasses` 🧩 | List of `UNiagaraRendererProperties`-derived classes (max 200). Use the returned `ClassPath` as the `RendererClass` argument of `AddRenderer`. |
 
-#### Editing (18)
+#### Editing (21)
 
 | Command | Description |
 |---|---|
@@ -394,6 +402,16 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins.
 | `AddUserVariables` 🧩 | Add user variables to a system |
 | `RemoveUserVariables` 🧩 | Remove user variables |
 | `CompileNiagaraSystem` 🧩 | Compile the Niagara system |
+| `AddSetParametersModule` 🧩 | Add a Set Parameters module to a stack and register initial parameter entries. **UE 5.8 note:** the `default_value` field is currently ignored; entries are created with type defaults. |
+| `AddSetParameterEntry` 🧩 | Add a parameter entry to an existing Set Parameters module. **UE 5.8 note:** `default_value` is ignored. |
+| `RemoveSetParameterEntry` 🧩 | Remove a parameter entry from a Set Parameters module |
+
+#### Blueprint wrappers (2)
+
+| Command | Description |
+|---|---|
+| `ConstructNiagaraBPWrapperFromSystem` 🧩 | Generate an AActor Blueprint whose variables mirror the user variables of a NiagaraSystem asset (Two-Phase Commit) |
+| `ConstructNiagaraBPWrapperFromComponent` 🧩 | Generate a Blueprint wrapper from a NiagaraComponent in the editor world, preserving component variable overrides (Two-Phase Commit) |
 
 ### Toolset bridges (45) 🧩
 
