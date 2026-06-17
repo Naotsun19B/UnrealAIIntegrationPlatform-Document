@@ -358,7 +358,7 @@ GameFeature Plugin management. Requires `GameFeatures` + `GameFeaturesEditor` pl
 
 ## UAIP.Editor.Niagara 🧩
 
-Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins.
+Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **UE 5.8 or newer** — all commands in this section are unregistered on UE 5.7 (`CommandNotFound`).
 
 ### Native (36)
 
