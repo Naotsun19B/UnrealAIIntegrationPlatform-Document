@@ -18,7 +18,7 @@
    * [Documentation](#Documentation)
    * [License](#License)
    * [Author](#Author)
-   * [History](#History)
+   * [Changelog](#Changelog)
 <!--te-->
 
 ## Description
@@ -106,6 +106,7 @@ For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-clie
 | [Troubleshooting](docs/en/troubleshooting.md) | Error code reference and common failure modes |
 | [Glossary](docs/en/glossary.md) | Definitions of Capability, Artifact, Scenario, Toolset, etc. |
 | [Roadmap](docs/en/roadmap.md) | Planned features and future direction |
+| [Changelog](docs/en/changelog.md) | Versioning policy and per-release change history |
 
 ## License
 
@@ -117,7 +118,6 @@ Unless explicitly stated otherwise, all documentation content in this repository
 
 [Naotsun](https://twitter.com/Naotsun_UE)
 
-## History
+## Changelog
 
-- (2026/06/16) v1.0  
-  Initial release
+**Current version**: 0.9.0 (released 2026-06-17) — see [Changelog](docs/en/changelog.md) for the full history and versioning policy.
