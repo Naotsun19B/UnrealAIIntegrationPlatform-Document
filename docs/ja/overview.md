@@ -28,12 +28,12 @@
 Claude Code・Cursor・Windsurf・GitHub Copilot といった AI ツールが **Model Context Protocol (MCP)** 経由で接続し、意味レベルのコマンドを発行できます。座標クリックや壊れやすい UI スクリプトに頼る必要はありません。
 
 主な機能：
-- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御まで、540 以上の UAIP コマンド（公式 UE 5.8 Toolset への 190+ ブリッジコマンドを含め合計 730+）で Editor のほとんどの機能をカバー
-- **視覚的・構造的な観測** — 任意の Editor タブやビューポートのスクリーンショット取得、ワールド状態 / Slate ウィジェットツリー / エディタ状態の JSON ダンプ
-- **Runtime / PIE 制御** — PIE の開始と停止、アクターのスポーン、入力の注入、Gauntlet テストの実行、アクタープロパティのアサート
-- **シナリオ実行** — 複数のコマンドを順序付きリストとして一括送信。失敗時の中断・リトライ・ステップごとのタイムアウトに対応
-- **マルチ Transport** — MCP・HTTP・WebSocket・CLI のいずれからでも操作可能
-- **Safety & Capability Policy** — セッション単位の Capability ゲートと、プロセス単位の SafetyPolicy スイッチで権限を細かく制御
+- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御まで、540 以上の UAIP コマンド（公式 UE 5.8 [Toolset](glossary.md#toolset--toolset-bridge) への 190+ ブリッジコマンドを含め合計 730+）で Editor のほとんどの機能をカバー
+- **視覚的・構造的な観測** — 任意の Editor タブやビューポートのスクリーンショット取得、ワールド状態 / Slate ウィジェットツリー / エディタ状態の JSON ダンプを [Artifact](glossary.md#artifactアーティファクト) として返却
+- **Runtime / [PIE](glossary.md#pieplay-in-editor) 制御** — PIE の開始と停止、アクターのスポーン、入力の注入、Gauntlet テストの実行、アクタープロパティのアサート
+- **[シナリオ](glossary.md#scenarioシナリオ)実行** — 複数のコマンドを順序付きリストとして一括送信。失敗時の中断・リトライ・ステップごとのタイムアウトに対応
+- **マルチ Transport** — [MCP](glossary.md#mcpmodel-context-protocol)・HTTP・WebSocket・CLI のいずれからでも操作可能
+- **Safety & Capability Policy** — [セッション](glossary.md#sessionセッション)単位の [Capability](glossary.md#capability) ゲートと、プロセス単位の [SafetyPolicy](glossary.md#safetypolicy) スイッチで権限を細かく制御
 
 ### アーキテクチャ
 

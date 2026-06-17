@@ -28,12 +28,12 @@
 AI tools such as Claude Code, Cursor, Windsurf, and GitHub Copilot can connect via the **Model Context Protocol (MCP)** and issue semantic commands — no coordinate clicks, no brittle UI scripting.
 
 Key capabilities:
-- **Editor control** — open/save assets, edit Blueprints, manipulate actors, run Automation Tests, drive the Sequencer, and much more through 540+ UAIP commands (plus 190+ Toolset bridges to the official UE 5.8 Toolset, ~730+ total)
-- **Visual & structural observation** — capture screenshots of any editor tab or viewport, dump JSON state of the world, Slate widget tree, editor state, and so on
-- **Runtime / PIE control** — start/stop PIE, spawn actors, inject input, run Gauntlet tests, assert actor properties
-- **Scenario execution** — submit an ordered list of commands as one request with abort-on-failure, retry, and per-step timeouts
-- **Multi-transport** — reachable over MCP, HTTP, WebSocket, or CLI from within the same process
-- **Safety & capability policy** — per-session capability gates and process-wide SafetyPolicy switches
+- **Editor control** — open/save assets, edit Blueprints, manipulate actors, run Automation Tests, drive the Sequencer, and much more through 540+ UAIP commands (plus 190+ [Toolset](docs/en/glossary.md#toolset--toolset-bridge) bridges to the official UE 5.8 Toolset, ~730+ total)
+- **Visual & structural observation** — capture screenshots of any editor tab or viewport, dump JSON state of the world, Slate widget tree, editor state, and so on, returned as [Artifacts](docs/en/glossary.md#artifact)
+- **Runtime / [PIE](docs/en/glossary.md#pie-play-in-editor) control** — start/stop PIE, spawn actors, inject input, run Gauntlet tests, assert actor properties
+- **[Scenario](docs/en/glossary.md#scenario) execution** — submit an ordered list of commands as one request with abort-on-failure, retry, and per-step timeouts
+- **Multi-transport** — reachable over [MCP](docs/en/glossary.md#mcp-model-context-protocol), HTTP, WebSocket, or CLI from within the same process
+- **Safety & capability policy** — per-[session](docs/en/glossary.md#session) [Capability](docs/en/glossary.md#capability) gates and process-wide [SafetyPolicy](docs/en/glossary.md#safetypolicy) switches
 
 ### Architecture
 
