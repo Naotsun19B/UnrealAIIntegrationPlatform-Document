@@ -364,7 +364,7 @@ UnrealEditor.exe MyProject.uproject -uaip-scenario-file="path/to/scenario.json"
 
 ### ストリームモード
 
-エディタが stdin から JSON リクエストを読み取り、stdout にレスポンスを書き込む永続モードです。MCP Bridge が内部的にこのモードを使用しています。
+エディタが stdin から JSON リクエストを読み取り、stdout にレスポンスを書き込む永続モードです。シェルスクリプトや CI ラッパーから常駐プロセスとして使う用途を想定しています（現在の MCP Bridge はループバック HTTP 経由でエディタと通信するため、このモードは使用していません）。
 
 ```
 UnrealEditor.exe MyProject.uproject -uaip-stdin-stream

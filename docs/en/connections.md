@@ -362,7 +362,7 @@ UnrealEditor.exe MyProject.uproject -uaip-scenario-file="path/to/scenario.json"
 
 ### Stream mode
 
-In stream mode the editor reads JSON requests from stdin and writes responses to stdout. This is the mode used internally by the MCP Bridge.
+In stream mode the editor reads JSON requests from stdin and writes responses to stdout. It is intended for shell scripts or CI wrappers that drive the editor as a persistent child process. (The current MCP Bridge talks to the editor over loopback HTTP, so it does not use this mode.)
 
 ```mermaid
 sequenceDiagram
