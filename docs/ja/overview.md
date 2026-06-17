@@ -8,7 +8,7 @@
   <img src="../../images/hero-banner.png" alt="Unreal AI Integration Platform" width="100%">
 </p>
 
-<video src="https://github.com/user-attachments/assets/58e03ed1-6dc5-4068-8789-4b3e81bbb1f8" autoplay loop muted playsinline width="100%"></video>
+<video src="https://github.com/user-attachments/assets/58e03ed1-6dc5-4068-8789-4b3e81bbb1f8" autoplay loop muted playsinline controls width="100%"></video>
 
 # UnrealAIIntegrationPlatform
 
