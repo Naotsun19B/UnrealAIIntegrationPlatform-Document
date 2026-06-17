@@ -11,55 +11,63 @@ This page describes how UAIP is organized internally. If you only want to use UA
 ```mermaid
 flowchart TB
     subgraph Clients["External clients"]
-        AI["AI clients<br/>(Claude Code, Cursor, …)"]
+        direction LR
+        AI["AI clients<br/>Claude Code / Codex / Cursor / …"]
         Tool["Custom tools / CI"]
     end
 
-    subgraph TransportLayer["Transport layer"]
+    subgraph Transports["Transport layer"]
+        direction LR
         MCP["MCP Bridge<br/>(thin_proxy.py)"]
-        HTTP["HTTP transport<br/>:8765 / :8767"]
-        WS["WebSocket transport<br/>:8766 / :8768"]
-        CLI["CLI transport<br/>-uaip-request / -uaip-stdin-stream"]
+        HTTP["HTTP<br/>:8765 / :8767"]
+        WS["WebSocket<br/>:8766 / :8768"]
+        CLI["CLI<br/>-uaip-request / stdin-stream"]
     end
 
-    subgraph CoreLayer["Core layer (UAIPCore)"]
+    subgraph Core["Core layer (UAIPCore)"]
+        direction LR
         Auth["Auth + Session"]
         Dispatcher["CommandDispatcher"]
-        Policy["FSafetyPolicy<br/>+ FCapabilitySet"]
+        Policy["FSafetyPolicy +<br/>FCapabilitySet"]
         Registry["CommandRegistry"]
         Artifacts["ArtifactManager"]
     end
 
     subgraph Domains["Domain layer"]
-        EditorDom["UAIPEditor*<br/>(Workspace, Observation,<br/>Assets, Blueprint, …)"]
-        RuntimeDom["UAIPRuntime*<br/>(PIE, Observation,<br/>Input, GAS, …)"]
+        direction LR
+        EditorDom["UAIPEditor*<br/>Workspace / Observation /<br/>Assets / Blueprint / …"]
+        RuntimeDom["UAIPRuntime*<br/>PIE / Observation /<br/>Input / GAS / …"]
         Scenario["UAIPScenario"]
     end
 
     subgraph UE["Unreal Engine"]
+        direction LR
         EngineEd["UnrealEd / Slate /<br/>AssetTools / Sequencer / …"]
         EngineRt["UWorld / GameInstance /<br/>Subsystem / Input / …"]
     end
 
     AI --> MCP
     Tool --> HTTP
-    Tool --> CLI
     Tool --> WS
+    Tool --> CLI
     MCP --> HTTP
+
     HTTP --> Auth
     WS --> Auth
     CLI --> Auth
+
     Auth --> Dispatcher
     Dispatcher --> Policy
     Policy --> Registry
     Registry --> EditorDom
     Registry --> RuntimeDom
     Registry --> Scenario
+    Scenario -.->|"re-dispatch<br/>per step"| Dispatcher
+
     EditorDom --> EngineEd
     RuntimeDom --> EngineRt
-    EditorDom --> Artifacts
-    RuntimeDom --> Artifacts
-    Scenario --> Dispatcher
+    EditorDom -.->|writes| Artifacts
+    RuntimeDom -.->|writes| Artifacts
 ```
 
 The hard rule: **dependencies only flow downward**. The Transport layer doesn't import Domain handlers; Domain handlers don't import Transport. Core sits in the middle.

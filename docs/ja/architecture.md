@@ -11,55 +11,63 @@
 ```mermaid
 flowchart TB
     subgraph Clients["外部クライアント"]
-        AI["AI クライアント<br/>(Claude Code, Cursor, …)"]
+        direction LR
+        AI["AI クライアント<br/>Claude Code / Codex / Cursor / …"]
         Tool["カスタムツール / CI"]
     end
 
-    subgraph TransportLayer["Transport レイヤー"]
+    subgraph Transports["Transport レイヤー"]
+        direction LR
         MCP["MCP Bridge<br/>(thin_proxy.py)"]
-        HTTP["HTTP transport<br/>:8765 / :8767"]
-        WS["WebSocket transport<br/>:8766 / :8768"]
-        CLI["CLI transport<br/>-uaip-request / -uaip-stdin-stream"]
+        HTTP["HTTP<br/>:8765 / :8767"]
+        WS["WebSocket<br/>:8766 / :8768"]
+        CLI["CLI<br/>-uaip-request / stdin-stream"]
     end
 
-    subgraph CoreLayer["Core レイヤー (UAIPCore)"]
+    subgraph Core["Core レイヤー (UAIPCore)"]
+        direction LR
         Auth["Auth + Session"]
         Dispatcher["CommandDispatcher"]
-        Policy["FSafetyPolicy<br/>+ FCapabilitySet"]
+        Policy["FSafetyPolicy +<br/>FCapabilitySet"]
         Registry["CommandRegistry"]
         Artifacts["ArtifactManager"]
     end
 
     subgraph Domains["Domain レイヤー"]
-        EditorDom["UAIPEditor*<br/>(Workspace, Observation,<br/>Assets, Blueprint, …)"]
-        RuntimeDom["UAIPRuntime*<br/>(PIE, Observation,<br/>Input, GAS, …)"]
+        direction LR
+        EditorDom["UAIPEditor*<br/>Workspace / Observation /<br/>Assets / Blueprint / …"]
+        RuntimeDom["UAIPRuntime*<br/>PIE / Observation /<br/>Input / GAS / …"]
         Scenario["UAIPScenario"]
     end
 
     subgraph UE["Unreal Engine"]
+        direction LR
         EngineEd["UnrealEd / Slate /<br/>AssetTools / Sequencer / …"]
         EngineRt["UWorld / GameInstance /<br/>Subsystem / Input / …"]
     end
 
     AI --> MCP
     Tool --> HTTP
-    Tool --> CLI
     Tool --> WS
+    Tool --> CLI
     MCP --> HTTP
+
     HTTP --> Auth
     WS --> Auth
     CLI --> Auth
+
     Auth --> Dispatcher
     Dispatcher --> Policy
     Policy --> Registry
     Registry --> EditorDom
     Registry --> RuntimeDom
     Registry --> Scenario
+    Scenario -.->|"step ごとに<br/>再ディスパッチ"| Dispatcher
+
     EditorDom --> EngineEd
     RuntimeDom --> EngineRt
-    EditorDom --> Artifacts
-    RuntimeDom --> Artifacts
-    Scenario --> Dispatcher
+    EditorDom -.->|書き込み| Artifacts
+    RuntimeDom -.->|書き込み| Artifacts
 ```
 
 大原則として、**依存は下位方向にしか流れません**。Transport レイヤーは Domain ハンドラをインポートしませんし、Domain ハンドラも Transport をインポートしません。Core が両者の中間に立っています。
