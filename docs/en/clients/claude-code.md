@@ -1,4 +1,4 @@
-**[日本語](../../ja/clients/claude-code.md)** | [Back to Setup](../setup.md)
+**[日本語](../../ja/clients/claude-code.md)** | [Back to Connection Methods](../connections.md#mcp-bridge)
 
 # Claude Code
 
@@ -8,7 +8,7 @@
 
 ## Prerequisites
 
-You have already completed [Setup Step 1](../setup.md#step-1--run-the-install-script). `config.json` is at:
+You have already completed [Connection Methods → MCP Bridge Step 1](../connections.md#step-1--run-the-install-script). `config.json` is at:
 
 ```
 Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/config.json
@@ -37,7 +37,7 @@ Create `.mcp.json` next to your `.uproject`:
 }
 ```
 
-- Replace `uaip-MyGame` with your own server key (see [Setup Step 2](../setup.md#step-2--determine-the-mcp-server-key))
+- Replace `uaip-MyGame` with your own server key (see [Connection Methods → MCP Bridge Step 2](../connections.md#step-2--pick-an-mcp-server-key))
 - Use **absolute paths with forward slashes** (Windows accepts forward slashes in JSON)
 - Replace `python` with the full path to your Python interpreter if `python` isn't on `PATH`
 

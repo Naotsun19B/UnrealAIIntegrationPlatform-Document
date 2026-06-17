@@ -1,4 +1,4 @@
-**[日本語](../../ja/clients/copilot.md)** | [Back to Setup](../setup.md)
+**[日本語](../../ja/clients/copilot.md)** | [Back to Connection Methods](../connections.md#mcp-bridge)
 
 # GitHub Copilot (VS Code)
 

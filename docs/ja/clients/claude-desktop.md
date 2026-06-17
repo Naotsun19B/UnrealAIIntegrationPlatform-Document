@@ -1,4 +1,4 @@
-**[English](../../en/clients/claude-desktop.md)** | [セットアップに戻る](../setup.md)
+**[English](../../en/clients/claude-desktop.md)** | [接続方法に戻る](../connections.md#mcp-bridge)
 
 # Claude Desktop
 

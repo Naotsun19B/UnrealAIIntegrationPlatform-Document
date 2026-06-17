@@ -36,9 +36,94 @@ flowchart LR
 
 ## MCP Bridge
 
-AI クライアントと連携するなら MCP Bridge がおすすめです。`thin_proxy.py` という Python プロキシが AI クライアントと UE Editor の間に立ち、MCP のツール呼び出しを内部で UAIP の HTTP リクエストに変換します。
+AI クライアントと連携するなら MCP Bridge がおすすめです。`thin_proxy.py` という Python プロキシが AI クライアントと UE Editor の間に立ち、MCP のツール呼び出しを内部で UAIP の HTTP リクエストに変換します。AI クライアント ↔ Bridge は MCP の stdio、Bridge ↔ UE Editor はループバック HTTP で通信します。
 
-インストールと設定の詳細は [セットアップガイド](setup.md) を参照してください。
+5 分で動かす最短ルートは [クイックスタート](quickstart.md) を参照してください。
+
+### 前提条件
+
+- `Plugins/UnrealAIIntegrationPlatform` フォルダがプロジェクトの `Plugins` 配下に配置されている
+- UE プロジェクトで **UnrealAIIntegrationPlatform** プラグインが有効になっている
+- Python 3.10 以降がインストールされ `PATH` に通っている
+- 対応 AI クライアントのいずれか（Claude Code・Claude Desktop・Cursor・Windsurf・GitHub Copilot）
+
+### ステップ 1 — インストールスクリプトを実行
+
+UE プロジェクトルートでターミナルを開き、インストールスクリプトを実行してください。Python の確認・依存導入・`config.json` の対話生成までを行います。
+
+```powershell
+.\Plugins\UnrealAIIntegrationPlatform\Scripts\MCPBridge\install\install.ps1
+```
+
+スクリプトは次の手順で進みます：
+
+| ステップ | アクション |
+|---|---|
+| 1/3 | Python 3.10+ の確認 |
+| 2/3 | `pip install -r requirements.txt`（`mcp` パッケージ導入） |
+| 3/3 | UE Editor 実行ファイルパスと `.uproject` パスを尋ね、`config.json` を生成 |
+
+入力例：
+
+- UE Editor 実行ファイル — `E:\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe`
+- `.uproject` ファイル — `E:\MyProjects\MyGame\MyGame.uproject`
+
+`config.json` は `Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/config.json` に生成されます。
+
+### ステップ 2 — MCP サーバーキーを決定
+
+サーバーキーは AI クライアント設定内で本 Bridge インスタンスを識別するための名前です。
+
+| プラグイン配置 | キー形式 | 例 |
+|---|---|---|
+| プロジェクトプラグイン | `uaip-<プロジェクト名>` | `uaip-MyGame` |
+| エンジンプラグイン | `uaip-<バージョン>` | `uaip-5.8` |
+
+プロジェクト名は `.uproject` ファイル名から拡張子を除いたものを使ってください。AI クライアント上での表示にしか影響しないので、好みの名前でも問題ありません。
+
+### ステップ 3 — AI クライアントに MCP サーバーを登録
+
+使用するクライアントを選び、対応ページに進んでください：
+
+| クライアント | ページ | 備考 |
+|---|---|---|
+| **Claude Code**（CLI / VS Code 拡張） | [claude-code.md](clients/claude-code.md) | 最良サポート。プロジェクト毎の `.mcp.json` またはグローバル `~/.claude.json` |
+| **Claude Desktop** | [claude-desktop.md](clients/claude-desktop.md) | `claude_desktop_config.json` |
+| **Cursor** | [cursor.md](clients/cursor.md) | `~/.cursor/mcp.json` または `.cursor/mcp.json` |
+| **Windsurf** | [windsurf.md](clients/windsurf.md) | `~/.codeium/windsurf/mcp_config.json` |
+| **GitHub Copilot（VS Code）** | [copilot.md](clients/copilot.md) | `.vscode/mcp.json` |
+
+各クライアント別ページには、設定 JSON のサンプル、AI 利用ガイド（`Scripts/MCPBridge/install/guides/`）の配置方法、動作確認の手順（「AI に HealthCheck を実行させる」）がそろっています。
+
+### シナリオ実行を有効化（オプション）
+
+`uaip_run_scenario` はデフォルトでは無効です。有効化するには `config.json` に `enable_scenario` を追加してください：
+
+```json
+{
+  "editor_path":                  "...",
+  "uproject_path":                "...",
+  "http_startup_timeout_seconds": 120,
+  "command_timeout_seconds":      60,
+  "log_level":                    "INFO",
+  "enable_scenario":              true
+}
+```
+
+変更後は MCP クライアントを再接続してください。シナリオで何ができるかは [シナリオ実行](scenario.md) を参照。
+
+### MCP セットアップのトラブルシューティング
+
+| 症状 | 原因 | 対処 |
+|---|---|---|
+| `install.ps1` が実行ポリシーでブロック | PowerShell 実行ポリシー | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` を実行してから再試行 |
+| AI クライアントでツールが見つからない | MCP サーバ未接続 | キーと `thin_proxy.py` のパスを確認し、クライアントを再起動 |
+| 初回コマンドで 120 秒タイムアウト | エディタ起動失敗 | `config.json` の `editor_path` と `uproject_path` を確認 |
+| Python 起動エラー | 依存不足 | インストールスクリプトを再実行 |
+| `PolicyViolation` が返る | Capability 未付与 / SafetyPolicy フラグ OFF | [Safety & Capabilities](safety.md) を参照 |
+| `CommandNotFound` | コマンド名の間違い | `uaip_list_commands(ProviderPrefix="UAIP.Core")` で確認 |
+
+より広範な診断は [トラブルシューティング](troubleshooting.md) を参照してください。
 
 ---
 

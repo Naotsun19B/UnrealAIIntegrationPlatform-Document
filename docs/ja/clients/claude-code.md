@@ -1,4 +1,4 @@
-**[English](../../en/clients/claude-code.md)** | [セットアップに戻る](../setup.md)
+**[English](../../en/clients/claude-code.md)** | [接続方法に戻る](../connections.md#mcp-bridge)
 
 # Claude Code
 
@@ -8,7 +8,7 @@
 
 ## 前提
 
-[セットアップ ステップ 1](../setup.md#ステップ-1--インストールスクリプトを実行) を完了済み。`config.json` は以下に存在：
+[接続方法 → MCP Bridge ステップ 1](../connections.md#ステップ-1--インストールスクリプトを実行) を完了済み。`config.json` は以下に存在：
 
 ```
 Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/config.json
@@ -37,7 +37,7 @@ Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/config.json
 }
 ```
 
-- `uaip-MyGame` は自分のサーバキーに置き換えてください（[セットアップ ステップ 2](../setup.md#ステップ-2--mcp-サーバーキーを決定) を参照）
+- `uaip-MyGame` は自分のサーバキーに置き換えてください（[接続方法 → MCP Bridge ステップ 2](../connections.md#ステップ-2--mcp-サーバーキーを決定) を参照）
 - パスは **絶対パスを、フォワードスラッシュ区切りで** 書いてください（Windows でも JSON ではフォワードスラッシュをそのまま受け付けます）
 - `python` が `PATH` に通っていない場合は、Python インタプリタの完全パスに置き換えてください
 

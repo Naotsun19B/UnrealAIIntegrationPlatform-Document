@@ -1,4 +1,4 @@
-**[English](../../en/clients/copilot.md)** | [セットアップに戻る](../setup.md)
+**[English](../../en/clients/copilot.md)** | [接続方法に戻る](../connections.md#mcp-bridge)
 
 # GitHub Copilot（VS Code）
 

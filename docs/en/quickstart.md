@@ -2,7 +2,7 @@
 
 # Quickstart — 5 minutes to your first AI command
 
-This page gets you from a fresh checkout to running your first UAIP command from an AI client in about five minutes. For detailed installation options, troubleshooting, and per-client configuration, see the [Setup Guide](setup.md).
+This page gets you from a fresh checkout to running your first UAIP command from an AI client in about five minutes. For detailed installation options, troubleshooting, and per-client configuration, see the [Connection Methods → MCP Bridge](connections.md#mcp-bridge).
 
 ---
 
@@ -55,7 +55,7 @@ The installer creates a virtualenv, installs `mcp[cli]`, and writes a `config.js
 
 ## 4. Register the MCP server in your AI client (1 min)
 
-Pick your client and add the following to its MCP config file. The exact file path differs per client — see [Setup Guide](setup.md#client-config-files) for the locations.
+Pick your client and add the following to its MCP config file. The exact file path differs per client — see [Connection Methods → MCP Bridge](connections.md#mcp-bridge) for the locations.
 
 ```json
 {

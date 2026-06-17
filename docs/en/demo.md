@@ -4,6 +4,8 @@
 
 The UAIP demo binary is a free, feature-limited build distributed via GitHub Releases. It provides observation, PIE control, assertion, scenario execution, and UI automation — enough to integrate an AI agent into your review and testing workflow without any cost.
 
+> **License**: the demo is licensed for **personal use and evaluation only**. Commercial use is not covered — see the `EULA.txt` shipped with the release archive. For commercial use, please wait for the Pro version (coming soon on Fab).
+
 ---
 
 ## Demo vs Pro
@@ -41,7 +43,7 @@ The UAIP demo binary is a free, feature-limited build distributed via GitHub Rel
 1. Download `UAIP-Demo-UE<version>-Win64.zip` from the [Releases](../../../releases) page
 2. Extract the zip as `Plugins/UnrealAIIntegrationPlatform/` in your UE project
 3. Copy `Config/DefaultUAIP.ini` from the zip to your project's `Config/` folder — it pre-enables the `PIEControl`, `SlateUIAutomation`, and `ObservationCapture` capabilities
-4. Register the MCP server in your AI client (see [Setup Guide](setup.md))
+4. Register the MCP server in your AI client (see [Connection Methods → MCP Bridge](connections.md#mcp-bridge))
 
 ### Upgrading to Pro
 

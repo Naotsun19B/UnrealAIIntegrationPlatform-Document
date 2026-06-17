@@ -1,4 +1,4 @@
-**[English](../../en/clients/windsurf.md)** | [セットアップに戻る](../setup.md)
+**[English](../../en/clients/windsurf.md)** | [接続方法に戻る](../connections.md#mcp-bridge)
 
 # Windsurf
 

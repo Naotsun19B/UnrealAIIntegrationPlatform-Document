@@ -90,9 +90,8 @@ For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-clie
 | Document | Description |
 |---|---|
 | [Quickstart](docs/en/quickstart.md) | 5-minute path from install to first command |
-| [Setup Guide](docs/en/setup.md) | MCP Bridge installation and per-client configuration |
+| [Connection Methods](docs/en/connections.md) | All transports: MCP Bridge setup + HTTP / WebSocket / CLI (Pro) |
 | &nbsp;&nbsp;↳ [Claude Code](docs/en/clients/claude-code.md) / [Claude Desktop](docs/en/clients/claude-desktop.md) / [Cursor](docs/en/clients/cursor.md) / [Windsurf](docs/en/clients/windsurf.md) / [Copilot](docs/en/clients/copilot.md) | Per-client config JSON and verification |
-| [Connection Methods](docs/en/connections.md) | HTTP API, WebSocket, and CLI transport options (Pro) |
 | [Use Cases](docs/en/use-cases.md) | Who uses UAIP for what — testing, review, audits, pair programming |
 | [Examples / Cookbook](docs/en/cookbook.md) | Recipes — PIE smoke, AI review, asset audit, BP edit, UI automation |
 | [Commands Reference](docs/en/commands.md) | All 730+ commands organized by domain |
