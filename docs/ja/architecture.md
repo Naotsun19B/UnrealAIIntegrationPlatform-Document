@@ -252,7 +252,6 @@ UAIP は、本体をフォークしなくてもプロジェクト独自のコマ
 
 その他の拡張フック：
 
-- **`ICaptureProvider`** — 外部のグラフ画像ソース（GraphPrinter など）を橋渡しし、`CaptureCanonicalGraphImage` から利用できるようにします
 - **Python `@uaip_command`** — Python の関数を UAIP のコマンドとして登録できます（`PythonScriptPlugin` と `PythonExtensionReload` Capability が必要）
 
 プロジェクト固有の拡張は、UAIP のソースツリーに入れず、**別プラグインまたは別モジュール** として作成してください。UAIP をアップデートしたときに `git pull` がきれいに通るようにするためです。

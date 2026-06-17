@@ -84,8 +84,6 @@ Replace `Config/DefaultUAIP.ini` with the Pro version's ini file. No other chang
 | `UAIP.Editor.Observation.ObserveWidget` | Register a widget for monitoring (cache) | |
 | `UAIP.Editor.Observation.ListGraphNodes` | Return a list of nodes in a graph | |
 
-> `CaptureCanonicalGraphImage` (external capture provider bridge) is **not available** in the demo — returns `CommandNotFound`.
-
 ### `UAIP.Runtime.PIE.*`
 
 | Command | Description |
@@ -171,7 +169,6 @@ Commands that exist in Pro but return `CommandNotFound` in the demo:
 
 | Command | Reason |
 |---|---|
-| `UAIP.Editor.Observation.CaptureCanonicalGraphImage` | External capture provider bridge — Pro only |
 | `UAIP.Editor.Execution.RunEditorPythonScript` | Python execution — Pro only |
 | All commands from non-whitelisted modules | Editor editing, runtime world editing, GAS, Niagara, Input injection, etc. |
 

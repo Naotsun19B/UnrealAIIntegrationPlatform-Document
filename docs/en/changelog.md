@@ -55,7 +55,7 @@ The free demo (GitHub Releases) and the upcoming Pro (Fab) **always share the sa
 
 ## Releases
 
-### 0.9.0 — 2026-06-17
+### 0.9.0 — 2026-06-18
 
 **The demo build is now available on GitHub Releases.** The Pro build is coming soon on Fab.
 

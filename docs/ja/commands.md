@@ -127,7 +127,6 @@ UAIP では 2 種類のコマンドを公開しています：
 | 🆓 `CaptureActiveWindowImage` | アクティブな最上位ウィンドウのスクリーンショット（PNG Artifact） |
 | 🆓 `CaptureEditorTabImage` | 指定エディタタブのウィジェット領域のスクリーンショット |
 | 🆓 `CaptureGraphViewportImage` | SGraphEditor ビューポートのスクリーンショット |
-| `CaptureCanonicalGraphImage` 🧩 | 登録済み外部キャプチャプロバイダ経由でグラフ全体画像を取得 |
 | 🆓 `DumpEditorState` | アクティブタブ・開いているアセット・ウィンドウサイズ等（JSON） |
 | 🆓 `DumpSelectionState` | 現在の選択状態 — アクター・オブジェクト・グラフノード（JSON） |
 | 🆓 `DumpOpenTabs` | 開いているアセットエディタタブ一覧（JSON） |

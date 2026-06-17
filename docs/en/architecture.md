@@ -252,7 +252,6 @@ With these two, custom commands appear to AI clients exactly like built-in ones:
 
 Other hooks:
 
-- **`ICaptureProvider`** — bridge an external graph-image source (e.g., GraphPrinter) so `CaptureCanonicalGraphImage` can use it
 - **Python `@uaip_command`** — register a Python function as a UAIP command (requires `PythonScriptPlugin` + `PythonExtensionReload` capability)
 
 Project-specific extensions go in **separate plugins or modules**, not in the UAIP source tree. This keeps `git pull` clean when UAIP is updated.

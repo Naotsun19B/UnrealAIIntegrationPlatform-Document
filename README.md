@@ -120,4 +120,4 @@ Unless explicitly stated otherwise, all documentation content in this repository
 
 ## Changelog
 
-**Current version**: 0.9.0 (released 2026-06-17) — see [Changelog](docs/en/changelog.md) for the full history and versioning policy.
+**Current version**: 0.9.0 (released 2026-06-18) — see [Changelog](docs/en/changelog.md) for the full history and versioning policy.
