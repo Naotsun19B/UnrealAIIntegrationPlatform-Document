@@ -8,6 +8,8 @@
   <img src="../../images/hero-banner.png" alt="Unreal AI Integration Platform" width="100%">
 </p>
 
+<video src="https://github.com/user-attachments/assets/58e03ed1-6dc5-4068-8789-4b3e81bbb1f8" autoplay loop muted playsinline width="100%"></video>
+
 # UnrealAIIntegrationPlatform
 
 <!--ts-->
@@ -34,6 +36,8 @@ Claude Code・Codex CLI・Cursor・Windsurf・GitHub Copilot といった AI ツ
 - **[シナリオ](glossary.md#scenarioシナリオ)実行** — 複数のコマンドを順序付きリストとして一括送信。失敗時の中断・リトライ・ステップごとのタイムアウトに対応
 - **マルチ Transport** — [MCP](glossary.md#mcpmodel-context-protocol)・HTTP・WebSocket・CLI のいずれからでも操作可能
 - **Safety & Capability Policy** — [セッション](glossary.md#sessionセッション)単位の [Capability](glossary.md#capability) ゲートと、プロセス単位の [SafetyPolicy](glossary.md#safetypolicy) スイッチで権限を細かく制御
+
+<video src="https://github.com/user-attachments/assets/1e4f4ab9-8cf1-4a0a-ba69-bee81b322a31" muted controls width="100%"></video>
 
 ### アーキテクチャ
 
