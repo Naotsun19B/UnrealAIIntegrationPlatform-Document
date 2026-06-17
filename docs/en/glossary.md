@@ -28,7 +28,7 @@ The Core component that maps a fully-qualified command name (e.g., `UAIP.Editor.
 The two classes of capability. **DefaultAllow** capabilities are granted to every new session automatically (e.g., `EditorInspect`, `PIEControl`). **DefaultDenied** capabilities require an explicit `+AllowedCapabilities=<name>` line in `Config/DefaultUAIP.ini`. The distinction roughly maps to read vs write.
 
 ### Demo / Pro
-Two distribution channels of UAIP. **Demo** is the free, feature-limited binary on GitHub Releases (MCP transport only, observation + PIE + assertions + UI automation, capture watermarked). **Pro** is the full product on [Fab](https://www.fab.com) (all transports, full editor + runtime editing, no watermark). See [Demo Version Guide](demo.md).
+Two distribution forms of UAIP. **Demo** is the free, feature-limited binary on GitHub Releases (MCP transport only, observation + PIE + assertions + UI automation, capture watermarked). **Pro** is the full product (all transports, full editor + runtime editing, no watermark) — coming soon on Fab. See [Demo Version Guide](demo.md).
 
 ### ErrorCode
 The machine-readable error category in a failed response (`CommandNotFound`, `CapabilityNotAvailable`, `PolicyViolation`, `InvalidParams`, `NotFound`, `ExecutionFailed`, `NotAllowed`, `Timeout`, `TooManyRequests`, `InternalError`). The `ErrorMessage` field carries the human-readable detail. See [Troubleshooting](troubleshooting.md).
@@ -76,4 +76,4 @@ A communication channel between an external client and the UAIP Core. Four are s
 **Unreal AI Integration Platform** — the plugin documented by this repository.
 
 ### Watermark
-The `UAIP Demo` text + plugin-icon banner that the demo binary alpha-blends into the bottom-right corner of capture outputs (`CaptureActiveWindowImage`, `CaptureEditorTabImage`, `CaptureGraphViewportImage`, `CaptureViewportImage`). Compiled into the DLL; cannot be removed by file replacement. Fail-closed: watermark composition failure causes `ExecutionFailed`.
+The `UAIP Demo` marker the demo binary adds to capture outputs (`CaptureActiveWindowImage`, `CaptureEditorTabImage`, `CaptureGraphViewportImage`, `CaptureViewportImage`). Its purpose is to make screenshots — which are commonly shared as review or test evidence — identifiable as having come from the demo build. The Pro version does not add it.

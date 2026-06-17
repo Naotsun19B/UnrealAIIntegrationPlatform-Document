@@ -15,7 +15,6 @@
    * [Requirement](#Requirement)
    * [Installation](#Installation)
    * [Setup](#Setup)
-   * [Demo Version](#Demo-Version)
    * [Documentation](#Documentation)
    * [License](#License)
    * [Author](#Author)
@@ -29,7 +28,7 @@
 AI tools such as Claude Code, Cursor, Windsurf, and GitHub Copilot can connect via the **Model Context Protocol (MCP)** and issue semantic commands — no coordinate clicks, no brittle UI scripting.
 
 Key capabilities:
-- **Editor control** — open/save assets, edit Blueprints, manipulate actors, run Automation Tests, drive the Sequencer, and much more through 200+ registered commands
+- **Editor control** — open/save assets, edit Blueprints, manipulate actors, run Automation Tests, drive the Sequencer, and much more through 540+ UAIP commands (plus 190+ Toolset bridges to the official UE 5.8 Toolset, ~730+ total)
 - **Visual & structural observation** — capture screenshots of any editor tab or viewport, dump JSON state of the world, Slate widget tree, editor state, and so on
 - **Runtime / PIE control** — start/stop PIE, spawn actors, inject input, run Gauntlet tests, assert actor properties
 - **Scenario execution** — submit an ordered list of commands as one request with abort-on-failure, retry, and per-step timeouts
@@ -61,42 +60,30 @@ Python : 3.10 or newer (required for the MCP Bridge)
 
 ## Installation
 
-Put the `Plugins/UnrealAIIntegrationPlatform` folder in your project's `Plugins` folder.  
-If the feature is not available after installing the plugin, check that the plugin is enabled from **Edit > Plugins**.
+UAIP ships in two forms: a free **Demo** build and the upcoming **Pro** version.
+
+### Demo (free, from GitHub Releases)
+
+A feature-limited binary build that already covers MCP connection, observation, PIE control, scenario execution, UI automation, and assertions — enough to integrate an AI agent into your review and testing workflow. The full command list and limitations are documented in the [Demo Version Guide](docs/en/demo.md).
+
+1. Download `UAIP-Demo-UE<version>-Win64.zip` from this repository's [Releases](../../releases)
+2. Extract the zip into your UE project as `Plugins/UnrealAIIntegrationPlatform/`
+3. Open the project and confirm **UnrealAIIntegrationPlatform** is enabled under **Edit > Plugins**
+
+### Pro (coming soon on Fab)
+
+The full version (every transport, full Editor / Runtime editing, no watermark) is **coming soon on Fab**. It will be distributed as a Fab Code Plugin (source included). Once published, install from Fab and place the plugin under the same `Plugins/UnrealAIIntegrationPlatform/` path.
 
 ## Setup
 
-The MCP Bridge (`Scripts/MCPBridge/`) is a thin Python proxy that connects your AI client to the UE Editor over HTTP.
+The MCP Bridge (`Scripts/MCPBridge/`) is a thin Python proxy that connects your AI client to the UE Editor.
 
-1. Run `Scripts/MCPBridge/install/install.ps1` (Windows) or `install.sh` (macOS / Linux)
+1. Run `Scripts/MCPBridge/install/install.ps1`
 2. Register the MCP server in your AI client's config file
 3. Deploy the AI usage guides from `Scripts/MCPBridge/install/guides/` (recommended)
 4. Ask the AI: **"Run a UAIP HealthCheck"** to verify
 
-For the full setup walkthrough, see [Setup Guide](docs/en/setup.md).
-
-## Demo Version
-
-A free demo binary is available in the [Releases](../../releases) of this repository.
-
-The demo provides observation, PIE control, assertion, scenario execution, and UI automation commands — enough to integrate an AI agent into your review and testing workflow.
-
-| | Demo | Pro (Fab) |
-|---|:---:|:---:|
-| MCP connection | ✅ | ✅ |
-| HTTP / WebSocket / CLI | — | ✅ |
-| Observation commands | ✅ | ✅ |
-| PIE control | ✅ | ✅ |
-| Scenario execution | ✅ | ✅ |
-| UI automation | ✅ | ✅ |
-| Editor editing (Blueprint, Level, Assets, …) | — | ✅ |
-| Runtime world editing (Spawn, GAS, Input, …) | — | ✅ |
-| Python script execution | — | ✅ |
-| Watermark on captured images | ✅ | — |
-| User extension points (`ICommandProvider`) | ✅ | ✅ |
-| UE version | 5.7 / 5.8 | 5.7 / 5.8 |
-
-See [Demo Version Guide](docs/en/demo.md) for the full command list, limitations, and installation steps.
+For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-client setup see [Connection Methods](docs/en/connections.md).
 
 ## Documentation
 

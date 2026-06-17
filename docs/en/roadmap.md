@@ -15,8 +15,8 @@ UAIP currently targets UE 5.7 and 5.8. Support down to approximately UE 5.5 is b
 
 ## Editor — Asset & Project Management
 
-### Sandbox Editing
-AI-proposed edits are staged in a sandbox and require human approval before being written to disk. All changes can be inspected and selectively accepted or rejected without relying on Undo. Uses UE 5.8's `FileSandboxCore` foundation.
+### Sandbox feature
+AI-proposed edits are staged in a sandbox and require human approval before being written to disk. All changes can be inspected and selectively accepted or rejected without relying on Undo. Implemented on top of UE 5.8's `FileSandboxCore`, so this feature will be **UE 5.8+ only** even after it ships.
 
 ### Asset Audit & Dependency Analysis
 Get asset reference graphs, detect unused assets, identify circular references, and generate size maps across the entire content tree.
@@ -120,7 +120,7 @@ Listen to and inject `UGameplayMessageSubsystem` messages for event-driven archi
 List, load, save, and delete `USaveGame` slots — enables tests to start from a specific save state and reset to a known baseline.
 
 ### Semantic Asset Search (Frozen)
-AI-powered semantic search across the Content Browser. **Currently suspended** pending stability improvements in the underlying `SemanticSearch` plugin's embedding pipeline.
+AI-powered semantic search across the Content Browser. Built on UE 5.8's `SemanticSearch` plugin, so this feature will be **UE 5.8+ only** even after it ships. Additionally, in UE 5.8 the `SemanticSearch` embedding pipeline only runs inside Epic's internal environment, so this item is **frozen** until the pipeline becomes available in the public build.
 
 ---
 

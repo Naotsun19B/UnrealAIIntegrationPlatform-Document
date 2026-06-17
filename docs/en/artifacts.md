@@ -116,7 +116,7 @@ Default policy:
 | `Json` | Yes | Usually small (KB); useful inline |
 | `Text` | Yes | Log slices, usually small |
 
-To view a PNG screenshot, use the `Read` tool with the file path — do not rely on inlining for images.
+Whether to inline PNG output is a policy choice. The default is **off** because accumulated PNGs across a session can blow past an AI client's token budget. Flip `inline_artifacts.image` to `true` in `config.json` if you want the AI to receive image bytes inline.
 
 ---
 
@@ -144,7 +144,7 @@ Default inline policy:
 | `Json` | Yes |
 | `Text` | Yes |
 
-To view a PNG screenshot, use the `Read` tool with the file path — do not rely on inlining for images.
+Whether to inline PNG output is a policy choice. The default is **off** because accumulated PNGs across a session can blow past an AI client's token budget. Flip `inline_artifacts.image` to `true` in `config.json` if you want the AI to receive image bytes inline.
 
 ---
 

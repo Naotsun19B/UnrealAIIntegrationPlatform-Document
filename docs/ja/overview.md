@@ -15,7 +15,6 @@
    * [動作環境](#動作環境)
    * [インストール](#インストール)
    * [セットアップ](#セットアップ)
-   * [デモ版](#デモ版)
    * [ドキュメント](#ドキュメント)
    * [ライセンス](#ライセンス)
    * [作者](#作者)
@@ -29,7 +28,7 @@
 Claude Code・Cursor・Windsurf・GitHub Copilot といった AI ツールが **Model Context Protocol (MCP)** 経由で接続し、意味レベルのコマンドを発行できます。座標クリックや壊れやすい UI スクリプトに頼る必要はありません。
 
 主な機能：
-- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御まで、200 以上の登録済みコマンドで Editor のほとんどの機能をカバー
+- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御まで、540 以上の UAIP コマンド（公式 UE 5.8 Toolset への 190+ ブリッジコマンドを含め合計 730+）で Editor のほとんどの機能をカバー
 - **視覚的・構造的な観測** — 任意の Editor タブやビューポートのスクリーンショット取得、ワールド状態 / Slate ウィジェットツリー / エディタ状態の JSON ダンプ
 - **Runtime / PIE 制御** — PIE の開始と停止、アクターのスポーン、入力の注入、Gauntlet テストの実行、アクタープロパティのアサート
 - **シナリオ実行** — 複数のコマンドを順序付きリストとして一括送信。失敗時の中断・リトライ・ステップごとのタイムアウトに対応
@@ -61,42 +60,30 @@ Python : 3.10 以降（MCP Bridge に必要）
 
 ## インストール
 
-プロジェクトの `Plugins` フォルダに `Plugins/UnrealAIIntegrationPlatform` フォルダを入れてください。  
-プラグインのインストール後に機能が使用できない場合は、**編集 > プラグイン** からプラグインが有効になっているかご確認ください。
+UAIP には **デモ版** と **製品版** の 2 つの配布形式があります。
+
+### デモ版（GitHub Releases から無償）
+
+機能制限付きのバイナリ配布で、AI エージェントをレビューやテストのワークフローに組み込むのに十分な機能（MCP 接続・観測・PIE 制御・シナリオ実行・UI 自動化・アサーション）をそろえています。詳しいコマンド一覧と制限事項は [デモ版ガイド](demo.md) を参照してください。
+
+1. このリポジトリの [Releases](../../../releases) から `UAIP-Demo-UE<バージョン>-Win64.zip` をダウンロード
+2. zip を展開し、UE プロジェクトの `Plugins/UnrealAIIntegrationPlatform/` に配置
+3. プロジェクトを開き、**編集 > プラグイン** で **UnrealAIIntegrationPlatform** が有効になっているか確認
+
+### 製品版（Fab で近日公開予定）
+
+完全版（全トランスポート・Editor / Runtime の編集機能・透かしなし）は **Fab で近日公開予定** です。Fab の Code Plugin 形式に従い、ソース付きで配布する予定です。公開後、Fab からインストールし、同じく `Plugins/UnrealAIIntegrationPlatform/` に配置してください。
 
 ## セットアップ
 
-MCP Bridge（`Scripts/MCPBridge/`）は UE Editor と AI クライアントを HTTP 経由でつなぐ Python プロキシです。
+MCP Bridge（`Scripts/MCPBridge/`）は UE Editor と AI クライアントをつなぐ Python プロキシです。
 
-1. `Scripts/MCPBridge/install/install.ps1`（Windows）または `install.sh`（macOS / Linux）を実行
-2. AI クライアントの設定ファイルに MCP サーバーを登録
+1. `Scripts/MCPBridge/install/install.ps1` を実行
+2. AI クライアントの設定ファイルに MCP サーバを登録
 3. `Scripts/MCPBridge/install/guides/` の AI 使用ガイドを配置（推奨）
 4. AI に「UAIP の HealthCheck を実行して」と聞いて動作確認
 
-詳細な手順は [セットアップガイド](setup.md) を参照してください。
-
-## デモ版
-
-デモ版バイナリはこのリポジトリの [Releases](../../../releases) で無償配布しています。
-
-観測・PIE 制御・アサーション・シナリオ実行・UI 自動化コマンドを提供しており、AI エージェントをレビューやテストのワークフローに組み込むのに十分な機能があります。
-
-| | デモ版 | 製品版（Fab） |
-|---|:---:|:---:|
-| MCP 接続 | ✅ | ✅ |
-| HTTP / WebSocket / CLI | — | ✅ |
-| 観測コマンド | ✅ | ✅ |
-| PIE 制御 | ✅ | ✅ |
-| シナリオ実行 | ✅ | ✅ |
-| UI 自動化 | ✅ | ✅ |
-| Editor 編集（Blueprint、Level、Assets など） | — | ✅ |
-| Runtime ワールド編集（Spawn、GAS、Input など） | — | ✅ |
-| Python スクリプト実行 | — | ✅ |
-| キャプチャ画像への透かし | ✅ | — |
-| ユーザー拡張ポイント（`ICommandProvider`） | ✅ | ✅ |
-| 対応 UE バージョン | 5.7 / 5.8 | 5.7 / 5.8 |
-
-コマンド全一覧・制限事項・インストール手順は [デモ版ガイド](demo.md) を参照してください。
+5 分で動かす最短ルートは [クイックスタート](quickstart.md) を、クライアント別の詳細な設定は [接続方法](connections.md) を参照してください。
 
 ## ドキュメント
 

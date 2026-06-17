@@ -28,7 +28,7 @@ HTTP / WebSocket リクエストの認証に使う、32 文字のランダムな
 Capability の 2 つのクラスを指します。**DefaultAllow** は新規セッションに自動で付与されます（例：`EditorInspect`、`PIEControl`）。**DefaultDenied** は `Config/DefaultUAIP.ini` に `+AllowedCapabilities=<名前>` を明示的に書く必要があります。この区別はおおまかに「読み取り」と「書き込み」の境界に対応しています。
 
 ### Demo / Pro（デモ版 / 製品版）
-UAIP には 2 つの配布チャネルがあります。**デモ版** は GitHub Releases で配布している無償の機能制限版です（MCP トランスポートのみ、観測 / PIE / アサート / UI 自動化、キャプチャに透かしあり）。**製品版** は [Fab](https://www.fab.com) で配布する完全版です（全トランスポート、Editor と Runtime の完全な編集機能、透かしなし）。詳細は [デモ版ガイド](demo.md) を参照してください。
+UAIP には 2 つの配布形式があります。**デモ版** は GitHub Releases で配布している無償の機能制限版です（MCP トランスポートのみ、観測 / PIE / アサート / UI 自動化、キャプチャに透かしあり）。**製品版** は Fab で公開予定の完全版です（全トランスポート、Editor と Runtime の完全な編集機能、透かしなし。近日公開予定）。詳細は [デモ版ガイド](demo.md) を参照してください。
 
 ### ErrorCode
 失敗時のレスポンスに含まれる、機械可読なエラーカテゴリです（`CommandNotFound`・`CapabilityNotAvailable`・`PolicyViolation`・`InvalidParams`・`NotFound`・`ExecutionFailed`・`NotAllowed`・`Timeout`・`TooManyRequests`・`InternalError`）。人間向けの詳細は `ErrorMessage` フィールドに入ります。詳細は [トラブルシューティング](troubleshooting.md) を参照してください。
@@ -70,10 +70,10 @@ AI クライアントと UE Editor をつなぐ薄い Python プロキシ（`Scr
 **Toolset** は UE 5.8 のファーストパーティ Toolset フレームワークのことで、一部のプラグインが公開する独立したエンジン側サーフェスです。**Toolset bridge** コマンド（UAIP コマンドのうち `Toolset.*` プレフィックスを持つもの）は、その面を UAIP のリクエスト / レスポンス形式に適応するものです。ほとんどの場合、対応する UAIP ネイティブコマンドと同等の機能を提供します。UE 5.8 以降と、該当する Toolset プラグイン（`NiagaraToolsets`・`PhysicsToolsets`・`AnimationAssistantToolset` など）の導入が必要です。
 
 ### Transport（トランスポート）
-外部クライアントと UAIP Core の間の通信チャネルのことです。次の 4 種類があります — **MCP**（Bridge 経由）・**HTTP**・**WebSocket**・**CLI**。4 つすべてが同じ `CommandDispatcher` に到達するため、Capability と Policy の判定はトランスポートに関係なく同一です。詳細は [接続方法](connections.md) を参照してください。
+外部クライアントと UAIP Core の間の通信経路のことです。次の 4 種類があります — **MCP**（Bridge 経由）・**HTTP**・**WebSocket**・**CLI**。4 つすべてが同じ `CommandDispatcher` に到達するため、Capability と Policy の判定はトランスポートに関係なく同一です。詳細は [接続方法](connections.md) を参照してください。
 
 ### UAIP
 **Unreal AI Integration Platform** の略称で、本リポジトリで扱っているプラグインそのものを指します。
 
 ### Watermark（透かし）
-デモバイナリがキャプチャ出力（`CaptureActiveWindowImage`・`CaptureEditorTabImage`・`CaptureGraphViewportImage`・`CaptureViewportImage`）の右下にアルファブレンドで合成する、`UAIP Demo` のテキストとプラグインアイコンのバナーのことです。DLL にコンパイル済みなのでファイルを差し替えても除去できません。透かしの合成に失敗した場合は、透かしなし画像を保存せずに `ExecutionFailed` を返す（フェイルクローズ）仕様です。
+デモバイナリがキャプチャ出力（`CaptureActiveWindowImage`・`CaptureEditorTabImage`・`CaptureGraphViewportImage`・`CaptureViewportImage`）に重ねる `UAIP Demo` の表示です。レビューやテストの証跡として共有された画像が、デモ版で取得されたものだと分かるようにするために入れています。製品版では入りません。

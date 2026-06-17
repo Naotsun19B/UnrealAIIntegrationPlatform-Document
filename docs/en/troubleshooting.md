@@ -4,6 +4,8 @@
 
 When something fails, the response includes an `ErrorCode` and `ErrorMessage`. This page maps those codes to fixes, and lists the most common environmental issues.
 
+> Symbols used on this page: **🆓** = available in the demo binary / **🧩** = requires an optional plugin (same legend as [Commands Reference](commands.md#symbols)).
+
 ---
 
 ## Error code reference

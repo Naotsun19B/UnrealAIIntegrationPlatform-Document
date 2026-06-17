@@ -44,7 +44,7 @@ See the [Setup Guide](setup.md) for full installation and configuration instruct
 
 ## HTTP API (Pro)
 
-The HTTP API exposes a RESTful interface on localhost. It is suited for custom scripts, CI/CD pipelines, and any integration where an AI client is not involved.
+The HTTP API exposes a REST interface. It's suited for custom scripts, CI/CD pipelines, and any integration where an AI client isn't involved. The socket binds to `0.0.0.0`, so with the Bearer token and a firewall allowance the editor can be reached from another machine (FullHTTP mode). Access control is the responsibility of the token and your network setup — see [Security → Network surface](security.md#network-surface) for the detailed model.
 
 ### Enable
 

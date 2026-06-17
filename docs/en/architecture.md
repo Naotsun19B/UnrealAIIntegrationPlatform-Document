@@ -210,14 +210,14 @@ sequenceDiagram
     participant Br as MCP Bridge
     participant Ed as UE Editor
 
-    Cli->>Br: first uaip_execute(...)
+    Cli->>Br: first uaip_execute(...) (stdio)
     alt editor not running
-        Br->>Ed: launch (with -uaip-stdin-stream)
-        Br->>Br: wait for __UAIP_STREAM_READY__
+        Br->>Ed: spawn editor as child process
+        Br->>Br: wait for the loopback HTTP endpoint
     end
-    Br->>Ed: forward request via stdio
-    Ed-->>Br: response
-    Br-->>Cli: response
+    Br->>Ed: forward request via HTTP /mcp (127.0.0.1)
+    Ed-->>Br: HTTP response
+    Br-->>Cli: response (stdio)
 
     Note over Br,Ed: bridge keeps editor alive between calls
 
@@ -227,17 +227,24 @@ sequenceDiagram
     end
 ```
 
+The AI client ↔ Bridge link is MCP over stdio; the Bridge ↔ UE Editor link is **loopback HTTP**.
+
 The bridge owns the editor process lifecycle so clients don't need to. AI clients **must not** call `taskkill` / `Stop-Process` — that takes down editors of other projects too. Use `UAIP.Workspace.RestartEditor` instead. See [Troubleshooting → MCP appears stuck](troubleshooting.md#mcp-appears-stuck--should-i-kill-the-editor).
 
 ---
 
 ## 9. Extension points
 
-UAIP exposes a small number of extension hooks so projects can add their own commands without forking:
+UAIP exposes extension hooks so projects can publish their own commands to AI agents without forking the plugin. The main building blocks for adding custom commands are:
 
-- **`ICommandProvider`** — implement and register at module startup to add a new command group with its own handlers
+- **`ICommandProvider`** — the provider (command group) interface. Register a provider with `CommandRegistry` at module startup to expose commands under your own namespace. Provider implementations also declare each command's name, required capabilities, `IsReadOnly` flag, and other metadata.
+- **`ICommandHandler`** — the per-command implementation. Your business logic goes in `Execute(Params)` and returns a `CommandResponse`. Handlers are dispatched through the provider you registered.
+
+With these two, custom commands appear to AI clients exactly like built-in ones: same `uaip_execute` invocation, same schema discovery, same capability check, same artifact contract. Whenever you want to make a project-specific asset or in-house tool accessible to AI, implementing these two interfaces is the standard starting point.
+
+Other hooks:
+
 - **`ICaptureProvider`** — bridge an external graph-image source (e.g., GraphPrinter) so `CaptureCanonicalGraphImage` can use it
-- **`IToolsetCommandHandler`** — adapt a Toolset framework command to UAIP's request/response shape (Pro, UE 5.8+)
 - **Python `@uaip_command`** — register a Python function as a UAIP command (requires `PythonScriptPlugin` + `PythonExtensionReload` capability)
 
 Project-specific extensions go in **separate plugins or modules**, not in the UAIP source tree. This keeps `git pull` clean when UAIP is updated.

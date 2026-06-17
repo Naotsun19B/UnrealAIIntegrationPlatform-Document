@@ -26,14 +26,14 @@
 
 ## 1. Transport エンドポイント
 
-4 つの transport はエディタ内の同じディスパッチャに終端します。Capability・Policy・ErrorCode のセマンティクスは transport に関わらず同一です。
+どのトランスポートを使ってもリクエストは最終的に同じ `CommandDispatcher` にたどり着くため、Capability・Policy・ErrorCode のセマンティクスは transport に関係なく同一です。
 
-| Transport | Listen / ワイヤ形式 | エディタポート | パッケージポート | 認証 |
-|---|---|---|---|---|
-| HTTP（製品版） | localhost 限定 REST + JSON | 8765 | 8767 | `Authorization: Bearer <token>` |
-| WebSocket（製品版） | localhost 限定 JSON フレーム | 8766 | 8768 | 最初のフレームの `Token` フィールド |
-| CLI（製品版） | stdin/stdout + CLI フラグ | — | — | なし（プロセス内） |
-| MCP | AI クライアントの stdio 子プロセス | — | — | なし（子プロセス） |
+| Transport | 形式 | エディタポート | パッケージポート | bind 層 | 認証 |
+|---|---|---|---|---|---|
+| HTTP（製品版） | REST + JSON | 8765 | 8767 | `0.0.0.0`（FullHTTP モードはリモート到達可、MCPOnly モードはアプリ層で localhost 強制） | `Authorization: Bearer <token>` |
+| WebSocket（製品版） | JSON フレーム | 8766 | 8768 | `127.0.0.1` 固定 | 最初のフレームの `Token` フィールド |
+| CLI（製品版） | stdin/stdout + CLI フラグ | — | — | — | なし（プロセス内） |
+| MCP | AI クライアントの stdio 子プロセス | — | — | — | なし（子プロセス） |
 
 トークンファイル（エディタ起動時に自動生成）：
 
@@ -42,7 +42,7 @@
 <プロジェクト>/Saved/UAIP/EditorWsAuthToken.txt
 ```
 
-ループバック強制は固定 — `0.0.0.0` バインドのフラグは存在しません。
+bind 層と認証層の関係の詳細は [セキュリティ → ネットワーク面](security.md#ネットワーク面) を参照してください。
 
 ---
 

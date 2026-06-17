@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 730+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 540+ **UAIP commands** (provided directly by the plugin itself) and 190+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 730+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -18,15 +18,20 @@ UAIP exposes 730+ commands organized by domain. Each command name is fully-quali
 | (no mark) | Pro-only command |
 | 🧩 | Requires an optional UE plugin (the command is not registered if the plugin is disabled) |
 
-## Toolset bridges (UE 5.8+)
+## UAIP commands vs Toolset bridge commands
 
-In addition to UAIP-native commands, the Pro version exposes **Toolset bridge** commands (under the `Toolset.*` prefix) that delegate to the official UE 5.8 Toolset framework. They mirror UAIP-native commands and provide an alternative API path. This page summarizes them per domain rather than enumerating each one — use `uaip_list_commands(ProviderPrefix="Toolset")` to enumerate them at runtime.
+UAIP exposes two categories of commands:
+
+- **UAIP commands** (`UAIP.*` prefix) — first-party commands provided by the plugin itself. They work regardless of UE version or Toolset plugin availability.
+- **Toolset bridge commands** (`Toolset.*` prefix; UE 5.8+ with the relevant Toolset plugin installed) — a delegation layer over the official UE 5.8 Toolset framework. Most mirror an existing UAIP command, while a few surface functionality only available through Toolset.
+
+The domain summary below lists counts only. To enumerate the actual Toolset bridge command names at runtime, use `uaip_list_commands(ProviderPrefix="Toolset")`.
 
 ---
 
 ## Domain summary
 
-| Domain | Provider prefix | Native | Toolset bridge | Demo |
+| Domain | Provider prefix | UAIP commands | Toolset bridge | Demo |
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 6 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | partial (13/18) |

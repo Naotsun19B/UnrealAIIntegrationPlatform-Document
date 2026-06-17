@@ -26,14 +26,14 @@ For human-oriented browsing of what commands exist, use [Commands Reference](com
 
 ## 1. Transport endpoints
 
-All four transports terminate at the same dispatcher inside the editor. Capability, policy, and ErrorCode semantics are identical across transports.
+Every transport eventually lands on the same `CommandDispatcher`, so capability, policy, and ErrorCode semantics are identical no matter which transport you use.
 
-| Transport | Listen / wire format | Editor port | Packaged port | Auth |
-|---|---|---|---|---|
-| HTTP (Pro) | localhost-only REST + JSON | 8765 | 8767 | `Authorization: Bearer <token>` |
-| WebSocket (Pro) | localhost-only JSON frames | 8766 | 8768 | First frame `Token` field |
-| CLI (Pro) | stdin/stdout + CLI flags | n/a | n/a | none (in-process) |
-| MCP | stdio child of AI client | n/a | n/a | none (child process) |
+| Transport | Format | Editor port | Packaged port | Bind layer | Auth |
+|---|---|---|---|---|---|
+| HTTP (Pro) | REST + JSON | 8765 | 8767 | `0.0.0.0` — FullHTTP is reachable from another machine; MCPOnly mode enforces localhost at the app layer | `Authorization: Bearer <token>` |
+| WebSocket (Pro) | JSON frames | 8766 | 8768 | `127.0.0.1` (hard-coded) | First frame `Token` field |
+| CLI (Pro) | stdin/stdout + CLI flags | n/a | n/a | — | none (in-process) |
+| MCP | stdio child of AI client | n/a | n/a | — | none (child process) |
 
 Token files (auto-generated at editor startup):
 
@@ -42,7 +42,7 @@ Token files (auto-generated at editor startup):
 <YourProject>/Saved/UAIP/EditorWsAuthToken.txt
 ```
 
-Loopback enforcement is hardcoded — there is no flag to bind on `0.0.0.0`.
+See [Security → Network surface](security.md#network-surface) for the detailed bind / auth layering.
 
 ---
 

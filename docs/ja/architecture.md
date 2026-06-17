@@ -210,14 +210,14 @@ sequenceDiagram
     participant Br as MCP Bridge
     participant Ed as UE Editor
 
-    Cli->>Br: 最初の uaip_execute(...)
+    Cli->>Br: 最初の uaip_execute(...)（stdio）
     alt エディタ未起動
-        Br->>Ed: 起動（-uaip-stdin-stream 付き）
-        Br->>Br: __UAIP_STREAM_READY__ を待機
+        Br->>Ed: エディタを子プロセスとして起動
+        Br->>Br: ローカルホスト HTTP の準備完了を待機
     end
-    Br->>Ed: stdio 経由でリクエスト転送
-    Ed-->>Br: レスポンス
-    Br-->>Cli: レスポンス
+    Br->>Ed: HTTP /mcp（127.0.0.1）でリクエスト転送
+    Ed-->>Br: HTTP レスポンス
+    Br-->>Cli: stdio でレスポンス返却
 
     Note over Br,Ed: Bridge は呼び出し間でエディタを生存維持
 
@@ -227,17 +227,24 @@ sequenceDiagram
     end
 ```
 
+AI クライアントと Bridge の間は MCP の stdio、Bridge と UE Editor の間は **ローカルホスト HTTP** で通信します。
+
 エディタプロセスのライフサイクルは Bridge 側が管理するため、クライアント側で気にする必要はありません。AI クライアントは **`taskkill` や `Stop-Process` を使ってはいけません** — 他プロジェクトのエディタまで巻き添えで落ちてしまいます。代わりに `UAIP.Workspace.RestartEditor` を使ってください。詳細は [トラブルシューティング → MCP が固まっている](troubleshooting.md#mcp-が固まったように見える--エディタを-kill-するべき) を参照してください。
 
 ---
 
 ## 9. 拡張ポイント
 
-UAIP は、本体をフォークしなくてもプロジェクト独自のコマンドを追加できるよう、いくつかの拡張フックを公開しています：
+UAIP は、本体をフォークしなくてもプロジェクト独自のコマンドを追加できるよう、いくつかの拡張フックを公開しています。なかでもカスタムコマンドの追加は次の 2 つの組み合わせが基本です：
 
-- **`ICommandProvider`** — モジュール起動時に実装して登録すると、独自ハンドラつきの新しいコマンドグループを追加できます
+- **`ICommandProvider`** — プロバイダ（コマンドグループ）の単位。モジュール起動時にプロバイダを `CommandRegistry` に登録すると、自分の名前空間配下にコマンドを公開できます。提供する名前・必要 Capability・IsReadOnly などのメタ情報もここで宣言します。
+- **`ICommandHandler`** — 個々のコマンドの実装単位。`Execute(Params)` 内でビジネスロジックを書き、結果を `CommandResponse` として返します。ハンドラは登録したプロバイダ経由でディスパッチャから呼ばれます。
+
+この組み合わせを使えば、AI 側の呼び出し方法（`uaip_execute`・スキーマ取得・Capability 判定・Artifact 返却など）は標準コマンドとまったく同じ形式で公開できます。プロジェクト独自のアセットや社内ツールを AI から扱えるようにする際は、まずこの 2 つを実装するところから始めるのが定番です。
+
+その他の拡張フック：
+
 - **`ICaptureProvider`** — 外部のグラフ画像ソース（GraphPrinter など）を橋渡しし、`CaptureCanonicalGraphImage` から利用できるようにします
-- **`IToolsetCommandHandler`** — Toolset フレームワークのコマンドを UAIP のリクエスト / レスポンス形式に適応させます（製品版・UE 5.8 以降）
 - **Python `@uaip_command`** — Python の関数を UAIP のコマンドとして登録できます（`PythonScriptPlugin` と `PythonExtensionReload` Capability が必要）
 
 プロジェクト固有の拡張は、UAIP のソースツリーに入れず、**別プラグインまたは別モジュール** として作成してください。UAIP をアップデートしたときに `git pull` がきれいに通るようにするためです。
