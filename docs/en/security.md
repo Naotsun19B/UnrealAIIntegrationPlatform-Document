@@ -12,12 +12,11 @@ UAIP is designed for **developer machines and trusted internal CI**, not as a pu
 
 | Threat | Mitigation |
 |---|---|
-| Network attacker scanning ports | Localhost-only bind (no external interface listens) |
+| Network attacker scanning ports | WebSocket binds to loopback; HTTP MCPOnly enforces localhost at the app layer (HTTP FullHTTP intentionally allows remote agents via token + firewall) |
 | Local non-UAIP process invoking commands | Bearer token authentication on HTTP / WebSocket |
 | AI hallucinating a destructive command | Capability gates (deny-by-default for edits) + per-command `IsReadOnly` flag |
 | AI getting tricked into making a wide-scope change | SafetyPolicy can put the editor in process-wide read-only mode |
 | File-path injection via response payload | Artifacts returned by ID; raw paths never leave the server |
-| Plugin file replacement to remove watermark | Watermark compiled into DLL; fail-closed on composition error |
 
 The threats it does **not** mitigate:
 
@@ -29,14 +28,16 @@ The threats it does **not** mitigate:
 
 ## Network surface
 
-| Component | Bind | Default port | Auth |
-|---|---|---|---|
-| HTTP transport (Pro) | `127.0.0.1` and `::1` | 8765 (editor) / 8767 (packaged) | Bearer token |
-| WebSocket transport (Pro) | `127.0.0.1` and `::1` | 8766 (editor) / 8768 (packaged) | Bearer token (in first frame) |
-| MCP Bridge | stdio between AI client and bridge process | n/a | none — relies on host trust |
-| CLI transport (Pro) | none (in-process) | n/a | none |
+| Component | Bind layer | App-layer filter | Auth | Reachable from another machine |
+|---|---|---|---|---|
+| HTTP transport — FullHTTP (`-uaip-http-enable`) | `0.0.0.0` | none | Bearer token | **Yes** (with token + firewall allowance — by design) |
+| HTTP transport — MCPOnly (`-uaip-mcp-enable`) | `0.0.0.0` | 5-stage localhost enforcement (PeerAddress / Host / Origin) | none (localhost-only by design) | No |
+| HTTP transport — `-uaip-http-no-auth` | `0.0.0.0` | none | none | Yes (development-only — never enable in production) |
+| WebSocket transport (`-uaip-ws-enable`) | `127.0.0.1` (hard-coded) | ClientIP double-check | Bearer token (first frame) | No |
+| MCP Bridge | stdio between AI client and bridge process | — | none — relies on host trust | — |
+| CLI transport | none (in-process) | — | none | — |
 
-**All UAIP transports refuse non-loopback connections.** There is no `-uaip-http-bind=0.0.0.0` flag. To expose UAIP across machines, run it behind a reverse proxy / VPN you control.
+Only WebSocket is bound to `127.0.0.1` at the socket layer. HTTP FullHTTP intentionally listens on `0.0.0.0` because it's designed to be reached by remote agents — access is gated by the Bearer token and your firewall. If you expose HTTP across machines, secure the token storage and lock down firewall rules at the operator level.
 
 ---
 
@@ -62,7 +63,7 @@ UnrealEditor.exe MyProject.uproject -uaip-http-enable -uaip-http-no-auth
 UnrealEditor.exe MyProject.uproject -uaip-ws-enable -uaip-ws-no-auth
 ```
 
-Use **only** on isolated dev machines or CI runners with no untrusted processes. The bind is still loopback-only, so `-no-auth` doesn't make UAIP reachable from the network — but it does mean any local process can issue commands.
+Use **only** on isolated dev machines or CI runners with no untrusted processes. HTTP's `-uaip-http-no-auth` keeps the socket on `0.0.0.0`, so the editor stays reachable from other machines if the firewall is open. WebSocket's `-uaip-ws-no-auth` keeps the socket on loopback, but any local process can still issue commands.
 
 ### MCP Bridge
 
@@ -217,9 +218,9 @@ There is no separate command-audit log file in v1.0. If you need one, file a fea
 
 ## Reporting vulnerabilities
 
-For security issues, please **do not** open a public GitHub issue. Email `1999naotsun0411@gmail.com` with:
+For security issues, please **do not** open a public GitHub issue. Email `naotsunworks@gmail.com` with:
 - UE version + UAIP version (`UAIP.Core.GetSystemInfo`)
 - A description of the vulnerability and steps to reproduce
 - Whether the issue is exploitable from a non-loopback origin (highest priority) or requires local code execution (lower priority but still tracked)
 
-We'll acknowledge within a few business days and coordinate disclosure.
+This repository is maintained by a single developer, so response times can't be guaranteed. We'll acknowledge and coordinate disclosure as quickly as available time allows.

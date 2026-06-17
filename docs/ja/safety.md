@@ -57,7 +57,7 @@ flowchart LR
 
 各コマンドは必要な Capability を宣言しています。セッションが必要な Capability をすべて持っているときのみコマンドを実行できます。Capability には **DefaultAllow**（自動付与）と **DefaultDenied**（`Config/DefaultUAIP.ini` で明示的に有効化が必要）の 2 種類があります。
 
-**†** 付きの Capability はオプションプラグインへの依存があります。該当プラグインが `.uproject` で有効になっていない環境では Capability が登録されず、必要とするコマンドは `CommandNotFound` を返します。
+🧩 付きの Capability はオプションプラグインへの依存があります。該当プラグインが `.uproject` で有効になっていない環境では Capability が登録されず、必要とするコマンドは `CommandNotFound` を返します。
 
 ---
 
@@ -82,8 +82,8 @@ flowchart LR
 | `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot` |
 | `RuntimeCapture` | ランタイムキャプチャ — `CaptureViewportImage`、`CheckpointCapture` |
 | `RuntimeExecution` | PIE または Standalone での機能テスト・Automation Test の実行 |
-| `RuntimeGASInspect` **†** | PIE 中の GAS 状態読み取り — `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`（`GameplayAbilities` プラグイン必須） |
-| `RuntimeNiagaraInspect` **†** | PIE 中の Niagara コンポーネント状態読み取り — `GetUserVariables`、`GetVariable`（`Niagara` プラグイン必須） |
+| `RuntimeGASInspect` 🧩 | PIE 中の GAS 状態読み取り — `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`（`GameplayAbilities` プラグイン必須） |
+| `RuntimeNiagaraInspect` 🧩 | PIE 中の Niagara コンポーネント状態読み取り — `GetUserVariables`、`GetVariable`（`Niagara` プラグイン必須） |
 
 ---
 
@@ -211,8 +211,8 @@ flowchart LR
 |---|---|
 | `GameplayTagEdit` | プロジェクトタグテーブルへのタグ追加・削除・リネーム |
 | `GameplayTagRestrictedEdit` | Restricted タグリストの修正 |
-| `GameFeatureCreate` **†** | GameFeature Plugin 定義の作成・スキャフォールディング（`GameFeatures` + `GameFeaturesEditor` プラグイン必須） |
-| `GameplayCueMutation` **†** | GameplayCue タグの追加・削除、GameplayCueNotify アセットの作成、アクターへの Cue 実行（`GameplayAbilities` プラグイン必須） |
+| `GameFeatureCreate` 🧩 | GameFeature Plugin 定義の作成・スキャフォールディング（`GameFeatures` + `GameFeaturesEditor` プラグイン必須） |
+| `GameplayCueMutation` 🧩 | GameplayCue タグの追加・削除、GameplayCueNotify アセットの作成、アクターへの Cue 実行（`GameplayAbilities` プラグイン必須） |
 | `EnhancedInputEdit` | Input Action / Input Mapping Context アセットの編集 — マッピング・Modifier・Trigger の追加・削除・変更 |
 
 #### エディタ操作
@@ -226,9 +226,9 @@ flowchart LR
 
 | Capability | 有効になる操作 |
 |---|---|
-| `ScriptExecution` **†** | エディタでの Python スクリプト実行（`RunEditorPythonScript`；`PythonScriptPlugin` 必須） |
-| `PythonCommandExecution` **†** | `@uaip_command` で動的登録された Python コマンドの実行（`PythonScriptPlugin` 必須） |
-| `PythonExtensionReload` **†** | 登録済み Python コマンドの再スキャン・リロード（`ReloadPythonCommands`；`PythonScriptPlugin` 必須） |
+| `ScriptExecution` 🧩 | エディタでの Python スクリプト実行（`RunEditorPythonScript`；`PythonScriptPlugin` 必須） |
+| `PythonCommandExecution` 🧩 | `@uaip_command` で動的登録された Python コマンドの実行（`PythonScriptPlugin` 必須） |
+| `PythonExtensionReload` 🧩 | 登録済み Python コマンドの再スキャン・リロード（`ReloadPythonCommands`；`PythonScriptPlugin` 必須） |
 
 #### Runtime — 制限付き操作
 
@@ -237,7 +237,7 @@ flowchart LR
 | `RuntimeActorManipulation` | PIE 中のアクタースポーン・破棄・テレポート・Possess |
 | `RuntimeExecCommand` | `UWorld` 経由のランタイムコンソールコマンド実行 |
 | `RuntimeInputInjection` | PIE へのキーボード / Enhanced Input / レガシー入力イベントの注入（`InjectInputKey`、`InjectEnhancedInputAction`、`AddMappingContext`、`SetInputMode`、`FlushInput` など） |
-| `RuntimeNiagaraMutation` **†** | Runtime での Niagara ユーザー変数設定・Niagara システム差し替え（`SetVariable`、`SetSystem`；`Niagara` プラグイン必須） |
+| `RuntimeNiagaraMutation` 🧩 | Runtime での Niagara ユーザー変数設定・Niagara システム差し替え（`SetVariable`、`SetSystem`；`Niagara` プラグイン必須） |
 | `GauntletExecution` | Gauntlet 自動テストセッションの起動 |
 
 #### オプショングラフエディタ
@@ -246,15 +246,15 @@ flowchart LR
 
 | Capability | 必要プラグイン | 有効になる操作 |
 |---|---|---|
-| `MetaSoundGraphEdit` **†** | `Metasound` | MetaSound グラフへのノード追加・削除・接続 |
-| `DataflowGraphEdit` **†** | `Dataflow` | Dataflow グラフへのノード追加・削除・接続 |
-| `PCGGraphEdit` **†** | `PCG` | PCG グラフへのノード追加・削除・接続、PCG グラフの実行 |
-| `PCGCustomNodeEdit` **†** | `PCG` | PCG グラフへのカスタム HLSL ノード追加（予約済み — 未利用） |
-| `PCGBlueprintNodeEdit` **†** | `PCG` | PCG グラフへの Blueprint ノード追加（予約済み — 未利用） |
-| `ConversationGraphEdit` **†** | `CommonConversation` | `UConversationDatabase` アセットの構造的編集 |
-| `EQSAssetEdit` **†** | `EnvironmentQueryEditor` | EQS クエリへの Generator・Test の追加・削除・プロパティ設定 |
-| `WorldConditionStructureEdit` **†** | `WorldConditions` | WorldCondition アセットへの条件追加・削除 |
-| `WorldConditionNodeEdit` **†** | `WorldConditions` | WorldCondition の Operator・式の深さ・プロパティの編集 |
+| `MetaSoundGraphEdit` 🧩 | `Metasound` | MetaSound グラフへのノード追加・削除・接続 |
+| `DataflowGraphEdit` 🧩 | `Dataflow` | Dataflow グラフへのノード追加・削除・接続 |
+| `PCGGraphEdit` 🧩 | `PCG` | PCG グラフへのノード追加・削除・接続、PCG グラフの実行 |
+| `PCGCustomNodeEdit` 🧩 | `PCG` | PCG グラフへのカスタム HLSL ノード追加（予約済み — 未利用） |
+| `PCGBlueprintNodeEdit` 🧩 | `PCG` | PCG グラフへの Blueprint ノード追加（予約済み — 未利用） |
+| `ConversationGraphEdit` 🧩 | `CommonConversation` | `UConversationDatabase` アセットの構造的編集 |
+| `EQSAssetEdit` 🧩 | `EnvironmentQueryEditor` | EQS クエリへの Generator・Test の追加・削除・プロパティ設定 |
+| `WorldConditionStructureEdit` 🧩 | `WorldConditions` | WorldCondition アセットへの条件追加・削除 |
+| `WorldConditionNodeEdit` 🧩 | `WorldConditions` | WorldCondition の Operator・式の深さ・プロパティの編集 |
 
 #### Niagara 編集
 
@@ -262,11 +262,11 @@ flowchart LR
 
 | Capability | 有効になる操作 |
 |---|---|
-| `NiagaraAssetCreate` **†** | Niagara System および Parameter Collection アセットの作成 |
-| `NiagaraBlueprintCreate` **†** | Niagara System・Component から Blueprint ラッパークラスを生成 |
-| `NiagaraEmitterEdit` **†** | Niagara System へのエミッター追加・削除・設定 |
-| `NiagaraStackEdit` **†** | Niagara エミッターへのモジュール追加・削除・スタック入力パラメータの設定 |
-| `NiagaraStackAutoFix` **†** | Niagara スタック診断 Issue の自動修正 |
+| `NiagaraAssetCreate` 🧩 | Niagara System および Parameter Collection アセットの作成 |
+| `NiagaraBlueprintCreate` 🧩 | Niagara System・Component から Blueprint ラッパークラスを生成 |
+| `NiagaraEmitterEdit` 🧩 | Niagara System へのエミッター追加・削除・設定 |
+| `NiagaraStackEdit` 🧩 | Niagara エミッターへのモジュール追加・削除・スタック入力パラメータの設定 |
+| `NiagaraStackAutoFix` 🧩 | Niagara スタック診断 Issue の自動修正 |
 
 ---
 
@@ -345,4 +345,4 @@ DisablePIEStart=False
 | `PolicyViolation: ... denied by SafetyPolicy` | SafetyPolicy の ini フラグで拒否されている | `[UAIP.SafetyPolicy]` の対応するフラグを `True` にして再起動 |
 | `PolicyViolation: Scenario execution is not enabled` | シナリオルートのオプトイン不足 | `config.json` に `"enable_scenario": true` を追加 |
 | `PolicyViolation: Command is denied` | コマンドが `DeniedCommands` に入っている | ini から該当エントリを削除して再起動 |
-| **†** コマンドで `CommandNotFound` | オプションプラグインが無効 | `.uproject` で必要なプラグインを有効化してリビルド |
+| 🧩 コマンドで `CommandNotFound` | オプションプラグインが無効 | `.uproject` で必要なプラグインを有効化してリビルド |

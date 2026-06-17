@@ -16,7 +16,7 @@ UAIP exposes 730+ commands organized by domain. Each command name is fully-quali
 |---|---|
 | 🆓 | Available in the demo binary (also in Pro) |
 | (no mark) | Pro-only command |
-| **†** | Requires an optional UE plugin (the command is not registered if the plugin is disabled) |
+| 🧩 | Requires an optional UE plugin (the command is not registered if the plugin is disabled) |
 
 ## Toolset bridges (UE 5.8+)
 
@@ -40,34 +40,34 @@ In addition to UAIP-native commands, the Pro version exposes **Toolset bridge** 
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 9 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | — | — |
-| Editor GameFeatures **†** | `UAIP.Editor.GameFeatures` | 3 | — | — |
-| Editor Niagara **†** | `UAIP.Editor.Niagara` | 30 | 45 | — |
+| Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 3 | — | — |
+| Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 30 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
-| Editor Dataflow **†** | `UAIP.Editor.Dataflow` | 7 | — | — |
+| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 7 | — | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 7 | — | — |
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 12 | — | — |
-| Editor MetaSound **†** | `UAIP.Editor.MetaSound` | 9 | — | — |
-| Editor EQS **†** | `UAIP.Editor.EQS` | 7 | — | — |
+| Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 9 | — | — |
+| Editor EQS 🧩 | `UAIP.Editor.EQS` | 7 | — | — |
 | Editor Sequencer | `UAIP.Editor.Sequencer` | 92 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 9 | — | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG **†** | `UAIP.Editor.PCG` | 13 | — | — |
-| Editor WorldConditions **†** | `UAIP.Editor.WorldConditions` | 6 | — | — |
-| Editor Conversation **†** | `UAIP.Editor.Conversation` | 12 | — | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 13 | — | — |
+| Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 6 | — | — |
+| Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 12 | — | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 44 | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
-| Editor GAS **†** | `UAIP.Editor.GAS` | 11 | 11 | — |
-| Editor Python Extension **†** | `UAIP.Editor.PythonExtension` | 2 | — | — |
+| Editor GAS 🧩 | `UAIP.Editor.GAS` | 11 | 11 | — |
+| Editor Python Extension 🧩 | `UAIP.Editor.PythonExtension` | 2 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 10 | — | partial (5/10) |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
 | Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
-| Runtime GAS **†** | `UAIP.Runtime.GAS` | 6 | — | — |
-| Runtime Niagara **†** | `UAIP.Runtime.Niagara` | 4 | 4 | — |
+| Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 6 | — | — |
+| Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
 
 ---
 
@@ -122,7 +122,7 @@ Capture screenshots and dump editor state — all read-only.
 | 🆓 `CaptureActiveWindowImage` | Screenshot of the active top-level editor window (PNG artifact) |
 | 🆓 `CaptureEditorTabImage` | Screenshot of a specified editor tab's widget area |
 | 🆓 `CaptureGraphViewportImage` | Screenshot of an SGraphEditor viewport |
-| `CaptureCanonicalGraphImage` **†** | Full canonical graph image via a registered external capture provider |
+| `CaptureCanonicalGraphImage` 🧩 | Full canonical graph image via a registered external capture provider |
 | 🆓 `DumpEditorState` | Active tab, open assets, window dimensions, etc. (JSON) |
 | 🆓 `DumpSelectionState` | Current editor selection — actors, objects, graph nodes (JSON) |
 | 🆓 `DumpOpenTabs` | List of open asset editor tabs (JSON) |
@@ -143,7 +143,7 @@ Run tests, Python scripts, and Editor Utility Blueprints.
 |---|---|
 | `RunAutomationTest` | Run a UE Automation Test by name and return Pass/Fail/Error report |
 | `RunAutomationSpec` | Run a UE Automation Spec by name and return Pass/Fail/Error report |
-| `RunEditorPythonScript` **†** | Run an inline Python script or a `.py` file (requires `PythonScriptPlugin`) |
+| `RunEditorPythonScript` 🧩 | Run an inline Python script or a `.py` file (requires `PythonScriptPlugin`) |
 | `RunEditorUtilityBlueprint` | Run a specified Editor Utility Blueprint |
 | `RunNamedEditorCommand` | Run a named editor console command via `GUnrealEd->Exec` |
 
@@ -293,7 +293,7 @@ Widget Blueprint editing — tree, variables, animation, bindings.
 | `RemovePropertyBinding` | Remove a property binding |
 | `ExtractWidgetToUserWidget` | Extract a widget subtree into a new UserWidget |
 
-### Toolset bridges (13) **†**
+### Toolset bridges (13) 🧩
 
 Mirror of native commands via the `UMGToolSet` plugin. Provider: `Toolset.Editor.UMG.*`. Requires UE 5.8+ and the `UMGToolSet` plugin.
 
@@ -333,19 +333,19 @@ Manage project tag tables.
 
 ---
 
-## UAIP.Editor.GameFeatures **†**
+## UAIP.Editor.GameFeatures 🧩
 
 GameFeature Plugin management. Requires `GameFeatures` + `GameFeaturesEditor` plugins.
 
 | Command | Description |
 |---|---|
-| `ListGameFeatures` **†** | List GameFeature Plugins with state filter (All / Installed / Mounted / Registered / Loaded / Active) |
-| `GetGameFeatureInfo` **†** | GFP details (State, Actions, dependencies) |
-| `CreateGameFeaturePlugin` **†** | Scaffold a new GameFeature Plugin (with name validation) |
+| `ListGameFeatures` 🧩 | List GameFeature Plugins with state filter (All / Installed / Mounted / Registered / Loaded / Active) |
+| `GetGameFeatureInfo` 🧩 | GFP details (State, Actions, dependencies) |
+| `CreateGameFeaturePlugin` 🧩 | Scaffold a new GameFeature Plugin (with name validation) |
 
 ---
 
-## UAIP.Editor.Niagara **†**
+## UAIP.Editor.Niagara 🧩
 
 Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins.
 
@@ -355,43 +355,43 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins.
 
 | Command | Description |
 |---|---|
-| `GetSystemTopology` **†** | Niagara system emitter structure |
-| `GetSystemCompileState` **†** | System compilation state |
-| `GetAssetDiscoveryInfo` **†** | Niagara asset discovery info |
-| `GetScriptAssets` **†** | Niagara script asset list |
-| `GetNiagaraParameterCollections` **†** | Niagara parameter collection list |
-| `GetUserVariables` **†** | User variable list of a system |
-| `GetSystemInfo` **†** | System detail info (with metadata) |
-| `GetSystemData` **†** | System data structure |
-| `GetEmitterData` **†** | Emitter data structure |
-| `GetRendererData` **†** | Renderer data structure |
-| `GetStackInputData` **†** | Module stack input value |
-| `UEnum_Info` **†** | UEnum information |
+| `GetSystemTopology` 🧩 | Niagara system emitter structure |
+| `GetSystemCompileState` 🧩 | System compilation state |
+| `GetAssetDiscoveryInfo` 🧩 | Niagara asset discovery info |
+| `GetScriptAssets` 🧩 | Niagara script asset list |
+| `GetNiagaraParameterCollections` 🧩 | Niagara parameter collection list |
+| `GetUserVariables` 🧩 | User variable list of a system |
+| `GetSystemInfo` 🧩 | System detail info (with metadata) |
+| `GetSystemData` 🧩 | System data structure |
+| `GetEmitterData` 🧩 | Emitter data structure |
+| `GetRendererData` 🧩 | Renderer data structure |
+| `GetStackInputData` 🧩 | Module stack input value |
+| `UEnum_Info` 🧩 | UEnum information |
 
 #### Editing (18)
 
 | Command | Description |
 |---|---|
-| `AddEmitter` **†** | Add an emitter to a Niagara system |
-| `RemoveEmitter` **†** | Remove an emitter |
-| `DuplicateEmitter` **†** | Duplicate an emitter |
-| `SetEmitterEnabled` **†** | Toggle emitter enabled state |
-| `SetEmitterName` **†** | Change emitter name |
-| `SetEmitterData` **†** | Set emitter data |
-| `AddRenderer` **†** | Add a renderer to an emitter |
-| `RemoveRenderer` **†** | Remove a renderer |
-| `SetRendererData` **†** | Set renderer data |
-| `AddModule` **†** | Add a module to an emitter module stack |
-| `RemoveModule` **†** | Remove a module |
-| `MoveModule` **†** | Move a module within the stack |
-| `SetModuleEnabled` **†** | Toggle module enabled state |
-| `SetStackInputData` **†** | Set a module stack input value |
-| `SetSystemData` **†** | Set system data |
-| `AddUserVariables` **†** | Add user variables to a system |
-| `RemoveUserVariables` **†** | Remove user variables |
-| `CompileNiagaraSystem` **†** | Compile the Niagara system |
+| `AddEmitter` 🧩 | Add an emitter to a Niagara system |
+| `RemoveEmitter` 🧩 | Remove an emitter |
+| `DuplicateEmitter` 🧩 | Duplicate an emitter |
+| `SetEmitterEnabled` 🧩 | Toggle emitter enabled state |
+| `SetEmitterName` 🧩 | Change emitter name |
+| `SetEmitterData` 🧩 | Set emitter data |
+| `AddRenderer` 🧩 | Add a renderer to an emitter |
+| `RemoveRenderer` 🧩 | Remove a renderer |
+| `SetRendererData` 🧩 | Set renderer data |
+| `AddModule` 🧩 | Add a module to an emitter module stack |
+| `RemoveModule` 🧩 | Remove a module |
+| `MoveModule` 🧩 | Move a module within the stack |
+| `SetModuleEnabled` 🧩 | Toggle module enabled state |
+| `SetStackInputData` 🧩 | Set a module stack input value |
+| `SetSystemData` 🧩 | Set system data |
+| `AddUserVariables` 🧩 | Add user variables to a system |
+| `RemoveUserVariables` 🧩 | Remove user variables |
+| `CompileNiagaraSystem` 🧩 | Compile the Niagara system |
 
-### Toolset bridges (45) **†**
+### Toolset bridges (45) 🧩
 
 Mirror of native commands via the `NiagaraToolsets` plugin (UE 5.8+ Experimental). Provider: `Toolset.Editor.Niagara.*`. Groups: Info (2), Blueprint (2), System Schema (12), Topology (5), Data (5), Edit-1 (8), Edit-2 (8), Diagnostic (3).
 
@@ -454,25 +454,25 @@ Physics Asset editing — bodies, shapes, constraints.
 | `SetConstraintLimits` | Set a constraint's angular limits |
 | `RemoveConstraint` | Remove a constraint |
 
-### Toolset bridges (17) **†**
+### Toolset bridges (17) 🧩
 
 Mirror of native commands via the `PhysicsToolsets` plugin (UE 5.8+ Experimental). Provider: `Toolset.Editor.Physics.*`.
 
 ---
 
-## UAIP.Editor.Dataflow **†**
+## UAIP.Editor.Dataflow 🧩
 
 Dataflow graph editing. Requires `DataflowEditor` plugin.
 
 | Command | Description |
 |---|---|
-| `GetDataflowGraphInfo` **†** | Get graph nodes / edges / variables (JSON) |
-| `ListDataflowNodeTypes` **†** | List available Dataflow node types |
-| `AddDataflowNode` **†** | Add a node to a Dataflow graph |
-| `RemoveDataflowNode` **†** | Remove a node from a Dataflow graph |
-| `ConnectDataflowPins` **†** | Connect two pins |
-| `DisconnectDataflowPins` **†** | Disconnect a pin connection |
-| `ListDataflowVariables` **†** | List graph variables |
+| `GetDataflowGraphInfo` 🧩 | Get graph nodes / edges / variables (JSON) |
+| `ListDataflowNodeTypes` 🧩 | List available Dataflow node types |
+| `AddDataflowNode` 🧩 | Add a node to a Dataflow graph |
+| `RemoveDataflowNode` 🧩 | Remove a node from a Dataflow graph |
+| `ConnectDataflowPins` 🧩 | Connect two pins |
+| `DisconnectDataflowPins` 🧩 | Disconnect a pin connection |
+| `ListDataflowVariables` 🧩 | List graph variables |
 
 ---
 
@@ -565,37 +565,37 @@ Behavior Tree graph editing and Blackboard key management.
 
 ---
 
-## UAIP.Editor.MetaSound **†**
+## UAIP.Editor.MetaSound 🧩
 
 MetaSound graph editing. Requires `Metasound` plugin.
 
 | Command | Description |
 |---|---|
-| `GetMetaSoundInfo` **†** | MetaSoundSource / MetaSoundPatch graph topology (nodes, connections, I/O vertices) |
-| `AddMetaSoundNode` **†** | Add a node by `Namespace::Name` (MajorVersion-aware, 5-step policy) |
-| `RemoveMetaSoundNode` **†** | Remove a node by NodeId |
-| `ConnectMetaSoundPins` **†** | Connect two pins (idempotent flag on duplicates) |
-| `DisconnectMetaSoundPins` **†** | Disconnect a pin connection |
-| `AddMetaSoundInput` **†** | Add an input vertex (single-page assets only) |
-| `AddMetaSoundOutput` **†** | Add an output vertex (single-page assets only) |
-| `SetMetaSoundNodeProperty` **†** | Set an input default (Bool / Int / Float / String, NaN / Inf rejected) |
-| `CompileMetaSound` **†** | Register with Frontend (per-session 1 s rate limit) |
+| `GetMetaSoundInfo` 🧩 | MetaSoundSource / MetaSoundPatch graph topology (nodes, connections, I/O vertices) |
+| `AddMetaSoundNode` 🧩 | Add a node by `Namespace::Name` (MajorVersion-aware, 5-step policy) |
+| `RemoveMetaSoundNode` 🧩 | Remove a node by NodeId |
+| `ConnectMetaSoundPins` 🧩 | Connect two pins (idempotent flag on duplicates) |
+| `DisconnectMetaSoundPins` 🧩 | Disconnect a pin connection |
+| `AddMetaSoundInput` 🧩 | Add an input vertex (single-page assets only) |
+| `AddMetaSoundOutput` 🧩 | Add an output vertex (single-page assets only) |
+| `SetMetaSoundNodeProperty` 🧩 | Set an input default (Bool / Int / Float / String, NaN / Inf rejected) |
+| `CompileMetaSound` 🧩 | Register with Frontend (per-session 1 s rate limit) |
 
 ---
 
-## UAIP.Editor.EQS **†**
+## UAIP.Editor.EQS 🧩
 
 EQS query editing. Requires `EnvironmentQueryEditor` plugin.
 
 | Command | Description |
 |---|---|
-| `GetEQSQueryInfo` **†** | EQS Generator Option / Test structure (degraded mode during PIE) |
-| `AddEQSGenerator` **†** | Add a Generator Option (GeneratorClass, 6-step allowlist) |
-| `RemoveEQSGenerator` **†** | Remove a Generator Option by NodeId (cascading Test deletion) |
-| `AddEQSTest` **†** | Add a Test to a Generator Option |
-| `RemoveEQSTest` **†** | Remove a Test by NodeId |
-| `SetEQSGeneratorProperty` **†** | Set a Generator property (generic ImportText_Direct) |
-| `SetEQSTestProperty` **†** | Set a Test property (`param:<Name>` → `UAIDataProvider_QueryParams`) |
+| `GetEQSQueryInfo` 🧩 | EQS Generator Option / Test structure (degraded mode during PIE) |
+| `AddEQSGenerator` 🧩 | Add a Generator Option (GeneratorClass, 6-step allowlist) |
+| `RemoveEQSGenerator` 🧩 | Remove a Generator Option by NodeId (cascading Test deletion) |
+| `AddEQSTest` 🧩 | Add a Test to a Generator Option |
+| `RemoveEQSTest` 🧩 | Remove a Test by NodeId |
+| `SetEQSGeneratorProperty` 🧩 | Set a Generator property (generic ImportText_Direct) |
+| `SetEQSTestProperty` 🧩 | Set a Test property (`param:<Name>` → `UAIDataProvider_QueryParams`) |
 
 ---
 
@@ -753,7 +753,7 @@ LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 | `RemoveMixerTransition` | Remove a transition |
 | `GetMixerSectionInfo` | Get AnimMixer section info |
 
-### Toolset bridges (61) **†**
+### Toolset bridges (61) 🧩
 
 Provider: `Toolset.AnimationAssistant.*` (41 commands — Lifecycle 6, Playback 10, Property 9, MarkedFrame 5, UI 11) and `Toolset.SequencerAnimMixer.*` (20 commands — Layers 10, Transitions 5, Decorations 5). Requires UE 5.8+.
 
@@ -792,61 +792,61 @@ Curve asset key editing (UCurveFloat / UCurveVector / UCurveLinearColor).
 
 ---
 
-## UAIP.Editor.PCG **†**
+## UAIP.Editor.PCG 🧩
 
 PCG graph editing. Requires `PCG` plugin.
 
 | Command | Description |
 |---|---|
-| `GetPCGGraphInfo` **†** | UPCGGraph nodes / edges / parameters (degraded during PIE) |
-| `ListPCGNodeTypes` **†** | UPCGSettings subclasses passing the allowlist |
-| `AddPCGNode` **†** | Add a node by SettingsClassPath (returns NodePath) |
-| `RemovePCGNode` **†** | Remove a node by NodePath (cascades edge removal) |
-| `ConnectPCGPins` **†** | Connect pins by NodePath + PinLabel |
-| `DisconnectPCGPins` **†** | Disconnect pins (specific pair or all from an output pin) |
-| `SetPCGNodeProperty` **†** | Set a UPCGSettings EditAnywhere property (complex types rejected) |
-| `ExecutePCGGraph` **†** | Trigger `UPCGComponent::Generate` |
-| `ListCustomPCGNodeTypes` **†** | List C++ / Blueprint custom PCG node types |
-| `GetCustomPCGNodeSchema` **†** | JSON schema of C++ UPCGSettings subclass EditAnywhere properties |
-| `GetCustomBlueprintPCGNodeSchema` **†** | JSON schema of Blueprint UPCGBlueprintSettings subclass properties |
-| `SetCustomCppPCGNodeProperty` **†** | Set a property on a C++ custom node (`RecompileTriggered` flag) |
-| `SetCustomBlueprintPCGNodeProperty` **†** | Set a property on a BP custom node (Class CDO / per-Instance modes) |
+| `GetPCGGraphInfo` 🧩 | UPCGGraph nodes / edges / parameters (degraded during PIE) |
+| `ListPCGNodeTypes` 🧩 | UPCGSettings subclasses passing the allowlist |
+| `AddPCGNode` 🧩 | Add a node by SettingsClassPath (returns NodePath) |
+| `RemovePCGNode` 🧩 | Remove a node by NodePath (cascades edge removal) |
+| `ConnectPCGPins` 🧩 | Connect pins by NodePath + PinLabel |
+| `DisconnectPCGPins` 🧩 | Disconnect pins (specific pair or all from an output pin) |
+| `SetPCGNodeProperty` 🧩 | Set a UPCGSettings EditAnywhere property (complex types rejected) |
+| `ExecutePCGGraph` 🧩 | Trigger `UPCGComponent::Generate` |
+| `ListCustomPCGNodeTypes` 🧩 | List C++ / Blueprint custom PCG node types |
+| `GetCustomPCGNodeSchema` 🧩 | JSON schema of C++ UPCGSettings subclass EditAnywhere properties |
+| `GetCustomBlueprintPCGNodeSchema` 🧩 | JSON schema of Blueprint UPCGBlueprintSettings subclass properties |
+| `SetCustomCppPCGNodeProperty` 🧩 | Set a property on a C++ custom node (`RecompileTriggered` flag) |
+| `SetCustomBlueprintPCGNodeProperty` 🧩 | Set a property on a BP custom node (Class CDO / per-Instance modes) |
 
 ---
 
-## UAIP.Editor.WorldConditions **†**
+## UAIP.Editor.WorldConditions 🧩
 
 WorldConditions editing. Requires `WorldConditions` plugin.
 
 | Command | Description |
 |---|---|
-| `GetWorldConditionInfo` **†** | Condition set structure (Operator / Depth / properties) |
-| `AddWorldCondition` **†** | Add a condition (`InsertAtIndex=-1` appends) |
-| `RemoveWorldCondition` **†** | Remove a condition by index |
-| `SetWorldConditionProperty` **†** | Set a condition USTRUCT property (ImportText value string) |
-| `SetWorldConditionOperator` **†** | Set Operator (And / Or) and bInvert (Index 0 is fixed Copy) |
-| `SetWorldConditionExpressionDepth` **†** | Set ExpressionDepth (0–4) |
+| `GetWorldConditionInfo` 🧩 | Condition set structure (Operator / Depth / properties) |
+| `AddWorldCondition` 🧩 | Add a condition (`InsertAtIndex=-1` appends) |
+| `RemoveWorldCondition` 🧩 | Remove a condition by index |
+| `SetWorldConditionProperty` 🧩 | Set a condition USTRUCT property (ImportText value string) |
+| `SetWorldConditionOperator` 🧩 | Set Operator (And / Or) and bInvert (Index 0 is fixed Copy) |
+| `SetWorldConditionExpressionDepth` 🧩 | Set ExpressionDepth (0–4) |
 
 ---
 
-## UAIP.Editor.Conversation **†**
+## UAIP.Editor.Conversation 🧩
 
 ConversationDB graph editing. Requires `CommonConversation` plugin.
 
 | Command | Description |
 |---|---|
-| `ListConversationEntryPoints` **†** | List entry points |
-| `ListConversationSpeakers` **†** | List speakers |
-| `ListConversationNodes` **†** | List all nodes with refPath |
-| `GetConversationNodeConnections` **†** | Get connection info for a node |
-| `ListConversationNodeSubNodes` **†** | List SubNodes of a node |
-| `ListConversationNodeTypes` **†** | List allowed node classes by position (max 256) |
-| `AddConversationNode` **†** | Add a top-level node (`UConversationNodeWithLinks` derived) |
-| `AddConversationSubNode` **†** | Attach a SubNode to a parent Task node |
-| `RemoveConversationNode` **†** | Remove a node by NodeGuid |
-| `ConnectConversationNodes` **†** | Add a transition edge between nodes |
-| `DisconnectConversationNodes` **†** | Remove a transition edge |
-| `SetConversationNodeProperty` **†** | Set a property (FText sanitized — BIDI strip, PUA reject, 4096 char limit) |
+| `ListConversationEntryPoints` 🧩 | List entry points |
+| `ListConversationSpeakers` 🧩 | List speakers |
+| `ListConversationNodes` 🧩 | List all nodes with refPath |
+| `GetConversationNodeConnections` 🧩 | Get connection info for a node |
+| `ListConversationNodeSubNodes` 🧩 | List SubNodes of a node |
+| `ListConversationNodeTypes` 🧩 | List allowed node classes by position (max 256) |
+| `AddConversationNode` 🧩 | Add a top-level node (`UConversationNodeWithLinks` derived) |
+| `AddConversationSubNode` 🧩 | Attach a SubNode to a parent Task node |
+| `RemoveConversationNode` 🧩 | Remove a node by NodeGuid |
+| `ConnectConversationNodes` 🧩 | Add a transition edge between nodes |
+| `DisconnectConversationNodes` 🧩 | Remove a transition edge |
+| `SetConversationNodeProperty` 🧩 | Set a property (FText sanitized — BIDI strip, PUA reject, 4096 char limit) |
 
 ---
 
@@ -955,7 +955,7 @@ ControlRig hierarchy and RigVM graph editing.
 | `CompileControlRig` | Compile the ControlRig (per-session 1 s rate limit) |
 | `GetAvailableRigVMUnitStructs` | List FRigUnit-derived UScriptStructs (max 1000) |
 
-### Toolset bridges (44) **†**
+### Toolset bridges (44) 🧩
 
 Mirror of native commands via `AnimationAssistantToolset` (UE 5.8+). Provider: `Toolset.Editor.ControlRig.*`. Groups: asset creation (1), hierarchy observation (8), hierarchy editing (7), graph management (10), nodes (7), pins (6), variables (5).
 
@@ -983,7 +983,7 @@ Enhanced Input asset editing — Input Actions and Input Mapping Contexts.
 
 ---
 
-## UAIP.Editor.GAS **†**
+## UAIP.Editor.GAS 🧩
 
 Editor-time GameplayAbilities asset editing — GameplayCue tags and Cue Notify assets. Requires `GameplayAbilities` plugin (plus `GASToolsets` for the bridge variants).
 
@@ -1000,20 +1000,20 @@ Editor-time GameplayAbilities asset editing — GameplayCue tags and Cue Notify 
 | `CreateCueNotifyAsset` | Create a new GameplayCueNotify asset (Actor / Static / Burst) |
 | `ExecuteCueOnSelectedActor` | Execute a GameplayCue on the currently selected actor (testing convenience) |
 
-### Toolset bridges (11) **†**
+### Toolset bridges (11) 🧩
 
 Mirror of native commands via the `GASToolsets` plugin (UE 5.8+). Provider: `Toolset.Editor.GAS.*`. Also bridges runtime inspection helpers: `GetAttributeValuesToolset`, `GetActiveEffectsToolset`, `GetGrantedAbilitiesToolset`, `GetActiveTagsToolset`, `FindAttributeSetClassesToolset`, `ListAttributesToolset`.
 
 ---
 
-## UAIP.Editor.PythonExtension **†**
+## UAIP.Editor.PythonExtension 🧩
 
 Python command extension. Requires `PythonScriptPlugin`.
 
 | Command | Description |
 |---|---|
-| `ReloadPythonCommands` **†** | Rescan the commands directory and update existing handler descriptors in-place |
-| *(dynamic commands)* **†** | Commands registered via the `@uaip_command` decorator (names depend on user scripts) |
+| `ReloadPythonCommands` 🧩 | Rescan the commands directory and update existing handler descriptors in-place |
+| *(dynamic commands)* 🧩 | Commands registered via the `@uaip_command` decorator (names depend on user scripts) |
 
 ---
 
@@ -1078,18 +1078,18 @@ Scenario primitives — wait and assert.
 
 ---
 
-## UAIP.Runtime.GAS **†**
+## UAIP.Runtime.GAS 🧩
 
 GameplayAbilities state inspection. Requires `GameplayAbilities` plugin. PIE required.
 
 | Command | Description |
 |---|---|
-| `GetAttributeValues` **†** | All AttributeSet attribute values (currentValue / baseValue) for an actor |
-| `GetActiveEffects` **†** | Active gameplay effects (Level, StackCount, remaining time) on an actor |
-| `GetGrantedAbilities` **†** | Granted abilities (Class, IsActive, ActiveCount, InputID) on an actor |
-| `GetActiveTags` **†** | Owned GameplayTags on an actor |
-| `FindAttributeSetClasses` **†** | Scan PIE world actors and list UAttributeSet classes (MaxActors limit) |
-| `ListAttributes` **†** | List all attribute names defined on an AttributeSet class |
+| `GetAttributeValues` 🧩 | All AttributeSet attribute values (currentValue / baseValue) for an actor |
+| `GetActiveEffects` 🧩 | Active gameplay effects (Level, StackCount, remaining time) on an actor |
+| `GetGrantedAbilities` 🧩 | Granted abilities (Class, IsActive, ActiveCount, InputID) on an actor |
+| `GetActiveTags` 🧩 | Owned GameplayTags on an actor |
+| `FindAttributeSetClasses` 🧩 | Scan PIE world actors and list UAttributeSet classes (MaxActors limit) |
+| `ListAttributes` 🧩 | List all attribute names defined on an AttributeSet class |
 
 ---
 
@@ -1113,7 +1113,7 @@ Runtime input injection and Enhanced Input state inspection. PIE required.
 
 ---
 
-## UAIP.Runtime.Niagara **†**
+## UAIP.Runtime.Niagara 🧩
 
 Runtime inspection and parameter override for Niagara components in PIE. Requires `Niagara` plugin.
 
@@ -1121,12 +1121,12 @@ Runtime inspection and parameter override for Niagara components in PIE. Require
 
 | Command | Description |
 |---|---|
-| `GetUserVariables` **†** | Get user-exposed variables on a Niagara System Component |
-| `GetVariable` **†** | Get a specific user variable value |
-| `SetVariable` **†** | Set a user variable value at runtime |
-| `SetSystem` **†** | Replace the Niagara System asset on a component at runtime |
+| `GetUserVariables` 🧩 | Get user-exposed variables on a Niagara System Component |
+| `GetVariable` 🧩 | Get a specific user variable value |
+| `SetVariable` 🧩 | Set a user variable value at runtime |
+| `SetSystem` 🧩 | Replace the Niagara System asset on a component at runtime |
 
-### Toolset bridges (4) **†**
+### Toolset bridges (4) 🧩
 
 Provider: `Toolset.Runtime.Niagara.*`. Requires UE 5.8+ and `NiagaraToolsets`. Mirrors the native commands above.
 

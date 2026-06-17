@@ -26,7 +26,7 @@ Download the latest `UAIP-Demo-UE<version>-Win64.zip` from [Releases](../../../r
 
 ### Pro
 
-Install from [Fab](https://www.fab.com) and place the plugin under the same path.
+The Pro version is **coming soon on Fab**. Once published, install and place the plugin under the same path.
 
 ---
 
@@ -44,9 +44,10 @@ The bridge is a thin Python proxy that connects your AI client to the UE Editor.
 
 ```powershell
 cd <YourProject>/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install
-./install.ps1            # Windows
-# ./install.sh           # macOS / Linux (Pro only — demo is Windows-only)
+./install.ps1
 ```
+
+> **Supported platform**: UAIP v1.0 targets **Windows (Win64) only**. macOS / Linux support is a future consideration.
 
 The installer creates a virtualenv, installs `mcp[cli]`, and writes a `config.json` next to `thin_proxy.py` with your editor path and uproject path auto-detected.
 
@@ -110,4 +111,4 @@ The editor will launch automatically on this first call — give it 30–60 s th
 
 ---
 
-> **Demo vs Pro**: the demo binary supports MCP transport, observation, PIE control, scenario execution, UI automation, and assertions — enough to integrate an AI agent into your review and testing workflow. For editor editing (Blueprint, Level, Assets, …), runtime world editing (Spawn, GAS, Input injection, …), HTTP / WebSocket / CLI transports, and Python script execution, see the [Demo Version Guide](demo.md) and consider [Fab Pro](https://www.fab.com).
+> **Demo vs Pro**: the demo binary supports MCP transport, observation, PIE control, scenario execution, UI automation, and assertions — enough to integrate an AI agent into your review and testing workflow. For editor editing (Blueprint, Level, Assets, …), runtime world editing (Spawn, GAS, Input injection, …), HTTP / WebSocket / CLI transports, and Python script execution, see the [Demo Version Guide](demo.md) and consider the Pro version (coming soon on Fab).

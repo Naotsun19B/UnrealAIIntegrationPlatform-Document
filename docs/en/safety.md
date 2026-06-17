@@ -57,7 +57,7 @@ flowchart LR
 
 Each command declares the capabilities it requires. A command runs only when the session holds every required capability. Capabilities are either **DefaultAllow** (granted automatically) or **DefaultDenied** (must be explicitly enabled in `Config/DefaultUAIP.ini`).
 
-Capabilities marked **†** require an optional plugin. If that plugin is not enabled in your `.uproject`, the capability is never registered and commands that require it return `CommandNotFound`.
+Capabilities marked 🧩 require an optional plugin. If that plugin is not enabled in your `.uproject`, the capability is never registered and commands that require it return `CommandNotFound`.
 
 ---
 
@@ -82,8 +82,8 @@ These are active in every session without any configuration. They cover read-onl
 | `RuntimeInspect` | Read-only inspection of runtime world state — `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `DumpRuntimeLog`, `CapturePerformanceSnapshot` |
 | `RuntimeCapture` | Runtime captures — `CaptureViewportImage`, `CheckpointCapture` |
 | `RuntimeExecution` | Run functional tests and automation tests in PIE or Standalone |
-| `RuntimeGASInspect` **†** | Read GAS state during PIE — `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses` (requires `GameplayAbilities` plugin) |
-| `RuntimeNiagaraInspect` **†** | Read Niagara component state during PIE — `GetUserVariables`, `GetVariable` (requires `Niagara` plugin) |
+| `RuntimeGASInspect` 🧩 | Read GAS state during PIE — `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses` (requires `GameplayAbilities` plugin) |
+| `RuntimeNiagaraInspect` 🧩 | Read Niagara component state during PIE — `GetUserVariables`, `GetVariable` (requires `Niagara` plugin) |
 
 ---
 
@@ -211,8 +211,8 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 |---|---|
 | `GameplayTagEdit` | Add, remove, and rename tags in project tag tables |
 | `GameplayTagRestrictedEdit` | Modify restricted tag lists |
-| `GameFeatureCreate` **†** | Create and scaffold GameFeature Plugin definitions (requires `GameFeatures` + `GameFeaturesEditor` plugins) |
-| `GameplayCueMutation` **†** | Add / remove GameplayCue tags, create GameplayCueNotify assets, execute Cues on actors (requires `GameplayAbilities` plugin) |
+| `GameFeatureCreate` 🧩 | Create and scaffold GameFeature Plugin definitions (requires `GameFeatures` + `GameFeaturesEditor` plugins) |
+| `GameplayCueMutation` 🧩 | Add / remove GameplayCue tags, create GameplayCueNotify assets, execute Cues on actors (requires `GameplayAbilities` plugin) |
 | `EnhancedInputEdit` | Edit Input Action / Input Mapping Context assets — add / remove / modify mappings, modifiers, and triggers |
 
 #### Editor operations
@@ -226,9 +226,9 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 
 | Capability | What it unlocks |
 |---|---|
-| `ScriptExecution` **†** | Run Python scripts in the editor (`RunEditorPythonScript`; requires `PythonScriptPlugin`) |
-| `PythonCommandExecution` **†** | Execute dynamically registered `@uaip_command` Python commands (requires `PythonScriptPlugin`) |
-| `PythonExtensionReload` **†** | Rescan and reload registered Python commands (`ReloadPythonCommands`; requires `PythonScriptPlugin`) |
+| `ScriptExecution` 🧩 | Run Python scripts in the editor (`RunEditorPythonScript`; requires `PythonScriptPlugin`) |
+| `PythonCommandExecution` 🧩 | Execute dynamically registered `@uaip_command` Python commands (requires `PythonScriptPlugin`) |
+| `PythonExtensionReload` 🧩 | Rescan and reload registered Python commands (`ReloadPythonCommands`; requires `PythonScriptPlugin`) |
 
 #### Runtime — restricted operations
 
@@ -237,7 +237,7 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `RuntimeActorManipulation` | Spawn, destroy, teleport, and possess actors during PIE |
 | `RuntimeExecCommand` | Execute console commands at runtime via `UWorld` |
 | `RuntimeInputInjection` | Inject keyboard / Enhanced Input / legacy input events into PIE (`InjectInputKey`, `InjectEnhancedInputAction`, `AddMappingContext`, `SetInputMode`, `FlushInput`, …) |
-| `RuntimeNiagaraMutation` **†** | Set Niagara user variables / replace Niagara system at runtime (`SetVariable`, `SetSystem`; requires `Niagara` plugin) |
+| `RuntimeNiagaraMutation` 🧩 | Set Niagara user variables / replace Niagara system at runtime (`SetVariable`, `SetSystem`; requires `Niagara` plugin) |
 | `GauntletExecution` | Launch Gauntlet automated test sessions |
 
 #### Optional graph editors
@@ -246,15 +246,15 @@ These capabilities depend on specific optional plugins. If the plugin is not ena
 
 | Capability | Plugin required | What it unlocks |
 |---|---|---|
-| `MetaSoundGraphEdit` **†** | `Metasound` | Add, delete, and connect nodes in MetaSound graphs |
-| `DataflowGraphEdit` **†** | `Dataflow` | Add, delete, and connect nodes in Dataflow graphs |
-| `PCGGraphEdit` **†** | `PCG` | Add, delete, and connect nodes in PCG graphs; execute PCG graphs |
-| `PCGCustomNodeEdit` **†** | `PCG` | Add custom HLSL nodes to PCG graphs (reserved — not yet available) |
-| `PCGBlueprintNodeEdit` **†** | `PCG` | Add Blueprint nodes to PCG graphs (reserved — not yet available) |
-| `ConversationGraphEdit` **†** | `CommonConversation` | Structurally edit `UConversationDatabase` assets |
-| `EQSAssetEdit` **†** | `EnvironmentQueryEditor` | Add / remove EQS Generators and Tests; set their properties |
-| `WorldConditionStructureEdit` **†** | `WorldConditions` | Add and remove conditions in WorldCondition assets |
-| `WorldConditionNodeEdit` **†** | `WorldConditions` | Edit WorldCondition operator, expression depth, and properties |
+| `MetaSoundGraphEdit` 🧩 | `Metasound` | Add, delete, and connect nodes in MetaSound graphs |
+| `DataflowGraphEdit` 🧩 | `Dataflow` | Add, delete, and connect nodes in Dataflow graphs |
+| `PCGGraphEdit` 🧩 | `PCG` | Add, delete, and connect nodes in PCG graphs; execute PCG graphs |
+| `PCGCustomNodeEdit` 🧩 | `PCG` | Add custom HLSL nodes to PCG graphs (reserved — not yet available) |
+| `PCGBlueprintNodeEdit` 🧩 | `PCG` | Add Blueprint nodes to PCG graphs (reserved — not yet available) |
+| `ConversationGraphEdit` 🧩 | `CommonConversation` | Structurally edit `UConversationDatabase` assets |
+| `EQSAssetEdit` 🧩 | `EnvironmentQueryEditor` | Add / remove EQS Generators and Tests; set their properties |
+| `WorldConditionStructureEdit` 🧩 | `WorldConditions` | Add and remove conditions in WorldCondition assets |
+| `WorldConditionNodeEdit` 🧩 | `WorldConditions` | Edit WorldCondition operator, expression depth, and properties |
 
 #### Niagara editing
 
@@ -262,11 +262,11 @@ These capabilities all require the `Niagara` plugin.
 
 | Capability | What it unlocks |
 |---|---|
-| `NiagaraAssetCreate` **†** | Create Niagara System and Parameter Collection assets |
-| `NiagaraBlueprintCreate` **†** | Generate Blueprint wrapper classes from Niagara Systems and Components |
-| `NiagaraEmitterEdit` **†** | Add, remove, and configure emitters in Niagara Systems |
-| `NiagaraStackEdit` **†** | Add / remove modules and set stack input parameters on Niagara emitters |
-| `NiagaraStackAutoFix` **†** | Automatically resolve Niagara stack diagnostic issues |
+| `NiagaraAssetCreate` 🧩 | Create Niagara System and Parameter Collection assets |
+| `NiagaraBlueprintCreate` 🧩 | Generate Blueprint wrapper classes from Niagara Systems and Components |
+| `NiagaraEmitterEdit` 🧩 | Add, remove, and configure emitters in Niagara Systems |
+| `NiagaraStackEdit` 🧩 | Add / remove modules and set stack input parameters on Niagara emitters |
+| `NiagaraStackAutoFix` 🧩 | Automatically resolve Niagara stack diagnostic issues |
 
 ---
 
@@ -345,4 +345,4 @@ DisablePIEStart=False
 | `PolicyViolation: ... denied by SafetyPolicy` | SafetyPolicy ini flag is blocking | Set the corresponding flag to `True` in `[UAIP.SafetyPolicy]` and restart |
 | `PolicyViolation: Scenario execution is not enabled` | Scenario route opt-in missing | Add `"enable_scenario": true` to `config.json` |
 | `PolicyViolation: Command is denied` | Command is in `DeniedCommands` | Remove it from `DeniedCommands` in the ini |
-| `CommandNotFound` for a **†** command | Optional plugin not enabled | Enable the required plugin in your `.uproject` and rebuild |
+| `CommandNotFound` for a 🧩 command | Optional plugin not enabled | Enable the required plugin in your `.uproject` and rebuild |

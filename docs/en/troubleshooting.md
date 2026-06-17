@@ -10,7 +10,7 @@ When something fails, the response includes an `ErrorCode` and `ErrorMessage`. T
 
 | ErrorCode | What it means | Likely fix |
 |---|---|---|
-| `CommandNotFound` | The fully-qualified command name isn't registered | Verify spelling with `uaip_list_commands(ProviderPrefix="UAIP.Core")`. Optional-plugin commands (marked **†**) require the plugin to be enabled |
+| `CommandNotFound` | The fully-qualified command name isn't registered | Verify spelling with `uaip_list_commands(ProviderPrefix="UAIP.Core")`. Optional-plugin commands (marked 🧩) require the plugin to be enabled |
 | `CapabilityNotAvailable` | The session lacks the required capability | Read the missing capability name from `ErrorMessage`, add it to `[UAIP.SafetyPolicy] +AllowedCapabilities=<name>` in `Config/DefaultUAIP.ini`, then restart or call `UAIP.Core.ReloadCapabilities` |
 | `PolicyViolation` | A SafetyPolicy gate rejected the call | `"is denied by SafetyPolicy"` → an ini flag is off; `"is not enabled"` → a CLI opt-in flag (`-uaip-enable-scenario`, `-uaip-http-enable`, etc.) is missing at launch |
 | `InvalidParams` | Wrong / missing parameters | Re-read the schema with `uaip_describe_command(CommandName="...")` |
@@ -76,7 +76,7 @@ When Live Coding is mid-build and the editor refuses other commands, ask the AI 
 ### "I got `CommandNotFound` for a command listed in the docs"
 
 Most likely:
-- The command's optional plugin isn't enabled in `.uproject` (see the **†** marker in [Commands Reference](commands.md)).
+- The command's optional plugin isn't enabled in `.uproject` (see the 🧩 marker in [Commands Reference](commands.md)).
 - You're on the demo and the command requires Pro (no 🆓 marker).
 - The Toolset bridge command (e.g., `Toolset.Editor.UMG.GetWidgets`) requires UE 5.8+ and the matching Toolset plugin.
 
