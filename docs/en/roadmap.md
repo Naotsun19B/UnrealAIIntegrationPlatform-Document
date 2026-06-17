@@ -18,6 +18,15 @@ UAIP currently targets UE 5.7 and 5.8. Support down to approximately UE 5.5 is b
 ### Sandbox feature
 AI-proposed edits are staged in a sandbox and require human approval before being written to disk. All changes can be inspected and selectively accepted or rejected without relying on Undo. Implemented on top of UE 5.8's `FileSandboxCore`, so this feature will be **UE 5.8+ only** even after it ships.
 
+### Config Settings Management
+Read and write Project Settings and Editor Preferences programmatically — list containers and categories, inspect section schemas, get/set property values, save changes, and reset sections to defaults. Requires a `ConfigSettingsEdit` capability gate on writes.
+
+### Data Registry
+Enumerate registered Data Registries, inspect their schemas, list data sources, and query items — complementing the existing DataTable commands for projects that use UE's Data Registry system.
+
+### Plugin Management
+List discovered and enabled plugins, inspect plugin descriptors and dependency graphs, and enable or disable plugins programmatically — for AI-driven project setup and dependency management workflows. Requires a `PluginManagementEdit` capability gate on writes.
+
 ### Asset Audit & Dependency Analysis
 Get asset reference graphs, detect unused assets, identify circular references, and generate size maps across the entire content tree.
 
@@ -40,8 +49,8 @@ Cook content, package projects, and run Project Launcher profiles through AI com
 
 ## Editor — Editing Domain Extensions
 
-### Blueprint Compile & Error Retrieval
-Force-compile a Blueprint and retrieve the resulting error / warning list. Closes the AI's edit → verify → fix loop for Blueprint editing.
+### MetaHuman Editing
+Edit MetaHuman body, face, skin, eye, and hair parameters through `MetaHumanCharacterEditorSubsystem` — for projects using the MetaHuman Character plugin. Long-running operations include progress reporting. Requires the `MetaHuman Character` plugin and **UE 5.8 or newer**.
 
 ### World Partition / DataLayer
 Manage DataLayers on World Partition maps — create, delete, set initial state, and bind actors. Includes HLOD layer assignment and external actor listing.

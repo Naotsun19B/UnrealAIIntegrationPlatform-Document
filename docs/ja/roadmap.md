@@ -18,6 +18,15 @@ UAIP は現在 UE 5.7 / 5.8 を対象としています。UE 5.5 までの対応
 ### サンドボックス機能
 AI による変更を Sandbox に仮置きし、人間が確認・承認してから本体に反映する仕組み。Undo に頼らず変更を選択的に承認・却下できます。内部で UE 5.8 の `FileSandboxCore` を利用するため、実装後も **UE 5.8 以降限定** の機能となります。
 
+### Config Settings 管理
+Project Settings / Editor Preferences をプログラムから読み書き — コンテナ・カテゴリの列挙、セクションスキーマの取得、プロパティ値の取得・設定、変更の保存、デフォルトへのリセット。書き込みには `ConfigSettingsEdit` Capability が必要。
+
+### Data Registry
+登録済みの Data Registry の列挙、スキーマ取得、データソース一覧、アイテムクエリ — UE の Data Registry を採用するプロジェクト向けに、既存の DataTable コマンドを補完する機能。
+
+### Plugin 管理
+探索済みプラグイン・有効プラグインの列挙、プラグイン情報と依存グラフの検査、プラグインのプログラムからの有効化 / 無効化 — AI 主導のプロジェクトセットアップと依存管理ワークフロー向け。書き込みには `PluginManagementEdit` Capability が必要。
+
 ### アセット参照解析・SizeMap
 アセット参照グラフ取得・未参照アセット検出・循環参照検出・コンテンツツリー全体の SizeMap 生成。
 
@@ -40,8 +49,8 @@ PrimaryAssetType 定義・アセットバンドル・アセットタグをプロ
 
 ## Editor — 編集ドメイン拡張
 
-### Blueprint Compile / コンパイルエラー取得
-Blueprint の強制コンパイルとエラー / 警告一覧の取得。AI による「編集 → 検証 → 修正」ループを閉じるための必須機能。
+### MetaHuman 編集
+`MetaHumanCharacterEditorSubsystem` 経由で MetaHuman の Body / Face / Skin / Eye / Hair パラメータを編集 — MetaHuman Character プラグインを採用するプロジェクト向け。長時間処理は進捗報告に対応。`MetaHuman Character` プラグインと **UE 5.8 以降** が必要。
 
 ### World Partition / DataLayer 操作
 World Partition マップでの DataLayer 管理 — 作成、削除、初期状態設定、アクターの紐付け。HLOD レイヤー割り当て・External Actor 一覧も含む。
