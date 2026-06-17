@@ -10,7 +10,7 @@ This page gets you from a fresh checkout to running your first UAIP command from
 
 - **UE 5.7 or 5.8** project on Windows
 - **Python 3.10+** on your `PATH` (used by the MCP Bridge)
-- One of: **Claude Code**, **Cursor**, **Windsurf**, or **GitHub Copilot Chat** (any MCP-capable client works)
+- One of: **Claude Code**, **Codex CLI**, **Cursor**, **Windsurf**, or **GitHub Copilot Chat** (any MCP-capable client works)
 
 ---
 

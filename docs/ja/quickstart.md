@@ -10,7 +10,7 @@
 
 - **UE 5.7 または 5.8** のプロジェクト（Windows）
 - **Python 3.10 以降**（`PATH` を通しておくこと。MCP Bridge が使用します）
-- 以下のいずれかの AI クライアント：**Claude Code** / **Cursor** / **Windsurf** / **GitHub Copilot Chat**（その他 MCP 対応クライアントも可）
+- 以下のいずれかの AI クライアント：**Claude Code** / **Codex CLI** / **Cursor** / **Windsurf** / **GitHub Copilot Chat**（その他 MCP 対応クライアントも可）
 
 ---
 

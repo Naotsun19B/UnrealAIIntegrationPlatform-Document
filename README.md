@@ -25,7 +25,7 @@
 
 **UnrealAIIntegrationPlatform (UAIP)** is an Unreal Engine plugin that lets AI agents **drive, observe, execute, and verify** the UE Editor and Runtime over a structured API.
 
-AI tools such as Claude Code, Cursor, Windsurf, and GitHub Copilot can connect via the **Model Context Protocol (MCP)** and issue semantic commands — no coordinate clicks, no brittle UI scripting.
+AI tools such as Claude Code, Codex CLI, Cursor, Windsurf, and GitHub Copilot can connect via the **Model Context Protocol (MCP)** and issue semantic commands — no coordinate clicks, no brittle UI scripting.
 
 Key capabilities:
 - **Editor control** — open/save assets, edit Blueprints, manipulate actors, run Automation Tests, drive the Sequencer, and much more through 540+ UAIP commands (plus 190+ [Toolset](docs/en/glossary.md#toolset--toolset-bridge) bridges to the official UE 5.8 Toolset, ~730+ total)
@@ -39,7 +39,7 @@ Key capabilities:
 
 ```mermaid
 flowchart LR
-    AI["AI Client<br/>Claude Code / Cursor / Windsurf / Copilot"]
+    AI["AI Client<br/>Claude Code / Codex / Cursor / Windsurf / Copilot"]
     Bridge["MCP Bridge<br/>(thin_proxy.py)"]
     Editor["UE Editor<br/>UAIP Plugin"]
     Artifacts[("Artifacts<br/>PNG / JSON / Log / Report")]
@@ -91,7 +91,7 @@ For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-clie
 |---|---|
 | [Quickstart](docs/en/quickstart.md) | 5-minute path from install to first command |
 | [Connection Methods](docs/en/connections.md) | All transports: MCP Bridge setup + HTTP / WebSocket / CLI (Pro) |
-| &nbsp;&nbsp;↳ [Claude Code](docs/en/clients/claude-code.md) / [Claude Desktop](docs/en/clients/claude-desktop.md) / [Cursor](docs/en/clients/cursor.md) / [Windsurf](docs/en/clients/windsurf.md) / [Copilot](docs/en/clients/copilot.md) | Per-client config JSON and verification |
+| &nbsp;&nbsp;↳ [Claude Code](docs/en/clients/claude-code.md) / [Codex CLI](docs/en/clients/codex.md) / [Claude Desktop](docs/en/clients/claude-desktop.md) / [Cursor](docs/en/clients/cursor.md) / [Windsurf](docs/en/clients/windsurf.md) / [Copilot](docs/en/clients/copilot.md) | Per-client config JSON and verification |
 | [Use Cases](docs/en/use-cases.md) | Who uses UAIP for what — testing, review, audits, pair programming |
 | [Examples / Cookbook](docs/en/cookbook.md) | Recipes — PIE smoke, AI review, asset audit, BP edit, UI automation |
 | [Commands Reference](docs/en/commands.md) | All 730+ commands organized by domain |

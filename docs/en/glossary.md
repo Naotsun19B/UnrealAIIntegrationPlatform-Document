@@ -40,7 +40,7 @@ The complete dot-separated name used to invoke a command (e.g., `UAIP.Editor.Obs
 The C++ class that implements one command (e.g., `FCaptureActiveWindowImageHandler`). Registered with `CommandRegistry` by its parent module at startup. Lives in the corresponding `UAIPEditor*` / `UAIPRuntime*` module.
 
 ### MCP (Model Context Protocol)
-The open protocol used by AI clients (Claude Code, Cursor, Windsurf, Copilot) to discover and invoke tools. UAIP exposes itself as an MCP server through the **MCP Bridge** (`thin_proxy.py`). See [Connection Methods](connections.md).
+The open protocol used by AI clients (Claude Code, Codex CLI, Cursor, Windsurf, Copilot) to discover and invoke tools. UAIP exposes itself as an MCP server through the **MCP Bridge** (`thin_proxy.py`). See [Connection Methods](connections.md).
 
 ### MCP Bridge
 The thin Python proxy (`Scripts/MCPBridge/thin_proxy.py`) that connects an AI client to the UE Editor. Translates MCP tool calls into UAIP HTTP requests internally, manages editor lifecycle (auto-launch, crash/hang recovery), and handles artifact inlining.

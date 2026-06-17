@@ -10,7 +10,7 @@ It lets AI agents drive, observe, and verify the UE Editor and Runtime over a st
 
 ### Who is the typical user?
 
-- **AI-first developers** who want their Claude Code / Cursor / Windsurf / Copilot session to actually touch the editor (open assets, edit Blueprints, run PIE, take screenshots).
+- **AI-first developers** who want their Claude Code / Codex CLI / Cursor / Windsurf / Copilot session to actually touch the editor (open assets, edit Blueprints, run PIE, take screenshots).
 - **QA / test automation engineers** who want LLM-driven smoke tests, PIE assertions, and capture-based regression evidence without writing every test by hand.
 - **Tools programmers** building higher-level workflows on top of a stable command surface instead of reverse-engineering UE editor menus.
 

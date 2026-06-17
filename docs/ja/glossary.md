@@ -40,7 +40,7 @@ UAIP には 2 つの配布形式があります。**デモ版** は GitHub Relea
 1 つのコマンドを実装する C++ クラスのことです（例：`FCaptureActiveWindowImageHandler`）。起動時に親モジュールが `CommandRegistry` に登録し、対応する `UAIPEditor*` / `UAIPRuntime*` モジュール内に置かれます。
 
 ### MCP（Model Context Protocol）
-AI クライアント（Claude Code・Cursor・Windsurf・Copilot など）がツールを発見・呼び出しするときに使うオープンプロトコルです。UAIP は **MCP Bridge**（`thin_proxy.py`）を介して MCP サーバとして自身を公開します。詳細は [接続方法](connections.md) を参照してください。
+AI クライアント（Claude Code・Codex CLI・Cursor・Windsurf・Copilot など）がツールを発見・呼び出しするときに使うオープンプロトコルです。UAIP は **MCP Bridge**（`thin_proxy.py`）を介して MCP サーバとして自身を公開します。詳細は [接続方法](connections.md) を参照してください。
 
 ### MCP Bridge
 AI クライアントと UE Editor をつなぐ薄い Python プロキシ（`Scripts/MCPBridge/thin_proxy.py`）です。MCP のツール呼び出しを内部で UAIP の HTTP リクエストに変換し、エディタのライフサイクル（自動起動、クラッシュやハングからの復旧）も管理します。Artifact のインライン化処理もここで行います。

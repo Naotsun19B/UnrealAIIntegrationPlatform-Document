@@ -45,7 +45,7 @@ If you only want the shortest path to a working setup, see [Quickstart](quicksta
 - The `Plugins/UnrealAIIntegrationPlatform` folder is placed in your project's `Plugins` folder
 - The **UnrealAIIntegrationPlatform** plugin is enabled in the UE project
 - Python 3.10 or newer is installed and available on `PATH`
-- One of the supported AI clients (Claude Code, Claude Desktop, Cursor, Windsurf, GitHub Copilot)
+- One of the supported AI clients (Claude Code, Codex CLI, Claude Desktop, Cursor, Windsurf, GitHub Copilot)
 
 ### Step 1 — Run the install script
 
@@ -88,6 +88,7 @@ Pick your client and follow its dedicated page:
 | Client | Page | Notes |
 |---|---|---|
 | **Claude Code** (CLI / VS Code extension) | [claude-code.md](clients/claude-code.md) | Best support; `.mcp.json` per project or `~/.claude.json` global |
+| **Codex CLI** | [codex.md](clients/codex.md) | OpenAI's official CLI. `~/.codex/config.toml` (TOML) |
 | **Claude Desktop** | [claude-desktop.md](clients/claude-desktop.md) | `claude_desktop_config.json` |
 | **Cursor** | [cursor.md](clients/cursor.md) | `~/.cursor/mcp.json` or `.cursor/mcp.json` |
 | **Windsurf** | [windsurf.md](clients/windsurf.md) | `~/.codeium/windsurf/mcp_config.json` |
