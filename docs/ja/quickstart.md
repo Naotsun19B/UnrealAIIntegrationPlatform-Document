@@ -102,7 +102,7 @@ AI クライアントで次のように依頼してみてください：
 
 | 目的 | 移動先 |
 |---|---|
-| UAIP で何ができるかを実例で見たい | [Examples / Cookbook](cookbook.md) |
+| UAIP で何ができるかを実例で見たい | [使用例集 / レシピ集](cookbook.md) |
 | AI から Editor / PIE をシナリオで動かしたい | [シナリオ実行](scenario.md) |
 | 特定のコマンドを調べたい | [コマンドリファレンス](commands.md) |
 | MCP 以外（HTTP / WebSocket / CLI）を使いたい（製品版） | [接続方法](connections.md) |

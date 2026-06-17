@@ -8,7 +8,28 @@ Who uses UAIP, for what, and why. Each scenario links to the relevant Cookbook r
 
 ---
 
-## 1. AI-driven test authoring & QA
+## 1. AI pair programming on the editor side
+
+**Who**: solo devs and small teams using Claude Code / Cursor / Copilot as their primary IDE. This is the main use case UAIP is built for.
+
+**Problem**: the AI is great at producing C++ patches, but for the Blueprint side of UE projects it goes blind. "Hook this widget up to that event" can't be done in source — the BP graph is the source.
+
+**What UAIP gives them**:
+- `UAIP.Editor.Blueprint.*` to add variables, nodes, and wire pins
+- `UAIP.Editor.UMG.*` to edit widget trees, animations, bindings
+- `UAIP.Editor.Level.*` to place actors and tweak transforms
+- `UAIP.Editor.Property.*` for setting fields on assets and actors
+- `CompileBlueprint` + error retrieval (planned, see [Roadmap → Blueprint Compile](roadmap.md#blueprint-compile--error-retrieval)) to close the edit-verify loop
+
+**Capabilities**: `BlueprintEdit`, `BlueprintGraphEdit`, `BlueprintVariableEdit`, `WidgetTreeEdit`, `EditorActorEdit`, `PropertyEdit` — all DefaultDenied. Enable only what your workflow actually needs (see [Security → Full editing profile](security.md#recommended-hardening-profiles)).
+
+**Pro only** — editing modules are not in the demo binary.
+
+**Cookbook**: [Blueprint edit-verify loop](cookbook.md#4-blueprint-edit-verify-loop).
+
+---
+
+## 2. AI-driven test authoring & QA
 
 **Who**: QA / test automation engineers, gameplay programmers who own playtest scripts.
 
@@ -27,7 +48,7 @@ Who uses UAIP, for what, and why. Each scenario links to the relevant Cookbook r
 
 ---
 
-## 2. AI code review & Blueprint review
+## 3. AI code review & Blueprint review
 
 **Who**: lead programmers, anyone running an LLM as the first reviewer on a PR.
 
@@ -46,7 +67,7 @@ Who uses UAIP, for what, and why. Each scenario links to the relevant Cookbook r
 
 ---
 
-## 3. Asset audit & cleanup
+## 4. Asset audit & cleanup
 
 **Who**: tech artists, content leads, anyone enforcing project conventions.
 
@@ -63,27 +84,6 @@ Who uses UAIP, for what, and why. Each scenario links to the relevant Cookbook r
 **Cookbook**: [Asset audit & naming check](cookbook.md#3-asset-audit--naming-check).
 
 **Roadmap-adjacent**: deeper dependency analysis (unused-asset detection, circular references, size maps) is planned but not yet implemented. See [Roadmap → Asset Audit](roadmap.md#asset-audit--dependency-analysis).
-
----
-
-## 4. AI pair programming on the editor side
-
-**Who**: solo devs and small teams using Claude Code / Cursor / Copilot as their primary IDE.
-
-**Problem**: the AI is great at producing C++ patches, but for the Blueprint side of UE projects it goes blind. "Hook this widget up to that event" can't be done in source — the BP graph is the source.
-
-**What UAIP gives them**:
-- `UAIP.Editor.Blueprint.*` to add variables, nodes, and wire pins
-- `UAIP.Editor.UMG.*` to edit widget trees, animations, bindings
-- `UAIP.Editor.Level.*` to place actors and tweak transforms
-- `UAIP.Editor.Property.*` for setting fields on assets and actors
-- `CompileBlueprint` + error retrieval (planned, see [Roadmap → Blueprint Compile](roadmap.md#blueprint-compile--error-retrieval)) to close the edit-verify loop
-
-**Capabilities**: `BlueprintEdit`, `BlueprintGraphEdit`, `BlueprintVariableEdit`, `WidgetTreeEdit`, `EditorActorEdit`, `PropertyEdit` — all DefaultDenied. Enable only what your workflow actually needs (see [Security → Full editing profile](security.md#recommended-hardening-profiles)).
-
-**Pro only** — editing modules are not in the demo binary.
-
-**Cookbook**: [Blueprint edit-verify loop](cookbook.md#4-blueprint-edit-verify-loop).
 
 ---
 
@@ -204,7 +204,7 @@ Who uses UAIP, for what, and why. Each scenario links to the relevant Cookbook r
 - **Sub-second iteration loops** — editor startup is slow. If you need 10 ms response, write a UE plugin directly.
 - **Replacing your IDE** — UAIP doesn't edit C++ source. Keep using your IDE for code changes; use UAIP for the parts of the project that live inside the editor.
 - **Multi-tenant deployment** — UAIP is single-editor-per-project. Don't try to share one bridge across many concurrent users.
-- **Untrusted public exposure** — UAIP is localhost-only and trusts the host user. See [Security → Threat model](security.md#threat-model).
+- **Bare public-network exposure** — HTTP FullHTTP is intentionally reachable from another machine via Bearer token + firewall, but UAIP is designed for developer machines and trusted internal CI, not direct internet exposure. If you need cross-network access, put it behind a VPN, reverse proxy, or IP allowlist at the operator level. See [Security → Threat model](security.md#threat-model).
 
 ---
 

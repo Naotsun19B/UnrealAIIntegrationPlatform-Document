@@ -16,7 +16,7 @@ It lets AI agents drive, observe, and verify the UE Editor and Runtime over a st
 
 ### How is this different from Python scripting in UE?
 
-Python is one execution channel. UAIP exposes **semantic commands** with declared parameter schemas, required capabilities, and uniform artifact output — across MCP, HTTP, WebSocket, and CLI. Python scripting (via `RunEditorPythonScript`) is also available but bypasses the capability/policy layer, so it's only recommended when no registered command covers your need.
+Python is just one automation surface. UAIP exposes **semantic commands** with declared parameter schemas, required capabilities, and uniform artifact output — across MCP, HTTP, WebSocket, and CLI. Python scripting (via `RunEditorPythonScript`) is also available but bypasses the capability/policy layer, so it's only recommended when no registered command covers your need.
 
 ### Is the demo limited in time?
 
@@ -40,7 +40,7 @@ No — they share the same plugin path. Replace one with the other; the `Default
 
 ### Why does demo capture have a watermark?
 
-A `UAIP Demo` text + plugin-icon banner is alpha-blended in the bottom-right corner. It's compiled into the DLL and cannot be removed by file replacement. Watermark failures cause `ExecutionFailed` instead of producing an unmarked image (fail-closed).
+To make demo-version screenshots clearly identifiable as such. Captures are commonly shared as review or test evidence, so the origin needs to be obvious. The watermark is not present in the Pro version.
 
 ---
 
@@ -56,7 +56,7 @@ The demo binary is **MCP-only**. The HTTP / WebSocket / CLI flags are silently i
 
 ### Can I run UAIP on macOS / Linux?
 
-The demo binary is Windows-only. Pro supports macOS / Linux for the MCP Bridge and CLI/HTTP/WS transports, but graph editor coverage and some optional plugins are still Windows-tested first.
+UAIP v1.0 is **Windows (Win64) only** — the `.uplugin`'s `PlatformAllowList` is locked to `Win64`. macOS / Linux support is on the roadmap as a future consideration but is low priority, with Linux scheduled even later than macOS.
 
 ### How do I authenticate?
 
@@ -152,4 +152,8 @@ Open an [issue](../../issues) on this repository with:
 
 ### How do I propose a new command?
 
-File an issue describing the use case. Roadmap candidates are tracked in [Roadmap](roadmap.md). Cross-cutting design changes need an ADR; small additions follow the existing module patterns.
+File an issue describing the use case. Roadmap candidates are tracked in the [Roadmap](roadmap.md).
+
+### Are pull requests accepted?
+
+Yes. The author reviews PRs and may modify them for code style or implementation details before merging. Opening an Issue beforehand to align on direction is encouraged.

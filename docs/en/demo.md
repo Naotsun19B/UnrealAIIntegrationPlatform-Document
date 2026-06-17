@@ -146,7 +146,7 @@ The demo runs in **MCP-only mode**. The HTTP API routes (`/uaip/execute`, etc.) 
 
 ### Watermark on captured images
 
-The following capture commands embed a **"UAIP Demo"** watermark (alpha-blended, bottom-right corner) in the output PNG:
+The following capture commands embed a **"UAIP Demo"** watermark in the output PNG:
 
 - `CaptureActiveWindowImage`
 - `CaptureEditorTabImage`
@@ -161,7 +161,7 @@ The following capture commands embed a **"UAIP Demo"** watermark (alpha-blended,
   <img src="../../images/demo-watermark-zoom.png" alt="Watermark close-up" width="40%">
 </p>
 
-The watermark data is compiled directly into the DLL and cannot be removed by replacing files. If watermark compositing fails, the command returns `ExecutionFailed` rather than producing an unmarked image.
+The mark makes it clear that a screenshot — when it ends up shared as review or test evidence — was produced by the demo build. The Pro version emits captures without the watermark.
 
 ### Excluded commands
 
@@ -173,9 +173,9 @@ Commands that exist in Pro but return `CommandNotFound` in the demo:
 | `UAIP.Editor.Execution.RunEditorPythonScript` | Python execution — Pro only |
 | All commands from non-whitelisted modules | Editor editing, runtime world editing, GAS, Niagara, Input injection, etc. |
 
-### Load phase
+### Where the demo loads
 
-The demo binary loads only in the editor (`EditorNoCommandlet`). It does not load during packaging or commandlet execution. No external plugin dependencies are declared, so no unwanted plugin entries appear in your project.
+The demo is an editor-only build. It does not load into packaged builds or commandlet runs. If you need UAIP on the runtime side (Gauntlet tests, post-shipping observation, etc.), use the Pro version.
 
 ---
 

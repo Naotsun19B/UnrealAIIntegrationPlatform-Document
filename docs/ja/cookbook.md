@@ -1,6 +1,6 @@
 **[English](../en/cookbook.md)** | [概要に戻る](overview.md)
 
-# Examples / Cookbook
+# 使用例集 / レシピ集
 
 UAIP でよく出てくるワークフローを、すぐに動かせるレシピとしてまとめました。各レシピは独立しており、使用コマンド・必要な Capability・AI クライアントへの依頼例をひととおり含んでいます。
 
