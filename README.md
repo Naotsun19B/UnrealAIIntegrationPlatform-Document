@@ -103,6 +103,7 @@ For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-clie
 | [Scenario Execution](docs/en/scenario.md) | Multi-step ordered command batches |
 | [Artifacts](docs/en/artifacts.md) | Screenshots, JSON dumps, logs — how to read them |
 | [Safety & Capabilities](docs/en/safety.md) | SafetyPolicy and Capability configuration reference |
+| [Configuration](docs/en/config.md) | ini sections (Session / ArtifactGC / CommandNotification), CLI launch flags, MCP Bridge `config.json` |
 | [Security](docs/en/security.md) | Threat model, auth, recommended hardening profiles |
 | [Architecture](docs/en/architecture.md) | Layers, dispatch sequence, capability decision flow |
 | [Demo Version Guide](docs/en/demo.md) | Demo command list, limitations, and installation |
