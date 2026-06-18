@@ -115,9 +115,9 @@ For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-clie
 
 ## License
 
-The demo binary available in this repository's [Releases](../../releases?q=Demo) (under `Demo-v<X.Y.Z>` tags) is provided under the terms of `EULA.txt` included in the release archive.  
+The demo binary available in this repository's [Releases](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/releases?q=Demo) (under `Demo-v<X.Y.Z>` tags) is provided under the terms of `EULA.txt` included in the release archive.  
 The full product distributed on Fab is provided under the [Fab Standard License (Fab EULA)](https://www.fab.com/eula).  
-The **MCP Bridge** (`UAIP-MCPBridge-<version>.zip`, also distributed via this repository's [Releases](../../releases?q=MCPBridge) under `MCPBridge-v<X.Y.Z>` tags) is provided under the [MIT License](https://opensource.org/licenses/MIT) — the full license text ships inside the archive as `LICENSE`.  
+The **MCP Bridge** (`UAIP-MCPBridge-<version>.zip`, also distributed via this repository's [Releases](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/releases?q=MCPBridge) under `MCPBridge-v<X.Y.Z>` tags) is provided under the [MIT License](https://opensource.org/licenses/MIT) — the full license text ships inside the archive as `LICENSE`.  
 Unless explicitly stated otherwise, all documentation content in this repository is © 2026 Naotsun. All rights reserved.
 
 ## Author
