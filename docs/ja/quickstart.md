@@ -40,29 +40,33 @@
 
 ## 3. MCP Bridge をインストールする（1 分）
 
-Bridge は AI クライアントと UE Editor をつなぐ薄い Python プロキシです。エディタが起動していなければ自動で立ち上げる役割も担います。
+Bridge は AI クライアントと UE Editor をつなぐ薄い Python プロキシです。エディタが起動していなければ自動で立ち上げる役割も担います。**Bridge はプラグイン本体とは別配布** — このリポジトリの [Releases](../../../releases) から `UAIP-MCPBridge-<version>.zip`（UE バージョン非依存の単一 zip）をダウンロードして任意の場所に展開し、インストーラを実行してください：
 
 ```powershell
-cd <プロジェクト>/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install
-./install.ps1
+cd <展開先>/UAIPMCPBridge
+./install/install.ps1
 ```
 
 > **対応プラットフォーム**：v1.0 は **Windows (Win64) のみ** が対象です。macOS / Linux 対応は将来検討項目です。
 
-このインストーラは仮想環境を作成して `mcp[cli]` を導入し、`thin_proxy.py` の隣に `config.json` を生成します（エディタパスと uproject パスは自動検出されます）。
+インストーラは対話形式です — `.uproject` パス（またはエンジンパス）を聞き、Bridge を `<プロジェクト>/Plugins/UAIPMCPBridge/`（UAIP プラグインと同階層）に展開し、Python venv を作成して、最後にコピペできる MCP クライアント登録用スニペットを表示します。
 
 ---
 
 ## 4. AI クライアントに MCP サーバを登録する（1 分）
 
-利用する AI クライアントの MCP 設定ファイルに、以下を追加します。設定ファイルの正確なパスはクライアントごとに異なるので、[接続方法 → MCP Bridge](connections.md#mcp-bridge) を参照してください。
+インストーラが表示したスニペットを、利用する AI クライアントの MCP 設定ファイルに貼り付けます。設定ファイルの正確なパスはクライアントごとに異なるので、[接続方法 → MCP Bridge](connections.md#mcp-bridge) を参照してください。形式は次の通り：
 
 ```json
 {
   "mcpServers": {
     "uaip": {
-      "command": "<プロジェクト>/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/.venv/Scripts/python.exe",
-      "args": ["<プロジェクト>/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/thin_proxy.py"]
+      "command": "<プロジェクト>/Plugins/UAIPMCPBridge/.venv/Scripts/python.exe",
+      "args":    ["<プロジェクト>/Plugins/UAIPMCPBridge/thin_proxy.py"],
+      "env": {
+        "UAIP_UE_EDITOR_PATH": "<UnrealEditor.exe の絶対パス>",
+        "UAIP_UPROJECT_PATH":  "<your.uproject の絶対パス>"
+      }
     }
   }
 }
@@ -70,7 +74,7 @@ cd <プロジェクト>/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/in
 
 設定を反映するため、AI クライアントを再起動してください。
 
-> **ヒント**：手順 3 のインストーラの最後にコピペできる JSON が出力されるので、そのまま貼り付けることもできます。
+> **ヒント**：インストーラはパスを自動検出し、実際の値を埋めたスニペットを表示するので、そのまま貼り付けることもできます。
 
 ---
 

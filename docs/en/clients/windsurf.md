@@ -18,13 +18,15 @@ Windsurf currently only supports a single user-wide config — multiple UE proje
 
 ## Configuration
 
+Paste the snippet the installer printed:
+
 ```json
 {
   "mcpServers": {
     "uaip-MyGame": {
-      "command": "python",
+      "command": "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/.venv/Scripts/python.exe",
       "args": [
-        "E:/MyProjects/MyGame/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/thin_proxy.py"
+        "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/thin_proxy.py"
       ],
       "env": {
         "UAIP_UE_EDITOR_PATH": "E:/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe",
@@ -37,7 +39,7 @@ Windsurf currently only supports a single user-wide config — multiple UE proje
 
 - Replace `uaip-MyGame` with your own server key
 - Use **absolute paths with forward slashes** in JSON
-- Replace `python` with the full Python interpreter path if not on `PATH`
+- `command` points at the venv Python the installer created, so a system-wide Python on `PATH` is not required
 
 For multiple projects, add an entry per project under `mcpServers` with distinct keys (`uaip-GameA`, `uaip-GameB`, …).
 
@@ -48,7 +50,7 @@ For multiple projects, add an entry per project under `mcpServers` with distinct
 Windsurf reads `.windsurfrules` at the workspace root. Append the content of `usage.md`:
 
 ```powershell
-Get-Content Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guides/usage.md | Add-Content .windsurfrules
+Get-Content Plugins/UAIPMCPBridge/install/guides/usage.md | Add-Content .windsurfrules
 ```
 
 For more context (scenarios, capabilities, etc.), repeat for the other `.md` files in the `guides/` folder.

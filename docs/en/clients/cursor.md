@@ -19,13 +19,15 @@ Project-scope is recommended so multiple UE projects don't collide.
 
 ## Configuration
 
+Paste the snippet the installer printed:
+
 ```json
 {
   "mcpServers": {
     "uaip-MyGame": {
-      "command": "python",
+      "command": "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/.venv/Scripts/python.exe",
       "args": [
-        "E:/MyProjects/MyGame/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/thin_proxy.py"
+        "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/thin_proxy.py"
       ],
       "env": {
         "UAIP_UE_EDITOR_PATH": "E:/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe",
@@ -38,7 +40,7 @@ Project-scope is recommended so multiple UE projects don't collide.
 
 - Replace `uaip-MyGame` with your own server key
 - Use **absolute paths with forward slashes** in JSON
-- Replace `python` with the full Python interpreter path if not on `PATH`
+- `command` points at the venv Python the installer created, so a system-wide Python on `PATH` is not required
 
 After saving, **Cursor → Settings → Cursor Settings → Features → MCP** should list `uaip-MyGame`. Click the refresh icon or restart Cursor if it doesn't appear.
 
@@ -50,7 +52,7 @@ Copy the guide files to `.cursor/rules/` and rename them with the `.mdc` extensi
 
 ```powershell
 mkdir -Force .cursor/rules
-Get-ChildItem Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guides/*.md | ForEach-Object {
+Get-ChildItem Plugins/UAIPMCPBridge/install/guides/*.md | ForEach-Object {
     Copy-Item $_.FullName -Destination ".cursor/rules/$($_.BaseName).mdc"
 }
 ```

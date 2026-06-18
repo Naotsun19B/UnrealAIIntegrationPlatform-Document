@@ -19,13 +19,15 @@
 
 ## 設定
 
+インストーラが表示したスニペットを貼り付けます：
+
 ```json
 {
   "mcpServers": {
     "uaip-MyGame": {
-      "command": "python",
+      "command": "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/.venv/Scripts/python.exe",
       "args": [
-        "E:/MyProjects/MyGame/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/thin_proxy.py"
+        "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/thin_proxy.py"
       ],
       "env": {
         "UAIP_UE_EDITOR_PATH": "E:/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe",
@@ -38,7 +40,7 @@
 
 - `uaip-MyGame` は自分のサーバキーに置き換えてください
 - パスは **絶対パスを、フォワードスラッシュ区切りで** JSON に書いてください
-- `python` が `PATH` に通っていない場合は、Python インタプリタの完全パスに置き換えてください
+- `command` にはインストーラが作成した venv の Python を指定するため、system-wide な Python が `PATH` に通っている必要はありません
 
 保存できたら、**Cursor → Settings → Cursor Settings → Features → MCP** に `uaip-MyGame` が表示されているはずです。表示されない場合は、更新アイコンをクリックするか Cursor を再起動してみてください。
 
@@ -50,7 +52,7 @@
 
 ```powershell
 mkdir -Force .cursor/rules
-Get-ChildItem Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guides/*.md | ForEach-Object {
+Get-ChildItem Plugins/UAIPMCPBridge/install/guides/*.md | ForEach-Object {
     Copy-Item $_.FullName -Destination ".cursor/rules/$($_.BaseName).mdc"
 }
 ```

@@ -18,11 +18,13 @@ Codex applies the same `mcp_servers` block to every project. If you want differe
 
 ## Configuration
 
+Translate the JSON snippet the installer printed into TOML:
+
 ```toml
 [mcp_servers.uaip-MyGame]
-command = "python"
+command = "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/.venv/Scripts/python.exe"
 args = [
-    "E:/MyProjects/MyGame/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/thin_proxy.py",
+    "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/thin_proxy.py",
 ]
 
 [mcp_servers.uaip-MyGame.env]
@@ -34,7 +36,7 @@ UAIP_UPROJECT_PATH  = "E:/MyProjects/MyGame/MyGame.uproject"
 
 - Replace `uaip-MyGame` with your own server key
 - Use absolute paths with forward slashes (Windows accepts forward slashes in TOML strings)
-- Replace `python` with the full Python interpreter path if `python` isn't on `PATH`
+- `command` points at the venv Python the installer created, so a system-wide Python on `PATH` is not required
 
 Restart Codex CLI after saving so it picks up the new server.
 
@@ -46,12 +48,12 @@ Codex reads `AGENTS.md` from the project root for project-specific instructions,
 
 ```powershell
 # Per-project (recommended): paste the usage guide into the project's AGENTS.md
-Get-Content Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guides/usage.md `
+Get-Content Plugins/UAIPMCPBridge/install/guides/usage.md `
     | Add-Content AGENTS.md
 
 # Or user-wide: applies to every Codex session on this machine
 mkdir -Force ~/.codex
-Get-Content Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guides/usage.md `
+Get-Content Plugins/UAIPMCPBridge/install/guides/usage.md `
     | Add-Content ~/.codex/AGENTS.md
 ```
 

@@ -31,7 +31,7 @@ When something fails, the response includes an `ErrorCode` and `ErrorMessage`. T
 
 The MCP Bridge launches the editor on the first call. If it doesn't come up:
 
-1. Check the bridge config: `Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/config.json` — `editor_path` and `uproject_path` must be absolute and correct.
+1. Check the bridge config: `Plugins/UAIPMCPBridge/config.json` — `ue_editor_path` and `uproject_path` must be absolute and correct. Or, more commonly, the MCP client `env` block (`UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`) which takes precedence.
 2. Try launching the editor manually with the same `uproject` to confirm UE itself opens. If it doesn't, that's an engine issue, not UAIP.
 3. Check Python is on `PATH` and `python --version` reports 3.10+.
 4. If you see "Editor restart limit exceeded", you hit the 3-restarts-per-60-s guard. Wait 60 s and retry.
@@ -53,7 +53,7 @@ The capability is listed in `[UAIP.SafetyPolicy] DeniedCapabilities=...`, which 
 
 ### "Scenarios always reject with `PolicyViolation: Scenario execution is not enabled in this environment`"
 
-The scenario route is **off by default** for safety. Re-launch the editor with `-uaip-enable-scenario`, or — when starting through the MCP Bridge — add `"enable_scenario": true` to `Scripts/MCPBridge/config.json` and restart the bridge.
+The scenario route is **off by default** for safety. Re-launch the editor with `-uaip-enable-scenario`, or — when starting through the MCP Bridge — add `"enable_scenario": true` to `Plugins/UAIPMCPBridge/config.json` and restart the bridge.
 
 ### "Capture / dump returns `ExecutionFailed`, no obvious reason"
 

@@ -8,25 +8,25 @@
 
 ## Prerequisites
 
-You have already completed [Connection Methods → MCP Bridge Step 1](../connections.md#step-1--run-the-install-script). `config.json` is at:
+You have already completed [Connection Methods → MCP Bridge Steps 1–2](../connections.md#step-1--download-and-extract-the-bridge-zip). The bridge is deployed at `<UAIP-parent>/UAIPMCPBridge/` (sibling to the UAIP plugin), and `config.json` is at:
 
 ```
-Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/config.json
+Plugins/UAIPMCPBridge/config.json
 ```
 
 ---
 
 ## Option A — Per-project (recommended)
 
-Create `.mcp.json` next to your `.uproject`:
+Paste the snippet the installer printed into `.mcp.json` next to your `.uproject`. The shape:
 
 ```json
 {
   "mcpServers": {
     "uaip-MyGame": {
-      "command": "python",
+      "command": "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/.venv/Scripts/python.exe",
       "args": [
-        "E:/MyProjects/MyGame/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/thin_proxy.py"
+        "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/thin_proxy.py"
       ],
       "env": {
         "UAIP_UE_EDITOR_PATH": "E:/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe",
@@ -37,9 +37,9 @@ Create `.mcp.json` next to your `.uproject`:
 }
 ```
 
-- Replace `uaip-MyGame` with your own server key (see [Connection Methods → MCP Bridge Step 2](../connections.md#step-2--pick-an-mcp-server-key))
+- Replace `uaip-MyGame` with your own server key (see [Connection Methods → MCP Bridge Step 3](../connections.md#step-3--pick-an-mcp-server-key))
 - Use **absolute paths with forward slashes** (Windows accepts forward slashes in JSON)
-- Replace `python` with the full path to your Python interpreter if `python` isn't on `PATH`
+- The `command` points at the venv Python the installer created, so a system-wide Python on `PATH` is not required
 
 Claude Code picks this up the next time you start it from the project directory.
 
@@ -47,18 +47,18 @@ Claude Code picks this up the next time you start it from the project directory.
 
 ## Option B — Global (one server reused across projects)
 
-Edit `~/.claude.json` and add the same `mcpServers` block at the top level. Use this only if your `editor_path` and `uproject_path` don't change between projects — usually not the case.
+Edit `~/.claude.json` and add the same `mcpServers` block at the top level. Use this only if your `UAIP_UE_EDITOR_PATH` and `UAIP_UPROJECT_PATH` don't change between projects — usually not the case.
 
 ---
 
 ## Step — Deploy the AI usage guides (recommended)
 
-`Scripts/MCPBridge/install/guides/` ships with Markdown documents that teach Claude how to use UAIP idiomatically (scenarios, capabilities, artifacts, graph editing, safety). Without them, Claude figures it out per-conversation, which wastes turns.
+`<UAIP-parent>/UAIPMCPBridge/install/guides/` ships with Markdown documents that teach Claude how to use UAIP idiomatically (scenarios, capabilities, artifacts, graph editing, safety). Without them, Claude figures it out per-conversation, which wastes turns.
 
 ```powershell
 # Copy all guide files to your global Claude rules folder
 mkdir -Force ~/.claude/rules/uaip
-cp Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guides/*.md ~/.claude/rules/uaip/
+cp Plugins/UAIPMCPBridge/install/guides/*.md ~/.claude/rules/uaip/
 ```
 
 Then reference them from `~/.claude/CLAUDE.md` so they load on every conversation:

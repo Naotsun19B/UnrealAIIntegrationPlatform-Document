@@ -40,6 +40,8 @@ The MCP Bridge is the recommended transport for AI client integration. A thin Py
 
 If you only want the shortest path to a working setup, see [Quickstart](quickstart.md).
 
+> The MCP Bridge is distributed **separately from the plugin** as `UAIP-MCPBridge-<version>.zip` in the documentation repository's [Releases](../../../releases). Per Fab packaging rules, it is not bundled with the plugin itself. A single zip works for every supported UE version.
+
 ### Prerequisites
 
 - The `Plugins/UnrealAIIntegrationPlatform` folder is placed in your project's `Plugins` folder
@@ -47,43 +49,79 @@ If you only want the shortest path to a working setup, see [Quickstart](quicksta
 - Python 3.10 or newer is installed and available on `PATH`
 - One of the supported AI clients (Claude Code, Codex CLI, Claude Desktop, Cursor, Windsurf, GitHub Copilot)
 
-### Step 1 — Run the install script
+### Step 1 — Download and extract the Bridge zip
 
-Open a terminal in your UE project root and run the install script. It verifies Python, installs dependencies, and prompts you for the two paths it needs to generate `config.json`.
+Download `UAIP-MCPBridge-<version>.zip` from the documentation repository's [Releases](../../../releases) page and extract it anywhere — for example, a temporary `Downloads/UAIPMCPBridge/` folder. The extracted layout is the **installer source**, not the final deployment location.
+
+### Step 2 — Run the installer
+
+From the extracted folder, run `install/install.ps1` (Windows) or `install/install.cmd` (wrapper for restricted PowerShell execution policy):
 
 ```powershell
-.\Plugins\UnrealAIIntegrationPlatform\Scripts\MCPBridge\install\install.ps1
+.\install\install.ps1
 ```
 
-What the script does:
+The installer is **interactive** when called without arguments: it asks whether to deploy as a project plugin sibling or an engine plugin sibling, then prompts for the corresponding path.
+
+| Choice | Prompt | Deploys to |
+|---|---|---|
+| `1` Project install | `.uproject` path | `<Project>/Plugins/UAIPMCPBridge/` |
+| `2` Engine install | Engine root | `<Engine>/Engine/Plugins/.../UAIPMCPBridge/` |
+
+You can skip the prompts by passing the path directly:
+
+```powershell
+.\install\install.ps1 -ProjectPath "F:\MyProjects\MyGame\MyGame.uproject"
+.\install\install.ps1 -EnginePath  "F:\Epic Games\UE_5.8"
+```
+
+What the installer does:
 
 | Step | Action |
 |---|---|
-| 1/3 | Verify Python 3.10+ is available |
-| 2/3 | `pip install -r requirements.txt` (installs the `mcp` package) |
-| 3/3 | Prompt for the UE Editor executable path and `.uproject` path, then write `config.json` |
+| 1 | Locate the UAIP plugin and resolve the deploy target |
+| 2 | Copy bridge files into `<UAIP-parent>/UAIPMCPBridge/` |
+| 3 | Verify Python 3.10+ is available |
+| 4 | Create a Python virtual environment at `<bridge-root>/.venv/` |
+| 5 | `pip install -r requirements.txt` into the venv |
+| 6 | Write a default `<bridge-root>/config.json` |
+| 7 | Print an MCP client registration snippet with auto-detected paths |
 
-Example inputs:
+Once finished, the bridge lives at `<UAIP-parent>/UAIPMCPBridge/` (sibling to `UnrealAIIntegrationPlatform/`) and the venv Python is at `<bridge-root>/.venv/Scripts/python.exe` (Windows) or `<bridge-root>/.venv/bin/python` (macOS / Linux).
 
-- UE Editor executable — `E:\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe`
-- `.uproject` file — `E:\MyProjects\MyGame\MyGame.uproject`
+### Step 3 — Pick an MCP server key
 
-`config.json` is created at `Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/config.json`.
-
-### Step 2 — Pick an MCP server key
-
-The server key is how this bridge instance is identified in your AI client's config.
+The server key is how this bridge instance is identified in your AI client's config. The installer chooses a sensible default and prints it; the value below is for reference if you need to pick a different one.
 
 | Plugin location | Key format | Example |
 |---|---|---|
-| Project plugin | `uaip-<ProjectName>` | `uaip-MyGame` |
-| Engine plugin | `uaip-<version>` | `uaip-5.8` |
+| Project plugin (bridge under `<Project>/Plugins/`) | `uaip-<ProjectName>` | `uaip-MyGame` |
+| Engine plugin (bridge under `<Engine>/Engine/Plugins/`) | `uaip-<engine-folder>` | `uaip-UE_5.8` |
 
-Derive the project name from your `.uproject` filename (without the extension). It only affects how the client lists the server, so any unique name works.
+Any unique name works — the key only affects how the AI client lists the server.
 
-### Step 3 — Register the MCP server in your AI client
+### Step 4 — Register the MCP server in your AI client
 
-Pick your client and follow its dedicated page:
+The installer printed a JSON snippet with the venv Python path and auto-detected `UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`. Paste it as-is into your client's config file.
+
+```json
+{
+  "mcpServers": {
+    "<key>": {
+      "command": "<bridge-root>/.venv/Scripts/python.exe",
+      "args":    ["<bridge-root>/thin_proxy.py"],
+      "env": {
+        "UAIP_UE_EDITOR_PATH": "<absolute path to UnrealEditor.exe>",
+        "UAIP_UPROJECT_PATH":  "<absolute path to your.uproject>"
+      }
+    }
+  }
+}
+```
+
+> The installer puts the venv Python in `command` so MCP clients do not need a system-wide Python on `PATH`.
+
+Pick your client and follow its dedicated page for the file location and per-client conventions:
 
 | Client | Page | Notes |
 |---|---|---|
@@ -94,33 +132,36 @@ Pick your client and follow its dedicated page:
 | **Windsurf** | [windsurf.md](clients/windsurf.md) | `~/.codeium/windsurf/mcp_config.json` |
 | **GitHub Copilot (VS Code)** | [copilot.md](clients/copilot.md) | `.vscode/mcp.json` |
 
-Each per-client page has the exact config JSON, the deployment of the AI usage guides under `Scripts/MCPBridge/install/guides/`, and the verification step ("ask the AI to run HealthCheck").
+Each per-client page has the exact config JSON, the deployment of the AI usage guides under `<bridge-root>/install/guides/`, and the verification step ("ask the AI to run HealthCheck").
+
+Full installer / paths reference: `<bridge-root>/install/SETUP.md` (deployed alongside the bridge).
 
 ### Enable scenario execution (optional)
 
-`uaip_run_scenario` is disabled by default. To enable, add `enable_scenario` to `config.json`:
+`uaip_run_scenario` is disabled by default. To enable, set `enable_scenario` to `true` in `<bridge-root>/config.json`:
 
 ```json
 {
-  "editor_path":                  "...",
-  "uproject_path":                "...",
-  "http_startup_timeout_seconds": 120,
-  "command_timeout_seconds":      60,
-  "log_level":                    "INFO",
-  "enable_scenario":              true
+  "ue_editor_path":              "",
+  "uproject_path":               "",
+  "subprocess_timeout_seconds":  300,
+  "log_level":                   "INFO",
+  "enable_scenario":             true,
+  "inline_artifacts": { "image": false, "json": true, "text": true }
 }
 ```
 
-Reconnect the MCP client after the change. See [Scenario Execution](scenario.md) for what scenarios enable.
+`ue_editor_path` / `uproject_path` in `config.json` are fallbacks; per-connection paths supplied through the MCP client's `env` block (`UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`) take precedence. Reconnect the MCP client after the change. See [Scenario Execution](scenario.md) for what scenarios enable and [Configuration](config.md#mcp-bridge-configjson) for the full key list.
 
 ### MCP setup troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `install.ps1` is blocked by execution policy | PowerShell execution policy | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` then re-run |
-| Tool not found in AI client | MCP server not connected | Check the key and `thin_proxy.py` path; restart the client |
-| Timeout after ~120 s on first command | Editor failed to start | Verify `editor_path` and `uproject_path` in `config.json` |
-| Python error on startup | Missing dependencies | Re-run the install script |
+| `install.ps1` is blocked by execution policy | PowerShell execution policy | Use `install.cmd`, or run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` then re-run |
+| Installer cannot find the UAIP plugin | Wrong `.uproject` / engine path | Re-run and pass the correct `-ProjectPath` / `-EnginePath` |
+| Tool not found in AI client | MCP server not connected | Check the key and the `thin_proxy.py` path in the snippet; restart the client |
+| Timeout after ~120 s on first command | Editor failed to start | Verify `UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH` in the MCP `env` block |
+| Python error on startup | Missing dependencies in venv | Re-run the installer (the venv is recreated) |
 | `PolicyViolation` on a command | Capability not granted, or SafetyPolicy flag off | See [Safety & Capabilities](safety.md) |
 | `CommandNotFound` | Wrong command name | `uaip_list_commands(ProviderPrefix="UAIP.Core")` |
 

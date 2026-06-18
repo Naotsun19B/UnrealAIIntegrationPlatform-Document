@@ -16,14 +16,16 @@ VS Code の [GitHub Copilot Chat](https://docs.github.com/ja/copilot) は VS Cod
 
 ## 設定
 
+インストーラが表示したスニペットを Copilot 形式（`mcpServers` → `servers`、`type: "stdio"` 追加）に書き換えます：
+
 ```json
 {
   "servers": {
     "uaip-MyGame": {
       "type": "stdio",
-      "command": "python",
+      "command": "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/.venv/Scripts/python.exe",
       "args": [
-        "E:/MyProjects/MyGame/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/thin_proxy.py"
+        "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/thin_proxy.py"
       ],
       "env": {
         "UAIP_UE_EDITOR_PATH": "E:/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe",
@@ -38,7 +40,7 @@ VS Code の [GitHub Copilot Chat](https://docs.github.com/ja/copilot) は VS Cod
 
 - `uaip-MyGame` は自分のサーバキーに置き換えてください
 - パスは絶対パスを、フォワードスラッシュ区切りで記述してください
-- `python` が `PATH` に通っていない場合は、Python インタプリタの完全パスに置き換えてください
+- `command` にはインストーラが作成した venv の Python を指定するため、system-wide な Python が `PATH` に通っている必要はありません
 
 保存すると、VS Code から MCP サーバの起動を確認するプロンプトが出ます。承認するか、**コマンドパレット → MCP: Restart Server** を実行してください。
 
@@ -50,7 +52,7 @@ Copilot はリポジトリ全体のカスタム指示として `.github/copilot-
 
 ```powershell
 mkdir -Force .github
-Get-Content Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/guides/usage.md | Add-Content .github/copilot-instructions.md
+Get-Content Plugins/UAIPMCPBridge/install/guides/usage.md | Add-Content .github/copilot-instructions.md
 ```
 
 Copilot はカスタム指示用のコンテキスト予算が他のクライアントより小さめです。`usage.md` と、ワークフローに直結するガイド（シナリオを多用するなら `scenario.md` など）に絞って貼り付けてください。すべてのガイドを一度に貼るのは避けたほうが無難です。

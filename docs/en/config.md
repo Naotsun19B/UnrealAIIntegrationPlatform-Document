@@ -20,7 +20,7 @@ UAIP reads its configuration from four locations, merged in this priority order 
 
 `UAIP.Core.ReloadCapabilities` can reload `AllowedCapabilities` and `DeniedCapabilities` at runtime without restarting (see [Safety & Capabilities](safety.md#enabling-defaultdenied-capabilities)). All other keys require an editor restart.
 
-> The MCP Bridge (`Tools/MCPBridge/`) has its own configuration layer (`config.json` + environment variables). See [MCP Bridge config.json](#mcp-bridge-configjson) below.
+> The MCP Bridge (`Plugins/UAIPMCPBridge/` after install) has its own configuration layer (`config.json` + environment variables). The bridge is distributed separately from the plugin — see [MCP Bridge config.json](#mcp-bridge-configjson) below.
 
 ---
 
@@ -206,7 +206,7 @@ This file does not exist in editor builds — use `Config/DefaultUAIP.ini` direc
 
 ## MCP Bridge `config.json`
 
-When connecting via the MCP Bridge (`Tools/MCPBridge/`), an additional JSON config layer applies. It is consumed by the Python proxy, not by the editor.
+When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` — typically `<Project>/Plugins/UAIPMCPBridge/`), an additional JSON config layer applies. It is consumed by the Python proxy, not by the editor. The bridge is distributed as `UAIP-MCPBridge-<version>.zip` in the documentation repository's [Releases](../../../releases).
 
 | Key | Type | Default | Description |
 |---|---|---|---|
@@ -219,7 +219,7 @@ When connecting via the MCP Bridge (`Tools/MCPBridge/`), an additional JSON conf
 | `inline_artifacts.json` | bool | `true` | Inline JSON artifacts as base64 in MCP responses |
 | `inline_artifacts.text` | bool | `true` | Inline text artifacts as base64 in MCP responses |
 
-Environment variables override the JSON values when set. See `Tools/MCPBridge/config.json.example` (shipped with the plugin) for a fully-commented template.
+Environment variables override the JSON values when set. See `config.json.example` (shipped inside the bridge zip; after install, at `<bridge-root>/config.json.example`) for a fully-commented template.
 
 ---
 

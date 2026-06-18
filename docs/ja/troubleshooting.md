@@ -31,7 +31,7 @@ UAIP のコマンドが失敗すると、レスポンスに `ErrorCode` と `Err
 
 MCP Bridge は最初の呼び出しでエディタを立ち上げます。立ち上がらない場合は以下を確認してください：
 
-1. Bridge の設定を確認する：`Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/config.json` の `editor_path` と `uproject_path` が絶対パスで正しく設定されているか
+1. Bridge の設定を確認する：`Plugins/UAIPMCPBridge/config.json` の `ue_editor_path` と `uproject_path` が絶対パスで正しく設定されているか。一般的には MCP クライアントの `env` ブロック（`UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`）が優先されるのでそちらも確認
 2. 同じ `uproject` を手動でエディタから開けるか確認する：開けない場合は UE 側の問題で、UAIP の問題ではありません
 3. Python が `PATH` に通っているか、`python --version` が 3.10 以上を返すかを確認する
 4. `"Editor restart limit exceeded"` と出る場合は、60 秒に 3 回までの再起動ガードに引っかかっています。60 秒待ってから再試行してください
@@ -54,7 +54,7 @@ MCP Bridge は最初の呼び出しでエディタを立ち上げます。立ち
 
 ### シナリオが常に `PolicyViolation: Scenario execution is not enabled in this environment` で拒否される
 
-シナリオルートは **安全のためデフォルトで無効** になっています。`-uaip-enable-scenario` を付けてエディタを再起動するか、MCP Bridge 経由なら `Scripts/MCPBridge/config.json` に `"enable_scenario": true` を追加して Bridge を再起動してください。
+シナリオルートは **安全のためデフォルトで無効** になっています。`-uaip-enable-scenario` を付けてエディタを再起動するか、MCP Bridge 経由なら `Plugins/UAIPMCPBridge/config.json` に `"enable_scenario": true` を追加して Bridge を再起動してください。
 
 ### キャプチャ / ダンプが理由不明の `ExecutionFailed` で返る
 

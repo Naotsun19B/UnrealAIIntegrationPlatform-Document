@@ -19,13 +19,15 @@ If the file doesn't exist, create it.
 
 ## Configuration
 
+Paste the snippet the installer printed:
+
 ```json
 {
   "mcpServers": {
     "uaip-MyGame": {
-      "command": "python",
+      "command": "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/.venv/Scripts/python.exe",
       "args": [
-        "E:/MyProjects/MyGame/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/thin_proxy.py"
+        "E:/MyProjects/MyGame/Plugins/UAIPMCPBridge/thin_proxy.py"
       ],
       "env": {
         "UAIP_UE_EDITOR_PATH": "E:/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe",
@@ -38,7 +40,7 @@ If the file doesn't exist, create it.
 
 - Replace `uaip-MyGame` with your own server key
 - Use **absolute paths with forward slashes** in JSON
-- Replace `python` with the full Python interpreter path if not on `PATH`
+- `command` points at the venv Python the installer created, so a system-wide Python on `PATH` is not required
 
 Save the file and **quit Claude Desktop completely** (system tray → Quit), then relaunch.
 
@@ -48,7 +50,7 @@ Save the file and **quit Claude Desktop completely** (system tray → Quit), the
 
 Claude Desktop doesn't have a per-project rules system. You have two options:
 
-- **Inline**: paste the content of `Scripts/MCPBridge/install/guides/usage.md` at the start of each conversation
+- **Inline**: paste the content of `Plugins/UAIPMCPBridge/install/guides/usage.md` at the start of each conversation
 - **System prompt** (Claude Pro / Team): set a project-wide custom instruction containing the usage guidelines
 
 The CLI-based [Claude Code](claude-code.md) handles this better. Consider it if you do a lot of UAIP work.

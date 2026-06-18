@@ -80,14 +80,14 @@ The full version (every transport, full Editor / Runtime editing, no watermark) 
 
 ## Setup
 
-The MCP Bridge (`Scripts/MCPBridge/`) is a thin Python proxy that connects your AI client to the UE Editor.
+The MCP Bridge is a thin Python proxy that connects your AI client to the UE Editor. It is distributed **separately from the plugin** as `UAIP-MCPBridge-<version>.zip` in this repository's [Releases](../../releases) (UE-version-agnostic).
 
-1. Run `Scripts/MCPBridge/install/install.ps1`
-2. Register the MCP server in your AI client's config file
-3. Deploy the AI usage guides from `Scripts/MCPBridge/install/guides/` (recommended)
+1. Download `UAIP-MCPBridge-<version>.zip` and extract it anywhere
+2. Run the installer from the extracted folder — `install/install.ps1` (Windows; or `install/install.cmd` if PowerShell execution policy is restricted) — and answer the interactive prompts for your `.uproject` or engine path. The installer deploys the bridge to `<UAIP-parent>/UAIPMCPBridge/` (sibling to the UAIP plugin), creates a Python venv, and prints an MCP client registration snippet
+3. Paste the printed snippet into your AI client's MCP config file
 4. Ask the AI: **"Run a UAIP HealthCheck"** to verify
 
-For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-client setup see [Connection Methods](docs/en/connections.md).
+For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-client setup see [Connection Methods](docs/en/connections.md). Full installer details are in `install/SETUP.md` inside the bridge zip.
 
 ## Documentation
 

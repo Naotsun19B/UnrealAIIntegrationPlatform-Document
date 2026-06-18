@@ -43,7 +43,7 @@ The C++ class that implements one command (e.g., `FCaptureActiveWindowImageHandl
 The open protocol used by AI clients (Claude Code, Codex CLI, Cursor, Windsurf, Copilot) to discover and invoke tools. UAIP exposes itself as an MCP server through the **MCP Bridge** (`thin_proxy.py`). See [Connection Methods](connections.md).
 
 ### MCP Bridge
-The thin Python proxy (`Scripts/MCPBridge/thin_proxy.py`) that connects an AI client to the UE Editor. Translates MCP tool calls into UAIP HTTP requests internally, manages editor lifecycle (auto-launch, crash/hang recovery), and handles artifact inlining.
+The thin Python proxy (`Plugins/UAIPMCPBridge/thin_proxy.py`) that connects an AI client to the UE Editor. Translates MCP tool calls into UAIP HTTP requests internally, manages editor lifecycle (auto-launch, crash/hang recovery), and handles artifact inlining. Distributed separately from the plugin as `UAIP-MCPBridge-<version>.zip` in the documentation repository's Releases.
 
 ### Operational Constraints
 A snapshot of the SafetyPolicy flags returned by `UAIP.Core.QueryCapabilities` — used by the AI to know in advance whether a given action will be permitted (e.g., `ReadOnly=True` means all writes will fail).

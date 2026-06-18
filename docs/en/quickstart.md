@@ -40,29 +40,33 @@ For the demo, also copy `Config/DefaultUAIP.ini` from the release zip into your 
 
 ## 3. Install the MCP Bridge (1 min)
 
-The bridge is a thin Python proxy that connects your AI client to the UE Editor. It also handles starting the editor when it isn't running yet.
+The bridge is a thin Python proxy that connects your AI client to the UE Editor. It also handles starting the editor when it isn't running yet. **The bridge is distributed separately from the plugin** — download `UAIP-MCPBridge-<version>.zip` from this repository's [Releases](../../../releases) (one zip works for every UE version) and extract it anywhere, then run the installer:
 
 ```powershell
-cd <YourProject>/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install
-./install.ps1
+cd <wherever-you-extracted>/UAIPMCPBridge
+./install/install.ps1
 ```
 
 > **Supported platform**: UAIP v1.0 targets **Windows (Win64) only**. macOS / Linux support is a future consideration.
 
-The installer creates a virtualenv, installs `mcp[cli]`, and writes a `config.json` next to `thin_proxy.py` with your editor path and uproject path auto-detected.
+The installer is interactive — it asks for your `.uproject` path (or engine path), deploys the bridge to `<YourProject>/Plugins/UAIPMCPBridge/` (sibling to the UAIP plugin), creates a Python venv, and prints a copy-pasteable MCP client registration snippet at the end.
 
 ---
 
 ## 4. Register the MCP server in your AI client (1 min)
 
-Pick your client and add the following to its MCP config file. The exact file path differs per client — see [Connection Methods → MCP Bridge](connections.md#mcp-bridge) for the locations.
+Paste the snippet the installer printed into your AI client's MCP config file. The exact file path differs per client — see [Connection Methods → MCP Bridge](connections.md#mcp-bridge) for the locations. The shape is:
 
 ```json
 {
   "mcpServers": {
     "uaip": {
-      "command": "<YourProject>/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/install/.venv/Scripts/python.exe",
-      "args": ["<YourProject>/Plugins/UnrealAIIntegrationPlatform/Scripts/MCPBridge/thin_proxy.py"]
+      "command": "<YourProject>/Plugins/UAIPMCPBridge/.venv/Scripts/python.exe",
+      "args":    ["<YourProject>/Plugins/UAIPMCPBridge/thin_proxy.py"],
+      "env": {
+        "UAIP_UE_EDITOR_PATH": "<absolute path to UnrealEditor.exe>",
+        "UAIP_UPROJECT_PATH":  "<absolute path to your.uproject>"
+      }
     }
   }
 }
@@ -70,7 +74,7 @@ Pick your client and add the following to its MCP config file. The exact file pa
 
 Restart your AI client so it picks up the new server.
 
-> **Tip**: the installer prints a copy-pasteable JSON snippet for the supported clients at the end of step 3 — you can use that directly.
+> **Tip**: the installer auto-detects the paths and prints the snippet with real values filled in — paste it as-is.
 
 ---
 

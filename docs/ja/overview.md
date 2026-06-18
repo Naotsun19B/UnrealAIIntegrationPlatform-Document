@@ -80,14 +80,14 @@ UAIP には **デモ版** と **製品版** の 2 つの配布形式がありま
 
 ## セットアップ
 
-MCP Bridge（`Scripts/MCPBridge/`）は UE Editor と AI クライアントをつなぐ Python プロキシです。
+MCP Bridge は UE Editor と AI クライアントをつなぐ Python プロキシです。**プラグイン本体とは別配布** で、このリポジトリの [Releases](../../../releases) から `UAIP-MCPBridge-<version>.zip`（UE バージョン非依存）をダウンロードします。
 
-1. `Scripts/MCPBridge/install/install.ps1` を実行
-2. AI クライアントの設定ファイルに MCP サーバを登録
-3. `Scripts/MCPBridge/install/guides/` の AI 使用ガイドを配置（推奨）
+1. `UAIP-MCPBridge-<version>.zip` をダウンロードして任意の場所に展開
+2. 展開したフォルダから `install/install.ps1`（Windows / PowerShell の実行ポリシー制限がある場合は `install/install.cmd` ラッパー）を実行し、対話プロンプトに `.uproject` パスまたはエンジンパスを入力。インストーラは Bridge を `<UAIP-parent>/UAIPMCPBridge/`（UAIP プラグインと同階層）に展開し、Python venv を作成し、MCP クライアント登録用スニペットを表示します
+3. 表示されたスニペットを AI クライアントの MCP 設定ファイルに貼り付け
 4. AI に「UAIP の HealthCheck を実行して」と聞いて動作確認
 
-5 分で動かす最短ルートは [クイックスタート](quickstart.md) を、クライアント別の詳細な設定は [接続方法](connections.md) を参照してください。
+5 分で動かす最短ルートは [クイックスタート](quickstart.md) を、クライアント別の詳細な設定は [接続方法](connections.md) を参照してください。インストーラの詳細は Bridge zip 同梱の `install/SETUP.md` を参照。
 
 ## ドキュメント
 

@@ -43,7 +43,7 @@ UAIP には 2 つの配布形式があります。**デモ版** は GitHub Relea
 AI クライアント（Claude Code・Codex CLI・Cursor・Windsurf・Copilot など）がツールを発見・呼び出しするときに使うオープンプロトコルです。UAIP は **MCP Bridge**（`thin_proxy.py`）を介して MCP サーバとして自身を公開します。詳細は [接続方法](connections.md) を参照してください。
 
 ### MCP Bridge
-AI クライアントと UE Editor をつなぐ薄い Python プロキシ（`Scripts/MCPBridge/thin_proxy.py`）です。MCP のツール呼び出しを内部で UAIP の HTTP リクエストに変換し、エディタのライフサイクル（自動起動、クラッシュやハングからの復旧）も管理します。Artifact のインライン化処理もここで行います。
+AI クライアントと UE Editor をつなぐ薄い Python プロキシ（`Plugins/UAIPMCPBridge/thin_proxy.py`）です。MCP のツール呼び出しを内部で UAIP の HTTP リクエストに変換し、エディタのライフサイクル（自動起動、クラッシュやハングからの復旧）も管理します。Artifact のインライン化処理もここで行います。プラグイン本体とは別配布で、ドキュメントリポジトリの Releases から `UAIP-MCPBridge-<version>.zip` として提供されます。
 
 ### Operational Constraints
 `UAIP.Core.QueryCapabilities` が返す SafetyPolicy フラグのスナップショットです。AI が事前に「この操作が許可されるか」を判断するために使います（例：`ReadOnly=True` ならすべての書き込みが失敗することが事前にわかる）。
