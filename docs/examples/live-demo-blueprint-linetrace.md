@@ -6,7 +6,7 @@
 ---
 
 This page is a full transcript of the UAIP demo session recorded for the
-[official trailer](https://www.youtube.com/watch?v=TODO).
+[official trailer](https://youtu.be/o-33jgYLF0A).
 Claude was given a single prompt spanning three phases and completed everything
 autonomously — no human intervention during execution.
 
