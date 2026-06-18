@@ -117,6 +117,7 @@ For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-clie
 
 The demo binary available in the Releases of this repository is provided under the terms of `EULA.txt` included in the release archive.  
 The full product distributed on Fab is provided under the [Fab Standard License (Fab EULA)](https://www.fab.com/eula).  
+The **MCP Bridge** (`UAIP-MCPBridge-<version>.zip`, also distributed via this repository's Releases) is provided under the [MIT License](https://opensource.org/licenses/MIT) — the full license text ships inside the archive as `LICENSE`.  
 Unless explicitly stated otherwise, all documentation content in this repository is © 2026 Naotsun. All rights reserved.
 
 ## Author
@@ -125,4 +126,4 @@ Unless explicitly stated otherwise, all documentation content in this repository
 
 ## Changelog
 
-**Current version**: 0.9.0 (released 2026-06-18) — see [Changelog](docs/en/changelog.md) for the full history and versioning policy.
+**Current version**: 0.9.1 (released 2026-06-18) — see [Changelog](docs/en/changelog.md) for the full history and versioning policy.

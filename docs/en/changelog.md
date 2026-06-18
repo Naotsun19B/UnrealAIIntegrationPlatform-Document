@@ -22,7 +22,7 @@ A version number is `MAJOR.MINOR.PATCH`.
 
 ### Current phase: 0.x.y (pre-1.0)
 
-The current version is **0.9.0**, the start of the `0.x.y` series. This signals that UAIP is **before its Fab Pro release**.
+The current version is **0.9.1**, part of the `0.x.y` series. This signals that UAIP is **before its Fab Pro release**.
 
 - SemVer defines `0.x.y` as the phase "before the public API has stabilised"
 - During the `0.x.y` phase, command names, parameter schemas, and capability names may change in response to demo-user feedback
@@ -54,6 +54,16 @@ The free demo (GitHub Releases) and the upcoming Pro (Fab) **always share the sa
 ---
 
 ## Releases
+
+### 0.9.1 — 2026-06-18
+
+A follow-up demo release that restructures how the MCP Bridge is delivered, in order to comply with Fab packaging rules ahead of the upcoming Pro submission. Other engine-side improvements landed in this version are scoped to the Pro build and have no user-visible effect on the demo.
+
+#### Changed
+
+- **MCP Bridge has been split out of the plugin** to comply with Fab packaging rules — the plugin distribution can no longer bundle a Python toolchain. The bridge is now released independently as `UAIP-MCPBridge-<version>.zip` in this repository's Releases (UE-version-agnostic, MIT-licensed, independently versioned — this release ships **MCP Bridge 1.0.0** alongside the demo). The installer deploys it to `<UAIP-parent>/UAIPMCPBridge/` (sibling to the UAIP plugin). See [Connection Methods → MCP Bridge](connections.md#mcp-bridge).
+
+---
 
 ### 0.9.0 — 2026-06-18
 
