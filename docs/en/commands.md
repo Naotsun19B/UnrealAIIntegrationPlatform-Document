@@ -39,11 +39,11 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
 | Editor Assets | `UAIP.Editor.Assets` | 10 | — | — |
-| Editor Level | `UAIP.Editor.Level` | 7 | — | — |
+| Editor Level | `UAIP.Editor.Level` | 13 | — | — |
 | Editor Property | `UAIP.Editor.Property` | 13 | — | — |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 18 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
-| Editor Material | `UAIP.Editor.Material` | 9 | — | — |
+| Editor Material | `UAIP.Editor.Material` | 11 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | — | — |
 | Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 3 | — | — |
 | Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 36 | 45 | — |
@@ -66,7 +66,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 11 | 11 | — |
 | Editor Python Extension 🧩 | `UAIP.Editor.PythonExtension` | 2 | — | — |
-| Runtime PIE | `UAIP.Runtime.PIE` | 10 | — | partial (5/10) |
+| Runtime PIE | `UAIP.Runtime.PIE` | 12 | — | partial (5/12) |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
@@ -209,6 +209,12 @@ Editor-side actor placement, transforms, and level loading.
 | `SetActorTransform` | Set the transform of an editor actor |
 | `OpenLevel` | Open a level in the editor viewport (File > Open Level) |
 | `NewLevel` | Create a new level from a template (EmptyLevel / EmptyOpenWorld / Basic / OpenWorld) |
+| `SelectActors` | Select the specified actors in the editor level (replace or add to current selection) |
+| `ListSelectedActors` | Return a list of actors currently selected in the editor |
+| `ClearSelection` | Clear the current selection in the editor level |
+| `FocusOnActors` | Focus the viewport camera on the specified actors (omit to use the current selection) |
+| `GetCameraTransform` | Get the camera location and rotation of the active level editor viewport |
+| `SetCameraTransform` | Set the camera location and rotation of the active level editor viewport |
 
 ---
 
@@ -238,7 +244,7 @@ Read and write properties on actors, assets, Blueprint defaults, DataTable rows,
 
 Edit Blueprint variables, event graph nodes, and SCS components.
 
-### Variables & graph (8)
+### Variables & graph (10)
 
 | Command | Description |
 |---|---|
@@ -250,6 +256,8 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 | `ConnectBlueprintPins` | Connect two pins in a Blueprint graph |
 | `DisconnectBlueprintPins` | Disconnect a pin connection |
 | `ListBlueprintPins` | List pins of a Blueprint graph node |
+| `SetPinDefaultValue` | Set a default value on a Blueprint graph node pin (auto-selects DefaultValue / DefaultObject / DefaultTextValue based on pin type) |
+| `GetPinDefaultValue` | Get the current default value of a Blueprint graph node pin |
 
 ### Components — SCS (8)
 
@@ -325,6 +333,8 @@ Material graph editing and parameter management.
 | `CompileMaterial` | Compile the material and return errors / warnings |
 | `SetMaterialParameterValue` | Set a material parameter value |
 | `GetMaterialParameterValue` | Get a material parameter value |
+| `ListMaterialExpressionClasses` | List `UMaterialExpression` derived classes (max 500). Use the returned `ClassPath` as the `ExpressionClass` argument for `AddMaterialNode` |
+| `RefreshMaterial` | Force-recompile a material (recompiles a saved asset immediately without arguments) |
 
 ---
 
@@ -1055,6 +1065,8 @@ PIE session control and runtime world manipulation.
 | `PossessActor` | Have a player controller possess an actor |
 | `SetTimeScale` | Set the global time scale of the active PIE session |
 | `QuitGame` | Request the running game process to quit |
+| `GetConsoleVariable` | Get the current value, default value, type, and description of a console variable (CVar) |
+| `SearchConsoleVariables` | Search CVars by keyword, type, or flags and return a list (max 256 results) |
 
 ---
 

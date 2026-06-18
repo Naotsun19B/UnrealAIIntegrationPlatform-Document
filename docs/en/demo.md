@@ -47,7 +47,7 @@ The UAIP demo binary is a free, feature-limited build distributed via GitHub Rel
 
 ### Upgrading to Pro
 
-Replace `Config/DefaultUAIP.ini` with the Pro version's ini file. No other changes are required — the plugin folder structure and MCP server registration are identical.
+`Config/DefaultUAIP.ini` uses the same format in both the demo and Pro. The ini you copied from the demo zip carries over as-is — no replacement is needed. The plugin folder structure and MCP server registration are identical, so no other changes are required.
 
 ---
 
