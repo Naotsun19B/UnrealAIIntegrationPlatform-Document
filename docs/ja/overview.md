@@ -11,7 +11,9 @@
 <video src="https://github.com/user-attachments/assets/58e03ed1-6dc5-4068-8789-4b3e81bbb1f8" autoplay loop muted playsinline controls width="100%"></video>
 
 <p align="center">
-  ▶️ <strong><a href="https://youtu.be/o-33jgYLF0A">YouTube でローンチトレーラーを見る</a></strong>
+  <a href="https://youtu.be/o-33jgYLF0A">
+    <img src="https://img.youtube.com/vi/o-33jgYLF0A/maxresdefault.jpg" alt="YouTube でローンチトレーラーを見る" width="100%">
+  </a>
 </p>
 
 # UnrealAIIntegrationPlatform

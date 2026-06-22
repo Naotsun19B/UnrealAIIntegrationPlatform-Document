@@ -58,7 +58,7 @@ The free demo (GitHub Releases) and Pro (Fab) **always share the same version nu
 
 **UAIP is now available on Fab as the Pro product.** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
 
-▶️ **[Watch the launch trailer on YouTube](https://youtu.be/o-33jgYLF0A)**
+[![Watch the launch trailer on YouTube](https://img.youtube.com/vi/o-33jgYLF0A/maxresdefault.jpg)](https://youtu.be/o-33jgYLF0A)
 
 This is the first production release of UAIP. The Pro build ships through Fab as a Code Plugin (source included) and provides the full UAIP capability set without the demo's feature gating or watermark. The free demo on GitHub Releases continues to be available for evaluation and non-commercial use.
 
