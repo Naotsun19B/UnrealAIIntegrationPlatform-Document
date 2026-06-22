@@ -26,7 +26,7 @@
 
 ### 製品版
 
-製品版は **Fab で近日公開予定** です。公開後は同じパスに配置してください。
+製品版は **[Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)** です。Fab からインストールして同じパスに配置してください。
 
 ---
 
@@ -115,4 +115,4 @@ AI クライアントで次のように依頼してみてください：
 
 ---
 
-> **デモ版と製品版**：デモ版は MCP 接続・観測・PIE 制御・シナリオ実行・UI 自動化・アサーションが利用可能で、AI エージェントをレビューやテストのワークフローに組み込むのに十分な機能をそろえています。Editor 編集（Blueprint・Level・アセットなど）・Runtime ワールド編集（Spawn・GAS・Input など）・HTTP / WebSocket / CLI トランスポート・Python スクリプト実行が必要なら、[デモ版ガイド](demo.md) を参照のうえ製品版もご検討ください（Fab で近日公開予定）。
+> **デモ版と製品版**：デモ版は MCP 接続・観測・PIE 制御・シナリオ実行・UI 自動化・アサーションが利用可能で、AI エージェントをレビューやテストのワークフローに組み込むのに十分な機能をそろえています。Editor 編集（Blueprint・Level・アセットなど）・Runtime ワールド編集（Spawn・GAS・Input など）・HTTP / WebSocket / CLI トランスポート・Python スクリプト実行が必要なら、[デモ版ガイド](demo.md) を参照のうえ製品版（[Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)）もご検討ください。

@@ -26,7 +26,7 @@ Download the latest `UAIP-Demo-UE<version>-Win64.zip` from [Releases](../../../r
 
 ### Pro
 
-The Pro version is **coming soon on Fab**. Once published, install and place the plugin under the same path.
+The Pro version is **[available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)**. Install from Fab and place it under the same path.
 
 ---
 
@@ -115,4 +115,4 @@ The editor will launch automatically on this first call — give it 30–60 s th
 
 ---
 
-> **Demo vs Pro**: the demo binary supports MCP transport, observation, PIE control, scenario execution, UI automation, and assertions — enough to integrate an AI agent into your review and testing workflow. For editor editing (Blueprint, Level, Assets, …), runtime world editing (Spawn, GAS, Input injection, …), HTTP / WebSocket / CLI transports, and Python script execution, see the [Demo Version Guide](demo.md) and consider the Pro version (coming soon on Fab).
+> **Demo vs Pro**: the demo binary supports MCP transport, observation, PIE control, scenario execution, UI automation, and assertions — enough to integrate an AI agent into your review and testing workflow. For editor editing (Blueprint, Level, Assets, …), runtime world editing (Spawn, GAS, Input injection, …), HTTP / WebSocket / CLI transports, and Python script execution, see the [Demo Version Guide](demo.md) and consider the Pro version ([available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)).

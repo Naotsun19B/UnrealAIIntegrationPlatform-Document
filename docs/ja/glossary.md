@@ -28,7 +28,7 @@ HTTP / WebSocket リクエストの認証に使う、32 文字のランダムな
 Capability の 2 つのクラスを指します。**DefaultAllow** は新規セッションに自動で付与されます（例：`EditorInspect`、`PIEControl`）。**DefaultDenied** は `Config/DefaultUAIP.ini` に `+AllowedCapabilities=<名前>` を明示的に書く必要があります。この区別はおおまかに「読み取り」と「書き込み」の境界に対応しています。
 
 ### Demo / Pro（デモ版 / 製品版）
-UAIP には 2 つの配布形式があります。**デモ版** は GitHub Releases で配布している無償の機能制限版です（MCP トランスポートのみ、観測 / PIE / アサート / UI 自動化、キャプチャに透かしあり）。**製品版** は Fab で公開予定の完全版です（全トランスポート、Editor と Runtime の完全な編集機能、透かしなし。近日公開予定）。詳細は [デモ版ガイド](demo.md) を参照してください。
+UAIP には 2 つの配布形式があります。**デモ版** は GitHub Releases で配布している無償の機能制限版です（MCP トランスポートのみ、観測 / PIE / アサート / UI 自動化、キャプチャに透かしあり）。**製品版** は Fab で公開している完全版です（全トランスポート、Editor と Runtime の完全な編集機能、透かしなし、[Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)）。詳細は [デモ版ガイド](demo.md) を参照してください。
 
 ### ErrorCode
 失敗時のレスポンスに含まれる、機械可読なエラーカテゴリです（`CommandNotFound`・`CapabilityNotAvailable`・`PolicyViolation`・`InvalidParams`・`NotFound`・`ExecutionFailed`・`NotAllowed`・`Timeout`・`TooManyRequests`・`InternalError`）。人間向けの詳細は `ErrorMessage` フィールドに入ります。詳細は [トラブルシューティング](troubleshooting.md) を参照してください。

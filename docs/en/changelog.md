@@ -20,18 +20,17 @@ A version number is `MAJOR.MINOR.PATCH`.
 | **MINOR** (e.g. `1.0.x` → `1.1.x`) | Backward-compatible additions — new commands, new capabilities, new optional parameters. Existing calls keep working |
 | **PATCH** (e.g. `1.0.0` → `1.0.1`) | Bug fixes only. No impact on the public API |
 
-### Current phase: 0.x.y (pre-1.0)
+### Current phase: 1.x.y (Fab Pro released)
 
-The current version is **0.9.1**, part of the `0.x.y` series. This signals that UAIP is **before its Fab Pro release**.
+The current version is **1.0.0**, the first entry of the `1.x.y` series. UAIP is **now released on Fab as the Pro product** ([listing](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)).
 
-- SemVer defines `0.x.y` as the phase "before the public API has stabilised"
-- During the `0.x.y` phase, command names, parameter schemas, and capability names may change in response to demo-user feedback
-- **You may need to adjust your AI agent's call code or MCP configuration** when upgrading
-- Significant changes are announced via a MINOR bump (e.g. `0.9.x` → `0.10.0`)
+- Standard SemVer rules now apply strictly: breaking changes require a MAJOR bump (e.g. `2.0.0`)
+- New commands / new capabilities ship as MINOR (e.g. `1.0.x` → `1.1.0`)
+- Bug fixes ship as PATCH (e.g. `1.0.0` → `1.0.1`)
 
-### 1.0.0 = Fab Pro release
+### Pre-1.0 history: 0.x.y series
 
-`1.0.0` marks the **Fab Pro release**. From that point on, standard SemVer rules apply strictly: breaking changes require a MAJOR bump (e.g. `2.0.0`).
+Versions `0.9.0` and `0.9.1` were demo-only releases distributed via GitHub Releases ahead of the Fab Pro submission. Their entries are preserved below for historical reference.
 
 ### Pre-release tags
 
@@ -49,11 +48,46 @@ This guarantees that older command names — which may be baked into an AI agent
 
 ### Demo and Pro share the same version number
 
-The free demo (GitHub Releases) and the upcoming Pro (Fab) **always share the same version number**. Both are built from the same source with only feature gating differences, so HealthCheck's `UAIPVersion` field returns the same value either way.
+The free demo (GitHub Releases) and Pro (Fab) **always share the same version number**. Both are built from the same source with only feature gating differences, so HealthCheck's `UAIPVersion` field returns the same value either way.
 
 ---
 
 ## Releases
+
+### 1.0.0 — 2026-06-18
+
+**UAIP is now available on Fab as the Pro product.** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
+
+This is the first production release of UAIP. The Pro build unlocks every capability that was held back in the demo and ships through Fab as a Code Plugin (source included). The demo on GitHub Releases continues to be available for evaluation and non-commercial use.
+
+#### Unlocked compared to the demo
+
+- **All transports** — HTTP, WebSocket, and CLI in addition to MCP
+- **Editor-edit commands** — Blueprint / Level / Asset / Material / Niagara / Sequencer / AnimBlueprint / ControlRig / PCG / MetaSound / BehaviorTree / StateTree / Dataflow / EQS / CommonConversation / UMG / Physics / Skeleton / GameplayTags / GameFeatures / EnhancedInput
+- **Runtime world edits** — actor spawn, GAS mutations, input injection
+- **Python script execution** through `RunEditorPythonScript`
+- **No watermark** on captures
+
+#### Added (since 0.9.1)
+
+- **`CompileBlueprint`** — force-compile a Blueprint and return CompileStatus plus a structured message log artifact. Closes the AI's `edit → verify → fix` loop for Blueprint authoring
+- **`GetBlueprintCompileStatus`** — read the current Blueprint compile status without triggering a compile (PIE-safe)
+- **Niagara `GetSystemTopology` — `IsDynamic` flag** — UE 5.8 topology serializer now surfaces dynamic-input status
+- **Graph editor tab lookup — `bActivateTabIfFound`** — opt-in tab activation when re-using an open graph editor
+- **`KeywordFilter` parameter** for `uaip_list_commands` is now documented
+- **190+ Toolset bridges** to UE 5.8's official Toolset API, bringing the total to ~730 commands
+
+#### Removed
+
+- **`CaptureCanonicalGraphImage`** and the `ICaptureProvider` extension point — use `CaptureGraphViewportImage` directly instead
+
+#### Compatibility
+
+- UE 5.7 / 5.8 on Windows (Win64)
+- The Pro plugin is distributed exclusively on Fab; demo continues on this repository's [Demo Releases](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/releases?q=Demo)
+- MCP Bridge stays at the independent `MCPBridge-v1.0.0` release ([Bridge Releases](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/releases?q=MCPBridge))
+
+---
 
 ### 0.9.1 — 2026-06-18
 
@@ -67,7 +101,7 @@ A follow-up demo release that restructures how the MCP Bridge is delivered, in o
 
 ### 0.9.0 — 2026-06-18
 
-**The demo build is now available on GitHub Releases.** The Pro build is coming soon on Fab.
+**The demo build is now available on GitHub Releases.** The Pro build subsequently shipped on Fab — see the [1.0.0](#100--2026-06-18) entry above.
 
 #### Overview
 

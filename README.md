@@ -74,9 +74,9 @@ A feature-limited binary build that already covers MCP connection, observation, 
 2. Extract the zip into your UE project as `Plugins/UnrealAIIntegrationPlatform/`
 3. Open the project and confirm **UnrealAIIntegrationPlatform** is enabled under **Edit > Plugins**
 
-### Pro (coming soon on Fab)
+### Pro — available now on Fab
 
-The full version (every transport, full Editor / Runtime editing, no watermark) is **coming soon on Fab**. It will be distributed as a Fab Code Plugin (source included). Once published, install from Fab and place the plugin under the same `Plugins/UnrealAIIntegrationPlatform/` path.
+The full version (every transport, full Editor / Runtime editing, no watermark) is **[available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)**, distributed as a Fab Code Plugin (source included). Install from Fab and place the plugin under the same `Plugins/UnrealAIIntegrationPlatform/` path.
 
 ## Setup
 
@@ -126,4 +126,4 @@ Unless explicitly stated otherwise, all documentation content in this repository
 
 ## Changelog
 
-**Current version**: 0.9.1 (released 2026-06-18) — see [Changelog](docs/en/changelog.md) for the full history and versioning policy.
+**Current version**: 1.0.0 (released 2026-06-18) — Pro is now [available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff). See [Changelog](docs/en/changelog.md) for the full history and versioning policy.

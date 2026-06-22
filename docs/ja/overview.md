@@ -74,9 +74,9 @@ UAIP には **デモ版** と **製品版** の 2 つの配布形式がありま
 2. zip を展開し、UE プロジェクトの `Plugins/UnrealAIIntegrationPlatform/` に配置
 3. プロジェクトを開き、**編集 > プラグイン** で **UnrealAIIntegrationPlatform** が有効になっているか確認
 
-### 製品版（Fab で近日公開予定）
+### 製品版（Fab で公開中）
 
-完全版（全トランスポート・Editor / Runtime の編集機能・透かしなし）は **Fab で近日公開予定** です。Fab の Code Plugin 形式に従い、ソース付きで配布する予定です。公開後、Fab からインストールし、同じく `Plugins/UnrealAIIntegrationPlatform/` に配置してください。
+完全版（全トランスポート・Editor / Runtime の編集機能・透かしなし）は **[Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)** です。Fab の Code Plugin 形式でソース付き配布です。Fab からインストールして、同じく `Plugins/UnrealAIIntegrationPlatform/` に配置してください。
 
 ## セットアップ
 
@@ -126,4 +126,4 @@ Fab で配布される製品版は [Fab Standard License (Fab EULA)](https://www
 
 ## 更新履歴
 
-**現在のバージョン**: 0.9.1（2026-06-18 リリース）― 詳細な更新履歴とバージョニング方針は [更新履歴](changelog.md) を参照してください。
+**現在のバージョン**: 1.0.0（2026-06-18 リリース）― 製品版は [Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff) です。詳細な更新履歴とバージョニング方針は [更新履歴](changelog.md) を参照してください。

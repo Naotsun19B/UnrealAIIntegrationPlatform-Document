@@ -28,7 +28,7 @@ The Core component that maps a fully-qualified command name (e.g., `UAIP.Editor.
 The two classes of capability. **DefaultAllow** capabilities are granted to every new session automatically (e.g., `EditorInspect`, `PIEControl`). **DefaultDenied** capabilities require an explicit `+AllowedCapabilities=<name>` line in `Config/DefaultUAIP.ini`. The distinction roughly maps to read vs write.
 
 ### Demo / Pro
-Two distribution forms of UAIP. **Demo** is the free, feature-limited binary on GitHub Releases (MCP transport only, observation + PIE + assertions + UI automation, capture watermarked). **Pro** is the full product (all transports, full editor + runtime editing, no watermark) — coming soon on Fab. See [Demo Version Guide](demo.md).
+Two distribution forms of UAIP. **Demo** is the free, feature-limited binary on GitHub Releases (MCP transport only, observation + PIE + assertions + UI automation, capture watermarked). **Pro** is the full product (all transports, full editor + runtime editing, no watermark), [available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff). See [Demo Version Guide](demo.md).
 
 ### ErrorCode
 The machine-readable error category in a failed response (`CommandNotFound`, `CapabilityNotAvailable`, `PolicyViolation`, `InvalidParams`, `NotFound`, `ExecutionFailed`, `NotAllowed`, `Timeout`, `TooManyRequests`, `InternalError`). The `ErrorMessage` field carries the human-readable detail. See [Troubleshooting](troubleshooting.md).

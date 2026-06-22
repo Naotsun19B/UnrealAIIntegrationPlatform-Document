@@ -4,7 +4,7 @@
 
 The UAIP demo binary is a free, feature-limited build distributed via GitHub Releases. It provides observation, PIE control, assertion, scenario execution, and UI automation — enough to integrate an AI agent into your review and testing workflow without any cost.
 
-> **License**: the demo is licensed for **personal use and evaluation only**. Commercial use is not covered — see the `EULA.txt` shipped with the release archive. For commercial use, please wait for the Pro version (coming soon on Fab).
+> **License**: the demo is licensed for **personal use and evaluation only**. Commercial use is not covered — see the `EULA.txt` shipped with the release archive. For commercial use, please get the Pro version ([available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)).
 
 ---
 
