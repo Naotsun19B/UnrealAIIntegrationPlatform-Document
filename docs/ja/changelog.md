@@ -58,28 +58,18 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 **UAIP を Fab で製品版として公開しました。** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
 
-UAIP の最初の正式版リリースです。製品版（Pro）はデモ版で制限していた全機能を解放し、Fab Code Plugin としてソース付きで配布します。デモ版は引き続き GitHub Releases で評価・非商用利用向けに提供します。
+▶️ **[YouTube でローンチトレーラーを見る](https://youtu.be/o-33jgYLF0A)**
 
-#### デモ版に対して解放された機能
+UAIP の最初の正式版リリースです。製品版（Pro）は Fab Code Plugin としてソース付きで配布され、デモ版のような機能ゲーティングや透かしなしで UAIP の全機能を提供します。デモ版は引き続き GitHub Releases で評価・非商用利用向けに提供します。
+
+#### 製品版でデモ版から解放される機能
 
 - **全 transport** — MCP に加えて HTTP / WebSocket / CLI を有効化
 - **Editor 編集コマンド** — Blueprint / Level / Asset / Material / Niagara / Sequencer / AnimBlueprint / ControlRig / PCG / MetaSound / BehaviorTree / StateTree / Dataflow / EQS / CommonConversation / UMG / Physics / Skeleton / GameplayTags / GameFeatures / EnhancedInput
+- **190+ Toolset ブリッジ** — UE 5.8 公式 Toolset API への対応で、総コマンド数は約 730 に到達
 - **Runtime ワールド編集** — アクター Spawn、GAS 変更、Input 注入
 - **`RunEditorPythonScript` による Python スクリプト実行**
 - **キャプチャの透かしを削除**
-
-#### 追加（0.9.1 以降）
-
-- **`CompileBlueprint`** — Blueprint を強制コンパイルし、CompileStatus と構造化メッセージログ artifact を返します。AI による「編集 → 検証 → 修正」ループを Blueprint 編集で閉じるためのコマンド
-- **`GetBlueprintCompileStatus`** — コンパイルをトリガせずに現在のコンパイルステータスを読み取ります（PIE 中も安全）
-- **Niagara `GetSystemTopology` — `IsDynamic` フラグ** — UE 5.8 のトポロジシリアライザが動的入力ステータスを出力するようになりました
-- **グラフエディタタブ検索の `bActivateTabIfFound`** — 既に開いているグラフエディタを再利用する際、明示指定でタブをアクティブ化できます
-- **`KeywordFilter` パラメータ** が `uaip_list_commands` でドキュメント化されました
-- **190+ Toolset ブリッジ** — UE 5.8 公式 Toolset API への対応で、総コマンド数は約 730 に到達
-
-#### 削除
-
-- **`CaptureCanonicalGraphImage`** と `ICaptureProvider` 拡張ポイントを削除しました。グラフビューポート直接キャプチャ（`CaptureGraphViewportImage`）に移行してください
 
 #### 互換性
 

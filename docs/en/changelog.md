@@ -58,28 +58,18 @@ The free demo (GitHub Releases) and Pro (Fab) **always share the same version nu
 
 **UAIP is now available on Fab as the Pro product.** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
 
-This is the first production release of UAIP. The Pro build unlocks every capability that was held back in the demo and ships through Fab as a Code Plugin (source included). The demo on GitHub Releases continues to be available for evaluation and non-commercial use.
+▶️ **[Watch the launch trailer on YouTube](https://youtu.be/o-33jgYLF0A)**
 
-#### Unlocked compared to the demo
+This is the first production release of UAIP. The Pro build ships through Fab as a Code Plugin (source included) and provides the full UAIP capability set without the demo's feature gating or watermark. The free demo on GitHub Releases continues to be available for evaluation and non-commercial use.
+
+#### What Pro provides beyond the demo
 
 - **All transports** — HTTP, WebSocket, and CLI in addition to MCP
-- **Editor-edit commands** — Blueprint / Level / Asset / Material / Niagara / Sequencer / AnimBlueprint / ControlRig / PCG / MetaSound / BehaviorTree / StateTree / Dataflow / EQS / CommonConversation / UMG / Physics / Skeleton / GameplayTags / GameFeatures / EnhancedInput
+- **Editor-edit commands** across Blueprint / Level / Asset / Material / Niagara / Sequencer / AnimBlueprint / ControlRig / PCG / MetaSound / BehaviorTree / StateTree / Dataflow / EQS / CommonConversation / UMG / Physics / Skeleton / GameplayTags / GameFeatures / EnhancedInput
+- **190+ Toolset bridges** to UE 5.8's official Toolset API, bringing the total to ~730 commands
 - **Runtime world edits** — actor spawn, GAS mutations, input injection
 - **Python script execution** through `RunEditorPythonScript`
 - **No watermark** on captures
-
-#### Added (since 0.9.1)
-
-- **`CompileBlueprint`** — force-compile a Blueprint and return CompileStatus plus a structured message log artifact. Closes the AI's `edit → verify → fix` loop for Blueprint authoring
-- **`GetBlueprintCompileStatus`** — read the current Blueprint compile status without triggering a compile (PIE-safe)
-- **Niagara `GetSystemTopology` — `IsDynamic` flag** — UE 5.8 topology serializer now surfaces dynamic-input status
-- **Graph editor tab lookup — `bActivateTabIfFound`** — opt-in tab activation when re-using an open graph editor
-- **`KeywordFilter` parameter** for `uaip_list_commands` is now documented
-- **190+ Toolset bridges** to UE 5.8's official Toolset API, bringing the total to ~730 commands
-
-#### Removed
-
-- **`CaptureCanonicalGraphImage`** and the `ICaptureProvider` extension point — use `CaptureGraphViewportImage` directly instead
 
 #### Compatibility
 

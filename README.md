@@ -10,6 +10,10 @@
 
 <video src="https://github.com/user-attachments/assets/58e03ed1-6dc5-4068-8789-4b3e81bbb1f8" autoplay loop muted playsinline controls width="100%"></video>
 
+<p align="center">
+  ▶️ <strong><a href="https://youtu.be/o-33jgYLF0A">Watch the launch trailer on YouTube</a></strong>
+</p>
+
 # UnrealAIIntegrationPlatform
 
 <!--ts-->
