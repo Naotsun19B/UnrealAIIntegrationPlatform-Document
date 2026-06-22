@@ -58,7 +58,7 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 **UAIP を Fab で製品版として公開しました。** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
 
-[![YouTube でローンチトレーラーを見る](https://img.youtube.com/vi/o-33jgYLF0A/maxresdefault.jpg)](https://youtu.be/o-33jgYLF0A)
+[![YouTube でローンチトレーラーを見る](https://markdown-videos-api.jorgenkh.no/youtube/o-33jgYLF0A)](https://youtu.be/o-33jgYLF0A)
 
 UAIP の最初の正式版リリースです。製品版（Pro）は Fab Code Plugin としてソース付きで配布され、デモ版のような機能ゲーティングや透かしなしで UAIP の全機能を提供します。デモ版は引き続き GitHub Releases で評価・非商用利用向けに提供します。
 

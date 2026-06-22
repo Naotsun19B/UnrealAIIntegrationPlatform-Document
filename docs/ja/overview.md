@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://youtu.be/o-33jgYLF0A">
-    <img src="https://img.youtube.com/vi/o-33jgYLF0A/maxresdefault.jpg" alt="YouTube でローンチトレーラーを見る" width="100%">
+    <img src="https://markdown-videos-api.jorgenkh.no/youtube/o-33jgYLF0A" alt="YouTube でローンチトレーラーを見る" width="100%">
   </a>
 </p>
 
