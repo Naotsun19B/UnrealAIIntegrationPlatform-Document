@@ -60,6 +60,10 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 #### UAIP Plugin
 
+**追加**
+
+- **Sandbox 編集統合**（`UAIPEditorSandbox` モジュール、`FileSandbox` プラグイン必須）: AI エージェントが FileSandbox セッションにアセット変更を仮置きし、人間が確認後にコミットまたはリバートできるようになりました。`UAIP.Editor.Sandbox` 配下に 6 コマンド（`BeginSandboxSession`、`EndSandboxSession`、`GetSandboxStatus`、`GetSandboxChanges`、`CommitSandboxChanges`、`RevertSandboxChanges`）と、4 Capability（`SandboxObserve`（DefaultAllow）、`SandboxSessionControl`、`SandboxPersist`、`SandboxRevert`（いずれも DefaultDenied））を追加しました。
+
 **変更**
 
 - **Niagara モジュールが UE 5.7 に対応**: `UAIP.Editor.Niagara` および `UAIP.Runtime.Niagara` 配下の全コマンド（UAIP ネイティブ 36 本 + Toolset ブリッジ）が UE 5.7 で利用可能になりました。従来 UE 5.7 ではモジュール全体が未登録となり、全コマンドが `CommandNotFound` を返していました。

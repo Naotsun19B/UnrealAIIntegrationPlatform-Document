@@ -84,6 +84,7 @@ flowchart LR
 | `RuntimeExecution` | PIE または Standalone での機能テスト・Automation Test の実行 |
 | `RuntimeGASInspect` 🧩 | PIE 中の GAS 状態読み取り — `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`（`GameplayAbilities` プラグイン必須） |
 | `RuntimeNiagaraInspect` 🧩 | PIE 中の Niagara コンポーネント状態読み取り — `GetUserVariables`、`GetVariable`（`Niagara` プラグイン必須） |
+| `SandboxObserve` 🧩 | アクティブな Sandbox の観測 — `GetSandboxStatus`、`GetSandboxChanges`（`FileSandbox` プラグイン必須） |
 
 ---
 
@@ -269,6 +270,16 @@ flowchart LR
 | `NiagaraEmitterEdit` 🧩 | Niagara System へのエミッター追加・削除・設定 |
 | `NiagaraStackEdit` 🧩 | Niagara エミッターへのモジュール追加・削除・スタック入力パラメータの設定 |
 | `NiagaraStackAutoFix` 🧩 | Niagara スタック診断 Issue の自動修正 |
+
+#### Sandbox セッション管理
+
+これらの Capability はすべて `FileSandbox` プラグインが必要です。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `SandboxSessionControl` 🧩 | FileSandbox セッションの開始・終了 — `BeginSandboxSession`、`EndSandboxSession` |
+| `SandboxPersist` 🧩 | Sandbox 変更のディスクへのフラッシュ — `CommitSandboxChanges` |
+| `SandboxRevert` 🧩 | 保留中の Sandbox 変更の破棄 — `RevertSandboxChanges` |
 
 ---
 

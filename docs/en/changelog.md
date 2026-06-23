@@ -60,6 +60,10 @@ Changes that have shipped in the plugin repository but are not yet released on F
 
 #### UAIP Plugin
 
+**Added**
+
+- **Sandbox editing integration** (`UAIPEditorSandbox` module, requires `FileSandbox` plugin): AI agents can now stage asset changes inside a FileSandbox session and commit or revert them after human review. Adds 6 commands under `UAIP.Editor.Sandbox` — `BeginSandboxSession`, `EndSandboxSession`, `GetSandboxStatus`, `GetSandboxChanges`, `CommitSandboxChanges`, `RevertSandboxChanges` — and 4 capabilities: `SandboxObserve` (DefaultAllow), `SandboxSessionControl`, `SandboxPersist`, `SandboxRevert` (all DefaultDenied).
+
 **Changed**
 
 - **Niagara module now supports UE 5.7**: All commands under `UAIP.Editor.Niagara` and `UAIP.Runtime.Niagara` (36 UAIP + Toolset bridge commands) are now available on UE 5.7. Previously the entire module was unregistered on UE 5.7 and every command returned `CommandNotFound`.

@@ -84,6 +84,7 @@ These are active in every session without any configuration. They cover read-onl
 | `RuntimeExecution` | Run functional tests and automation tests in PIE or Standalone |
 | `RuntimeGASInspect` 🧩 | Read GAS state during PIE — `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses` (requires `GameplayAbilities` plugin) |
 | `RuntimeNiagaraInspect` 🧩 | Read Niagara component state during PIE — `GetUserVariables`, `GetVariable` (requires `Niagara` plugin) |
+| `SandboxObserve` 🧩 | Observe the active sandbox — `GetSandboxStatus`, `GetSandboxChanges` (requires `FileSandbox` plugin) |
 
 ---
 
@@ -269,6 +270,16 @@ These capabilities all require the `Niagara` plugin.
 | `NiagaraEmitterEdit` 🧩 | Add, remove, and configure emitters in Niagara Systems |
 | `NiagaraStackEdit` 🧩 | Add / remove modules and set stack input parameters on Niagara emitters |
 | `NiagaraStackAutoFix` 🧩 | Automatically resolve Niagara stack diagnostic issues |
+
+#### Sandbox session management
+
+These capabilities all require the `FileSandbox` plugin.
+
+| Capability | What it unlocks |
+|---|---|
+| `SandboxSessionControl` 🧩 | Open and close FileSandbox sessions — `BeginSandboxSession`, `EndSandboxSession` |
+| `SandboxPersist` 🧩 | Flush sandbox changes to disk — `CommitSandboxChanges` |
+| `SandboxRevert` 🧩 | Discard pending sandbox changes — `RevertSandboxChanges` |
 
 ---
 

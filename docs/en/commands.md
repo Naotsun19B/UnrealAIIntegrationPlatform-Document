@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 540+ **UAIP commands** (provided directly by the plugin itself) and 190+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 730+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 546+ **UAIP commands** (provided directly by the plugin itself) and 190+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 736+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -66,6 +66,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 11 | 11 | — |
 | Editor Python Extension 🧩 | `UAIP.Editor.PythonExtension` | 2 | — | — |
+| Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 12 | — | partial (5/12) |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
@@ -1046,6 +1047,21 @@ Python command extension. Requires `PythonScriptPlugin`.
 |---|---|
 | `ReloadPythonCommands` 🧩 | Rescan the commands directory and update existing handler descriptors in-place |
 | *(dynamic commands)* 🧩 | Commands registered via the `@uaip_command` decorator (names depend on user scripts) |
+
+---
+
+## UAIP.Editor.Sandbox 🧩
+
+Sandbox session lifecycle management. Requires the `FileSandbox` plugin. When `FileSandbox` is not enabled all commands in this section return `CommandNotFound`.
+
+| Command | Description |
+|---|---|
+| 🆓 `GetSandboxStatus` 🧩 | Query the current sandbox status — `Active`, `IsStale`, `SessionId`, and `OwnerUAIPSessionId` |
+| 🆓 `GetSandboxChanges` 🧩 | List pending changes inside the active sandbox — `FilePath`, `ChangeKind` (Added / Edited / Removed), `SizeBytes`, and `TotalCount` |
+| `BeginSandboxSession` 🧩 | Open a new FileSandbox session; subsequent asset writes are redirected to the sandbox |
+| `EndSandboxSession` 🧩 | End the active sandbox session; uncommitted changes are reverted automatically |
+| `CommitSandboxChanges` 🧩 | Flush selected (or all) pending sandbox changes to disk; returns `CommittedFiles`, `SkippedFiles`, and `CommittedCount` |
+| `RevertSandboxChanges` 🧩 | Discard all pending sandbox changes without committing |
 
 ---
 

@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 540 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 190 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 730+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 546 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 190 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 736+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -66,6 +66,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 11 | 11 | — |
 | Editor Python Extension 🧩 | `UAIP.Editor.PythonExtension` | 2 | — | — |
+| Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 12 | — | 一部（5/12） |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
@@ -1046,6 +1047,21 @@ Python コマンド拡張。`PythonScriptPlugin` が必要です。
 |---|---|
 | `ReloadPythonCommands` 🧩 | コマンドディレクトリを再スキャンし既存ハンドラのディスクリプタをインプレース更新 |
 | *(動的コマンド)* 🧩 | `@uaip_command` デコレータで登録されたコマンド（名前はユーザースクリプトに依存） |
+
+---
+
+## UAIP.Editor.Sandbox 🧩
+
+Sandbox セッションのライフサイクル管理。`FileSandbox` プラグインが必要です。`FileSandbox` が有効でない場合、このセクションのコマンドは全て `CommandNotFound` を返します。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `GetSandboxStatus` 🧩 | 現在の Sandbox 状態を照会 — `Active`・`IsStale`・`SessionId`・`OwnerUAIPSessionId` を返す |
+| 🆓 `GetSandboxChanges` 🧩 | アクティブな Sandbox 内の保留中変更一覧を取得 — `FilePath`・`ChangeKind`（Added / Edited / Removed）・`SizeBytes`・`TotalCount` |
+| `BeginSandboxSession` 🧩 | 新しい FileSandbox セッションを開始。以降のアセット書き込みは Sandbox にリダイレクトされる |
+| `EndSandboxSession` 🧩 | アクティブな Sandbox セッションを終了。未コミットの変更は自動的に Revert される |
+| `CommitSandboxChanges` 🧩 | 選択した（または全ての）Sandbox 変更をディスクにフラッシュ。`CommittedFiles`・`SkippedFiles`・`CommittedCount` を返す |
+| `RevertSandboxChanges` 🧩 | 保留中の Sandbox 変更を全て破棄（コミットしない） |
 
 ---
 
