@@ -73,7 +73,12 @@ Changes that have shipped in the plugin repository but are not yet released on F
 
 **Added**
 
-- **Version compatibility check on connect**: The Bridge now reports a `version_check_status` field (`passed` / `outdated` / `incompatible`) in the connection log when the editor starts. An `outdated` status indicates a minor-version mismatch between the bridge and plugin; `incompatible` indicates a major-version mismatch. The bridge continues to operate in both cases but the status helps diagnose unexpected command failures.
+- **`uaip_reload_config` tool**: reads `config.json` in-place and, when launch parameters change (`editor_path`, `uproject_path`, `http_port`, or `enable_scenario`), shuts down the running editor and schedules a fresh launch on the next tool call — without disconnecting the MCP session. Optional `EditorPath` / `UProjectPath` arguments override `config.json` for the current session only (not persisted), enabling runtime engine version switching without restarting the MCP client.
+- **Version compatibility check on connect**: The bridge validates the running UAIP plugin version against a `compatibility.json` manifest on startup and raises `VersionIncompatibleError` on a major-version mismatch. The check can be bypassed in dev environments with `UAIP_BRIDGE_SKIP_VERSION_CHECK=1`.
+
+**Fixed**
+
+- Bridge now correctly restarts the editor when `enable_scenario` (or other launch parameters) change via `uaip_reload_config`. Previously, `importlib.reload()` was called before checking the running editor state, causing the enum identity comparison to fail and the restart to be silently skipped.
 
 ---
 
