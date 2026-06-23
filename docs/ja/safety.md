@@ -108,6 +108,7 @@ flowchart LR
 |---|---|
 | `EditorActorEdit` | Level Editor でのアクターの生成・削除・トランスフォーム変更 |
 | `EditorLevelLoad` | エディタビューポートでのレベルオープン・新規作成 |
+| `EditorViewportControl` | Level Editor ビューポートカメラの操作 — `FocusOnActors`、`GetCameraTransform`、`SetCameraTransform` |
 | `PropertyEdit` | 詳細パネル経由でのアクター / アセットプロパティの読み書き（`GetActorProperty`、`SetActorProperty`、`GetAssetProperty`、`SetAssetProperty` など） |
 | `ProjectConfigEdit` | プロジェクト設定の読み書き（`GetProjectSetting`、`SetProjectSetting`） |
 | `EditorUndoRedo` | エディタ操作の Undo / Redo |
@@ -234,6 +235,7 @@ flowchart LR
 
 | Capability | 有効になる操作 |
 |---|---|
+| `RuntimeCVarRead` | コンソール変数（CVar）値の読み取り — `GetConsoleVariable`、`SearchConsoleVariables` |
 | `RuntimeActorManipulation` | PIE 中のアクタースポーン・破棄・テレポート・Possess |
 | `RuntimeExecCommand` | `UWorld` 経由のランタイムコンソールコマンド実行 |
 | `RuntimeInputInjection` | PIE へのキーボード / Enhanced Input / レガシー入力イベントの注入（`InjectInputKey`、`InjectEnhancedInputAction`、`AddMappingContext`、`SetInputMode`、`FlushInput` など） |
