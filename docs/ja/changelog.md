@@ -56,6 +56,14 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 > 未リリース・開発中の変更は [`next` ブランチの更新履歴](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/ja/changelog.md) で確認できます。
 
+### MCP Bridge 1.1.1 — 2026-06-24
+
+**修正**
+
+- **`uaip_max_major` の上限を撤廃** — `compatibility.json` の `uaip_max_major` を `null` に変更しました。これにより、ブリッジは `0.9.1` 以上のいかなる UAIP プラグインバージョン（2.x などの将来のメジャーバージョンを含む）にも接続できます。以前は上限値 `1` のせいで、実際の非互換性がなくてもプラグインのメジャーバージョンが上がるたびに新しいブリッジのリリースが必要でした。
+
+---
+
 ### MCP Bridge 1.1.0 — 2026-06-23
 
 **追加**

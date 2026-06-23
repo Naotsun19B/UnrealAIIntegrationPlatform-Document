@@ -56,6 +56,14 @@ The free demo (GitHub Releases) and Pro (Fab) **always share the same version nu
 
 > Unreleased and upcoming changes are tracked on the [`next` branch changelog](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/en/changelog.md).
 
+### MCP Bridge 1.1.1 — 2026-06-24
+
+**Fixed**
+
+- **Removed `uaip_max_major` upper bound** — `compatibility.json` now sets `uaip_max_major: null`, allowing the bridge to connect to any UAIP plugin version `>= 0.9.1`, including future major versions such as 2.x. Previously the upper bound of `1` required a new bridge release for every plugin major bump, even when no actual incompatibility existed.
+
+---
+
 ### MCP Bridge 1.1.0 — 2026-06-23
 
 **Added**
