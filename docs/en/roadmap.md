@@ -8,8 +8,11 @@ Items below are planned or under investigation. No specific release dates are co
 
 ## Engine Version Support
 
-### Backward compatibility to UE 5.5
-UAIP currently targets UE 5.7 and 5.8. Support down to approximately UE 5.5 is being actively pursued. Versions below 5.4 will be evaluated based on demand.
+### Backward compatibility to UE 5.6 and earlier
+UAIP currently targets UE 5.7 and 5.8. Support for UE 5.6 and older versions is under evaluation for a future release. Demand for UE 5.5 and earlier will be assessed separately.
+
+### Linux / macOS Support
+UAIP currently supports Windows (Win64) only. Linux and macOS support is under evaluation and will be considered when sufficient demand and a suitable test environment are available.
 
 ---
 
@@ -85,8 +88,23 @@ Configure Groom Assets — simulation parameters, LOD settings, and SkeletalMesh
 - **AnimationLayering / UAF** (UE 5.8): bone-mask layers and Unified Animation Framework node operations
 - **MeshPartition (MegaMesh)** (UE 5.8): spatial partition and non-destructive modifiers on large meshes
 - **ChaosCloth Asset** (UE 5.8): weight map, Sim/Render mesh, and cloth simulation config
+- **Extended PCG Commands** (UE 5.8): approximately 30 additional commands covering spatial operations, async execution, and attribute property selectors — complements the existing PCG native commands and will be **UE 5.8+ only**
+- **Enhanced Input Debugging** (UE 5.8): dump the current Enhanced Input / CommonUI input state and fire Input Actions programmatically — powered by the `PlayerInputDebugger` plugin
 - **CustomizableSequencerTracks**: Blueprint-defined custom Sequencer track type support
 - **DataPrep Asset**: execute and inspect DataPrep import-pipeline assets
+
+---
+
+## Editor — Observation & State Queries
+
+### Viewport Coordinate Conversion
+Convert between world-space and screen-space coordinates for the editor viewport. Useful for confirming an actor's on-screen position, supplying coordinates in UI automation workflows, and combining spatial queries with screen-space logic.
+
+### Visible Actor Query
+List the actors inside the editor viewport frustum. Designed for workflows that need to scope commands to what the camera currently sees, or compare visible actors against the full scene contents.
+
+### Log Verbosity Control
+Get and set per-category log verbosity levels at runtime. Enables AI-driven debug sessions that temporarily increase verbosity for a specific module and automatically restore defaults on completion.
 
 ---
 
@@ -118,6 +136,9 @@ NetConnection stats (RTT, packet loss, bandwidth), NetDriver info, replicated pr
 
 ### Chaos Runtime State
 Dump `UGeometryCollectionComponent` cluster state, destruction event log, and Chaos Field System state during PIE — pairs with the editor-side Geometry Collection editing.
+
+### Mass Entity Observation
+Dump Mass Entity archetypes, entity counts, and processor execution graphs during PIE — for debugging crowd AI and large-scale entity simulations. Requires the `MassEntity` / `MassGameplay` plugins.
 
 ### Performance Insights Tracing
 Start and stop UE Trace sessions with channel selection, query frame stats and hitch summaries, and inspect domain-specific traces (HTTP events, Niagara timings, render commands).
