@@ -54,6 +54,25 @@ The free demo (GitHub Releases) and Pro (Fab) **always share the same version nu
 
 ## Releases
 
+### Unreleased
+
+Changes that have shipped in the plugin repository but are not yet released on Fab.
+
+#### UAIP Plugin
+
+**Changed**
+
+- **Niagara module now supports UE 5.7**: All commands under `UAIP.Editor.Niagara` and `UAIP.Runtime.Niagara` (36 UAIP + Toolset bridge commands) are now available on UE 5.7. Previously the entire module was unregistered on UE 5.7 and every command returned `CommandNotFound`.
+- **Niagara `default_value` applied**: `AddSetParametersModule` and `AddSetParameterEntry` now parse and apply the `default_value` field for common types (float, int, bool, `UScriptStruct`). Previously entries were always created with type defaults regardless of the supplied value.
+
+#### MCP Bridge 1.1.0 — released 2026-06-23
+
+**Added**
+
+- **Version compatibility check on connect**: The Bridge now reports a `version_check_status` field (`passed` / `outdated` / `incompatible`) in the connection log when the editor starts. An `outdated` status indicates a minor-version mismatch between the bridge and plugin; `incompatible` indicates a major-version mismatch. The bridge continues to operate in both cases but the status helps diagnose unexpected command failures.
+
+---
+
 ### 1.0.0 — 2026-06-18
 
 **UAIP is now available on Fab as the Pro product.** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)

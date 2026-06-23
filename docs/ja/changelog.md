@@ -54,6 +54,25 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 ## リリース一覧
 
+### Unreleased
+
+プラグインリポジトリには取り込み済みですが、Fab 未リリースの変更です。
+
+#### UAIP Plugin
+
+**変更**
+
+- **Niagara モジュールが UE 5.7 に対応**: `UAIP.Editor.Niagara` および `UAIP.Runtime.Niagara` 配下の全コマンド（UAIP ネイティブ 36 本 + Toolset ブリッジ）が UE 5.7 で利用可能になりました。従来 UE 5.7 ではモジュール全体が未登録となり、全コマンドが `CommandNotFound` を返していました。
+- **Niagara `default_value` が適用されるように**: `AddSetParametersModule` および `AddSetParameterEntry` で `default_value` フィールドが一般的な型（float / int / bool / `UScriptStruct`）について解析・適用されます。従来は指定値にかかわらず型のデフォルト値でエントリが作成されていました。
+
+#### MCP Bridge 1.1.0 — 2026-06-23 リリース済み
+
+**追加**
+
+- **接続時のバージョン互換チェック**: エディタ起動時に Bridge とプラグイン間のバージョン互換チェックが実行され、接続ログに `version_check_status`（`passed` / `outdated` / `incompatible`）が出力されます。`outdated` はマイナーバージョン不一致、`incompatible` はメジャーバージョン不一致を示します。いずれの場合も Bridge は動作を継続しますが、予期しないコマンド失敗の診断に役立てられます。
+
+---
+
 ### 1.0.0 — 2026-06-18
 
 **UAIP を Fab で製品版として公開しました。** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)

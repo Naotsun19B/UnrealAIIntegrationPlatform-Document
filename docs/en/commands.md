@@ -368,7 +368,7 @@ GameFeature Plugin management. Requires `GameFeatures` + `GameFeaturesEditor` pl
 
 ## UAIP.Editor.Niagara 🧩
 
-Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **UE 5.8 or newer** — all commands in this section are unregistered on UE 5.7 (`CommandNotFound`).
+Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **UE 5.7 or newer**.
 
 ### Native (36)
 
@@ -412,8 +412,8 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 | `AddUserVariables` 🧩 | Add user variables to a system |
 | `RemoveUserVariables` 🧩 | Remove user variables |
 | `CompileNiagaraSystem` 🧩 | Compile the Niagara system |
-| `AddSetParametersModule` 🧩 | Add a Set Parameters module to a stack and register initial parameter entries. **UE 5.8 note:** the `default_value` field is currently ignored; entries are created with type defaults. |
-| `AddSetParameterEntry` 🧩 | Add a parameter entry to an existing Set Parameters module. **UE 5.8 note:** `default_value` is ignored. |
+| `AddSetParametersModule` 🧩 | Add a Set Parameters module to a stack and register initial parameter entries. The `default_value` field is applied for common types (float, int, bool, struct). |
+| `AddSetParameterEntry` 🧩 | Add a parameter entry to an existing Set Parameters module. The `default_value` field is applied for common types (float, int, bool, struct). |
 | `RemoveSetParameterEntry` 🧩 | Remove a parameter entry from a Set Parameters module |
 
 #### Blueprint wrappers (2)
