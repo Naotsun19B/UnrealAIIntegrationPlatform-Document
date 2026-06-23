@@ -53,6 +53,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor DataTable | `UAIP.Editor.DataTable` | 7 | — | — |
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
+| Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 12 | — | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 9 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 7 | — | — |
@@ -574,6 +575,28 @@ SoundCue graph editing.
 | `DisconnectSoundCuePins` | Disconnect a pin connection (PinIndex=-1 disconnects all) |
 | `SetSoundCueNodeProperty` | Set a SoundCue node property (Object / Class / Delegate denylist) |
 | `CompileSoundCue` | Rebuild the SoundNode tree from the graph |
+
+---
+
+## UAIP.Editor.SoundSettings
+
+SoundClass hierarchy, SoundAttenuation, and SoundMix asset property editing.
+
+| Command | Description |
+|---|---|
+| `GetSoundClassInfo` | Return SoundClass Properties (FSoundClassProperties), ChildClasses, ParentClass, and PassiveSoundMixModifiers as JSON |
+| `SetSoundClassSettings` | Set one FSoundClassProperties field on a SoundClass asset (changing LoadingBehavior is rejected) |
+| `ListSoundClasses` | Enumerate SoundClass assets in the project (AssetPath / ParentClassPath / ChildClassPaths; up to 1000) |
+| `AddSoundClassChild` | Add a child class to the SoundClass hierarchy (cycle detection; depth limit 32) |
+| `RemoveSoundClassChild` | Remove a child class from the SoundClass hierarchy and clear both directions of the link |
+| `GetSoundAttenuationInfo` | Return FSoundAttenuationSettings of a SoundAttenuation asset as JSON |
+| `SetSoundAttenuationSettings` | Set one FSoundAttenuationSettings field on a SoundAttenuation asset |
+| `ListSoundAttenuations` | Enumerate SoundAttenuation assets in the project (up to 1000) |
+| `GetSoundMixInfo` | Return all SoundMix settings (EQ, SoundClassEffects, fade timings) as JSON |
+| `SetSoundMixSettings` | Set one top-level SoundMix field (direct write to SoundClassEffects array is rejected) |
+| `SetSoundMixAdjuster` | Add or update a SoundClassAdjuster identified by SoundClass path (Upsert; omitted fields keep existing values or use engine defaults) |
+| `RemoveSoundMixAdjuster` | Remove the SoundClassAdjuster for the specified SoundClass from a SoundMix |
+| `ListSoundMixes` | Enumerate SoundMix assets in the project (up to 1000) |
 
 ---
 

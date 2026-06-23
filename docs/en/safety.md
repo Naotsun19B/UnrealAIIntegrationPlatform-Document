@@ -201,6 +201,14 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 |---|---|
 | `SoundCueGraphEdit` | Add, delete, and connect nodes in SoundCue graphs; edit properties; compile SoundCues |
 
+#### Sound asset editing
+
+| Capability | What it unlocks |
+|---|---|
+| `SoundClassEdit` | Set SoundClass asset properties; add and remove child classes (`SetSoundClassSettings`, `AddSoundClassChild`, `RemoveSoundClassChild`) |
+| `SoundAttenuationEdit` | Set FSoundAttenuationSettings fields on SoundAttenuation assets (`SetSoundAttenuationSettings`) |
+| `SoundMixEdit` | Set SoundMix properties; add, update, and remove SoundClassAdjuster entries (`SetSoundMixSettings`, `SetSoundMixAdjuster`, `RemoveSoundMixAdjuster`) |
+
 #### Curve editing
 
 | Capability | What it unlocks |

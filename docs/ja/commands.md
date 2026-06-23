@@ -53,6 +53,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor DataTable | `UAIP.Editor.DataTable` | 7 | — | — |
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
+| Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 12 | — | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 9 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 7 | — | — |
@@ -574,6 +575,28 @@ SoundCue グラフ編集。
 | `DisconnectSoundCuePins` | ピン接続を切断（PinIndex=-1 で全切断） |
 | `SetSoundCueNodeProperty` | SoundCue ノードのプロパティを設定（Object / Class / Delegate denylist） |
 | `CompileSoundCue` | SoundNode ツリーをグラフから再構築 |
+
+---
+
+## UAIP.Editor.SoundSettings
+
+SoundClass ツリー・SoundAttenuation・SoundMix アセットのプロパティ設定。
+
+| コマンド | 説明 |
+|---|---|
+| `GetSoundClassInfo` | SoundClass の Properties（FSoundClassProperties）・ChildClasses・ParentClass・PassiveSoundMixModifiers を返す |
+| `SetSoundClassSettings` | SoundClass の FSoundClassProperties フィールドを 1 プロパティ単位で設定（LoadingBehavior の変更は拒否） |
+| `ListSoundClasses` | プロジェクト内 SoundClass を列挙（AssetPath / ParentClassPath / ChildClassPaths；最大 1000 件） |
+| `AddSoundClassChild` | SoundClass 階層に子クラスを追加（循環参照検出・深度上限 32） |
+| `RemoveSoundClassChild` | SoundClass 階層から子クラスを削除し、双方向リンクを解除 |
+| `GetSoundAttenuationInfo` | SoundAttenuation の FSoundAttenuationSettings を JSON で返す |
+| `SetSoundAttenuationSettings` | SoundAttenuation の FSoundAttenuationSettings フィールドを 1 プロパティ単位で設定 |
+| `ListSoundAttenuations` | プロジェクト内 SoundAttenuation を列挙（最大 1000 件） |
+| `GetSoundMixInfo` | SoundMix の全設定（EQ・SoundClassEffects・Fade タイミング）を JSON で返す |
+| `SetSoundMixSettings` | SoundMix のトップレベルフィールドを 1 プロパティ単位で設定（SoundClassEffects 配列の直接書き込みは拒否） |
+| `SetSoundMixAdjuster` | SoundClassAdjuster を追加または更新（SoundClass パスをキーとした Upsert；省略フィールドは既存値を維持または既定値） |
+| `RemoveSoundMixAdjuster` | SoundMix から対象 SoundClass の SoundClassAdjuster を削除 |
+| `ListSoundMixes` | プロジェクト内 SoundMix を列挙（最大 1000 件） |
 
 ---
 

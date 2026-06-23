@@ -64,6 +64,7 @@ Changes that have shipped in the plugin repository but are not yet released on F
 
 **Added**
 
+- **Sound asset editing** (`UAIPEditorSound` module): AI agents can now read and set properties on `USoundClass`, `USoundAttenuation`, and `USoundMix` assets. Adds 13 commands under `UAIP.Editor.SoundSettings` and 3 capabilities: `SoundClassEdit`, `SoundAttenuationEdit`, `SoundMixEdit` (all DefaultDenied).
 - **Sandbox editing integration** (`UAIPEditorSandbox` module, **Pro only** — requires `FileSandbox` plugin; not available in the demo build): AI agents can now stage asset changes inside a FileSandbox session and commit or revert them after human review. Adds 6 commands under `UAIP.Editor.Sandbox` — `BeginSandboxSession`, `EndSandboxSession`, `GetSandboxStatus`, `GetSandboxChanges`, `CommitSandboxChanges`, `RevertSandboxChanges` — and 4 capabilities: `SandboxObserve` (DefaultAllow), `SandboxSessionControl`, `SandboxPersist`, `SandboxRevert` (all DefaultDenied). All 6 commands — including the read-only observe commands — require the `FileSandbox` plugin and are not included in the demo module whitelist.
 
 **Changed**
