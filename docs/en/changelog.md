@@ -54,6 +54,8 @@ The free demo (GitHub Releases) and Pro (Fab) **always share the same version nu
 
 ## Releases
 
+> **You are viewing the `next` branch.** This page tracks development-in-progress content ahead of the next Fab release. For the last released version, see the [`master` branch changelog](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/master/docs/en/changelog.md).
+
 ### Unreleased
 
 Changes that have shipped in the plugin repository but are not yet released on Fab.
@@ -79,10 +81,11 @@ Changes that have shipped in the plugin repository but are not yet released on F
 **Fixed**
 
 - Bridge now correctly restarts the editor when `enable_scenario` (or other launch parameters) change via `uaip_reload_config`. Previously, `importlib.reload()` was called before checking the running editor state, causing the enum identity comparison to fail and the restart to be silently skipped.
+- Bridge now automatically terminates lingering crash dialogs (`WerFault.exe`, `CrashReportClient.exe`) before launching or relaunching the editor. On Windows, a crash dialog holds the per-project named mutex while open, blocking any new editor process from starting until the dialog is dismissed manually.
 
 ---
 
-### 1.0.0 — 2026-06-18
+### UAIP Plugin 1.0.0 — 2026-06-18
 
 **UAIP is now available on Fab as the Pro product.** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
 
@@ -107,7 +110,7 @@ This is the first production release of UAIP. The Pro build ships through Fab as
 
 ---
 
-### 0.9.1 — 2026-06-18
+### UAIP Plugin 0.9.1 — 2026-06-18
 
 A follow-up demo release that restructures how the MCP Bridge is delivered, in order to comply with Fab packaging rules ahead of the upcoming Pro submission. Other engine-side improvements landed in this version are scoped to the Pro build and have no user-visible effect on the demo.
 
@@ -117,9 +120,9 @@ A follow-up demo release that restructures how the MCP Bridge is delivered, in o
 
 ---
 
-### 0.9.0 — 2026-06-18
+### UAIP Plugin 0.9.0 — 2026-06-18
 
-**The demo build is now available on GitHub Releases.** The Pro build subsequently shipped on Fab — see the [1.0.0](#100--2026-06-18) entry above.
+**The demo build is now available on GitHub Releases.** The Pro build subsequently shipped on Fab — see the [UAIP Plugin 1.0.0](#uaip-plugin-100--2026-06-18) entry above.
 
 #### Overview
 
