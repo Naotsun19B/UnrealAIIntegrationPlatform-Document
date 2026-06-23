@@ -71,6 +71,14 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 - **Niagara モジュールが UE 5.7 に対応**: `UAIP.Editor.Niagara` および `UAIP.Runtime.Niagara` 配下の全コマンド（UAIP ネイティブ 36 本 + Toolset ブリッジ）が UE 5.7 で利用可能になりました。従来 UE 5.7 ではモジュール全体が未登録となり、全コマンドが `CommandNotFound` を返していました。
 - **Niagara `default_value` が適用されるように**: `AddSetParametersModule` および `AddSetParameterEntry` で `default_value` フィールドが一般的な型（float / int / bool / `UScriptStruct`）について解析・適用されます。従来は指定値にかかわらず型のデフォルト値でエントリが作成されていました。
 
+#### MCP Bridge 1.1.1 — 2026-06-24 リリース済み
+
+**修正**
+
+- **`uaip_max_major` の上限を撤廃** — `compatibility.json` の `uaip_max_major` を `null` に変更しました。これにより、ブリッジは `0.9.1` 以上のいかなる UAIP プラグインバージョン（2.x などの将来のメジャーバージョンを含む）にも接続できます。以前は上限値 `1` のせいで、実際の非互換性がなくてもプラグインのメジャーバージョンが上がるたびに新しいブリッジのリリースが必要でした。
+
+---
+
 #### MCP Bridge 1.1.0 — 2026-06-23 リリース済み
 
 **追加**
