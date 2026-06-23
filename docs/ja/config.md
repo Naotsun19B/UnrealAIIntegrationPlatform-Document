@@ -210,16 +210,40 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 
 | キー | 型 | デフォルト | 説明 |
 |---|---|---|---|
-| `ue_editor_path` | string | — | `UnrealEditor.exe` の絶対パス。環境変数オーバーライド：`UAIP_UE_EDITOR_PATH` |
-| `uproject_path` | string | — | `.uproject` ファイルの絶対パス。環境変数オーバーライド：`UAIP_UPROJECT_PATH` |
-| `subprocess_timeout_seconds` | int | `300` | UE サブプロセス呼び出しの個別タイムアウト |
+| `editor_path` | string | `""` | `UnrealEditor.exe` の絶対パス。環境変数 `UAIP_UE_EDITOR_PATH` が設定されている場合はそちらが優先 |
+| `uproject_path` | string | `""` | `.uproject` ファイルの絶対パス。環境変数 `UAIP_UPROJECT_PATH` が設定されている場合はそちらが優先 |
+| `http_port` | int | `8765` | エディタ側 MCP エンドポイントの HTTP ポート。`-uaip-http-port` と一致させること |
+| `http_startup_timeout_seconds` | int | `120` | Bridge が起動後のエディタ準備完了を待つ最大秒数 |
+| `command_timeout_seconds` | int | `60` | 転送されるコマンドのリクエストごとの HTTP タイムアウト |
 | `log_level` | string | `"INFO"` | Python logger の冗長度 — `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `enable_scenario` | bool | `false` | `true` のとき Bridge がエディタを `-uaip-enable-scenario` 付きで起動する。環境変数オーバーライド：`UAIP_ENABLE_SCENARIO=1` |
 | `inline_artifacts.image` | bool | `false` | PNG Artifact を MCP レスポンスに base64 インライン化する。**長時間セッションで PNG が蓄積し `"Could not process image"` API エラーが発生するため、デフォルト OFF** — スクリーンショットは Artifact パスを `Read` ツールに渡して表示する |
 | `inline_artifacts.json` | bool | `true` | JSON Artifact を MCP レスポンスに base64 インライン化する |
 | `inline_artifacts.text` | bool | `true` | テキスト Artifact を MCP レスポンスに base64 インライン化する |
 
-環境変数が設定されている場合は JSON 値を上書きします。フルコメント付きテンプレートは `config.json.example`（Bridge zip 同梱、インストール後は `<bridge-root>/config.json.example`）を参照してください。
+環境変数（`UAIP_UE_EDITOR_PATH`・`UAIP_UPROJECT_PATH`・`UAIP_ENABLE_SCENARIO`）が設定されている場合は対応する JSON 値を上書きします。フルコメント付きテンプレートは `config.json.example`（Bridge zip 同梱、インストール後は `<bridge-root>/config.json.example`）を参照してください。
+
+### 実行時の config リロード（`uaip_reload_config`）
+
+`uaip_reload_config` を使うと、**MCP クライアントを再起動せずに** config の変更を適用できます。`config.json` を読み直し、起動パラメータが現セッションと異なる場合は実行中のエディタをシャットダウンして次回ツール呼び出し時に再起動をスケジュールします。
+
+```
+uaip_reload_config()
+→ { "EditorRestartScheduled": true/false, "EditorPath": "...", ... }
+```
+
+**オプション引数**（セッション限りのオーバーライド。`config.json` には書き込まれない）:
+
+| 引数 | 効果 |
+|---|---|
+| `EditorPath` | `config.json` を編集せずに実行時でエンジンバージョンを切り替える |
+| `UProjectPath` | このセッション限り別の `.uproject` を使用する |
+
+`config.json` 編集後の典型的な手順：
+
+1. `config.json` を編集（例：`enable_scenario: true`）
+2. `uaip_reload_config()` を呼び出す — Bridge が変更を検出してエディタ再起動をスケジュール
+3. 次の `uaip_execute` 呼び出し時に新しいパラメータでエディタが起動する
 
 ---
 

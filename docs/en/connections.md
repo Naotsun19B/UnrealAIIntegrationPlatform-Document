@@ -142,16 +142,33 @@ Full installer / paths reference: `<bridge-root>/install/SETUP.md` (deployed alo
 
 ```json
 {
-  "ue_editor_path":              "",
-  "uproject_path":               "",
-  "subprocess_timeout_seconds":  300,
-  "log_level":                   "INFO",
-  "enable_scenario":             true,
+  "editor_path":                  "",
+  "uproject_path":                "",
+  "http_startup_timeout_seconds": 120,
+  "command_timeout_seconds":      60,
+  "log_level":                    "INFO",
+  "enable_scenario":              true,
   "inline_artifacts": { "image": false, "json": true, "text": true }
 }
 ```
 
-`ue_editor_path` / `uproject_path` in `config.json` are fallbacks; per-connection paths supplied through the MCP client's `env` block (`UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`) take precedence. Reconnect the MCP client after the change. See [Scenario Execution](scenario.md) for what scenarios enable and [Configuration](config.md#mcp-bridge-configjson) for the full key list.
+`editor_path` / `uproject_path` in `config.json` are fallbacks; per-connection paths supplied through the MCP client's `env` block (`UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`) take precedence. See [Scenario Execution](scenario.md) for what scenarios enable and [Configuration](config.md#mcp-bridge-configjson) for the full key list.
+
+### Reload config without restarting the MCP client
+
+After editing `config.json`, call `uaip_reload_config` from the AI — the bridge reads the file, shuts down the running editor if launch parameters changed, and restarts it on the next command:
+
+```
+uaip_reload_config()
+```
+
+To switch engine version or project for the current session only (without editing `config.json`):
+
+```
+uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\UnrealEditor.exe")
+```
+
+See [Configuration → Reloading config at runtime](config.md#reloading-config-at-runtime-uaip_reload_config) for full details.
 
 ### MCP setup troubleshooting
 

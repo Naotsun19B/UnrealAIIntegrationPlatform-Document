@@ -54,6 +54,19 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 ## リリース一覧
 
+### MCP Bridge 1.1.0 — 2026-06-23
+
+**追加**
+
+- **`uaip_reload_config` ツール**: `config.json` を読み直し、起動パラメータ（`editor_path`・`uproject_path`・`http_port`・`enable_scenario`）に変更がある場合は実行中のエディタをシャットダウンして次回ツール呼び出し時に再起動をスケジュールします — MCP セッションを切断せずに実行可能です。オプション引数 `EditorPath` / `UProjectPath` を使うと、`config.json` に書き込まずに現セッション限りで値を上書きでき、MCP クライアントを再起動せずにエンジンバージョンの切り替えが可能です。
+- **接続時のバージョン互換チェック**: 起動時に `compatibility.json` マニフェストと照合してプラグインバージョンを検証し、メジャーバージョン不一致の場合は `VersionIncompatibleError` を発生させます。開発環境では `UAIP_BRIDGE_SKIP_VERSION_CHECK=1` でスキップできます。
+
+**修正**
+
+- `uaip_reload_config` 経由で `enable_scenario`（またはその他の起動パラメータ）が変更されたとき、エディタが正しく再起動されるようになりました。従来は `importlib.reload()` が実行中エディタの確認より先に呼ばれていたため、enum の同一性チェックが失敗し再起動がサイレントにスキップされていました。
+
+---
+
 ### 1.0.0 — 2026-06-18
 
 **UAIP を Fab で製品版として公開しました。** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)

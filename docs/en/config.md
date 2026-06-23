@@ -210,16 +210,40 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `ue_editor_path` | string | — | Absolute path to `UnrealEditor.exe`. Env override: `UAIP_UE_EDITOR_PATH` |
-| `uproject_path` | string | — | Absolute path to the `.uproject` file. Env override: `UAIP_UPROJECT_PATH` |
-| `subprocess_timeout_seconds` | int | `300` | Timeout for individual UE subprocess calls |
+| `editor_path` | string | `""` | Absolute path to `UnrealEditor.exe`. Falls back to env override `UAIP_UE_EDITOR_PATH` (env takes precedence) |
+| `uproject_path` | string | `""` | Absolute path to the `.uproject` file. Falls back to env override `UAIP_UPROJECT_PATH` (env takes precedence) |
+| `http_port` | int | `8765` | HTTP port for the editor's MCP endpoint. Must match `-uaip-http-port` when set |
+| `http_startup_timeout_seconds` | int | `120` | How long the bridge waits for the editor to become ready after launch |
+| `command_timeout_seconds` | int | `60` | Per-request HTTP timeout for forwarded commands |
 | `log_level` | string | `"INFO"` | Python logger verbosity — `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `enable_scenario` | bool | `false` | When `true`, the bridge launches the editor with `-uaip-enable-scenario`. Env override: `UAIP_ENABLE_SCENARIO=1` |
 | `inline_artifacts.image` | bool | `false` | Inline PNG artifacts as base64 in MCP responses. **Off by default** to avoid `"Could not process image"` API errors when PNGs accumulate across a long session — use the `Read` tool with the artifact path instead |
 | `inline_artifacts.json` | bool | `true` | Inline JSON artifacts as base64 in MCP responses |
 | `inline_artifacts.text` | bool | `true` | Inline text artifacts as base64 in MCP responses |
 
-Environment variables override the JSON values when set. See `config.json.example` (shipped inside the bridge zip; after install, at `<bridge-root>/config.json.example`) for a fully-commented template.
+Environment variables (`UAIP_UE_EDITOR_PATH`, `UAIP_UPROJECT_PATH`, `UAIP_ENABLE_SCENARIO`) override the corresponding JSON values when set. See `config.json.example` (shipped inside the bridge zip; after install, at `<bridge-root>/config.json.example`) for a fully-commented template.
+
+### Reloading config at runtime (`uaip_reload_config`)
+
+Use `uaip_reload_config` to apply config changes **without restarting the MCP client**. The tool reads `config.json` in-place and, when launch parameters differ from the current session, shuts down the running editor and schedules a fresh launch on the next tool call.
+
+```
+uaip_reload_config()
+→ { "EditorRestartScheduled": true/false, "EditorPath": "...", ... }
+```
+
+**Optional arguments** (session-only override; not persisted to `config.json`):
+
+| Argument | Effect |
+|---|---|
+| `EditorPath` | Switch engine version at runtime without editing `config.json` |
+| `UProjectPath` | Point at a different `.uproject` for this session |
+
+Typical flow after editing `config.json`:
+
+1. Edit `config.json` (e.g. set `enable_scenario: true`)
+2. Call `uaip_reload_config()` — the bridge detects the change and schedules an editor restart
+3. The next `uaip_execute` call launches the editor with the new parameters
 
 ---
 
