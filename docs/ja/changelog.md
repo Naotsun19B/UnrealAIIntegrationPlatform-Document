@@ -64,6 +64,7 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 **追加**
 
+- **MVVM 編集**（`UAIPEditorMVVM` モジュール、**Pro 版限定** — `ModelViewViewModel` プラグイン必須、デモ版では利用不可）: AI エージェントが WidgetBlueprint の MVVM 設定（ViewModel の接続・バインディング・イベント・プロパティ）を操作できるようになりました。`UAIP.Editor.MVVM` 配下に 28 コマンドと 2 Capability（`ViewModelBindingEdit`、`ViewModelSourceEdit`、いずれも DefaultDenied）を追加しました。UE 5.8 以上かつ `MVVMToolset` プラグインが有効な環境では、`Toolset.MVVM.*` 配下に 9 つのブリッジコマンドも利用できます。
 - **サウンドアセット編集**（`UAIPEditorSound` モジュール）: AI エージェントが `USoundClass` / `USoundAttenuation` / `USoundMix` アセットのプロパティを読み取り・設定できるようになりました。`UAIP.Editor.SoundSettings` 配下に 13 コマンドと 3 Capability（`SoundClassEdit`、`SoundAttenuationEdit`、`SoundMixEdit`、いずれも DefaultDenied）を追加しました。
 - **Sandbox 編集統合**（`UAIPEditorSandbox` モジュール、**Pro 版限定** — `FileSandbox` プラグイン必須、デモ版では利用不可）: AI エージェントが FileSandbox セッションにアセット変更を仮置きし、人間が確認後にコミットまたはリバートできるようになりました。`UAIP.Editor.Sandbox` 配下に 6 コマンド（`BeginSandboxSession`、`EndSandboxSession`、`GetSandboxStatus`、`GetSandboxChanges`、`CommitSandboxChanges`、`RevertSandboxChanges`）と、4 Capability（`SandboxObserve`（DefaultAllow）、`SandboxSessionControl`、`SandboxPersist`、`SandboxRevert`（いずれも DefaultDenied））を追加しました。読み取り専用の observe 系コマンド（`GetSandboxStatus`・`GetSandboxChanges`）を含む全 6 コマンドが `FileSandbox` プラグインを必要とし、デモ版モジュールホワイトリストには含まれません。
 
