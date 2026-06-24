@@ -4,6 +4,12 @@
 
 **[日本語](docs/ja/overview.md)**
 
+> [!NOTE]
+> **You are viewing the `next` branch — development preview.**
+> This branch tracks unreleased changes in progress toward the next Fab release.
+> For the current stable release (v1.0.0), see the **[`master` branch](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/tree/master)**.
+> Unreleased changes are listed under **[Unreleased](docs/en/changelog.md#unreleased)** in the Changelog.
+
 <p align="center">
   <img src="images/hero-banner.png" alt="Unreal AI Integration Platform" width="100%">
 </p>

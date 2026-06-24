@@ -4,6 +4,12 @@
 
 **[English](../../README.md)**
 
+> [!NOTE]
+> **現在 `next` ブランチ（開発中プレビュー）を閲覧しています。**
+> このブランチは次回 Fab リリースに向けて開発中の変更を追跡しています。
+> 最新の安定版（v1.0.0）は **[`master` ブランチ](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/tree/master)** を参照してください。
+> リリース前の変更内容は[更新履歴の Unreleased セクション](changelog.md#unreleased)にまとめています。
+
 <p align="center">
   <img src="../../images/hero-banner.png" alt="Unreal AI Integration Platform" width="100%">
 </p>
