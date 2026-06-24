@@ -4,6 +4,10 @@
 
 **[日本語](docs/ja/overview.md)**
 
+> [!TIP]
+> **Upcoming features are tracked on the [`next` branch](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/tree/next).**
+> The `next` branch reflects unreleased changes in progress toward the next Fab release.
+
 <p align="center">
   <img src="images/hero-banner.png" alt="Unreal AI Integration Platform" width="100%">
 </p>

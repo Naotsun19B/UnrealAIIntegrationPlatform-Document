@@ -4,6 +4,10 @@
 
 **[English](../../README.md)**
 
+> [!TIP]
+> **開発中の新機能は [`next` ブランチ](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/tree/next) で追跡できます。**
+> `next` ブランチは次回 Fab リリースに向けた開発中の変更を反映しています。
+
 <p align="center">
   <img src="../../images/hero-banner.png" alt="Unreal AI Integration Platform" width="100%">
 </p>
