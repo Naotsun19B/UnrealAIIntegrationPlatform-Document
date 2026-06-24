@@ -5,8 +5,7 @@
 **[English](../../README.md)**
 
 > [!TIP]
-> **開発中の新機能は [`next` ブランチ](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/tree/next) で追跡できます。**
-> `next` ブランチは次回 Fab リリースに向けた開発中の変更を反映しています。
+> **次のリリースで何が追加されるか気になりますか？** 開発中の変更は[更新履歴の Unreleased セクション](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/ja/changelog.md#unreleased)（`next` ブランチ）にまとめています。
 
 <p align="center">
   <img src="../../images/hero-banner.png" alt="Unreal AI Integration Platform" width="100%">

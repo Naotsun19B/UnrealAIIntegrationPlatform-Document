@@ -5,8 +5,7 @@
 **[日本語](docs/ja/overview.md)**
 
 > [!TIP]
-> **Upcoming features are tracked on the [`next` branch](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/tree/next).**
-> The `next` branch reflects unreleased changes in progress toward the next Fab release.
+> **Want to see what's coming next?** Unreleased changes in progress toward the next Fab release are listed in the **[Unreleased section of the Changelog](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/en/changelog.md#unreleased)** (`next` branch).
 
 <p align="center">
   <img src="images/hero-banner.png" alt="Unreal AI Integration Platform" width="100%">
