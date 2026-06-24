@@ -54,6 +54,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
 | Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
+| Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 12 | — | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 9 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 7 | — | — |
@@ -597,6 +598,86 @@ SoundClass hierarchy, SoundAttenuation, and SoundMix asset property editing.
 | `SetSoundMixAdjuster` | Add or update a SoundClassAdjuster identified by SoundClass path (Upsert; omitted fields keep existing values or use engine defaults) |
 | `RemoveSoundMixAdjuster` | Remove the SoundClassAdjuster for the specified SoundClass from a SoundMix |
 | `ListSoundMixes` | Enumerate SoundMix assets in the project (up to 1000) |
+
+---
+
+## UAIP.Editor.MVVM 🧩
+
+ViewModel Blueprint property management, View Binding / Event authoring, and Widget ViewModel wiring. Requires the `ModelViewViewModel` plugin (enabled by default since UE 5.5).
+
+### Native (26)
+
+#### ViewModel property management
+
+| Command | Description |
+|---|---|
+| `ListViewModelClasses` | Enumerate `UMVVMViewModelBase`-derived Blueprint classes via AssetRegistry (optional `SearchPath` filter; up to 1000) |
+| `AddViewModelProperty` | Add a property to a ViewModel Blueprint (7 property types; optional `DefaultValue`; optional getter / setter generation) |
+| `RemoveViewModelProperty` | Remove a property from a ViewModel Blueprint by name |
+| `ListViewModelProperties` | List all properties of a ViewModel Blueprint |
+
+#### Widget ViewModel connection
+
+| Command | Description |
+|---|---|
+| `AddViewModelToWidget` | Add a ViewModel to a WidgetBlueprint (must be a `/Game/`-rooted `UMVVMViewModelBase` subclass) |
+| `RemoveViewModelFromWidget` | Remove a ViewModel entry from a WidgetBlueprint by name |
+| `ListWidgetViewModels` | List ViewModels currently wired to a WidgetBlueprint |
+| `RenameViewModelInWidget` | Rename a ViewModel entry inside a WidgetBlueprint |
+| `ReparentViewModelInWidget` | Change the class of a ViewModel entry inside a WidgetBlueprint |
+
+#### View Binding operations
+
+| Command | Description |
+|---|---|
+| `AddViewBinding` | Add a View Binding to a WidgetBlueprint |
+| `RemoveViewBinding` | Remove a View Binding from a WidgetBlueprint by `BindingId` |
+| `ListViewBindings` | List all View Bindings in a WidgetBlueprint |
+| `GetViewBinding` | Get details of a single View Binding by `BindingId` |
+| `UpdateViewBinding` | Partially update fields of a View Binding |
+| `SetViewBindingEnabled` | Enable or disable a View Binding |
+| `SetViewBindingConversionFunction` | Set or clear the conversion function for a View Binding |
+| `SetViewBindingExecutionMode` | Set the execution mode for a View Binding |
+| `ListConversionFunctions` | List available conversion functions for a WidgetBlueprint (expensive on large projects — use `SearchPath` filter) |
+
+#### View Event operations
+
+| Command | Description |
+|---|---|
+| `AddViewEvent` | Add a View Event to a WidgetBlueprint (returns `EventId`; empty string on failure) |
+| `RemoveViewEvent` | Remove a View Event from a WidgetBlueprint |
+| `ListViewEvents` | List all View Events in a WidgetBlueprint |
+
+#### ViewModel source settings
+
+| Command | Description |
+|---|---|
+| `SetViewModelSource` | Change the `CreationType` of a ViewModel entry (Remove + Add round-trip; `Context` type requires UE 5.8+) |
+| `GetViewModelSource` | Get the current source configuration of a ViewModel entry |
+
+#### Observation / validation
+
+| Command | Description |
+|---|---|
+| `GetWidgetBindableProperties` | List bindable properties of a WidgetBlueprint (widget properties and ViewModel properties) |
+| `ValidateViewBindings` | Validate all View Bindings in a WidgetBlueprint (expensive on large projects) |
+| `GetMVVMViewInfo` | Get the MVVM configuration summary of a WidgetBlueprint (`bMVVMConfigured: false` when MVVM is not configured) |
+
+### Toolset bridges (9) 🧩
+
+Bridge commands via the `MVVMToolset` plugin (UE 5.8+). Provider: `Toolset.MVVM.*`. `CreateViewModel` and `ListViewModels` are unique to this bridge; other commands mirror native equivalents.
+
+| Command | Description |
+|---|---|
+| `Toolset.MVVM.CreateViewModel` | Create a ViewModel Blueprint asset |
+| `Toolset.MVVM.AddViewModelProperty` | Add a property to a ViewModel Blueprint |
+| `Toolset.MVVM.ListViewModels` | List ViewModel classes (by class-type filter) |
+| `Toolset.MVVM.ListWidgetViewModels` | List ViewModels wired to a WidgetBlueprint |
+| `Toolset.MVVM.AddViewModelToWidget` | Add a ViewModel to a WidgetBlueprint |
+| `Toolset.MVVM.ListWidgetViewBindings` | List View Bindings of a WidgetBlueprint |
+| `Toolset.MVVM.RemoveWidgetViewBinding` | Remove a View Binding from a WidgetBlueprint |
+| `Toolset.MVVM.CreateViewBinding` | Create a View Binding in a WidgetBlueprint |
+| `Toolset.MVVM.ListConversionFunctions` | List available conversion functions |
 
 ---
 
