@@ -123,6 +123,7 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `AssetFolderRefactor` | Move and rename assets and folders |
 | `RedirectorFixup` | Fix up stale asset redirectors |
 | `ShaderCompilation` | Control shader compilation and query its status |
+| `ContentBrowserNavigate` | Navigate the Content Browser and select assets — `SelectAssets`, `SetContentBrowserPath` (native and bridge) |
 
 #### Material editing
 
@@ -238,6 +239,8 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 |---|---|
 | `EditorKeyboardInput` | Simulate keyboard input to editor UI widgets (`PressKey`) |
 | `EditorExecCommand` | Execute low-level editor commands via `GUnrealEd->Exec` |
+| `LogVerbosityEdit` | Change log verbosity levels — `SetLogVerbosity` native and `Toolset.Editor.Toolset.Logs.SetVerbosity` bridge |
+| `ViewportAnnotationCapture` | Capture annotated viewport images with world-coordinate labels — `CaptureViewportImageAnnotated` |
 
 #### Script execution
 
@@ -252,6 +255,7 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | Capability | What it unlocks |
 |---|---|
 | `RuntimeCVarRead` | Read console variable (CVar) values — `GetConsoleVariable`, `SearchConsoleVariables` |
+| `CVarInspect` | Search console variables with sensitive-pattern filtering — `Toolset.Editor.Toolset.World.SearchCVars` bridge (native counterpart tracked as D-188) |
 | `RuntimeActorManipulation` | Spawn, destroy, teleport, and possess actors during PIE |
 | `RuntimeExecCommand` | Execute console commands at runtime via `UWorld` |
 | `RuntimeInputInjection` | Inject keyboard / Enhanced Input / legacy input events into PIE (`InjectInputKey`, `InjectEnhancedInputAction`, `AddMappingContext`, `SetInputMode`, `FlushInput`, …) |
@@ -291,6 +295,14 @@ These capabilities all require the `Niagara` plugin.
 | `NiagaraEmitterEdit` 🧩 | Add, remove, and configure emitters in Niagara Systems |
 | `NiagaraStackEdit` 🧩 | Add / remove modules and set stack input parameters on Niagara emitters |
 | `NiagaraStackAutoFix` 🧩 | Automatically resolve Niagara stack diagnostic issues |
+
+#### World Partition editing
+
+| Capability | What it unlocks |
+|---|---|
+| `WorldPartitionEdit` | Modify World Partition settings — `SetWorldPartitionStreamingEnabled`, `SetRuntimeGridSettings`, `SetActorIsSpatiallyLoaded`, `SetActorRuntimeGrid`, `PinActorInWorldPartition`, `UnpinActorFromWorldPartition` |
+| `DataLayerEdit` | Create, delete, and modify Data Layer assets and instances — `CreateDataLayerAsset`, `DeleteDataLayerAsset`, `CreateDataLayerInstance`, `DeleteDataLayerInstance`, `SetDataLayerType`, `SetDataLayerInitialRuntimeState`, `SetDataLayerIsLoadedInEditor`, `SetDataLayerVisibility`, `SetParentDataLayerInstance`, `AddActorToDataLayer`, `RemoveActorFromDataLayer` |
+| `HLODBuild` | Build and manage HLOD data — `CreateHLODLayer`, `DeleteHLODs`, `SetActorHLODLayer`, `BuildHLODs`, `CancelHLODBuild` |
 
 #### Sandbox session management
 

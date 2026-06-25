@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 551+ **UAIP commands** (provided directly by the plugin itself) and 192+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 743+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 598+ **UAIP commands** (provided directly by the plugin itself) and 214+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 812+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -34,13 +34,13 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Domain | Provider prefix | UAIP commands | Toolset bridge | Demo |
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 6 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | partial (13/18) |
-| Editor Observation | `UAIP.Editor.Observation` | 13 | — | ✅ (1 excluded) |
+| Editor Workspace | `UAIP.Editor.Workspace` | 20 | 4 | partial (13/20) |
+| Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 10 | — | — |
+| Editor Assets | `UAIP.Editor.Assets` | 15 | 6 | — |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
-| Editor Level | `UAIP.Editor.Level` | 13 | — | — |
+| Editor Level | `UAIP.Editor.Level` | 16 | 8 | — |
 | Editor Property | `UAIP.Editor.Property` | 13 | — | — |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
@@ -70,7 +70,8 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 11 | 11 | — |
 | Editor Python Extension 🧩 | `UAIP.Editor.PythonExtension` | 2 | — | — |
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
-| Runtime PIE | `UAIP.Runtime.PIE` | 12 | — | partial (5/12) |
+| Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
+| Runtime PIE | `UAIP.Runtime.PIE` | 13 | 4 | partial (6/13) |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
@@ -119,6 +120,19 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 | `CompileLiveCoding` | Trigger Live Coding recompilation |
 | `GetLiveCodingStatus` | Get the current Live Coding status |
 | `EnableLiveCodingForSession` | Enable Live Coding for the current session |
+| `GetLogVerbosity` | Get the current verbosity level of a log category |
+| `SetLogVerbosity` | Set the verbosity level of a log category (requires `LogVerbosityEdit`) |
+
+### Toolset bridges — Logs (4) 🧩
+
+Bridge commands via the `LogsToolset` (UE 5.8+, EditorToolset plugin). Provider: `Toolset.Editor.Toolset.Logs.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.Toolset.Logs.GetLogEntries` | Retrieve recent log entries from the editor output log |
+| `Toolset.Editor.Toolset.Logs.GetLogCategories` | List registered log category names |
+| `Toolset.Editor.Toolset.Logs.GetVerbosity` | Get the verbosity level for a log category |
+| `Toolset.Editor.Toolset.Logs.SetVerbosity` | Set the verbosity level for a log category (requires `LogVerbosityEdit`) |
 
 ---
 
@@ -140,6 +154,8 @@ Capture screenshots and dump editor state — all read-only.
 | 🆓 `InspectMenu` | Top-bar menu structure under a path (labels, enabled, checked) |
 | 🆓 `InspectContextMenu` | Context menu items for a target (without executing them) |
 | 🆓 `ObserveWidget` | Time-series sampling of widget Visibility / Enabled / Hovered / Focused state |
+| 🆓 `GetLogCategories` | List all registered engine log category names (optional substring filter) |
+| `CaptureViewportImageAnnotated` | Viewport screenshot with world-coordinate labels drawn on it (requires `ViewportAnnotationCapture`) |
 
 ---
 
@@ -197,6 +213,24 @@ Open, search, create, duplicate, rename, delete assets and folders.
 | `CreateFolder` | Create a new folder in the Content Browser |
 | `DeleteFolder` | Delete an empty folder (returns `NotEmpty` if not empty) |
 | `ForceDeleteFolder` | Delete a folder and its assets (max 50 items, no external-reference check) |
+| 🆓 `GetSelectedAssets` | Return the assets currently selected in the Content Browser |
+| `SelectAssets` | Select the specified assets in the Content Browser (requires `ContentBrowserNavigate`) |
+| 🆓 `GetContentBrowserPath` | Return the current folder path shown in the Content Browser |
+| `SetContentBrowserPath` | Navigate the Content Browser to a specified folder (requires `ContentBrowserNavigate`) |
+| 🆓 `GetOpenAssets` | Return the list of assets currently open in an asset editor |
+
+### Toolset bridges — Assets (6) 🧩
+
+Bridge commands via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Provider: `Toolset.Editor.Toolset.Assets.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.Toolset.Assets.GetSelectedAssets` | Get currently selected assets in the Content Browser |
+| `Toolset.Editor.Toolset.Assets.SelectAssets` | Select assets in the Content Browser (requires `ContentBrowserNavigate`) |
+| `Toolset.Editor.Toolset.Assets.GetContentBrowserPath` | Get the current Content Browser folder path |
+| `Toolset.Editor.Toolset.Assets.SetContentBrowserPath` | Navigate the Content Browser to a folder (requires `ContentBrowserNavigate`) |
+| `Toolset.Editor.Toolset.Assets.OpenEditorForAsset` | Open an asset in its editor (requires `AssetWindowControl`) |
+| `Toolset.Editor.Toolset.Assets.GetOpenAssets` | List assets currently open in an asset editor |
 
 ---
 
@@ -242,6 +276,24 @@ Editor-side actor placement, transforms, and level loading.
 | `FocusOnActors` | Focus the viewport camera on the specified actors (omit to use the current selection) |
 | `GetCameraTransform` | Get the camera location and rotation of the active level editor viewport |
 | `SetCameraTransform` | Set the camera location and rotation of the active level editor viewport |
+| 🆓 `GetVisibleActors` | Return actors currently visible in the active editor viewport (frustum culling) |
+| 🆓 `ProjectWorldToScreen` | Project a world-space position to screen coordinates |
+| 🆓 `ProjectScreenToWorld` | Cast a ray from screen coordinates into the world (ECC_Visibility line trace) |
+
+### Toolset bridges — Level (8) 🧩
+
+Bridge commands via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Provider: `Toolset.Editor.Toolset.Level.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.Toolset.Level.GetSelectedActors` | Return actors currently selected in the level editor viewport |
+| `Toolset.Editor.Toolset.Level.SelectActors` | Select the specified actors in the level editor (requires `EditorActorEdit`) |
+| `Toolset.Editor.Toolset.Level.GetCameraTransform` | Get the active viewport camera transform |
+| `Toolset.Editor.Toolset.Level.SetCameraTransform` | Set the active viewport camera transform (requires `EditorViewportControl`) |
+| `Toolset.Editor.Toolset.Level.FocusOnActors` | Focus the viewport on the specified actors (requires `EditorViewportControl`) |
+| `Toolset.Editor.Toolset.Level.GetVisibleActors` | List actors visible in the active viewport |
+| `Toolset.Editor.Toolset.Level.WorldPosToScreenCoords` | Project a world position to screen space |
+| `Toolset.Editor.Toolset.Level.ScreenCoordsToWorld` | Project screen coordinates to world space (requires `EditorInspect`) |
 
 ---
 
@@ -1193,6 +1245,61 @@ Sandbox session lifecycle management. Requires the `FileSandbox` plugin. When `F
 
 ---
 
+## UAIP.Editor.WorldPartition
+
+World Partition, Data Layer, and HLOD management for partitioned worlds (requires `WorldPartition` plugin). All commands in this section return `CommandNotFound` when the project does not have World Partition enabled.
+
+### World Partition (12)
+
+| Command | Description |
+|---|---|
+| `GetWorldPartitionInfo` | Get World Partition configuration — streaming mode, runtime hash class, and whether WP is enabled for the current level |
+| `GetWorldPartitionStreamingGrids` | List runtime streaming grids defined in the World Partition settings |
+| `GetRuntimeGridSettings` | Get the settings for a specific runtime grid by name |
+| `SetRuntimeGridSettings` | Set the settings for a specific runtime grid (requires `WorldPartitionEdit`) |
+| `GetActorWorldPartitionSettings` | Get the World Partition settings for an actor — HLOD Layer, spatially loaded flag, and runtime grid name |
+| `SetActorIsSpatiallyLoaded` | Set whether an actor is spatially loaded in World Partition (requires `WorldPartitionEdit`) |
+| `SetActorRuntimeGrid` | Assign an actor to a specific runtime streaming grid (requires `WorldPartitionEdit`) |
+| `SetWorldPartitionStreamingEnabled` | Enable or disable World Partition streaming for the current level (requires `WorldPartitionEdit`) |
+| `PinActorInWorldPartition` | Pin an actor so it is always loaded regardless of streaming state (requires `WorldPartitionEdit`) |
+| `UnpinActorFromWorldPartition` | Remove the always-loaded pin from an actor (requires `WorldPartitionEdit`) |
+| `DumpWorldPartitionCells` | Dump the current World Partition streaming cell grid as a JSON artifact |
+| `ListExternalActors` | List actors stored as external packages (World Partition external actor workflow) |
+
+### Data Layer (15)
+
+| Command | Description |
+|---|---|
+| `ListDataLayers` | List all Data Layer instances in the current level |
+| `GetDataLayerInfo` | Get detailed info for a Data Layer instance — type, runtime state, visibility, and parent hierarchy |
+| `CreateDataLayerAsset` | Create a new Data Layer asset in the Content Browser (requires `DataLayerEdit`) |
+| `DeleteDataLayerAsset` | Delete a Data Layer asset (requires `DataLayerEdit`) |
+| `CreateDataLayerInstance` | Create a new Data Layer instance in the current level from a Data Layer asset (requires `DataLayerEdit`) |
+| `DeleteDataLayerInstance` | Delete a Data Layer instance from the current level (requires `DataLayerEdit`) |
+| `SetDataLayerType` | Set the type of a Data Layer instance — Editor or Runtime (requires `DataLayerEdit`) |
+| `SetDataLayerInitialRuntimeState` | Set the initial runtime state of a Data Layer — Unloaded, Loaded, or Activated (requires `DataLayerEdit`) |
+| `SetDataLayerIsLoadedInEditor` | Set whether a Data Layer is loaded in the editor viewport (requires `DataLayerEdit`) |
+| `SetDataLayerVisibility` | Set the visibility of a Data Layer in the editor (requires `DataLayerEdit`) |
+| `SetParentDataLayerInstance` | Set the parent Data Layer instance, building a hierarchy (max 64 levels; requires `DataLayerEdit`) |
+| `GetActorDataLayers` | Get the Data Layer instances assigned to an actor |
+| `AddActorToDataLayer` | Add an actor to a Data Layer instance (requires `DataLayerEdit`) |
+| `RemoveActorFromDataLayer` | Remove an actor from a Data Layer instance (requires `DataLayerEdit`) |
+| `GetActorsInDataLayer` | List all actors assigned to a specific Data Layer instance |
+
+### HLOD (7)
+
+| Command | Description |
+|---|---|
+| `ListHLODLayers` | List all HLOD Layer assets in the project |
+| `CreateHLODLayer` | Create a new HLOD Layer asset under `/Game/` (requires `HLODBuild`) |
+| `DeleteHLODs` | Delete built HLOD data for a specified HLOD Layer (requires `HLODBuild`) |
+| `SetActorHLODLayer` | Assign an actor to an HLOD Layer asset (requires `HLODBuild`) |
+| `BuildHLODs` | Start an HLOD build job for the current world; returns `HLODBuildJobId` (requires `HLODBuild`) |
+| `CancelHLODBuild` | Cancel an in-progress HLOD build job by job ID (requires `HLODBuild`) |
+| `GetHLODBuildStatus` | Get the current status of an HLOD build job — running, completed, or not found |
+
+---
+
 ## UAIP.Runtime.PIE
 
 PIE session control and runtime world manipulation.
@@ -1211,6 +1318,18 @@ PIE session control and runtime world manipulation.
 | `QuitGame` | Request the running game process to quit |
 | `GetConsoleVariable` | Get the current value, default value, type, and description of a console variable (CVar) |
 | `SearchConsoleVariables` | Search CVars by keyword, type, or flags and return a list (max 256 results) |
+| 🆓 `GetPIEState` | Return the current PIE state — `Running`, `Stopped`, `Paused`, or `Simulating` |
+
+### Toolset bridges (4) 🧩
+
+Bridge commands via the EditorToolset plugin (UE 5.8+).
+
+| Command | Provider | Description |
+|---|---|---|
+| `Toolset.Editor.Toolset.PIE.StartPIE` | `Toolset.Editor.Toolset.PIE.*` | Start a PIE session (async, requires `PIEControl`) |
+| `Toolset.Editor.Toolset.PIE.StopPIE` | `Toolset.Editor.Toolset.PIE.*` | Stop the active PIE session (async, requires `PIEControl`) |
+| `Toolset.Editor.Toolset.PIE.IsPIERunning` | `Toolset.Editor.Toolset.PIE.*` | Return whether PIE is currently active |
+| `Toolset.Editor.Toolset.World.SearchCVars` | `Toolset.Editor.Toolset.World.*` | Search CVars by name; sensitive patterns are excluded (requires `CVarInspect`) |
 
 ---
 

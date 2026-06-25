@@ -123,6 +123,7 @@ flowchart LR
 | `AssetFolderRefactor` | アセットとフォルダの移動・リネーム |
 | `RedirectorFixup` | 古いアセットリダイレクタの修正 |
 | `ShaderCompilation` | シェーダーコンパイルの制御とステータス照会 |
+| `ContentBrowserNavigate` | Content Browser のナビゲートとアセット選択 — `SelectAssets`、`SetContentBrowserPath`（native および bridge） |
 
 #### マテリアル編集
 
@@ -238,6 +239,8 @@ flowchart LR
 |---|---|
 | `EditorKeyboardInput` | Editor UI ウィジェットへのキーボード入力シミュレート（`PressKey`） |
 | `EditorExecCommand` | `GUnrealEd->Exec` 経由の低レベル Editor コマンド実行 |
+| `LogVerbosityEdit` | ログ詳細レベルの変更 — `SetLogVerbosity` native および `Toolset.Editor.Toolset.Logs.SetVerbosity` bridge |
+| `ViewportAnnotationCapture` | ワールド座標ラベル付きビューポート画像のキャプチャ — `CaptureViewportImageAnnotated` |
 
 #### スクリプト実行
 
@@ -252,6 +255,7 @@ flowchart LR
 | Capability | 有効になる操作 |
 |---|---|
 | `RuntimeCVarRead` | コンソール変数（CVar）値の読み取り — `GetConsoleVariable`、`SearchConsoleVariables` |
+| `CVarInspect` | センシティブパターンフィルタリング付き CVar 検索 — `Toolset.Editor.Toolset.World.SearchCVars` bridge（native 版は D-188 として起票） |
 | `RuntimeActorManipulation` | PIE 中のアクタースポーン・破棄・テレポート・Possess |
 | `RuntimeExecCommand` | `UWorld` 経由のランタイムコンソールコマンド実行 |
 | `RuntimeInputInjection` | PIE へのキーボード / Enhanced Input / レガシー入力イベントの注入（`InjectInputKey`、`InjectEnhancedInputAction`、`AddMappingContext`、`SetInputMode`、`FlushInput` など） |
@@ -291,6 +295,14 @@ flowchart LR
 | `NiagaraEmitterEdit` 🧩 | Niagara System へのエミッター追加・削除・設定 |
 | `NiagaraStackEdit` 🧩 | Niagara エミッターへのモジュール追加・削除・スタック入力パラメータの設定 |
 | `NiagaraStackAutoFix` 🧩 | Niagara スタック診断 Issue の自動修正 |
+
+#### World Partition 編集
+
+| Capability | 有効になる操作 |
+|---|---|
+| `WorldPartitionEdit` | World Partition 設定の変更 — `SetWorldPartitionStreamingEnabled`、`SetRuntimeGridSettings`、`SetActorIsSpatiallyLoaded`、`SetActorRuntimeGrid`、`PinActorInWorldPartition`、`UnpinActorFromWorldPartition` |
+| `DataLayerEdit` | Data Layer アセット・インスタンスの作成・削除・変更 — `CreateDataLayerAsset`、`DeleteDataLayerAsset`、`CreateDataLayerInstance`、`DeleteDataLayerInstance`、`SetDataLayerType`、`SetDataLayerInitialRuntimeState`、`SetDataLayerIsLoadedInEditor`、`SetDataLayerVisibility`、`SetParentDataLayerInstance`、`AddActorToDataLayer`、`RemoveActorFromDataLayer` |
+| `HLODBuild` | HLOD データのビルドと管理 — `CreateHLODLayer`、`DeleteHLODs`、`SetActorHLODLayer`、`BuildHLODs`、`CancelHLODBuild` |
 
 #### Sandbox セッション管理
 
