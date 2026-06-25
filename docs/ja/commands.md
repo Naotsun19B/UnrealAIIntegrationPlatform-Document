@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 546 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 190 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 736+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 551 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 192 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 743+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -39,6 +39,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
 | Editor Assets | `UAIP.Editor.Assets` | 10 | — | — |
+| Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 13 | — | — |
 | Editor Property | `UAIP.Editor.Property` | 13 | — | — |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
@@ -196,6 +197,29 @@ UAIP では 2 種類のコマンドを公開しています：
 | `CreateFolder` | Content Browser に新規フォルダを作成 |
 | `DeleteFolder` | 空フォルダを削除（空でない場合 `NotEmpty`） |
 | `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし） |
+
+---
+
+## UAIP.Editor.SemanticSearch 🧩
+
+セマンティックアセット検索とインデックス管理。`SemanticSearch` プラグイン（UE 5.8+、Experimental）と、エディタ環境設定 → プラグイン → Semantic Search で設定した OpenAI API キーが必要です。
+
+| コマンド | 説明 |
+|---|---|
+| `SearchAssetsSemantic` | 自然言語クエリでプロジェクトアセットを検索（BM25+ベクトルハイブリッド、最大 500 件） |
+| `FindSimilarAssets` | 参照アセットに類似するアセットをベクトル類似度で検索 |
+| `GetIndexStats` | 現在のインデックス統計（アセット数・最終構築日時）を返す |
+| `StartIndexing` | セマンティックインデックスの完全再構築をトリガー（長時間処理・`SemanticSearchEdit` 必要） |
+| `CancelIndexing` | 実行中のインデックス構築をキャンセル（`SemanticSearchEdit` 必要） |
+
+### Toolset ブリッジ（2 件）🧩
+
+`SemanticSearchToolset` プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SemanticSearch.*`。上記の `SearchAssetsSemantic` / `FindSimilarAssets` に相当し、Toolset ブリッジ専用として提供されます（これら 2 件には対応する UAIP ネイティブコマンドは存在しない。ADR `2026-06-25-SemanticSearchToolset-BridgeOnly-Exception.md` 参照）。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.SemanticSearch.Search` | SemanticSearchToolset 経由の BM25+ベクトルハイブリッド検索 |
+| `Toolset.Editor.SemanticSearch.FindSimilar` | SemanticSearchToolset 経由のベクトル類似度検索 |
 
 ---
 

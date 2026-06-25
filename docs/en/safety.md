@@ -274,6 +274,12 @@ These capabilities depend on specific optional plugins. If the plugin is not ena
 | `WorldConditionStructureEdit` 🧩 | `WorldConditions` | Add and remove conditions in WorldCondition assets |
 | `WorldConditionNodeEdit` 🧩 | `WorldConditions` | Edit WorldCondition operator, expression depth, and properties |
 
+#### Semantic search
+
+| Capability | Plugin required | What it unlocks |
+|---|---|---|
+| `SemanticSearchEdit` 🧩 | `SemanticSearch` (UE 5.8+) | Trigger and cancel semantic index rebuilds — `StartIndexing`, `CancelIndexing` |
+
 #### Niagara editing
 
 These capabilities all require the `Niagara` plugin.

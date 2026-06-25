@@ -274,6 +274,12 @@ flowchart LR
 | `WorldConditionStructureEdit` 🧩 | `WorldConditions` | WorldCondition アセットへの条件追加・削除 |
 | `WorldConditionNodeEdit` 🧩 | `WorldConditions` | WorldCondition の Operator・式の深さ・プロパティの編集 |
 
+#### セマンティック検索
+
+| Capability | 必要プラグイン | 有効になる操作 |
+|---|---|---|
+| `SemanticSearchEdit` 🧩 | `SemanticSearch`（UE 5.8+） | セマンティックインデックスの再構築・キャンセル — `StartIndexing`、`CancelIndexing` |
+
 #### Niagara 編集
 
 以下の Capability はすべて `Niagara` プラグインが必要です。
