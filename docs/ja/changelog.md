@@ -77,6 +77,13 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 - **Niagara `default_value` が適用されるように**: `AddSetParametersModule` および `AddSetParameterEntry` で `default_value` フィールドが一般的な型（float / int / bool / `UScriptStruct`）について解析・適用されます。従来は指定値にかかわらず型のデフォルト値でエントリが作成されていました。
 - **`AddSetParameterEntry` / `RemoveSetParameterEntry` に `script_name` が必須に** *(破壊的変更)*: 両コマンドに新しい `script_name` パラメータ（例：`Spawn` / `Update` / `Particle Spawn` / `Particle Update`）が必須追加されました。このパラメータは正しいスクリプトスタックへのルーティングと UE 5.8 External Edit API との互換性のために必要です。`script_name` なしの既存呼び出しは `InvalidParams` を返します。
 
+**修正**
+
+- **`CaptureViewportImageAnnotated` がハードウェアレンダリングのビューポートで正常に動作するように**: 従来の実装は Slate 専用 API である `TakeScreenshot` を使用していたため、RHI レンダリングパスをバイパスして空白画像を返していました。`ReadPixels` に置き換えることで実際のレンダリングフレームをキャプチャできるようになりました。
+- **`Toolset.Editor.Toolset.Logs.GetLogCategories` の `Filter` パラメータが省略可能に**: `Filter` が省略された場合に空文字列のデフォルト値を自動注入するようにしました。従来は `Filter` を省略すると呼び出しが失敗していました。
+- **`Toolset.Editor.Toolset.Logs.GetLogEntries` の `Category`・`Pattern`・`MaxEntries` が省略可能に**: 3 つのパラメータが省略された場合にそれぞれデフォルト値で補完されるようになりました。引数なしで呼び出せます。
+- **`UAIP.Editor.Workspace.GetLogVerbosity` の出力が文字化けしなくなった**: 従来の `FStringOutputDevice` はログ行の先頭にイベントタグのプレフィックスを付加するため Verbosity の解析が失敗していました。イベントタグを抑制するカスタム `FOutputDevice` サブクラスに置き換えることで正常に解析されるようになりました。
+
 #### MCP Bridge 1.1.1 — 2026-06-24 リリース済み
 
 **修正**

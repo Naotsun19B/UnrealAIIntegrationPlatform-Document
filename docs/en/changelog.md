@@ -77,6 +77,13 @@ Changes that have shipped in the plugin repository but are not yet released on F
 - **Niagara `default_value` applied**: `AddSetParametersModule` and `AddSetParameterEntry` now parse and apply the `default_value` field for common types (float, int, bool, `UScriptStruct`). Previously entries were always created with type defaults regardless of the supplied value.
 - **`script_name` now required for `AddSetParameterEntry` / `RemoveSetParameterEntry`** *(breaking)*: Both commands require a new `script_name` parameter (e.g. `Spawn`, `Update`, `Particle Spawn`, `Particle Update`). This parameter routes the call to the correct script stack and is necessary for the UE 5.8 External Edit API. Existing calls without `script_name` will return `InvalidParams`.
 
+**Fixed**
+
+- **`CaptureViewportImageAnnotated` now renders on hardware-rendered viewports**: The previous implementation used `TakeScreenshot`, a Slate-only API that bypasses the RHI render path and returned a blank image on hardware-rendered viewports. Replaced with `ReadPixels` so the command captures the actual rendered frame.
+- **`Toolset.Editor.Toolset.Logs.GetLogCategories` no longer requires `Filter` parameter**: The `Filter` parameter is now injected with an empty string default when omitted, matching the Toolset UFUNCTION contract. Previously, omitting `Filter` caused the call to fail.
+- **`Toolset.Editor.Toolset.Logs.GetLogEntries` no longer requires `Category`, `Pattern`, or `MaxEntries`**: All three parameters are now filled with defaults when absent, making the command callable without arguments.
+- **`UAIP.Editor.Workspace.GetLogVerbosity` no longer returns garbled output**: The previous implementation used `FStringOutputDevice`, which prepended event-tag prefixes to each line and caused the verbosity parser to fail. Replaced with a custom `FOutputDevice` subclass that suppresses those prefixes.
+
 #### MCP Bridge 1.1.1 — released 2026-06-24
 
 **Fixed**
