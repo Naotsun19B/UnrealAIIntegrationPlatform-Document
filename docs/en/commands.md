@@ -33,14 +33,14 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 
 | Domain | Provider prefix | UAIP commands | Toolset bridge | Demo |
 |---|---|---:|---:|---:|
-| Core | `UAIP.Core` | 6 | — | ✅ |
+| Core | `UAIP.Core` | 7 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | partial (13/18) |
 | Editor Observation | `UAIP.Editor.Observation` | 13 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
 | Editor Assets | `UAIP.Editor.Assets` | 10 | — | — |
 | Editor Level | `UAIP.Editor.Level` | 13 | — | — |
-| Editor Property | `UAIP.Editor.Property` | 13 | — | — |
+| Editor Property | `UAIP.Editor.Property` | 12 | — | — |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
@@ -88,6 +88,7 @@ System-level commands for discovery, health, and session management.
 | 🆓 `ListCommands` | Filtered command catalog (filters: `GroupFilter`, `KeywordFilter`, `IncludeUnavailable`) |
 | 🆓 `DescribeCommand` | Full metadata for a single command (schema, required capabilities, availability) |
 | 🆓 `ListCommandGroups` | All group paths with intermediate path completion |
+| 🆓 `ListPlugins` | List installed plugins and their enabled state (JSON) |
 
 ---
 
@@ -236,7 +237,6 @@ Read and write properties on actors, assets, Blueprint defaults, DataTable rows,
 | `SetProjectSetting` | Set a property on a `UDeveloperSettings` CDO and call `SaveConfig()` |
 | `GetDataTableRow` | Get a DataTable row property |
 | `SetDataTableRow` | Set a DataTable row property |
-| `ListPlugins` | List installed plugins and their enabled state (JSON) |
 
 ---
 
