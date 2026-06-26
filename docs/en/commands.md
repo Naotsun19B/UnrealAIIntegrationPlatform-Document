@@ -71,6 +71,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Python Extension 🧩 | `UAIP.Editor.PythonExtension` | 2 | — | — |
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
+| Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 13 | 4 | partial (6/13) |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
@@ -1297,6 +1298,38 @@ World Partition, Data Layer, and HLOD management for partitioned worlds (require
 | `BuildHLODs` | Start an HLOD build job for the current world; returns `HLODBuildJobId` (requires `HLODBuild`) |
 | `CancelHLODBuild` | Cancel an in-progress HLOD build job by job ID (requires `HLODBuild`) |
 | `GetHLODBuildStatus` | Get the current status of an HLOD build job — running, completed, or not found |
+
+---
+
+## UAIP.Editor.Foliage
+
+Foliage type management and instance placement in the editor. Observation commands run during PIE; edit commands require the editor to be stopped (not in PIE or SIE).
+
+### Foliage Observation (4)
+
+| Command | Description |
+|---|---|
+| `ListFoliageTypes` | List all foliage types registered in the current level's `AInstancedFoliageActor` with instance counts |
+| `GetFoliageTypeInfo` | Get detailed settings for a foliage type — mesh path, density, scale range, cull distances, normal alignment, slope angle, and instance count |
+| `GetFoliageInstanceCount` | Get the total placed instance count; optionally filtered to a single foliage type with a per-type breakdown |
+| `GetFoliageInstances` | List placed instances for a foliage type within a bounding box — returns location, rotation, and scale |
+
+### Foliage Type Management (3)
+
+| Command | Description |
+|---|---|
+| `AddFoliageTypeToLevel` | Register a foliage type asset with the current level's `AInstancedFoliageActor` (requires `FoliageTypeEdit`) |
+| `RemoveFoliageTypeFromLevel` | Unregister a foliage type and delete all its instances from the current level (requires `FoliageTypeEdit`) |
+| `SetFoliageTypeSettings` | Update foliage type settings — density, scale range, cull distances, normal alignment, slope angle, and mesh (ISM types only) (requires `FoliageTypeEdit`) |
+
+### Foliage Instance Control (4)
+
+| Command | Description |
+|---|---|
+| `AddFoliageInstances` | Place foliage instances at the specified transforms. World Partition aware — routes each instance to the correct `AInstancedFoliageActor` cell (requires `FoliageInstanceEdit`) |
+| `RemoveFoliageInstances` | Remove foliage instances inside a bounding box or sphere up to `MaxRemoveCount` (requires `FoliageInstanceEdit`) |
+| `DeleteAllFoliageInstances` | Delete every placed instance of a foliage type from the current level (requires `FoliageBulkDelete`) |
+| `ResimulateProceduralFoliage` 🧩 | Resimulate a `ProceduralFoliageVolume` and place the resulting instances (requires `ProceduralFoliage` plugin and `FoliageInstanceEdit`) |
 
 ---
 
