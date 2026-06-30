@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 598 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 214 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 812+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 632 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 260 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 892+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -34,7 +34,9 @@ UAIP では 2 種類のコマンドを公開しています：
 | ドメイン | プロバイダプレフィックス | UAIP コマンド | Toolset ブリッジ | デモ |
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 7 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 20 | 4 | 一部（13/20） |
+| Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | 一部（13/18） |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 2 | 4 | — |
+| Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | — |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅（1 件除外） |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
@@ -62,7 +64,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Sequencer | `UAIP.Editor.Sequencer` | 92 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 9 | — | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | — | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 31 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 6 | — | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 12 | — | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 44 | — |
@@ -79,6 +81,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 6 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
+| Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | — |
 
 ---
 
@@ -94,7 +97,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`GroupFilter`・`KeywordFilter`・`IncludeUnavailable`） |
 | 🆓 `DescribeCommand` | 単一コマンドの完全メタデータ（スキーマ・必要 Capability・可用性） |
 | 🆓 `ListCommandGroups` | 中間パス補完付きの全グループパス |
-| 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON） |
+| 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
 
 ---
 
@@ -122,6 +125,15 @@ UAIP では 2 種類のコマンドを公開しています：
 | `CompileLiveCoding` | Live Coding 再コンパイルをトリガー |
 | `GetLiveCodingStatus` | 現在の Live Coding ステータスを取得 |
 | `EnableLiveCodingForSession` | セッションに対して Live Coding を有効化 |
+
+---
+
+## UAIP.Editor.Engine.Log
+
+ログカテゴリの詳細レベル取得・設定。
+
+| コマンド | 説明 |
+|---|---|
 | `GetLogVerbosity` | 指定ログカテゴリの現在の詳細レベルを取得 |
 | `SetLogVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
 
@@ -135,6 +147,46 @@ UAIP では 2 種類のコマンドを公開しています：
 | `Toolset.Editor.Toolset.Logs.GetLogCategories` | 登録済みログカテゴリ名の一覧 |
 | `Toolset.Editor.Toolset.Logs.GetVerbosity` | ログカテゴリの詳細レベルを取得 |
 | `Toolset.Editor.Toolset.Logs.SetVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
+
+---
+
+## UAIP.Editor.Engine.Plugin 🧩
+
+プラグインの状態・ディスクリプタの観測と変更。エンジンおよびマーケットプレイスのプラグインは常に読み取り専用です。変更コマンドはエディタ再起動後に反映されます。
+
+| コマンド | 説明 |
+|---|---|
+| `GetPluginDescriptor` | プラグインの `.uplugin` ファイル全体を JSON で返す |
+| `GetPluginDependents` | 指定プラグインに依存する他のプラグイン一覧を返す |
+| `GetPluginTemplateDescriptions` | 利用可能なプラグインテンプレートの一覧を返す |
+| `IsPluginCreationAllowed` | 現在の環境でプラグイン作成が許可されているか確認 |
+| `IsPluginModificationAllowed` | 指定プラグインの変更が許可されているか確認 |
+| `SetPluginEnabled` | プラグインを有効化または無効化する（`PluginEnableToggle` 必要；`RestartRequired: true` を返す） |
+| `UpdatePluginDescriptor` | プラグインの `.uplugin` 内の選択フィールドを上書き（`PluginDescriptorEdit` 必要） |
+| `AddPluginDependency` | プラグインの `.uplugin` に依存エントリを追加（`PluginDependencyEdit` 必要） |
+| `RemovePluginDependency` | プラグインの `.uplugin` から依存エントリを削除（`PluginDependencyEdit` 必要） |
+
+### Toolset ブリッジ — Plugin（15 件）🧩
+
+`PluginToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Plugin.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Plugin.ListEnabledPlugins` | 現在有効なプラグインの一覧 |
+| `Toolset.Plugin.ListDiscoveredPlugins` | 検出済みプラグイン（有効・無効を問わず）の一覧 |
+| `Toolset.Plugin.GetPluginInfo` | プラグインの基本情報（名前・バージョン・有効状態）を取得 |
+| `Toolset.Plugin.IsEnabled` | プラグインが現在有効か確認 |
+| `Toolset.Plugin.GetPluginDependencies` | プラグインが依存するプラグイン一覧を返す |
+| `Toolset.Plugin.GetPluginForAsset` | 指定アセットを提供するプラグインを返す |
+| `Toolset.Plugin.GetPluginDescriptor` | プラグインの `.uplugin` 全体を JSON で返す |
+| `Toolset.Plugin.GetPluginDependents` | 指定プラグインに依存する他のプラグイン一覧 |
+| `Toolset.Plugin.GetPluginTemplateDescriptions` | 利用可能なプラグインテンプレートの一覧 |
+| `Toolset.Plugin.IsPluginCreationAllowed` | プラグイン作成が許可されているか確認 |
+| `Toolset.Plugin.IsPluginModificationAllowed` | 指定プラグインの変更が許可されているか確認 |
+| `Toolset.Plugin.SetPluginEnabled` | プラグインを有効化または無効化（`PluginEnableToggle` 必要） |
+| `Toolset.Plugin.UpdatePluginDescriptor` | `.uplugin` の選択フィールドを上書き（`PluginDescriptorEdit` 必要） |
+| `Toolset.Plugin.AddPluginDependency` | `.uplugin` に依存エントリを追加（`PluginDependencyEdit` 必要） |
+| `Toolset.Plugin.RemovePluginDependency` | `.uplugin` から依存エントリを削除（`PluginDependencyEdit` 必要） |
 
 ---
 
@@ -1046,6 +1098,43 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 | `GetPCGNodeDataView` 🧩 | PCG ノードの実行データビューを取得（`PCGNodeInspect` 必須。`PCG_PROFILING_ENABLED=0` 時は CapabilityNotAvailable） |
 | `RunPCGInstantGraph` 🧩 | アクター / コンポーネント不要の fire-and-forget PCG グラフ実行（`PCGGraphExecute` 必須） |
 
+### Toolset ブリッジ — PCG（31 件）🧩
+
+`PCGToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.PCG.*`。アクティブな PCG エディタタブが必要なコマンドは非インタラクティブコンテキストで `ExecutionFailed` を返す場合があります（PCGToolset の既知の制約）。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.PCG.CreateGraph` 🧩 | PCG グラフアセットを作成（`PCGGraphAssetCreate` 必須） |
+| `Toolset.Editor.PCG.GetGraphStructure` 🧩 | グラフ全体の構造（ノード・エッジ・パラメータ）を取得 |
+| `Toolset.Editor.PCG.SetGraphParams` 🧩 | グラフパラメータを設定（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.RemoveGraphParams` 🧩 | グラフパラメータを削除（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.GetGraphSchema` 🧩 | グラフスキーマを取得 |
+| `Toolset.Editor.PCG.GetGraphDescription` 🧩 | グラフの説明文を取得 |
+| `Toolset.Editor.PCG.SetGraphDescription` 🧩 | グラフの説明文を設定（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.ListGraphInstances` 🧩 | グラフを参照しているボリュームアクター一覧 |
+| `Toolset.Editor.PCG.SpawnGraphInstance` 🧩 | PCG ボリュームアクターをスポーン（`PCGVolumeSpawn` 必須） |
+| `Toolset.Editor.PCG.ExecuteGraphInstance` 🧩 | PCG ボリューム上でグラフを実行（`PCGGraphExecute` 必須；非同期・デフォルト 300 秒） |
+| `Toolset.Editor.PCG.GetGraphInstanceParams` 🧩 | インスタンスのパラメータオーバーライドを取得 |
+| `Toolset.Editor.PCG.SetGraphInstanceParams` 🧩 | インスタンスパラメータを上書き（`PCGGraphExecute` 必須） |
+| `Toolset.Editor.PCG.ResetGraphInstanceParams` 🧩 | インスタンスパラメータをリセット（`PCGGraphExecute` 必須） |
+| `Toolset.Editor.PCG.ListNativeNodes` 🧩 | 登録済みネイティブ PCG ノードクラスを一覧 |
+| `Toolset.Editor.PCG.ListAvailableSubgraphs` 🧩 | サブグラフとして利用可能な PCG アセットを一覧 |
+| `Toolset.Editor.PCG.GetNativeNodeSchema` 🧩 | ネイティブノードクラスのパラメータスキーマを取得 |
+| `Toolset.Editor.PCG.AddNode` 🧩 | ネイティブノードを追加（`PCGGraphEdit` + `PCGToolsetUnsafeNodeAdd` 必須；Allowlist バイパス） |
+| `Toolset.Editor.PCG.AddSubgraphNode` 🧩 | サブグラフノードを追加（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.UpdateNode` 🧩 | ノードのプロパティを更新（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.SetNodeComment` 🧩 | ノードのインラインコメントを設定（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.GetNodeInfo` 🧩 | 特定ノードの情報を取得 |
+| `Toolset.Editor.PCG.RepositionNode` 🧩 | グラフキャンバス上のノードを移動（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.RemoveNode` 🧩 | ノードを削除（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.GetNodeDataView` 🧩 | ノードの最終実行データビューを取得（`PCGNodeInspect` 必須） |
+| `Toolset.Editor.PCG.ConnectNodePins` 🧩 | 2 つのノードピンを接続（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.DisconnectNodePins` 🧩 | ノードピンを切断（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.AddCommentBox` 🧩 | コメントボックスを追加（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.UpdateCommentBox` 🧩 | コメントボックスを更新（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.RemoveCommentBox` 🧩 | コメントボックスを削除（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.RunPCGInstantGraph` 🧩 | `UPCGSpatialToolset` 経由で PCG グラフを即時実行（`PCGGraphExecute` 必須；非同期・デフォルト 300 秒） |
+
 ---
 
 ## UAIP.Editor.WorldConditions 🧩
@@ -1479,6 +1568,20 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 ### Toolset ブリッジ（4）🧩
 
 プロバイダ：`Toolset.Runtime.Niagara.*`。UE 5.8+ と `NiagaraToolsets` が必要。ネイティブコマンドをミラー。
+
+---
+
+## UAIP.Runtime.Engine.Plugin
+
+エディタ / パッケージ版ビルド共通で使えるプラグイン観測コマンド（読み取り専用）。
+
+| コマンド | 説明 |
+|---|---|
+| `ListPlugins` | インストール済みプラグインと有効 / 無効状態の一覧 |
+| `GetPluginInfo` | プラグインの基本情報（名前・バージョン・有効状態）を取得 |
+| `IsEnabled` | プラグインが現在有効か確認 |
+| `GetPluginDependencies` | プラグインが依存するプラグイン一覧を返す |
+| `GetPluginForAsset` | 指定アセットを提供するプラグインを返す |
 
 ---
 

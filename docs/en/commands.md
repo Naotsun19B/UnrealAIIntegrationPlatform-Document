@@ -74,6 +74,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
+| Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 13 | 4 | partial (6/13) |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
@@ -96,7 +97,7 @@ System-level commands for discovery, health, and session management.
 | 🆓 `ListCommands` | Filtered command catalog (filters: `GroupFilter`, `KeywordFilter`, `IncludeUnavailable`) |
 | 🆓 `DescribeCommand` | Full metadata for a single command (schema, required capabilities, availability) |
 | 🆓 `ListCommandGroups` | All group paths with intermediate path completion |
-| 🆓 `ListPlugins` | List installed plugins and their enabled state (JSON) |
+| 🆓 `ListPlugins` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.Plugin.ListPlugins` instead. List installed plugins and their enabled state (JSON) |
 
 ---
 
@@ -124,6 +125,14 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 | `CompileLiveCoding` | Trigger Live Coding recompilation |
 | `GetLiveCodingStatus` | Get the current Live Coding status |
 | `EnableLiveCodingForSession` | Enable Live Coding for the current session |
+---
+
+## UAIP.Editor.Engine.Log
+
+Log verbosity management. Commands moved from `UAIPEditorWorkspace` in D-172.
+
+| Command | Description |
+|---|---|
 | `GetLogVerbosity` | Get the current verbosity level of a log category |
 | `SetLogVerbosity` | Set the verbosity level of a log category (requires `LogVerbosityEdit`) |
 
@@ -137,6 +146,46 @@ Bridge commands via the `LogsToolset` (UE 5.8+, EditorToolset plugin). Provider:
 | `Toolset.Editor.Toolset.Logs.GetLogCategories` | List registered log category names |
 | `Toolset.Editor.Toolset.Logs.GetVerbosity` | Get the verbosity level for a log category |
 | `Toolset.Editor.Toolset.Logs.SetVerbosity` | Set the verbosity level for a log category (requires `LogVerbosityEdit`) |
+
+---
+
+## UAIP.Editor.Engine.Plugin
+
+Plugin management for the editor — read / write plugin state, descriptor, and dependencies. Requires UE 5.8+ with the `PluginUtils` plugin enabled. Write commands (`SetPluginEnabled`, `UpdatePluginDescriptor`, `AddPluginDependency`, `RemovePluginDependency`) require a restart to take effect.
+
+| Command | Description |
+|---|---|
+| `GetPluginDescriptor` | Read the full `.uplugin` descriptor JSON for a plugin |
+| `GetPluginDependents` | List plugins that depend on a given plugin (budget-capped scan; `Truncated: true` on limit) |
+| `GetPluginTemplateDescriptions` | List available plugin scaffold templates |
+| `IsPluginCreationAllowed` | Check whether new plugin creation is allowed in the current editor state |
+| `IsPluginModificationAllowed` | Check whether a specific plugin is modifiable (not Engine/Marketplace/GFP) |
+| `SetPluginEnabled` | Enable or disable a plugin (`PluginEnableToggle` required; always returns `RestartRequired: true`) |
+| `UpdatePluginDescriptor` | Overwrite selected fields of a plugin's `.uplugin` file (`PluginDescriptorEdit` required; supports `DryRun`) |
+| `AddPluginDependency` | Add a dependency entry to a plugin's `.uplugin` (`PluginDependencyEdit` required) |
+| `RemovePluginDependency` | Remove a dependency entry from a plugin's `.uplugin` (`PluginDependencyEdit` required) |
+
+### Toolset bridges — Plugin (15) 🧩
+
+Bridge commands via the `PluginToolset` (UE 5.8+). Provider: `Toolset.Plugin.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Plugin.ListEnabledPlugins` | List currently enabled plugins |
+| `Toolset.Plugin.ListDiscoveredPlugins` | List all discovered plugins (enabled + disabled) |
+| `Toolset.Plugin.GetPluginInfo` | Get plugin details by name |
+| `Toolset.Plugin.IsEnabled` | Check whether a plugin is currently enabled |
+| `Toolset.Plugin.GetPluginDependencies` | Get the direct dependencies declared by a plugin |
+| `Toolset.Plugin.GetPluginForAsset` | Resolve the owning plugin for a given asset path |
+| `Toolset.Plugin.GetPluginDescriptor` | Read the `.uplugin` descriptor (Toolset variant) |
+| `Toolset.Plugin.GetPluginDependents` | List plugins that depend on a given plugin |
+| `Toolset.Plugin.GetPluginTemplateDescriptions` | List scaffold templates |
+| `Toolset.Plugin.IsPluginCreationAllowed` | Check creation permission |
+| `Toolset.Plugin.IsPluginModificationAllowed` | Check modification permission |
+| `Toolset.Plugin.SetPluginEnabled` | Enable / disable a plugin (requires `PluginEnableToggle`) |
+| `Toolset.Plugin.UpdatePluginDescriptor` | Update descriptor fields (requires `PluginDescriptorEdit`) |
+| `Toolset.Plugin.AddPluginDependency` | Add a dependency (requires `PluginDependencyEdit`) |
+| `Toolset.Plugin.RemovePluginDependency` | Remove a dependency (requires `PluginDependencyEdit`) |
 
 ---
 
@@ -1048,6 +1097,43 @@ PCG graph editing. Requires `PCG` plugin.
 | `GetPCGNodeDataView` 🧩 | Get a PCG node's execution data view (requires `PCGNodeInspect`; returns CapabilityNotAvailable when `PCG_PROFILING_ENABLED=0`) |
 | `RunPCGInstantGraph` 🧩 | Fire-and-forget PCG graph execution with no actor or component required (requires `PCGGraphExecute`) |
 
+### Toolset bridges — PCG (31) 🧩
+
+Bridge commands via the `PCGToolset` (UE 5.8+). Provider: `Toolset.Editor.PCG.*`. Commands that require an active open PCG editor tab may return `ExecutionFailed` in non-interactive contexts (known PCGToolset constraint).
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.PCG.CreateGraph` | Create a PCG graph asset (requires `PCGGraphAssetCreate`) |
+| `Toolset.Editor.PCG.GetGraphStructure` | Get the full graph structure (nodes, edges, parameters) |
+| `Toolset.Editor.PCG.SetGraphParams` | Set graph parameters (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.RemoveGraphParams` | Remove graph parameters (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.GetGraphSchema` | Get the graph schema |
+| `Toolset.Editor.PCG.GetGraphDescription` | Get the graph description |
+| `Toolset.Editor.PCG.SetGraphDescription` | Set the graph description (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.ListGraphInstances` | List volume actors referencing the graph |
+| `Toolset.Editor.PCG.SpawnGraphInstance` | Spawn a PCG volume actor (requires `PCGVolumeSpawn`) |
+| `Toolset.Editor.PCG.ExecuteGraphInstance` | Execute a graph on a PCG volume (requires `PCGGraphExecute`; async, 300 s default) |
+| `Toolset.Editor.PCG.GetGraphInstanceParams` | Get per-instance parameter overrides |
+| `Toolset.Editor.PCG.SetGraphInstanceParams` | Set per-instance overrides (requires `PCGGraphExecute`) |
+| `Toolset.Editor.PCG.ResetGraphInstanceParams` | Reset per-instance overrides (requires `PCGGraphExecute`) |
+| `Toolset.Editor.PCG.ListNativeNodes` | List all registered native PCG node classes |
+| `Toolset.Editor.PCG.ListAvailableSubgraphs` | List PCG assets available as subgraphs |
+| `Toolset.Editor.PCG.GetNativeNodeSchema` | Get the parameter schema for a native node class |
+| `Toolset.Editor.PCG.AddNode` | Add a native node (requires `PCGGraphEdit` + `PCGToolsetUnsafeNodeAdd`; bypasses allowlist) |
+| `Toolset.Editor.PCG.AddSubgraphNode` | Add a subgraph node (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.UpdateNode` | Update a node's properties (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.SetNodeComment` | Set a node's inline comment (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.GetNodeInfo` | Get info for a specific node |
+| `Toolset.Editor.PCG.RepositionNode` | Move a node on the graph canvas (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.RemoveNode` | Remove a node (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.GetNodeDataView` | Get the last-execution data view of a node (requires `PCGNodeInspect`) |
+| `Toolset.Editor.PCG.ConnectNodePins` | Connect two node pins (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.DisconnectNodePins` | Disconnect node pins (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.AddCommentBox` | Add a comment box (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.UpdateCommentBox` | Update a comment box (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.RemoveCommentBox` | Remove a comment box (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.RunPCGInstantGraph` | Execute a PCG graph instantly via `UPCGSpatialToolset` (requires `PCGGraphExecute`; async, 300 s default) |
+
 ---
 
 ## UAIP.Editor.WorldConditions 🧩
@@ -1352,6 +1438,20 @@ Foliage type management and instance placement in the editor. Observation comman
 | `RemoveFoliageInstances` | Remove foliage instances inside a bounding box or sphere up to `MaxRemoveCount` (requires `FoliageInstanceEdit`) |
 | `DeleteAllFoliageInstances` | Delete every placed instance of a foliage type from the current level (requires `FoliageBulkDelete`) |
 | `ResimulateProceduralFoliage` 🧩 | Resimulate a `ProceduralFoliageVolume` and place the resulting instances (requires `ProceduralFoliage` plugin and `FoliageInstanceEdit`) |
+
+---
+
+## UAIP.Runtime.Engine.Plugin
+
+Plugin inspection at runtime. Read-only commands available without any special capability. These are the Runtime-domain counterparts to `UAIP.Editor.Engine.Plugin` commands.
+
+| Command | Description |
+|---|---|
+| `ListPlugins` | List discovered or enabled plugins with optional `EnabledOnly` filter and `LoadedFrom` filter |
+| `GetPluginInfo` | Get detailed info for a plugin (11 fields: Name, FriendlyName, Version, Description, Category, IsEnabled, IsMounted, Type, BaseDir, LoadedFrom, Dependencies) |
+| `IsEnabled` | Check whether a plugin is currently enabled (note: `.uproject` declaration and actual load state may diverge until restart) |
+| `GetPluginDependencies` | Get the direct plugin dependencies declared by a plugin |
+| `GetPluginForAsset` | Resolve the owning plugin for a given asset path |
 
 ---
 
