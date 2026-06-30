@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 598+ **UAIP commands** (provided directly by the plugin itself) and 214+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 812+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 632+ **UAIP commands** (provided directly by the plugin itself) and 260+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 892+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -34,7 +34,9 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Domain | Provider prefix | UAIP commands | Toolset bridge | Demo |
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 7 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 20 | 4 | partial (13/20) |
+| Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | partial (13/18) |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 2 | 4 | — |
+| Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | — |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
@@ -62,7 +64,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Sequencer | `UAIP.Editor.Sequencer` | 92 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 9 | — | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG 🧩 | `UAIP.Editor.PCG` | 13 | — | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 31 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 6 | — | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 12 | — | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 44 | — |
@@ -1025,6 +1027,26 @@ PCG graph editing. Requires `PCG` plugin.
 | `GetCustomBlueprintPCGNodeSchema` 🧩 | JSON schema of Blueprint UPCGBlueprintSettings subclass properties |
 | `SetCustomCppPCGNodeProperty` 🧩 | Set a property on a C++ custom node (`RecompileTriggered` flag) |
 | `SetCustomBlueprintPCGNodeProperty` 🧩 | Set a property on a BP custom node (Class CDO / per-Instance modes) |
+| `CreatePCGGraph` 🧩 | Create a new UPCGGraph asset in the Content directory (requires `PCGGraphAssetCreate`) |
+| `GetPCGGraphSchema` 🧩 | Return the graph's node / pin structure in schema form |
+| `GetPCGGraphDescription` 🧩 | Get the graph's Description string |
+| `SetPCGGraphDescription` 🧩 | Set the graph's Description (requires `PCGGraphEdit`) |
+| `SetPCGGraphParams` 🧩 | Add or update graph parameters (requires `PCGGraphEdit`) |
+| `RemovePCGGraphParams` 🧩 | Remove graph parameters (requires `PCGGraphEdit`) |
+| `ListPCGGraphInstances` 🧩 | List UPCGComponents in the level |
+| `SpawnPCGGraphInstance` 🧩 | Spawn an APCGVolume into the world (requires `PCGVolumeSpawn`) |
+| `GetPCGGraphInstanceParams` 🧩 | Get per-instance override parameters |
+| `SetPCGGraphInstanceParams` 🧩 | Override instance parameters (requires `PCGGraphEdit`) |
+| `ResetPCGGraphInstanceParams` 🧩 | Reset instance parameters to graph defaults (requires `PCGGraphEdit`) |
+| `ListPCGAvailableSubgraphs` 🧩 | List subgraph candidates in the project |
+| `GetPCGNativeNodeSchema` 🧩 | JSON schema of native PCG node class EditAnywhere properties |
+| `AddPCGSubgraphNode` 🧩 | Add a subgraph reference node (requires `PCGGraphEdit`) |
+| `RepositionPCGNode` 🧩 | Move a node to a new position (requires `PCGGraphEdit`) |
+| `AddPCGCommentBox` 🧩 | Add a comment box (requires `PCGGraphEdit`) |
+| `UpdatePCGCommentBox` 🧩 | Update a comment box (requires `PCGGraphEdit`) |
+| `RemovePCGCommentBox` 🧩 | Remove a comment box (requires `PCGGraphEdit`) |
+| `GetPCGNodeDataView` 🧩 | Get a PCG node's execution data view (requires `PCGNodeInspect`; returns CapabilityNotAvailable when `PCG_PROFILING_ENABLED=0`) |
+| `RunPCGInstantGraph` 🧩 | Fire-and-forget PCG graph execution with no actor or component required (requires `PCGGraphExecute`) |
 
 ---
 
