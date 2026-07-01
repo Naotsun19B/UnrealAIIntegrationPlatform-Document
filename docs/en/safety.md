@@ -254,8 +254,9 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 
 | Capability | What it unlocks |
 |---|---|
-| `RuntimeCVarRead` | Read console variable (CVar) values — `GetConsoleVariable`, `SearchConsoleVariables` |
-| `CVarInspect` | Search console variables with sensitive-pattern filtering — `Toolset.Editor.Toolset.World.SearchCVars` bridge (native counterpart tracked as D-188) |
+| `RuntimeCVarRead` | Read engine-wide CVar values — `UAIP.Runtime.Engine.CVar.GetConsoleVariable`, `SearchConsoleVariables` (owned by `UAIPRuntimeEngineManagement`) |
+| `RuntimeCVarWrite` | Set or reset CVar values — `UAIP.Runtime.Engine.CVar.SetConsoleVariable`, `ResetConsoleVariable` (sensitive names and `ECVF_ReadOnly` CVars are rejected; owned by `UAIPRuntimeEngineManagement`) |
+| `CVarInspect` | Search CVars with sensitive-pattern filtering — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` bridge (owned by `UAIPEditorEngineManagement`) |
 | `RuntimeActorManipulation` | Spawn, destroy, teleport, and possess actors during PIE |
 | `RuntimeExecCommand` | Execute console commands at runtime via `UWorld` |
 | `RuntimeInputInjection` | Inject keyboard / Enhanced Input / legacy input events into PIE (`InjectInputKey`, `InjectEnhancedInputAction`, `AddMappingContext`, `SetInputMode`, `FlushInput`, …) |

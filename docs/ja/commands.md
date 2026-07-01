@@ -37,6 +37,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | 一部（13/18） |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 2 | 4 | — |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | — |
+| Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅（1 件除外） |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
@@ -74,7 +75,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
-| Runtime PIE | `UAIP.Runtime.PIE` | 13 | 4 | 一部（6/13） |
+| Runtime PIE | `UAIP.Runtime.PIE` | 11 ⁺² | 3 | 一部（6/11） |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
@@ -82,6 +83,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 6 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | — |
+| Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | 一部（2/4） |
 
 ---
 
@@ -147,6 +149,14 @@ UAIP では 2 種類のコマンドを公開しています：
 | `Toolset.Editor.Toolset.Logs.GetLogCategories` | 登録済みログカテゴリ名の一覧 |
 | `Toolset.Editor.Toolset.Logs.GetVerbosity` | ログカテゴリの詳細レベルを取得 |
 | `Toolset.Editor.Toolset.Logs.SetVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
+
+### Toolset ブリッジ — CVar（1 件）🧩
+
+EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.EngineManagement.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.Toolset.EngineManagement.SearchCVars` | CVar を名前パターンで検索（センシティブパターンを除外、`CVarInspect` 必要） |
 
 ---
 
@@ -1458,8 +1468,8 @@ PIE セッション制御とランタイムワールド操作。
 | `PossessActor` | プレイヤーコントローラーにアクターを憑依させる |
 | `SetTimeScale` | アクティブな PIE セッションのグローバル時間スケールを設定 |
 | `QuitGame` | 実行中のゲームプロセスを終了リクエスト |
-| `GetConsoleVariable` | コンソール変数（CVar）の現在値・デフォルト値・型・説明を取得 |
-| `SearchConsoleVariables` | CVar をキーワード・型・フラグでフィルタし一覧を返す（上限 256 件） |
+| ~~`GetConsoleVariable`~~ | ⚠️ **非推奨**：`UAIP.Runtime.Engine.CVar.GetConsoleVariable` を使用 |
+| ~~`SearchConsoleVariables`~~ | ⚠️ **非推奨**：`UAIP.Runtime.Engine.CVar.SearchConsoleVariables` を使用 |
 | 🆓 `GetPIEState` | 現在の PIE 状態を返す — `Running`・`Stopped`・`Paused`・`Simulating` |
 
 ### Toolset ブリッジ（4 件）🧩
@@ -1471,7 +1481,6 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。
 | `Toolset.Editor.Toolset.PIE.StartPIE` | `Toolset.Editor.Toolset.PIE.*` | PIE セッションを開始（非同期、`PIEControl` 必要） |
 | `Toolset.Editor.Toolset.PIE.StopPIE` | `Toolset.Editor.Toolset.PIE.*` | PIE セッションを停止（非同期、`PIEControl` 必要） |
 | `Toolset.Editor.Toolset.PIE.IsPIERunning` | `Toolset.Editor.Toolset.PIE.*` | PIE が実行中かどうかを返す |
-| `Toolset.Editor.Toolset.World.SearchCVars` | `Toolset.Editor.Toolset.World.*` | CVar を名前で検索（センシティブパターンを除外、`CVarInspect` 必要） |
 
 ---
 
@@ -1582,6 +1591,23 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 | `IsEnabled` | プラグインが現在有効か確認 |
 | `GetPluginDependencies` | プラグインが依存するプラグイン一覧を返す |
 | `GetPluginForAsset` | 指定アセットを提供するプラグインを返す |
+
+---
+
+## UAIP.Runtime.Engine.CVar
+
+エンジン全体のコンソール変数（CVar）を取得・検索・設定するコマンド。CVar は World 非依存のグローバル状態です。機密パターンの CVar は自動除外されます。
+
+🔒 は `RuntimeCVarRead`（DefaultDenied）が必要。✏️ は `RuntimeCVarWrite`（DefaultDenied）が必要。
+
+| コマンド | 説明 |
+|---|---|
+| 🔒 `GetConsoleVariable` | 指定した CVar の名前・現在値・型・ヘルプテキストを返す（機密名は `NotFound`） |
+| 🔒 `SearchConsoleVariables` | ワイルドカード（`*`）パターンで CVar を検索（デフォルト 50 件・上限 200 件） |
+| ✏️ `SetConsoleVariable` | 指定した CVar の値を設定（機密名・`ECVF_ReadOnly` 付きは拒否） |
+| ✏️ `ResetConsoleVariable` | 指定した CVar をデフォルト値にリセット（機密名・`ECVF_ReadOnly` 付きは拒否） |
+
+> **注意**: `UAIP.Runtime.PIE` にあった旧 `GetConsoleVariable` / `SearchConsoleVariables` コマンドは非推奨です（v1.2 で削除予定）。本コマンド群を使用してください。
 
 ---
 

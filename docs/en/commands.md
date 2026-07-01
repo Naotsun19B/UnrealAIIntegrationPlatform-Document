@@ -37,6 +37,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | partial (13/18) |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 2 | 4 | — |
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | — |
+| Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
@@ -75,7 +76,8 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | — |
-| Runtime PIE | `UAIP.Runtime.PIE` | 13 | 4 | partial (6/13) |
+| Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
+| Runtime PIE | `UAIP.Runtime.PIE` | 11 ⁺² | 3 | partial (6/11) |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
@@ -146,6 +148,14 @@ Bridge commands via the `LogsToolset` (UE 5.8+, EditorToolset plugin). Provider:
 | `Toolset.Editor.Toolset.Logs.GetLogCategories` | List registered log category names |
 | `Toolset.Editor.Toolset.Logs.GetVerbosity` | Get the verbosity level for a log category |
 | `Toolset.Editor.Toolset.Logs.SetVerbosity` | Set the verbosity level for a log category (requires `LogVerbosityEdit`) |
+
+### Toolset bridges — CVar (1) 🧩
+
+Bridge commands via the EditorToolset plugin (UE 5.8+). Provider: `Toolset.Editor.EngineManagement.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.Toolset.EngineManagement.SearchCVars` | Search CVars by name pattern; sensitive patterns are excluded (requires `CVarInspect`) |
 
 ---
 
@@ -1455,6 +1465,23 @@ Plugin inspection at runtime. Read-only commands available without any special c
 
 ---
 
+## UAIP.Runtime.Engine.CVar
+
+Read and write engine-wide console variables (CVars). CVars are global engine state — independent of any World or PIE session. Sensitive CVars are automatically excluded.
+
+🔒 requires `RuntimeCVarRead` (DefaultDenied). ✏️ requires `RuntimeCVarWrite` (DefaultDenied).
+
+| Command | Description |
+|---|---|
+| 🔒 `GetConsoleVariable` | Get the name, current value, type, and help text for a CVar (sensitive names return `NotFound`) |
+| 🔒 `SearchConsoleVariables` | Search CVars using a wildcard (`*`) pattern (default 50 results, max 200) |
+| ✏️ `SetConsoleVariable` | Set the value of a CVar (sensitive names and `ECVF_ReadOnly` CVars are rejected) |
+| ✏️ `ResetConsoleVariable` | Reset a CVar to its default value (sensitive names and `ECVF_ReadOnly` CVars are rejected) |
+
+> **Note**: The legacy `GetConsoleVariable` and `SearchConsoleVariables` commands under `UAIP.Runtime.PIE` are deprecated and will be removed in v1.2. Use these commands instead.
+
+---
+
 ## UAIP.Runtime.PIE
 
 PIE session control and runtime world manipulation.
@@ -1471,8 +1498,8 @@ PIE session control and runtime world manipulation.
 | `PossessActor` | Have a player controller possess an actor |
 | `SetTimeScale` | Set the global time scale of the active PIE session |
 | `QuitGame` | Request the running game process to quit |
-| `GetConsoleVariable` | Get the current value, default value, type, and description of a console variable (CVar) |
-| `SearchConsoleVariables` | Search CVars by keyword, type, or flags and return a list (max 256 results) |
+| ~~`GetConsoleVariable`~~ | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.GetConsoleVariable` instead |
+| ~~`SearchConsoleVariables`~~ | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.SearchConsoleVariables` instead |
 | 🆓 `GetPIEState` | Return the current PIE state — `Running`, `Stopped`, `Paused`, or `Simulating` |
 
 ### Toolset bridges (4) 🧩
@@ -1484,7 +1511,6 @@ Bridge commands via the EditorToolset plugin (UE 5.8+).
 | `Toolset.Editor.Toolset.PIE.StartPIE` | `Toolset.Editor.Toolset.PIE.*` | Start a PIE session (async, requires `PIEControl`) |
 | `Toolset.Editor.Toolset.PIE.StopPIE` | `Toolset.Editor.Toolset.PIE.*` | Stop the active PIE session (async, requires `PIEControl`) |
 | `Toolset.Editor.Toolset.PIE.IsPIERunning` | `Toolset.Editor.Toolset.PIE.*` | Return whether PIE is currently active |
-| `Toolset.Editor.Toolset.World.SearchCVars` | `Toolset.Editor.Toolset.World.*` | Search CVars by name; sensitive patterns are excluded (requires `CVarInspect`) |
 
 ---
 
