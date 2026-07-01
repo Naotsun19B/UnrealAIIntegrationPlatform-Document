@@ -38,6 +38,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 2 | 4 | — |
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | — |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
+| Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | — | — |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
@@ -77,6 +78,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | — |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
+| Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 11 ⁺² | 3 | partial (6/11) |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
@@ -196,6 +198,23 @@ Bridge commands via the `PluginToolset` (UE 5.8+). Provider: `Toolset.Plugin.*`.
 | `Toolset.Plugin.UpdatePluginDescriptor` | Update descriptor fields (requires `PluginDescriptorEdit`) |
 | `Toolset.Plugin.AddPluginDependency` | Add a dependency (requires `PluginDependencyEdit`) |
 | `Toolset.Plugin.RemovePluginDependency` | Remove a dependency (requires `PluginDependencyEdit`) |
+
+---
+
+## UAIP.Editor.Engine.ConfigSettings
+
+Project Settings and Editor Preferences management via `ISettingsModule`. Commands use a three-level path `ContainerName / CategoryName / SectionName` to address a settings section. Write operations are restricted to files under the project `Config/` directory — engine ini files are rejected with `PolicyViolation`.
+
+| Command | Description |
+|---|---|
+| `ListSettingsContainers` | List all registered settings containers (e.g. `Project`, `Editor`). No capability required |
+| `ListSettingsCategories` | List all categories in a settings container. No capability required |
+| `ListSettingsSections` | List all sections in a settings category. No capability required |
+| `GetSettingsSchema` | Return a JSON artifact with editable property names, types, descriptions, defaults, and edit conditions for a section (requires `EditorInspect`) |
+| `GetSettingsValues` | Return a JSON artifact with current property values for a section. Secret fields (name matches a secret pattern, has secret metadata, or is a file path type) are masked with `***` (requires `EditorInspect`) |
+| `SetSettingsValues` | Merge a `Properties` map into the settings object via `ImportText`. Supports `DryRun` (validates without applying). Requires `ConfigSettingsEdit`. Blocked during PIE |
+| `SaveSettings` | Persist in-memory settings to the section's ini file via `ISettingsSection::Save()`. Requires `ConfigSettingsSave`. Blocked during PIE and when `bDisableSave` is set |
+| `ResetSettingsToDefaults` | Revert the settings object to class defaults and save. Requires `ConfigSettingsReset`. Blocked during PIE |
 
 ---
 
@@ -1479,6 +1498,17 @@ Read and write engine-wide console variables (CVars). CVars are global engine st
 | ✏️ `ResetConsoleVariable` | Reset a CVar to its default value (sensitive names and `ECVF_ReadOnly` CVars are rejected) |
 
 > **Note**: The legacy `GetConsoleVariable` and `SearchConsoleVariables` commands under `UAIP.Runtime.PIE` are deprecated and will be removed in v1.2. Use these commands instead.
+
+---
+
+## UAIP.Runtime.Engine.Config
+
+Raw ini key access for runtime and packaged builds. Reads and writes ini keys directly without going through `ISettingsModule`. Write commands are blocked in packaged builds.
+
+| Command | Description |
+|---|---|
+| `GetConfigValue` | Read the string value of an ini key given section and key name. No capability required |
+| `SetConfigValue` | Write or delete a raw ini key. Requires `ConfigSettingsEdit`. Blocked in packaged builds. Rejects ini injection characters (`[`, `]`) in key and value fields |
 
 ---
 

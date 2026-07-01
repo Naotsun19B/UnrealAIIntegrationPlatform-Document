@@ -318,6 +318,14 @@ These capabilities all require the `Niagara` plugin.
 | `FoliageInstanceEdit` | Add and remove individual foliage instances — `AddFoliageInstances`, `RemoveFoliageInstances`, `ResimulateProceduralFoliage` |
 | `FoliageBulkDelete` | Delete all instances of a foliage type at once — `DeleteAllFoliageInstances` |
 
+#### ConfigSettings editing
+
+| Capability | What it unlocks |
+|---|---|
+| `ConfigSettingsEdit` | Modify Project Settings / Editor Preferences and write raw ini keys — `SetSettingsValues` (also required for `DryRun` calls), `SetConfigValue` (runtime) |
+| `ConfigSettingsSave` | Persist settings to disk via `ISettingsSection::Save()` — `SaveSettings` (blocked when `bDisableSave` is set) |
+| `ConfigSettingsReset` | Revert settings to class defaults — `ResetSettingsToDefaults` |
+
 #### Plugin management
 
 Write commands for plugin state and descriptors. Engine and Marketplace plugins are always read-only regardless of capability. Write commands require an editor restart to take effect.
