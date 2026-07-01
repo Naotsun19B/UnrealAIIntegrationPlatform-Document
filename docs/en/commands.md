@@ -42,7 +42,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 15 | 6 | — |
+| Editor Assets | `UAIP.Editor.Assets` | 17 | 6 | — |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | — |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | — |
@@ -291,6 +291,8 @@ Open, search, create, duplicate, rename, delete assets and folders.
 | `CloseAsset` | Close all editors for the specified asset |
 | `SearchAssets` | Search assets by path / class / tag |
 | `CreateAsset` | Create a new asset of the specified class |
+| `ListCreatableAssetClasses` | Return every UClass that `CreateAsset` can target, with factory count and default factory (heavy call) |
+| `ListFactoriesForClass` | Return the factory candidates for a `ClassName`, each with its `FactoryParams` schema |
 | `DuplicateAsset` | Duplicate an existing asset |
 | `RenameAsset` | Rename / move an asset to another path |
 | `DeleteAsset` | Delete an asset |
