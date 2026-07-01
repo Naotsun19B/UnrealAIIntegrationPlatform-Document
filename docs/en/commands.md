@@ -35,7 +35,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 7 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | partial (13/18) |
-| Editor Engine Log | `UAIP.Editor.Engine.Log` | 2 | 4 | — |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | — |
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | — |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
 | Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | — | — |
@@ -76,6 +76,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
+| Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 1 | — | — |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | — |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
 | Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | — |
@@ -133,12 +134,13 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 
 ## UAIP.Editor.Engine.Log
 
-Log verbosity management. Commands moved from `UAIPEditorWorkspace` in D-172.
+Log verbosity management and log entry retrieval.
 
 | Command | Description |
 |---|---|
 | `GetLogVerbosity` | Get the current verbosity level of a log category |
 | `SetLogVerbosity` | Set the verbosity level of a log category (requires `LogVerbosityEdit`) |
+| `GetLogEntries` | Retrieve recent log entries from the editor output log (supports pattern filtering; no capability required) |
 
 ### Toolset bridges — Logs (4) 🧩
 
@@ -1467,6 +1469,16 @@ Foliage type management and instance placement in the editor. Observation comman
 | `RemoveFoliageInstances` | Remove foliage instances inside a bounding box or sphere up to `MaxRemoveCount` (requires `FoliageInstanceEdit`) |
 | `DeleteAllFoliageInstances` | Delete every placed instance of a foliage type from the current level (requires `FoliageBulkDelete`) |
 | `ResimulateProceduralFoliage` 🧩 | Resimulate a `ProceduralFoliageVolume` and place the resulting instances (requires `ProceduralFoliage` plugin and `FoliageInstanceEdit`) |
+
+---
+
+## UAIP.Runtime.Engine.Log
+
+Log category inspection at runtime. Read-only; no capability required.
+
+| Command | Description |
+|---|---|
+| `GetLogCategories` | List all registered log category names |
 
 ---
 

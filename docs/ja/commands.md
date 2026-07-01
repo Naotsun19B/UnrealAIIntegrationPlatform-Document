@@ -35,7 +35,7 @@ UAIP では 2 種類のコマンドを公開しています：
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 7 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | 一部（13/18） |
-| Editor Engine Log | `UAIP.Editor.Engine.Log` | 2 | 4 | — |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | — |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | — |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
 | Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | — | — |
@@ -83,6 +83,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 6 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
+| Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 1 | — | — |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | — |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | 一部（2/4） |
 | Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | — |
@@ -134,12 +135,13 @@ UAIP では 2 種類のコマンドを公開しています：
 
 ## UAIP.Editor.Engine.Log
 
-ログカテゴリの詳細レベル取得・設定。
+ログカテゴリの詳細レベル取得・設定、およびログエントリ取得。
 
 | コマンド | 説明 |
 |---|---|
 | `GetLogVerbosity` | 指定ログカテゴリの現在の詳細レベルを取得 |
 | `SetLogVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
+| `GetLogEntries` | エディタ Output Log から最近のログエントリを取得（パターンフィルタ対応、Capability 不要） |
 
 ### Toolset ブリッジ — Logs（4 件）🧩
 
@@ -1596,6 +1598,16 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 ### Toolset ブリッジ（4）🧩
 
 プロバイダ：`Toolset.Runtime.Niagara.*`。UE 5.8+ と `NiagaraToolsets` が必要。ネイティブコマンドをミラー。
+
+---
+
+## UAIP.Runtime.Engine.Log
+
+ランタイム環境でのログカテゴリ一覧取得。読み取り専用、Capability 不要。
+
+| コマンド | 説明 |
+|---|---|
+| `GetLogCategories` | 登録済みログカテゴリ名をすべて一覧表示 |
 
 ---
 
