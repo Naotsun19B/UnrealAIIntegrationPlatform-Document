@@ -255,7 +255,7 @@ flowchart LR
 | Capability | 有効になる操作 |
 |---|---|
 | `RuntimeCVarRead` | エンジン全体の CVar 値の読み取り — `UAIP.Runtime.Engine.CVar.GetConsoleVariable`、`SearchConsoleVariables`（`UAIPRuntimeEngineManagement` 所有） |
-| `RuntimeCVarWrite` | CVar 値の設定・リセット — `UAIP.Runtime.Engine.CVar.SetConsoleVariable`、`ResetConsoleVariable`（機密名・`ECVF_ReadOnly` は拒否、`UAIPRuntimeEngineManagement` 所有） |
+| `RuntimeCVarWrite` | CVar 値の設定・リセット — `UAIP.Runtime.Engine.CVar.SetConsoleVariable`、`ResetConsoleVariable`（機密名・`ECVF_ReadOnly` は拒否、`ECVF_Cheat` 付きはさらに `AllowCheatCVarWrite` SafetyPolicy スイッチが必要、`UAIPRuntimeEngineManagement` 所有） |
 | `CVarInspect` | センシティブパターンフィルタリング付き CVar 検索 — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` bridge（`UAIPEditorEngineManagement` 所有） |
 | `RuntimeActorManipulation` | PIE 中のアクタースポーン・破棄・テレポート・Possess |
 | `RuntimeExecCommand` | `UWorld` 経由のランタイムコンソールコマンド実行 |
@@ -383,6 +383,7 @@ AllowKeyboardModifierInput=False
 AllowPasswordFieldWrite=False
 AllowInputModeBypass=False
 DisablePIEStart=False
+AllowCheatCVarWrite=False
 
 ; DefaultDenied の Capability を解除：
 ; +AllowedCapabilities=BlueprintEdit
@@ -408,6 +409,7 @@ DisablePIEStart=False
 | `AllowPasswordFieldWrite` | `False` | `FillForm` でパスワードフィールドへの書き込みを許可 |
 | `AllowInputModeBypass` | `False` | Inject 系コマンドの `BypassInputMode=true` を許可 |
 | `DisablePIEStart` | `False` | PIE 起動を拒否 |
+| `AllowCheatCVarWrite` | `False` | `SetConsoleVariable` / `ResetConsoleVariable` による `ECVF_Cheat` フラグ付き CVar への書き込みを許可（`RuntimeCVarWrite` も別途必要） |
 | `AllowedCapabilities` | 空 | DefaultDenied の Capability を解除（`+` 付きで 1 行に 1 つ） |
 | `DeniedCapabilities` | 空 | DefaultAllow の Capability を全セッションから取り除く |
 | `DeniedCommands` | 空 | 完全修飾名で指定したコマンドをブロック |

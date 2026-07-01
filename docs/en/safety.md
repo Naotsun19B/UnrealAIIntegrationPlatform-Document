@@ -255,7 +255,7 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | Capability | What it unlocks |
 |---|---|
 | `RuntimeCVarRead` | Read engine-wide CVar values — `UAIP.Runtime.Engine.CVar.GetConsoleVariable`, `SearchConsoleVariables` (owned by `UAIPRuntimeEngineManagement`) |
-| `RuntimeCVarWrite` | Set or reset CVar values — `UAIP.Runtime.Engine.CVar.SetConsoleVariable`, `ResetConsoleVariable` (sensitive names and `ECVF_ReadOnly` CVars are rejected; owned by `UAIPRuntimeEngineManagement`) |
+| `RuntimeCVarWrite` | Set or reset CVar values — `UAIP.Runtime.Engine.CVar.SetConsoleVariable`, `ResetConsoleVariable` (sensitive names and `ECVF_ReadOnly` CVars are rejected; `ECVF_Cheat` CVars additionally require the `AllowCheatCVarWrite` SafetyPolicy switch; owned by `UAIPRuntimeEngineManagement`) |
 | `CVarInspect` | Search CVars with sensitive-pattern filtering — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` bridge (owned by `UAIPEditorEngineManagement`) |
 | `RuntimeActorManipulation` | Spawn, destroy, teleport, and possess actors during PIE |
 | `RuntimeExecCommand` | Execute console commands at runtime via `UWorld` |
@@ -383,6 +383,7 @@ AllowKeyboardModifierInput=False
 AllowPasswordFieldWrite=False
 AllowInputModeBypass=False
 DisablePIEStart=False
+AllowCheatCVarWrite=False
 
 ; Lift DefaultDenied capabilities:
 ; +AllowedCapabilities=BlueprintEdit
@@ -408,6 +409,7 @@ DisablePIEStart=False
 | `AllowPasswordFieldWrite` | `False` | Allow `FillForm` to write into password fields |
 | `AllowInputModeBypass` | `False` | Allow `BypassInputMode=true` in Inject commands |
 | `DisablePIEStart` | `False` | Reject PIE startup |
+| `AllowCheatCVarWrite` | `False` | Allow `SetConsoleVariable` / `ResetConsoleVariable` to write `ECVF_Cheat`-flagged CVars (also requires `RuntimeCVarWrite`) |
 | `AllowedCapabilities` | empty | DefaultDenied capabilities to grant (one `+` entry per line) |
 | `DeniedCapabilities` | empty | Remove DefaultAllow capabilities from all sessions |
 | `DeniedCommands` | empty | Block commands by fully-qualified name |

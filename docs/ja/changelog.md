@@ -89,7 +89,13 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 **修正**
 
+- **9つのEditorドメインモジュール（Foliage / WorldPartition / Level / PCG / Niagara / Sequencer / Property / Physics / UMG）でPIE/SIEミューテーションガードを共通化・修正**: 各モジュールに重複実装されていたPIE/SIE拒否ロジックとエディタワールド取得処理を単一の共通実装へ集約し、その過程で以下の潜在バグを修正しました:
+  - `SetActorProperty` / `SetWorldSetting` には**PIE/SIEガードが一切存在せず**、Play-In-Editor または Simulate-In-Editor 中でもエディタワールドを変更できてしまう状態でした。`GetActorProperty` / `GetWorldSetting` は影響を受けず、引き続きPIE/Simulate中も成功します。
+  - Niagara / Physics / UMG の各コマンドが使用するToolsetブリッジ用バリデーションヘルパーは、Play-In-Editorのみを検知し Simulate-In-Editor を検知できていませんでした。Simulate中のミューテーションがすり抜ける可能性がありました。
+  - `SetActorTransform` / `PlaceActorInLevel` / `DeleteActorFromLevel`（Level）および WorldPartition / DataLayer / HLOD の各ミューテーションコマンドは、PIE/Simulate中の拒否時に `NotAllowed` ではなく `ExecutionFailed` を返していました *(このケースで `ExecutionFailed` をパターンマッチしている呼び出し元には破壊的変更)*。現在は他の全ドメインと同じ `NotAllowed` に統一されています。
+  - `GetPCGGraphInfo` と `GetSequenceInfo` は引き続きPIE/Simulate状態をレスポンス内の単純なbool値として返し、Play/Simulate中もブロックされません。
 - **`uaip_run_scenario` の `Variables` フィールドが `${Variables.<key>}` テンプレートで解決されるように**: シナリオに渡したトップレベルの `Variables` マップはパースされるものの、ステップ実行コンテキストに一度もロードされておらず、`${Variables.<key>}` を参照するステップは全トランスポート（HTTP / MCP / CLI / WS）で常に `ExecutionFailed: Template resolution failed.` になっていました。初期変数は最初のステップ実行前にロードされるようになり、第1ステップから型を保持したまま参照できます。また、シナリオあたりの変数件数上限または単一値のサイズ上限を超える `Variables` は、該当エントリをサイレントに破棄するのではなく `InvalidParams` として事前に拒否されるようになりました。
+- **`SetConsoleVariable` / `ResetConsoleVariable` がデフォルトでチートフラグ（`ECVF_Cheat`）付き CVar への書き込みを拒否するように**: 従来は `ECVF_ReadOnly` のみがチェックされており、`RuntimeCVarWrite` を保有するセッションから `ECVF_Cheat` フラグの有無に関わらず CVar を書き換えられていました。新しい `AllowCheatCVarWrite` SafetyPolicy スイッチ（デフォルト `False`）がチートフラグ付き書き込みをゲートし、無効時は `PolicyViolation` を返します。`ECVF_ReadOnly` は引き続きチート判定より優先されます（`NotAllowed`）。書き込み成功時は Artifact とコマンド結果の両方に `WasCheatCVar` の bool 値が出力されるようになりました。
 
 #### MCP Bridge 1.1.1 — 2026-06-24 リリース済み
 

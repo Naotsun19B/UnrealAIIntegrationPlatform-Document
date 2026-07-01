@@ -88,7 +88,13 @@ Changes that have shipped in the plugin repository but are not yet released on F
 
 **Fixed**
 
+- **PIE/SIE mutation guard consolidated and corrected across 9 editor-domain modules** (Foliage, WorldPartition, Level, PCG, Niagara, Sequencer, Property, Physics, UMG): the duplicated per-module PIE/SIE rejection logic and editor-world lookup were consolidated into a single shared implementation, fixing several latent bugs found in the process:
+  - `SetActorProperty` / `SetWorldSetting` previously had **no PIE/SIE guard at all** and could mutate the editor world while Play-In-Editor or Simulate-In-Editor was active. `GetActorProperty` / `GetWorldSetting` are unaffected and continue to succeed during PIE/Simulate.
+  - The Toolset-bridge validation helper used by Niagara, Physics, and UMG commands never detected Simulate-In-Editor, only Play-In-Editor — Simulate-time mutations could slip through.
+  - `SetActorTransform`, `PlaceActorInLevel`, `DeleteActorFromLevel` (Level) and the WorldPartition/DataLayer/HLOD mutation commands returned `ExecutionFailed` instead of `NotAllowed` when rejected during PIE/Simulate *(breaking for callers that pattern-match on `ExecutionFailed` for this case)*; the ErrorCode is now `NotAllowed`, matching every other domain.
+  - `GetPCGGraphInfo` and `GetSequenceInfo` continue to report PIE/Simulate state as a plain boolean field in their response and are not blocked during Play/Simulate.
 - **`uaip_run_scenario` `Variables` field now resolves through `${Variables.<key>}` templates**: the top-level `Variables` map passed to a scenario was parsed but never loaded into the step execution context, so any step referencing `${Variables.<key>}` always failed with `ExecutionFailed: Template resolution failed.` across every transport (HTTP, MCP, CLI, WS). Initial variables are now loaded before the first step dispatches, so they are visible (with type preserved) from the first step onward. A `Variables` payload that exceeds the per-scenario variable count or per-value size limit is now rejected up front with `InvalidParams` instead of silently dropping the offending entry.
+- **`SetConsoleVariable` / `ResetConsoleVariable` now reject cheat-flagged (`ECVF_Cheat`) CVars by default**: previously only `ECVF_ReadOnly` was checked, so any CVar writable via `RuntimeCVarWrite` could be mutated regardless of its `ECVF_Cheat` flag. A new `AllowCheatCVarWrite` SafetyPolicy switch (default `False`) now gates cheat-flagged writes, returning `PolicyViolation` when disabled; `ECVF_ReadOnly` continues to take precedence (`NotAllowed`) over the cheat check. Successful writes now report a `WasCheatCVar` boolean in both the artifact and the command result.
 
 #### MCP Bridge 1.1.1 — released 2026-06-24
 

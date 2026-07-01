@@ -1637,8 +1637,8 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 |---|---|
 | 🔒 `GetConsoleVariable` | 指定した CVar の名前・現在値・型・ヘルプテキストを返す（機密名は `NotFound`） |
 | 🔒 `SearchConsoleVariables` | ワイルドカード（`*`）パターンで CVar を検索（デフォルト 50 件・上限 200 件） |
-| ✏️ `SetConsoleVariable` | 指定した CVar の値を設定（機密名・`ECVF_ReadOnly` 付きは拒否） |
-| ✏️ `ResetConsoleVariable` | 指定した CVar をデフォルト値にリセット（機密名・`ECVF_ReadOnly` 付きは拒否） |
+| ✏️ `SetConsoleVariable` | 指定した CVar の値を設定（機密名・`ECVF_ReadOnly` 付きは拒否。`ECVF_Cheat` 付きは `AllowCheatCVarWrite` が有効でない限り拒否） |
+| ✏️ `ResetConsoleVariable` | 指定した CVar をデフォルト値にリセット（機密名・`ECVF_ReadOnly` 付きは拒否。`ECVF_Cheat` 付きは `AllowCheatCVarWrite` が有効でない限り拒否） |
 
 > **注意**: `UAIP.Runtime.PIE` にあった旧 `GetConsoleVariable` / `SearchConsoleVariables` コマンドは非推奨です（v1.2 で削除予定）。本コマンド群を使用してください。
 
