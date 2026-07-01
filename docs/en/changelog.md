@@ -86,6 +86,10 @@ Changes that have shipped in the plugin repository but are not yet released on F
 - **Niagara `default_value` applied**: `AddSetParametersModule` and `AddSetParameterEntry` now parse and apply the `default_value` field for common types (float, int, bool, `UScriptStruct`). Previously entries were always created with type defaults regardless of the supplied value.
 - **`script_name` now required for `AddSetParameterEntry` / `RemoveSetParameterEntry`** *(breaking)*: Both commands require a new `script_name` parameter (e.g. `Spawn`, `Update`, `Particle Spawn`, `Particle Update`). This parameter routes the call to the correct script stack and is necessary for the UE 5.8 External Edit API. Existing calls without `script_name` will return `InvalidParams`.
 
+**Fixed**
+
+- **`uaip_run_scenario` `Variables` field now resolves through `${Variables.<key>}` templates**: the top-level `Variables` map passed to a scenario was parsed but never loaded into the step execution context, so any step referencing `${Variables.<key>}` always failed with `ExecutionFailed: Template resolution failed.` across every transport (HTTP, MCP, CLI, WS). Initial variables are now loaded before the first step dispatches, so they are visible (with type preserved) from the first step onward. A `Variables` payload that exceeds the per-scenario variable count or per-value size limit is now rejected up front with `InvalidParams` instead of silently dropping the offending entry.
+
 #### MCP Bridge 1.1.1 — released 2026-06-24
 
 **Fixed**

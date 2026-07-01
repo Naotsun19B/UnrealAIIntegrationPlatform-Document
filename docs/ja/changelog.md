@@ -87,6 +87,10 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 - **Niagara `default_value` が適用されるように**: `AddSetParametersModule` および `AddSetParameterEntry` で `default_value` フィールドが一般的な型（float / int / bool / `UScriptStruct`）について解析・適用されます。従来は指定値にかかわらず型のデフォルト値でエントリが作成されていました。
 - **`AddSetParameterEntry` / `RemoveSetParameterEntry` に `script_name` が必須に** *(破壊的変更)*: 両コマンドに新しい `script_name` パラメータ（例：`Spawn` / `Update` / `Particle Spawn` / `Particle Update`）が必須追加されました。このパラメータは正しいスクリプトスタックへのルーティングと UE 5.8 External Edit API との互換性のために必要です。`script_name` なしの既存呼び出しは `InvalidParams` を返します。
 
+**修正**
+
+- **`uaip_run_scenario` の `Variables` フィールドが `${Variables.<key>}` テンプレートで解決されるように**: シナリオに渡したトップレベルの `Variables` マップはパースされるものの、ステップ実行コンテキストに一度もロードされておらず、`${Variables.<key>}` を参照するステップは全トランスポート（HTTP / MCP / CLI / WS）で常に `ExecutionFailed: Template resolution failed.` になっていました。初期変数は最初のステップ実行前にロードされるようになり、第1ステップから型を保持したまま参照できます。また、シナリオあたりの変数件数上限または単一値のサイズ上限を超える `Variables` は、該当エントリをサイレントに破棄するのではなく `InvalidParams` として事前に拒否されるようになりました。
+
 #### MCP Bridge 1.1.1 — 2026-06-24 リリース済み
 
 **修正**
