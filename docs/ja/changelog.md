@@ -96,6 +96,9 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
   - `GetPCGGraphInfo` と `GetSequenceInfo` は引き続きPIE/Simulate状態をレスポンス内の単純なbool値として返し、Play/Simulate中もブロックされません。
 - **`uaip_run_scenario` の `Variables` フィールドが `${Variables.<key>}` テンプレートで解決されるように**: シナリオに渡したトップレベルの `Variables` マップはパースされるものの、ステップ実行コンテキストに一度もロードされておらず、`${Variables.<key>}` を参照するステップは全トランスポート（HTTP / MCP / CLI / WS）で常に `ExecutionFailed: Template resolution failed.` になっていました。初期変数は最初のステップ実行前にロードされるようになり、第1ステップから型を保持したまま参照できます。また、シナリオあたりの変数件数上限または単一値のサイズ上限を超える `Variables` は、該当エントリをサイレントに破棄するのではなく `InvalidParams` として事前に拒否されるようになりました。
 - **`SetConsoleVariable` / `ResetConsoleVariable` がデフォルトでチートフラグ（`ECVF_Cheat`）付き CVar への書き込みを拒否するように**: 従来は `ECVF_ReadOnly` のみがチェックされており、`RuntimeCVarWrite` を保有するセッションから `ECVF_Cheat` フラグの有無に関わらず CVar を書き換えられていました。新しい `AllowCheatCVarWrite` SafetyPolicy スイッチ（デフォルト `False`）がチートフラグ付き書き込みをゲートし、無効時は `PolicyViolation` を返します。`ECVF_ReadOnly` は引き続きチート判定より優先されます（`NotAllowed`）。書き込み成功時は Artifact とコマンド結果の両方に `WasCheatCVar` の bool 値が出力されるようになりました。
+- **Physics ネイティブハンドラを共通PIE/SIEガードへ移行**（`UAIPEditorPhysics` モジュール）: `UAIP.Editor.Physics` 配下の全31ネイティブコマンドは、上記の共通実装ではなく独自のインラインPIE/SIEチェックを実装しており、拒否メッセージも3系統に分裂していました。書き込み系21コマンド（`AddBody` / `SetBox` / `SetCapsule` / `SetSphere` 等）は共通ガードへ移行し、メッセージが単一に統一されました（PIE/Simulate中の挙動自体は変更なし）。読み取り専用の10コマンド（`GetBodyNames` / `GetBodyShapes` / `GetConstraints` / `GetPhysicsAssetSummary` / `ValidatePhysicsAsset` 等）は、PhysicsAssetをディスクから読み込むのみでライブワールドに一切触れないため、PIE/Simulate中でも拒否されなくなりました *(このケースで `NotAllowed` に依存していた呼び出し元には破壊的変更)*。Play/Simulate中に呼び出すとレスポンスに `PieInProgress: true` フィールドが含まれるようになり、上記の `GetPCGGraphInfo` / `GetSequenceInfo` と同様の単純なbool値パターンに揃えられています。
+
+---
 
 #### MCP Bridge 1.1.1 — 2026-06-24 リリース済み
 
