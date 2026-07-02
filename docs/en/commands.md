@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 632+ **UAIP commands** (provided directly by the plugin itself) and 260+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 892+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 641+ **UAIP commands** (provided directly by the plugin itself) and 267+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 908+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -76,6 +76,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
+| Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
 | Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 1 | — | — |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | — |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
@@ -1471,6 +1472,40 @@ Foliage type management and instance placement in the editor. Observation comman
 | `RemoveFoliageInstances` | Remove foliage instances inside a bounding box or sphere up to `MaxRemoveCount` (requires `FoliageInstanceEdit`) |
 | `DeleteAllFoliageInstances` | Delete every placed instance of a foliage type from the current level (requires `FoliageBulkDelete`) |
 | `ResimulateProceduralFoliage` 🧩 | Resimulate a `ProceduralFoliageVolume` and place the resulting instances (requires `ProceduralFoliage` plugin and `FoliageInstanceEdit`) |
+
+---
+
+## UAIP.Editor.DataRegistry 🧩
+
+Editor-time observation of UE 5.8 Data Registries — listing, schema inspection, and cached item retrieval with secret-field masking. Requires the `DataRegistry` plugin (plus `DataRegistryToolset` + `ToolsetRegistry` for the bridge variants).
+
+### Native (9)
+
+| Command | Description |
+|---|---|
+| `ListRegistries` | List all registered Data Registries, optionally filtered by item struct name (`StructFilter`); includes `IsDataRegistrySystemEnabled` / `AreRegistriesInitialized` diagnostics |
+| `GetRegistryInfo` | Get item count, lowest source availability, description, and ID format for a registry |
+| `GetSchema` | Get the item struct's property schema — name, type, and `IsSecret` flag per property |
+| `ListItems` | List registered item IDs for a registry (not necessarily cached) |
+| `ListDataSources` | List editor-time defined data sources for a registry |
+| `ListRuntimeSources` | List runtime-expanded data sources for a registry |
+| `GetItems` | Read cached items by name with secret-field masking; items not yet cached are reported in `MissingItems` with a reason instead of being silently dropped |
+| `GetAllCachedItems` | Read every currently cached item without naming items in advance (bounded to 1000 items / 1 MiB; no Toolset equivalent) |
+| `AcquireItems` | Trigger an asynchronous cache load for the given items — needed for custom/Remote sources; DataTable sources precache automatically (no Toolset equivalent) |
+
+### Toolset bridges (7) 🧩
+
+Mirror of the first 7 native commands via the `DataRegistryToolset` plugin (UE 5.8+). Provider: `Toolset.Editor.DataRegistry.*`. `GetItems` behaves differently here: missing items are silently omitted and no secret masking is applied — use the native `GetItems` when either matters.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.DataRegistry.ListRegistries` | Passthrough to `DataRegistryToolset` |
+| `Toolset.Editor.DataRegistry.GetRegistryInfo` | Passthrough to `DataRegistryToolset` |
+| `Toolset.Editor.DataRegistry.GetSchema` | Passthrough to `DataRegistryToolset` (raw JSON string, no `IsSecret` flag) |
+| `Toolset.Editor.DataRegistry.ListItems` | Passthrough to `DataRegistryToolset` |
+| `Toolset.Editor.DataRegistry.ListDataSources` | Passthrough to `DataRegistryToolset` |
+| `Toolset.Editor.DataRegistry.ListRuntimeSources` | Passthrough to `DataRegistryToolset` |
+| `Toolset.Editor.DataRegistry.GetItems` | Passthrough to `DataRegistryToolset`; missing items silently omitted, no masking |
 
 ---
 

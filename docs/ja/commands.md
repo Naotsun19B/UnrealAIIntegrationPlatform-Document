@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 632 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 260 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 892+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 641 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 267 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 908+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -76,6 +76,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
+| Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 11 ⁺² | 3 | 一部（6/11） |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
@@ -1472,6 +1473,40 @@ Sandbox セッションのライフサイクル管理。`FileSandbox` プラグ�
 | `RemoveFoliageInstances` | バウンディングボックスまたは球体内のフォリッジインスタンスを `MaxRemoveCount` 件まで削除（`FoliageInstanceEdit` 必須） |
 | `DeleteAllFoliageInstances` | フォリッジタイプの配置済みインスタンスをすべて削除（`FoliageBulkDelete` 必須） |
 | `ResimulateProceduralFoliage` 🧩 | `ProceduralFoliageVolume` を再シミュレーションして結果インスタンスを配置（`ProceduralFoliage` プラグインおよび `FoliageInstanceEdit` 必須） |
+
+---
+
+## UAIP.Editor.DataRegistry 🧩
+
+UE 5.8 Data Registry のエディタ時観測 — 一覧・スキーマ取得・機密フィールドマスキング付きキャッシュ済みアイテム取得。`DataRegistry` プラグインが必要（ブリッジ版はさらに `DataRegistryToolset` + `ToolsetRegistry` が必要）。
+
+### ネイティブ（9 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `ListRegistries` | 登録済みの全 Data Registry を一覧表示。アイテム構造体名でのフィルタ（`StructFilter`）に対応。`IsDataRegistrySystemEnabled` / `AreRegistriesInitialized` の診断情報を同梱 |
+| `GetRegistryInfo` | レジストリの ID 数・最低ソース可用性・説明・ID フォーマットを取得 |
+| `GetSchema` | アイテム構造体のプロパティスキーマ（名前・型・`IsSecret` フラグ）を取得 |
+| `ListItems` | レジストリに登録済みのアイテム ID を一覧表示（キャッシュ済みとは限らない） |
+| `ListDataSources` | レジストリの編集時定義データソースを一覧表示 |
+| `ListRuntimeSources` | レジストリの実行時展開後データソースを一覧表示 |
+| `GetItems` | 指定名のキャッシュ済みアイテムを機密フィールドマスキング付きで取得。未キャッシュのアイテムは黙って省略せず `MissingItems` に理由付きで報告 |
+| `GetAllCachedItems` | アイテム名を事前指定せず、現在キャッシュ済みの全アイテムを取得（1000件・1MiB を上限。Toolset に対応なし） |
+| `AcquireItems` | 指定アイテムの非同期キャッシュロードをトリガー — カスタム/Remote ソースで必要（DataTable ソースは自動事前ロード済み。Toolset に対応なし） |
+
+### Toolset ブリッジ（7 コマンド）🧩
+
+`DataRegistryToolset` プラグイン（UE 5.8+）経由でネイティブコマンドのうち先頭7個をミラー。プロバイダ: `Toolset.Editor.DataRegistry.*`。`GetItems` はここでは挙動が異なる: 見つからないアイテムは黙って省略され、機密マスキングも適用されない — マスキングや欠損明示が必要な場合はネイティブの `GetItems` を使用すること。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.DataRegistry.ListRegistries` | `DataRegistryToolset` への passthrough |
+| `Toolset.Editor.DataRegistry.GetRegistryInfo` | `DataRegistryToolset` への passthrough |
+| `Toolset.Editor.DataRegistry.GetSchema` | `DataRegistryToolset` への passthrough（生 JSON 文字列、`IsSecret` フラグなし） |
+| `Toolset.Editor.DataRegistry.ListItems` | `DataRegistryToolset` への passthrough |
+| `Toolset.Editor.DataRegistry.ListDataSources` | `DataRegistryToolset` への passthrough |
+| `Toolset.Editor.DataRegistry.ListRuntimeSources` | `DataRegistryToolset` への passthrough |
+| `Toolset.Editor.DataRegistry.GetItems` | `DataRegistryToolset` への passthrough。欠損アイテムは黙って省略、マスキングなし |
 
 ---
 
