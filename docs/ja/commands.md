@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 641 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 267 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 908+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 649 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 267 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 916+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -42,7 +42,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅（1 件除外） |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 17 | 6 | — |
+| Editor Assets | `UAIP.Editor.Assets` | 25 | 6 | — |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | — |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | — |
@@ -306,6 +306,14 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `GetContentBrowserPath` | Content Browser に現在表示されているフォルダパスを返す |
 | `SetContentBrowserPath` | Content Browser を指定フォルダに移動（`ContentBrowserNavigate` 必要） |
 | 🆓 `GetOpenAssets` | アセットエディタで現在開いているアセット一覧を返す |
+| `GetAssetReferences` | 指定アセットを起点に参照グラフ（参照元・参照先・両方）を指定深さまで探索する |
+| `GetAssetSizeMap` | フォルダ配下のディスクサイズ（任意で常駐メモリサイズ）をアセット単位で集計し降順ソートする |
+| `GetAssetSizeMapByClass` | フォルダ配下のディスクサイズをアセットクラス単位で集計し降順ソートする |
+| `FindUnreferencedAssets` | フォルダ配下でユーザー参照（Engine/Script以外）が存在しないアセットを検出する（ハードリファレンスヒューリスティック） |
+| `FindCircularReferences` | フォルダ配下のアセット間の循環依存チェーンを検出する |
+| `FindBrokenReferences` | アセットレジストリに存在しないパッケージへの依存を検出する |
+| `GetAssetDependencyPath` | 2つのアセット間の最短依存/参照パスを検索する |
+| `RunAssetAudit` | フォルダ配下の複合監査（未参照アセット・循環参照・壊れた参照・最大サイズアセット）を実行する |
 
 ### Toolset ブリッジ — Assets（6 件）🧩
 

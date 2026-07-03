@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 641+ **UAIP commands** (provided directly by the plugin itself) and 267+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 908+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 649+ **UAIP commands** (provided directly by the plugin itself) and 267+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 916+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -42,7 +42,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 17 | 6 | — |
+| Editor Assets | `UAIP.Editor.Assets` | 25 | 6 | — |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | — |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | — |
@@ -305,6 +305,14 @@ Open, search, create, duplicate, rename, delete assets and folders.
 | 🆓 `GetContentBrowserPath` | Return the current folder path shown in the Content Browser |
 | `SetContentBrowserPath` | Navigate the Content Browser to a specified folder (requires `ContentBrowserNavigate`) |
 | 🆓 `GetOpenAssets` | Return the list of assets currently open in an asset editor |
+| `GetAssetReferences` | Traverse the asset reference graph (referencers, dependencies, or both) rooted at an asset up to a given depth |
+| `GetAssetSizeMap` | Aggregate per-asset disk (and optionally resident memory) size under a folder, sorted descending |
+| `GetAssetSizeMapByClass` | Aggregate disk size per asset class under a folder, sorted descending |
+| `FindUnreferencedAssets` | Find assets under a folder with no user (non-Engine/Script) referencers (hard-reference heuristic) |
+| `FindCircularReferences` | Find circular dependency chains among assets under a folder |
+| `FindBrokenReferences` | Find dependencies pointing at packages no longer registered in the asset registry |
+| `GetAssetDependencyPath` | Find the shortest dependency or referencer path between two assets |
+| `RunAssetAudit` | Run a composite audit (unreferenced assets, circular references, broken references, largest assets) under a folder |
 
 ### Toolset bridges — Assets (6) 🧩
 
