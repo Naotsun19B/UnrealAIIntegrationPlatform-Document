@@ -53,7 +53,8 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 3 | — | — |
 | Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 36 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
-| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 7 | — | — |
+| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | — | — |
+| Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 8 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 7 | — | — |
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
@@ -679,6 +680,40 @@ Dataflow グラフ編集。`DataflowEditor` プラグインが必要です。
 | `ConnectDataflowPins` 🧩 | 2 ピンを接続 |
 | `DisconnectDataflowPins` 🧩 | ピン接続を切断 |
 | `ListDataflowVariables` 🧩 | グラフ変数一覧 |
+| `GetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を取得（プリミティブ / enum / FName / FString / 単純構造体） |
+| `SetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を設定。ドメイン非依存（Cloth の Weight Map・シミュレーション設定ノード等から利用される） |
+
+---
+
+## UAIP.Editor.ChaosClothAsset 🧩
+
+Chaos Cloth Asset 編集と `ChaosClothAssetToolset` ブリッジ（UE 5.8, Experimental）。`ChaosClothAsset` プラグイン群が必要です。
+
+| コマンド | 説明 |
+|---|---|
+| `CreateClothingAsset` | Skeletal Mesh から Clothing Asset を作成 |
+| `AssignClothingToSection` | Clothing Asset を Skeletal Mesh の LOD/セクションにバインド |
+| `RemoveClothingFromSection` | セクションから Clothing Asset のバインドを解除（破壊的・不可逆） |
+| `ListClothingAssets` | Skeletal Mesh にバインド済みの Clothing Asset 一覧 |
+| `GetSectionClothing` | 指定した LOD/セクションにバインドされている Clothing Asset を取得 |
+| `ConvertClothingAssetCommonToChaosClothAsset` | legacy `UClothingAssetCommon` を `UChaosClothAsset` に変換（Experimental、LOD0のみ） |
+| `GetClothAssetInfo` | LOD数・Sim/Render Mesh頂点数・参照している `UDataflow` アセットパス・Weight Map属性名一覧を取得 |
+| `SetClothWeightMapVertexValues` | Weight Map ノードの頂点重み配列を直接設定（破壊的） |
+
+`GetClothAssetInfo` が返す `UDataflow` 参照パスを `UAIP.Editor.Dataflow.*` コマンドに渡すことで、Weight Map・シミュレーション設定ノードのプロパティを汎用的に編集できます。
+
+### Toolset ブリッジ（6）
+
+`ChaosClothAssetToolset` の6関数をそのままミラー。プロバイダ：`Toolset.ChaosClothAsset.*`。UE 5.8+ かつ `ChaosClothAssetToolset` + `ToolsetRegistry` 有効時のみ利用可能。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.ChaosClothAsset.CreateClothingAsset` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.ChaosClothAsset.AssignClothingToSection` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.ChaosClothAsset.RemoveClothingFromSection` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.ChaosClothAsset.ListClothingAssets` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.ChaosClothAsset.GetSectionClothing` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.ChaosClothAsset.ConvertClothingAssetCommonToChaosClothAsset` | `ChaosClothAssetToolset` への委譲 |
 
 ---
 

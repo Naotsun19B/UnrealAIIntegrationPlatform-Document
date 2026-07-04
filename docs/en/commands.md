@@ -53,7 +53,8 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 3 | — | — |
 | Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 36 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
-| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 7 | — | — |
+| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | — | — |
+| Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 8 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 7 | — | — |
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
@@ -678,6 +679,40 @@ Dataflow graph editing. Requires `DataflowEditor` plugin.
 | `ConnectDataflowPins` 🧩 | Connect two pins |
 | `DisconnectDataflowPins` 🧩 | Disconnect a pin connection |
 | `ListDataflowVariables` 🧩 | List graph variables |
+| `GetDataflowNodeProperty` 🧩 | Read a node's `EditAnywhere` property value (primitives / enum / FName / FString / simple structs) |
+| `SetDataflowNodeProperty` 🧩 | Write a node's `EditAnywhere` property value. Domain-agnostic — used by Cloth Weight Map / simulation config nodes among others |
+
+---
+
+## UAIP.Editor.ChaosClothAsset 🧩
+
+Chaos Cloth Asset editing and `ChaosClothAssetToolset` bridge (UE 5.8, Experimental). Requires the `ChaosClothAsset` plugin family.
+
+| Command | Description |
+|---|---|
+| `CreateClothingAsset` | Create a Clothing Asset from a Skeletal Mesh |
+| `AssignClothingToSection` | Bind a Clothing Asset to a Skeletal Mesh LOD/section |
+| `RemoveClothingFromSection` | Unbind a Clothing Asset from a section (destructive, irreversible) |
+| `ListClothingAssets` | List Clothing Assets bound to a Skeletal Mesh |
+| `GetSectionClothing` | Get the Clothing Asset bound to a specific LOD/section |
+| `ConvertClothingAssetCommonToChaosClothAsset` | Convert a legacy `UClothingAssetCommon` to `UChaosClothAsset` (Experimental, LOD0 only) |
+| `GetClothAssetInfo` | Read LOD count, Sim/Render Mesh vertex counts, the referenced `UDataflow` asset path, and Weight Map attribute names |
+| `SetClothWeightMapVertexValues` | Directly set a Weight Map node's per-vertex weight array (destructive) |
+
+`GetClothAssetInfo` returns the Cloth Asset's `UDataflow` reference path — feed it to `UAIP.Editor.Dataflow.*` commands to edit Weight Map / simulation config node properties generically.
+
+### Toolset bridge
+
+Mirror of the 6 `ChaosClothAssetToolset` functions. Provider: `Toolset.ChaosClothAsset.*`. Available only on UE 5.8+ with `ChaosClothAssetToolset` + `ToolsetRegistry` enabled.
+
+| Command | Description |
+|---|---|
+| `Toolset.ChaosClothAsset.CreateClothingAsset` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.ChaosClothAsset.AssignClothingToSection` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.ChaosClothAsset.RemoveClothingFromSection` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.ChaosClothAsset.ListClothingAssets` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.ChaosClothAsset.GetSectionClothing` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.ChaosClothAsset.ConvertClothingAssetCommonToChaosClothAsset` | Passthrough to `ChaosClothAssetToolset` |
 
 ---
 
