@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 649+ **UAIP commands** (provided directly by the plugin itself) and 267+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 916+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 664+ **UAIP commands** (provided directly by the plugin itself) and 267+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 931+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -42,7 +42,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 25 | 6 | — |
+| Editor Assets | `UAIP.Editor.Assets` | 40 | 6 | — |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | — |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | — |
@@ -314,6 +314,21 @@ Open, search, create, duplicate, rename, delete assets and folders.
 | `FindBrokenReferences` | Find dependencies pointing at packages no longer registered in the asset registry |
 | `GetAssetDependencyPath` | Find the shortest dependency or referencer path between two assets |
 | `RunAssetAudit` | Run a composite audit (unreferenced assets, circular references, broken references, largest assets) under a folder |
+| `ListPrimaryAssetTypes` | List all registered `PrimaryAssetType`s (`UAssetManager`) with class/directory/asset-count summary |
+| `GetPrimaryAssetTypeInfo` | Get the full detail (directories, specific assets, default rules) of a single `PrimaryAssetType` |
+| `ListPrimaryAssets` | List the `PrimaryAssetId`s and assets belonging to a `PrimaryAssetType` |
+| `GetAssetBundle` | Get the `AssetBundle` entries of a `PrimaryAssetId` (empty array when none are defined) |
+| `GetAssetTags` | Get the Asset Registry tag map of an asset |
+| `GetPrimaryAssetIdForPath` | Resolve an asset path to its `PrimaryAssetId` (`Found:false`, not an error, when unmanaged) |
+| `GetPrimaryAssetRules` | Get the merged (type default + per-asset override) `PrimaryAssetRules` of a `PrimaryAssetId` |
+| `GetManagedPackageList` | Get the packages managed by a `PrimaryAssetId` |
+| `GetPrimaryAssetLoadList` | Resolve the object paths that would actually load for a `PrimaryAssetId` under given bundle conditions |
+| `GetLoadedPrimaryAssets` | Get the currently loaded / pending `PrimaryAssetId`s and their loaded bundle state |
+| `AddPrimaryAssetType` (requires `PrimaryAssetTypeAdd`) | Add a `PrimaryAssetType` to `PrimaryAssetTypesToScan` (persisted to `DefaultGame.ini`) and scan it immediately |
+| `RemovePrimaryAssetType` (requires `PrimaryAssetTypeRemove`) | Remove a `PrimaryAssetType` from `PrimaryAssetTypesToScan` (persisted); rejects if assets exist unless `Force` |
+| `SetPrimaryAssetRules` (requires `PrimaryAssetRulesOverride`) | Temporarily override a `PrimaryAssetId`'s rules in memory only (not persisted) |
+| `LoadPrimaryAsset` (requires `PrimaryAssetLoad`) | Explicitly load `PrimaryAsset`s into memory (non-blocking, allowed during PIE) |
+| `UnloadPrimaryAsset` (requires `PrimaryAssetUnload`) | Explicitly unload `PrimaryAsset`s from memory (rejected during PIE) |
 
 ### Toolset bridges — Assets (6) 🧩
 

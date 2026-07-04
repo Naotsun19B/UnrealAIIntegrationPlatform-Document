@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 649 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 267 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 916+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 664 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 267 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 931+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -42,7 +42,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅（1 件除外） |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 25 | 6 | — |
+| Editor Assets | `UAIP.Editor.Assets` | 40 | 6 | — |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | — |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | — |
@@ -315,6 +315,21 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | `FindBrokenReferences` | アセットレジストリに存在しないパッケージへの依存を検出する |
 | `GetAssetDependencyPath` | 2つのアセット間の最短依存/参照パスを検索する |
 | `RunAssetAudit` | フォルダ配下の複合監査（未参照アセット・循環参照・壊れた参照・最大サイズアセット）を実行する |
+| `ListPrimaryAssetTypes` | 登録済みの全 `PrimaryAssetType`（`UAssetManager`）をクラス・ディレクトリ・アセット数サマリー付きで一覧取得する |
+| `GetPrimaryAssetTypeInfo` | 単一の `PrimaryAssetType` の詳細（ディレクトリ・個別アセット・既定Rule）を取得する |
+| `ListPrimaryAssets` | 指定 `PrimaryAssetType` に属する `PrimaryAssetId` とアセット一覧を取得する |
+| `GetAssetBundle` | 指定 `PrimaryAssetId` の `AssetBundle` エントリを取得する（未定義なら空配列） |
+| `GetAssetTags` | アセットの Asset Registry タグマップを取得する |
+| `GetPrimaryAssetIdForPath` | アセットパスから `PrimaryAssetId` を逆引きする（未登録時は `Found:false` でエラーにしない） |
+| `GetPrimaryAssetRules` | 指定 `PrimaryAssetId` のマージ済み（Type既定 + 個別上書き）`PrimaryAssetRules` を取得する |
+| `GetManagedPackageList` | 指定 `PrimaryAssetId` が管理するパッケージ一覧を取得する |
+| `GetPrimaryAssetLoadList` | 指定 Bundle 条件下で実際にロードされるオブジェクトパスを解決する |
+| `GetLoadedPrimaryAssets` | 現在ロード中/ロード予定の `PrimaryAssetId` とそのロード済み Bundle 状態を取得する |
+| `AddPrimaryAssetType`（要 `PrimaryAssetTypeAdd`） | `PrimaryAssetType` を `PrimaryAssetTypesToScan` に追加（`DefaultGame.ini` へ永続化）し即座にスキャンする |
+| `RemovePrimaryAssetType`（要 `PrimaryAssetTypeRemove`） | `PrimaryAssetType` を `PrimaryAssetTypesToScan` から削除（永続化）する。アセットが存在する場合は `Force` 指定がない限り拒否 |
+| `SetPrimaryAssetRules`（要 `PrimaryAssetRulesOverride`） | 指定 `PrimaryAssetId` の Rule をメモリ内のみ一時的に上書きする（非永続） |
+| `LoadPrimaryAsset`（要 `PrimaryAssetLoad`） | `PrimaryAsset` を明示的にメモリへロードする（ノンブロッキング、PIE中も許可） |
+| `UnloadPrimaryAsset`（要 `PrimaryAssetUnload`） | `PrimaryAsset` を明示的にメモリからアンロードする（PIE中は拒否） |
 
 ### Toolset ブリッジ — Assets（6 件）🧩
 
