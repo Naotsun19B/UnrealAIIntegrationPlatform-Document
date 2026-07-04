@@ -91,6 +91,7 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 - **Niagara モジュールが UE 5.7 に対応**: `UAIP.Editor.Niagara` および `UAIP.Runtime.Niagara` 配下の全コマンド（UAIP ネイティブ 36 本 + Toolset ブリッジ）が UE 5.7 で利用可能になりました。従来 UE 5.7 ではモジュール全体が未登録となり、全コマンドが `CommandNotFound` を返していました。
 - **Niagara `default_value` が適用されるように**: `AddSetParametersModule` および `AddSetParameterEntry` で `default_value` フィールドが一般的な型（float / int / bool / `UScriptStruct`）について解析・適用されます。従来は指定値にかかわらず型のデフォルト値でエントリが作成されていました。
 - **`AddSetParameterEntry` / `RemoveSetParameterEntry` に `script_name` が必須に** *(破壊的変更)*: 両コマンドに新しい `script_name` パラメータ（例：`Spawn` / `Update` / `Particle Spawn` / `Particle Update`）が必須追加されました。このパラメータは正しいスクリプトスタックへのルーティングと UE 5.8 External Edit API との互換性のために必要です。`script_name` なしの既存呼び出しは `InvalidParams` を返します。
+- **`UAIP.Editor.Engine.ConfigSettings.SetSettingsValues` の `DryRun` `ValueType` フォーマットを移行**（`UAIPEditorEngineManagement` モジュール）: `DryRun=true` レスポンスの `WouldChange[].ValueType` フィールドが、これらの型カテゴリについて生の C++ 型名へのフォールバックではなく、`GetSettingsSchema` と同じ型文字列フォーマット（`enum:EMyEnum`・`struct:FMyStruct`・`TArray`・`TMap`・`TSet`・`UObject*:UMyClass`・`uint8`）を使用するようになりました。従来重複していた（かつ対応範囲が狭かった）型名変換ロジックを、`GetSettingsSchema` が既に使用している共有ユーティリティ `FPropertySchemaSerializer` へ統合したものです。`SetSettingsValues` は `Stability: Experimental` のため、本フォーマット変更はバージョニング方針の Experimental 例外条項により非破壊的変更として扱われます。スカラー型（`bool`・`int32`・`int64`・`float`・`double`・`FString`・`FName`・`FText`）には影響しません。
 
 **修正**
 
