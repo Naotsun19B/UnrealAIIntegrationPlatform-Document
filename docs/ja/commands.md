@@ -719,16 +719,16 @@ Chaos Cloth Asset 編集と `ChaosClothAssetToolset` ブリッジ（UE 5.8, Expe
 
 ### Toolset ブリッジ（6）
 
-`ChaosClothAssetToolset` の6関数をそのままミラー。プロバイダ：`Toolset.ChaosClothAsset.*`。UE 5.8+ かつ `ChaosClothAssetToolset` + `ToolsetRegistry` 有効時のみ利用可能。
+`ChaosClothAssetToolset` の6関数をそのままミラー。プロバイダ：`Toolset.Editor.ChaosClothAsset.*`。UE 5.8+ かつ `ChaosClothAssetToolset` + `ToolsetRegistry` 有効時のみ利用可能。
 
 | コマンド | 説明 |
 |---|---|
-| `Toolset.ChaosClothAsset.CreateClothingAsset` | `ChaosClothAssetToolset` への委譲 |
-| `Toolset.ChaosClothAsset.AssignClothingToSection` | `ChaosClothAssetToolset` への委譲 |
-| `Toolset.ChaosClothAsset.RemoveClothingFromSection` | `ChaosClothAssetToolset` への委譲 |
-| `Toolset.ChaosClothAsset.ListClothingAssets` | `ChaosClothAssetToolset` への委譲 |
-| `Toolset.ChaosClothAsset.GetSectionClothing` | `ChaosClothAssetToolset` への委譲 |
-| `Toolset.ChaosClothAsset.ConvertClothingAssetCommonToChaosClothAsset` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.Editor.ChaosClothAsset.CreateClothingAsset` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.Editor.ChaosClothAsset.AssignClothingToSection` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.Editor.ChaosClothAsset.RemoveClothingFromSection` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.Editor.ChaosClothAsset.ListClothingAssets` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.Editor.ChaosClothAsset.GetSectionClothing` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.Editor.ChaosClothAsset.ConvertClothingAssetCommonToChaosClothAsset` | `ChaosClothAssetToolset` への委譲 |
 
 ---
 

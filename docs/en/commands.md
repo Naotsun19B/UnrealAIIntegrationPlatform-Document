@@ -718,16 +718,16 @@ Chaos Cloth Asset editing and `ChaosClothAssetToolset` bridge (UE 5.8, Experimen
 
 ### Toolset bridge
 
-Mirror of the 6 `ChaosClothAssetToolset` functions. Provider: `Toolset.ChaosClothAsset.*`. Available only on UE 5.8+ with `ChaosClothAssetToolset` + `ToolsetRegistry` enabled.
+Mirror of the 6 `ChaosClothAssetToolset` functions. Provider: `Toolset.Editor.ChaosClothAsset.*`. Available only on UE 5.8+ with `ChaosClothAssetToolset` + `ToolsetRegistry` enabled.
 
 | Command | Description |
 |---|---|
-| `Toolset.ChaosClothAsset.CreateClothingAsset` | Passthrough to `ChaosClothAssetToolset` |
-| `Toolset.ChaosClothAsset.AssignClothingToSection` | Passthrough to `ChaosClothAssetToolset` |
-| `Toolset.ChaosClothAsset.RemoveClothingFromSection` | Passthrough to `ChaosClothAssetToolset` |
-| `Toolset.ChaosClothAsset.ListClothingAssets` | Passthrough to `ChaosClothAssetToolset` |
-| `Toolset.ChaosClothAsset.GetSectionClothing` | Passthrough to `ChaosClothAssetToolset` |
-| `Toolset.ChaosClothAsset.ConvertClothingAssetCommonToChaosClothAsset` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.Editor.ChaosClothAsset.CreateClothingAsset` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.Editor.ChaosClothAsset.AssignClothingToSection` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.Editor.ChaosClothAsset.RemoveClothingFromSection` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.Editor.ChaosClothAsset.ListClothingAssets` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.Editor.ChaosClothAsset.GetSectionClothing` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.Editor.ChaosClothAsset.ConvertClothingAssetCommonToChaosClothAsset` | Passthrough to `ChaosClothAssetToolset` |
 
 ---
 
