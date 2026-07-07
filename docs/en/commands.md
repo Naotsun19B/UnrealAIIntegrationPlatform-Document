@@ -54,7 +54,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 36 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
 | Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | — | — |
-| Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 8 | 6 | — |
+| Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 9 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 7 | — | — |
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
@@ -713,6 +713,7 @@ Chaos Cloth Asset editing and `ChaosClothAssetToolset` bridge (UE 5.8, Experimen
 | `ConvertClothingAssetCommonToChaosClothAsset` | Convert a legacy `UClothingAssetCommon` to `UChaosClothAsset` (Experimental, LOD0 only) |
 | `GetClothAssetInfo` | Read LOD count, Sim/Render Mesh vertex counts, the referenced `UDataflow` asset path, and Weight Map attribute names |
 | `SetClothWeightMapVertexValues` | Directly set a Weight Map node's per-vertex weight array (destructive) |
+| `SetClothMeshImportSource` | Set the imported SkeletalMesh/StaticMesh reference on an Import Dataflow node (`SkeletalMeshImport`/`StaticMeshImport`). The node kind is auto-detected; overwriting an existing reference requires `AllowOverwrite` (destructive) |
 
 `GetClothAssetInfo` returns the Cloth Asset's `UDataflow` reference path — feed it to `UAIP.Editor.Dataflow.*` commands to edit Weight Map / simulation config node properties generically.
 
