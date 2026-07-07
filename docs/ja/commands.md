@@ -54,7 +54,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 36 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
 | Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | — | — |
-| Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 9 | 6 | — |
+| Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 7 | — | — |
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
@@ -715,6 +715,7 @@ Chaos Cloth Asset 編集と `ChaosClothAssetToolset` ブリッジ（UE 5.8, Expe
 | `GetClothAssetInfo` | LOD数・Sim/Render Mesh頂点数・参照している `UDataflow` アセットパス・Weight Map属性名一覧を取得 |
 | `SetClothWeightMapVertexValues` | Weight Map ノードの頂点重み配列を直接設定（破壊的） |
 | `SetClothMeshImportSource` | Import Dataflow ノード（`SkeletalMeshImport`/`StaticMeshImport`）にインポート元の SkeletalMesh/StaticMesh 参照を設定。ノード種別は自動判定、既存参照の上書きには `AllowOverwrite` が必要（破壊的） |
+| `CreateLegacyClothingAsset` | 既存 SkeletalMesh の描画セクションからシミュレーションメッシュを抽出し、新規 legacy `UClothingAssetCommon` を作成 |
 
 `GetClothAssetInfo` が返す `UDataflow` 参照パスを `UAIP.Editor.Dataflow.*` コマンドに渡すことで、Weight Map・シミュレーション設定ノードのプロパティを汎用的に編集できます。
 
