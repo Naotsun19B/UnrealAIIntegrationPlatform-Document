@@ -56,6 +56,14 @@ The free demo (GitHub Releases) and Pro (Fab) **always share the same version nu
 
 > Unreleased and upcoming changes are tracked on the [`next` branch changelog](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/en/changelog.md).
 
+### MCP Bridge 1.1.2 — 2026-07-10
+
+**Fixed**
+
+- **Fixed same-directory module imports failing under certain launch environments** — Launchers that set `PYTHONSAFEPATH=1` (or invoke `python -P`) disable the interpreter's default behavior of adding the running script's own directory to `sys.path`. `thin_proxy.py` implicitly relied on this behavior to import same-directory modules (`artifact_inliner`, `config`, `http_mcp_client`, `lifecycle_manager`), so under such launchers the bridge failed to start, surfacing as seemingly unrelated errors such as version compatibility check failures. The script's own directory is now added to `sys.path` explicitly.
+
+---
+
 ### MCP Bridge 1.1.1 — 2026-06-24
 
 **Fixed**

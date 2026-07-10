@@ -56,6 +56,14 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 > 未リリース・開発中の変更は [`next` ブランチの更新履歴](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/ja/changelog.md) で確認できます。
 
+### MCP Bridge 1.1.2 — 2026-07-10
+
+**修正**
+
+- **特定の起動環境で同階層モジュールの import が失敗する問題を修正** — `PYTHONSAFEPATH=1`（または `python -P`）を設定するランチャーでは、Python インタプリタがスクリプト自身のディレクトリを `sys.path` に自動追加しなくなります。`thin_proxy.py` はこの挙動に暗黙的に依存して同階層モジュール（`artifact_inliner`・`config`・`http_mcp_client`・`lifecycle_manager`）を import していたため、該当環境ではブリッジの起動が失敗し、バージョン互換チェックの失敗など一見無関係なエラーとして表面化していました。スクリプト自身のディレクトリを明示的に `sys.path` へ追加するよう修正しました。
+
+---
+
 ### MCP Bridge 1.1.1 — 2026-06-24
 
 **修正**
