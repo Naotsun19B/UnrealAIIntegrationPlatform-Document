@@ -35,17 +35,17 @@ UAIP では 2 種類のコマンドを公開しています：
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 7 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | 一部（13/18） |
-| Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | — |
-| Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | — |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | 一部（1/3） |
+| Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
-| Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | — | — |
+| Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | — | 一部（5/8） |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅（1 件除外） |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 42 | 6 | — |
+| Editor Assets | `UAIP.Editor.Assets` | 42 | 6 | 一部（25/42） |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
-| Editor Level | `UAIP.Editor.Level` | 16 | 8 | — |
-| Editor Property | `UAIP.Editor.Property` | 12 | — | — |
+| Editor Level | `UAIP.Editor.Level` | 16 | 8 | 一部（7/16） |
+| Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
@@ -85,10 +85,10 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 6 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
-| Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 1 | — | — |
-| Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | — |
+| Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | 一部（2/3） |
+| Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | 一部（2/4） |
-| Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | — |
+| Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | 一部（1/2） |
 
 ---
 
@@ -143,7 +143,7 @@ UAIP では 2 種類のコマンドを公開しています：
 |---|---|
 | `GetLogVerbosity` | 指定ログカテゴリの現在の詳細レベルを取得 |
 | `SetLogVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
-| `GetLogEntries` | エディタ Output Log から最近のログエントリを取得（パターンフィルタ対応、Capability 不要） |
+| 🆓 `GetLogEntries` | エディタ Output Log から最近のログエントリを取得（パターンフィルタ対応、Capability 不要） |
 
 ### Toolset ブリッジ — Logs（4 件）🧩
 
@@ -172,11 +172,11 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 
 | コマンド | 説明 |
 |---|---|
-| `GetPluginDescriptor` | プラグインの `.uplugin` ファイル全体を JSON で返す |
-| `GetPluginDependents` | 指定プラグインに依存する他のプラグイン一覧を返す |
-| `GetPluginTemplateDescriptions` | 利用可能なプラグインテンプレートの一覧を返す |
-| `IsPluginCreationAllowed` | 現在の環境でプラグイン作成が許可されているか確認 |
-| `IsPluginModificationAllowed` | 指定プラグインの変更が許可されているか確認 |
+| 🆓 `GetPluginDescriptor` | プラグインの `.uplugin` ファイル全体を JSON で返す |
+| 🆓 `GetPluginDependents` | 指定プラグインに依存する他のプラグイン一覧を返す |
+| 🆓 `GetPluginTemplateDescriptions` | 利用可能なプラグインテンプレートの一覧を返す |
+| 🆓 `IsPluginCreationAllowed` | 現在の環境でプラグイン作成が許可されているか確認 |
+| 🆓 `IsPluginModificationAllowed` | 指定プラグインの変更が許可されているか確認 |
 | `SetPluginEnabled` | プラグインを有効化または無効化する（`PluginEnableToggle` 必要；`RestartRequired: true` を返す） |
 | `UpdatePluginDescriptor` | プラグインの `.uplugin` 内の選択フィールドを上書き（`PluginDescriptorEdit` 必要） |
 | `AddPluginDependency` | プラグインの `.uplugin` に依存エントリを追加（`PluginDependencyEdit` 必要） |
@@ -212,11 +212,11 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 
 | コマンド | 説明 |
 |---|---|
-| `ListSettingsContainers` | 登録済みの設定コンテナ（`Project`、`Editor` など）を一覧表示。Capability 不要 |
-| `ListSettingsCategories` | コンテナ内の設定カテゴリを一覧表示。Capability 不要 |
-| `ListSettingsSections` | カテゴリ内の設定セクションを一覧表示。Capability 不要 |
-| `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） |
-| `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） |
+| 🆓 `ListSettingsContainers` | 登録済みの設定コンテナ（`Project`、`Editor` など）を一覧表示。Capability 不要 |
+| 🆓 `ListSettingsCategories` | コンテナ内の設定カテゴリを一覧表示。Capability 不要 |
+| 🆓 `ListSettingsSections` | カテゴリ内の設定セクションを一覧表示。Capability 不要 |
+| 🆓 `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） |
+| 🆓 `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） |
 | `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可 |
 | `SaveSettings` | `ISettingsSection::Save()` 経由で設定を ini ファイルに書き出す。`ConfigSettingsSave` 必要。PIE 中および `bDisableSave` 設定時は実行不可 |
 | `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 |
@@ -292,10 +292,10 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 |---|---|
 | `OpenAsset` | 指定アセットをエディタで開く |
 | `CloseAsset` | 指定アセットの全エディタを閉じる |
-| `SearchAssets` | パス・クラス・タグでアセットを検索 |
+| 🆓 `SearchAssets` | パス・クラス・タグでアセットを検索 |
 | `CreateAsset` | 指定クラスの新規アセットを作成 |
-| `ListCreatableAssetClasses` | `CreateAsset` が作成可能な全 UClass をFactory数・デフォルトFactory付きで返す（重い呼び出し） |
-| `ListFactoriesForClass` | 指定 `ClassName` に対応する Factory 候補と各 `FactoryParams` スキーマを返す |
+| 🆓 `ListCreatableAssetClasses` | `CreateAsset` が作成可能な全 UClass をFactory数・デフォルトFactory付きで返す（重い呼び出し） |
+| 🆓 `ListFactoriesForClass` | 指定 `ClassName` に対応する Factory 候補と各 `FactoryParams` スキーマを返す |
 | `DuplicateAsset` | 既存アセットを複製 |
 | `RenameAsset` | アセットをリネーム / 別パスへ移動 |
 | `DeleteAsset` | アセットを削除 |
@@ -309,24 +309,24 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `GetOpenAssets` | アセットエディタで現在開いているアセット一覧を返す |
 | 🆓 `ListAssetRedirectors` | フォルダ配下（既定はプロジェクト全体の `/Game`）のアセットリダイレクタを、アセットをロードせずに元パス・先パス付きで一覧取得する |
 | `FixAssetRedirectors`（`RedirectorFixup` 必要） | `/Game` 全体（常に再帰的）を対象に、解決可能なアセットリダイレクタを一括修正・削除する |
-| `GetAssetReferences` | 指定アセットを起点に参照グラフ（参照元・参照先・両方）を指定深さまで探索する |
-| `GetAssetSizeMap` | フォルダ配下のディスクサイズ（任意で常駐メモリサイズ）をアセット単位で集計し降順ソートする |
-| `GetAssetSizeMapByClass` | フォルダ配下のディスクサイズをアセットクラス単位で集計し降順ソートする |
-| `FindUnreferencedAssets` | フォルダ配下でユーザー参照（Engine/Script以外）が存在しないアセットを検出する（ハードリファレンスヒューリスティック） |
-| `FindCircularReferences` | フォルダ配下のアセット間の循環依存チェーンを検出する |
-| `FindBrokenReferences` | アセットレジストリに存在しないパッケージへの依存を検出する |
-| `GetAssetDependencyPath` | 2つのアセット間の最短依存/参照パスを検索する |
-| `RunAssetAudit` | フォルダ配下の複合監査（未参照アセット・循環参照・壊れた参照・最大サイズアセット）を実行する |
-| `ListPrimaryAssetTypes` | 登録済みの全 `PrimaryAssetType`（`UAssetManager`）をクラス・ディレクトリ・アセット数サマリー付きで一覧取得する |
-| `GetPrimaryAssetTypeInfo` | 単一の `PrimaryAssetType` の詳細（ディレクトリ・個別アセット・既定Rule）を取得する |
-| `ListPrimaryAssets` | 指定 `PrimaryAssetType` に属する `PrimaryAssetId` とアセット一覧を取得する |
-| `GetAssetBundle` | 指定 `PrimaryAssetId` の `AssetBundle` エントリを取得する（未定義なら空配列） |
-| `GetAssetTags` | アセットの Asset Registry タグマップを取得する |
-| `GetPrimaryAssetIdForPath` | アセットパスから `PrimaryAssetId` を逆引きする（未登録時は `Found:false` でエラーにしない） |
-| `GetPrimaryAssetRules` | 指定 `PrimaryAssetId` のマージ済み（Type既定 + 個別上書き）`PrimaryAssetRules` を取得する |
-| `GetManagedPackageList` | 指定 `PrimaryAssetId` が管理するパッケージ一覧を取得する |
-| `GetPrimaryAssetLoadList` | 指定 Bundle 条件下で実際にロードされるオブジェクトパスを解決する |
-| `GetLoadedPrimaryAssets` | 現在ロード中/ロード予定の `PrimaryAssetId` とそのロード済み Bundle 状態を取得する |
+| 🆓 `GetAssetReferences` | 指定アセットを起点に参照グラフ（参照元・参照先・両方）を指定深さまで探索する |
+| 🆓 `GetAssetSizeMap` | フォルダ配下のディスクサイズ（任意で常駐メモリサイズ）をアセット単位で集計し降順ソートする |
+| 🆓 `GetAssetSizeMapByClass` | フォルダ配下のディスクサイズをアセットクラス単位で集計し降順ソートする |
+| 🆓 `FindUnreferencedAssets` | フォルダ配下でユーザー参照（Engine/Script以外）が存在しないアセットを検出する（ハードリファレンスヒューリスティック） |
+| 🆓 `FindCircularReferences` | フォルダ配下のアセット間の循環依存チェーンを検出する |
+| 🆓 `FindBrokenReferences` | アセットレジストリに存在しないパッケージへの依存を検出する |
+| 🆓 `GetAssetDependencyPath` | 2つのアセット間の最短依存/参照パスを検索する |
+| 🆓 `RunAssetAudit` | フォルダ配下の複合監査（未参照アセット・循環参照・壊れた参照・最大サイズアセット）を実行する |
+| 🆓 `ListPrimaryAssetTypes` | 登録済みの全 `PrimaryAssetType`（`UAssetManager`）をクラス・ディレクトリ・アセット数サマリー付きで一覧取得する |
+| 🆓 `GetPrimaryAssetTypeInfo` | 単一の `PrimaryAssetType` の詳細（ディレクトリ・個別アセット・既定Rule）を取得する |
+| 🆓 `ListPrimaryAssets` | 指定 `PrimaryAssetType` に属する `PrimaryAssetId` とアセット一覧を取得する |
+| 🆓 `GetAssetBundle` | 指定 `PrimaryAssetId` の `AssetBundle` エントリを取得する（未定義なら空配列） |
+| 🆓 `GetAssetTags` | アセットの Asset Registry タグマップを取得する |
+| 🆓 `GetPrimaryAssetIdForPath` | アセットパスから `PrimaryAssetId` を逆引きする（未登録時は `Found:false` でエラーにしない） |
+| 🆓 `GetPrimaryAssetRules` | 指定 `PrimaryAssetId` のマージ済み（Type既定 + 個別上書き）`PrimaryAssetRules` を取得する |
+| 🆓 `GetManagedPackageList` | 指定 `PrimaryAssetId` が管理するパッケージ一覧を取得する |
+| 🆓 `GetPrimaryAssetLoadList` | 指定 Bundle 条件下で実際にロードされるオブジェクトパスを解決する |
+| 🆓 `GetLoadedPrimaryAssets` | 現在ロード中/ロード予定の `PrimaryAssetId` とそのロード済み Bundle 状態を取得する |
 | `AddPrimaryAssetType`（要 `PrimaryAssetTypeAdd`） | `PrimaryAssetType` を `PrimaryAssetTypesToScan` に追加（`DefaultGame.ini` へ永続化）し即座にスキャンする |
 | `RemovePrimaryAssetType`（要 `PrimaryAssetTypeRemove`） | `PrimaryAssetType` を `PrimaryAssetTypesToScan` から削除（永続化）する。アセットが存在する場合は `Force` 指定がない限り拒否 |
 | `SetPrimaryAssetRules`（要 `PrimaryAssetRulesOverride`） | 指定 `PrimaryAssetId` の Rule をメモリ内のみ一時的に上書きする（非永続） |
@@ -377,18 +377,18 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 | コマンド | 説明 |
 |---|---|
-| `ListLevelActors` | 開いているレベルのアクター一覧 |
+| 🆓 `ListLevelActors` | 開いているレベルのアクター一覧 |
 | `PlaceActorInLevel` | Editor レベルにアクターを配置 |
 | `DeleteActorFromLevel` | Editor レベルからアクターを削除 |
-| `GetActorTransform` | Editor 上のアクターのトランスフォーム取得 |
+| 🆓 `GetActorTransform` | Editor 上のアクターのトランスフォーム取得 |
 | `SetActorTransform` | Editor 上のアクターのトランスフォーム設定 |
 | `OpenLevel` | エディタビューポートでレベルを開く（File > Open Level） |
 | `NewLevel` | テンプレートから新規レベルを作成（EmptyLevel / EmptyOpenWorld / Basic / OpenWorld） |
 | `SelectActors` | 指定アクターを Editor レベルで選択（既存選択を置換または追加） |
-| `ListSelectedActors` | 現在 Editor で選択中のアクター一覧を返す |
+| 🆓 `ListSelectedActors` | 現在 Editor で選択中のアクター一覧を返す |
 | `ClearSelection` | Editor レベルの選択をクリア |
 | `FocusOnActors` | 指定アクターにビューポートカメラをフォーカス（アクター省略時は選択中のアクターを対象） |
-| `GetCameraTransform` | アクティブなレベルエディタビューポートのカメラ位置・回転を取得 |
+| 🆓 `GetCameraTransform` | アクティブなレベルエディタビューポートのカメラ位置・回転を取得 |
 | `SetCameraTransform` | アクティブなレベルエディタビューポートのカメラ位置・回転を設定 |
 | 🆓 `GetVisibleActors` | アクティブなエディタビューポートに現在表示されているアクターを返す（視錐体カリング） |
 | 🆓 `ProjectWorldToScreen` | ワールド空間の位置をスクリーン座標に投影 |
@@ -413,21 +413,21 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 ## UAIP.Editor.Property
 
-アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。
+アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。`Get*` 系コマンドは、シークレットらしきプロパティ値（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）をネストした struct メンバーも含めて `***` でマスクする。
 
 | コマンド | 説明 |
 |---|---|
-| `GetActorProperty` | Editor アクターのプロパティ値を取得 |
+| 🆓 `GetActorProperty` | Editor アクターのプロパティ値を取得 |
 | `SetActorProperty` | Editor アクターのプロパティを設定 |
-| `GetWorldSetting` | WorldSettings のプロパティ値を取得 |
+| 🆓 `GetWorldSetting` | WorldSettings のプロパティ値を取得 |
 | `SetWorldSetting` | WorldSettings のプロパティを設定 |
-| `GetAssetProperty` | アセット（DataAsset 等）のプロパティ値を取得 |
+| 🆓 `GetAssetProperty` | アセット（DataAsset 等）のプロパティ値を取得 |
 | `SetAssetProperty` | アセットのプロパティを設定し `MarkPackageDirty` を呼ぶ |
-| `GetBlueprintDefault` | Blueprint CDO のプロパティ値を取得 |
+| 🆓 `GetBlueprintDefault` | Blueprint CDO のプロパティ値を取得 |
 | `SetBlueprintDefault` | Blueprint CDO のプロパティを設定 |
-| `GetProjectSetting` | `UDeveloperSettings` CDO のプロパティ値を取得 |
+| 🆓 `GetProjectSetting` | `UDeveloperSettings` CDO のプロパティ値を取得 |
 | `SetProjectSetting` | `UDeveloperSettings` CDO のプロパティを設定し `SaveConfig()` を呼ぶ |
-| `GetDataTableRow` | DataTable 行のプロパティ値を取得 |
+| 🆓 `GetDataTableRow` | DataTable 行のプロパティ値を取得 |
 | `SetDataTableRow` | DataTable 行のプロパティを設定 |
 
 ---
@@ -1702,11 +1702,13 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 
 ## UAIP.Runtime.Engine.Log
 
-ランタイム環境でのログカテゴリ一覧取得。読み取り専用、Capability 不要。
+ランタイム環境でのログ詳細レベル取得・ログカテゴリ一覧取得。`UAIP.Editor.Engine.Log` の Runtime 版に相当します。
 
 | コマンド | 説明 |
 |---|---|
-| `GetLogCategories` | 登録済みログカテゴリ名をすべて一覧表示 |
+| 🆓 `GetLogVerbosity` | 指定ログカテゴリの現在の詳細レベルを取得 |
+| 🆓 `GetLogCategories` | 登録済みログカテゴリ名をすべて一覧表示 |
+| `SetLogVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
 
 ---
 
@@ -1716,11 +1718,11 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 
 | コマンド | 説明 |
 |---|---|
-| `ListPlugins` | インストール済みプラグインと有効 / 無効状態の一覧 |
-| `GetPluginInfo` | プラグインの基本情報（名前・バージョン・有効状態）を取得 |
-| `IsEnabled` | プラグインが現在有効か確認 |
-| `GetPluginDependencies` | プラグインが依存するプラグイン一覧を返す |
-| `GetPluginForAsset` | 指定アセットを提供するプラグインを返す |
+| 🆓 `ListPlugins` | インストール済みプラグインと有効 / 無効状態の一覧 |
+| 🆓 `GetPluginInfo` | プラグインの基本情報（名前・バージョン・有効状態）を取得 |
+| 🆓 `IsEnabled` | プラグインが現在有効か確認 |
+| 🆓 `GetPluginDependencies` | プラグインが依存するプラグイン一覧を返す |
+| 🆓 `GetPluginForAsset` | 指定アセットを提供するプラグインを返す |
 
 ---
 
@@ -1728,12 +1730,12 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 
 エンジン全体のコンソール変数（CVar）を取得・検索・設定するコマンド。CVar は World 非依存のグローバル状態です。機密パターンの CVar は自動除外されます。
 
-🔒 は `RuntimeCVarRead`（DefaultDenied）が必要。✏️ は `RuntimeCVarWrite`（DefaultDenied）が必要。
+🔒 は `RuntimeCVarRead`（DefaultDenied）が必要。✏️ は `RuntimeCVarWrite`（DefaultDenied）が必要。デモ版配布物の `Config/DefaultUAIP.ini` は `RuntimeCVarRead` を事前付与しているため、以下の 🆓 コマンドはデモ版でもそのまま利用できます。
 
 | コマンド | 説明 |
 |---|---|
-| 🔒 `GetConsoleVariable` | 指定した CVar の名前・現在値・型・ヘルプテキストを返す（機密名は `NotFound`） |
-| 🔒 `SearchConsoleVariables` | ワイルドカード（`*`）パターンで CVar を検索（デフォルト 50 件・上限 200 件） |
+| 🆓🔒 `GetConsoleVariable` | 指定した CVar の名前・現在値・型・ヘルプテキストを返す（機密名は `NotFound`） |
+| 🆓🔒 `SearchConsoleVariables` | ワイルドカード（`*`）パターンで CVar を検索（デフォルト 50 件・上限 200 件） |
 | ✏️ `SetConsoleVariable` | 指定した CVar の値を設定（機密名・`ECVF_ReadOnly` 付きは拒否。`ECVF_Cheat` 付きは `AllowCheatCVarWrite` が有効でない限り拒否） |
 | ✏️ `ResetConsoleVariable` | 指定した CVar をデフォルト値にリセット（機密名・`ECVF_ReadOnly` 付きは拒否。`ECVF_Cheat` 付きは `AllowCheatCVarWrite` が有効でない限り拒否） |
 
@@ -1747,7 +1749,7 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 
 | コマンド | 説明 |
 |---|---|
-| `GetConfigValue` | セクション名とキー名を指定して ini キーの文字列値を読み取る。Capability 不要 |
+| 🆓 `GetConfigValue` | セクション名とキー名を指定して ini キーの文字列値を読み取る。Capability 不要 |
 | `SetConfigValue` | raw ini キーを書き込みまたは削除。`ConfigSettingsEdit` 必要。パッケージ版ビルドでは実行不可。キー・値フィールドへの ini インジェクション文字（`[`・`]`）は拒否 |
 
 ---

@@ -35,17 +35,17 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 7 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | partial (13/18) |
-| Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | — |
-| Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | — |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | partial (1/3) |
+| Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | partial (5/9) |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
-| Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | — | — |
+| Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | — | partial (5/8) |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 42 | 6 | — |
+| Editor Assets | `UAIP.Editor.Assets` | 42 | 6 | partial (25/42) |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
-| Editor Level | `UAIP.Editor.Level` | 16 | 8 | — |
-| Editor Property | `UAIP.Editor.Property` | 12 | — | — |
+| Editor Level | `UAIP.Editor.Level` | 16 | 8 | partial (7/16) |
+| Editor Property | `UAIP.Editor.Property` | 12 | — | partial (6/12) |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
@@ -78,10 +78,10 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
-| Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 1 | — | — |
-| Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | — |
+| Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | partial (2/3) |
+| Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
-| Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | — |
+| Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | partial (1/2) |
 | Runtime PIE | `UAIP.Runtime.PIE` | 11 ⁺² | 3 | partial (6/11) |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
@@ -142,7 +142,7 @@ Log verbosity management and log entry retrieval.
 |---|---|
 | `GetLogVerbosity` | Get the current verbosity level of a log category |
 | `SetLogVerbosity` | Set the verbosity level of a log category (requires `LogVerbosityEdit`) |
-| `GetLogEntries` | Retrieve recent log entries from the editor output log (supports pattern filtering; no capability required) |
+| 🆓 `GetLogEntries` | Retrieve recent log entries from the editor output log (supports pattern filtering; no capability required) |
 
 ### Toolset bridges — Logs (4) 🧩
 
@@ -171,11 +171,11 @@ Plugin management for the editor — read / write plugin state, descriptor, and 
 
 | Command | Description |
 |---|---|
-| `GetPluginDescriptor` | Read the full `.uplugin` descriptor JSON for a plugin |
-| `GetPluginDependents` | List plugins that depend on a given plugin (budget-capped scan; `Truncated: true` on limit) |
-| `GetPluginTemplateDescriptions` | List available plugin scaffold templates |
-| `IsPluginCreationAllowed` | Check whether new plugin creation is allowed in the current editor state |
-| `IsPluginModificationAllowed` | Check whether a specific plugin is modifiable (not Engine/Marketplace/GFP) |
+| 🆓 `GetPluginDescriptor` | Read the full `.uplugin` descriptor JSON for a plugin |
+| 🆓 `GetPluginDependents` | List plugins that depend on a given plugin (budget-capped scan; `Truncated: true` on limit) |
+| 🆓 `GetPluginTemplateDescriptions` | List available plugin scaffold templates |
+| 🆓 `IsPluginCreationAllowed` | Check whether new plugin creation is allowed in the current editor state |
+| 🆓 `IsPluginModificationAllowed` | Check whether a specific plugin is modifiable (not Engine/Marketplace/GFP) |
 | `SetPluginEnabled` | Enable or disable a plugin (`PluginEnableToggle` required; always returns `RestartRequired: true`) |
 | `UpdatePluginDescriptor` | Overwrite selected fields of a plugin's `.uplugin` file (`PluginDescriptorEdit` required; supports `DryRun`) |
 | `AddPluginDependency` | Add a dependency entry to a plugin's `.uplugin` (`PluginDependencyEdit` required) |
@@ -211,11 +211,11 @@ Project Settings and Editor Preferences management via `ISettingsModule`. Comman
 
 | Command | Description |
 |---|---|
-| `ListSettingsContainers` | List all registered settings containers (e.g. `Project`, `Editor`). No capability required |
-| `ListSettingsCategories` | List all categories in a settings container. No capability required |
-| `ListSettingsSections` | List all sections in a settings category. No capability required |
-| `GetSettingsSchema` | Return a JSON artifact with editable property names, types, descriptions, defaults, and edit conditions for a section (requires `EditorInspect`) |
-| `GetSettingsValues` | Return a JSON artifact with current property values for a section. Secret fields (name matches a secret pattern, has secret metadata, or is a file path type) are masked with `***` (requires `EditorInspect`) |
+| 🆓 `ListSettingsContainers` | List all registered settings containers (e.g. `Project`, `Editor`). No capability required |
+| 🆓 `ListSettingsCategories` | List all categories in a settings container. No capability required |
+| 🆓 `ListSettingsSections` | List all sections in a settings category. No capability required |
+| 🆓 `GetSettingsSchema` | Return a JSON artifact with editable property names, types, descriptions, defaults, and edit conditions for a section (requires `EditorInspect`) |
+| 🆓 `GetSettingsValues` | Return a JSON artifact with current property values for a section. Secret fields (name matches a secret pattern, has secret metadata, or is a file path type) are masked with `***` (requires `EditorInspect`) |
 | `SetSettingsValues` | Merge a `Properties` map into the settings object via `ImportText`. Supports `DryRun` (validates without applying). Requires `ConfigSettingsEdit`. Blocked during PIE |
 | `SaveSettings` | Persist in-memory settings to the section's ini file via `ISettingsSection::Save()`. Requires `ConfigSettingsSave`. Blocked during PIE and when `bDisableSave` is set |
 | `ResetSettingsToDefaults` | Revert the settings object to class defaults and save. Requires `ConfigSettingsReset`. Blocked during PIE |
@@ -291,10 +291,10 @@ Open, search, create, duplicate, rename, delete assets and folders.
 |---|---|
 | `OpenAsset` | Open the specified asset in its editor |
 | `CloseAsset` | Close all editors for the specified asset |
-| `SearchAssets` | Search assets by path / class / tag |
+| 🆓 `SearchAssets` | Search assets by path / class / tag |
 | `CreateAsset` | Create a new asset of the specified class |
-| `ListCreatableAssetClasses` | Return every UClass that `CreateAsset` can target, with factory count and default factory (heavy call) |
-| `ListFactoriesForClass` | Return the factory candidates for a `ClassName`, each with its `FactoryParams` schema |
+| 🆓 `ListCreatableAssetClasses` | Return every UClass that `CreateAsset` can target, with factory count and default factory (heavy call) |
+| 🆓 `ListFactoriesForClass` | Return the factory candidates for a `ClassName`, each with its `FactoryParams` schema |
 | `DuplicateAsset` | Duplicate an existing asset |
 | `RenameAsset` | Rename / move an asset to another path |
 | `DeleteAsset` | Delete an asset |
@@ -308,24 +308,24 @@ Open, search, create, duplicate, rename, delete assets and folders.
 | 🆓 `GetOpenAssets` | Return the list of assets currently open in an asset editor |
 | 🆓 `ListAssetRedirectors` | List asset redirectors under a folder (`/Game` project-wide by default) with source/destination paths, without loading any assets |
 | `FixAssetRedirectors` (requires `RedirectorFixup`) | Fix up and delete all resolvable asset redirectors under `/Game` (project-wide, recursive, always) |
-| `GetAssetReferences` | Traverse the asset reference graph (referencers, dependencies, or both) rooted at an asset up to a given depth |
-| `GetAssetSizeMap` | Aggregate per-asset disk (and optionally resident memory) size under a folder, sorted descending |
-| `GetAssetSizeMapByClass` | Aggregate disk size per asset class under a folder, sorted descending |
-| `FindUnreferencedAssets` | Find assets under a folder with no user (non-Engine/Script) referencers (hard-reference heuristic) |
-| `FindCircularReferences` | Find circular dependency chains among assets under a folder |
-| `FindBrokenReferences` | Find dependencies pointing at packages no longer registered in the asset registry |
-| `GetAssetDependencyPath` | Find the shortest dependency or referencer path between two assets |
-| `RunAssetAudit` | Run a composite audit (unreferenced assets, circular references, broken references, largest assets) under a folder |
-| `ListPrimaryAssetTypes` | List all registered `PrimaryAssetType`s (`UAssetManager`) with class/directory/asset-count summary |
-| `GetPrimaryAssetTypeInfo` | Get the full detail (directories, specific assets, default rules) of a single `PrimaryAssetType` |
-| `ListPrimaryAssets` | List the `PrimaryAssetId`s and assets belonging to a `PrimaryAssetType` |
-| `GetAssetBundle` | Get the `AssetBundle` entries of a `PrimaryAssetId` (empty array when none are defined) |
-| `GetAssetTags` | Get the Asset Registry tag map of an asset |
-| `GetPrimaryAssetIdForPath` | Resolve an asset path to its `PrimaryAssetId` (`Found:false`, not an error, when unmanaged) |
-| `GetPrimaryAssetRules` | Get the merged (type default + per-asset override) `PrimaryAssetRules` of a `PrimaryAssetId` |
-| `GetManagedPackageList` | Get the packages managed by a `PrimaryAssetId` |
-| `GetPrimaryAssetLoadList` | Resolve the object paths that would actually load for a `PrimaryAssetId` under given bundle conditions |
-| `GetLoadedPrimaryAssets` | Get the currently loaded / pending `PrimaryAssetId`s and their loaded bundle state |
+| 🆓 `GetAssetReferences` | Traverse the asset reference graph (referencers, dependencies, or both) rooted at an asset up to a given depth |
+| 🆓 `GetAssetSizeMap` | Aggregate per-asset disk (and optionally resident memory) size under a folder, sorted descending |
+| 🆓 `GetAssetSizeMapByClass` | Aggregate disk size per asset class under a folder, sorted descending |
+| 🆓 `FindUnreferencedAssets` | Find assets under a folder with no user (non-Engine/Script) referencers (hard-reference heuristic) |
+| 🆓 `FindCircularReferences` | Find circular dependency chains among assets under a folder |
+| 🆓 `FindBrokenReferences` | Find dependencies pointing at packages no longer registered in the asset registry |
+| 🆓 `GetAssetDependencyPath` | Find the shortest dependency or referencer path between two assets |
+| 🆓 `RunAssetAudit` | Run a composite audit (unreferenced assets, circular references, broken references, largest assets) under a folder |
+| 🆓 `ListPrimaryAssetTypes` | List all registered `PrimaryAssetType`s (`UAssetManager`) with class/directory/asset-count summary |
+| 🆓 `GetPrimaryAssetTypeInfo` | Get the full detail (directories, specific assets, default rules) of a single `PrimaryAssetType` |
+| 🆓 `ListPrimaryAssets` | List the `PrimaryAssetId`s and assets belonging to a `PrimaryAssetType` |
+| 🆓 `GetAssetBundle` | Get the `AssetBundle` entries of a `PrimaryAssetId` (empty array when none are defined) |
+| 🆓 `GetAssetTags` | Get the Asset Registry tag map of an asset |
+| 🆓 `GetPrimaryAssetIdForPath` | Resolve an asset path to its `PrimaryAssetId` (`Found:false`, not an error, when unmanaged) |
+| 🆓 `GetPrimaryAssetRules` | Get the merged (type default + per-asset override) `PrimaryAssetRules` of a `PrimaryAssetId` |
+| 🆓 `GetManagedPackageList` | Get the packages managed by a `PrimaryAssetId` |
+| 🆓 `GetPrimaryAssetLoadList` | Resolve the object paths that would actually load for a `PrimaryAssetId` under given bundle conditions |
+| 🆓 `GetLoadedPrimaryAssets` | Get the currently loaded / pending `PrimaryAssetId`s and their loaded bundle state |
 | `AddPrimaryAssetType` (requires `PrimaryAssetTypeAdd`) | Add a `PrimaryAssetType` to `PrimaryAssetTypesToScan` (persisted to `DefaultGame.ini`) and scan it immediately |
 | `RemovePrimaryAssetType` (requires `PrimaryAssetTypeRemove`) | Remove a `PrimaryAssetType` from `PrimaryAssetTypesToScan` (persisted); rejects if assets exist unless `Force` |
 | `SetPrimaryAssetRules` (requires `PrimaryAssetRulesOverride`) | Temporarily override a `PrimaryAssetId`'s rules in memory only (not persisted) |
@@ -376,18 +376,18 @@ Editor-side actor placement, transforms, and level loading.
 
 | Command | Description |
 |---|---|
-| `ListLevelActors` | List all actors in the open level |
+| 🆓 `ListLevelActors` | List all actors in the open level |
 | `PlaceActorInLevel` | Place an actor in the editor level |
 | `DeleteActorFromLevel` | Remove an actor from the editor level |
-| `GetActorTransform` | Get the transform of an editor actor |
+| 🆓 `GetActorTransform` | Get the transform of an editor actor |
 | `SetActorTransform` | Set the transform of an editor actor |
 | `OpenLevel` | Open a level in the editor viewport (File > Open Level) |
 | `NewLevel` | Create a new level from a template (EmptyLevel / EmptyOpenWorld / Basic / OpenWorld) |
 | `SelectActors` | Select the specified actors in the editor level (replace or add to current selection) |
-| `ListSelectedActors` | Return a list of actors currently selected in the editor |
+| 🆓 `ListSelectedActors` | Return a list of actors currently selected in the editor |
 | `ClearSelection` | Clear the current selection in the editor level |
 | `FocusOnActors` | Focus the viewport camera on the specified actors (omit to use the current selection) |
-| `GetCameraTransform` | Get the camera location and rotation of the active level editor viewport |
+| 🆓 `GetCameraTransform` | Get the camera location and rotation of the active level editor viewport |
 | `SetCameraTransform` | Set the camera location and rotation of the active level editor viewport |
 | 🆓 `GetVisibleActors` | Return actors currently visible in the active editor viewport (frustum culling) |
 | 🆓 `ProjectWorldToScreen` | Project a world-space position to screen coordinates |
@@ -412,21 +412,21 @@ Bridge commands via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Prov
 
 ## UAIP.Editor.Property
 
-Read and write properties on actors, assets, Blueprint defaults, DataTable rows, World / Project settings.
+Read and write properties on actors, assets, Blueprint defaults, DataTable rows, World / Project settings. `Get*` commands mask secret-looking property values (name matches a secret pattern, has secret metadata, or is a file path type) with `***`, including nested struct members.
 
 | Command | Description |
 |---|---|
-| `GetActorProperty` | Get a property value from an editor actor |
+| 🆓 `GetActorProperty` | Get a property value from an editor actor |
 | `SetActorProperty` | Set a property on an editor actor |
-| `GetWorldSetting` | Get a WorldSettings property |
+| 🆓 `GetWorldSetting` | Get a WorldSettings property |
 | `SetWorldSetting` | Set a WorldSettings property |
-| `GetAssetProperty` | Get a property from an asset (DataAsset etc.) |
+| 🆓 `GetAssetProperty` | Get a property from an asset (DataAsset etc.) |
 | `SetAssetProperty` | Set a property on an asset and call `MarkPackageDirty` |
-| `GetBlueprintDefault` | Get a property from a Blueprint CDO |
+| 🆓 `GetBlueprintDefault` | Get a property from a Blueprint CDO |
 | `SetBlueprintDefault` | Set a property on a Blueprint CDO |
-| `GetProjectSetting` | Get a property from a `UDeveloperSettings` CDO |
+| 🆓 `GetProjectSetting` | Get a property from a `UDeveloperSettings` CDO |
 | `SetProjectSetting` | Set a property on a `UDeveloperSettings` CDO and call `SaveConfig()` |
-| `GetDataTableRow` | Get a DataTable row property |
+| 🆓 `GetDataTableRow` | Get a DataTable row property |
 | `SetDataTableRow` | Set a DataTable row property |
 
 ---
@@ -1573,11 +1573,13 @@ Mirror of the first 7 native commands via the `DataRegistryToolset` plugin (UE 5
 
 ## UAIP.Runtime.Engine.Log
 
-Log category inspection at runtime. Read-only; no capability required.
+Log verbosity inspection and log category listing at runtime. These are the Runtime-domain counterparts to `UAIP.Editor.Engine.Log`.
 
 | Command | Description |
 |---|---|
-| `GetLogCategories` | List all registered log category names |
+| 🆓 `GetLogVerbosity` | Get the current verbosity level of a log category |
+| 🆓 `GetLogCategories` | List all registered log category names |
+| `SetLogVerbosity` | Set the verbosity level of a log category (requires `LogVerbosityEdit`) |
 
 ---
 
@@ -1587,11 +1589,11 @@ Plugin inspection at runtime. Read-only commands available without any special c
 
 | Command | Description |
 |---|---|
-| `ListPlugins` | List discovered or enabled plugins with optional `EnabledOnly` filter and `LoadedFrom` filter |
-| `GetPluginInfo` | Get detailed info for a plugin (11 fields: Name, FriendlyName, Version, Description, Category, IsEnabled, IsMounted, Type, BaseDir, LoadedFrom, Dependencies) |
-| `IsEnabled` | Check whether a plugin is currently enabled (note: `.uproject` declaration and actual load state may diverge until restart) |
-| `GetPluginDependencies` | Get the direct plugin dependencies declared by a plugin |
-| `GetPluginForAsset` | Resolve the owning plugin for a given asset path |
+| 🆓 `ListPlugins` | List discovered or enabled plugins with optional `EnabledOnly` filter and `LoadedFrom` filter |
+| 🆓 `GetPluginInfo` | Get detailed info for a plugin (11 fields: Name, FriendlyName, Version, Description, Category, IsEnabled, IsMounted, Type, BaseDir, LoadedFrom, Dependencies) |
+| 🆓 `IsEnabled` | Check whether a plugin is currently enabled (note: `.uproject` declaration and actual load state may diverge until restart) |
+| 🆓 `GetPluginDependencies` | Get the direct plugin dependencies declared by a plugin |
+| 🆓 `GetPluginForAsset` | Resolve the owning plugin for a given asset path |
 
 ---
 
@@ -1599,12 +1601,12 @@ Plugin inspection at runtime. Read-only commands available without any special c
 
 Read and write engine-wide console variables (CVars). CVars are global engine state — independent of any World or PIE session. Sensitive CVars are automatically excluded.
 
-🔒 requires `RuntimeCVarRead` (DefaultDenied). ✏️ requires `RuntimeCVarWrite` (DefaultDenied).
+🔒 requires `RuntimeCVarRead` (DefaultDenied). ✏️ requires `RuntimeCVarWrite` (DefaultDenied). The demo distribution's `Config/DefaultUAIP.ini` pre-grants `RuntimeCVarRead`, so the 🆓 commands below work out of the box in the demo.
 
 | Command | Description |
 |---|---|
-| 🔒 `GetConsoleVariable` | Get the name, current value, type, and help text for a CVar (sensitive names return `NotFound`) |
-| 🔒 `SearchConsoleVariables` | Search CVars using a wildcard (`*`) pattern (default 50 results, max 200) |
+| 🆓🔒 `GetConsoleVariable` | Get the name, current value, type, and help text for a CVar (sensitive names return `NotFound`) |
+| 🆓🔒 `SearchConsoleVariables` | Search CVars using a wildcard (`*`) pattern (default 50 results, max 200) |
 | ✏️ `SetConsoleVariable` | Set the value of a CVar (sensitive names and `ECVF_ReadOnly` CVars are rejected; `ECVF_Cheat` CVars are rejected unless `AllowCheatCVarWrite` is enabled) |
 | ✏️ `ResetConsoleVariable` | Reset a CVar to its default value (sensitive names and `ECVF_ReadOnly` CVars are rejected; `ECVF_Cheat` CVars are rejected unless `AllowCheatCVarWrite` is enabled) |
 
@@ -1618,7 +1620,7 @@ Raw ini key access for runtime and packaged builds. Reads and writes ini keys di
 
 | Command | Description |
 |---|---|
-| `GetConfigValue` | Read the string value of an ini key given section and key name. No capability required |
+| 🆓 `GetConfigValue` | Read the string value of an ini key given section and key name. No capability required |
 | `SetConfigValue` | Write or delete a raw ini key. Requires `ConfigSettingsEdit`. Blocked in packaged builds. Rejects ini injection characters (`[`, `]`) in key and value fields |
 
 ---
