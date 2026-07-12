@@ -38,7 +38,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | partial (1/3) |
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | partial (5/9) |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
-| Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | — | partial (5/8) |
+| Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | partial (5/8) |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
@@ -219,6 +219,21 @@ Project Settings and Editor Preferences management via `ISettingsModule`. Comman
 | `SetSettingsValues` | Merge a `Properties` map into the settings object via `ImportText`. Supports `DryRun` (validates without applying). Requires `ConfigSettingsEdit`. Blocked during PIE |
 | `SaveSettings` | Persist in-memory settings to the section's ini file via `ISettingsSection::Save()`. Requires `ConfigSettingsSave`. Blocked during PIE and when `bDisableSave` is set |
 | `ResetSettingsToDefaults` | Revert the settings object to class defaults and save. Requires `ConfigSettingsReset`. Blocked during PIE |
+
+### Toolset bridges — ConfigSettings (8) 🧩
+
+Bridge commands via the `ConfigSettingsToolset` plugin (UE 5.8+). Provider: `Toolset.ConfigSettings.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.ConfigSettings.ListContainers` | List all registered settings containers |
+| `Toolset.ConfigSettings.ListCategories` | List all categories within a settings container |
+| `Toolset.ConfigSettings.ListSections` | List all sections within a settings category |
+| `Toolset.ConfigSettings.GetSectionSchema` | Get the property schema for a settings section |
+| `Toolset.ConfigSettings.GetSectionPropertyValues` | Get current property values for a settings section |
+| `Toolset.ConfigSettings.SetSectionProperties` | Set property values on a settings section and persist them (requires `ConfigSettingsEdit`) |
+| `Toolset.ConfigSettings.SaveSection` | Persist the current in-memory settings for a section to its ini file (requires `ConfigSettingsSave`) |
+| `Toolset.ConfigSettings.ResetSectionToDefaults` | Reset all property values of a settings section to their compiled defaults (requires `ConfigSettingsReset`) |
 
 ---
 

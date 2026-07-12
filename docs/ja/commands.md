@@ -38,7 +38,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | 一部（1/3） |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
-| Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | — | 一部（5/8） |
+| Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | 一部（5/8） |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅（1 件除外） |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
@@ -220,6 +220,21 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可 |
 | `SaveSettings` | `ISettingsSection::Save()` 経由で設定を ini ファイルに書き出す。`ConfigSettingsSave` 必要。PIE 中および `bDisableSave` 設定時は実行不可 |
 | `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 |
+
+### Toolset ブリッジ — ConfigSettings（8 コマンド）🧩
+
+`ConfigSettingsToolset` プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ: `Toolset.ConfigSettings.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.ConfigSettings.ListContainers` | 登録済みの設定コンテナを一覧表示 |
+| `Toolset.ConfigSettings.ListCategories` | コンテナ内の設定カテゴリを一覧表示 |
+| `Toolset.ConfigSettings.ListSections` | カテゴリ内の設定セクションを一覧表示 |
+| `Toolset.ConfigSettings.GetSectionSchema` | セクションのプロパティスキーマを取得 |
+| `Toolset.ConfigSettings.GetSectionPropertyValues` | セクションの現在のプロパティ値を取得 |
+| `Toolset.ConfigSettings.SetSectionProperties` | セクションのプロパティ値を設定して永続化（`ConfigSettingsEdit` 必要） |
+| `Toolset.ConfigSettings.SaveSection` | 現在のメモリ上の設定をセクションの ini ファイルに書き出す（`ConfigSettingsSave` 必要） |
+| `Toolset.ConfigSettings.ResetSectionToDefaults` | セクションの全プロパティ値をコンパイル済みデフォルトにリセット（`ConfigSettingsReset` 必要） |
 
 ---
 
