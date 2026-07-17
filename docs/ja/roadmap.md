@@ -4,6 +4,8 @@
 
 以下は今後追加予定 / 調査中の項目です。具体的なリリース時期は約束しておらず、ユーザー要望や上流の UE バージョンの API 安定性次第で変更される可能性があります。
 
+> **1.1.0 で実装済み。** かつて本ロードマップに掲載していた複数の機能 — Foliage、World Partition / DataLayer / HLOD、MVVM、サウンドアーキテクチャ、Config Settings、Data Registry、Plugin 管理、PCG 拡張、Chaos Cloth、アセット参照解析 / Asset Manager / Redirector 修正、コンソール変数（CVar）管理、ビューポート座標変換、可視アクター一覧取得、ログ Verbosity 制御（および Semantic Search は部分的 — 埋め込みパイプラインは依然 Epic 社内環境のみ）— は実装済みとなり [Changelog](changelog.md) へ移動しました。以降のリストには掲載していません。
+
 ---
 
 ## エンジンバージョン対応
@@ -18,29 +20,8 @@ UAIP は現在 UE 5.7 / 5.8 を対象としています。UE 5.6 以下への対
 
 ## Editor — アセット・プロジェクト管理
 
-### サンドボックス機能
-AI による変更を Sandbox に仮置きし、人間が確認・承認してから本体に反映する仕組み。Undo に頼らず変更を選択的に承認・却下できます。内部で UE 5.8 の `FileSandboxCore` を利用するため、実装後も **UE 5.8 以降限定** の機能となります。
-
-### Config Settings 管理
-Project Settings / Editor Preferences をプログラムから読み書き — コンテナ・カテゴリの列挙、セクションスキーマの取得、プロパティ値の取得・設定、変更の保存、デフォルトへのリセット。書き込みには `ConfigSettingsEdit` Capability が必要。
-
-### Data Registry
-登録済みの Data Registry の列挙、スキーマ取得、データソース一覧、アイテムクエリ — UE の Data Registry を採用するプロジェクト向けに、既存の DataTable コマンドを補完する機能。
-
-### Plugin 管理
-探索済みプラグイン・有効プラグインの列挙、プラグイン情報と依存グラフの検査、プラグインのプログラムからの有効化 / 無効化 — AI 主導のプロジェクトセットアップと依存管理ワークフロー向け。書き込みには `PluginManagementEdit` Capability が必要。
-
-### アセット参照解析・SizeMap
-アセット参照グラフ取得・未参照アセット検出・循環参照検出・コンテンツツリー全体の SizeMap 生成。
-
 ### アセット検証（Validation）
 登録済みの `UEditorValidatorSubsystem` Validator を個別アセット / フォルダ単位で実行。結果は構造化された JSON Artifact で返却。
-
-### Asset Manager 設定
-PrimaryAssetType 定義・アセットバンドル・アセットタグをプログラムから管理。DLC・ContentBundle・Cook ルール用ワークフローを想定。
-
-### Asset Redirector 修正
-リネーム・移動で生成された Redirector を一括修正 — 全 Redirector の列挙、フォルダ指定の一括修正、参照先のクリーンアップを AI 主導のリファクタリングフロー内で完結。
 
 ### ローカライズパイプライン
 ローカライズワークフロー全体の自動化：テキスト収集、ローカライズデータコンパイル、Culture 管理、StringTable エントリの追加/編集/削除、検証用の Editor 表示言語切替。
@@ -55,26 +36,14 @@ PrimaryAssetType 定義・アセットバンドル・アセットタグをプロ
 ### MetaHuman 編集
 `MetaHumanCharacterEditorSubsystem` 経由で MetaHuman の Body / Face / Skin / Eye / Hair パラメータを編集 — MetaHuman Character プラグインを採用するプロジェクト向け。長時間処理は進捗報告に対応。`MetaHuman Character` プラグインと **UE 5.8 以降** が必要。
 
-### World Partition / DataLayer 操作
-World Partition マップでの DataLayer 管理 — 作成、削除、初期状態設定、アクターの紐付け。HLOD レイヤー割り当て・External Actor 一覧も含む。
-
-### Foliage 編集
-レベル内の FoliageType 一覧取得、座標指定でのインスタンス追加、領域指定での一括削除、FoliageType の設定変更（密度・スケール・カリング）。
-
 ### マテリアル検証・テンプレート
 プロジェクトルールに対するマテリアル検証、類似マテリアル検索、ワークフローテンプレートからのマテリアル作成。
-
-### MVVM 対応
-`ModelViewViewModel` プラグイン採用プロジェクト向けに、ViewModel クラス作成・View Binding の追加 / 削除 / 設定を AI から実行可能に。
 
 ### Mixed Control Rig トラック
 Level Sequence への Mixed Control Rig トラック追加（AnimMixer 部分は既に実装済み、本項目は残る `MovieSceneMixedControlRig` ネイティブコマンドが対象）。
 
 ### Motion Matching（PoseSearch）
 UE の Motion Matching 採用プロジェクト向けに、PoseSearchDatabase の内容、Schema 設定、ノーマライゼーションパラメータを管理。
-
-### サウンドアーキテクチャ（SoundClass / Attenuation / Mix）
-既存の SoundCue コマンドを拡張し、SoundClass（ボリューム階層）・SoundAttenuation（空間設定）・SoundMix（EQ・ピッチ変調）の操作をカバー。
 
 ### Chaos Destruction（Geometry Collection）
 Geometry Collection アセットの編集 — メッシュのフラクチャ、ダメージ閾値設定、クラスタ構造の検査。
@@ -87,24 +56,9 @@ Groom Asset の設定 — シミュレーションパラメータ・LOD 設定�
 - **ControlRig Dynamics**（UE 5.8）: ControlRig グラフ内の簡易物理シミュレーションノード
 - **AnimationLayering / UAF**（UE 5.8）: ボーンマスクレイヤーと Unified Animation Framework ノード
 - **MeshPartition（MegaMesh）**（UE 5.8）: 大規模メッシュの空間分割と非破壊モディファイア
-- **ChaosCloth Asset**（UE 5.8）: Weight Map、Sim / Render Mesh、Cloth シミュレーション設定
-- **PCG 拡張コマンド**（UE 5.8）: 空間オペレーション・Async 実行・属性プロパティセレクタを含む約 30 件の追加コマンド — 既存 PCG ネイティブコマンドを補完し、**UE 5.8 以降限定**で利用可能
 - **Enhanced Input デバッグ**（UE 5.8）: 現在の Enhanced Input / CommonUI 入力状態のダンプと Input Action の仮想発火 — `PlayerInputDebugger` プラグインを活用
 - **CustomizableSequencerTracks**: Blueprint 定義のカスタム Sequencer トラック型対応
 - **DataPrep Asset**: DataPrep インポートパイプライン Asset の実行と検査
-
----
-
-## Editor — 観察・状態取得
-
-### ビューポート座標変換
-エディタビューポートでのワールド座標 ↔ スクリーン座標の相互変換。アクターの画面上位置の確認、UI 自動化での座標指定、空間クエリとの組み合わせ計算など、複数のワークフローで横断的に利用できます。
-
-### 可視アクター一覧取得
-エディタビューポートのフラスタムに入っているアクターの一覧を取得。コマンドの適用対象を「今カメラに映っているもの」に絞りたいワークフロー向け。
-
-### ログ Verbosity 制御
-カテゴリ別のログ出力レベルの取得・設定。デバッグセッション中に特定モジュールのログを詳細化してから自動的に元に戻すワークフローを AI から一括制御。
 
 ---
 
@@ -148,9 +102,6 @@ UE Trace セッションのチャネル指定での開始 / 停止、フレー�
 
 ### SaveGame 操作
 `USaveGame` スロットの一覧 / ロード / 保存 / 削除 — テストを特定セーブ状態から開始したり、既知のベースラインへリセットしたりが可能に。
-
-### Semantic Asset Search（凍結中）
-AI による Content Browser のセマンティック検索。内部で UE 5.8 の `SemanticSearch` プラグインを使うため、実装後も **UE 5.8 以降限定** の機能となります。さらに UE 5.8 時点では `SemanticSearch` の埋め込みパイプラインが Epic 社内環境でしか動作しない状態のため、公開ビルドでの動作が確認できた時点で再評価します。それまで本項目は **凍結中** です。
 
 ---
 

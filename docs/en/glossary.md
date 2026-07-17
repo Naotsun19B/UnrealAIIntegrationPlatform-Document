@@ -57,6 +57,9 @@ A namespace that groups related commands (e.g., `UAIP.Editor.Observation`, `Tool
 ### SafetyPolicy
 A process-wide configuration (in `Config/DefaultUAIP.ini` under `[UAIP.SafetyPolicy]`) that gates entire categories of operations regardless of capability set — read-only mode, log dump permission, keyboard input permission, scenario opt-in, etc. The AI cannot lift SafetyPolicy at runtime; only the operator can change it (and an editor restart is usually required). See [Safety & Capabilities](safety.md).
 
+### Sandbox / Sandbox Session
+A UAIP workflow (Pro only) where AI-proposed asset edits are staged in a **FileSandbox** session and written to disk only after a human commits them — or discarded on revert — without relying on Undo. Driven by `UAIP.Editor.Sandbox.*` commands (`BeginSandboxSession`, `GetSandboxChanges`, `CommitSandboxChanges`, `RevertSandboxChanges`, …) and gated by the `SandboxSessionControl` / `SandboxPersist` / `SandboxRevert` capabilities. Requires the UE 5.8 `FileSandbox` plugin. See [Changelog](changelog.md).
+
 ### Scenario
 An ordered list of commands submitted as one request via `uaip_run_scenario`, `POST /uaip/scenarios`, the WebSocket `ScenarioRequest` frame, or the `-uaip-scenario-file=…` CLI flag. Supports per-step `AbortOnFailure`, `RetryCount`, `TimeoutSeconds`, and template expressions (`${StepName.Data.x}`) to pipe earlier-step output into later steps. See [Scenario Execution](scenario.md).
 
