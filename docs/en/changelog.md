@@ -22,7 +22,7 @@ A version number is `MAJOR.MINOR.PATCH`.
 
 ### Current phase: 1.x.y (Fab Pro released)
 
-The current version is **1.0.0**, the first entry of the `1.x.y` series. UAIP is **now released on Fab as the Pro product** ([listing](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)).
+The current version is **1.0.0**, the first entry of the `1.x.y` series. UAIP is **now released on Fab as the Pro product** ([listing](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)). The next release, **1.1.0**, is being prepared on this `next` branch pending Fab review (see the 1.1.0 entry below).
 
 - Standard SemVer rules now apply strictly: breaking changes require a MAJOR bump (e.g. `2.0.0`)
 - New commands / new capabilities ship as MINOR (e.g. `1.0.x` → `1.1.0`)
@@ -56,9 +56,14 @@ The free demo (GitHub Releases) and Pro (Fab) **always share the same version nu
 
 > **You are viewing the `next` branch.** This page tracks development-in-progress content ahead of the next Fab release. For the last released version, see the [`master` branch changelog](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/master/docs/en/changelog.md).
 
-### Unreleased
+### UAIP Plugin 1.1.0 — unreleased (pending Fab review)
 
-Changes that have shipped in the plugin repository but are not yet released on Fab.
+The next release. All changes below have shipped in the plugin repository (`.uplugin` `VersionName` is `1.1.0`) and are staged on this `next` branch pending Fab review. The release date is finalized when `next` is merged to `master` on Fab approval.
+
+> **Migration notes.** 1.1.0 is a backward-compatible MINOR release, with three narrow exceptions that may affect callers pattern-matching on specific behavior:
+> - **Niagara `AddSetParameterEntry` / `RemoveSetParameterEntry` now require a `script_name` parameter** — calls without it return `InvalidParams`. See the *Changed* entry below.
+> - **PIE/SIE rejection ErrorCode changed from `ExecutionFailed` to `NotAllowed`** for `SetActorTransform`, `PlaceActorInLevel`, `DeleteActorFromLevel`, and the WorldPartition / DataLayer / HLOD mutation commands. Callers that pattern-matched `ExecutionFailed` for the PIE-time case must switch to `NotAllowed`.
+> - **Physics read-only commands no longer reject during PIE/Simulate** — the 10 read-only `UAIP.Editor.Physics` commands now return `Success: true` with a `PieInProgress: true` field instead of `NotAllowed`. Callers that relied on `NotAllowed` in that case must update.
 
 #### UAIP Plugin
 
