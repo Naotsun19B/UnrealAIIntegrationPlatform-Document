@@ -22,7 +22,7 @@ UAIP は [Semantic Versioning 2.0.0](https://semver.org/lang/ja/) に従って�
 
 ### 現在のフェーズ：1.x.y（Fab 製品版公開済み）
 
-現行バージョンは **1.0.0**（1.x.y 系列の初回エントリ）で、UAIP は **Fab で製品版として公開済み**（[リスティング](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)）です。次期リリースである **1.1.0** は、この `next` ブランチ上で Fab 審査待ちの状態で準備中です（下記の 1.1.0 エントリを参照）。
+現行バージョンは **1.1.0** で、UAIP は **Fab で製品版として公開済み**（[リスティング](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)）です。1.x.y 系列の初回エントリである 1.0.0 からの変更点は、下記のリリース一覧を参照してください。
 
 - 以降は通常の SemVer ルールが厳格に適用されます。破壊的変更には MAJOR バンプ（`2.0.0` など）が必要
 - 新コマンド・新 Capability 追加は MINOR バンプ（例: `1.0.x` → `1.1.0`）
@@ -56,9 +56,13 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 > **現在 `next` ブランチを閲覧中です。** このページは次回 Fab リリースに向けて開発中のコンテンツを追跡しています。最終リリース版は [`master` ブランチの更新履歴](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/master/docs/ja/changelog.md) を参照してください。
 
-### UAIP Plugin 1.1.0 — 未リリース（Fab 審査待ち）
+### UAIP Plugin 1.1.0 — 2026-07-24
 
-次期リリースです。以下の変更はすべてプラグインリポジトリに取り込み済みで（`.uplugin` の `VersionName` は `1.1.0`）、この `next` ブランチ上で Fab 審査待ちの状態でステージされています。リリース日は Fab 承認後に `next` を `master` へマージする時点で確定します。
+**UAIP 1.1.0 を Fab で公開しました。** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
+
+[![YouTube でアップデートトレーラーを見る](https://markdown-videos-api.jorgenkh.no/youtube/0Z2MKvMQ0g8)](https://youtu.be/0Z2MKvMQ0g8)
+
+後方互換な MINOR リリースです。以下の変更はすべてプラグインリポジトリに取り込み済みで（`.uplugin` の `VersionName` は `1.1.0`）、Fab 審査を通過してリリースされました。
 
 > **移行に関する注意（Migration notes）。** 1.1.0 は後方互換な MINOR リリースですが、特定の挙動にパターンマッチしている呼び出し側に影響しうる 3 つの限定的な例外があります：
 > - **Niagara `AddSetParameterEntry` / `RemoveSetParameterEntry` に `script_name` が必須化** — 指定なしの呼び出しは `InvalidParams` を返します。下記「変更」を参照。
