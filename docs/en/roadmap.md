@@ -4,6 +4,8 @@
 
 Items below are planned or under investigation. No specific release dates are committed and the list is subject to change based on user demand and API stability in upstream UE versions.
 
+> **Shipped in 1.1.0.** Several features previously listed here — Foliage, World Partition / DataLayer / HLOD, MVVM, Sound architecture, Config Settings, Data Registry, Plugin management, extended PCG, Chaos Cloth, asset audit / Asset Manager / redirector fixup, console variable management, viewport coordinate conversion, visible actor query, and log verbosity control (plus Semantic Search, partially — its embedding pipeline is still Epic-internal) — have shipped and moved to the [Changelog](changelog.md). They are no longer listed below.
+
 ---
 
 ## Engine Version Support
@@ -18,29 +20,8 @@ UAIP currently supports Windows (Win64) only. Linux and macOS support is under e
 
 ## Editor — Asset & Project Management
 
-### Sandbox feature
-AI-proposed edits are staged in a sandbox and require human approval before being written to disk. All changes can be inspected and selectively accepted or rejected without relying on Undo. Implemented on top of UE 5.8's `FileSandboxCore`, so this feature will be **UE 5.8+ only** even after it ships.
-
-### Config Settings Management
-Read and write Project Settings and Editor Preferences programmatically — list containers and categories, inspect section schemas, get/set property values, save changes, and reset sections to defaults. Requires a `ConfigSettingsEdit` capability gate on writes.
-
-### Data Registry
-Enumerate registered Data Registries, inspect their schemas, list data sources, and query items — complementing the existing DataTable commands for projects that use UE's Data Registry system.
-
-### Plugin Management
-List discovered and enabled plugins, inspect plugin descriptors and dependency graphs, and enable or disable plugins programmatically — for AI-driven project setup and dependency management workflows. Requires a `PluginManagementEdit` capability gate on writes.
-
-### Asset Audit & Dependency Analysis
-Get asset reference graphs, detect unused assets, identify circular references, and generate size maps across the entire content tree.
-
 ### Asset Validation
 Run registered `UEditorValidatorSubsystem` validators on individual assets or folders. Results are returned as structured JSON artifacts.
-
-### Asset Manager Configuration
-Manage PrimaryAssetType definitions, asset bundles, and asset tags programmatically. Designed for DLC, content-bundle, and cooking-rule workflows.
-
-### Asset Redirector Fixup
-Bulk-fix asset redirectors created by renames or moves — list all redirectors, fix them in selected folders, and clean up references in a single AI-driven refactoring flow.
 
 ### Localization Pipeline
 Automate the full localization workflow: gather source text, compile localization data, manage cultures, add/edit/remove string table entries, and switch editor display language for verification.
@@ -55,26 +36,14 @@ Cook content, package projects, and run Project Launcher profiles through AI com
 ### MetaHuman Editing
 Edit MetaHuman body, face, skin, eye, and hair parameters through `MetaHumanCharacterEditorSubsystem` — for projects using the MetaHuman Character plugin. Long-running operations include progress reporting. Requires the `MetaHuman Character` plugin and **UE 5.8 or newer**.
 
-### World Partition / DataLayer
-Manage DataLayers on World Partition maps — create, delete, set initial state, and bind actors. Includes HLOD layer assignment and external actor listing.
-
-### Foliage Editing
-List foliage types in a level, add instances by coordinates, bulk-remove instances by area, and tune FoliageType settings (density, scale, culling).
-
 ### Material Validation & Templates
 Validate materials against project rules, find similar materials to prevent duplication, and create materials from workflow templates.
-
-### MVVM Support
-Create ViewModel classes and add, remove, and configure View Bindings from AI agents — for projects using the `ModelViewViewModel` plugin.
 
 ### Mixed Control Rig Tracks
 Add Mixed Control Rig tracks to Level Sequences (the AnimMixer pieces are already shipped; this covers the remaining `MovieSceneMixedControlRig` native commands).
 
 ### Motion Matching (PoseSearch)
 Manage PoseSearchDatabase contents, schema settings, and normalization parameters for projects adopting UE's Motion Matching system.
-
-### Sound Architecture (SoundClass / Attenuation / Mix)
-Extend the existing SoundCue commands to cover SoundClass volume hierarchy, SoundAttenuation spatial settings, and SoundMix EQ / pitch modulation.
 
 ### Chaos Destruction (Geometry Collection)
 Edit Geometry Collection assets — fracture meshes, configure damage thresholds, and inspect cluster structures.
@@ -87,24 +56,9 @@ Configure Groom Assets — simulation parameters, LOD settings, and SkeletalMesh
 - **ControlRig Dynamics** (UE 5.8): simple physics simulation nodes inside ControlRig graphs
 - **AnimationLayering / UAF** (UE 5.8): bone-mask layers and Unified Animation Framework node operations
 - **MeshPartition (MegaMesh)** (UE 5.8): spatial partition and non-destructive modifiers on large meshes
-- **ChaosCloth Asset** (UE 5.8): weight map, Sim/Render mesh, and cloth simulation config
-- **Extended PCG Commands** (UE 5.8): approximately 30 additional commands covering spatial operations, async execution, and attribute property selectors — complements the existing PCG native commands and will be **UE 5.8+ only**
 - **Enhanced Input Debugging** (UE 5.8): dump the current Enhanced Input / CommonUI input state and fire Input Actions programmatically — powered by the `PlayerInputDebugger` plugin
 - **CustomizableSequencerTracks**: Blueprint-defined custom Sequencer track type support
 - **DataPrep Asset**: execute and inspect DataPrep import-pipeline assets
-
----
-
-## Editor — Observation & State Queries
-
-### Viewport Coordinate Conversion
-Convert between world-space and screen-space coordinates for the editor viewport. Useful for confirming an actor's on-screen position, supplying coordinates in UI automation workflows, and combining spatial queries with screen-space logic.
-
-### Visible Actor Query
-List the actors inside the editor viewport frustum. Designed for workflows that need to scope commands to what the camera currently sees, or compare visible actors against the full scene contents.
-
-### Log Verbosity Control
-Get and set per-category log verbosity levels at runtime. Enables AI-driven debug sessions that temporarily increase verbosity for a specific module and automatically restore defaults on completion.
 
 ---
 
@@ -148,9 +102,6 @@ Listen to and inject `UGameplayMessageSubsystem` messages for event-driven archi
 
 ### SaveGame Operations
 List, load, save, and delete `USaveGame` slots — enables tests to start from a specific save state and reset to a known baseline.
-
-### Semantic Asset Search (Frozen)
-AI-powered semantic search across the Content Browser. Built on UE 5.8's `SemanticSearch` plugin, so this feature will be **UE 5.8+ only** even after it ships. Additionally, in UE 5.8 the `SemanticSearch` embedding pipeline only runs inside Epic's internal environment, so this item is **frozen** until the pipeline becomes available in the public build.
 
 ---
 

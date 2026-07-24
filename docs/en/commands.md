@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 540+ **UAIP commands** (provided directly by the plugin itself) and 190+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 730+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 666+ **UAIP commands** (provided directly by the plugin itself) and 267+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 933+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -35,12 +35,17 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 7 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | partial (13/18) |
-| Editor Observation | `UAIP.Editor.Observation` | 13 | — | ✅ (1 excluded) |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | partial (1/3) |
+| Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | partial (5/9) |
+| Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
+| Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | partial (5/8) |
+| Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 10 | — | — |
-| Editor Level | `UAIP.Editor.Level` | 13 | — | — |
-| Editor Property | `UAIP.Editor.Property` | 12 | — | — |
+| Editor Assets | `UAIP.Editor.Assets` | 42 | 6 | partial (25/42) |
+| Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
+| Editor Level | `UAIP.Editor.Level` | 16 | 8 | partial (7/16) |
+| Editor Property | `UAIP.Editor.Property` | 12 | — | partial (6/12) |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
@@ -48,25 +53,36 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 3 | — | — |
 | Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 36 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
-| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 7 | — | — |
+| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | — | — |
+| Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 7 | — | — |
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
+| Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
+| Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 12 | — | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 9 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 7 | — | — |
 | Editor Sequencer | `UAIP.Editor.Sequencer` | 92 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 9 | — | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG 🧩 | `UAIP.Editor.PCG` | 13 | — | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 31 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 6 | — | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 12 | — | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 44 | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 11 | 11 | — |
 | Editor Python Extension 🧩 | `UAIP.Editor.PythonExtension` | 2 | — | — |
-| Runtime PIE | `UAIP.Runtime.PIE` | 12 | — | partial (5/12) |
+| Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
+| Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
+| Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
+| Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
+| Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | partial (2/3) |
+| Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
+| Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
+| Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | partial (1/2) |
+| Runtime PIE | `UAIP.Runtime.PIE` | 11 ⁺² | 3 | partial (6/11) |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
@@ -88,7 +104,7 @@ System-level commands for discovery, health, and session management.
 | 🆓 `ListCommands` | Filtered command catalog (filters: `GroupFilter`, `KeywordFilter`, `IncludeUnavailable`) |
 | 🆓 `DescribeCommand` | Full metadata for a single command (schema, required capabilities, availability) |
 | 🆓 `ListCommandGroups` | All group paths with intermediate path completion |
-| 🆓 `ListPlugins` | List installed plugins and their enabled state (JSON) |
+| 🆓 `ListPlugins` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.Plugin.ListPlugins` instead. List installed plugins and their enabled state (JSON) |
 
 ---
 
@@ -116,6 +132,108 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 | `CompileLiveCoding` | Trigger Live Coding recompilation |
 | `GetLiveCodingStatus` | Get the current Live Coding status |
 | `EnableLiveCodingForSession` | Enable Live Coding for the current session |
+---
+
+## UAIP.Editor.Engine.Log
+
+Log verbosity management and log entry retrieval.
+
+| Command | Description |
+|---|---|
+| `GetLogVerbosity` | Get the current verbosity level of a log category |
+| `SetLogVerbosity` | Set the verbosity level of a log category (requires `LogVerbosityEdit`) |
+| 🆓 `GetLogEntries` | Retrieve recent log entries from the editor output log (supports pattern filtering; no capability required) |
+
+### Toolset bridges — Logs (4) 🧩
+
+Bridge commands via the `LogsToolset` (UE 5.8+, EditorToolset plugin). Provider: `Toolset.Editor.Toolset.Logs.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.Toolset.Logs.GetLogEntries` | Retrieve recent log entries from the editor output log |
+| `Toolset.Editor.Toolset.Logs.GetLogCategories` | List registered log category names |
+| `Toolset.Editor.Toolset.Logs.GetVerbosity` | Get the verbosity level for a log category |
+| `Toolset.Editor.Toolset.Logs.SetVerbosity` | Set the verbosity level for a log category (requires `LogVerbosityEdit`) |
+
+### Toolset bridges — CVar (1) 🧩
+
+Bridge commands via the EditorToolset plugin (UE 5.8+). Provider: `Toolset.Editor.EngineManagement.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.Toolset.EngineManagement.SearchCVars` | Search CVars by name pattern; sensitive patterns are excluded (requires `CVarInspect`) |
+
+---
+
+## UAIP.Editor.Engine.Plugin
+
+Plugin management for the editor — read / write plugin state, descriptor, and dependencies. Requires UE 5.8+ with the `PluginUtils` plugin enabled. Write commands (`SetPluginEnabled`, `UpdatePluginDescriptor`, `AddPluginDependency`, `RemovePluginDependency`) require a restart to take effect.
+
+| Command | Description |
+|---|---|
+| 🆓 `GetPluginDescriptor` | Read the full `.uplugin` descriptor JSON for a plugin |
+| 🆓 `GetPluginDependents` | List plugins that depend on a given plugin (budget-capped scan; `Truncated: true` on limit) |
+| 🆓 `GetPluginTemplateDescriptions` | List available plugin scaffold templates |
+| 🆓 `IsPluginCreationAllowed` | Check whether new plugin creation is allowed in the current editor state |
+| 🆓 `IsPluginModificationAllowed` | Check whether a specific plugin is modifiable (not Engine/Marketplace/GFP) |
+| `SetPluginEnabled` | Enable or disable a plugin (`PluginEnableToggle` required; always returns `RestartRequired: true`) |
+| `UpdatePluginDescriptor` | Overwrite selected fields of a plugin's `.uplugin` file (`PluginDescriptorEdit` required; supports `DryRun`) |
+| `AddPluginDependency` | Add a dependency entry to a plugin's `.uplugin` (`PluginDependencyEdit` required) |
+| `RemovePluginDependency` | Remove a dependency entry from a plugin's `.uplugin` (`PluginDependencyEdit` required) |
+
+### Toolset bridges — Plugin (15) 🧩
+
+Bridge commands via the `PluginToolset` (UE 5.8+). Provider: `Toolset.Plugin.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Plugin.ListEnabledPlugins` | List currently enabled plugins |
+| `Toolset.Plugin.ListDiscoveredPlugins` | List all discovered plugins (enabled + disabled) |
+| `Toolset.Plugin.GetPluginInfo` | Get plugin details by name |
+| `Toolset.Plugin.IsEnabled` | Check whether a plugin is currently enabled |
+| `Toolset.Plugin.GetPluginDependencies` | Get the direct dependencies declared by a plugin |
+| `Toolset.Plugin.GetPluginForAsset` | Resolve the owning plugin for a given asset path |
+| `Toolset.Plugin.GetPluginDescriptor` | Read the `.uplugin` descriptor (Toolset variant) |
+| `Toolset.Plugin.GetPluginDependents` | List plugins that depend on a given plugin |
+| `Toolset.Plugin.GetPluginTemplateDescriptions` | List scaffold templates |
+| `Toolset.Plugin.IsPluginCreationAllowed` | Check creation permission |
+| `Toolset.Plugin.IsPluginModificationAllowed` | Check modification permission |
+| `Toolset.Plugin.SetPluginEnabled` | Enable / disable a plugin (requires `PluginEnableToggle`) |
+| `Toolset.Plugin.UpdatePluginDescriptor` | Update descriptor fields (requires `PluginDescriptorEdit`) |
+| `Toolset.Plugin.AddPluginDependency` | Add a dependency (requires `PluginDependencyEdit`) |
+| `Toolset.Plugin.RemovePluginDependency` | Remove a dependency (requires `PluginDependencyEdit`) |
+
+---
+
+## UAIP.Editor.Engine.ConfigSettings
+
+Project Settings and Editor Preferences management via `ISettingsModule`. Commands use a three-level path `ContainerName / CategoryName / SectionName` to address a settings section. Write operations are restricted to files under the project `Config/` directory — engine ini files are rejected with `PolicyViolation`.
+
+| Command | Description |
+|---|---|
+| 🆓 `ListSettingsContainers` | List all registered settings containers (e.g. `Project`, `Editor`). No capability required |
+| 🆓 `ListSettingsCategories` | List all categories in a settings container. No capability required |
+| 🆓 `ListSettingsSections` | List all sections in a settings category. No capability required |
+| 🆓 `GetSettingsSchema` | Return a JSON artifact with editable property names, types, descriptions, defaults, and edit conditions for a section (requires `EditorInspect`) |
+| 🆓 `GetSettingsValues` | Return a JSON artifact with current property values for a section. Secret fields (name matches a secret pattern, has secret metadata, or is a file path type) are masked with `***` (requires `EditorInspect`) |
+| `SetSettingsValues` | Merge a `Properties` map into the settings object via `ImportText`. Supports `DryRun` (validates without applying). Requires `ConfigSettingsEdit`. Blocked during PIE |
+| `SaveSettings` | Persist in-memory settings to the section's ini file via `ISettingsSection::Save()`. Requires `ConfigSettingsSave`. Blocked during PIE and when `bDisableSave` is set |
+| `ResetSettingsToDefaults` | Revert the settings object to class defaults and save. Requires `ConfigSettingsReset`. Blocked during PIE |
+
+### Toolset bridges — ConfigSettings (8) 🧩
+
+Bridge commands via the `ConfigSettingsToolset` plugin (UE 5.8+). Provider: `Toolset.ConfigSettings.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.ConfigSettings.ListContainers` | List all registered settings containers |
+| `Toolset.ConfigSettings.ListCategories` | List all categories within a settings container |
+| `Toolset.ConfigSettings.ListSections` | List all sections within a settings category |
+| `Toolset.ConfigSettings.GetSectionSchema` | Get the property schema for a settings section |
+| `Toolset.ConfigSettings.GetSectionPropertyValues` | Get current property values for a settings section |
+| `Toolset.ConfigSettings.SetSectionProperties` | Set property values on a settings section and persist them (requires `ConfigSettingsEdit`) |
+| `Toolset.ConfigSettings.SaveSection` | Persist the current in-memory settings for a section to its ini file (requires `ConfigSettingsSave`) |
+| `Toolset.ConfigSettings.ResetSectionToDefaults` | Reset all property values of a settings section to their compiled defaults (requires `ConfigSettingsReset`) |
 
 ---
 
@@ -137,6 +255,8 @@ Capture screenshots and dump editor state — all read-only.
 | 🆓 `InspectMenu` | Top-bar menu structure under a path (labels, enabled, checked) |
 | 🆓 `InspectContextMenu` | Context menu items for a target (without executing them) |
 | 🆓 `ObserveWidget` | Time-series sampling of widget Visibility / Enabled / Hovered / Focused state |
+| 🆓 `GetLogCategories` | List all registered engine log category names (optional substring filter) |
+| `CaptureViewportImageAnnotated` | Viewport screenshot with world-coordinate labels drawn on it (requires `ViewportAnnotationCapture`) |
 
 ---
 
@@ -186,14 +306,82 @@ Open, search, create, duplicate, rename, delete assets and folders.
 |---|---|
 | `OpenAsset` | Open the specified asset in its editor |
 | `CloseAsset` | Close all editors for the specified asset |
-| `SearchAssets` | Search assets by path / class / tag |
+| 🆓 `SearchAssets` | Search assets by path / class / tag |
 | `CreateAsset` | Create a new asset of the specified class |
+| 🆓 `ListCreatableAssetClasses` | Return every UClass that `CreateAsset` can target, with factory count and default factory (heavy call) |
+| 🆓 `ListFactoriesForClass` | Return the factory candidates for a `ClassName`, each with its `FactoryParams` schema |
 | `DuplicateAsset` | Duplicate an existing asset |
 | `RenameAsset` | Rename / move an asset to another path |
 | `DeleteAsset` | Delete an asset |
 | `CreateFolder` | Create a new folder in the Content Browser |
 | `DeleteFolder` | Delete an empty folder (returns `NotEmpty` if not empty) |
 | `ForceDeleteFolder` | Delete a folder and its assets (max 50 items, no external-reference check) |
+| 🆓 `GetSelectedAssets` | Return the assets currently selected in the Content Browser |
+| `SelectAssets` | Select the specified assets in the Content Browser (requires `ContentBrowserNavigate`) |
+| 🆓 `GetContentBrowserPath` | Return the current folder path shown in the Content Browser |
+| `SetContentBrowserPath` | Navigate the Content Browser to a specified folder (requires `ContentBrowserNavigate`) |
+| 🆓 `GetOpenAssets` | Return the list of assets currently open in an asset editor |
+| 🆓 `ListAssetRedirectors` | List asset redirectors under a folder (`/Game` project-wide by default) with source/destination paths, without loading any assets |
+| `FixAssetRedirectors` (requires `RedirectorFixup`) | Fix up and delete all resolvable asset redirectors under `/Game` (project-wide, recursive, always) |
+| 🆓 `GetAssetReferences` | Traverse the asset reference graph (referencers, dependencies, or both) rooted at an asset up to a given depth |
+| 🆓 `GetAssetSizeMap` | Aggregate per-asset disk (and optionally resident memory) size under a folder, sorted descending |
+| 🆓 `GetAssetSizeMapByClass` | Aggregate disk size per asset class under a folder, sorted descending |
+| 🆓 `FindUnreferencedAssets` | Find assets under a folder with no user (non-Engine/Script) referencers (hard-reference heuristic) |
+| 🆓 `FindCircularReferences` | Find circular dependency chains among assets under a folder |
+| 🆓 `FindBrokenReferences` | Find dependencies pointing at packages no longer registered in the asset registry |
+| 🆓 `GetAssetDependencyPath` | Find the shortest dependency or referencer path between two assets |
+| 🆓 `RunAssetAudit` | Run a composite audit (unreferenced assets, circular references, broken references, largest assets) under a folder |
+| 🆓 `ListPrimaryAssetTypes` | List all registered `PrimaryAssetType`s (`UAssetManager`) with class/directory/asset-count summary |
+| 🆓 `GetPrimaryAssetTypeInfo` | Get the full detail (directories, specific assets, default rules) of a single `PrimaryAssetType` |
+| 🆓 `ListPrimaryAssets` | List the `PrimaryAssetId`s and assets belonging to a `PrimaryAssetType` |
+| 🆓 `GetAssetBundle` | Get the `AssetBundle` entries of a `PrimaryAssetId` (empty array when none are defined) |
+| 🆓 `GetAssetTags` | Get the Asset Registry tag map of an asset |
+| 🆓 `GetPrimaryAssetIdForPath` | Resolve an asset path to its `PrimaryAssetId` (`Found:false`, not an error, when unmanaged) |
+| 🆓 `GetPrimaryAssetRules` | Get the merged (type default + per-asset override) `PrimaryAssetRules` of a `PrimaryAssetId` |
+| 🆓 `GetManagedPackageList` | Get the packages managed by a `PrimaryAssetId` |
+| 🆓 `GetPrimaryAssetLoadList` | Resolve the object paths that would actually load for a `PrimaryAssetId` under given bundle conditions |
+| 🆓 `GetLoadedPrimaryAssets` | Get the currently loaded / pending `PrimaryAssetId`s and their loaded bundle state |
+| `AddPrimaryAssetType` (requires `PrimaryAssetTypeAdd`) | Add a `PrimaryAssetType` to `PrimaryAssetTypesToScan` (persisted to `DefaultGame.ini`) and scan it immediately |
+| `RemovePrimaryAssetType` (requires `PrimaryAssetTypeRemove`) | Remove a `PrimaryAssetType` from `PrimaryAssetTypesToScan` (persisted); rejects if assets exist unless `Force` |
+| `SetPrimaryAssetRules` (requires `PrimaryAssetRulesOverride`) | Temporarily override a `PrimaryAssetId`'s rules in memory only (not persisted) |
+| `LoadPrimaryAsset` (requires `PrimaryAssetLoad`) | Explicitly load `PrimaryAsset`s into memory (non-blocking, allowed during PIE) |
+| `UnloadPrimaryAsset` (requires `PrimaryAssetUnload`) | Explicitly unload `PrimaryAsset`s from memory (rejected during PIE) |
+
+### Toolset bridges — Assets (6) 🧩
+
+Bridge commands via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Provider: `Toolset.Editor.Toolset.Assets.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.Toolset.Assets.GetSelectedAssets` | Get currently selected assets in the Content Browser |
+| `Toolset.Editor.Toolset.Assets.SelectAssets` | Select assets in the Content Browser (requires `ContentBrowserNavigate`) |
+| `Toolset.Editor.Toolset.Assets.GetContentBrowserPath` | Get the current Content Browser folder path |
+| `Toolset.Editor.Toolset.Assets.SetContentBrowserPath` | Navigate the Content Browser to a folder (requires `ContentBrowserNavigate`) |
+| `Toolset.Editor.Toolset.Assets.OpenEditorForAsset` | Open an asset in its editor (requires `AssetWindowControl`) |
+| `Toolset.Editor.Toolset.Assets.GetOpenAssets` | List assets currently open in an asset editor |
+
+---
+
+## UAIP.Editor.SemanticSearch 🧩
+
+Semantic asset search and index management. Requires the `SemanticSearch` plugin (UE 5.8+, Experimental) and an OpenAI API key configured in Editor Preferences → Plugins → Semantic Search.
+
+| Command | Description |
+|---|---|
+| `SearchAssetsSemantic` | Search project assets by natural-language query (hybrid BM25+vector, up to 500 results) |
+| `FindSimilarAssets` | Find assets similar to a reference asset via vector similarity |
+| `GetIndexStats` | Return current index statistics (asset count, last-built timestamp) |
+| `StartIndexing` | Trigger a full semantic index rebuild (long-running; requires `SemanticSearchEdit`) |
+| `CancelIndexing` | Cancel an in-progress index build (requires `SemanticSearchEdit`) |
+
+### Toolset bridges (2) 🧩
+
+Bridge commands via the `SemanticSearchToolset` plugin (UE 5.8+). Provider: `Toolset.Editor.SemanticSearch.*`. These commands mirror `SearchAssetsSemantic` and `FindSimilarAssets` above and are provided exclusively as a Toolset bridge (no UAIP native equivalent for these two Toolset-side commands; see ADR `2026-06-25-SemanticSearchToolset-BridgeOnly-Exception.md`).
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.SemanticSearch.Search` | Hybrid BM25+vector search via SemanticSearchToolset |
+| `Toolset.Editor.SemanticSearch.FindSimilar` | Vector similarity search via SemanticSearchToolset |
 
 ---
 
@@ -203,39 +391,57 @@ Editor-side actor placement, transforms, and level loading.
 
 | Command | Description |
 |---|---|
-| `ListLevelActors` | List all actors in the open level |
+| 🆓 `ListLevelActors` | List all actors in the open level |
 | `PlaceActorInLevel` | Place an actor in the editor level |
 | `DeleteActorFromLevel` | Remove an actor from the editor level |
-| `GetActorTransform` | Get the transform of an editor actor |
+| 🆓 `GetActorTransform` | Get the transform of an editor actor |
 | `SetActorTransform` | Set the transform of an editor actor |
 | `OpenLevel` | Open a level in the editor viewport (File > Open Level) |
 | `NewLevel` | Create a new level from a template (EmptyLevel / EmptyOpenWorld / Basic / OpenWorld) |
 | `SelectActors` | Select the specified actors in the editor level (replace or add to current selection) |
-| `ListSelectedActors` | Return a list of actors currently selected in the editor |
+| 🆓 `ListSelectedActors` | Return a list of actors currently selected in the editor |
 | `ClearSelection` | Clear the current selection in the editor level |
 | `FocusOnActors` | Focus the viewport camera on the specified actors (omit to use the current selection) |
-| `GetCameraTransform` | Get the camera location and rotation of the active level editor viewport |
+| 🆓 `GetCameraTransform` | Get the camera location and rotation of the active level editor viewport |
 | `SetCameraTransform` | Set the camera location and rotation of the active level editor viewport |
+| 🆓 `GetVisibleActors` | Return actors currently visible in the active editor viewport (frustum culling) |
+| 🆓 `ProjectWorldToScreen` | Project a world-space position to screen coordinates |
+| 🆓 `ProjectScreenToWorld` | Cast a ray from screen coordinates into the world (ECC_Visibility line trace) |
+
+### Toolset bridges — Level (8) 🧩
+
+Bridge commands via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Provider: `Toolset.Editor.Toolset.Level.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.Toolset.Level.GetSelectedActors` | Return actors currently selected in the level editor viewport |
+| `Toolset.Editor.Toolset.Level.SelectActors` | Select the specified actors in the level editor (requires `EditorActorEdit`) |
+| `Toolset.Editor.Toolset.Level.GetCameraTransform` | Get the active viewport camera transform |
+| `Toolset.Editor.Toolset.Level.SetCameraTransform` | Set the active viewport camera transform (requires `EditorViewportControl`) |
+| `Toolset.Editor.Toolset.Level.FocusOnActors` | Focus the viewport on the specified actors (requires `EditorViewportControl`) |
+| `Toolset.Editor.Toolset.Level.GetVisibleActors` | List actors visible in the active viewport |
+| `Toolset.Editor.Toolset.Level.WorldPosToScreenCoords` | Project a world position to screen space |
+| `Toolset.Editor.Toolset.Level.ScreenCoordsToWorld` | Project screen coordinates to world space (requires `EditorInspect`) |
 
 ---
 
 ## UAIP.Editor.Property
 
-Read and write properties on actors, assets, Blueprint defaults, DataTable rows, World / Project settings.
+Read and write properties on actors, assets, Blueprint defaults, DataTable rows, World / Project settings. `Get*` commands mask secret-looking property values (name matches a secret pattern, has secret metadata, or is a file path type) with `***`, including nested struct members.
 
 | Command | Description |
 |---|---|
-| `GetActorProperty` | Get a property value from an editor actor |
+| 🆓 `GetActorProperty` | Get a property value from an editor actor |
 | `SetActorProperty` | Set a property on an editor actor |
-| `GetWorldSetting` | Get a WorldSettings property |
+| 🆓 `GetWorldSetting` | Get a WorldSettings property |
 | `SetWorldSetting` | Set a WorldSettings property |
-| `GetAssetProperty` | Get a property from an asset (DataAsset etc.) |
+| 🆓 `GetAssetProperty` | Get a property from an asset (DataAsset etc.) |
 | `SetAssetProperty` | Set a property on an asset and call `MarkPackageDirty` |
-| `GetBlueprintDefault` | Get a property from a Blueprint CDO |
+| 🆓 `GetBlueprintDefault` | Get a property from a Blueprint CDO |
 | `SetBlueprintDefault` | Set a property on a Blueprint CDO |
-| `GetProjectSetting` | Get a property from a `UDeveloperSettings` CDO |
+| 🆓 `GetProjectSetting` | Get a property from a `UDeveloperSettings` CDO |
 | `SetProjectSetting` | Set a property on a `UDeveloperSettings` CDO and call `SaveConfig()` |
-| `GetDataTableRow` | Get a DataTable row property |
+| 🆓 `GetDataTableRow` | Get a DataTable row property |
 | `SetDataTableRow` | Set a DataTable row property |
 
 ---
@@ -368,7 +574,7 @@ GameFeature Plugin management. Requires `GameFeatures` + `GameFeaturesEditor` pl
 
 ## UAIP.Editor.Niagara 🧩
 
-Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **UE 5.8 or newer** — all commands in this section are unregistered on UE 5.7 (`CommandNotFound`).
+Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **UE 5.7 or newer**.
 
 ### Native (36)
 
@@ -412,9 +618,9 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 | `AddUserVariables` 🧩 | Add user variables to a system |
 | `RemoveUserVariables` 🧩 | Remove user variables |
 | `CompileNiagaraSystem` 🧩 | Compile the Niagara system |
-| `AddSetParametersModule` 🧩 | Add a Set Parameters module to a stack and register initial parameter entries. **UE 5.8 note:** the `default_value` field is currently ignored; entries are created with type defaults. |
-| `AddSetParameterEntry` 🧩 | Add a parameter entry to an existing Set Parameters module. **UE 5.8 note:** `default_value` is ignored. |
-| `RemoveSetParameterEntry` 🧩 | Remove a parameter entry from a Set Parameters module |
+| `AddSetParametersModule` 🧩 | Add a Set Parameters module to a stack and register initial parameter entries. The `default_value` field is applied for common types (float, int, bool, struct). |
+| `AddSetParameterEntry` 🧩 | Add a parameter entry to an existing Set Parameters module. Requires `script_name` (e.g. `Spawn`, `Update`). The `default_value` field is applied for common types (float, int, bool, struct). |
+| `RemoveSetParameterEntry` 🧩 | Remove a parameter entry from a Set Parameters module. Requires `script_name` (e.g. `Spawn`, `Update`). |
 
 #### Blueprint wrappers (2)
 
@@ -505,6 +711,42 @@ Dataflow graph editing. Requires `DataflowEditor` plugin.
 | `ConnectDataflowPins` 🧩 | Connect two pins |
 | `DisconnectDataflowPins` 🧩 | Disconnect a pin connection |
 | `ListDataflowVariables` 🧩 | List graph variables |
+| `GetDataflowNodeProperty` 🧩 | Read a node's `EditAnywhere` property value (primitives / enum / FName / FString / simple structs) |
+| `SetDataflowNodeProperty` 🧩 | Write a node's `EditAnywhere` property value. Domain-agnostic — used by Cloth Weight Map / simulation config nodes among others |
+
+---
+
+## UAIP.Editor.ChaosClothAsset 🧩
+
+Chaos Cloth Asset editing and `ChaosClothAssetToolset` bridge (UE 5.8, Experimental). Requires the `ChaosClothAsset` plugin family.
+
+| Command | Description |
+|---|---|
+| `CreateClothingAsset` | Create a Clothing Asset from a Skeletal Mesh |
+| `AssignClothingToSection` | Bind a Clothing Asset to a Skeletal Mesh LOD/section |
+| `RemoveClothingFromSection` | Unbind a Clothing Asset from a section (destructive, irreversible) |
+| `ListClothingAssets` | List Clothing Assets bound to a Skeletal Mesh |
+| `GetSectionClothing` | Get the Clothing Asset bound to a specific LOD/section |
+| `ConvertClothingAssetCommonToChaosClothAsset` | Convert a legacy `UClothingAssetCommon` to `UChaosClothAsset` (Experimental, LOD0 only) |
+| `GetClothAssetInfo` | Read LOD count, Sim/Render Mesh vertex counts, the referenced `UDataflow` asset path, and Weight Map attribute names |
+| `SetClothWeightMapVertexValues` | Directly set a Weight Map node's per-vertex weight array (destructive) |
+| `SetClothMeshImportSource` | Set the imported SkeletalMesh/StaticMesh reference on an Import Dataflow node (`SkeletalMeshImport`/`StaticMeshImport`). The node kind is auto-detected; overwriting an existing reference requires `AllowOverwrite` (destructive) |
+| `CreateLegacyClothingAsset` | Create a new legacy `UClothingAssetCommon` by extracting the simulation mesh from an existing SkeletalMesh render section |
+
+`GetClothAssetInfo` returns the Cloth Asset's `UDataflow` reference path — feed it to `UAIP.Editor.Dataflow.*` commands to edit Weight Map / simulation config node properties generically.
+
+### Toolset bridge
+
+Mirror of the 6 `ChaosClothAssetToolset` functions. Provider: `Toolset.Editor.ChaosClothAsset.*`. Available only on UE 5.8+ with `ChaosClothAssetToolset` + `ToolsetRegistry` enabled.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.ChaosClothAsset.CreateClothingAsset` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.Editor.ChaosClothAsset.AssignClothingToSection` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.Editor.ChaosClothAsset.RemoveClothingFromSection` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.Editor.ChaosClothAsset.ListClothingAssets` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.Editor.ChaosClothAsset.GetSectionClothing` | Passthrough to `ChaosClothAssetToolset` |
+| `Toolset.Editor.ChaosClothAsset.ConvertClothingAssetCommonToChaosClothAsset` | Passthrough to `ChaosClothAssetToolset` |
 
 ---
 
@@ -573,6 +815,108 @@ SoundCue graph editing.
 | `DisconnectSoundCuePins` | Disconnect a pin connection (PinIndex=-1 disconnects all) |
 | `SetSoundCueNodeProperty` | Set a SoundCue node property (Object / Class / Delegate denylist) |
 | `CompileSoundCue` | Rebuild the SoundNode tree from the graph |
+
+---
+
+## UAIP.Editor.SoundSettings
+
+SoundClass hierarchy, SoundAttenuation, and SoundMix asset property editing.
+
+| Command | Description |
+|---|---|
+| `GetSoundClassInfo` | Return SoundClass Properties (FSoundClassProperties), ChildClasses, ParentClass, and PassiveSoundMixModifiers as JSON |
+| `SetSoundClassSettings` | Set one FSoundClassProperties field on a SoundClass asset (changing LoadingBehavior is rejected) |
+| `ListSoundClasses` | Enumerate SoundClass assets in the project (AssetPath / ParentClassPath / ChildClassPaths; up to 1000) |
+| `AddSoundClassChild` | Add a child class to the SoundClass hierarchy (cycle detection; depth limit 32) |
+| `RemoveSoundClassChild` | Remove a child class from the SoundClass hierarchy and clear both directions of the link |
+| `GetSoundAttenuationInfo` | Return FSoundAttenuationSettings of a SoundAttenuation asset as JSON |
+| `SetSoundAttenuationSettings` | Set one FSoundAttenuationSettings field on a SoundAttenuation asset |
+| `ListSoundAttenuations` | Enumerate SoundAttenuation assets in the project (up to 1000) |
+| `GetSoundMixInfo` | Return all SoundMix settings (EQ, SoundClassEffects, fade timings) as JSON |
+| `SetSoundMixSettings` | Set one top-level SoundMix field (direct write to SoundClassEffects array is rejected) |
+| `SetSoundMixAdjuster` | Add or update a SoundClassAdjuster identified by SoundClass path (Upsert; omitted fields keep existing values or use engine defaults) |
+| `RemoveSoundMixAdjuster` | Remove the SoundClassAdjuster for the specified SoundClass from a SoundMix |
+| `ListSoundMixes` | Enumerate SoundMix assets in the project (up to 1000) |
+
+---
+
+## UAIP.Editor.MVVM 🧩
+
+ViewModel Blueprint property management, View Binding / Event authoring, and Widget ViewModel wiring. Requires the `ModelViewViewModel` plugin (enabled by default since UE 5.5).
+
+### Native (26)
+
+#### ViewModel property management
+
+| Command | Description |
+|---|---|
+| `ListViewModelClasses` | Enumerate `UMVVMViewModelBase`-derived Blueprint classes via AssetRegistry (optional `SearchPath` filter; up to 1000) |
+| `AddViewModelProperty` | Add a property to a ViewModel Blueprint (7 property types; optional `DefaultValue`; optional getter / setter generation) |
+| `RemoveViewModelProperty` | Remove a property from a ViewModel Blueprint by name |
+| `ListViewModelProperties` | List all properties of a ViewModel Blueprint |
+
+#### Widget ViewModel connection
+
+| Command | Description |
+|---|---|
+| `AddViewModelToWidget` | Add a ViewModel to a WidgetBlueprint (must be a `/Game/`-rooted `UMVVMViewModelBase` subclass) |
+| `RemoveViewModelFromWidget` | Remove a ViewModel entry from a WidgetBlueprint by name |
+| `ListWidgetViewModels` | List ViewModels currently wired to a WidgetBlueprint |
+| `RenameViewModelInWidget` | Rename a ViewModel entry inside a WidgetBlueprint |
+| `ReparentViewModelInWidget` | Change the class of a ViewModel entry inside a WidgetBlueprint |
+
+#### View Binding operations
+
+| Command | Description |
+|---|---|
+| `AddViewBinding` | Add a View Binding to a WidgetBlueprint |
+| `RemoveViewBinding` | Remove a View Binding from a WidgetBlueprint by `BindingId` |
+| `ListViewBindings` | List all View Bindings in a WidgetBlueprint |
+| `GetViewBinding` | Get details of a single View Binding by `BindingId` |
+| `UpdateViewBinding` | Partially update fields of a View Binding |
+| `SetViewBindingEnabled` | Enable or disable a View Binding |
+| `SetViewBindingConversionFunction` | Set or clear the conversion function for a View Binding |
+| `SetViewBindingExecutionMode` | Set the execution mode for a View Binding |
+| `ListConversionFunctions` | List available conversion functions for a WidgetBlueprint (expensive on large projects — use `SearchPath` filter) |
+
+#### View Event operations
+
+| Command | Description |
+|---|---|
+| `AddViewEvent` | Add a View Event to a WidgetBlueprint (returns `EventId`; empty string on failure) |
+| `RemoveViewEvent` | Remove a View Event from a WidgetBlueprint |
+| `ListViewEvents` | List all View Events in a WidgetBlueprint |
+
+#### ViewModel source settings
+
+| Command | Description |
+|---|---|
+| `SetViewModelSource` | Change the `CreationType` of a ViewModel entry (Remove + Add round-trip; `Context` type requires UE 5.8+) |
+| `GetViewModelSource` | Get the current source configuration of a ViewModel entry |
+
+#### Observation / validation
+
+| Command | Description |
+|---|---|
+| `GetWidgetBindableProperties` | List bindable properties of a WidgetBlueprint (widget properties and ViewModel properties) |
+| `ValidateViewBindings` | Validate all View Bindings in a WidgetBlueprint (expensive on large projects) |
+| `GetMVVMViewInfo` | Get the MVVM configuration summary of a WidgetBlueprint (`bMVVMConfigured: false` when MVVM is not configured) |
+
+### Toolset bridges (9) 🧩
+
+Bridge commands via the `MVVMToolset` plugin (UE 5.8+). Provider: `Toolset.MVVM.*`. `CreateViewModel` and `ListViewModels` are unique to this bridge; other commands mirror native equivalents.
+
+| Command | Description |
+|---|---|
+| `Toolset.MVVM.CreateViewModel` | Create a ViewModel Blueprint asset |
+| `Toolset.MVVM.AddViewModelProperty` | Add a property to a ViewModel Blueprint |
+| `Toolset.MVVM.ListViewModels` | List ViewModel classes (by class-type filter) |
+| `Toolset.MVVM.ListWidgetViewModels` | List ViewModels wired to a WidgetBlueprint |
+| `Toolset.MVVM.AddViewModelToWidget` | Add a ViewModel to a WidgetBlueprint |
+| `Toolset.MVVM.ListWidgetViewBindings` | List View Bindings of a WidgetBlueprint |
+| `Toolset.MVVM.RemoveWidgetViewBinding` | Remove a View Binding from a WidgetBlueprint |
+| `Toolset.MVVM.CreateViewBinding` | Create a View Binding in a WidgetBlueprint |
+| `Toolset.MVVM.ListConversionFunctions` | List available conversion functions |
 
 ---
 
@@ -843,6 +1187,63 @@ PCG graph editing. Requires `PCG` plugin.
 | `GetCustomBlueprintPCGNodeSchema` 🧩 | JSON schema of Blueprint UPCGBlueprintSettings subclass properties |
 | `SetCustomCppPCGNodeProperty` 🧩 | Set a property on a C++ custom node (`RecompileTriggered` flag) |
 | `SetCustomBlueprintPCGNodeProperty` 🧩 | Set a property on a BP custom node (Class CDO / per-Instance modes) |
+| `CreatePCGGraph` 🧩 | Create a new UPCGGraph asset in the Content directory (requires `PCGGraphAssetCreate`) |
+| `GetPCGGraphSchema` 🧩 | Return the graph's node / pin structure in schema form |
+| `GetPCGGraphDescription` 🧩 | Get the graph's Description string |
+| `SetPCGGraphDescription` 🧩 | Set the graph's Description (requires `PCGGraphEdit`) |
+| `SetPCGGraphParams` 🧩 | Add or update graph parameters (requires `PCGGraphEdit`) |
+| `RemovePCGGraphParams` 🧩 | Remove graph parameters (requires `PCGGraphEdit`) |
+| `ListPCGGraphInstances` 🧩 | List UPCGComponents in the level |
+| `SpawnPCGGraphInstance` 🧩 | Spawn an APCGVolume into the world (requires `PCGVolumeSpawn`) |
+| `GetPCGGraphInstanceParams` 🧩 | Get per-instance override parameters |
+| `SetPCGGraphInstanceParams` 🧩 | Override instance parameters (requires `PCGGraphEdit`) |
+| `ResetPCGGraphInstanceParams` 🧩 | Reset instance parameters to graph defaults (requires `PCGGraphEdit`) |
+| `ListPCGAvailableSubgraphs` 🧩 | List subgraph candidates in the project |
+| `GetPCGNativeNodeSchema` 🧩 | JSON schema of native PCG node class EditAnywhere properties |
+| `AddPCGSubgraphNode` 🧩 | Add a subgraph reference node (requires `PCGGraphEdit`) |
+| `RepositionPCGNode` 🧩 | Move a node to a new position (requires `PCGGraphEdit`) |
+| `AddPCGCommentBox` 🧩 | Add a comment box (requires `PCGGraphEdit`) |
+| `UpdatePCGCommentBox` 🧩 | Update a comment box (requires `PCGGraphEdit`) |
+| `RemovePCGCommentBox` 🧩 | Remove a comment box (requires `PCGGraphEdit`) |
+| `GetPCGNodeDataView` 🧩 | Get a PCG node's execution data view (requires `PCGNodeInspect`; returns CapabilityNotAvailable when `PCG_PROFILING_ENABLED=0`) |
+| `RunPCGInstantGraph` 🧩 | Fire-and-forget PCG graph execution with no actor or component required (requires `PCGGraphExecute`) |
+
+### Toolset bridges — PCG (31) 🧩
+
+Bridge commands via the `PCGToolset` (UE 5.8+). Provider: `Toolset.Editor.PCG.*`. Commands that require an active open PCG editor tab may return `ExecutionFailed` in non-interactive contexts (known PCGToolset constraint).
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.PCG.CreateGraph` | Create a PCG graph asset (requires `PCGGraphAssetCreate`) |
+| `Toolset.Editor.PCG.GetGraphStructure` | Get the full graph structure (nodes, edges, parameters) |
+| `Toolset.Editor.PCG.SetGraphParams` | Set graph parameters (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.RemoveGraphParams` | Remove graph parameters (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.GetGraphSchema` | Get the graph schema |
+| `Toolset.Editor.PCG.GetGraphDescription` | Get the graph description |
+| `Toolset.Editor.PCG.SetGraphDescription` | Set the graph description (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.ListGraphInstances` | List volume actors referencing the graph |
+| `Toolset.Editor.PCG.SpawnGraphInstance` | Spawn a PCG volume actor (requires `PCGVolumeSpawn`) |
+| `Toolset.Editor.PCG.ExecuteGraphInstance` | Execute a graph on a PCG volume (requires `PCGGraphExecute`; async, 300 s default) |
+| `Toolset.Editor.PCG.GetGraphInstanceParams` | Get per-instance parameter overrides |
+| `Toolset.Editor.PCG.SetGraphInstanceParams` | Set per-instance overrides (requires `PCGGraphExecute`) |
+| `Toolset.Editor.PCG.ResetGraphInstanceParams` | Reset per-instance overrides (requires `PCGGraphExecute`) |
+| `Toolset.Editor.PCG.ListNativeNodes` | List all registered native PCG node classes |
+| `Toolset.Editor.PCG.ListAvailableSubgraphs` | List PCG assets available as subgraphs |
+| `Toolset.Editor.PCG.GetNativeNodeSchema` | Get the parameter schema for a native node class |
+| `Toolset.Editor.PCG.AddNode` | Add a native node (requires `PCGGraphEdit` + `PCGToolsetUnsafeNodeAdd`; bypasses allowlist) |
+| `Toolset.Editor.PCG.AddSubgraphNode` | Add a subgraph node (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.UpdateNode` | Update a node's properties (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.SetNodeComment` | Set a node's inline comment (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.GetNodeInfo` | Get info for a specific node |
+| `Toolset.Editor.PCG.RepositionNode` | Move a node on the graph canvas (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.RemoveNode` | Remove a node (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.GetNodeDataView` | Get the last-execution data view of a node (requires `PCGNodeInspect`) |
+| `Toolset.Editor.PCG.ConnectNodePins` | Connect two node pins (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.DisconnectNodePins` | Disconnect node pins (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.AddCommentBox` | Add a comment box (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.UpdateCommentBox` | Update a comment box (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.RemoveCommentBox` | Remove a comment box (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.RunPCGInstantGraph` | Execute a PCG graph instantly via `UPCGSpatialToolset` (requires `PCGGraphExecute`; async, 300 s default) |
 
 ---
 
@@ -1049,6 +1450,196 @@ Python command extension. Requires `PythonScriptPlugin`.
 
 ---
 
+## UAIP.Editor.Sandbox 🧩
+
+Sandbox session lifecycle management. Requires the `FileSandbox` plugin. When `FileSandbox` is not enabled all commands in this section return `CommandNotFound`.
+
+| Command | Description |
+|---|---|
+| `GetSandboxStatus` 🧩 | Query the current sandbox status — `Active`, `IsStale`, `SessionId`, and `OwnerUAIPSessionId` |
+| `GetSandboxChanges` 🧩 | List pending changes inside the active sandbox — `FilePath`, `ChangeKind` (Added / Edited / Removed), `SizeBytes`, and `TotalCount` |
+| `BeginSandboxSession` 🧩 | Open a new FileSandbox session; subsequent asset writes are redirected to the sandbox |
+| `EndSandboxSession` 🧩 | End the active sandbox session; uncommitted changes are reverted automatically |
+| `CommitSandboxChanges` 🧩 | Flush selected (or all) pending sandbox changes to disk; returns `CommittedFiles`, `SkippedFiles`, and `CommittedCount` |
+| `RevertSandboxChanges` 🧩 | Discard all pending sandbox changes without committing |
+
+---
+
+## UAIP.Editor.WorldPartition
+
+World Partition, Data Layer, and HLOD management for partitioned worlds (requires `WorldPartition` plugin). All commands in this section return `CommandNotFound` when the project does not have World Partition enabled.
+
+### World Partition (12)
+
+| Command | Description |
+|---|---|
+| `GetWorldPartitionInfo` | Get World Partition configuration — streaming mode, runtime hash class, and whether WP is enabled for the current level |
+| `GetWorldPartitionStreamingGrids` | List runtime streaming grids defined in the World Partition settings |
+| `GetRuntimeGridSettings` | Get the settings for a specific runtime grid by name |
+| `SetRuntimeGridSettings` | Set the settings for a specific runtime grid (requires `WorldPartitionEdit`) |
+| `GetActorWorldPartitionSettings` | Get the World Partition settings for an actor — HLOD Layer, spatially loaded flag, and runtime grid name |
+| `SetActorIsSpatiallyLoaded` | Set whether an actor is spatially loaded in World Partition (requires `WorldPartitionEdit`) |
+| `SetActorRuntimeGrid` | Assign an actor to a specific runtime streaming grid (requires `WorldPartitionEdit`) |
+| `SetWorldPartitionStreamingEnabled` | Enable or disable World Partition streaming for the current level (requires `WorldPartitionEdit`) |
+| `PinActorInWorldPartition` | Pin an actor so it is always loaded regardless of streaming state (requires `WorldPartitionEdit`) |
+| `UnpinActorFromWorldPartition` | Remove the always-loaded pin from an actor (requires `WorldPartitionEdit`) |
+| `DumpWorldPartitionCells` | Dump the current World Partition streaming cell grid as a JSON artifact |
+| `ListExternalActors` | List actors stored as external packages (World Partition external actor workflow) |
+
+### Data Layer (15)
+
+| Command | Description |
+|---|---|
+| `ListDataLayers` | List all Data Layer instances in the current level |
+| `GetDataLayerInfo` | Get detailed info for a Data Layer instance — type, runtime state, visibility, and parent hierarchy |
+| `CreateDataLayerAsset` | Create a new Data Layer asset in the Content Browser (requires `DataLayerEdit`) |
+| `DeleteDataLayerAsset` | Delete a Data Layer asset (requires `DataLayerEdit`) |
+| `CreateDataLayerInstance` | Create a new Data Layer instance in the current level from a Data Layer asset (requires `DataLayerEdit`) |
+| `DeleteDataLayerInstance` | Delete a Data Layer instance from the current level (requires `DataLayerEdit`) |
+| `SetDataLayerType` | Set the type of a Data Layer instance — Editor or Runtime (requires `DataLayerEdit`) |
+| `SetDataLayerInitialRuntimeState` | Set the initial runtime state of a Data Layer — Unloaded, Loaded, or Activated (requires `DataLayerEdit`) |
+| `SetDataLayerIsLoadedInEditor` | Set whether a Data Layer is loaded in the editor viewport (requires `DataLayerEdit`) |
+| `SetDataLayerVisibility` | Set the visibility of a Data Layer in the editor (requires `DataLayerEdit`) |
+| `SetParentDataLayerInstance` | Set the parent Data Layer instance, building a hierarchy (max 64 levels; requires `DataLayerEdit`) |
+| `GetActorDataLayers` | Get the Data Layer instances assigned to an actor |
+| `AddActorToDataLayer` | Add an actor to a Data Layer instance (requires `DataLayerEdit`) |
+| `RemoveActorFromDataLayer` | Remove an actor from a Data Layer instance (requires `DataLayerEdit`) |
+| `GetActorsInDataLayer` | List all actors assigned to a specific Data Layer instance |
+
+### HLOD (7)
+
+| Command | Description |
+|---|---|
+| `ListHLODLayers` | List all HLOD Layer assets in the project |
+| `CreateHLODLayer` | Create a new HLOD Layer asset under `/Game/` (requires `HLODBuild`) |
+| `DeleteHLODs` | Delete built HLOD data for a specified HLOD Layer (requires `HLODBuild`) |
+| `SetActorHLODLayer` | Assign an actor to an HLOD Layer asset (requires `HLODBuild`) |
+| `BuildHLODs` | Start an HLOD build job for the current world; returns `HLODBuildJobId` (requires `HLODBuild`) |
+| `CancelHLODBuild` | Cancel an in-progress HLOD build job by job ID (requires `HLODBuild`) |
+| `GetHLODBuildStatus` | Get the current status of an HLOD build job — running, completed, or not found |
+
+---
+
+## UAIP.Editor.Foliage
+
+Foliage type management and instance placement in the editor. Observation commands run during PIE; edit commands require the editor to be stopped (not in PIE or SIE).
+
+### Foliage Observation (4)
+
+| Command | Description |
+|---|---|
+| `ListFoliageTypes` | List all foliage types registered in the current level's `AInstancedFoliageActor` with instance counts |
+| `GetFoliageTypeInfo` | Get detailed settings for a foliage type — mesh path, density, scale range, cull distances, normal alignment, slope angle, and instance count |
+| `GetFoliageInstanceCount` | Get the total placed instance count; optionally filtered to a single foliage type with a per-type breakdown |
+| `GetFoliageInstances` | List placed instances for a foliage type within a bounding box — returns location, rotation, and scale |
+
+### Foliage Type Management (3)
+
+| Command | Description |
+|---|---|
+| `AddFoliageTypeToLevel` | Register a foliage type asset with the current level's `AInstancedFoliageActor` (requires `FoliageTypeEdit`) |
+| `RemoveFoliageTypeFromLevel` | Unregister a foliage type and delete all its instances from the current level (requires `FoliageTypeEdit`) |
+| `SetFoliageTypeSettings` | Update foliage type settings — density, scale range, cull distances, normal alignment, slope angle, and mesh (ISM types only) (requires `FoliageTypeEdit`) |
+
+### Foliage Instance Control (4)
+
+| Command | Description |
+|---|---|
+| `AddFoliageInstances` | Place foliage instances at the specified transforms. World Partition aware — routes each instance to the correct `AInstancedFoliageActor` cell (requires `FoliageInstanceEdit`) |
+| `RemoveFoliageInstances` | Remove foliage instances inside a bounding box or sphere up to `MaxRemoveCount` (requires `FoliageInstanceEdit`) |
+| `DeleteAllFoliageInstances` | Delete every placed instance of a foliage type from the current level (requires `FoliageBulkDelete`) |
+| `ResimulateProceduralFoliage` 🧩 | Resimulate a `ProceduralFoliageVolume` and place the resulting instances (requires `ProceduralFoliage` plugin and `FoliageInstanceEdit`) |
+
+---
+
+## UAIP.Editor.DataRegistry 🧩
+
+Editor-time observation of UE 5.8 Data Registries — listing, schema inspection, and cached item retrieval with secret-field masking. Requires the `DataRegistry` plugin (plus `DataRegistryToolset` + `ToolsetRegistry` for the bridge variants).
+
+### Native (9)
+
+| Command | Description |
+|---|---|
+| `ListRegistries` | List all registered Data Registries, optionally filtered by item struct name (`StructFilter`); includes `IsDataRegistrySystemEnabled` / `AreRegistriesInitialized` diagnostics |
+| `GetRegistryInfo` | Get item count, lowest source availability, description, and ID format for a registry |
+| `GetSchema` | Get the item struct's property schema — name, type, and `IsSecret` flag per property |
+| `ListItems` | List registered item IDs for a registry (not necessarily cached) |
+| `ListDataSources` | List editor-time defined data sources for a registry |
+| `ListRuntimeSources` | List runtime-expanded data sources for a registry |
+| `GetItems` | Read cached items by name with secret-field masking; items not yet cached are reported in `MissingItems` with a reason instead of being silently dropped |
+| `GetAllCachedItems` | Read every currently cached item without naming items in advance (bounded to 1000 items / 1 MiB; no Toolset equivalent) |
+| `AcquireItems` | Trigger an asynchronous cache load for the given items — needed for custom/Remote sources; DataTable sources precache automatically (no Toolset equivalent) |
+
+### Toolset bridges (7) 🧩
+
+Mirror of the first 7 native commands via the `DataRegistryToolset` plugin (UE 5.8+). Provider: `Toolset.Editor.DataRegistry.*`. `GetItems` behaves differently here: missing items are silently omitted and no secret masking is applied — use the native `GetItems` when either matters.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.DataRegistry.ListRegistries` | Passthrough to `DataRegistryToolset` |
+| `Toolset.Editor.DataRegistry.GetRegistryInfo` | Passthrough to `DataRegistryToolset` |
+| `Toolset.Editor.DataRegistry.GetSchema` | Passthrough to `DataRegistryToolset` (raw JSON string, no `IsSecret` flag) |
+| `Toolset.Editor.DataRegistry.ListItems` | Passthrough to `DataRegistryToolset` |
+| `Toolset.Editor.DataRegistry.ListDataSources` | Passthrough to `DataRegistryToolset` |
+| `Toolset.Editor.DataRegistry.ListRuntimeSources` | Passthrough to `DataRegistryToolset` |
+| `Toolset.Editor.DataRegistry.GetItems` | Passthrough to `DataRegistryToolset`; missing items silently omitted, no masking |
+
+---
+
+## UAIP.Runtime.Engine.Log
+
+Log verbosity inspection and log category listing at runtime. These are the Runtime-domain counterparts to `UAIP.Editor.Engine.Log`.
+
+| Command | Description |
+|---|---|
+| 🆓 `GetLogVerbosity` | Get the current verbosity level of a log category |
+| 🆓 `GetLogCategories` | List all registered log category names |
+| `SetLogVerbosity` | Set the verbosity level of a log category (requires `LogVerbosityEdit`) |
+
+---
+
+## UAIP.Runtime.Engine.Plugin
+
+Plugin inspection at runtime. Read-only commands available without any special capability. These are the Runtime-domain counterparts to `UAIP.Editor.Engine.Plugin` commands.
+
+| Command | Description |
+|---|---|
+| 🆓 `ListPlugins` | List discovered or enabled plugins with optional `EnabledOnly` filter and `LoadedFrom` filter |
+| 🆓 `GetPluginInfo` | Get detailed info for a plugin (11 fields: Name, FriendlyName, Version, Description, Category, IsEnabled, IsMounted, Type, BaseDir, LoadedFrom, Dependencies) |
+| 🆓 `IsEnabled` | Check whether a plugin is currently enabled (note: `.uproject` declaration and actual load state may diverge until restart) |
+| 🆓 `GetPluginDependencies` | Get the direct plugin dependencies declared by a plugin |
+| 🆓 `GetPluginForAsset` | Resolve the owning plugin for a given asset path |
+
+---
+
+## UAIP.Runtime.Engine.CVar
+
+Read and write engine-wide console variables (CVars). CVars are global engine state — independent of any World or PIE session. Sensitive CVars are automatically excluded.
+
+🔒 requires `RuntimeCVarRead` (DefaultDenied). ✏️ requires `RuntimeCVarWrite` (DefaultDenied). The demo distribution's `Config/DefaultUAIP.ini` pre-grants `RuntimeCVarRead`, so the 🆓 commands below work out of the box in the demo.
+
+| Command | Description |
+|---|---|
+| 🆓🔒 `GetConsoleVariable` | Get the name, current value, type, and help text for a CVar (sensitive names return `NotFound`) |
+| 🆓🔒 `SearchConsoleVariables` | Search CVars using a wildcard (`*`) pattern (default 50 results, max 200) |
+| ✏️ `SetConsoleVariable` | Set the value of a CVar (sensitive names and `ECVF_ReadOnly` CVars are rejected; `ECVF_Cheat` CVars are rejected unless `AllowCheatCVarWrite` is enabled) |
+| ✏️ `ResetConsoleVariable` | Reset a CVar to its default value (sensitive names and `ECVF_ReadOnly` CVars are rejected; `ECVF_Cheat` CVars are rejected unless `AllowCheatCVarWrite` is enabled) |
+
+> **Note**: The legacy `GetConsoleVariable` and `SearchConsoleVariables` commands under `UAIP.Runtime.PIE` are deprecated and will be removed in v1.2. Use these commands instead.
+
+---
+
+## UAIP.Runtime.Engine.Config
+
+Raw ini key access for runtime and packaged builds. Reads and writes ini keys directly without going through `ISettingsModule`. Write commands are blocked in packaged builds.
+
+| Command | Description |
+|---|---|
+| 🆓 `GetConfigValue` | Read the string value of an ini key given section and key name. No capability required |
+| `SetConfigValue` | Write or delete a raw ini key. Requires `ConfigSettingsEdit`. Blocked in packaged builds. Rejects ini injection characters (`[`, `]`) in key and value fields |
+
+---
+
 ## UAIP.Runtime.PIE
 
 PIE session control and runtime world manipulation.
@@ -1065,8 +1656,19 @@ PIE session control and runtime world manipulation.
 | `PossessActor` | Have a player controller possess an actor |
 | `SetTimeScale` | Set the global time scale of the active PIE session |
 | `QuitGame` | Request the running game process to quit |
-| `GetConsoleVariable` | Get the current value, default value, type, and description of a console variable (CVar) |
-| `SearchConsoleVariables` | Search CVars by keyword, type, or flags and return a list (max 256 results) |
+| ~~`GetConsoleVariable`~~ | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.GetConsoleVariable` instead |
+| ~~`SearchConsoleVariables`~~ | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.SearchConsoleVariables` instead |
+| 🆓 `GetPIEState` | Return the current PIE state — `Running`, `Stopped`, `Paused`, or `Simulating` |
+
+### Toolset bridges (4) 🧩
+
+Bridge commands via the EditorToolset plugin (UE 5.8+).
+
+| Command | Provider | Description |
+|---|---|---|
+| `Toolset.Editor.Toolset.PIE.StartPIE` | `Toolset.Editor.Toolset.PIE.*` | Start a PIE session (async, requires `PIEControl`) |
+| `Toolset.Editor.Toolset.PIE.StopPIE` | `Toolset.Editor.Toolset.PIE.*` | Stop the active PIE session (async, requires `PIEControl`) |
+| `Toolset.Editor.Toolset.PIE.IsPIERunning` | `Toolset.Editor.Toolset.PIE.*` | Return whether PIE is currently active |
 
 ---
 

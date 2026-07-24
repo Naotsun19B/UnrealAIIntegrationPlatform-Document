@@ -91,7 +91,7 @@ AI クライアントで次のように依頼してみてください：
   "Success": true,
   "Data": {
     "Status": "Healthy",
-    "UAIPVersion": "1.0.0",
+    "UAIPVersion": "1.1.0",
     "EngineVersion": "5.8.0",
     "BuildConfig": "Development"
   }

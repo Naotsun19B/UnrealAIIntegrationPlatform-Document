@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 540 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 190 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 730+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 666 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 267 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 933+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -35,12 +35,17 @@ UAIP では 2 種類のコマンドを公開しています：
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 7 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | 一部（13/18） |
-| Editor Observation | `UAIP.Editor.Observation` | 13 | — | ✅（1 件除外） |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | 一部（1/3） |
+| Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
+| Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
+| Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | 一部（5/8） |
+| Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅（1 件除外） |
 | Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 10 | — | — |
-| Editor Level | `UAIP.Editor.Level` | 13 | — | — |
-| Editor Property | `UAIP.Editor.Property` | 12 | — | — |
+| Editor Assets | `UAIP.Editor.Assets` | 42 | 6 | 一部（25/42） |
+| Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
+| Editor Level | `UAIP.Editor.Level` | 16 | 8 | 一部（7/16） |
+| Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
@@ -48,31 +53,42 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 3 | — | — |
 | Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 36 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
-| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 7 | — | — |
+| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | — | — |
+| Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 7 | — | — |
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
+| Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
+| Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 12 | — | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 9 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 7 | — | — |
 | Editor Sequencer | `UAIP.Editor.Sequencer` | 92 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 9 | — | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG 🧩 | `UAIP.Editor.PCG` | 13 | — | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 31 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 6 | — | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 12 | — | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 44 | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 11 | 11 | — |
 | Editor Python Extension 🧩 | `UAIP.Editor.PythonExtension` | 2 | — | — |
-| Runtime PIE | `UAIP.Runtime.PIE` | 12 | — | 一部（5/12） |
+| Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
+| Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
+| Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
+| Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
+| Runtime PIE | `UAIP.Runtime.PIE` | 11 ⁺² | 3 | 一部（6/11） |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
 | Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 6 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
+| Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | 一部（2/3） |
+| Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
+| Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | 一部（2/4） |
+| Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | 一部（1/2） |
 
 ---
 
@@ -88,7 +104,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`GroupFilter`・`KeywordFilter`・`IncludeUnavailable`） |
 | 🆓 `DescribeCommand` | 単一コマンドの完全メタデータ（スキーマ・必要 Capability・可用性） |
 | 🆓 `ListCommandGroups` | 中間パス補完付きの全グループパス |
-| 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON） |
+| 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
 
 ---
 
@@ -119,6 +135,109 @@ UAIP では 2 種類のコマンドを公開しています：
 
 ---
 
+## UAIP.Editor.Engine.Log
+
+ログカテゴリの詳細レベル取得・設定、およびログエントリ取得。
+
+| コマンド | 説明 |
+|---|---|
+| `GetLogVerbosity` | 指定ログカテゴリの現在の詳細レベルを取得 |
+| `SetLogVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
+| 🆓 `GetLogEntries` | エディタ Output Log から最近のログエントリを取得（パターンフィルタ対応、Capability 不要） |
+
+### Toolset ブリッジ — Logs（4 件）🧩
+
+`LogsToolset`（UE 5.8+、EditorToolset プラグイン）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.Logs.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.Toolset.Logs.GetLogEntries` | エディタ Output Log から最近のログエントリを取得 |
+| `Toolset.Editor.Toolset.Logs.GetLogCategories` | 登録済みログカテゴリ名の一覧 |
+| `Toolset.Editor.Toolset.Logs.GetVerbosity` | ログカテゴリの詳細レベルを取得 |
+| `Toolset.Editor.Toolset.Logs.SetVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
+
+### Toolset ブリッジ — CVar（1 件）🧩
+
+EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.EngineManagement.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.Toolset.EngineManagement.SearchCVars` | CVar を名前パターンで検索（センシティブパターンを除外、`CVarInspect` 必要） |
+
+---
+
+## UAIP.Editor.Engine.Plugin 🧩
+
+プラグインの状態・ディスクリプタの観測と変更。エンジンおよびマーケットプレイスのプラグインは常に読み取り専用です。変更コマンドはエディタ再起動後に反映されます。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `GetPluginDescriptor` | プラグインの `.uplugin` ファイル全体を JSON で返す |
+| 🆓 `GetPluginDependents` | 指定プラグインに依存する他のプラグイン一覧を返す |
+| 🆓 `GetPluginTemplateDescriptions` | 利用可能なプラグインテンプレートの一覧を返す |
+| 🆓 `IsPluginCreationAllowed` | 現在の環境でプラグイン作成が許可されているか確認 |
+| 🆓 `IsPluginModificationAllowed` | 指定プラグインの変更が許可されているか確認 |
+| `SetPluginEnabled` | プラグインを有効化または無効化する（`PluginEnableToggle` 必要；`RestartRequired: true` を返す） |
+| `UpdatePluginDescriptor` | プラグインの `.uplugin` 内の選択フィールドを上書き（`PluginDescriptorEdit` 必要） |
+| `AddPluginDependency` | プラグインの `.uplugin` に依存エントリを追加（`PluginDependencyEdit` 必要） |
+| `RemovePluginDependency` | プラグインの `.uplugin` から依存エントリを削除（`PluginDependencyEdit` 必要） |
+
+### Toolset ブリッジ — Plugin（15 件）🧩
+
+`PluginToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Plugin.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Plugin.ListEnabledPlugins` | 現在有効なプラグインの一覧 |
+| `Toolset.Plugin.ListDiscoveredPlugins` | 検出済みプラグイン（有効・無効を問わず）の一覧 |
+| `Toolset.Plugin.GetPluginInfo` | プラグインの基本情報（名前・バージョン・有効状態）を取得 |
+| `Toolset.Plugin.IsEnabled` | プラグインが現在有効か確認 |
+| `Toolset.Plugin.GetPluginDependencies` | プラグインが依存するプラグイン一覧を返す |
+| `Toolset.Plugin.GetPluginForAsset` | 指定アセットを提供するプラグインを返す |
+| `Toolset.Plugin.GetPluginDescriptor` | プラグインの `.uplugin` 全体を JSON で返す |
+| `Toolset.Plugin.GetPluginDependents` | 指定プラグインに依存する他のプラグイン一覧 |
+| `Toolset.Plugin.GetPluginTemplateDescriptions` | 利用可能なプラグインテンプレートの一覧 |
+| `Toolset.Plugin.IsPluginCreationAllowed` | プラグイン作成が許可されているか確認 |
+| `Toolset.Plugin.IsPluginModificationAllowed` | 指定プラグインの変更が許可されているか確認 |
+| `Toolset.Plugin.SetPluginEnabled` | プラグインを有効化または無効化（`PluginEnableToggle` 必要） |
+| `Toolset.Plugin.UpdatePluginDescriptor` | `.uplugin` の選択フィールドを上書き（`PluginDescriptorEdit` 必要） |
+| `Toolset.Plugin.AddPluginDependency` | `.uplugin` に依存エントリを追加（`PluginDependencyEdit` 必要） |
+| `Toolset.Plugin.RemovePluginDependency` | `.uplugin` から依存エントリを削除（`PluginDependencyEdit` 必要） |
+
+---
+
+## UAIP.Editor.Engine.ConfigSettings
+
+`ISettingsModule` 経由でプロジェクト設定やエディタ設定を管理するコマンド群。`ContainerName / CategoryName / SectionName` の 3 階層パスでセクションを指定します。書き込み操作はプロジェクトの `Config/` ディレクトリ配下のファイルのみ許可されます（エンジン ini ファイルは `PolicyViolation` で拒否）。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `ListSettingsContainers` | 登録済みの設定コンテナ（`Project`、`Editor` など）を一覧表示。Capability 不要 |
+| 🆓 `ListSettingsCategories` | コンテナ内の設定カテゴリを一覧表示。Capability 不要 |
+| 🆓 `ListSettingsSections` | カテゴリ内の設定セクションを一覧表示。Capability 不要 |
+| 🆓 `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） |
+| 🆓 `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） |
+| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可 |
+| `SaveSettings` | `ISettingsSection::Save()` 経由で設定を ini ファイルに書き出す。`ConfigSettingsSave` 必要。PIE 中および `bDisableSave` 設定時は実行不可 |
+| `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 |
+
+### Toolset ブリッジ — ConfigSettings（8 コマンド）🧩
+
+`ConfigSettingsToolset` プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ: `Toolset.ConfigSettings.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.ConfigSettings.ListContainers` | 登録済みの設定コンテナを一覧表示 |
+| `Toolset.ConfigSettings.ListCategories` | コンテナ内の設定カテゴリを一覧表示 |
+| `Toolset.ConfigSettings.ListSections` | カテゴリ内の設定セクションを一覧表示 |
+| `Toolset.ConfigSettings.GetSectionSchema` | セクションのプロパティスキーマを取得 |
+| `Toolset.ConfigSettings.GetSectionPropertyValues` | セクションの現在のプロパティ値を取得 |
+| `Toolset.ConfigSettings.SetSectionProperties` | セクションのプロパティ値を設定して永続化（`ConfigSettingsEdit` 必要） |
+| `Toolset.ConfigSettings.SaveSection` | 現在のメモリ上の設定をセクションの ini ファイルに書き出す（`ConfigSettingsSave` 必要） |
+| `Toolset.ConfigSettings.ResetSectionToDefaults` | セクションの全プロパティ値をコンパイル済みデフォルトにリセット（`ConfigSettingsReset` 必要） |
+
+---
+
 ## UAIP.Editor.Observation
 
 スクリーンショットとエディタ状態ダンプ（すべて読み取り専用）。
@@ -137,6 +256,8 @@ UAIP では 2 種類のコマンドを公開しています：
 | 🆓 `InspectMenu` | 指定パス配下のトップバーメニュー構造（ラベル・enabled・checked） |
 | 🆓 `InspectContextMenu` | 指定対象のコンテキストメニュー項目（実行はしない） |
 | 🆓 `ObserveWidget` | ウィジェットの Visibility / Enabled / Hovered / Focused 状態を時系列サンプリング |
+| 🆓 `GetLogCategories` | 登録済みエンジンログカテゴリ名の一覧（任意でサブストリングフィルタ対応） |
+| `CaptureViewportImageAnnotated` | ワールド座標ラベル付きビューポート画像のキャプチャ（`ViewportAnnotationCapture` 必要） |
 
 ---
 
@@ -186,14 +307,82 @@ UAIP では 2 種類のコマンドを公開しています：
 |---|---|
 | `OpenAsset` | 指定アセットをエディタで開く |
 | `CloseAsset` | 指定アセットの全エディタを閉じる |
-| `SearchAssets` | パス・クラス・タグでアセットを検索 |
+| 🆓 `SearchAssets` | パス・クラス・タグでアセットを検索 |
 | `CreateAsset` | 指定クラスの新規アセットを作成 |
+| 🆓 `ListCreatableAssetClasses` | `CreateAsset` が作成可能な全 UClass をFactory数・デフォルトFactory付きで返す（重い呼び出し） |
+| 🆓 `ListFactoriesForClass` | 指定 `ClassName` に対応する Factory 候補と各 `FactoryParams` スキーマを返す |
 | `DuplicateAsset` | 既存アセットを複製 |
 | `RenameAsset` | アセットをリネーム / 別パスへ移動 |
 | `DeleteAsset` | アセットを削除 |
 | `CreateFolder` | Content Browser に新規フォルダを作成 |
 | `DeleteFolder` | 空フォルダを削除（空でない場合 `NotEmpty`） |
 | `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし） |
+| 🆓 `GetSelectedAssets` | Content Browser で現在選択中のアセットを返す |
+| `SelectAssets` | Content Browser で指定アセットを選択（`ContentBrowserNavigate` 必要） |
+| 🆓 `GetContentBrowserPath` | Content Browser に現在表示されているフォルダパスを返す |
+| `SetContentBrowserPath` | Content Browser を指定フォルダに移動（`ContentBrowserNavigate` 必要） |
+| 🆓 `GetOpenAssets` | アセットエディタで現在開いているアセット一覧を返す |
+| 🆓 `ListAssetRedirectors` | フォルダ配下（既定はプロジェクト全体の `/Game`）のアセットリダイレクタを、アセットをロードせずに元パス・先パス付きで一覧取得する |
+| `FixAssetRedirectors`（`RedirectorFixup` 必要） | `/Game` 全体（常に再帰的）を対象に、解決可能なアセットリダイレクタを一括修正・削除する |
+| 🆓 `GetAssetReferences` | 指定アセットを起点に参照グラフ（参照元・参照先・両方）を指定深さまで探索する |
+| 🆓 `GetAssetSizeMap` | フォルダ配下のディスクサイズ（任意で常駐メモリサイズ）をアセット単位で集計し降順ソートする |
+| 🆓 `GetAssetSizeMapByClass` | フォルダ配下のディスクサイズをアセットクラス単位で集計し降順ソートする |
+| 🆓 `FindUnreferencedAssets` | フォルダ配下でユーザー参照（Engine/Script以外）が存在しないアセットを検出する（ハードリファレンスヒューリスティック） |
+| 🆓 `FindCircularReferences` | フォルダ配下のアセット間の循環依存チェーンを検出する |
+| 🆓 `FindBrokenReferences` | アセットレジストリに存在しないパッケージへの依存を検出する |
+| 🆓 `GetAssetDependencyPath` | 2つのアセット間の最短依存/参照パスを検索する |
+| 🆓 `RunAssetAudit` | フォルダ配下の複合監査（未参照アセット・循環参照・壊れた参照・最大サイズアセット）を実行する |
+| 🆓 `ListPrimaryAssetTypes` | 登録済みの全 `PrimaryAssetType`（`UAssetManager`）をクラス・ディレクトリ・アセット数サマリー付きで一覧取得する |
+| 🆓 `GetPrimaryAssetTypeInfo` | 単一の `PrimaryAssetType` の詳細（ディレクトリ・個別アセット・既定Rule）を取得する |
+| 🆓 `ListPrimaryAssets` | 指定 `PrimaryAssetType` に属する `PrimaryAssetId` とアセット一覧を取得する |
+| 🆓 `GetAssetBundle` | 指定 `PrimaryAssetId` の `AssetBundle` エントリを取得する（未定義なら空配列） |
+| 🆓 `GetAssetTags` | アセットの Asset Registry タグマップを取得する |
+| 🆓 `GetPrimaryAssetIdForPath` | アセットパスから `PrimaryAssetId` を逆引きする（未登録時は `Found:false` でエラーにしない） |
+| 🆓 `GetPrimaryAssetRules` | 指定 `PrimaryAssetId` のマージ済み（Type既定 + 個別上書き）`PrimaryAssetRules` を取得する |
+| 🆓 `GetManagedPackageList` | 指定 `PrimaryAssetId` が管理するパッケージ一覧を取得する |
+| 🆓 `GetPrimaryAssetLoadList` | 指定 Bundle 条件下で実際にロードされるオブジェクトパスを解決する |
+| 🆓 `GetLoadedPrimaryAssets` | 現在ロード中/ロード予定の `PrimaryAssetId` とそのロード済み Bundle 状態を取得する |
+| `AddPrimaryAssetType`（要 `PrimaryAssetTypeAdd`） | `PrimaryAssetType` を `PrimaryAssetTypesToScan` に追加（`DefaultGame.ini` へ永続化）し即座にスキャンする |
+| `RemovePrimaryAssetType`（要 `PrimaryAssetTypeRemove`） | `PrimaryAssetType` を `PrimaryAssetTypesToScan` から削除（永続化）する。アセットが存在する場合は `Force` 指定がない限り拒否 |
+| `SetPrimaryAssetRules`（要 `PrimaryAssetRulesOverride`） | 指定 `PrimaryAssetId` の Rule をメモリ内のみ一時的に上書きする（非永続） |
+| `LoadPrimaryAsset`（要 `PrimaryAssetLoad`） | `PrimaryAsset` を明示的にメモリへロードする（ノンブロッキング、PIE中も許可） |
+| `UnloadPrimaryAsset`（要 `PrimaryAssetUnload`） | `PrimaryAsset` を明示的にメモリからアンロードする（PIE中は拒否） |
+
+### Toolset ブリッジ — Assets（6 件）🧩
+
+`EditorAppToolset`（UE 5.8+、EditorToolset プラグイン）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.Assets.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.Toolset.Assets.GetSelectedAssets` | Content Browser で選択中のアセットを取得 |
+| `Toolset.Editor.Toolset.Assets.SelectAssets` | Content Browser でアセットを選択（`ContentBrowserNavigate` 必要） |
+| `Toolset.Editor.Toolset.Assets.GetContentBrowserPath` | Content Browser の現在フォルダパスを取得 |
+| `Toolset.Editor.Toolset.Assets.SetContentBrowserPath` | Content Browser を指定フォルダに移動（`ContentBrowserNavigate` 必要） |
+| `Toolset.Editor.Toolset.Assets.OpenEditorForAsset` | アセットをエディタで開く（`AssetWindowControl` 必要） |
+| `Toolset.Editor.Toolset.Assets.GetOpenAssets` | アセットエディタで開いているアセットの一覧 |
+
+---
+
+## UAIP.Editor.SemanticSearch 🧩
+
+セマンティックアセット検索とインデックス管理。`SemanticSearch` プラグイン（UE 5.8+、Experimental）と、エディタ環境設定 → プラグイン → Semantic Search で設定した OpenAI API キーが必要です。
+
+| コマンド | 説明 |
+|---|---|
+| `SearchAssetsSemantic` | 自然言語クエリでプロジェクトアセットを検索（BM25+ベクトルハイブリッド、最大 500 件） |
+| `FindSimilarAssets` | 参照アセットに類似するアセットをベクトル類似度で検索 |
+| `GetIndexStats` | 現在のインデックス統計（アセット数・最終構築日時）を返す |
+| `StartIndexing` | セマンティックインデックスの完全再構築をトリガー（長時間処理・`SemanticSearchEdit` 必要） |
+| `CancelIndexing` | 実行中のインデックス構築をキャンセル（`SemanticSearchEdit` 必要） |
+
+### Toolset ブリッジ（2 件）🧩
+
+`SemanticSearchToolset` プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SemanticSearch.*`。上記の `SearchAssetsSemantic` / `FindSimilarAssets` に相当し、Toolset ブリッジ専用として提供されます（これら 2 件には対応する UAIP ネイティブコマンドは存在しない。ADR `2026-06-25-SemanticSearchToolset-BridgeOnly-Exception.md` 参照）。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.SemanticSearch.Search` | SemanticSearchToolset 経由の BM25+ベクトルハイブリッド検索 |
+| `Toolset.Editor.SemanticSearch.FindSimilar` | SemanticSearchToolset 経由のベクトル類似度検索 |
 
 ---
 
@@ -203,39 +392,57 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 | コマンド | 説明 |
 |---|---|
-| `ListLevelActors` | 開いているレベルのアクター一覧 |
+| 🆓 `ListLevelActors` | 開いているレベルのアクター一覧 |
 | `PlaceActorInLevel` | Editor レベルにアクターを配置 |
 | `DeleteActorFromLevel` | Editor レベルからアクターを削除 |
-| `GetActorTransform` | Editor 上のアクターのトランスフォーム取得 |
+| 🆓 `GetActorTransform` | Editor 上のアクターのトランスフォーム取得 |
 | `SetActorTransform` | Editor 上のアクターのトランスフォーム設定 |
 | `OpenLevel` | エディタビューポートでレベルを開く（File > Open Level） |
 | `NewLevel` | テンプレートから新規レベルを作成（EmptyLevel / EmptyOpenWorld / Basic / OpenWorld） |
 | `SelectActors` | 指定アクターを Editor レベルで選択（既存選択を置換または追加） |
-| `ListSelectedActors` | 現在 Editor で選択中のアクター一覧を返す |
+| 🆓 `ListSelectedActors` | 現在 Editor で選択中のアクター一覧を返す |
 | `ClearSelection` | Editor レベルの選択をクリア |
 | `FocusOnActors` | 指定アクターにビューポートカメラをフォーカス（アクター省略時は選択中のアクターを対象） |
-| `GetCameraTransform` | アクティブなレベルエディタビューポートのカメラ位置・回転を取得 |
+| 🆓 `GetCameraTransform` | アクティブなレベルエディタビューポートのカメラ位置・回転を取得 |
 | `SetCameraTransform` | アクティブなレベルエディタビューポートのカメラ位置・回転を設定 |
+| 🆓 `GetVisibleActors` | アクティブなエディタビューポートに現在表示されているアクターを返す（視錐体カリング） |
+| 🆓 `ProjectWorldToScreen` | ワールド空間の位置をスクリーン座標に投影 |
+| 🆓 `ProjectScreenToWorld` | スクリーン座標からワールドにレイをキャスト（ECC_Visibility ライントレース） |
+
+### Toolset ブリッジ — Level（8 件）🧩
+
+`EditorAppToolset`（UE 5.8+、EditorToolset プラグイン）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.Level.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.Toolset.Level.GetSelectedActors` | Level Editor ビューポートで現在選択中のアクターを返す |
+| `Toolset.Editor.Toolset.Level.SelectActors` | Level Editor で指定アクターを選択（`EditorActorEdit` 必要） |
+| `Toolset.Editor.Toolset.Level.GetCameraTransform` | アクティブビューポートのカメラトランスフォームを取得 |
+| `Toolset.Editor.Toolset.Level.SetCameraTransform` | アクティブビューポートのカメラトランスフォームを設定（`EditorViewportControl` 必要） |
+| `Toolset.Editor.Toolset.Level.FocusOnActors` | 指定アクターにビューポートをフォーカス（`EditorViewportControl` 必要） |
+| `Toolset.Editor.Toolset.Level.GetVisibleActors` | アクティブビューポートに表示されているアクターの一覧 |
+| `Toolset.Editor.Toolset.Level.WorldPosToScreenCoords` | ワールド位置をスクリーン空間に投影 |
+| `Toolset.Editor.Toolset.Level.ScreenCoordsToWorld` | スクリーン座標をワールド空間に投影（`EditorInspect` 必要） |
 
 ---
 
 ## UAIP.Editor.Property
 
-アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。
+アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。`Get*` 系コマンドは、シークレットらしきプロパティ値（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）をネストした struct メンバーも含めて `***` でマスクする。
 
 | コマンド | 説明 |
 |---|---|
-| `GetActorProperty` | Editor アクターのプロパティ値を取得 |
+| 🆓 `GetActorProperty` | Editor アクターのプロパティ値を取得 |
 | `SetActorProperty` | Editor アクターのプロパティを設定 |
-| `GetWorldSetting` | WorldSettings のプロパティ値を取得 |
+| 🆓 `GetWorldSetting` | WorldSettings のプロパティ値を取得 |
 | `SetWorldSetting` | WorldSettings のプロパティを設定 |
-| `GetAssetProperty` | アセット（DataAsset 等）のプロパティ値を取得 |
+| 🆓 `GetAssetProperty` | アセット（DataAsset 等）のプロパティ値を取得 |
 | `SetAssetProperty` | アセットのプロパティを設定し `MarkPackageDirty` を呼ぶ |
-| `GetBlueprintDefault` | Blueprint CDO のプロパティ値を取得 |
+| 🆓 `GetBlueprintDefault` | Blueprint CDO のプロパティ値を取得 |
 | `SetBlueprintDefault` | Blueprint CDO のプロパティを設定 |
-| `GetProjectSetting` | `UDeveloperSettings` CDO のプロパティ値を取得 |
+| 🆓 `GetProjectSetting` | `UDeveloperSettings` CDO のプロパティ値を取得 |
 | `SetProjectSetting` | `UDeveloperSettings` CDO のプロパティを設定し `SaveConfig()` を呼ぶ |
-| `GetDataTableRow` | DataTable 行のプロパティ値を取得 |
+| 🆓 `GetDataTableRow` | DataTable 行のプロパティ値を取得 |
 | `SetDataTableRow` | DataTable 行のプロパティを設定 |
 
 ---
@@ -368,7 +575,7 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 
 ## UAIP.Editor.Niagara 🧩
 
-Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインおよび **UE 5.8 以降**が必要です。UE 5.7 ではこのセクションの全コマンドが未登録となります（`CommandNotFound`）。
+Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインおよび **UE 5.7 以降**が必要です。
 
 ### ネイティブ（36）
 
@@ -412,9 +619,9 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `AddUserVariables` 🧩 | システムにユーザー変数を追加 |
 | `RemoveUserVariables` 🧩 | ユーザー変数を削除 |
 | `CompileNiagaraSystem` 🧩 | Niagara システムをコンパイル |
-| `AddSetParametersModule` 🧩 | Set Parameters モジュールをスタックに追加し、初期パラメータエントリを登録する。**UE 5.8 制約:** `default_value` フィールドは現状無視され、エントリは型のデフォルト値で作成される。 |
-| `AddSetParameterEntry` 🧩 | 既存の Set Parameters モジュールにパラメータエントリを追加する。**UE 5.8 制約:** `default_value` は無視される。 |
-| `RemoveSetParameterEntry` 🧩 | Set Parameters モジュールからパラメータエントリを削除する |
+| `AddSetParametersModule` 🧩 | Set Parameters モジュールをスタックに追加し、初期パラメータエントリを登録する。`default_value` フィールドは一般的な型（float / int / bool / struct）で適用される。 |
+| `AddSetParameterEntry` 🧩 | 既存の Set Parameters モジュールにパラメータエントリを追加する。`script_name`（例：`Spawn` / `Update`）が必須。`default_value` フィールドは一般的な型（float / int / bool / struct）で適用される。 |
+| `RemoveSetParameterEntry` 🧩 | Set Parameters モジュールからパラメータエントリを削除する。`script_name`（例：`Spawn` / `Update`）が必須。 |
 
 #### Blueprint ラッパー（2）
 
@@ -505,6 +712,42 @@ Dataflow グラフ編集。`DataflowEditor` プラグインが必要です。
 | `ConnectDataflowPins` 🧩 | 2 ピンを接続 |
 | `DisconnectDataflowPins` 🧩 | ピン接続を切断 |
 | `ListDataflowVariables` 🧩 | グラフ変数一覧 |
+| `GetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を取得（プリミティブ / enum / FName / FString / 単純構造体） |
+| `SetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を設定。ドメイン非依存（Cloth の Weight Map・シミュレーション設定ノード等から利用される） |
+
+---
+
+## UAIP.Editor.ChaosClothAsset 🧩
+
+Chaos Cloth Asset 編集と `ChaosClothAssetToolset` ブリッジ（UE 5.8, Experimental）。`ChaosClothAsset` プラグイン群が必要です。
+
+| コマンド | 説明 |
+|---|---|
+| `CreateClothingAsset` | Skeletal Mesh から Clothing Asset を作成 |
+| `AssignClothingToSection` | Clothing Asset を Skeletal Mesh の LOD/セクションにバインド |
+| `RemoveClothingFromSection` | セクションから Clothing Asset のバインドを解除（破壊的・不可逆） |
+| `ListClothingAssets` | Skeletal Mesh にバインド済みの Clothing Asset 一覧 |
+| `GetSectionClothing` | 指定した LOD/セクションにバインドされている Clothing Asset を取得 |
+| `ConvertClothingAssetCommonToChaosClothAsset` | legacy `UClothingAssetCommon` を `UChaosClothAsset` に変換（Experimental、LOD0のみ） |
+| `GetClothAssetInfo` | LOD数・Sim/Render Mesh頂点数・参照している `UDataflow` アセットパス・Weight Map属性名一覧を取得 |
+| `SetClothWeightMapVertexValues` | Weight Map ノードの頂点重み配列を直接設定（破壊的） |
+| `SetClothMeshImportSource` | Import Dataflow ノード（`SkeletalMeshImport`/`StaticMeshImport`）にインポート元の SkeletalMesh/StaticMesh 参照を設定。ノード種別は自動判定、既存参照の上書きには `AllowOverwrite` が必要（破壊的） |
+| `CreateLegacyClothingAsset` | 既存 SkeletalMesh の描画セクションからシミュレーションメッシュを抽出し、新規 legacy `UClothingAssetCommon` を作成 |
+
+`GetClothAssetInfo` が返す `UDataflow` 参照パスを `UAIP.Editor.Dataflow.*` コマンドに渡すことで、Weight Map・シミュレーション設定ノードのプロパティを汎用的に編集できます。
+
+### Toolset ブリッジ（6）
+
+`ChaosClothAssetToolset` の6関数をそのままミラー。プロバイダ：`Toolset.Editor.ChaosClothAsset.*`。UE 5.8+ かつ `ChaosClothAssetToolset` + `ToolsetRegistry` 有効時のみ利用可能。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.ChaosClothAsset.CreateClothingAsset` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.Editor.ChaosClothAsset.AssignClothingToSection` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.Editor.ChaosClothAsset.RemoveClothingFromSection` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.Editor.ChaosClothAsset.ListClothingAssets` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.Editor.ChaosClothAsset.GetSectionClothing` | `ChaosClothAssetToolset` への委譲 |
+| `Toolset.Editor.ChaosClothAsset.ConvertClothingAssetCommonToChaosClothAsset` | `ChaosClothAssetToolset` への委譲 |
 
 ---
 
@@ -573,6 +816,108 @@ SoundCue グラフ編集。
 | `DisconnectSoundCuePins` | ピン接続を切断（PinIndex=-1 で全切断） |
 | `SetSoundCueNodeProperty` | SoundCue ノードのプロパティを設定（Object / Class / Delegate denylist） |
 | `CompileSoundCue` | SoundNode ツリーをグラフから再構築 |
+
+---
+
+## UAIP.Editor.SoundSettings
+
+SoundClass ツリー・SoundAttenuation・SoundMix アセットのプロパティ設定。
+
+| コマンド | 説明 |
+|---|---|
+| `GetSoundClassInfo` | SoundClass の Properties（FSoundClassProperties）・ChildClasses・ParentClass・PassiveSoundMixModifiers を返す |
+| `SetSoundClassSettings` | SoundClass の FSoundClassProperties フィールドを 1 プロパティ単位で設定（LoadingBehavior の変更は拒否） |
+| `ListSoundClasses` | プロジェクト内 SoundClass を列挙（AssetPath / ParentClassPath / ChildClassPaths；最大 1000 件） |
+| `AddSoundClassChild` | SoundClass 階層に子クラスを追加（循環参照検出・深度上限 32） |
+| `RemoveSoundClassChild` | SoundClass 階層から子クラスを削除し、双方向リンクを解除 |
+| `GetSoundAttenuationInfo` | SoundAttenuation の FSoundAttenuationSettings を JSON で返す |
+| `SetSoundAttenuationSettings` | SoundAttenuation の FSoundAttenuationSettings フィールドを 1 プロパティ単位で設定 |
+| `ListSoundAttenuations` | プロジェクト内 SoundAttenuation を列挙（最大 1000 件） |
+| `GetSoundMixInfo` | SoundMix の全設定（EQ・SoundClassEffects・Fade タイミング）を JSON で返す |
+| `SetSoundMixSettings` | SoundMix のトップレベルフィールドを 1 プロパティ単位で設定（SoundClassEffects 配列の直接書き込みは拒否） |
+| `SetSoundMixAdjuster` | SoundClassAdjuster を追加または更新（SoundClass パスをキーとした Upsert；省略フィールドは既存値を維持または既定値） |
+| `RemoveSoundMixAdjuster` | SoundMix から対象 SoundClass の SoundClassAdjuster を削除 |
+| `ListSoundMixes` | プロジェクト内 SoundMix を列挙（最大 1000 件） |
+
+---
+
+## UAIP.Editor.MVVM 🧩
+
+ViewModel Blueprint のプロパティ管理、View Binding / Event の作成、Widget への ViewModel 接続管理。`ModelViewViewModel` プラグインが必要（UE 5.5 以降はデフォルト有効）。
+
+### Native（26）
+
+#### ViewModel プロパティ管理
+
+| コマンド | 説明 |
+|---|---|
+| `ListViewModelClasses` | AssetRegistry から `UMVVMViewModelBase` 派生 Blueprint クラスを列挙する（`SearchPath` フィルタ省略可；最大 1000 件） |
+| `AddViewModelProperty` | ViewModel Blueprint にプロパティを追加する（7 種類の PropertyType；`DefaultValue` 省略可；Getter / Setter 生成省略可） |
+| `RemoveViewModelProperty` | ViewModel Blueprint からプロパティを名前指定で削除する |
+| `ListViewModelProperties` | ViewModel Blueprint の全プロパティを一覧返却する |
+
+#### Widget ViewModel 接続管理
+
+| コマンド | 説明 |
+|---|---|
+| `AddViewModelToWidget` | WidgetBlueprint に ViewModel を接続する（`/Game/` 配下の `UMVVMViewModelBase` 派生クラスのみ許可） |
+| `RemoveViewModelFromWidget` | WidgetBlueprint から ViewModel エントリを名前指定で削除する |
+| `ListWidgetViewModels` | WidgetBlueprint に接続済みの ViewModel 一覧を返す |
+| `RenameViewModelInWidget` | WidgetBlueprint 内の ViewModel エントリ名を変更する |
+| `ReparentViewModelInWidget` | WidgetBlueprint 内の ViewModel エントリのクラスを変更する |
+
+#### View Binding 操作
+
+| コマンド | 説明 |
+|---|---|
+| `AddViewBinding` | WidgetBlueprint に View Binding を追加する |
+| `RemoveViewBinding` | `BindingId` 指定で WidgetBlueprint の View Binding を削除する |
+| `ListViewBindings` | WidgetBlueprint の全 View Binding を一覧返却する |
+| `GetViewBinding` | `BindingId` 指定で View Binding の詳細を返す |
+| `UpdateViewBinding` | View Binding のフィールドを部分更新する |
+| `SetViewBindingEnabled` | View Binding の有効・無効を切り替える |
+| `SetViewBindingConversionFunction` | View Binding に変換関数を設定または解除する |
+| `SetViewBindingExecutionMode` | View Binding の実行モードを設定する |
+| `ListConversionFunctions` | WidgetBlueprint に適用可能な変換関数を列挙する（大規模プロジェクトでは `SearchPath` フィルタ推奨） |
+
+#### View Event 操作
+
+| コマンド | 説明 |
+|---|---|
+| `AddViewEvent` | WidgetBlueprint に View Event を追加する（戻り値: `EventId` 文字列；空文字列なら失敗） |
+| `RemoveViewEvent` | WidgetBlueprint から View Event を削除する |
+| `ListViewEvents` | WidgetBlueprint の全 View Event を一覧返却する |
+
+#### ViewModel ソース設定
+
+| コマンド | 説明 |
+|---|---|
+| `SetViewModelSource` | ViewModel エントリの `CreationType` を変更する（Remove + Add ラウンドトリップ実装；`Context` タイプは UE 5.8 以降のみ） |
+| `GetViewModelSource` | ViewModel エントリの現在のソース設定を返す |
+
+#### 観察・検証
+
+| コマンド | 説明 |
+|---|---|
+| `GetWidgetBindableProperties` | WidgetBlueprint のバインド可能プロパティを列挙する（ウィジェットプロパティ・ViewModel プロパティ） |
+| `ValidateViewBindings` | WidgetBlueprint の全 View Binding を検証する（大規模プロジェクトではコスト高） |
+| `GetMVVMViewInfo` | WidgetBlueprint の MVVM 設定サマリを返す（MVVM 未設定時は `bMVVMConfigured: false` の空応答） |
+
+### Toolset ブリッジ（9）🧩
+
+`MVVMToolset` プラグイン（UE 5.8 以上）経由のブリッジコマンド。プロバイダ: `Toolset.MVVM.*`。`CreateViewModel` および `ListViewModels` はブリッジ固有；その他はネイティブコマンドに対応する。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.MVVM.CreateViewModel` | ViewModel Blueprint アセットを作成する |
+| `Toolset.MVVM.AddViewModelProperty` | ViewModel Blueprint にプロパティを追加する |
+| `Toolset.MVVM.ListViewModels` | ViewModel クラスを列挙する（クラス型フィルタ方式） |
+| `Toolset.MVVM.ListWidgetViewModels` | WidgetBlueprint に接続済みの ViewModel を列挙する |
+| `Toolset.MVVM.AddViewModelToWidget` | WidgetBlueprint に ViewModel を接続する |
+| `Toolset.MVVM.ListWidgetViewBindings` | WidgetBlueprint の View Binding 一覧を返す |
+| `Toolset.MVVM.RemoveWidgetViewBinding` | WidgetBlueprint から View Binding を削除する |
+| `Toolset.MVVM.CreateViewBinding` | WidgetBlueprint に View Binding を作成する |
+| `Toolset.MVVM.ListConversionFunctions` | 利用可能な変換関数を列挙する |
 
 ---
 
@@ -843,6 +1188,63 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 | `GetCustomBlueprintPCGNodeSchema` 🧩 | Blueprint UPCGBlueprintSettings サブクラスのプロパティを JSON スキーマで返す |
 | `SetCustomCppPCGNodeProperty` 🧩 | C++ カスタムノードのプロパティを書き換え（`RecompileTriggered` フラグ） |
 | `SetCustomBlueprintPCGNodeProperty` 🧩 | BP カスタムノードのプロパティを書き換え（Class CDO / Instance の 2 モード） |
+| `CreatePCGGraph` 🧩 | 新規 UPCGGraph アセットを Content ディレクトリに作成（`PCGGraphAssetCreate` 必須） |
+| `GetPCGGraphSchema` 🧩 | グラフのノード / ピン構成をスキーマ形式で取得 |
+| `GetPCGGraphDescription` 🧩 | グラフの Description 文字列を取得 |
+| `SetPCGGraphDescription` 🧩 | グラフの Description を設定（`PCGGraphEdit` 必須） |
+| `SetPCGGraphParams` 🧩 | グラフパラメータを追加 / 更新（`PCGGraphEdit` 必須） |
+| `RemovePCGGraphParams` 🧩 | グラフパラメータを削除（`PCGGraphEdit` 必須） |
+| `ListPCGGraphInstances` 🧩 | レベル内の UPCGComponent 一覧を取得 |
+| `SpawnPCGGraphInstance` 🧩 | APCGVolume を World にスポーン（`PCGVolumeSpawn` 必須） |
+| `GetPCGGraphInstanceParams` 🧩 | インスタンスのオーバーライドパラメータを取得 |
+| `SetPCGGraphInstanceParams` 🧩 | インスタンスパラメータをオーバーライド（`PCGGraphEdit` 必須） |
+| `ResetPCGGraphInstanceParams` 🧩 | インスタンスパラメータをデフォルトにリセット（`PCGGraphEdit` 必須） |
+| `ListPCGAvailableSubgraphs` 🧩 | プロジェクト内のサブグラフ候補を列挙 |
+| `GetPCGNativeNodeSchema` 🧩 | ネイティブ PCG ノードクラスの EditAnywhere プロパティを JSON スキーマで返す |
+| `AddPCGSubgraphNode` 🧩 | サブグラフ参照ノードを追加（`PCGGraphEdit` 必須） |
+| `RepositionPCGNode` 🧩 | ノード位置を変更（`PCGGraphEdit` 必須） |
+| `AddPCGCommentBox` 🧩 | コメントボックスを追加（`PCGGraphEdit` 必須） |
+| `UpdatePCGCommentBox` 🧩 | コメントボックスを更新（`PCGGraphEdit` 必須） |
+| `RemovePCGCommentBox` 🧩 | コメントボックスを削除（`PCGGraphEdit` 必須） |
+| `GetPCGNodeDataView` 🧩 | PCG ノードの実行データビューを取得（`PCGNodeInspect` 必須。`PCG_PROFILING_ENABLED=0` 時は CapabilityNotAvailable） |
+| `RunPCGInstantGraph` 🧩 | アクター / コンポーネント不要の fire-and-forget PCG グラフ実行（`PCGGraphExecute` 必須） |
+
+### Toolset ブリッジ — PCG（31 件）🧩
+
+`PCGToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.PCG.*`。アクティブな PCG エディタタブが必要なコマンドは非インタラクティブコンテキストで `ExecutionFailed` を返す場合があります（PCGToolset の既知の制約）。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.PCG.CreateGraph` 🧩 | PCG グラフアセットを作成（`PCGGraphAssetCreate` 必須） |
+| `Toolset.Editor.PCG.GetGraphStructure` 🧩 | グラフ全体の構造（ノード・エッジ・パラメータ）を取得 |
+| `Toolset.Editor.PCG.SetGraphParams` 🧩 | グラフパラメータを設定（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.RemoveGraphParams` 🧩 | グラフパラメータを削除（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.GetGraphSchema` 🧩 | グラフスキーマを取得 |
+| `Toolset.Editor.PCG.GetGraphDescription` 🧩 | グラフの説明文を取得 |
+| `Toolset.Editor.PCG.SetGraphDescription` 🧩 | グラフの説明文を設定（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.ListGraphInstances` 🧩 | グラフを参照しているボリュームアクター一覧 |
+| `Toolset.Editor.PCG.SpawnGraphInstance` 🧩 | PCG ボリュームアクターをスポーン（`PCGVolumeSpawn` 必須） |
+| `Toolset.Editor.PCG.ExecuteGraphInstance` 🧩 | PCG ボリューム上でグラフを実行（`PCGGraphExecute` 必須；非同期・デフォルト 300 秒） |
+| `Toolset.Editor.PCG.GetGraphInstanceParams` 🧩 | インスタンスのパラメータオーバーライドを取得 |
+| `Toolset.Editor.PCG.SetGraphInstanceParams` 🧩 | インスタンスパラメータを上書き（`PCGGraphExecute` 必須） |
+| `Toolset.Editor.PCG.ResetGraphInstanceParams` 🧩 | インスタンスパラメータをリセット（`PCGGraphExecute` 必須） |
+| `Toolset.Editor.PCG.ListNativeNodes` 🧩 | 登録済みネイティブ PCG ノードクラスを一覧 |
+| `Toolset.Editor.PCG.ListAvailableSubgraphs` 🧩 | サブグラフとして利用可能な PCG アセットを一覧 |
+| `Toolset.Editor.PCG.GetNativeNodeSchema` 🧩 | ネイティブノードクラスのパラメータスキーマを取得 |
+| `Toolset.Editor.PCG.AddNode` 🧩 | ネイティブノードを追加（`PCGGraphEdit` + `PCGToolsetUnsafeNodeAdd` 必須；Allowlist バイパス） |
+| `Toolset.Editor.PCG.AddSubgraphNode` 🧩 | サブグラフノードを追加（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.UpdateNode` 🧩 | ノードのプロパティを更新（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.SetNodeComment` 🧩 | ノードのインラインコメントを設定（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.GetNodeInfo` 🧩 | 特定ノードの情報を取得 |
+| `Toolset.Editor.PCG.RepositionNode` 🧩 | グラフキャンバス上のノードを移動（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.RemoveNode` 🧩 | ノードを削除（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.GetNodeDataView` 🧩 | ノードの最終実行データビューを取得（`PCGNodeInspect` 必須） |
+| `Toolset.Editor.PCG.ConnectNodePins` 🧩 | 2 つのノードピンを接続（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.DisconnectNodePins` 🧩 | ノードピンを切断（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.AddCommentBox` 🧩 | コメントボックスを追加（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.UpdateCommentBox` 🧩 | コメントボックスを更新（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.RemoveCommentBox` 🧩 | コメントボックスを削除（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.RunPCGInstantGraph` 🧩 | `UPCGSpatialToolset` 経由で PCG グラフを即時実行（`PCGGraphExecute` 必須；非同期・デフォルト 300 秒） |
 
 ---
 
@@ -1049,6 +1451,142 @@ Python コマンド拡張。`PythonScriptPlugin` が必要です。
 
 ---
 
+## UAIP.Editor.Sandbox 🧩
+
+Sandbox セッションのライフサイクル管理。`FileSandbox` プラグインが必要です。`FileSandbox` が有効でない場合、このセクションのコマンドは全て `CommandNotFound` を返します。
+
+| コマンド | 説明 |
+|---|---|
+| `GetSandboxStatus` 🧩 | 現在の Sandbox 状態を照会 — `Active`・`IsStale`・`SessionId`・`OwnerUAIPSessionId` を返す |
+| `GetSandboxChanges` 🧩 | アクティブな Sandbox 内の保留中変更一覧を取得 — `FilePath`・`ChangeKind`（Added / Edited / Removed）・`SizeBytes`・`TotalCount` |
+| `BeginSandboxSession` 🧩 | 新しい FileSandbox セッションを開始。以降のアセット書き込みは Sandbox にリダイレクトされる |
+| `EndSandboxSession` 🧩 | アクティブな Sandbox セッションを終了。未コミットの変更は自動的に Revert される |
+| `CommitSandboxChanges` 🧩 | 選択した（または全ての）Sandbox 変更をディスクにフラッシュ。`CommittedFiles`・`SkippedFiles`・`CommittedCount` を返す |
+| `RevertSandboxChanges` 🧩 | 保留中の Sandbox 変更を全て破棄（コミットしない） |
+
+---
+
+## UAIP.Editor.WorldPartition
+
+パーティション化されたワールドの World Partition・Data Layer・HLOD 管理（`WorldPartition` プラグイン必須）。World Partition が有効でないレベルでは、変更系コマンドは `ExecutionFailed` を、観測系コマンドは `Success: true` + `IsWorldPartitionEnabled: false` を返します。
+
+### World Partition（12 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `GetWorldPartitionInfo` | World Partition の設定情報を取得 — ストリーミングモード・ランタイムハッシュクラス・WP 有効状態 |
+| `GetWorldPartitionStreamingGrids` | World Partition 設定に定義されたランタイムストリーミンググリッド一覧を返す |
+| `GetRuntimeGridSettings` | 指定したランタイムグリッドの設定を取得 |
+| `SetRuntimeGridSettings` | 指定したランタイムグリッドの設定を変更（`WorldPartitionEdit` 必須） |
+| `GetActorWorldPartitionSettings` | アクターの WP 設定を取得 — HLOD レイヤー・spatially loaded フラグ・ランタイムグリッド名 |
+| `SetActorIsSpatiallyLoaded` | アクターの spatially loaded フラグを設定（`WorldPartitionEdit` 必須） |
+| `SetActorRuntimeGrid` | アクターを特定のランタイムストリーミンググリッドに割り当て（`WorldPartitionEdit` 必須） |
+| `SetWorldPartitionStreamingEnabled` | 現在のレベルの WP ストリーミングを有効/無効に切り替え（`WorldPartitionEdit` 必須） |
+| `PinActorInWorldPartition` | アクターをストリーミング状態に関係なく常にロードされるよう Pin（`WorldPartitionEdit` 必須） |
+| `UnpinActorFromWorldPartition` | アクターの常時ロード Pin を解除（`WorldPartitionEdit` 必須） |
+| `DumpWorldPartitionCells` | 現在の WP ストリーミングセルグリッドを JSON アーティファクトとしてダンプ |
+| `ListExternalActors` | 外部パッケージとして保存されたアクター一覧を返す（WP 外部アクターワークフロー） |
+
+### Data Layer（15 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `ListDataLayers` | 現在のレベルに存在する全 Data Layer インスタンスを一覧表示 |
+| `GetDataLayerInfo` | Data Layer インスタンスの詳細情報を取得 — タイプ・ランタイム状態・可視性・親階層 |
+| `CreateDataLayerAsset` | コンテンツブラウザに新しい Data Layer アセットを作成（`DataLayerEdit` 必須） |
+| `DeleteDataLayerAsset` | Data Layer アセットを削除（`DataLayerEdit` 必須） |
+| `CreateDataLayerInstance` | Data Layer アセットから現在のレベルに Data Layer インスタンスを追加（`DataLayerEdit` 必須） |
+| `DeleteDataLayerInstance` | 現在のレベルから Data Layer インスタンスを削除（`DataLayerEdit` 必須） |
+| `SetDataLayerType` | Data Layer インスタンスのタイプを設定 — Editor または Runtime（`DataLayerEdit` 必須） |
+| `SetDataLayerInitialRuntimeState` | Data Layer の初期ランタイム状態を設定 — Unloaded / Loaded / Activated（`DataLayerEdit` 必須） |
+| `SetDataLayerIsLoadedInEditor` | エディタビューポートで Data Layer をロードするかどうかを設定（`DataLayerEdit` 必須） |
+| `SetDataLayerVisibility` | エディタ内の Data Layer の可視性を設定（`DataLayerEdit` 必須） |
+| `SetParentDataLayerInstance` | 親 Data Layer インスタンスを設定して階層を構築（最大 64 レベル・`DataLayerEdit` 必須） |
+| `GetActorDataLayers` | アクターに割り当てられた Data Layer インスタンスを取得 |
+| `AddActorToDataLayer` | アクターを Data Layer インスタンスに追加（`DataLayerEdit` 必須） |
+| `RemoveActorFromDataLayer` | アクターを Data Layer インスタンスから除外（`DataLayerEdit` 必須） |
+| `GetActorsInDataLayer` | 指定した Data Layer インスタンスに割り当てられた全アクターを一覧表示 |
+
+### HLOD（7 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `ListHLODLayers` | プロジェクト内の全 HLOD Layer アセットを一覧表示 |
+| `CreateHLODLayer` | `/Game/` 配下に新しい HLOD Layer アセットを作成（`HLODBuild` 必須） |
+| `DeleteHLODs` | 指定した HLOD Layer のビルド済み HLOD データを削除（`HLODBuild` 必須） |
+| `SetActorHLODLayer` | アクターを HLOD Layer アセットに割り当て（`HLODBuild` 必須） |
+| `BuildHLODs` | 現在のワールドの HLOD ビルドジョブを開始。`HLODBuildJobId` を返す（`HLODBuild` 必須） |
+| `CancelHLODBuild` | ジョブ ID を指定して進行中の HLOD ビルドジョブをキャンセル（`HLODBuild` 必須） |
+| `GetHLODBuildStatus` | HLOD ビルドジョブの現在の状態を取得 — 実行中・完了・未発見 |
+
+---
+
+## UAIP.Editor.Foliage
+
+エディタでのフォリッジタイプ管理とインスタンス配置。観測系コマンドは PIE 中でも実行可能。編集系コマンドはエディタ停止中（PIE・SIE 以外）でのみ実行可能。
+
+### フォリッジ観測（4 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `ListFoliageTypes` | 現在のレベルの `AInstancedFoliageActor` に登録されているフォリッジタイプをインスタンス数つきで一覧表示 |
+| `GetFoliageTypeInfo` | フォリッジタイプの詳細設定を取得 — メッシュパス・密度・スケール範囲・カリング距離・法線整合・傾斜角・インスタンス数 |
+| `GetFoliageInstanceCount` | 配置済みインスタンスの合計数を取得。フォリッジタイプ指定でフィルタリング可能（未指定時はタイプ別内訳付きで全合計を返す） |
+| `GetFoliageInstances` | 指定バウンディングボックス内のフォリッジインスタンス一覧を取得 — 位置・回転・スケールを返す |
+
+### フォリッジタイプ管理（3 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `AddFoliageTypeToLevel` | フォリッジタイプアセットを現在のレベルの `AInstancedFoliageActor` に登録（`FoliageTypeEdit` 必須） |
+| `RemoveFoliageTypeFromLevel` | フォリッジタイプの登録を解除し、全インスタンスを現在のレベルから削除（`FoliageTypeEdit` 必須） |
+| `SetFoliageTypeSettings` | フォリッジタイプの設定を更新 — 密度・スケール範囲・カリング距離・法線整合・傾斜角・メッシュ（ISM タイプのみ）（`FoliageTypeEdit` 必須） |
+
+### フォリッジインスタンス操作（4 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `AddFoliageInstances` | 指定トランスフォームにフォリッジインスタンスを配置。World Partition 対応 — 各インスタンスを正しい `AInstancedFoliageActor` セルにルーティング（`FoliageInstanceEdit` 必須） |
+| `RemoveFoliageInstances` | バウンディングボックスまたは球体内のフォリッジインスタンスを `MaxRemoveCount` 件まで削除（`FoliageInstanceEdit` 必須） |
+| `DeleteAllFoliageInstances` | フォリッジタイプの配置済みインスタンスをすべて削除（`FoliageBulkDelete` 必須） |
+| `ResimulateProceduralFoliage` 🧩 | `ProceduralFoliageVolume` を再シミュレーションして結果インスタンスを配置（`ProceduralFoliage` プラグインおよび `FoliageInstanceEdit` 必須） |
+
+---
+
+## UAIP.Editor.DataRegistry 🧩
+
+UE 5.8 Data Registry のエディタ時観測 — 一覧・スキーマ取得・機密フィールドマスキング付きキャッシュ済みアイテム取得。`DataRegistry` プラグインが必要（ブリッジ版はさらに `DataRegistryToolset` + `ToolsetRegistry` が必要）。
+
+### ネイティブ（9 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `ListRegistries` | 登録済みの全 Data Registry を一覧表示。アイテム構造体名でのフィルタ（`StructFilter`）に対応。`IsDataRegistrySystemEnabled` / `AreRegistriesInitialized` の診断情報を同梱 |
+| `GetRegistryInfo` | レジストリの ID 数・最低ソース可用性・説明・ID フォーマットを取得 |
+| `GetSchema` | アイテム構造体のプロパティスキーマ（名前・型・`IsSecret` フラグ）を取得 |
+| `ListItems` | レジストリに登録済みのアイテム ID を一覧表示（キャッシュ済みとは限らない） |
+| `ListDataSources` | レジストリの編集時定義データソースを一覧表示 |
+| `ListRuntimeSources` | レジストリの実行時展開後データソースを一覧表示 |
+| `GetItems` | 指定名のキャッシュ済みアイテムを機密フィールドマスキング付きで取得。未キャッシュのアイテムは黙って省略せず `MissingItems` に理由付きで報告 |
+| `GetAllCachedItems` | アイテム名を事前指定せず、現在キャッシュ済みの全アイテムを取得（1000件・1MiB を上限。Toolset に対応なし） |
+| `AcquireItems` | 指定アイテムの非同期キャッシュロードをトリガー — カスタム/Remote ソースで必要（DataTable ソースは自動事前ロード済み。Toolset に対応なし） |
+
+### Toolset ブリッジ（7 コマンド）🧩
+
+`DataRegistryToolset` プラグイン（UE 5.8+）経由でネイティブコマンドのうち先頭7個をミラー。プロバイダ: `Toolset.Editor.DataRegistry.*`。`GetItems` はここでは挙動が異なる: 見つからないアイテムは黙って省略され、機密マスキングも適用されない — マスキングや欠損明示が必要な場合はネイティブの `GetItems` を使用すること。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.DataRegistry.ListRegistries` | `DataRegistryToolset` への passthrough |
+| `Toolset.Editor.DataRegistry.GetRegistryInfo` | `DataRegistryToolset` への passthrough |
+| `Toolset.Editor.DataRegistry.GetSchema` | `DataRegistryToolset` への passthrough（生 JSON 文字列、`IsSecret` フラグなし） |
+| `Toolset.Editor.DataRegistry.ListItems` | `DataRegistryToolset` への passthrough |
+| `Toolset.Editor.DataRegistry.ListDataSources` | `DataRegistryToolset` への passthrough |
+| `Toolset.Editor.DataRegistry.ListRuntimeSources` | `DataRegistryToolset` への passthrough |
+| `Toolset.Editor.DataRegistry.GetItems` | `DataRegistryToolset` への passthrough。欠損アイテムは黙って省略、マスキングなし |
+
+---
+
 ## UAIP.Runtime.PIE
 
 PIE セッション制御とランタイムワールド操作。
@@ -1065,8 +1603,19 @@ PIE セッション制御とランタイムワールド操作。
 | `PossessActor` | プレイヤーコントローラーにアクターを憑依させる |
 | `SetTimeScale` | アクティブな PIE セッションのグローバル時間スケールを設定 |
 | `QuitGame` | 実行中のゲームプロセスを終了リクエスト |
-| `GetConsoleVariable` | コンソール変数（CVar）の現在値・デフォルト値・型・説明を取得 |
-| `SearchConsoleVariables` | CVar をキーワード・型・フラグでフィルタし一覧を返す（上限 256 件） |
+| ~~`GetConsoleVariable`~~ | ⚠️ **非推奨**：`UAIP.Runtime.Engine.CVar.GetConsoleVariable` を使用 |
+| ~~`SearchConsoleVariables`~~ | ⚠️ **非推奨**：`UAIP.Runtime.Engine.CVar.SearchConsoleVariables` を使用 |
+| 🆓 `GetPIEState` | 現在の PIE 状態を返す — `Running`・`Stopped`・`Paused`・`Simulating` |
+
+### Toolset ブリッジ（4 件）🧩
+
+EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。
+
+| コマンド | プロバイダ | 説明 |
+|---|---|---|
+| `Toolset.Editor.Toolset.PIE.StartPIE` | `Toolset.Editor.Toolset.PIE.*` | PIE セッションを開始（非同期、`PIEControl` 必要） |
+| `Toolset.Editor.Toolset.PIE.StopPIE` | `Toolset.Editor.Toolset.PIE.*` | PIE セッションを停止（非同期、`PIEControl` 必要） |
+| `Toolset.Editor.Toolset.PIE.IsPIERunning` | `Toolset.Editor.Toolset.PIE.*` | PIE が実行中かどうかを返す |
 
 ---
 
@@ -1163,6 +1712,60 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 ### Toolset ブリッジ（4）🧩
 
 プロバイダ：`Toolset.Runtime.Niagara.*`。UE 5.8+ と `NiagaraToolsets` が必要。ネイティブコマンドをミラー。
+
+---
+
+## UAIP.Runtime.Engine.Log
+
+ランタイム環境でのログ詳細レベル取得・ログカテゴリ一覧取得。`UAIP.Editor.Engine.Log` の Runtime 版に相当します。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `GetLogVerbosity` | 指定ログカテゴリの現在の詳細レベルを取得 |
+| 🆓 `GetLogCategories` | 登録済みログカテゴリ名をすべて一覧表示 |
+| `SetLogVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
+
+---
+
+## UAIP.Runtime.Engine.Plugin
+
+エディタ / パッケージ版ビルド共通で使えるプラグイン観測コマンド（読み取り専用）。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `ListPlugins` | インストール済みプラグインと有効 / 無効状態の一覧 |
+| 🆓 `GetPluginInfo` | プラグインの基本情報（名前・バージョン・有効状態）を取得 |
+| 🆓 `IsEnabled` | プラグインが現在有効か確認 |
+| 🆓 `GetPluginDependencies` | プラグインが依存するプラグイン一覧を返す |
+| 🆓 `GetPluginForAsset` | 指定アセットを提供するプラグインを返す |
+
+---
+
+## UAIP.Runtime.Engine.CVar
+
+エンジン全体のコンソール変数（CVar）を取得・検索・設定するコマンド。CVar は World 非依存のグローバル状態です。機密パターンの CVar は自動除外されます。
+
+🔒 は `RuntimeCVarRead`（DefaultDenied）が必要。✏️ は `RuntimeCVarWrite`（DefaultDenied）が必要。デモ版配布物の `Config/DefaultUAIP.ini` は `RuntimeCVarRead` を事前付与しているため、以下の 🆓 コマンドはデモ版でもそのまま利用できます。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓🔒 `GetConsoleVariable` | 指定した CVar の名前・現在値・型・ヘルプテキストを返す（機密名は `NotFound`） |
+| 🆓🔒 `SearchConsoleVariables` | ワイルドカード（`*`）パターンで CVar を検索（デフォルト 50 件・上限 200 件） |
+| ✏️ `SetConsoleVariable` | 指定した CVar の値を設定（機密名・`ECVF_ReadOnly` 付きは拒否。`ECVF_Cheat` 付きは `AllowCheatCVarWrite` が有効でない限り拒否） |
+| ✏️ `ResetConsoleVariable` | 指定した CVar をデフォルト値にリセット（機密名・`ECVF_ReadOnly` 付きは拒否。`ECVF_Cheat` 付きは `AllowCheatCVarWrite` が有効でない限り拒否） |
+
+> **注意**: `UAIP.Runtime.PIE` にあった旧 `GetConsoleVariable` / `SearchConsoleVariables` コマンドは非推奨です（v1.2 で削除予定）。本コマンド群を使用してください。
+
+---
+
+## UAIP.Runtime.Engine.Config
+
+ランタイムおよびパッケージ版ビルドで ini キーを直接読み書きするコマンド群。`ISettingsModule` を経由せず ini ファイルに直接アクセスします。書き込みコマンドはパッケージ版ビルドでは実行できません。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `GetConfigValue` | セクション名とキー名を指定して ini キーの文字列値を読み取る。Capability 不要 |
+| `SetConfigValue` | raw ini キーを書き込みまたは削除。`ConfigSettingsEdit` 必要。パッケージ版ビルドでは実行不可。キー・値フィールドへの ini インジェクション文字（`[`・`]`）は拒否 |
 
 ---
 

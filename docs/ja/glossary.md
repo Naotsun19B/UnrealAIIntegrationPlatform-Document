@@ -57,6 +57,9 @@ AI クライアントと UE Editor をつなぐ薄い Python プロキシ（`Plu
 ### SafetyPolicy
 プロセス全体に適用される設定です（`Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` セクション）。Capability セットの内容に関係なく、カテゴリ全体の操作をゲートできます — Read-Only モード、ログダンプ許可、キーボード入力許可、シナリオ opt-in などです。AI が Runtime で SafetyPolicy を解除することはできず、変更できるのはオペレーターだけです（通常はエディタの再起動も必要）。詳細は [Safety & Capabilities](safety.md) を参照してください。
 
+### Sandbox / Sandbox セッション
+AI が提案したアセット編集を **FileSandbox** セッションに仮置きし、人間がコミットしたときにのみディスクへ反映（リバート時は破棄）する UAIP のワークフロー（Pro 版限定）。Undo に依存しない。`UAIP.Editor.Sandbox.*` コマンド（`BeginSandboxSession`・`GetSandboxChanges`・`CommitSandboxChanges`・`RevertSandboxChanges` など）で駆動し、`SandboxSessionControl` / `SandboxPersist` / `SandboxRevert` Capability でゲートされる。UE 5.8 の `FileSandbox` プラグインが必要。[Changelog](changelog.md) を参照。
+
 ### Scenario（シナリオ）
 順序付きのコマンドリストを 1 リクエストで送信する仕組みのことです（`uaip_run_scenario`、`POST /uaip/scenarios`、WebSocket の `ScenarioRequest` フレーム、CLI の `-uaip-scenario-file=…` フラグから利用可能）。ステップごとの `AbortOnFailure`・`RetryCount`・`TimeoutSeconds`、および前ステップの出力を後ステップに渡すテンプレート式（`${StepName.Data.x}`）に対応しています。詳細は [シナリオ実行](scenario.md) を参照してください。
 
