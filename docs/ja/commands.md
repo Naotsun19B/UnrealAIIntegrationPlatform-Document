@@ -35,14 +35,14 @@ UAIP では 2 種類のコマンドを公開しています：
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 8 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | 1 | 一部（13/18） |
-| Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | 一部（1/3） |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
 | Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | 一部（5/8） |
-| Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅（1 件除外） |
+| Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ |
 | Editor Execution | `UAIP.Editor.Execution` | 9 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 46 | 6 | 一部（25/42） |
+| Editor Assets | `UAIP.Editor.Assets` | 46 | 6 | 一部（25/46） |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | 一部（7/16） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
@@ -65,13 +65,13 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 17 | 7 | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
-| Editor Sequencer | `UAIP.Editor.Sequencer` | 123 | 124 | — |
+| Editor Sequencer | `UAIP.Editor.Sequencer` | 123 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
 | Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 30 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
-| Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 44 | — |
+| Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 107 | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 8 | 14 | — |
 | Editor Python Extension 🧩 | `UAIP.Editor.Python` | 2 | — | — |
@@ -79,7 +79,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
-| Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | 一部（6/11） |
+| Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
@@ -106,8 +106,8 @@ UAIP では 2 種類のコマンドを公開しています：
 | 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`GroupFilter`・`KeywordFilter`・`IncludeUnavailable`） |
 | 🆓 `DescribeCommand` | 単一コマンドの完全メタデータ（スキーマ・必要 Capability・可用性） |
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
-
-> **注意**: 本表は `UAIP.Core` に登録されている 8 コマンドのうち 6 件を掲載しています。`EndSession` と `ReloadCapabilities` は登録済みですが本表には未掲載です。
+| 🆓 `EndSession` | セッションを明示的に終了しサーバー側リソースを解放する（成果物は GC 対象になる） |
+| 🆓 `ReloadCapabilities` | エディタを再起動せずに `Config/DefaultUAIP.ini` から Capability セットを再読み込みする（`AllowCapabilityReload=True` のときのみ登録） |
 
 ---
 
@@ -136,16 +136,22 @@ UAIP では 2 種類のコマンドを公開しています：
 | `GetLiveCodingStatus` | 現在の Live Coding ステータスを取得 |
 | `EnableLiveCodingForSession` | セッションに対して Live Coding を有効化 |
 
+### Toolset ブリッジ — LiveCoding（1 件）🧩
+
+`LiveCodingToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.LiveCoding.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.LiveCoding.CompileLiveCoding` | Live Coding 再コンパイルをトリガー（`LiveCodingControl` 必要） |
+
 ---
 
 ## UAIP.Editor.Engine.Log
 
-ログカテゴリの詳細レベル取得・設定、およびログエントリ取得。
+エディタ Output Log のログエントリ取得。ログ**詳細レベル**の取得・設定は [`UAIP.Runtime.Engine.Log`](#uaipruntimeenginelog) にあります。
 
 | コマンド | 説明 |
 |---|---|
-| `GetLogVerbosity` | 指定ログカテゴリの現在の詳細レベルを取得 |
-| `SetLogVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
 | 🆓 `GetLogEntries` | エディタ Output Log から最近のログエントリを取得（パターンフィルタ対応、Capability 不要） |
 
 ### Toolset ブリッジ — Logs（4 件）🧩
@@ -260,7 +266,8 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `InspectContextMenu` | 指定対象のコンテキストメニュー項目（実行はしない） |
 | 🆓 `ObserveWidget` | ウィジェットの Visibility / Enabled / Hovered / Focused 状態を時系列サンプリング |
 | 🆓 `GetLogCategories` | 登録済みエンジンログカテゴリ名の一覧（任意でサブストリングフィルタ対応） |
-| `CaptureViewportImageAnnotated` | ワールド座標ラベル付きビューポート画像のキャプチャ（`ViewportAnnotationCapture` 必要） |
+| 🆓 `ListGraphNodes` | 指定タブのグラフエディタ内の全ノードを列挙 — `NodeId`（GUID）・`NodeClass`・`NodeTitle`・`Position`。`UEdGraph` ベースのエディタ全般で動作 |
+| 🆓 `CaptureViewportImageAnnotated` | ワールド座標ラベル付きビューポート画像のキャプチャ（`ViewportAnnotationCapture` 必要） |
 
 ---
 
@@ -270,8 +277,12 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 
 | コマンド | 説明 |
 |---|---|
+| `DiscoverAutomationTests` | Automation Test モジュールを読み込み、検出されたテスト数のサマリを返す |
+| `ListAutomationTests` | 検出済み Automation Test をフィルタして JSON Artifact で返す |
 | `RunAutomationTest` | UE Automation Test を名前で実行し Pass/Fail/Error レポートを返す |
 | `RunAutomationSpec` | UE Automation Spec を名前で実行し Pass/Fail/Error レポートを返す |
+| `GetAutomationTestStatus` | Automation Test マネージャの現在状態を返す（既定はインライン） |
+| `StopAutomationTests` | 実行中の Automation Test バッチのキャンセルを要求 |
 | `RunEditorPythonScript` 🧩 | インライン Python スクリプトまたは `.py` ファイルを実行（`PythonScriptPlugin` 必須） |
 | `RunEditorUtilityBlueprint` | 指定 Editor Utility Blueprint を実行 |
 | `RunNamedEditorCommand` | `GUnrealEd->Exec` 経由で名前付き Editor コンソールコマンドを実行 |
@@ -299,6 +310,24 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `WaitForWidget` | ウィジェットが期待状態になるまでポーリング |
 | 🆓 `FillForm` | フォームウィジェットへの一括入力を逐次 state machine で実行 |
 | 🆓 `SnapshotUI` | UI の構造スナップショットを取得 |
+| 🆓 `OpenPasswordTestWindow` | パスワード用 `SEditableTextBox` を持つフローティングテストウィンドウを開く（パスワードフィールドのポリシーテスト用ターゲット） |
+
+### Toolset ブリッジ — SlateInspector（10 件）🧩
+
+`SlateInspectorToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SlateInspector.*`。ネイティブ側のウィジェットパス記法ではなく refPath でウィジェットを指定します。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.SlateInspector.SnapshotUI` | 指定 ref のウィジェットツリーをスナップショット |
+| `Toolset.Editor.SlateInspector.ObserveWidget` | ウィジェットを観測対象として登録し、observer の `Identifier` を返す |
+| `Toolset.Editor.SlateInspector.UnobserveWidget` | `Identifier` で登録したウィジェットの観測を解除 |
+| `Toolset.Editor.SlateInspector.ListObservers` | 現在有効なウィジェット observer を列挙 |
+| `Toolset.Editor.SlateInspector.ClickWidget` | 指定 ref のウィジェットへのマウスクリックをシミュレート |
+| `Toolset.Editor.SlateInspector.HoverWidget` | 指定 ref のウィジェット上へカーソルを移動 |
+| `Toolset.Editor.SlateInspector.InputText` | 指定 ref のウィジェットにテキストを入力 |
+| `Toolset.Editor.SlateInspector.PressKey` | キー入力を送信（`Ctrl+S` のような修飾キープレフィックス対応） |
+| `Toolset.Editor.SlateInspector.SetComboSelection` | コンボボックスウィジェットの項目を選択 |
+| `Toolset.Editor.SlateInspector.FillForm` | 複数のフォームフィールドを 1 回の呼び出しで入力 |
 
 ---
 
@@ -315,11 +344,14 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `ListCreatableAssetClasses` | `CreateAsset` が作成可能な全 UClass をFactory数・デフォルトFactory付きで返す（重い呼び出し） |
 | 🆓 `ListFactoriesForClass` | 指定 `ClassName` に対応する Factory 候補と各 `FactoryParams` スキーマを返す |
 | `DuplicateAsset` | 既存アセットを複製 |
+| `CopyAsset` | アセットを新しい完全パッケージパスへコピー（コピー先が存在する場合は失敗・`AssetCreate` 必要） |
 | `RenameAsset` | アセットをリネーム / 別パスへ移動 |
+| `MoveAsset` | 名前を維持したままアセットを別フォルダへ移動し、リダイレクタが残ったかを報告（`AssetMutate` 必要） |
 | `DeleteAsset` | アセットを削除 |
 | `CreateFolder` | Content Browser に新規フォルダを作成 |
 | `DeleteFolder` | 空フォルダを削除（空でない場合 `NotEmpty`） |
 | `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし） |
+| `MoveFolder` | フォルダ内の全アセットをサブフォルダ構造を保ったまま移動。部分失敗は `FailedAssets` に列挙（`AssetFolderRefactor` 必要） |
 | 🆓 `GetSelectedAssets` | Content Browser で現在選択中のアセットを返す |
 | `SelectAssets` | Content Browser で指定アセットを選択（`ContentBrowserNavigate` 必要） |
 | 🆓 `GetContentBrowserPath` | Content Browser に現在表示されているフォルダパスを返す |
@@ -327,6 +359,7 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `GetOpenAssets` | アセットエディタで現在開いているアセット一覧を返す |
 | 🆓 `ListAssetRedirectors` | フォルダ配下（既定はプロジェクト全体の `/Game`）のアセットリダイレクタを、アセットをロードせずに元パス・先パス付きで一覧取得する |
 | `FixAssetRedirectors`（`RedirectorFixup` 必要） | `/Game` 全体（常に再帰的）を対象に、解決可能なアセットリダイレクタを一括修正・削除する |
+| `FixUpRedirectorsInFolder`（`RedirectorFixup` 必要） | 同じ修正処理を 1 フォルダに限定して実行。解決できなかったものは `FailedRedirectors` に返る |
 | 🆓 `GetAssetReferences` | 指定アセットを起点に参照グラフ（参照元・参照先・両方）を指定深さまで探索する |
 | 🆓 `GetAssetSizeMap` | フォルダ配下のディスクサイズ（任意で常駐メモリサイズ）をアセット単位で集計し降順ソートする |
 | 🆓 `GetAssetSizeMapByClass` | フォルダ配下のディスクサイズをアセットクラス単位で集計し降順ソートする |
@@ -372,15 +405,15 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 
 | コマンド | 説明 |
 |---|---|
-| `SearchAssetsSemantic` | 自然言語クエリでプロジェクトアセットを検索（BM25+ベクトルハイブリッド、最大 500 件） |
-| `FindSimilarAssets` | 参照アセットに類似するアセットをベクトル類似度で検索 |
+| `Search` | 自然言語クエリでプロジェクトアセットを検索（BM25+ベクトルハイブリッド、最大 500 件） |
+| `FindSimilar` | 参照アセットに類似するアセットをベクトル類似度で検索 |
 | `GetIndexStats` | 現在のインデックス統計（アセット数・最終構築日時）を返す |
 | `StartIndexing` | セマンティックインデックスの完全再構築をトリガー（長時間処理・`SemanticSearchEdit` 必要） |
 | `CancelIndexing` | 実行中のインデックス構築をキャンセル（`SemanticSearchEdit` 必要） |
 
 ### Toolset ブリッジ（2 件）🧩
 
-`SemanticSearchToolset` プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SemanticSearch.*`。上記の `SearchAssetsSemantic` / `FindSimilarAssets` に相当し、Toolset ブリッジ専用として提供されます（これら 2 件には対応する UAIP ネイティブコマンドは存在しない。ADR `2026-06-25-SemanticSearchToolset-BridgeOnly-Exception.md` 参照）。
+`SemanticSearchToolset` プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SemanticSearch.*`。上記のネイティブ `Search` / `FindSimilar` に相当し、Toolset ブリッジ専用として提供されます（これら 2 件には対応する UAIP ネイティブコマンドは存在しない。ADR `2026-06-25-SemanticSearchToolset-BridgeOnly-Exception.md` 参照）。
 
 | コマンド | 説明 |
 |---|---|
@@ -562,6 +595,19 @@ Material グラフ編集とパラメータ管理。
 | `RenameGameplayTag` | タグ名を変更（任意でアセット参照も更新） |
 | `FindGameplayTagReferencers` | タグを参照するアセット一覧 |
 
+### Toolset ブリッジ — GameplayTags（6 件）🧩
+
+`GameplayTagsToolset` プラグイン（UE 5.8+、Experimental）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.GameplayTags.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.GameplayTags.ListTags` | 登録済みタグ一覧（`ParentTag` 指定でその子孫に限定、最大 2048 件） |
+| `Toolset.Editor.GameplayTags.GetTagInfo` | 単一タグの詳細 — Comment・Source・Children |
+| `Toolset.Editor.GameplayTags.FindReferencersByTag` | タグを参照するアセットを検索（最大 256 パス） |
+| `Toolset.Editor.GameplayTags.AddTag` | 既存の `.ini` タグソースにタグを追加（`GameplayTagEdit` 必要） |
+| `Toolset.Editor.GameplayTags.RemoveTag` | タグをプロジェクトタグテーブルから削除。アセット参照は更新**されない**（`GameplayTagEdit` 必要） |
+| `Toolset.Editor.GameplayTags.RenameTag` | INI 上のみのリネーム。参照更新もリダイレクト登録も行わないため、通常はネイティブの `RenameGameplayTag` を推奨（`GameplayTagEdit` 必要） |
+
 ---
 
 ## UAIP.Editor.GameFeatures 🧩
@@ -572,7 +618,20 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 |---|---|
 | `ListGameFeatures` 🧩 | GameFeature Plugin 一覧（filter_state：All / Installed / Mounted / Registered / Loaded / Active） |
 | `GetGameFeatureInfo` 🧩 | GFP 詳細（State・Actions・依存関係） |
+| `GetGameFeatureActions` 🧩 | GameFeature Plugin の `UGameFeatureData` が宣言する Action 一覧 |
 | `CreateGameFeaturePlugin` 🧩 | 新規 GameFeature Plugin のスキャフォールド（名前バリデーション付き） |
+| `DeleteGameFeaturePlugin` 🧩 | コンテンツのみの GameFeature Plugin をディスクから削除 |
+
+### Toolset ブリッジ — GameFeatures（4 件）🧩
+
+`GameFeaturesToolset`（UE 5.8+、Experimental）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.GameFeatures.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.GameFeatures.ListGameFeatures` | 登録済み GameFeature Plugin と現在の状態の一覧 |
+| `Toolset.Editor.GameFeatures.FindGameFeatureData` | プラグイン名から `UGameFeatureData` アセットの refPath を解決 |
+| `Toolset.Editor.GameFeatures.GetActions` | `UGameFeatureData` の Action クラス名一覧（`{"refPath": "..."}` を渡す） |
+| `Toolset.Editor.GameFeatures.CreateGameFeaturePlugin` | コンテンツのみの GameFeature Plugin を作成（`GameFeatureCreate` 必要） |
 
 ---
 
@@ -580,7 +639,7 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 
 Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインおよび **UE 5.7 以降**が必要です。
 
-### ネイティブ（36）
+### ネイティブ（52）
 
 #### 観測（13）
 
@@ -599,6 +658,37 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `GetStackInputData` 🧩 | モジュールスタック入力値 |
 | `UEnum_Info` 🧩 | UEnum 情報 |
 | `GetAvailableNiagaraRendererClasses` 🧩 | `UNiagaraRendererProperties` 派生クラスの一覧（上限 200 件）。返された `ClassPath` を `AddRenderer` の `RendererClass` 引数として使用する。 |
+
+#### スキーマ（7）
+
+| コマンド | 説明 |
+|---|---|
+| `GetSystemSchema` 🧩 | `UNiagaraSystem` の編集可能なトップレベルプロパティの JSON Schema（システム間で不変・キャッシュ可） |
+| `GetEmitterSchema` 🧩 | エミッタの編集可能なトップレベルプロパティの JSON Schema（キャッシュ可） |
+| `GetRendererSchema` 🧩 | `RendererClassPath` で指定した `UNiagaraRendererProperties` クラスの JSON Schema |
+| `GetDataInterfaceSchema` 🧩 | `DataInterfaceClassPath` で指定した `UNiagaraDataInterface` クラスの JSON Schema |
+| `GetStackInputSchema` 🧩 | 単一モジュール入力の型・カテゴリ・`SupportsExpressions` |
+| `GetModuleSchema` 🧩 | スタック上のモジュールインスタンスの入出力一覧 |
+| `GetModuleSchemaFromAsset` 🧩 | NiagaraSystem を介さず `UNiagaraScript` モジュールアセットの入出力を取得 |
+
+#### トポロジと Dynamic Input（7）
+
+| コマンド | 説明 |
+|---|---|
+| `GetEmitterTopology` 🧩 | エミッタの全スクリプトスタックとモジュールを含むモジュールスタックトポロジ |
+| `GetScriptStackTopology` 🧩 | 単一スクリプトスタックのモジュールトポロジ |
+| `GetModuleTopology` 🧩 | 単一モジュールの入力トポロジ |
+| `GetStackInputTopology` 🧩 | 単一入力の完全なトポロジ — 型・値モード・現在値・再帰的な dynamic input の子 |
+| `GetDynamicInputSchema` 🧩 | スタック上の dynamic input スクリプトインスタンスの入出力一覧 |
+| `GetDynamicInputSchemaFromAsset` 🧩 | NiagaraSystem を介さず `UNiagaraScript` dynamic input アセットの入出力を取得 |
+| `GetAvailableDynamicInputs` 🧩 | 指定モジュール入力に適用できる dynamic input スクリプト一覧 |
+
+#### スタック Issue（2）
+
+| コマンド | 説明 |
+|---|---|
+| `GetStackIssues` 🧩 | システム全体のスタック Issue（エラー / 警告 / 情報、dismiss 済みを含む）と `IssueId`・`FixId` |
+| `ApplyStackIssueFix` 🧩 | `IssueId` + `FixId` を指定して Fix 形式の自動修正を適用（Link 形式は拒否・`NiagaraStackAutoFix` 必要） |
 
 #### 編集（21）
 
@@ -717,6 +807,20 @@ Dataflow グラフ編集。`DataflowEditor` プラグインが必要です。
 | `ListDataflowVariables` 🧩 | グラフ変数一覧 |
 | `GetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を取得（プリミティブ / enum / FName / FString / 単純構造体） |
 | `SetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を設定。ドメイン非依存（Cloth の Weight Map・シミュレーション設定ノード等から利用される） |
+
+### Toolset ブリッジ — Dataflow（7 件）🧩
+
+`DataflowAgentToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.DataflowAgent.*`。編集系は `DataflowGraphEdit` が必要です。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.DataflowAgent.ListDataflowNodeTypes` | 利用可能な Dataflow ノード型の一覧（common 型のみ） |
+| `Toolset.Editor.DataflowAgent.GetDataflowGraphInfo` | Dataflow アセットのノード・接続構造 |
+| `Toolset.Editor.DataflowAgent.ListDataflowVariables` | Dataflow アセットの変数一覧 |
+| `Toolset.Editor.DataflowAgent.AddDataflowNode` | Dataflow グラフにノードを追加（`DataflowGraphEdit` 必要） |
+| `Toolset.Editor.DataflowAgent.RemoveDataflowNode` | Dataflow グラフからノードを削除（`DataflowGraphEdit` 必要） |
+| `Toolset.Editor.DataflowAgent.ConnectDataflowPins` | 2 ピンを接続（`DataflowGraphEdit` 必要） |
+| `Toolset.Editor.DataflowAgent.DisconnectDataflowPins` | ピン接続を切断（`DataflowGraphEdit` 必要） |
 
 ---
 
@@ -915,6 +1019,7 @@ DataTable 行の管理とインポート / エクスポート。
 | `ImportDataTableFromCSV` | CSV 文字列を一括インポート（Replace / Merge モード） |
 | `ExportDataTableToCSV` | DataTable を CSV Artifact としてエクスポート |
 | `GetDataTableRowStruct` | 行構造（UScriptStruct）フィールド定義を取得 |
+| `ListDataTableRowStructs` | 行構造に使える `FTableRowBase` 派生 struct の一覧 — `ClassPath` を `CreateAsset` の `FactoryParams.RowStructPath` に渡す |
 
 ---
 
@@ -925,6 +1030,7 @@ Anim Blueprint グラフと StateMachine 編集。
 | コマンド | 説明 |
 |---|---|
 | `GetAnimBlueprintInfo` | AnimGraph ノード一覧と StateMachine 構造（PIE 中は degraded モード） |
+| `GetAvailableAnimGraphNodeClasses` | `UAnimGraphNode_Base` サブクラス一覧 — `ClassPath` を `AddAnimGraphNode` に渡す |
 | `AddAnimGraphNode` | `UAnimGraphNode_Base` 派生ノードを NodeClass 指定で追加 |
 | `RemoveAnimGraphNode` | NodeId 指定でノードを削除 |
 | `ConnectAnimGraphPins` | 2 ピンを接続（WouldCreateCycle DFS 事前検出） |
@@ -1061,7 +1167,12 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 
 | コマンド | 説明 |
 |---|---|
-| `GetBehaviorTreeInfo` | BT グラフのツリー構造（Composite / Task / Decorator / Service）を再帰 JSON で返す |
+| `GetBehaviorTreeNodeList` | 全ノードのフラットな一覧 — `NodeGuid`・`NodeClass`・`DisplayName`・`Depth`（0 = ルート Composite）・`ParentNodeGuid` |
+| `GetBehaviorTreeSubtree` | `NodeGuid` を起点としたサブツリー（Composite / Task / Decorator / Service）を再帰 JSON で返す（`MaxDepth` 1〜32） |
+| `GetAvailableBTCompositeClasses` | `UBTCompositeNode` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeCompositeNode` に渡す |
+| `GetAvailableBTTaskClasses` | `UBTTaskNode` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeTaskNode` に渡す |
+| `GetAvailableBTDecoratorClasses` | `UBTDecorator` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeDecoratorNode` に渡す |
+| `GetAvailableBTServiceClasses` | `UBTService` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeServiceNode` に渡す |
 | `AddBehaviorTreeCompositeNode` | Composite ノードを追加（Sequence / Selector / SimpleParallel） |
 | `AddBehaviorTreeTaskNode` | TaskClass 指定で Task ノードを追加 |
 | `AddBehaviorTreeDecoratorNode` | 親ノードに Decorator を附加 |
@@ -1074,6 +1185,20 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 | `SetBehaviorTreeBlackboard` | BT アセットの参照 Blackboard を変更 |
 | `RequestBehaviorTreeAutoArrange` | 開いている BT エディタで AutoArrange パスを実行 |
 
+### Toolset ブリッジ — AIModule（7 件）🧩
+
+`AIModuleToolset`（UE 5.8+、Experimental）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.AIModule.*`。観測専用です。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.AIModule.GetBlackboard` | BehaviorTree に紐づく Blackboard アセット |
+| `Toolset.Editor.AIModule.GetRootDecorators` | ルート Composite ノードに附加された Decorator 一覧 |
+| `Toolset.Editor.AIModule.ListNodes` | 全ノードのインデックスと型の一覧 |
+| `Toolset.Editor.AIModule.GetNodeDepth` | インデックス指定した単一ノードの深さ |
+| `Toolset.Editor.AIModule.GetNodeDepths` | 全ノードの深さをフラットな一覧で返す |
+| `Toolset.Editor.AIModule.GetChildren` | refPath で指定した Composite ノードの直下の子 |
+| `Toolset.Editor.AIModule.GetSubtree` | refPath で指定したノードを起点とするサブツリー |
+
 ---
 
 ## UAIP.Editor.MetaSound 🧩
@@ -1083,6 +1208,7 @@ MetaSound グラフ編集。`Metasound` プラグインが必要です。
 | コマンド | 説明 |
 |---|---|
 | `GetMetaSoundInfo` 🧩 | MetaSoundSource / MetaSoundPatch のグラフトポロジー（ノード一覧・接続・I/O 頂点） |
+| `GetAvailableMetaSoundNodeClasses` 🧩 | Frontend レジストリのノードクラス一覧（`ClassName`・`Variant`・`MajorVersion`・`DisplayName`）。`AddMetaSoundNode` の引数に使う。エンジン標準の名前空間に絞り込み済み |
 | `AddMetaSoundNode` 🧩 | `Namespace::Name` 形式でノードを追加（MajorVersion 対応・5 ステップ Policy） |
 | `RemoveMetaSoundNode` 🧩 | NodeId 指定でノードを削除 |
 | `ConnectMetaSoundPins` 🧩 | 2 ピンを接続（重複時 idempotent フラグ付き） |
@@ -1101,6 +1227,8 @@ EQS クエリ編集。`EnvironmentQueryEditor` プラグインが必要です。
 | コマンド | 説明 |
 |---|---|
 | `GetEQSQueryInfo` 🧩 | EQS Generator Option / Test 構造（PIE 中は degraded モード） |
+| `GetAvailableEQSGeneratorClasses` 🧩 | `UEnvQueryGenerator` サブクラス一覧 — `ClassPath` を `AddEQSGenerator` に渡す |
+| `GetAvailableEQSTestClasses` 🧩 | `UEnvQueryTest` サブクラス一覧 — `ClassPath` を `AddEQSTest` に渡す |
 | `AddEQSGenerator` 🧩 | Generator Option を追加（GeneratorClass・6 ステップ allowlist） |
 | `RemoveEQSGenerator` 🧩 | NodeId 指定で Generator Option を削除（配下 Test も一括削除） |
 | `AddEQSTest` 🧩 | Generator Option に Test を追加 |
@@ -1114,7 +1242,7 @@ EQS クエリ編集。`EnvironmentQueryEditor` プラグインが必要です。
 
 LevelSequence 編集 — トラック・セクション・キーフレーム・再生・バインド。
 
-### ネイティブ（92）
+### ネイティブ（123）
 
 #### 構造（15）
 
@@ -1241,11 +1369,29 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `GetSubSequences` | SubSequence トラックのセクション一覧 |
 | `AddSubSequenceTrack` | SubSequence トラックを追加 |
 
-#### AnimMixer（17、オプショナル `MovieSceneAnimMixer`）
+#### AnimMixer（36、オプショナル `MovieSceneAnimMixer`）
 
 | コマンド | 説明 |
 |---|---|
 | `GetAnimMixerTrackInfo` | AnimMixer トラック情報を取得 |
+| `GetMixerLayers` | バインディングの全 AnimMixer レイヤーの概要 |
+| `GetMixerLayerCount` | バインディングの AnimMixer トラックのレイヤー数 |
+| `GetLayerName` | レイヤーの表示名を取得 |
+| `SetLayerName` | レイヤーの表示名を設定 |
+| `GetLayerIndex` | 表示名からレイヤーの 0 始まりインデックスを取得（存在しなければ `NotFound`） |
+| `GetLayerSections` | レイヤー内の全アニメーションセクション |
+| `IsLayerEmpty` | レイヤーにアニメーションセクションが無いかどうか |
+| `InsertMixerLayer` | 指定インデックスに空レイヤーを挿入し以降をずらす。新しいインデックスを返す |
+| `GetTransitionsForSection` | 指定セクションが関与する Transition 一覧（`FromSectionIndex`・`ToSectionIndex`・`TransitionClass`） |
+| `GetTransitionBetween` | 2 つのセクションインデックス間の Transition の基本情報（無ければ `NotFound`） |
+| `GetTransitionInfo` | 2 つのセクション間の Transition の詳細情報 |
+| `GetTransitionName` | 2 つのセクション間の Transition の表示名 |
+| `ChangeTransitionType` | Transition を `NewTransitionClass` のものへ差し替え（単一トランザクション内で作成→削除の順） |
+| `GetCompatibleDecorations` | レイヤーに適用可能な Decoration クラス一覧 |
+| `GetDecorations` | レイヤー上の既存 Decoration 一覧 |
+| `FindDecoration` | レイヤー上の特定 Decoration を検索（無ければ `NotFound`） |
+| `AddDecoration` | レイヤーに Decoration を追加（既存があればそれを返す） |
+| `RemoveDecoration` | レイヤーから Decoration を削除 |
 | `GetLayerBlendWeight` | レイヤーのブレンドウェイトを取得 |
 | `SetLayerBlendWeight` | レイヤーのブレンドウェイトを設定 |
 | `IsLayerMuted` | レイヤーのミュート状態を取得 |
@@ -1264,9 +1410,30 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `RemoveMixerTransition` | Transition を削除 |
 | `GetMixerSectionInfo` | AnimMixer セクション情報を取得 |
 
+#### ControlRig トラック（12）
+
+**LevelSequence 内**での ControlRig オーサリング。ControlRig アセット自体の編集は [`UAIP.Editor.ControlRig`](#uaipeditorcontrolrig) を参照してください。
+
+| コマンド | 説明 |
+|---|---|
+| `GetControlRigTracks` | LevelSequence 内の全 ControlRig パラメータトラック |
+| `GetControlRigSectionInfo` | セクションのプロパティ — `IsInfinite`・`StartFrame`・`EndFrame`・`IsActive`・クラス名 |
+| `FindOrCreateControlRigTrack` | バインディングの ControlRig パラメータトラックを取得または作成し `TrackCreated` を返す |
+| `BakeToControlRig` | バインディングのアニメーションを ControlRig トラックへベイク（表示レートフレーム・`Tolerance` は 0.0〜1.0） |
+| `KeyControls` | 指定コントロールを 1 つの表示レートフレームでキー（`ControlNames` 省略時は表示中の全コントロール） |
+| `KeyControlsAtFrames` | 指定コントロールを複数の表示レートフレームでキー |
+| `GetControlsMask` | ControlRig セクションのコントロール別表示マスク |
+| `SetControlsMask` | 指定コントロールの表示状態を設定（未指定のコントロールは現状維持） |
+| `ShowAllControls` | セクション内の全コントロールを表示 |
+| `HideAllControls` | セクション内の全コントロールを非表示 |
+| `LoadAnimIntoRig` | ⚠️ 常に `UnsupportedOperation` を返す — エンジン API が静的アセット編集では取得できない `USkeletalMeshComponent*` を要求するため。代わりに `Toolset.Editor.SequencerControlRig.LoadAnimIntoRig` を使用 |
+| `GetActorTransformAtFrame` | 指定フレームでシーケンスを評価し、名前指定したアクターのワールドトランスフォームを返す |
+
 ### Toolset ブリッジ（61）🧩
 
-プロバイダ：`Toolset.AnimationAssistant.*`（41 件 — Lifecycle 6・Playback 10・Property 9・MarkedFrame 5・UI 11）と `Toolset.SequencerAnimMixer.*`（20 件 — Layers 10・Transitions 5・Decorations 5）。UE 5.8+ が必要。
+プロバイダ：`Toolset.Editor.AnimationAssistant.*`（41 件 — Lifecycle 6・Playback 10・Property 9・MarkedFrame 5・UI 11）と `Toolset.Editor.SequencerAnimMixer.*`（20 件 — Layers 10・Transitions 5・Decorations 5）。UE 5.8+ が必要。
+
+> Sequencer モジュール実装のもう 1 つのブリッジプロバイダ `Toolset.Editor.SequencerControlRig.*`（63 件）は、コマンドの対象が ControlRig のコントロールであるため [`UAIP.Editor.ControlRig`](#uaipeditorcontrolrig) 側に掲載しています。
 
 ---
 
@@ -1274,17 +1441,91 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 
 StateTree 編集。
 
+### ネイティブ（39）
+
+#### State 観測（8）
+
 | コマンド | 説明 |
 |---|---|
-| `GetStateTreeInfo` | State ツリー・Task 一覧・Transition 一覧・Schema 情報（PIE 中は degraded モード） |
-| `AddState` | State を追加（State / Group / Subtree / Linked / LinkedAsset の 5 種類） |
+| `GetRootStates` | トップレベル State のディスクリプタ（`StateId`・`Name`・`Type`・`ParentStateId`・`ChildCount`） |
+| `GetStateChildren` | 単一 State の直下の子 State ディスクリプタ |
+| `GetStateTasks` | 単一 State の Task 一覧（PIE 中の degraded モードではクラス名を秘匿） |
+| `GetStateTransitions` | 単一 State の Transition 一覧（PIE 中は遷移先 State ID を秘匿） |
+| `GetStateEnterConditions` | 単一 State の Enter Condition 一覧 |
+| `GetStateTreeGlobalTasks` | アセットのグローバル Task 一覧（アクティブ State に関係なく実行される） |
+| `GetStateTreeEvaluators` | アセットの Evaluator 一覧（毎 Tick 実行され共有データを更新する） |
+| `GetStateNodeDescription` | ノード GUID のクラスパスと表示名（グローバル Task・Evaluator・全 State を横断検索） |
+
+#### クラス / スキーマ探索（5）
+
+| コマンド | 説明 |
+|---|---|
+| `GetAvailableTaskClasses` | ノードクラスポリシーで許可された Task クラス（ネイティブ struct + Blueprint） |
+| `GetAvailableConditionClasses` | Condition クラス（ネイティブ struct + Blueprint） |
+| `GetAvailableEvaluatorClasses` | Evaluator クラス（ネイティブ struct + Blueprint） |
+| `GetAvailableStateTreeSchemaClasses` | `UStateTreeSchema` サブクラス — `ClassPath` を `CreateAsset` の `FactoryParams.SchemaClass` に渡す |
+| `GetStateTreeSchema` | アセットの Schema クラスパスとルートパラメータのディスクリプタ |
+
+#### State 構造編集（4）
+
+| コマンド | 説明 |
+|---|---|
+| `AddState` | State を追加（State / Group / Subtree / Linked / LinkedAsset の 5 種類）。`StateId` を返す |
 | `RemoveState` | StateId 指定で State を削除（子 State 再帰削除） |
-| `AddStateTask` | State に Task を追加（8 ステップ allowlist） |
+| `SetStateName` | State をリネーム |
+| `MoveState` | State の親／順序を変更（循環参照になる移動は拒否） |
+
+#### Task / Transition / Condition 編集（9）
+
+| コマンド | 説明 |
+|---|---|
+| `AddStateTask` | State に Task を追加（8 ステップ allowlist）。`TaskId` を返す |
 | `RemoveStateTask` | TaskId 指定で Task を削除 |
-| `AddStateTransition` | Transition を追加（Succeeded / Failed / NextState / NextSelectableState / GotoState） |
+| `AddStateTransition` | Transition を追加（`Succeeded` / `Failed` / `NextState` / `NextSelectableState` / GUID 指定）。`OnDelegate` は非対応 |
 | `RemoveStateTransition` | TransitionId 指定で Transition を削除 |
+| `AddStateEnterCondition` | State に Enter Condition を追加。`ConditionId` を返す |
+| `RemoveStateEnterCondition` | ConditionId 指定で Enter Condition を削除 |
+| `SetEnterConditionProperty` | Enter Condition ノードのプロパティを設定 |
+| `GetStateNodeProperty` | ノード GUID のトップレベルプロパティ 1 件をエクスポートテキストで取得 |
 | `SetStateNodeProperty` | Task ノードのプロパティを設定（汎用 ImportText_Direct） |
-| `CompileStateTree` | StateTree をコンパイル（セッション単位 1 秒レートリミット） |
+
+#### グローバル Task / Evaluator 編集（6）
+
+| コマンド | 説明 |
+|---|---|
+| `AddGlobalTask` | グローバル Task を追加。`TaskId` を返す |
+| `RemoveGlobalTask` | TaskId 指定でグローバル Task を削除 |
+| `SetGlobalTaskProperty` | グローバル Task ノードのプロパティを設定 |
+| `AddEvaluator` | Evaluator を追加。`EvaluatorId` を返す |
+| `RemoveEvaluator` | EvaluatorId 指定で Evaluator を削除 |
+| `SetEvaluatorProperty` | Evaluator ノードのプロパティを設定 |
+
+#### パラメータ・バインディング・コンパイル（7）
+
+| コマンド | 説明 |
+|---|---|
+| `GetStateTreeParameters` | ルートパラメータのディスクリプタ（`Name`・`ParameterType`・現在のシリアライズ値） |
+| `AddStateTreeParameter` | ルートパラメータを追加（Bool / Byte / Int32 / Int64 / Float / Double / Name / String / Text） |
+| `RemoveStateTreeParameter` | 名前指定でルートパラメータを削除 |
+| `SetStateTreeParameter` | ルートパラメータ値を文字列エンコード値から設定 |
+| `AddPropertyBinding` | ソースノードのプロパティをターゲットノードのプロパティへバインド |
+| `RemovePropertyBinding` | ターゲットノードのプロパティバインディングを削除 |
+| `CompileStateTree` | StateTree をコンパイル（連続呼び出しにはアセット単位のレートリミット） |
+
+### Toolset ブリッジ（8 件）🧩
+
+`StateTreeToolset`（UE 5.8+、Experimental）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.StateTree.*`。観測専用です。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.StateTree.GetEditorData` | StateTree アセットのエディタデータ |
+| `Toolset.Editor.StateTree.GetRootStates` | StateTree アセットのルート State |
+| `Toolset.Editor.StateTree.GetGlobalTasks` | StateTree アセットのグローバル Task |
+| `Toolset.Editor.StateTree.GetEvaluators` | StateTree アセットの Evaluator |
+| `Toolset.Editor.StateTree.GetChildren` | `UStateTreeState` の子 State |
+| `Toolset.Editor.StateTree.GetTasks` | `UStateTreeState` の Task |
+| `Toolset.Editor.StateTree.GetEnterConditions` | `UStateTreeState` の Enter Condition |
+| `Toolset.Editor.StateTree.GetTransitions` | `UStateTreeState` の Transition |
 
 ---
 
@@ -1343,7 +1584,7 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 | `GetPCGNodeDataView` 🧩 | PCG ノードの実行データビューを取得（`PCGNodeInspect` 必須。`PCG_PROFILING_ENABLED=0` 時は CapabilityNotAvailable） |
 | `RunPCGInstantGraph` 🧩 | アクター / コンポーネント不要の fire-and-forget PCG グラフ実行（`PCGGraphExecute` 必須） |
 
-### Toolset ブリッジ — PCG（31 件）🧩
+### Toolset ブリッジ — PCG（30 件）🧩
 
 `PCGToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.PCG.*`。アクティブな PCG エディタタブが必要なコマンドは非インタラクティブコンテキストで `ExecutionFailed` を返す場合があります（PCGToolset の既知の制約）。
 
@@ -1394,6 +1635,22 @@ WorldConditions 編集。`WorldConditions` プラグインが必要です。
 | `SetWorldConditionProperty` 🧩 | 条件 USTRUCT のプロパティを設定（ImportText 値文字列） |
 | `SetWorldConditionOperator` 🧩 | Operator（And / Or）と bInvert を設定（Index 0 は Copy 固定） |
 | `SetWorldConditionExpressionDepth` 🧩 | ExpressionDepth（0–4）を設定 |
+| `ListWorldConditionClasses` 🧩 | クラスポリシーで許可された `FWorldConditionBase` 派生クラス一覧 — 有効な `ConditionClass` 値の探索に使う |
+| `ValidateWorldConditionQuery` 🧩 | クエリに対して `Initialize()` + `IsValid()` を実行し `{IsValid, Errors}` を返す（PIE 中も可） |
+| `MoveWorldCondition` 🧩 | 条件を `SourceIndex` から `TargetIndex` へ移動（インデックス 0 は固定） |
+| `DuplicateWorldCondition` 🧩 | `SourceIndex` の条件を複製し `InsertIndex` に挿入 |
+| `ReplaceWorldCondition` 🧩 | 条件の型を `NewConditionClass` の既定値へ差し替え（Depth・Operator・bInvert は維持） |
+| `ClearWorldConditionQuery` 🧩 | 全条件を削除して空のクエリにする |
+| `SetMultipleWorldConditionProperties` 🧩 | 1〜32 件のプロパティ編集を単一トランザクションで適用し、編集ごとの成否を返す |
+
+### Toolset ブリッジ — WorldConditions（2 件）🧩
+
+`WorldConditionTools`（UE 5.8+、Experimental）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.WorldConditions.*`。入力 JSON は 64 KiB 上限です。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.WorldConditions.GetQueryDescription` | `FWorldConditionQueryDefinition` の人間可読な説明 |
+| `Toolset.Editor.WorldConditions.GetConditionDescription` | 単一条件型の人間可読な説明 |
 
 ---
 
@@ -1403,11 +1660,6 @@ ConversationDB グラフ編集。`CommonConversation` プラグインが必要�
 
 | コマンド | 説明 |
 |---|---|
-| `ListConversationEntryPoints` 🧩 | エントリポイント一覧 |
-| `ListConversationSpeakers` 🧩 | 話者一覧 |
-| `ListConversationNodes` 🧩 | 全ノード一覧（refPath 付き） |
-| `GetConversationNodeConnections` 🧩 | ノードの接続情報 |
-| `ListConversationNodeSubNodes` 🧩 | ノードの SubNode 一覧 |
 | `ListConversationNodeTypes` 🧩 | 位置別の許可ノードクラス一覧（最大 256 件） |
 | `AddConversationNode` 🧩 | トップレベルノードを追加（`UConversationNodeWithLinks` 派生） |
 | `AddConversationSubNode` 🧩 | 親 Task ノードに SubNode を附加 |
@@ -1415,6 +1667,18 @@ ConversationDB グラフ編集。`CommonConversation` プラグインが必要�
 | `ConnectConversationNodes` 🧩 | ノード間の遷移エッジを追加 |
 | `DisconnectConversationNodes` 🧩 | 遷移エッジを削除 |
 | `SetConversationNodeProperty` 🧩 | プロパティを設定（FText は BIDI strip・PUA reject・4096 文字上限） |
+
+### Toolset ブリッジ — Conversation（5 件）🧩
+
+`ConversationToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Conversation.*`。観測専用で、編集は上記のネイティブコマンドが担当します。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.Conversation.ListConversationEntryPoints` | `UConversationDatabase` のエントリポイントノード一覧 |
+| `Toolset.Editor.Conversation.ListConversationSpeakers` | `UConversationDatabase` に定義された話者一覧 |
+| `Toolset.Editor.Conversation.ListConversationNodes` | 全ノード一覧（以下 2 コマンドで使う refPath 付き） |
+| `Toolset.Editor.Conversation.GetConversationNodeConnections` | `NodeRefPath` で指定したノードの接続グラフ |
+| `Toolset.Editor.Conversation.ListConversationNodeSubNodes` | ノードの SubNode（選択肢・要求・副作用）一覧 |
 
 ---
 
@@ -1523,9 +1787,27 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 | `CompileControlRig` | ControlRig をコンパイル（セッション単位 1 秒レートリミット） |
 | `GetAvailableRigVMUnitStructs` | FRigUnit 派生 UScriptStruct 一覧（上限 1000 件） |
 
-### Toolset ブリッジ（44）🧩
+### Toolset ブリッジ（107）🧩
 
-`AnimationAssistantToolset`（UE 5.8+）経由でネイティブコマンドを委譲。プロバイダ：`Toolset.Editor.ControlRig.*`。グループ：アセット作成（1）/ ヒエラルキー観測（8）/ ヒエラルキー編集（7）/ グラフ管理（10）/ ノード（7）/ ピン（6）/ 変数（5）。
+いずれも `AnimationAssistantToolset`（UE 5.8+）へ委譲する 2 つのブリッジプロバイダがあります。
+
+**`Toolset.Editor.ControlRig.*`（44 件）** — 上記ネイティブのアセット編集コマンドのミラー。グループ：アセット作成（1）/ ヒエラルキー観測（8）/ ヒエラルキー編集（7）/ グラフ管理（10）/ ノード（7）/ ピン（6）/ 変数（5）。
+
+**`Toolset.Editor.SequencerControlRig.*`（63 件）** — アニメーション時のコントロールオーサリング。実装は Sequencer モジュール（`SequencerControlRigTools`）ですが、全コマンドが ControlRig のコントロールを対象とするため本セクションに掲載しています。ControlRig に加えて `MovieSceneAnimMixer` が必要です。グループ：
+
+| グループ | 件数 | コマンド |
+|---|---:|---|
+| コントロール値 | 16 | `Get`/`SetFloatValue`・`BoolValue`・`IntValue`・`Vector2DValue`・`PositionValue`・`RotatorValue`・`ScaleValue`・`EulerTransformValue` |
+| ワールドトランスフォーム | 3 | `GetWorldTransform`・`SetWorldTransform`・`GetActorTransformAtFrame` |
+| レイヤードリグ | 6 | `CollapseAnimLayers`・`IsLayeredControlRig`・`SetLayeredMode`・`Get`/`SetPriorityOrder`・`IsFKControlRig` |
+| アニメーションレイヤー | 6 | `GetControlRigAnimLayers`・`AddControlRigLayerFromSelection`・`Delete`/`Duplicate`/`Reorder`/`MergeControlRigAnimLayers` |
+| スペース | 4 | `Set`/`Move`/`Delete`/`BakeControlRigSpace` |
+| トゥイーン | 3 | `TweenControlRig`・`BlendValuesOnSelected`・`SnapControlRig` |
+| ミラーリング | 3 | `SelectMirroredControls`・`MirrorSelectedControls`・`ZeroControlRigTransforms` |
+| 選択 | 4 | `GetSelectedControls`・`SelectControl`・`ClearControlSelection`・`FrameControlSelection` |
+| FBX | 2 | `ExportFBXFromRig`・`ImportFBXToRig` |
+| Sequencer 問い合わせ | 4 | `GetSequencerControlRigs`・`GetSequencerControlsInfo`・`Get`/`SetControlRigTransformInSequencer` |
+| アニメーションモード設定 | 12 | `AnimModeGizmoScale`・`AnimModeHierarchy`・`AnimModeNulls`・`AnimModeHideManips`・`AnimModeOnlyRigSel`・`AnimModeLocalSpaces` の `Get`/`Set` |
 
 ---
 
@@ -1555,7 +1837,7 @@ Enhanced Input アセット編集 — Input Action と Input Mapping Context。
 
 エディタ時の GameplayAbilities アセット編集 — GameplayCue タグと Cue Notify アセット。`GameplayAbilities` プラグインが必要（Toolset 版は `GASToolsets` も必要）。
 
-### ネイティブ（11）
+### ネイティブ（8）
 
 | コマンド | 説明 |
 |---|---|
@@ -1568,9 +1850,9 @@ Enhanced Input アセット編集 — Input Action と Input Mapping Context。
 | `CreateCueNotifyAsset` | GameplayCueNotify アセットを新規作成（Actor / Static / Burst） |
 | `ExecuteCueOnSelectedActor` | 選択中アクターで GameplayCue を実行（テスト用簡易コマンド） |
 
-### Toolset ブリッジ（11）🧩
+### Toolset ブリッジ（14）🧩
 
-`GASToolsets`（UE 5.8+）経由でネイティブコマンドを委譲。プロバイダ：`Toolset.Editor.GAS.*`。Runtime 検査ヘルパも併せて橋渡し：`GetAttributeValuesToolset` / `GetActiveEffectsToolset` / `GetGrantedAbilitiesToolset` / `GetActiveTagsToolset` / `FindAttributeSetClassesToolset` / `ListAttributesToolset`。
+`GASToolsets`（UE 5.8+）経由でネイティブコマンドを委譲。プロバイダ：`Toolset.Editor.GAS.*`。グループ：Runtime 検査（6 件）— `GetAttributeValues` / `GetActiveEffects` / `GetGrantedAbilities` / `GetActiveTags` / `FindAttributeSetClasses` / `ListAttributes`、GameplayCue オーサリング（8 件）— `ListCues` / `GetCueInfo` / `FindCueNotifyAssets` / `FindCueTagsWithoutNotifies` / `ExecuteCueOnSelectedActor` / `CreateCueNotifyAsset` / `AddCueTag` / `RemoveCueTag`。
 
 ---
 
@@ -1723,7 +2005,7 @@ UE 5.8 Data Registry のエディタ時観測 — 一覧・スキーマ取得・
 
 ## UAIP.Runtime.PIE
 
-PIE セッション制御とランタイムワールド操作。
+PIE セッションのライフサイクル。実行中ワールドの操作は [`UAIP.Runtime.World`](#uaipruntimeworld) にあります。
 
 | コマンド | 説明 |
 |---|---|
@@ -1732,24 +2014,43 @@ PIE セッション制御とランタイムワールド操作。
 | 🆓 `PausePIE` | アクティブな PIE セッションを一時停止 |
 | 🆓 `ResumePIE` | 一時停止中の PIE セッションを再開 |
 | 🆓 `LoadMap` | アクティブな PIE セッションでマップをロードし完了を待つ |
-| `ExecuteConsoleCommand` | アクティブな PIE セッションでコンソールコマンドを実行 |
-| `TeleportActor` | アクターをワールド空間の指定位置 / 回転にテレポート |
-| `PossessActor` | プレイヤーコントローラーにアクターを憑依させる |
-| `SetTimeScale` | アクティブな PIE セッションのグローバル時間スケールを設定 |
-| `QuitGame` | 実行中のゲームプロセスを終了リクエスト |
-| ~~`GetConsoleVariable`~~ | ⚠️ **非推奨**：`UAIP.Runtime.Engine.CVar.GetConsoleVariable` を使用 |
-| ~~`SearchConsoleVariables`~~ | ⚠️ **非推奨**：`UAIP.Runtime.Engine.CVar.SearchConsoleVariables` を使用 |
 | 🆓 `GetPIEState` | 現在の PIE 状態を返す — `Running`・`Stopped`・`Paused`・`Simulating` |
 
-### Toolset ブリッジ（4 件）🧩
+### Toolset ブリッジ（3 件）🧩
 
-EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。
+`EditorAppToolset`（UE 5.8+、EditorToolset プラグイン）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.PIE.*`。
 
-| コマンド | プロバイダ | 説明 |
-|---|---|---|
-| `Toolset.Editor.Toolset.PIE.StartPIE` | `Toolset.Editor.Toolset.PIE.*` | PIE セッションを開始（非同期、`PIEControl` 必要） |
-| `Toolset.Editor.Toolset.PIE.StopPIE` | `Toolset.Editor.Toolset.PIE.*` | PIE セッションを停止（非同期、`PIEControl` 必要） |
-| `Toolset.Editor.Toolset.PIE.IsPIERunning` | `Toolset.Editor.Toolset.PIE.*` | PIE が実行中かどうかを返す |
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.Toolset.PIE.StartPIE` | PIE セッションを開始（非同期、`PIEControl` 必要） |
+| `Toolset.Editor.Toolset.PIE.StopPIE` | PIE セッションを停止（非同期、`PIEControl` 必要） |
+| `Toolset.Editor.Toolset.PIE.IsPIERunning` | PIE が実行中かどうかを返す |
+
+---
+
+## UAIP.Runtime.World
+
+**実行中**のゲームワールドの操作・検査。旧バージョンではこれらは `UAIP.Runtime.PIE` 配下に登録されていました。
+
+| コマンド | 説明 |
+|---|---|
+| `SpawnActor` | アクティブな PIE ワールドに指定クラスのアクターをスポーン（`RuntimeActorManipulation` 必要） |
+| `DestroyActor` | アクティブな PIE ワールドのアクターを破棄（`RuntimeActorManipulation` 必要） |
+| `TeleportActor` | アクターをワールド空間の指定位置 / 回転にテレポート |
+| `PossessActor` | プレイヤーコントローラーにアクターを憑依させる |
+| `SetTimeScale` | アクティブなゲームワールドのグローバル時間スケールを設定 |
+| `QuitGame` | 実行中のゲームプロセスの正常終了をリクエスト |
+| `ExecuteConsoleCommand` | アクティブなゲームワールドでコンソールコマンドを実行（`RuntimeExecCommand` 必要） |
+| `GetConsoleVariable` | コンソール変数の値・型・ヘルプテキストを取得。機微な名前は not found 扱い（`RuntimeCVarRead` 必要） |
+| `SearchConsoleVariables` | ワイルドカード（`*`）でコンソール変数を検索。`MaxResults` は既定 50・最大 200、機微な名前は除外 |
+
+### Toolset ブリッジ（1 件）🧩
+
+`EditorAppToolset`（UE 5.8+、EditorToolset プラグイン）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.World.*`。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.Toolset.World.SearchCVars` | コンソール変数を名前の部分一致で検索。機微な変数は除外（`CVarInspect` 必要） |
 
 ---
 
@@ -1797,7 +2098,9 @@ PIE / Standalone でのテスト実行。
 
 ## UAIP.Runtime.GAS 🧩
 
-GameplayAbilities 状態の検査。`GameplayAbilities` プラグインが必要、PIE 必須。
+GameplayAbilities 状態の検査と実行時操作。`GameplayAbilities` プラグインが必要で、注記のあるもの以外は PIE 必須です。
+
+#### 検査（8）
 
 | コマンド | 説明 |
 |---|---|
@@ -1805,8 +2108,26 @@ GameplayAbilities 状態の検査。`GameplayAbilities` プラグインが必要
 | `GetActiveEffects` 🧩 | アクターの有効中ゲームプレイエフェクト（Level・StackCount・残時間） |
 | `GetGrantedAbilities` 🧩 | アクターに付与されているアビリティ（Class・IsActive・ActiveCount・InputID） |
 | `GetActiveTags` 🧩 | アクターが所有する GameplayTags |
-| `FindAttributeSetClasses` 🧩 | PIE ワールド内アクターを走査し UAttributeSet クラス一覧を返す（MaxActors 上限） |
+| `FindAttributeSetClasses` 🧩 | PIE ワールド内アクターを走査し `UAttributeSet` クラス一覧を返す（MaxActors 上限） |
 | `ListAttributes` 🧩 | AttributeSet クラスに定義されている全属性名 |
+| `GetAbilityAssetInfo` 🧩 | `UGameplayAbility` クラスの CDO レベルのメタデータ（コスト・クールダウン・タグ）。**PIE 不要** |
+| `GetEffectAssetInfo` 🧩 | `UGameplayEffect` クラスの CDO レベルのメタデータ（Duration Policy・Modifier・付与タグ）。**PIE 不要** |
+
+#### 操作（9）
+
+いずれも `RuntimeGASManipulation` Capability と PIE セッションが必要です。
+
+| コマンド | 説明 |
+|---|---|
+| `GrantAbility` 🧩 | アクターの AbilitySystemComponent に GameplayAbility を付与 |
+| `RemoveAbility` 🧩 | 付与済みの GameplayAbility を削除 |
+| `ClearGrantedAbilities` 🧩 | アクターの付与済み GameplayAbility をすべて削除 |
+| `ApplyEffect` 🧩 | アクターに GameplayEffect を適用 |
+| `RemoveEffect` 🧩 | 指定 GameplayEffect クラスの有効インスタンスをすべて削除 |
+| `ClearActiveEffects` 🧩 | 有効な GameplayEffect をすべて削除（`TagFilter` で絞り込み可） |
+| `SetAttributeValue` 🧩 | 属性の base 値を設定（`AttributeName` は `UMyAttributeSet.Health` 形式） |
+| `ResetAttributesToBase` 🧩 | 全属性の current 値を base 値へリセット |
+| `SendGameplayEvent` 🧩 | アクターへ GameplayEvent を送信（magnitude 任意） |
 
 ---
 

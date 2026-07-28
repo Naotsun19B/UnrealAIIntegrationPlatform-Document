@@ -35,14 +35,14 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 8 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | 1 | partial (13/18) |
-| Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | partial (1/3) |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | partial (5/9) |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
 | Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | partial (5/8) |
-| Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
+| Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ |
 | Editor Execution | `UAIP.Editor.Execution` | 9 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 46 | 6 | partial (25/42) |
+| Editor Assets | `UAIP.Editor.Assets` | 46 | 6 | partial (25/46) |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | partial (7/16) |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | partial (6/12) |
@@ -65,13 +65,13 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 17 | 7 | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
-| Editor Sequencer | `UAIP.Editor.Sequencer` | 123 | 124 | — |
+| Editor Sequencer | `UAIP.Editor.Sequencer` | 123 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
 | Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 30 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
-| Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 44 | — |
+| Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 107 | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 8 | 14 | — |
 | Editor Python Extension 🧩 | `UAIP.Editor.Python` | 2 | — | — |
@@ -83,7 +83,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
 | Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | partial (1/2) |
-| Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | partial (6/11) |
+| Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
@@ -106,8 +106,8 @@ System-level commands for discovery, health, and session management.
 | 🆓 `ListCommands` | Filtered command catalog (filters: `GroupFilter`, `KeywordFilter`, `IncludeUnavailable`) |
 | 🆓 `DescribeCommand` | Full metadata for a single command (schema, required capabilities, availability) |
 | 🆓 `ListPlugins` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.Plugin.ListPlugins` instead. List installed plugins and their enabled state (JSON) |
-
-> **Note**: This table covers 6 of the 8 commands registered under `UAIP.Core`. `EndSession` and `ReloadCapabilities` are registered but not yet documented here.
+| 🆓 `EndSession` | End a session explicitly and release its server-side resources; its artifacts become GC candidates |
+| 🆓 `ReloadCapabilities` | Reload the capability set from `Config/DefaultUAIP.ini` without restarting the editor (only registered when `AllowCapabilityReload=True`) |
 
 ---
 
@@ -135,16 +135,23 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 | `CompileLiveCoding` | Trigger Live Coding recompilation |
 | `GetLiveCodingStatus` | Get the current Live Coding status |
 | `EnableLiveCodingForSession` | Enable Live Coding for the current session |
+
+### Toolset bridges — LiveCoding (1) 🧩
+
+Bridge command via the `LiveCodingToolset` (UE 5.8+). Provider: `Toolset.Editor.LiveCoding.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.LiveCoding.CompileLiveCoding` | Trigger Live Coding recompilation (requires `LiveCodingControl`) |
+
 ---
 
 ## UAIP.Editor.Engine.Log
 
-Log verbosity management and log entry retrieval.
+Log entry retrieval for the editor output log. Log **verbosity** commands live under [`UAIP.Runtime.Engine.Log`](#uaipruntimeenginelog).
 
 | Command | Description |
 |---|---|
-| `GetLogVerbosity` | Get the current verbosity level of a log category |
-| `SetLogVerbosity` | Set the verbosity level of a log category (requires `LogVerbosityEdit`) |
 | 🆓 `GetLogEntries` | Retrieve recent log entries from the editor output log (supports pattern filtering; no capability required) |
 
 ### Toolset bridges — Logs (4) 🧩
@@ -259,7 +266,8 @@ Capture screenshots and dump editor state — all read-only.
 | 🆓 `InspectContextMenu` | Context menu items for a target (without executing them) |
 | 🆓 `ObserveWidget` | Time-series sampling of widget Visibility / Enabled / Hovered / Focused state |
 | 🆓 `GetLogCategories` | List all registered engine log category names (optional substring filter) |
-| `CaptureViewportImageAnnotated` | Viewport screenshot with world-coordinate labels drawn on it (requires `ViewportAnnotationCapture`) |
+| 🆓 `ListGraphNodes` | List every node in a graph editor tab — `NodeId` (GUID), `NodeClass`, `NodeTitle`, `Position`. Works with any `UEdGraph`-based editor |
+| 🆓 `CaptureViewportImageAnnotated` | Viewport screenshot with world-coordinate labels drawn on it (requires `ViewportAnnotationCapture`) |
 
 ---
 
@@ -269,8 +277,12 @@ Run tests, Python scripts, and Editor Utility Blueprints.
 
 | Command | Description |
 |---|---|
+| `DiscoverAutomationTests` | Load the automation test modules and return summary counts of discovered tests |
+| `ListAutomationTests` | Return a filtered list of automation tests as a JSON artifact |
 | `RunAutomationTest` | Run a UE Automation Test by name and return Pass/Fail/Error report |
 | `RunAutomationSpec` | Run a UE Automation Spec by name and return Pass/Fail/Error report |
+| `GetAutomationTestStatus` | Return the current automation test manager status (inline by default) |
+| `StopAutomationTests` | Request cancellation of the running automation test batch |
 | `RunEditorPythonScript` 🧩 | Run an inline Python script or a `.py` file (requires `PythonScriptPlugin`) |
 | `RunEditorUtilityBlueprint` | Run a specified Editor Utility Blueprint |
 | `RunNamedEditorCommand` | Run a named editor console command via `GUnrealEd->Exec` |
@@ -298,6 +310,24 @@ Drive the editor UI — click, type, select, drag.
 | 🆓 `WaitForWidget` | Poll until a widget reaches an expected state |
 | 🆓 `FillForm` | Bulk-fill a form widget using a sequential state machine |
 | 🆓 `SnapshotUI` | Capture a structured snapshot of the UI |
+| 🆓 `OpenPasswordTestWindow` | Open a floating test window holding a password `SEditableTextBox` — provides a target for password-field policy tests |
+
+### Toolset bridges — SlateInspector (10) 🧩
+
+Bridge commands via the `SlateInspectorToolset` (UE 5.8+). Provider: `Toolset.Editor.SlateInspector.*`. Widgets are addressed by refPath rather than by the widget-path syntax the native commands use.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.SlateInspector.SnapshotUI` | Snapshot the widget tree at the given ref |
+| `Toolset.Editor.SlateInspector.ObserveWidget` | Register a widget for observation; returns the observer `Identifier` |
+| `Toolset.Editor.SlateInspector.UnobserveWidget` | Stop observing the widget registered under an `Identifier` |
+| `Toolset.Editor.SlateInspector.ListObservers` | List every currently active widget observer |
+| `Toolset.Editor.SlateInspector.ClickWidget` | Simulate a mouse click on the widget at the given ref |
+| `Toolset.Editor.SlateInspector.HoverWidget` | Move the cursor over the widget at the given ref |
+| `Toolset.Editor.SlateInspector.InputText` | Type text into the widget at the given ref |
+| `Toolset.Editor.SlateInspector.PressKey` | Send a key press; modifier prefixes are supported (e.g. `Ctrl+S`) |
+| `Toolset.Editor.SlateInspector.SetComboSelection` | Select an option in a combo box widget |
+| `Toolset.Editor.SlateInspector.FillForm` | Fill multiple form fields in a single call |
 
 ---
 
@@ -314,11 +344,14 @@ Open, search, create, duplicate, rename, delete assets and folders.
 | 🆓 `ListCreatableAssetClasses` | Return every UClass that `CreateAsset` can target, with factory count and default factory (heavy call) |
 | 🆓 `ListFactoriesForClass` | Return the factory candidates for a `ClassName`, each with its `FactoryParams` schema |
 | `DuplicateAsset` | Duplicate an existing asset |
+| `CopyAsset` | Copy an asset to a new full package path (fails if the destination exists; requires `AssetCreate`) |
 | `RenameAsset` | Rename / move an asset to another path |
+| `MoveAsset` | Move an asset to another folder keeping its name; reports whether a redirector was left behind (requires `AssetMutate`) |
 | `DeleteAsset` | Delete an asset |
 | `CreateFolder` | Create a new folder in the Content Browser |
 | `DeleteFolder` | Delete an empty folder (returns `NotEmpty` if not empty) |
 | `ForceDeleteFolder` | Delete a folder and its assets (max 50 items, no external-reference check) |
+| `MoveFolder` | Move every asset in a folder to a destination folder, preserving sub-folders; partial failures are listed in `FailedAssets` (requires `AssetFolderRefactor`) |
 | 🆓 `GetSelectedAssets` | Return the assets currently selected in the Content Browser |
 | `SelectAssets` | Select the specified assets in the Content Browser (requires `ContentBrowserNavigate`) |
 | 🆓 `GetContentBrowserPath` | Return the current folder path shown in the Content Browser |
@@ -326,6 +359,7 @@ Open, search, create, duplicate, rename, delete assets and folders.
 | 🆓 `GetOpenAssets` | Return the list of assets currently open in an asset editor |
 | 🆓 `ListAssetRedirectors` | List asset redirectors under a folder (`/Game` project-wide by default) with source/destination paths, without loading any assets |
 | `FixAssetRedirectors` (requires `RedirectorFixup`) | Fix up and delete all resolvable asset redirectors under `/Game` (project-wide, recursive, always) |
+| `FixUpRedirectorsInFolder` (requires `RedirectorFixup`) | Same fix-up limited to one folder; unresolved entries are returned in `FailedRedirectors` |
 | 🆓 `GetAssetReferences` | Traverse the asset reference graph (referencers, dependencies, or both) rooted at an asset up to a given depth |
 | 🆓 `GetAssetSizeMap` | Aggregate per-asset disk (and optionally resident memory) size under a folder, sorted descending |
 | 🆓 `GetAssetSizeMapByClass` | Aggregate disk size per asset class under a folder, sorted descending |
@@ -371,15 +405,15 @@ Semantic asset search and index management. Requires the `SemanticSearch` plugin
 
 | Command | Description |
 |---|---|
-| `SearchAssetsSemantic` | Search project assets by natural-language query (hybrid BM25+vector, up to 500 results) |
-| `FindSimilarAssets` | Find assets similar to a reference asset via vector similarity |
+| `Search` | Search project assets by natural-language query (hybrid BM25+vector, up to 500 results) |
+| `FindSimilar` | Find assets similar to a reference asset via vector similarity |
 | `GetIndexStats` | Return current index statistics (asset count, last-built timestamp) |
 | `StartIndexing` | Trigger a full semantic index rebuild (long-running; requires `SemanticSearchEdit`) |
 | `CancelIndexing` | Cancel an in-progress index build (requires `SemanticSearchEdit`) |
 
 ### Toolset bridges (2) 🧩
 
-Bridge commands via the `SemanticSearchToolset` plugin (UE 5.8+). Provider: `Toolset.Editor.SemanticSearch.*`. These commands mirror `SearchAssetsSemantic` and `FindSimilarAssets` above and are provided exclusively as a Toolset bridge (no UAIP native equivalent for these two Toolset-side commands; see ADR `2026-06-25-SemanticSearchToolset-BridgeOnly-Exception.md`).
+Bridge commands via the `SemanticSearchToolset` plugin (UE 5.8+). Provider: `Toolset.Editor.SemanticSearch.*`. These commands mirror the native `Search` and `FindSimilar` above and are provided exclusively as a Toolset bridge (no UAIP native equivalent for these two Toolset-side commands; see ADR `2026-06-25-SemanticSearchToolset-BridgeOnly-Exception.md`).
 
 | Command | Description |
 |---|---|
@@ -561,6 +595,19 @@ Manage project tag tables.
 | `RenameGameplayTag` | Rename a tag (optionally update asset references) |
 | `FindGameplayTagReferencers` | Find assets that reference a tag |
 
+### Toolset bridges — GameplayTags (6) 🧩
+
+Bridge commands via the `GameplayTagsToolset` plugin (UE 5.8+, Experimental). Provider: `Toolset.Editor.GameplayTags.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.GameplayTags.ListTags` | List registered tags, optionally restricted to descendants of `ParentTag` (max 2048) |
+| `Toolset.Editor.GameplayTags.GetTagInfo` | Detail for a single tag — Comment, Source, Children |
+| `Toolset.Editor.GameplayTags.FindReferencersByTag` | Find assets referencing a tag (max 256 paths) |
+| `Toolset.Editor.GameplayTags.AddTag` | Add a tag to an existing `.ini` tag source (requires `GameplayTagEdit`) |
+| `Toolset.Editor.GameplayTags.RemoveTag` | Remove a tag from the project tag table; asset references are **not** updated (requires `GameplayTagEdit`) |
+| `Toolset.Editor.GameplayTags.RenameTag` | Rename a tag in INI only — no reference update and no redirect entry. Prefer the native `RenameGameplayTag` (requires `GameplayTagEdit`) |
+
 ---
 
 ## UAIP.Editor.GameFeatures 🧩
@@ -571,7 +618,20 @@ GameFeature Plugin management. Requires `GameFeatures` + `GameFeaturesEditor` pl
 |---|---|
 | `ListGameFeatures` 🧩 | List GameFeature Plugins with state filter (All / Installed / Mounted / Registered / Loaded / Active) |
 | `GetGameFeatureInfo` 🧩 | GFP details (State, Actions, dependencies) |
+| `GetGameFeatureActions` 🧩 | List the actions declared by a GameFeature Plugin's `UGameFeatureData` |
 | `CreateGameFeaturePlugin` 🧩 | Scaffold a new GameFeature Plugin (with name validation) |
+| `DeleteGameFeaturePlugin` 🧩 | Delete a GameFeature Plugin and its content from disk |
+
+### Toolset bridges — GameFeatures (4) 🧩
+
+Bridge commands via the `GameFeaturesToolset` (UE 5.8+, Experimental). Provider: `Toolset.Editor.GameFeatures.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.GameFeatures.ListGameFeatures` | List all registered GameFeature Plugins with their current state |
+| `Toolset.Editor.GameFeatures.FindGameFeatureData` | Resolve the `UGameFeatureData` asset refPath for a named plugin |
+| `Toolset.Editor.GameFeatures.GetActions` | List the action class names of a `UGameFeatureData` (takes `{"refPath": "..."}`) |
+| `Toolset.Editor.GameFeatures.CreateGameFeaturePlugin` | Create a content-only GameFeature Plugin (requires `GameFeatureCreate`) |
 
 ---
 
@@ -579,7 +639,7 @@ GameFeature Plugin management. Requires `GameFeatures` + `GameFeaturesEditor` pl
 
 Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **UE 5.7 or newer**.
 
-### Native (36)
+### Native (52)
 
 #### Observation (13)
 
@@ -598,6 +658,37 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 | `GetStackInputData` 🧩 | Module stack input value |
 | `UEnum_Info` 🧩 | UEnum information |
 | `GetAvailableNiagaraRendererClasses` 🧩 | List of `UNiagaraRendererProperties`-derived classes (max 200). Use the returned `ClassPath` as the `RendererClass` argument of `AddRenderer`. |
+
+#### Schema (7)
+
+| Command | Description |
+|---|---|
+| `GetSystemSchema` 🧩 | JSON Schema of all editable top-level `UNiagaraSystem` properties (constant across systems — cacheable) |
+| `GetEmitterSchema` 🧩 | JSON Schema of all editable top-level emitter properties (cacheable) |
+| `GetRendererSchema` 🧩 | JSON Schema for one `UNiagaraRendererProperties` class, selected by `RendererClassPath` |
+| `GetDataInterfaceSchema` 🧩 | JSON Schema for one `UNiagaraDataInterface` class, selected by `DataInterfaceClassPath` |
+| `GetStackInputSchema` 🧩 | Type / category / `SupportsExpressions` for one module input |
+| `GetModuleSchema` 🧩 | Inputs and outputs of a module instance in the stack |
+| `GetModuleSchemaFromAsset` 🧩 | Inputs and outputs of a `UNiagaraScript` module asset, without an owning system |
+
+#### Topology and dynamic inputs (7)
+
+| Command | Description |
+|---|---|
+| `GetEmitterTopology` 🧩 | Full module stack topology of an emitter (all script stacks and their modules) |
+| `GetScriptStackTopology` 🧩 | Module topology of one script stack |
+| `GetModuleTopology` 🧩 | Input topology of one module |
+| `GetStackInputTopology` 🧩 | Full topology of one input — type, value mode, current value, recursive dynamic-input children |
+| `GetDynamicInputSchema` 🧩 | Inputs and outputs of a dynamic input script instance in the stack |
+| `GetDynamicInputSchemaFromAsset` 🧩 | Inputs and outputs of a `UNiagaraScript` dynamic input asset, without an owning system |
+| `GetAvailableDynamicInputs` 🧩 | Dynamic input scripts compatible with a specific module input |
+
+#### Stack issues (2)
+
+| Command | Description |
+|---|---|
+| `GetStackIssues` 🧩 | All stack issues (errors / warnings / info, including dismissed) with the `IssueId` and `FixId` needed below |
+| `ApplyStackIssueFix` 🧩 | Apply a Fix-style automated fix by `IssueId` + `FixId` (Link-style fixes are rejected; requires `NiagaraStackAutoFix`) |
 
 #### Editing (21)
 
@@ -716,6 +807,20 @@ Dataflow graph editing. Requires `DataflowEditor` plugin.
 | `ListDataflowVariables` 🧩 | List graph variables |
 | `GetDataflowNodeProperty` 🧩 | Read a node's `EditAnywhere` property value (primitives / enum / FName / FString / simple structs) |
 | `SetDataflowNodeProperty` 🧩 | Write a node's `EditAnywhere` property value. Domain-agnostic — used by Cloth Weight Map / simulation config nodes among others |
+
+### Toolset bridges — Dataflow (7) 🧩
+
+Bridge commands via the `DataflowAgentToolset` (UE 5.8+). Provider: `Toolset.Editor.DataflowAgent.*`. Editing commands require `DataflowGraphEdit`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.DataflowAgent.ListDataflowNodeTypes` | List available Dataflow node types (common types only) |
+| `Toolset.Editor.DataflowAgent.GetDataflowGraphInfo` | Node and connection structure of a Dataflow asset |
+| `Toolset.Editor.DataflowAgent.ListDataflowVariables` | List variables defined in a Dataflow asset |
+| `Toolset.Editor.DataflowAgent.AddDataflowNode` | Add a node to a Dataflow graph (requires `DataflowGraphEdit`) |
+| `Toolset.Editor.DataflowAgent.RemoveDataflowNode` | Remove a node from a Dataflow graph (requires `DataflowGraphEdit`) |
+| `Toolset.Editor.DataflowAgent.ConnectDataflowPins` | Connect two pins (requires `DataflowGraphEdit`) |
+| `Toolset.Editor.DataflowAgent.DisconnectDataflowPins` | Disconnect pins (requires `DataflowGraphEdit`) |
 
 ---
 
@@ -914,6 +1019,7 @@ DataTable row management and import / export.
 | `ImportDataTableFromCSV` | Bulk-import a CSV string (Replace / Merge modes) |
 | `ExportDataTableToCSV` | Export a DataTable as a CSV artifact |
 | `GetDataTableRowStruct` | Get the row struct (UScriptStruct) field definitions |
+| `ListDataTableRowStructs` | List `FTableRowBase`-derived structs usable as row structs — feed `ClassPath` to `CreateAsset` as `FactoryParams.RowStructPath` |
 
 ---
 
@@ -924,6 +1030,7 @@ Anim Blueprint graph and StateMachine editing.
 | Command | Description |
 |---|---|
 | `GetAnimBlueprintInfo` | AnimGraph node list and StateMachine structure (degraded mode during PIE) |
+| `GetAvailableAnimGraphNodeClasses` | List `UAnimGraphNode_Base` subclasses — feed `ClassPath` to `AddAnimGraphNode` |
 | `AddAnimGraphNode` | Add a `UAnimGraphNode_Base` derived node by NodeClass |
 | `RemoveAnimGraphNode` | Remove a node by NodeId |
 | `ConnectAnimGraphPins` | Connect two pins (WouldCreateCycle DFS pre-detection) |
@@ -1060,7 +1167,12 @@ Behavior Tree graph editing and Blackboard key management.
 
 | Command | Description |
 |---|---|
-| `GetBehaviorTreeInfo` | BT graph tree structure (Composite / Task / Decorator / Service) — recursive JSON |
+| `GetBehaviorTreeNodeList` | Flat list of every node — `NodeGuid`, `NodeClass`, `DisplayName`, `Depth` (0 = root composite), `ParentNodeGuid` |
+| `GetBehaviorTreeSubtree` | Recursive subtree (Composite / Task / Decorator / Service) rooted at a `NodeGuid`, `MaxDepth` 1–32 |
+| `GetAvailableBTCompositeClasses` | List `UBTCompositeNode` subclasses — feed `ClassPath` to `AddBehaviorTreeCompositeNode` |
+| `GetAvailableBTTaskClasses` | List `UBTTaskNode` subclasses — feed `ClassPath` to `AddBehaviorTreeTaskNode` |
+| `GetAvailableBTDecoratorClasses` | List `UBTDecorator` subclasses — feed `ClassPath` to `AddBehaviorTreeDecoratorNode` |
+| `GetAvailableBTServiceClasses` | List `UBTService` subclasses — feed `ClassPath` to `AddBehaviorTreeServiceNode` |
 | `AddBehaviorTreeCompositeNode` | Add a Composite node (Sequence / Selector / SimpleParallel) |
 | `AddBehaviorTreeTaskNode` | Add a Task node by TaskClass |
 | `AddBehaviorTreeDecoratorNode` | Attach a Decorator to a parent node |
@@ -1073,6 +1185,20 @@ Behavior Tree graph editing and Blackboard key management.
 | `SetBehaviorTreeBlackboard` | Change the Blackboard asset a BT references |
 | `RequestBehaviorTreeAutoArrange` | Run the AutoArrange pass on an open BT editor |
 
+### Toolset bridges — AIModule (7) 🧩
+
+Bridge commands via the `AIModuleToolset` (UE 5.8+, Experimental). Provider: `Toolset.Editor.AIModule.*`. Observation only.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.AIModule.GetBlackboard` | Blackboard asset associated with a BehaviorTree |
+| `Toolset.Editor.AIModule.GetRootDecorators` | Decorators attached to the root composite node |
+| `Toolset.Editor.AIModule.ListNodes` | All nodes with their indices and types |
+| `Toolset.Editor.AIModule.GetNodeDepth` | Depth of a single node identified by index |
+| `Toolset.Editor.AIModule.GetNodeDepths` | Depth of every node as a flat list |
+| `Toolset.Editor.AIModule.GetChildren` | Immediate children of a composite node identified by refPath |
+| `Toolset.Editor.AIModule.GetSubtree` | Subtree rooted at a node identified by refPath |
+
 ---
 
 ## UAIP.Editor.MetaSound 🧩
@@ -1082,6 +1208,7 @@ MetaSound graph editing. Requires `Metasound` plugin.
 | Command | Description |
 |---|---|
 | `GetMetaSoundInfo` 🧩 | MetaSoundSource / MetaSoundPatch graph topology (nodes, connections, I/O vertices) |
+| `GetAvailableMetaSoundNodeClasses` 🧩 | List frontend-registry node classes (`ClassName`, `Variant`, `MajorVersion`, `DisplayName`) for `AddMetaSoundNode`; filtered to engine-standard namespaces |
 | `AddMetaSoundNode` 🧩 | Add a node by `Namespace::Name` (MajorVersion-aware, 5-step policy) |
 | `RemoveMetaSoundNode` 🧩 | Remove a node by NodeId |
 | `ConnectMetaSoundPins` 🧩 | Connect two pins (idempotent flag on duplicates) |
@@ -1100,6 +1227,8 @@ EQS query editing. Requires `EnvironmentQueryEditor` plugin.
 | Command | Description |
 |---|---|
 | `GetEQSQueryInfo` 🧩 | EQS Generator Option / Test structure (degraded mode during PIE) |
+| `GetAvailableEQSGeneratorClasses` 🧩 | List `UEnvQueryGenerator` subclasses — feed `ClassPath` to `AddEQSGenerator` |
+| `GetAvailableEQSTestClasses` 🧩 | List `UEnvQueryTest` subclasses — feed `ClassPath` to `AddEQSTest` |
 | `AddEQSGenerator` 🧩 | Add a Generator Option (GeneratorClass, 6-step allowlist) |
 | `RemoveEQSGenerator` 🧩 | Remove a Generator Option by NodeId (cascading Test deletion) |
 | `AddEQSTest` 🧩 | Add a Test to a Generator Option |
@@ -1113,7 +1242,7 @@ EQS query editing. Requires `EnvironmentQueryEditor` plugin.
 
 LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 
-### Native (92)
+### Native (123)
 
 #### Structure (15)
 
@@ -1240,11 +1369,29 @@ LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 | `GetSubSequences` | List SubSequence track sections |
 | `AddSubSequenceTrack` | Add a SubSequence track |
 
-#### AnimMixer (17, optional `MovieSceneAnimMixer`)
+#### AnimMixer (36, optional `MovieSceneAnimMixer`)
 
 | Command | Description |
 |---|---|
 | `GetAnimMixerTrackInfo` | Get AnimMixer track info |
+| `GetMixerLayers` | Compact summary of every AnimMixer layer for a binding |
+| `GetMixerLayerCount` | Number of layers in a binding's AnimMixer track |
+| `GetLayerName` | Display name of a layer |
+| `SetLayerName` | Set the display name of a layer |
+| `GetLayerIndex` | Zero-based index of the layer with a given display name (`NotFound` if absent) |
+| `GetLayerSections` | Every animation section within a layer |
+| `IsLayerEmpty` | Whether a layer holds no animation sections |
+| `InsertMixerLayer` | Insert an empty layer at an index, shifting the rest down; returns the new index |
+| `GetTransitionsForSection` | Transitions involving a section (`FromSectionIndex`, `ToSectionIndex`, `TransitionClass`) |
+| `GetTransitionBetween` | Basic info for the transition between two section indices (`NotFound` if absent) |
+| `GetTransitionInfo` | Detailed info for the transition between two sections |
+| `GetTransitionName` | Display name of the transition between two sections |
+| `ChangeTransitionType` | Replace a transition with one of `NewTransitionClass` (create-then-delete in one transaction) |
+| `GetCompatibleDecorations` | Decoration classes compatible with a layer |
+| `GetDecorations` | Existing decorations on a layer |
+| `FindDecoration` | Find one decoration on a layer (`NotFound` if absent) |
+| `AddDecoration` | Add (or retrieve an existing) decoration on a layer |
+| `RemoveDecoration` | Remove a decoration from a layer |
 | `GetLayerBlendWeight` | Get a layer's blend weight |
 | `SetLayerBlendWeight` | Set a layer's blend weight |
 | `IsLayerMuted` | Get a layer's mute state |
@@ -1263,9 +1410,30 @@ LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 | `RemoveMixerTransition` | Remove a transition |
 | `GetMixerSectionInfo` | Get AnimMixer section info |
 
+#### ControlRig tracks (12)
+
+ControlRig authoring **inside a LevelSequence**. For editing a ControlRig asset itself see [`UAIP.Editor.ControlRig`](#uaipeditorcontrolrig).
+
+| Command | Description |
+|---|---|
+| `GetControlRigTracks` | All ControlRig parameter tracks in a LevelSequence |
+| `GetControlRigSectionInfo` | Section properties — `IsInfinite`, `StartFrame`, `EndFrame`, `IsActive`, class name |
+| `FindOrCreateControlRigTrack` | Find or create a ControlRig parameter track for a binding; reports `TrackCreated` |
+| `BakeToControlRig` | Bake a binding's animation onto a ControlRig track (display-rate frames, `Tolerance` 0.0–1.0) |
+| `KeyControls` | Key the given controls at one display-rate frame (all visible controls when `ControlNames` is empty) |
+| `KeyControlsAtFrames` | Key the given controls at multiple display-rate frames |
+| `GetControlsMask` | Per-control visibility mask of a ControlRig section |
+| `SetControlsMask` | Set visibility for named controls; unnamed controls keep their state |
+| `ShowAllControls` | Make every control in the section visible |
+| `HideAllControls` | Hide every control in the section |
+| `LoadAnimIntoRig` | ⚠️ Always returns `UnsupportedOperation` — the engine API needs a `USkeletalMeshComponent*` unavailable in static asset editing. Use `Toolset.Editor.SequencerControlRig.LoadAnimIntoRig` instead |
+| `GetActorTransformAtFrame` | Evaluate the sequence at a frame and return the named actor's world transform |
+
 ### Toolset bridges (61) 🧩
 
-Provider: `Toolset.AnimationAssistant.*` (41 commands — Lifecycle 6, Playback 10, Property 9, MarkedFrame 5, UI 11) and `Toolset.SequencerAnimMixer.*` (20 commands — Layers 10, Transitions 5, Decorations 5). Requires UE 5.8+.
+Provider: `Toolset.Editor.AnimationAssistant.*` (41 commands — Lifecycle 6, Playback 10, Property 9, MarkedFrame 5, UI 11) and `Toolset.Editor.SequencerAnimMixer.*` (20 commands — Layers 10, Transitions 5, Decorations 5). Requires UE 5.8+.
+
+> A third Sequencer-module bridge provider, `Toolset.Editor.SequencerControlRig.*` (63 commands), is documented under [`UAIP.Editor.ControlRig`](#uaipeditorcontrolrig) because its commands operate on ControlRig controls.
 
 ---
 
@@ -1273,17 +1441,91 @@ Provider: `Toolset.AnimationAssistant.*` (41 commands — Lifecycle 6, Playback 
 
 StateTree editing.
 
+### Native (39)
+
+#### State observation (8)
+
 | Command | Description |
 |---|---|
-| `GetStateTreeInfo` | State tree, Task list, Transition list, Schema info (degraded mode during PIE) |
-| `AddState` | Add a State (State / Group / Subtree / Linked / LinkedAsset — 5 types) |
-| `RemoveState` | Remove a State by StateId (recursive child deletion) |
-| `AddStateTask` | Add a Task to a State (8-step allowlist) |
-| `RemoveStateTask` | Remove a Task by TaskId |
-| `AddStateTransition` | Add a Transition (Succeeded / Failed / NextState / NextSelectableState / GotoState) |
-| `RemoveStateTransition` | Remove a Transition by TransitionId |
-| `SetStateNodeProperty` | Set a Task node property (generic ImportText_Direct) |
-| `CompileStateTree` | Compile the StateTree (per-session 1 s rate limit) |
+| `GetRootStates` | Top-level state descriptors (`StateId`, `Name`, `Type`, `ParentStateId`, `ChildCount`) |
+| `GetStateChildren` | Direct child state descriptors of one state |
+| `GetStateTasks` | Tasks of one state (class names redacted in degraded mode during PIE) |
+| `GetStateTransitions` | Transitions of one state (target state IDs suppressed during PIE) |
+| `GetStateEnterConditions` | Enter conditions of one state |
+| `GetStateTreeGlobalTasks` | Global tasks of the asset (run regardless of the active state) |
+| `GetStateTreeEvaluators` | Evaluators of the asset (run every tick to update shared data) |
+| `GetStateNodeDescription` | Class path and display name of a node GUID (searches global tasks, evaluators, all states) |
+
+#### Class / schema discovery (5)
+
+| Command | Description |
+|---|---|
+| `GetAvailableTaskClasses` | Task classes (native struct + Blueprint) permitted by the active node class policy |
+| `GetAvailableConditionClasses` | Condition classes (native struct + Blueprint) |
+| `GetAvailableEvaluatorClasses` | Evaluator classes (native struct + Blueprint) |
+| `GetAvailableStateTreeSchemaClasses` | `UStateTreeSchema` subclasses — feed `ClassPath` to `CreateAsset` as `FactoryParams.SchemaClass` |
+| `GetStateTreeSchema` | Schema class path and root parameter descriptors of an asset |
+
+#### State structure editing (4)
+
+| Command | Description |
+|---|---|
+| `AddState` | Add a State (State / Group / Subtree / Linked / LinkedAsset — 5 types); returns `StateId` |
+| `RemoveState` | Remove a State by `StateId` (recursive child deletion) |
+| `SetStateName` | Rename a state |
+| `MoveState` | Reparent / reorder a state; rejects moves that would create a cycle |
+
+#### Task / transition / condition editing (9)
+
+| Command | Description |
+|---|---|
+| `AddStateTask` | Add a Task to a State (8-step allowlist); returns `TaskId` |
+| `RemoveStateTask` | Remove a Task by `TaskId` |
+| `AddStateTransition` | Add a Transition (`Succeeded` / `Failed` / `NextState` / `NextSelectableState` / GUID target). `OnDelegate` is not supported |
+| `RemoveStateTransition` | Remove a Transition by `TransitionId` |
+| `AddStateEnterCondition` | Add an enter condition to a state; returns `ConditionId` |
+| `RemoveStateEnterCondition` | Remove an enter condition by `ConditionId` |
+| `SetEnterConditionProperty` | Set a property on an enter condition node |
+| `GetStateNodeProperty` | Read one top-level property of a node GUID as exported text |
+| `SetStateNodeProperty` | Set a Task node property (generic `ImportText_Direct`) |
+
+#### Global task / evaluator editing (6)
+
+| Command | Description |
+|---|---|
+| `AddGlobalTask` | Add a global task; returns `TaskId` |
+| `RemoveGlobalTask` | Remove a global task by `TaskId` |
+| `SetGlobalTaskProperty` | Set a property on a global task node |
+| `AddEvaluator` | Add an evaluator; returns `EvaluatorId` |
+| `RemoveEvaluator` | Remove an evaluator by `EvaluatorId` |
+| `SetEvaluatorProperty` | Set a property on an evaluator node |
+
+#### Parameters, bindings and compile (7)
+
+| Command | Description |
+|---|---|
+| `GetStateTreeParameters` | Root parameter descriptors (`Name`, `ParameterType`, current serialized value) |
+| `AddStateTreeParameter` | Add a root parameter (Bool / Byte / Int32 / Int64 / Float / Double / Name / String / Text) |
+| `RemoveStateTreeParameter` | Remove a root parameter by name |
+| `SetStateTreeParameter` | Set a root parameter value from a string-encoded value |
+| `AddPropertyBinding` | Bind a source node property to a target node property |
+| `RemovePropertyBinding` | Remove a property binding from a target node |
+| `CompileStateTree` | Compile the StateTree (per-asset rate limit between successive calls) |
+
+### Toolset bridges (8) 🧩
+
+Bridge commands via the `StateTreeToolset` (UE 5.8+, Experimental). Provider: `Toolset.Editor.StateTree.*`. Observation only.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.StateTree.GetEditorData` | Editor data of a StateTree asset |
+| `Toolset.Editor.StateTree.GetRootStates` | Root-level states of a StateTree asset |
+| `Toolset.Editor.StateTree.GetGlobalTasks` | Global tasks of a StateTree asset |
+| `Toolset.Editor.StateTree.GetEvaluators` | Evaluators of a StateTree asset |
+| `Toolset.Editor.StateTree.GetChildren` | Child states of a `UStateTreeState` |
+| `Toolset.Editor.StateTree.GetTasks` | Tasks of a `UStateTreeState` |
+| `Toolset.Editor.StateTree.GetEnterConditions` | Enter conditions of a `UStateTreeState` |
+| `Toolset.Editor.StateTree.GetTransitions` | Transitions of a `UStateTreeState` |
 
 ---
 
@@ -1342,7 +1584,7 @@ PCG graph editing. Requires `PCG` plugin.
 | `GetPCGNodeDataView` 🧩 | Get a PCG node's execution data view (requires `PCGNodeInspect`; returns CapabilityNotAvailable when `PCG_PROFILING_ENABLED=0`) |
 | `RunPCGInstantGraph` 🧩 | Fire-and-forget PCG graph execution with no actor or component required (requires `PCGGraphExecute`) |
 
-### Toolset bridges — PCG (31) 🧩
+### Toolset bridges — PCG (30) 🧩
 
 Bridge commands via the `PCGToolset` (UE 5.8+). Provider: `Toolset.Editor.PCG.*`. Commands that require an active open PCG editor tab may return `ExecutionFailed` in non-interactive contexts (known PCGToolset constraint).
 
@@ -1393,6 +1635,22 @@ WorldConditions editing. Requires `WorldConditions` plugin.
 | `SetWorldConditionProperty` 🧩 | Set a condition USTRUCT property (ImportText value string) |
 | `SetWorldConditionOperator` 🧩 | Set Operator (And / Or) and bInvert (Index 0 is fixed Copy) |
 | `SetWorldConditionExpressionDepth` 🧩 | Set ExpressionDepth (0–4) |
+| `ListWorldConditionClasses` 🧩 | List `FWorldConditionBase`-derived classes accepted by the class policy — use to discover valid `ConditionClass` values |
+| `ValidateWorldConditionQuery` 🧩 | Run `Initialize()` + `IsValid()` on a query and return `{IsValid, Errors}` (allowed during PIE) |
+| `MoveWorldCondition` 🧩 | Move a condition from `SourceIndex` to `TargetIndex` (index 0 is fixed) |
+| `DuplicateWorldCondition` 🧩 | Duplicate the condition at `SourceIndex` and insert the copy at `InsertIndex` |
+| `ReplaceWorldCondition` 🧩 | Replace a condition's type with `NewConditionClass` defaults, preserving depth / operator / invert |
+| `ClearWorldConditionQuery` 🧩 | Remove every condition, leaving an empty query |
+| `SetMultipleWorldConditionProperties` 🧩 | Apply 1–32 property edits in one transaction, reporting per-edit success |
+
+### Toolset bridges — WorldConditions (2) 🧩
+
+Bridge commands via `WorldConditionTools` (UE 5.8+, Experimental). Provider: `Toolset.Editor.WorldConditions.*`. Input JSON is capped at 64 KiB.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.WorldConditions.GetQueryDescription` | Human-readable description of a `FWorldConditionQueryDefinition` |
+| `Toolset.Editor.WorldConditions.GetConditionDescription` | Human-readable description of a single condition type |
 
 ---
 
@@ -1402,11 +1660,6 @@ ConversationDB graph editing. Requires `CommonConversation` plugin.
 
 | Command | Description |
 |---|---|
-| `ListConversationEntryPoints` 🧩 | List entry points |
-| `ListConversationSpeakers` 🧩 | List speakers |
-| `ListConversationNodes` 🧩 | List all nodes with refPath |
-| `GetConversationNodeConnections` 🧩 | Get connection info for a node |
-| `ListConversationNodeSubNodes` 🧩 | List SubNodes of a node |
 | `ListConversationNodeTypes` 🧩 | List allowed node classes by position (max 256) |
 | `AddConversationNode` 🧩 | Add a top-level node (`UConversationNodeWithLinks` derived) |
 | `AddConversationSubNode` 🧩 | Attach a SubNode to a parent Task node |
@@ -1414,6 +1667,18 @@ ConversationDB graph editing. Requires `CommonConversation` plugin.
 | `ConnectConversationNodes` 🧩 | Add a transition edge between nodes |
 | `DisconnectConversationNodes` 🧩 | Remove a transition edge |
 | `SetConversationNodeProperty` 🧩 | Set a property (FText sanitized — BIDI strip, PUA reject, 4096 char limit) |
+
+### Toolset bridges — Conversation (5) 🧩
+
+Bridge commands via the `ConversationToolset` (UE 5.8+). Provider: `Toolset.Editor.Conversation.*`. These are observation-only; the native commands above cover editing.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.Conversation.ListConversationEntryPoints` | List entry point nodes in a `UConversationDatabase` |
+| `Toolset.Editor.Conversation.ListConversationSpeakers` | List speakers defined in a `UConversationDatabase` |
+| `Toolset.Editor.Conversation.ListConversationNodes` | List all nodes with the refPath used by the two commands below |
+| `Toolset.Editor.Conversation.GetConversationNodeConnections` | Connection graph for a node identified by `NodeRefPath` |
+| `Toolset.Editor.Conversation.ListConversationNodeSubNodes` | Sub-nodes (choices, requirements, side-effects) of a node |
 
 ---
 
@@ -1522,9 +1787,27 @@ ControlRig hierarchy and RigVM graph editing.
 | `CompileControlRig` | Compile the ControlRig (per-session 1 s rate limit) |
 | `GetAvailableRigVMUnitStructs` | List FRigUnit-derived UScriptStructs (max 1000) |
 
-### Toolset bridges (44) 🧩
+### Toolset bridges (107) 🧩
 
-Mirror of native commands via `AnimationAssistantToolset` (UE 5.8+). Provider: `Toolset.Editor.ControlRig.*`. Groups: asset creation (1), hierarchy observation (8), hierarchy editing (7), graph management (10), nodes (7), pins (6), variables (5).
+Two bridge providers, both delegating to `AnimationAssistantToolset` (UE 5.8+).
+
+**`Toolset.Editor.ControlRig.*` (44)** — mirror of the native asset-editing commands above. Groups: asset creation (1), hierarchy observation (8), hierarchy editing (7), graph management (10), nodes (7), pins (6), variables (5).
+
+**`Toolset.Editor.SequencerControlRig.*` (63)** — animation-time control authoring. Implemented in the Sequencer module (`SequencerControlRigTools`) but documented here because every command acts on ControlRig controls. Requires `MovieSceneAnimMixer` in addition to ControlRig. Groups:
+
+| Group | Count | Commands |
+|---|---:|---|
+| Control values | 16 | `Get`/`SetFloatValue`, `BoolValue`, `IntValue`, `Vector2DValue`, `PositionValue`, `RotatorValue`, `ScaleValue`, `EulerTransformValue` |
+| World transforms | 3 | `GetWorldTransform`, `SetWorldTransform`, `GetActorTransformAtFrame` |
+| Layered rigs | 6 | `CollapseAnimLayers`, `IsLayeredControlRig`, `SetLayeredMode`, `Get`/`SetPriorityOrder`, `IsFKControlRig` |
+| Anim layers | 6 | `GetControlRigAnimLayers`, `AddControlRigLayerFromSelection`, `Delete`/`Duplicate`/`Reorder`/`MergeControlRigAnimLayers` |
+| Spaces | 4 | `Set`/`Move`/`Delete`/`BakeControlRigSpace` |
+| Tweening | 3 | `TweenControlRig`, `BlendValuesOnSelected`, `SnapControlRig` |
+| Mirroring | 3 | `SelectMirroredControls`, `MirrorSelectedControls`, `ZeroControlRigTransforms` |
+| Selection | 4 | `GetSelectedControls`, `SelectControl`, `ClearControlSelection`, `FrameControlSelection` |
+| FBX | 2 | `ExportFBXFromRig`, `ImportFBXToRig` |
+| Sequencer queries | 4 | `GetSequencerControlRigs`, `GetSequencerControlsInfo`, `Get`/`SetControlRigTransformInSequencer` |
+| Anim mode settings | 12 | `Get`/`Set` for `AnimModeGizmoScale`, `AnimModeHierarchy`, `AnimModeNulls`, `AnimModeHideManips`, `AnimModeOnlyRigSel`, `AnimModeLocalSpaces` |
 
 ---
 
@@ -1554,7 +1837,7 @@ Enhanced Input asset editing — Input Actions and Input Mapping Contexts.
 
 Editor-time GameplayAbilities asset editing — GameplayCue tags and Cue Notify assets. Requires `GameplayAbilities` plugin (plus `GASToolsets` for the bridge variants).
 
-### Native (11)
+### Native (8)
 
 | Command | Description |
 |---|---|
@@ -1567,9 +1850,9 @@ Editor-time GameplayAbilities asset editing — GameplayCue tags and Cue Notify 
 | `CreateCueNotifyAsset` | Create a new GameplayCueNotify asset (Actor / Static / Burst) |
 | `ExecuteCueOnSelectedActor` | Execute a GameplayCue on the currently selected actor (testing convenience) |
 
-### Toolset bridges (11) 🧩
+### Toolset bridges (14) 🧩
 
-Mirror of native commands via the `GASToolsets` plugin (UE 5.8+). Provider: `Toolset.Editor.GAS.*`. Also bridges runtime inspection helpers: `GetAttributeValuesToolset`, `GetActiveEffectsToolset`, `GetGrantedAbilitiesToolset`, `GetActiveTagsToolset`, `FindAttributeSetClassesToolset`, `ListAttributesToolset`.
+Mirror of native commands via the `GASToolsets` plugin (UE 5.8+). Provider: `Toolset.Editor.GAS.*`. Groups: runtime inspection (6) — `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses`, `ListAttributes`; GameplayCue authoring (8) — `ListCues`, `GetCueInfo`, `FindCueNotifyAssets`, `FindCueTagsWithoutNotifies`, `ExecuteCueOnSelectedActor`, `CreateCueNotifyAsset`, `AddCueTag`, `RemoveCueTag`.
 
 ---
 
@@ -1776,7 +2059,7 @@ Raw ini key access for runtime and packaged builds. Reads and writes ini keys di
 
 ## UAIP.Runtime.PIE
 
-PIE session control and runtime world manipulation.
+PIE session lifecycle. Manipulating the running world is [`UAIP.Runtime.World`](#uaipruntimeworld).
 
 | Command | Description |
 |---|---|
@@ -1785,24 +2068,43 @@ PIE session control and runtime world manipulation.
 | 🆓 `PausePIE` | Pause the active PIE session |
 | 🆓 `ResumePIE` | Resume a paused PIE session |
 | 🆓 `LoadMap` | Load a map in the active PIE session and wait for completion |
-| `ExecuteConsoleCommand` | Execute a console command in the active PIE session |
-| `TeleportActor` | Teleport an actor to a world-space location / rotation |
-| `PossessActor` | Have a player controller possess an actor |
-| `SetTimeScale` | Set the global time scale of the active PIE session |
-| `QuitGame` | Request the running game process to quit |
-| ~~`GetConsoleVariable`~~ | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.GetConsoleVariable` instead |
-| ~~`SearchConsoleVariables`~~ | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.SearchConsoleVariables` instead |
 | 🆓 `GetPIEState` | Return the current PIE state — `Running`, `Stopped`, `Paused`, or `Simulating` |
 
-### Toolset bridges (4) 🧩
+### Toolset bridges (3) 🧩
 
-Bridge commands via the EditorToolset plugin (UE 5.8+).
+Bridge commands via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Provider: `Toolset.Editor.Toolset.PIE.*`.
 
-| Command | Provider | Description |
-|---|---|---|
-| `Toolset.Editor.Toolset.PIE.StartPIE` | `Toolset.Editor.Toolset.PIE.*` | Start a PIE session (async, requires `PIEControl`) |
-| `Toolset.Editor.Toolset.PIE.StopPIE` | `Toolset.Editor.Toolset.PIE.*` | Stop the active PIE session (async, requires `PIEControl`) |
-| `Toolset.Editor.Toolset.PIE.IsPIERunning` | `Toolset.Editor.Toolset.PIE.*` | Return whether PIE is currently active |
+| Command | Description |
+|---|---|
+| `Toolset.Editor.Toolset.PIE.StartPIE` | Start a PIE session (async, requires `PIEControl`) |
+| `Toolset.Editor.Toolset.PIE.StopPIE` | Stop the active PIE session (async, requires `PIEControl`) |
+| `Toolset.Editor.Toolset.PIE.IsPIERunning` | Return whether PIE is currently active |
+
+---
+
+## UAIP.Runtime.World
+
+Manipulate and inspect the **running** game world. These commands were registered under `UAIP.Runtime.PIE` in earlier releases.
+
+| Command | Description |
+|---|---|
+| `SpawnActor` | Spawn an actor of a class in the active PIE world (requires `RuntimeActorManipulation`) |
+| `DestroyActor` | Destroy an actor in the active PIE world (requires `RuntimeActorManipulation`) |
+| `TeleportActor` | Teleport an actor to a world-space location / rotation |
+| `PossessActor` | Have a player controller possess an actor |
+| `SetTimeScale` | Set the global time dilation of the active game world |
+| `QuitGame` | Request a graceful quit of the running game process |
+| `ExecuteConsoleCommand` | Execute a console command in the active game world (requires `RuntimeExecCommand`) |
+| `GetConsoleVariable` | Value, type and help text of a console variable; sensitive names report as not found (requires `RuntimeCVarRead`) |
+| `SearchConsoleVariables` | Wildcard (`*`) search over registered console variables — `MaxResults` default 50, max 200; sensitive names are excluded |
+
+### Toolset bridges (1) 🧩
+
+Bridge command via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Provider: `Toolset.Editor.Toolset.World.*`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.Toolset.World.SearchCVars` | Search console variables by name substring; sensitive variables are excluded (requires `CVarInspect`) |
 
 ---
 
@@ -1850,7 +2152,9 @@ Scenario primitives — wait and assert.
 
 ## UAIP.Runtime.GAS 🧩
 
-GameplayAbilities state inspection. Requires `GameplayAbilities` plugin. PIE required.
+GameplayAbilities state inspection and runtime manipulation. Requires the `GameplayAbilities` plugin. PIE is required except where noted.
+
+#### Inspection (8)
 
 | Command | Description |
 |---|---|
@@ -1858,8 +2162,26 @@ GameplayAbilities state inspection. Requires `GameplayAbilities` plugin. PIE req
 | `GetActiveEffects` 🧩 | Active gameplay effects (Level, StackCount, remaining time) on an actor |
 | `GetGrantedAbilities` 🧩 | Granted abilities (Class, IsActive, ActiveCount, InputID) on an actor |
 | `GetActiveTags` 🧩 | Owned GameplayTags on an actor |
-| `FindAttributeSetClasses` 🧩 | Scan PIE world actors and list UAttributeSet classes (MaxActors limit) |
+| `FindAttributeSetClasses` 🧩 | Scan PIE world actors and list `UAttributeSet` classes (MaxActors limit) |
 | `ListAttributes` 🧩 | List all attribute names defined on an AttributeSet class |
+| `GetAbilityAssetInfo` 🧩 | CDO-level metadata for a `UGameplayAbility` class — cost, cooldown, tags. **No PIE required** |
+| `GetEffectAssetInfo` 🧩 | CDO-level metadata for a `UGameplayEffect` class — duration policy, modifiers, granted tags. **No PIE required** |
+
+#### Manipulation (9)
+
+All require the `RuntimeGASManipulation` capability and an active PIE session.
+
+| Command | Description |
+|---|---|
+| `GrantAbility` 🧩 | Grant a GameplayAbility to an actor's AbilitySystemComponent |
+| `RemoveAbility` 🧩 | Remove a previously granted GameplayAbility |
+| `ClearGrantedAbilities` 🧩 | Remove every granted GameplayAbility from an actor |
+| `ApplyEffect` 🧩 | Apply a GameplayEffect to an actor |
+| `RemoveEffect` 🧩 | Remove all active instances of a GameplayEffect class |
+| `ClearActiveEffects` 🧩 | Remove all active GameplayEffects, optionally narrowed by `TagFilter` |
+| `SetAttributeValue` 🧩 | Set an attribute's base value (`AttributeName` format `UMyAttributeSet.Health`) |
+| `ResetAttributesToBase` 🧩 | Reset every attribute's current value to its base value |
+| `SendGameplayEvent` 🧩 | Send a GameplayEvent with an optional magnitude to an actor |
 
 ---
 
