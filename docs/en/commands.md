@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 878 **UAIP commands** (provided directly by the plugin itself) and 411 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1289 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 934 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1354 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -56,6 +56,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | 7 | — |
 | Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
+| Editor MetaHuman 🧩 | `UAIP.Editor.MetaHuman` | 56 | 9 | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 8 | — | — |
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 11 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
@@ -766,6 +767,137 @@ Skeleton and SkeletalMesh editing.
 | `RemoveVirtualBone` | Remove a virtual bone |
 | `GetSkeletalMeshInfo` | USkeletalMesh LODs, material slots, related Skeleton path (read-only) |
 | `SetSkeletalMeshMaterial` | Assign a material to a slot on a SkeletalMesh |
+
+---
+
+## UAIP.Editor.MetaHuman 🧩
+
+MetaHuman character authoring — asset creation, body / skin / eye / makeup settings, face sculpting, conforming and fitting, cloud rigging, texture synthesis, wardrobe, preview, and the asset build pipeline. Requires the `MetaHumanCharacter` plugin; if it is not enabled none of these commands are registered.
+
+Editing commands open a MetaHuman edit session on demand and keep it open, so a run of commands against the same character does not pay the cost of reopening it. Because opening a session is itself an edit-mode entry, **most reads in this domain are not read-only**: they require `MetaHumanEdit` and are refused while the safety policy is in read-only mode. Call `ReleaseEditSession` once a run is finished. The only exception is `GetViewportSettings`, which requires just `EditorInspect`.
+
+**⬆️ = UE 5.8+ only.** 14 of the 56 commands below depend on engine APIs that do not exist on UE 5.7. They are still registered there, so `uaip_list_commands` lists them with `Available: false` and calling one returns `PolicyViolation` (not `CommandNotFound`). Every command without the mark works on both UE 5.7 and UE 5.8. This symbol is used only in this section.
+
+### Native (56)
+
+#### Creation (1)
+
+| Command | Description |
+|---|---|
+| `CreateMetaHumanCharacter` | Create a new MetaHuman character asset from the default template and write it to disk (package path must be under `/Game/`; requires `MetaHumanAssetCreate`) |
+
+#### Body, skin and eyes (8)
+
+| Command | Description |
+|---|---|
+| `GetBodyConstraints` | List every body constraint with its target measurement, whether it takes part in the body solve, and its accepted range (JSON artifact). Names are data driven — call this before `SetBodyConstraints` |
+| `SetBodyConstraints` | Update named body constraints and re-evaluate the body (unnamed constraints keep their values; every entry is validated before any is applied) |
+| `GetBodyShape` | Read the simplified body shape — masculine/feminine, body fat and muscularity as 0..1 values, plus height in cm |
+| `SetBodyShape` | Set the simplified body shape and re-evaluate the body (omitted values unchanged; out-of-range values are rejected, not clamped) |
+| `GetSkinSettings` | Read the complete skin settings — tone (lightness / redness), texture variant indices, roughness, palms and nails, freckles, per-region tone accents |
+| `SetSkinTone` | Set only the two skin tone axes (lightness / redness); every other skin setting is left unchanged |
+| `GetEyeSettings` | Read both eyes in full — Iris, Pupil, Cornea and Sclera groups |
+| `SetEyeColor` | Write one temperature / brightness pair into the primary and secondary iris colour of both eyes |
+
+#### Appearance detail (8)
+
+| Command | Description |
+|---|---|
+| `SetSkinSettings` | Partial update of the full skin settings (omitted fields keep their values; out-of-range values are rejected, not clamped) |
+| `GetMakeupSettings` | Read the makeup settings — foundation layer, eye makeup, blush, lip makeup |
+| `SetMakeupSettings` | Partial update of the makeup settings (style names must match the engine's own names exactly) |
+| `GetHeadModelSettings` | Read eyelash style and colouring plus the full set of teeth shape and colour values |
+| `SetHeadModelSettings` | Partial update of the head model settings |
+| `SetEyeSettings` | Partial update of the eyes, each eye addressed separately across the Iris / Pupil / Cornea / Sclera groups |
+| `GetFaceEvaluationSettings` | Read overall face deviation, fine surface detail deviation and uniform head scale |
+| `SetFaceEvaluationSettings` | Partial update of the face evaluation settings |
+
+#### Face sculpting (9)
+
+| Command | Description |
+|---|---|
+| `GetFaceModelCoefficients` ⬆️ | Read the underlying face model coefficients as a flat number array (JSON artifact); pass the same array back to restore the shape |
+| `SetFaceModelCoefficients` ⬆️ | Write the face model coefficients (the array length must match `GetFaceModelCoefficients` exactly; any other length is rejected) |
+| `GetFaceLandmarks` | Read the face landmark positions as a JSON artifact; an entry's index in the array is what `TranslateFaceLandmarks` expects |
+| `TranslateFaceLandmarks` | Move the named face landmarks by matching deltas (all-or-nothing — if any entry is rejected, nothing is applied) |
+| `CommitFaceState` | Commit the accumulated sculpting edits onto the asset; the sculpting commands do not commit on their own |
+| `ImportFaceFromDna` | Replace the face from a `.dna` file that must live inside the project directory (requires `MetaHumanFileImport`) |
+| `ImportFaceFromTemplate` | Fit the face to a template head mesh whose topology matches a MetaHuman head |
+| `ImportFaceFromIdentity` | Fit the face to the conformed mesh of a MetaHuman Identity asset (the identity must already be conformed) |
+| `CompareFaceState` | Report whether every corresponding vertex and vertex normal of two characters is within `Tolerance` (a single boolean; no per-vertex breakdown) |
+
+#### Conforming and fitting (10)
+
+| Command | Description |
+|---|---|
+| `GetMeshDataForConforming` ⬆️ | Read a Static / Skeletal Mesh's vertices and triangle indices into a JSON artifact, in the form the conforming commands take as a target |
+| `ConformBodyToTarget` | Reshape the body to the supplied vertices, optionally deriving hand and foot joints (target given as `MeshDataArtifactId` or inline `Vertices`) |
+| `ConformFaceToTargetMeshes` ⬆️ | Start an asynchronous solve that reshapes the character towards the target meshes; success means it started — poll `GetAsyncConformState` |
+| `AlignToTargetMeshes` ⬆️ | Start a rigid alignment (move / rotate / scale, no shape change) onto the target meshes; run before `ConformFaceToTargetMeshes` |
+| `RefineVerticesToTarget` ⬆️ | Start a refinement pass that pulls vertices past what the parametric model alone can express; run after the conform has finished |
+| `CommitPosedStateAsAPose` ⬆️ | Evaluate the conformed body in the MetaHuman A pose and rebuild the face state from it, so the result can be posed and animated normally |
+| `FitStateToTargetVertices` | One-pass fit of the head to target vertices in MetaHuman head topology and vertex order (no iterative solve) |
+| `FitFaceFromBodyWithEyesTeethTemplate` ⬆️ | Rebuild the head from the current body shape, taking eyes and teeth from the supplied template meshes |
+| `FitFaceFromBodyWithEyesTeethDna` ⬆️ | Same, taking eyes and teeth from a face DNA file — the head shape still comes from the body, so this is not a face import (requires `MetaHumanFileImport`) |
+| `GetAsyncConformState` ⬆️ | Report whether a conform / alignment / refinement is still running; the engine offers no completion event, so poll this until `bIsRunning` is false |
+
+#### Build pipeline (6)
+
+| Command | Description |
+|---|---|
+| `RequestTextureSources` | Start high resolution face texture synthesis and return once the request is in flight; the work runs for minutes in the background (requires `MetaHumanTextureSynthesis`) |
+| `GetTextureSourceState` | Poll whether texture synthesis is still running and whether the character already holds synthesized textures |
+| `RequestAutoRigging` | Start face rig generation. ⚠️ **Uploads the character's face data to Epic's cloud rigging service** — the rig is produced remotely and downloaded back, so this requires a signed-in Epic account and network access, and the character data leaves the machine. Rigging usually takes minutes; poll `GetRiggingState` (requires `MetaHumanCloudRigging`) |
+| `GetRiggingState` | Poll the rigging state — `Unrigged` / `RigPending` / `Rigged`. `Unrigged` once the request has stopped running means it failed (usually sign-in or connectivity) |
+| `CanBuildMetaHuman` | Report whether `BuildMetaHuman` would accept this character and, when it would not, the first unmet requirement. Call this before every build |
+| `BuildMetaHuman` | Assemble the character into a collection, an instance and a character blueprint under a new subfolder. ⚠️ **Blocks the game thread for the entire build (seconds to minutes) and cannot report progress, so the editor is unresponsive while it runs.** That exceeds the MCP bridge freeze detection (30 s) and the default command timeout (60 s) — raise `command_timeout_seconds` (and set a generous `TimeoutSeconds` in scenarios) before calling. Call `CanBuildMetaHuman` first; a build without auto-rigging and synthesized textures always fails. On failure the assets created under the output folder are deleted; the output folder must not already exist. Other MetaHuman commands are refused while a build runs (requires `MetaHumanBuild`) |
+
+#### Preview (3)
+
+| Command | Description |
+|---|---|
+| `GetViewportSettings` | Read the preview viewport settings — light rotation, background colour, level of detail, hair cards vs strands, preview skin material (read-only; requires only `EditorInspect`) |
+| `SetViewportSettings` | Partial update of the preview viewport settings (at least one setting must be supplied; out-of-range values are rejected, not clamped) |
+| `RefreshCharacterPreview` ⬆️ | Propagate pending collection edits back onto the character and re-run the editor pipeline so the preview reflects them |
+
+#### Wardrobe (10)
+
+| Command | Description |
+|---|---|
+| `ListWardrobeSlots` | List the wardrobe slots the character's collection defines with the number of items in each; names come from the pipeline at runtime, so call this before `AssignWardrobeItem` |
+| `ListWardrobeItems` | List the wardrobe items, optionally for one slot; each entry carries the opaque `ItemKey` handle |
+| `GetWardrobeItemInfo` | Read one wardrobe item — the slot it occupies, its display name and the package path of the asset it wraps |
+| `AssignWardrobeItem` ⬆️ | Assign an asset (groom, garment, …) to a wardrobe slot, select it and rebuild the preview — no separate `RefreshCharacterPreview` needed |
+| `RemoveWardrobeItem` ⬆️ | Remove a wardrobe item, clearing the slot selection first when the character is wearing it, then rebuild the preview |
+| `ReplaceWardrobeItem` ⬆️ | Replace a wardrobe item with a different asset in the slot the outgoing item occupied, then rebuild the preview |
+| `GetWardrobeItem` | Read one wardrobe item asset addressed by package path — the package path of its principal asset, the class path of its pipeline, its thumbnail texture and thumbnail name, and whether it is an asset in its own right. This is the item asset itself, not an item a character is wearing — for that use `GetWardrobeItemInfo`, which takes a character path and an `ItemKey` instead |
+| `SetWardrobeItem` | Partial update of a wardrobe item asset's principal asset, thumbnail texture and thumbnail name (omitted fields keep their values, but at least one must be supplied; an empty string in either path field clears that reference rather than naming an asset). The pipeline is not settable here — use `SetWardrobeItemPipeline` |
+| `SetWardrobeItemPipeline` | Give a wardrobe item asset a pipeline of the named class, replacing whatever pipeline it had; `PipelineClassPath` is a class path, so take one from `ListItemPipelineClasses` rather than assembling it |
+| `ListItemPipelineClasses` | List the item pipeline classes a wardrobe item asset may be built through, with their display names. Which classes exist depends on the plugins the project has loaded; abstract, deprecated and hot-reload superseded classes are left out, so every class listed is one `SetWardrobeItemPipeline` accepts |
+
+#### Session (1)
+
+| Command | Description |
+|---|---|
+| `ReleaseEditSession` | Release the edit session held open for a character; the call never aborts work that is still in flight |
+
+### Toolset bridges (9) 🧩
+
+Bridge commands via the `MetaHumanGenerator` Python toolset. Provider: `Toolset.Editor.MetaHuman.*`. Available only on UE 5.8+ with `MetaHumanGenerator` + `ToolsetRegistry` enabled — on UE 5.7 the bridge provider is not registered at all, so these names return `CommandNotFound`. Marked `Stability: Experimental` because the underlying engine Python toolset is itself experimental.
+
+Unlike the native commands, every bridge command except `Create` needs an explicit session reference from `BeginEdit`, which also means none of them can run while the safety policy is read-only. All require `MetaHumanEdit`, except `Create` which requires `MetaHumanAssetCreate`.
+
+| Command | Description |
+|---|---|
+| `Toolset.Editor.MetaHuman.BeginEdit` | Open an edit session on a character and return the session reference the other bridge commands take |
+| `Toolset.Editor.MetaHuman.EndEdit` | Close a session opened by `BeginEdit` and take the character out of the editor's edit set |
+| `Toolset.Editor.MetaHuman.GetBodyShape` | Return the four simplified body shape values of the session's character |
+| `Toolset.Editor.MetaHuman.SetBodyShape` | Set the four simplified body shape values and commit, including the neck region rebuild (out-of-range values are clamped by the toolset rather than refused — the one behavioural difference from the native command) |
+| `Toolset.Editor.MetaHuman.GetSkinTone` | Return lightness and redness of the session's character |
+| `Toolset.Editor.MetaHuman.SetSkinTone` | Set lightness and redness and commit the skin settings; the rest of the skin settings are left as they are |
+| `Toolset.Editor.MetaHuman.GetEyeColor` | Return temperature and brightness, read from the right eye's primary iris colour |
+| `Toolset.Editor.MetaHuman.SetEyeColor` | Set one eye colour on both eyes and commit the eye settings, so the two eyes always end up matching |
+| `Toolset.Editor.MetaHuman.Create` | Create a new MetaHuman character asset under `/Game/` and return a reference to it (requires `MetaHumanAssetCreate`) |
 
 ---
 

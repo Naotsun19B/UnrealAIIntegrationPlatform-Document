@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 878 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 411 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1289 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 934 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1354 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -56,6 +56,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | 7 | — |
 | Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
+| Editor MetaHuman 🧩 | `UAIP.Editor.MetaHuman` | 56 | 9 | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 8 | — | — |
 | Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 11 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
@@ -767,6 +768,137 @@ Skeleton と SkeletalMesh 編集。
 | `RemoveVirtualBone` | バーチャルボーンを削除 |
 | `GetSkeletalMeshInfo` | USkeletalMesh の LOD・マテリアルスロット・関連 Skeleton パス（読み取り専用） |
 | `SetSkeletalMeshMaterial` | SkeletalMesh のマテリアルスロットにマテリアルを割り当て |
+
+---
+
+## UAIP.Editor.MetaHuman 🧩
+
+MetaHuman キャラクターのオーサリング — アセット作成、体型 / 肌 / 眼 / メイク設定、顔の造形、コンフォーム・フィッティング、クラウドリギング、テクスチャ合成、ワードローブ、プレビュー、アセットビルドパイプライン。`MetaHumanCharacter` プラグインが必要です（無効な場合、これらのコマンドは一切登録されません）。
+
+編集系コマンドは必要に応じて MetaHuman 編集セッションを開き、そのまま保持します（同一キャラクターに対する連続実行で再オープンのコストを払わないため）。セッションを開くこと自体が編集モードへの移行であるため、**このドメインの読み取り系コマンドの多くは読み取り専用ではありません** — `MetaHumanEdit` を必要とし、SafetyPolicy が読み取り専用モードのときは拒否されます。一連の作業が終わったら `ReleaseEditSession` を呼んでください。唯一の例外は `GetViewportSettings` で、`EditorInspect` のみで実行できます。
+
+**⬆️ = UE 5.8 以降専用。** 以下 56 コマンドのうち 14 コマンドは UE 5.7 に存在しないエンジン API に依存しています。UE 5.7 でも登録自体は行われるため、`uaip_list_commands` には `Available: false` として現れ、実行すると `CommandNotFound` ではなく `PolicyViolation` が返ります。記号のないコマンドは UE 5.7 / UE 5.8 の両方で動作します。この記号は本セクション限定の表記です。
+
+### ネイティブ（56）
+
+#### 作成（1）
+
+| コマンド | 説明 |
+|---|---|
+| `CreateMetaHumanCharacter` | デフォルトテンプレートから MetaHuman キャラクターアセットを新規作成しディスクへ書き出し（パッケージパスは `/Game/` 配下必須、`MetaHumanAssetCreate` 必須） |
+
+#### 体型・肌・眼（8）
+
+| コマンド | 説明 |
+|---|---|
+| `GetBodyConstraints` | 体型制約を全件取得（現在の目標寸法・体型ソルブへの参加有無・許容範囲、JSON artifact）。名前はデータ駆動のため `SetBodyConstraints` の前に本コマンドで列挙する |
+| `SetBodyConstraints` | 名前を指定して体型制約を更新し体型を再評価（指定しなかった制約は現在値を保持、全エントリを検証してから適用） |
+| `GetBodyShape` | 簡易体型を取得 — 男性寄り / 女性寄り・体脂肪・筋肉量（0..1 正規化）と身長（cm） |
+| `SetBodyShape` | 簡易体型を設定し体型を再評価（省略値は変更なし、範囲外はクランプせず拒否） |
+| `GetSkinSettings` | 肌設定を全件取得 — 肌トーン（明度 / 赤み）、テクスチャバリアントインデックス、ラフネス、手のひらと爪、そばかす、部位別トーンアクセント |
+| `SetSkinTone` | 肌トーンの 2 軸（明度 / 赤み）のみを設定。その他の肌設定は変更しない |
+| `GetEyeSettings` | 両眼を全件取得 — Iris / Pupil / Cornea / Sclera の 4 グループ |
+| `SetEyeColor` | 指定した色温度・明度を両眼の虹彩プライマリ / セカンダリカラーへ書き込み |
+
+#### 外見詳細（8）
+
+| コマンド | 説明 |
+|---|---|
+| `SetSkinSettings` | 肌設定を部分更新（省略フィールドは現在値を保持、範囲外はクランプせず拒否） |
+| `GetMakeupSettings` | メイク設定を取得 — ファンデーション・アイメイク・チーク・リップ |
+| `SetMakeupSettings` | メイク設定を部分更新（スタイル名はエンジン側の名前と完全一致が必要） |
+| `GetHeadModelSettings` | まつげのスタイル・色と、歯の形状・色の設定を全件取得 |
+| `SetHeadModelSettings` | ヘッドモデル設定を部分更新 |
+| `SetEyeSettings` | 眼を部分更新。左右を個別に指定し、Iris / Pupil / Cornea / Sclera の 4 グループを扱う |
+| `GetFaceEvaluationSettings` | 顔の全体偏差・微細サーフェス偏差・頭部の均一スケールを取得 |
+| `SetFaceEvaluationSettings` | 顔評価設定を部分更新 |
+
+#### 顔の造形（9）
+
+| コマンド | 説明 |
+|---|---|
+| `GetFaceModelCoefficients` ⬆️ | 内部フェイスモデルの係数をフラットな数値配列として取得（JSON artifact）。同じ配列を戻せば形状を復元できる |
+| `SetFaceModelCoefficients` ⬆️ | フェイスモデルの係数を書き込み（配列長は `GetFaceModelCoefficients` の値と完全一致が必要、それ以外は拒否） |
+| `GetFaceLandmarks` | 顔のランドマーク位置を JSON artifact として取得。配列内の位置が `TranslateFaceLandmarks` の指定するインデックスになる |
+| `TranslateFaceLandmarks` | 指定したランドマークを対応する差分だけ移動（1 件でも不正なら何も適用しない） |
+| `CommitFaceState` | 蓄積された造形編集をアセットへコミット（造形系コマンドは単体ではコミットしない） |
+| `ImportFaceFromDna` | プロジェクトディレクトリ内の `.dna` ファイルから顔を差し替え（`MetaHumanFileImport` 必須） |
+| `ImportFaceFromTemplate` | MetaHuman ヘッドと同一トポロジのテンプレートヘッドメッシュに顔をフィット |
+| `ImportFaceFromIdentity` | MetaHuman Identity アセットのコンフォーム済みメッシュに顔をフィット（Identity はコンフォーム済みである必要あり） |
+| `CompareFaceState` | 2 キャラクターの全対応頂点・頂点法線が `Tolerance` 以内かを判定（真偽値のみ、頂点単位の内訳は返さない） |
+
+#### コンフォームとフィッティング（10）
+
+| コマンド | 説明 |
+|---|---|
+| `GetMeshDataForConforming` ⬆️ | Static / Skeletal Mesh の頂点と三角形インデックスを、コンフォーム系コマンドがターゲットとして受け取る形式で JSON artifact へ出力 |
+| `ConformBodyToTarget` | 指定頂点に体型をコンフォーム（手足のジョイントをメッシュから推定するオプションあり）。ターゲットは `MeshDataArtifactId` またはインライン `Vertices` で指定 |
+| `ConformFaceToTargetMeshes` ⬆️ | ターゲットメッシュへ寄せる非同期ソルブを開始。成功は「開始した」ことを意味するため `GetAsyncConformState` をポーリングする |
+| `AlignToTargetMeshes` ⬆️ | 形状を変えずに移動・回転・スケールでターゲットメッシュへ剛体アラインを開始。`ConformFaceToTargetMeshes` の前に実行する |
+| `RefineVerticesToTarget` ⬆️ | パラメトリックモデル単体では表現できない部分まで頂点を寄せるリファインを開始。コンフォーム完了後に実行する |
+| `CommitPosedStateAsAPose` ⬆️ | コンフォーム済みボディを MetaHuman A ポーズで評価し、そこから顔ステートを再構築（通常どおりポーズ・アニメーションできる状態にする） |
+| `FitStateToTargetVertices` | 反復ソルブを使わず、MetaHuman ヘッドのトポロジ・頂点順の目標頂点へ 1 パスでヘッドをフィット |
+| `FitFaceFromBodyWithEyesTeethTemplate` ⬆️ | 現在の体型からヘッドを再構築し、眼と歯をテンプレートメッシュで置き換え |
+| `FitFaceFromBodyWithEyesTeethDna` ⬆️ | 同上（眼と歯は顔 DNA ファイルから取得）。ヘッド形状は体型由来のため顔のインポート手段ではない（`MetaHumanFileImport` 必須） |
+| `GetAsyncConformState` ⬆️ | コンフォーム / アライン / リファインの実行中かを取得。エンジンが完了イベントを提供しないため `bIsRunning` が false になるまでポーリングする |
+
+#### ビルドパイプライン（6）
+
+| コマンド | 説明 |
+|---|---|
+| `RequestTextureSources` | 高解像度フェイステクスチャの合成を開始し、リクエスト発行時点で返す。処理はバックグラウンドで数分継続する（`MetaHumanTextureSynthesis` 必須） |
+| `GetTextureSourceState` | テクスチャ合成が実行中かどうか、および合成済みテクスチャを保持しているかをポーリング |
+| `RequestAutoRigging` | フェイスリグの生成を開始。⚠️ **キャラクターの顔データを Epic のクラウドリギングサービスへアップロードします** — リグはリモートで生成されてアセットへダウンロードされるため、Epic アカウントへのサインインとネットワーク接続が必要で、キャラクターデータはこのマシンの外へ出ます。リギングには通常数分かかるため `GetRiggingState` をポーリングする（`MetaHumanCloudRigging` 必須） |
+| `GetRiggingState` | リギング状態（`Unrigged` / `RigPending` / `Rigged`）をポーリング。リクエスト終了後に `Unrigged` ならば失敗（多くはサインインまたは接続の問題） |
+| `CanBuildMetaHuman` | `BuildMetaHuman` が当該キャラクターを受け付けるか、受け付けない場合は最初の未充足要件を返す。ビルド前に必ず呼ぶ |
+| `BuildMetaHuman` | キャラクターをコレクション・インスタンス・キャラクターブループリントとして新規サブフォルダに組み立てる。⚠️ **ビルド完了までゲームスレッドをブロックし（数秒〜数分）進捗を返さないため、実行中エディタは応答しなくなります。** これは MCP ブリッジの freeze 検知（30 秒）と既定のコマンドタイムアウト（60 秒）を超えるため、呼び出し前に `command_timeout_seconds` を引き上げ（シナリオでは `TimeoutSeconds` にも十分な値を設定）してください。先に `CanBuildMetaHuman` を呼ぶこと（オートリギングと合成済みテクスチャが揃っていないビルドは必ず失敗します）。失敗時は出力フォルダ配下に作成されたアセットが削除されます。出力フォルダが既存の場合は拒否されます。ビルド実行中は他の MetaHuman コマンドが拒否されます（`MetaHumanBuild` 必須） |
+
+#### プレビュー（3）
+
+| コマンド | 説明 |
+|---|---|
+| `GetViewportSettings` | プレビュービューポート設定を取得 — ライト回転・背景色・LOD・ヘアカード / ストランドの切り替え・プレビュー用スキンマテリアル（読み取り専用、`EditorInspect` のみで実行可能） |
+| `SetViewportSettings` | プレビュービューポート設定を部分更新（最低 1 項目の指定が必要、範囲外はクランプせず拒否） |
+| `RefreshCharacterPreview` ⬆️ | 保留中のコレクション編集をキャラクターへ反映し、エディタパイプラインを再実行してプレビューへ反映 |
+
+#### ワードローブ（10）
+
+| コマンド | 説明 |
+|---|---|
+| `ListWardrobeSlots` | キャラクターのコレクションが定義するワードローブスロットと各スロットのアイテム数を列挙。名前は実行時にパイプラインから取得されるため `AssignWardrobeItem` の前に本コマンドで確認する |
+| `ListWardrobeItems` | ワードローブアイテムを列挙（スロット指定は任意）。各エントリは不透明なハンドル `ItemKey` を持つ |
+| `GetWardrobeItemInfo` | ワードローブアイテム 1 件を取得 — 占有スロット・表示名・ラップしているアセットのパッケージパス |
+| `AssignWardrobeItem` ⬆️ | グルームやガーメントなどのアセットをワードローブスロットへ割り当てて選択し、プレビューを再構築（`RefreshCharacterPreview` の追加呼び出しは不要） |
+| `RemoveWardrobeItem` ⬆️ | ワードローブアイテムを削除（着用中の場合はスロット選択を先に解除）し、プレビューを再構築 |
+| `ReplaceWardrobeItem` ⬆️ | ワードローブアイテムを、元のアイテムが占有していたスロットのまま別アセットへ置き換え、プレビューを再構築 |
+| `GetWardrobeItem` | パッケージパスで指定したワードローブアイテムアセットを 1 件取得 — 元アセットのパッケージパス・パイプラインのクラスパス・サムネイル画像のパス・サムネイル名・単体アセットかどうか。対象はアイテムアセットそのものであり、キャラクターが着用しているアイテムではない（後者は `GetWardrobeItemInfo` で、キャラクターパスと `ItemKey` を指定する） |
+| `SetWardrobeItem` | ワードローブアイテムアセットの元アセット・サムネイル画像・サムネイル名を部分更新（省略フィールドは現在値を保持、ただし最低 1 項目の指定が必要。パス項目に空文字列を渡すとアセットの指定ではなくその参照のクリアになる）。パイプラインは本コマンドでは設定できず `SetWardrobeItemPipeline` を使う |
+| `SetWardrobeItemPipeline` | ワードローブアイテムアセットへ指定クラスのパイプラインを設定し、元のパイプラインを置き換える。`PipelineClassPath` はクラスパスのため、組み立てずに `ListItemPipelineClasses` の結果から選ぶ |
+| `ListItemPipelineClasses` | ワードローブアイテムアセットのビルドに使えるアイテムパイプラインクラスを表示名付きで列挙。存在するクラスはプロジェクトがロードしているプラグインに依存する。abstract・deprecated・ホットリロードで置換されたクラスは除外されるため、列挙されたクラスはすべて `SetWardrobeItemPipeline` が受け付ける |
+
+#### セッション（1）
+
+| コマンド | 説明 |
+|---|---|
+| `ReleaseEditSession` | キャラクターに対して保持している編集セッションを解放（実行中の処理を中断することはありません） |
+
+### Toolset ブリッジ（9）🧩
+
+`MetaHumanGenerator` Python Toolset へのブリッジコマンド。プロバイダ：`Toolset.Editor.MetaHuman.*`。UE 5.8+ かつ `MetaHumanGenerator` + `ToolsetRegistry` 有効時のみ利用可能で、UE 5.7 ではブリッジプロバイダ自体が登録されないため `CommandNotFound` になります。委譲先のエンジン Python Toolset 自体が experimental であるため `Stability: Experimental` です。
+
+ネイティブコマンドと異なり、`Create` 以外のブリッジコマンドは `BeginEdit` が返すセッション参照を必須とします。そのため SafetyPolicy が読み取り専用のときはいずれも実行できません。必要な Capability は `MetaHumanEdit`（`Create` のみ `MetaHumanAssetCreate`）です。
+
+| コマンド | 説明 |
+|---|---|
+| `Toolset.Editor.MetaHuman.BeginEdit` | キャラクターに対する編集セッションを開き、他のブリッジコマンドが受け取るセッション参照を返す |
+| `Toolset.Editor.MetaHuman.EndEdit` | `BeginEdit` で開いたセッションを閉じ、キャラクターをエディタの編集対象から外す |
+| `Toolset.Editor.MetaHuman.GetBodyShape` | セッション対象キャラクターの簡易体型 4 値を返す |
+| `Toolset.Editor.MetaHuman.SetBodyShape` | 簡易体型 4 値を設定し、体型変更に伴うネック領域の再構築まで含めてコミット（範囲外の値は拒否されず Toolset 側でクランプされる — ネイティブコマンドとの唯一の挙動差） |
+| `Toolset.Editor.MetaHuman.GetSkinTone` | セッション対象キャラクターの肌トーン 2 値（明度・赤み）を返す |
+| `Toolset.Editor.MetaHuman.SetSkinTone` | 明度・赤みを設定して肌設定をコミット（その他の肌設定は変更しない） |
+| `Toolset.Editor.MetaHuman.GetEyeColor` | 右眼の虹彩プライマリカラーから読み取った色温度・明度を返す |
+| `Toolset.Editor.MetaHuman.SetEyeColor` | 1 つの眼色を両眼へ設定して眼設定をコミット（左右は常に一致する） |
+| `Toolset.Editor.MetaHuman.Create` | `/Game/` 配下に MetaHuman キャラクターアセットを新規作成し、その参照を返す（`MetaHumanAssetCreate` 必須） |
 
 ---
 
