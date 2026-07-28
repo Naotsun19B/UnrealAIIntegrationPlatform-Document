@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 666 以上の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 267 以上の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計約 933+ をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 878 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 411 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1289 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -33,57 +33,58 @@ UAIP では 2 種類のコマンドを公開しています：
 
 | ドメイン | プロバイダプレフィックス | UAIP コマンド | Toolset ブリッジ | デモ |
 |---|---|---:|---:|---:|
-| Core | `UAIP.Core` | 7 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | 一部（13/18） |
-| Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | 一部（1/3） |
+| Core | `UAIP.Core` | 8 | — | ✅ |
+| Editor Workspace | `UAIP.Editor.Workspace` | 18 | 1 | 一部（13/18） |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | 一部（1/3） |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
 | Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | 一部（5/8） |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅（1 件除外） |
-| Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
-| Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 42 | 6 | 一部（25/42） |
+| Editor Execution | `UAIP.Editor.Execution` | 9 | — | — |
+| Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
+| Editor Assets | `UAIP.Editor.Assets` | 46 | 6 | 一部（25/42） |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | 一部（7/16） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
-| Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | — | — |
-| Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 3 | — | — |
-| Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 36 | 45 | — |
+| Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
+| Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 5 | 4 | — |
+| Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 52 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
-| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | — | — |
+| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | 7 | — |
 | Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
-| Editor DataTable | `UAIP.Editor.DataTable` | 7 | — | — |
-| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
+| Editor DataTable | `UAIP.Editor.DataTable` | 8 | — | — |
+| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 11 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
 | Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
-| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 12 | — | — |
-| Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 9 | — | — |
-| Editor EQS 🧩 | `UAIP.Editor.EQS` | 7 | — | — |
-| Editor Sequencer | `UAIP.Editor.Sequencer` | 92 | 61 | — |
-| Editor StateTree | `UAIP.Editor.StateTree` | 9 | — | — |
+| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 17 | 7 | — |
+| Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
+| Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
+| Editor Sequencer | `UAIP.Editor.Sequencer` | 123 | 124 | — |
+| Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 31 | — |
-| Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 6 | — | — |
-| Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 12 | — | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 30 | — |
+| Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
+| Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 44 | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
-| Editor GAS 🧩 | `UAIP.Editor.GAS` | 11 | 11 | — |
-| Editor Python Extension 🧩 | `UAIP.Editor.PythonExtension` | 2 | — | — |
+| Editor GAS 🧩 | `UAIP.Editor.GAS` | 8 | 14 | — |
+| Editor Python Extension 🧩 | `UAIP.Editor.Python` | 2 | — | — |
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
-| Runtime PIE | `UAIP.Runtime.PIE` | 11 ⁺² | 3 | 一部（6/11） |
+| Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | 一部（6/11） |
+| Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
 | Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
-| Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 6 | — | — |
+| Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 17 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
 | Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | 一部（2/3） |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
@@ -103,8 +104,9 @@ UAIP では 2 種類のコマンドを公開しています：
 | 🆓 `QueryCapabilities` | セッションの Capability セットと `OperationalConstraints`（7 つのポリシーフラグ）を返す |
 | 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`GroupFilter`・`KeywordFilter`・`IncludeUnavailable`） |
 | 🆓 `DescribeCommand` | 単一コマンドの完全メタデータ（スキーマ・必要 Capability・可用性） |
-| 🆓 `ListCommandGroups` | 中間パス補完付きの全グループパス |
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
+
+> **注意**: 本表は `UAIP.Core` に登録されている 8 コマンドのうち 6 件を掲載しています。`EndSession` と `ReloadCapabilities` は登録済みですが本表には未掲載です。
 
 ---
 
@@ -1440,7 +1442,7 @@ Enhanced Input アセット編集 — Input Action と Input Mapping Context。
 
 ---
 
-## UAIP.Editor.PythonExtension 🧩
+## UAIP.Editor.Python 🧩
 
 Python コマンド拡張。`PythonScriptPlugin` が必要です。
 

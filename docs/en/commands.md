@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 666+ **UAIP commands** (provided directly by the plugin itself) and 267+ **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of about 933+ commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 878 **UAIP commands** (provided directly by the plugin itself) and 411 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1289 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -33,47 +33,47 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 
 | Domain | Provider prefix | UAIP commands | Toolset bridge | Demo |
 |---|---|---:|---:|---:|
-| Core | `UAIP.Core` | 7 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 18 | — | partial (13/18) |
-| Editor Engine Log | `UAIP.Editor.Engine.Log` | 3 | 4 | partial (1/3) |
+| Core | `UAIP.Core` | 8 | — | ✅ |
+| Editor Workspace | `UAIP.Editor.Workspace` | 18 | 1 | partial (13/18) |
+| Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | partial (1/3) |
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | partial (5/9) |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
 | Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | partial (5/8) |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ (1 excluded) |
-| Editor Execution | `UAIP.Editor.Execution` | 5 | — | — |
-| Editor UI Automation | `UAIP.Editor.UIAutomation` | 15 | — | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 42 | 6 | partial (25/42) |
+| Editor Execution | `UAIP.Editor.Execution` | 9 | — | — |
+| Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
+| Editor Assets | `UAIP.Editor.Assets` | 46 | 6 | partial (25/42) |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | partial (7/16) |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | partial (6/12) |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
-| Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | — | — |
-| Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 3 | — | — |
-| Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 36 | 45 | — |
+| Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
+| Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 5 | 4 | — |
+| Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 52 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
-| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | — | — |
+| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | 7 | — |
 | Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
-| Editor DataTable | `UAIP.Editor.DataTable` | 7 | — | — |
-| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 10 | — | — |
+| Editor DataTable | `UAIP.Editor.DataTable` | 8 | — | — |
+| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 11 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
 | Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
-| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 12 | — | — |
-| Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 9 | — | — |
-| Editor EQS 🧩 | `UAIP.Editor.EQS` | 7 | — | — |
-| Editor Sequencer | `UAIP.Editor.Sequencer` | 92 | 61 | — |
-| Editor StateTree | `UAIP.Editor.StateTree` | 9 | — | — |
+| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 17 | 7 | — |
+| Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
+| Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
+| Editor Sequencer | `UAIP.Editor.Sequencer` | 123 | 124 | — |
+| Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 31 | — |
-| Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 6 | — | — |
-| Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 12 | — | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 30 | — |
+| Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
+| Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 44 | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
-| Editor GAS 🧩 | `UAIP.Editor.GAS` | 11 | 11 | — |
-| Editor Python Extension 🧩 | `UAIP.Editor.PythonExtension` | 2 | — | — |
+| Editor GAS 🧩 | `UAIP.Editor.GAS` | 8 | 14 | — |
+| Editor Python Extension 🧩 | `UAIP.Editor.Python` | 2 | — | — |
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
@@ -82,12 +82,13 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
 | Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | partial (1/2) |
-| Runtime PIE | `UAIP.Runtime.PIE` | 11 ⁺² | 3 | partial (6/11) |
+| Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | partial (6/11) |
+| Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
 | Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
-| Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 6 | — | — |
+| Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 17 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
 
 ---
@@ -103,8 +104,9 @@ System-level commands for discovery, health, and session management.
 | 🆓 `QueryCapabilities` | Returns the session's capability set and `OperationalConstraints` (7 policy flags) |
 | 🆓 `ListCommands` | Filtered command catalog (filters: `GroupFilter`, `KeywordFilter`, `IncludeUnavailable`) |
 | 🆓 `DescribeCommand` | Full metadata for a single command (schema, required capabilities, availability) |
-| 🆓 `ListCommandGroups` | All group paths with intermediate path completion |
 | 🆓 `ListPlugins` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.Plugin.ListPlugins` instead. List installed plugins and their enabled state (JSON) |
+
+> **Note**: This table covers 6 of the 8 commands registered under `UAIP.Core`. `EndSession` and `ReloadCapabilities` are registered but not yet documented here.
 
 ---
 
@@ -1439,7 +1441,7 @@ Mirror of native commands via the `GASToolsets` plugin (UE 5.8+). Provider: `Too
 
 ---
 
-## UAIP.Editor.PythonExtension 🧩
+## UAIP.Editor.Python 🧩
 
 Python command extension. Requires `PythonScriptPlugin`.
 
