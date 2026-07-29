@@ -253,8 +253,8 @@ Capture screenshots and dump editor state — all read-only.
 
 | Command | Description |
 |---|---|
-| 🆓 `CaptureActiveWindowImage` | Screenshot of the active top-level editor window (PNG artifact) |
-| 🆓 `CaptureEditorTabImage` | Screenshot of a specified editor tab's widget area |
+| 🆓 `CaptureActiveWindowImage` | Screenshot of the active top-level editor window (PNG artifact). The editor does not have to be the foreground application: when no window is active, the main window is captured instead and `Result.CapturedWindow` says which one you got (`"ActiveWindow"` / `"MainWindow"`). The fallback only reaches the main window, so a floating asset editor or modal dialog needs `CaptureEditorTabImage` |
+| 🆓 `CaptureEditorTabImage` | Screenshot of a specified editor tab's widget area, addressed by Slate layout identifier — `DumpEditorState`'s `ActiveTabId` can be passed straight through. Works with the editor in the background. ⚠️ Brings the named tab to the front of its stack before capturing (a tab behind a sibling is not drawn and would come back empty), so capturing changes which tab the user sees |
 | 🆓 `CaptureGraphViewportImage` | Screenshot of an SGraphEditor viewport |
 | 🆓 `DumpEditorState` | Active tab, open assets, window dimensions, etc. (JSON) |
 | 🆓 `DumpSelectionState` | Current editor selection — actors, objects, graph nodes (JSON) |
