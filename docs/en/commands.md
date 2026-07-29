@@ -117,8 +117,8 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 
 | Command | Description |
 |---|---|
-| 🆓 `FocusEditorTab` | Bring the editor tab for an asset to the front |
-| 🆓 `CloseEditorTab` | Close the editor tab for an asset |
+| 🆓 `FocusEditorTab` | Bring the editor tab for an asset to the front. The target is addressed by `AssetPath`, **not** by a Slate layout tab identifier — the `ActiveTabId` reported by `DumpEditorState` (`"Viewport"`, `"Inspector"`, …) is rejected here. Use the `TabId` parameter of `CaptureEditorTabImage` when you need to address a tab by its layout identifier |
+| 🆓 `CloseEditorTab` | Close the editor tab for an asset. Takes `AssetPath`, addressed the same way as `FocusEditorTab` |
 | 🆓 `NormalizeEditorLayout` | Focus the main graph tab and hide transient panels |
 | 🆓 `SetGraphZoom` | Set graph viewport zoom level |
 | 🆓 `FrameGraphAll` | Zoom the graph viewport to fit all nodes |
@@ -961,8 +961,8 @@ Editing commands open a MetaHuman edit session on demand and keep it open, so a 
 
 | Command | Description |
 |---|---|
-| `GetViewportSettings` | Read the preview viewport settings — light rotation, background colour, level of detail, hair cards vs strands, preview skin material (read-only; requires only `EditorInspect`) |
-| `SetViewportSettings` | Partial update of the preview viewport settings (at least one setting must be supplied; out-of-range values are rejected, not clamped) |
+| `GetViewportSettings` | Read the preview viewport settings — lighting environment, light rotation, background colour, level of detail, hair cards vs strands, preview skin material and camera framing (read-only; requires only `EditorInspect`) |
+| `SetViewportSettings` | Partial update of the preview viewport settings (at least one setting must be supplied; out-of-range values are rejected, not clamped). `PreviewMaterial` is named as the editor's viewport toolbar labels it — **pick `Skin` before capturing an image to check a colour**, because `Topology` is a topology visualisation that hides skin, makeup and eye colour entirely, and `Clay` is untextured grey. `CameraFrame` is always recorded on the character, but the preview camera only moves while the character is open in the MetaHuman character editor. A custom lighting environment cannot be selected here — the two supported engine versions describe one differently, so it is set in the editor's viewport toolbar instead |
 | `RefreshCharacterPreview` ⬆️ | Propagate pending collection edits back onto the character and re-run the editor pipeline so the preview reflects them |
 
 #### Wardrobe (10)
