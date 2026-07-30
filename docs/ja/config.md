@@ -214,7 +214,16 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 | `uproject_path` | string | `""` | `.uproject` ファイルの絶対パス。環境変数 `UAIP_UPROJECT_PATH` が設定されている場合はそちらが優先 |
 | `http_port` | int | `8765` | エディタ側 MCP エンドポイントの HTTP ポート。`-uaip-http-port` と一致させること |
 | `http_startup_timeout_seconds` | int | `120` | Bridge が起動後のエディタ準備完了を待つ最大秒数 |
-| `command_timeout_seconds` | int | `60` | 転送されるコマンドのリクエストごとの HTTP タイムアウト |
+| `command_timeout_seconds` | int | `180` | 転送されるコマンドのリクエストごとの HTTP タイムアウト。**HTTP トランスポート自身の非同期コマンドタイムアウト（120 秒）より小さい値には設定できない** — 詳細は下記「タイムアウトの不変条件」を参照 |
+| `unresponsive_timeout_seconds` | int | `30` | ポートは LISTEN しているがヘルス ping に応答しない状態を何秒許容してから `UNRESPONSIVE` と判定するか。この状態では自動起動も自動再起動も行わない — [接続方法 → エディタ状態の確認](connections.md#エディタ状態の確認uaip_get_editor_status) を参照 |
+| `health_poll_interval_seconds` | int | `15` | エディタが稼働中とみなされている間のバックグラウンドヘルス ping の間隔 |
+| `handshake_timeout_seconds` | int | `10` | プロジェクト同一性検証に使う `HealthCheck` 呼び出し、および config リロード時に発行される `ShutdownEditor` 呼び出しのタイムアウト |
+| `scenario_timeout_seconds` | int | `1800` | Bridge 経由で転送される `uaip_run_scenario` の wall-clock 上限（scenario ルート自体の 30 分制限に合わせている） |
+| `artifact_timeout_seconds` | int | `60` | Artifact ダウンロードのタイムアウト。コマンド実行時間とは独立に管理される |
+| `probe_tcp_timeout_seconds` | float | `1.0` | エディタのポートが LISTEN しているかどうかだけを確認する TCP connect タイムアウト |
+| `probe_ping_timeout_seconds` | float | `5.0` | LISTEN 中のエディタが実際に応答するかを確認する HTTP ping タイムアウト |
+| `process_exit_wait_seconds` | int | `10` | Bridge が起動したエディタプロセスの終了を待つ最大秒数 |
+| `allow_unverified_attach` | bool | `false` | `HealthCheck` 応答に `ProjectFilePath` を持たない旧バージョンのプラグインへアタッチすることを許可するオプトイン。**既定では拒否**される — 同一性を検証できないピアは黙ってアタッチせず拒否するのが既定の挙動 |
 | `log_level` | string | `"INFO"` | Python logger の冗長度 — `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `enable_scenario` | bool | `false` | `true` のとき Bridge がエディタを `-uaip-enable-scenario` 付きで起動する。環境変数オーバーライド：`UAIP_ENABLE_SCENARIO=1` |
 | `inline_artifacts.image` | bool | `false` | PNG Artifact を MCP レスポンスに base64 インライン化する。**長時間セッションで PNG が蓄積し `"Could not process image"` API エラーが発生するため、デフォルト OFF** — スクリーンショットは Artifact パスを `Read` ツールに渡して表示する |
@@ -222,6 +231,16 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 | `inline_artifacts.text` | bool | `true` | テキスト Artifact を MCP レスポンスに base64 インライン化する |
 
 環境変数（`UAIP_UE_EDITOR_PATH`・`UAIP_UPROJECT_PATH`・`UAIP_ENABLE_SCENARIO`）が設定されている場合は対応する JSON 値を上書きします。フルコメント付きテンプレートは `config.json.example`（Bridge zip 同梱、インストール後は `<bridge-root>/config.json.example`）を参照してください。
+
+### タイムアウトの不変条件
+
+Bridge はタイムアウト設定を検証し、どの不変条件が破られたかによって異なる挙動を取ります。
+
+- `health_poll_interval_seconds` < `unresponsive_timeout_seconds` < `command_timeout_seconds`、かつ `unresponsive_timeout_seconds` < `http_startup_timeout_seconds`。この 4 値は**ひとまとまりのプロファイル**として扱われ、いずれか 1 つの比較でも破られると **4 値すべて**が既定値へ戻される（Bridge のログに警告が出力される）。中途半端なプロファイルのまま起動することはない。
+- `handshake_timeout_seconds` < `command_timeout_seconds` は独立して検証され、違反時は `handshake_timeout_seconds` のみが既定値へ戻される。
+- `TransportTimeouts.HTTP`（エディタ自身の非同期コマンドタイムアウト。既定 `120`）`<` `command_timeout_seconds` は、ハードコードされた定数ではなく**起動/アタッチ直後にエディタの `HealthCheck` 応答から取得した実値**に対して検証される。違反時は警告ログのみで、起動をブロックしたり値をリセットしたりはしない（このチェックが走る時点でエディタプロセスは既に生きているため）。`command_timeout_seconds` をエディタの実際の非同期タイムアウトより小さく設定すると、エディタ側ではまだ実行を継続してよいコマンドを Bridge 側が先に諦めてしまうことになる。詳細は [接続方法 → 長時間コマンドと 120 秒の非同期タイムアウト](connections.md#長時間コマンドと-120-秒の非同期タイムアウト) を参照。
+
+`inflight_suppression_max_seconds` という独立キーは存在しない。`scenario_timeout_seconds + 60` の導出値であり、境界で scenario ルート自体のタイムアウトとレースしないようにするための設計。
 
 ### 実行時の config リロード（`uaip_reload_config`）
 

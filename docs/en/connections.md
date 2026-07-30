@@ -145,7 +145,7 @@ Full installer / paths reference: `<bridge-root>/install/SETUP.md` (deployed alo
   "editor_path":                  "",
   "uproject_path":                "",
   "http_startup_timeout_seconds": 120,
-  "command_timeout_seconds":      60,
+  "command_timeout_seconds":      180,
   "log_level":                    "INFO",
   "enable_scenario":              true,
   "inline_artifacts": { "image": false, "json": true, "text": true }
@@ -153,6 +153,51 @@ Full installer / paths reference: `<bridge-root>/install/SETUP.md` (deployed alo
 ```
 
 `editor_path` / `uproject_path` in `config.json` are fallbacks; per-connection paths supplied through the MCP client's `env` block (`UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`) take precedence. See [Scenario Execution](scenario.md) for what scenarios enable and [Configuration](config.md#mcp-bridge-configjson) for the full key list.
+
+### Check editor status (`uaip_get_editor_status`)
+
+`uaip_get_editor_status` reports the bridge's current view of the editor connection **without triggering auto-launch**. Unlike a regular `uaip_execute` call, it never spawns or attaches to an editor — it only observes.
+
+```
+uaip_get_editor_status()
+→ {
+    "IsConnected":      false,
+    "IsPortListening":  true,
+    "State":            "UNRESPONSIVE",
+    "RecommendedAction": "WAIT: the editor port is open but the game thread is not responding. Do not restart or kill the process; a long-running command is likely in progress."
+  }
+```
+
+| Field | Meaning |
+|---|---|
+| `IsConnected` | A **real HTTP health ping** issued at call time — not a cached value |
+| `IsPortListening` | A **real TCP connect check** issued at call time — not a cached value |
+| `State` | A diagnostic label describing the bridge's lifecycle state machine (`STOPPED` / `STARTING` / `RUNNING` / `UNRESPONSIVE` / `PORT_OCCUPIED` / `CRASHED` / `RESTARTING`) |
+| `RecommendedAction` | The action the caller should actually take |
+
+The tool probes the transport on **every call**, so both `IsConnected` and `IsPortListening` are fresh measurements, not values read from a background poll that may be stale.
+
+> **Important — parse `RecommendedAction`, not `State`.** `State` is a diagnostic string for humans reading logs; new values may be added to it in future releases without that being a breaking change. `RecommendedAction` is the stable, machine-actionable contract: it always starts with one of `WAIT:` / `PROCEED:` / `RETRY:` / `CHECK CONFIGURATION:` / `CHECK TRANSPORT SETTINGS:`, and callers should branch on that verb rather than switching over the set of `State` values.
+
+If you see `RecommendedAction` starting with `WAIT:` while `State` is `UNRESPONSIVE`: **do not restart the editor and do not try to kill the process.** The port is open but the game thread is busy — most often because a long-running command (see [Long-running commands and the 120 s async timeout](#long-running-commands-and-the-120-s-async-timeout) below) is still executing. Wait and re-check with `uaip_get_editor_status` instead.
+
+No process id is ever returned by this tool — naming a PID invites terminating it, which is exactly what `UNRESPONSIVE` handling must avoid.
+
+Typical uses:
+
+- Before issuing a lifecycle command such as `UAIP.Editor.Workspace.ShutdownEditor` or `UAIP.Editor.Workspace.RestartEditor`, to confirm the editor is actually in a state where that makes sense.
+- After a command call returns a `Timeout` error, to check whether the editor is still working on it before deciding whether to retry.
+
+### Long-running commands and the 120 s async timeout
+
+The HTTP transport enforces its own async command timeout of **120 seconds**, independent of the bridge's `command_timeout_seconds` setting (see [Configuration → Timeout invariants](config.md#timeout-invariants)). Commands that occupy the game thread for longer than that — `UAIP.Editor.MetaHuman.BuildMetaHuman` is the primary example today — can exceed it even though the operation is still legitimately running.
+
+When that happens:
+
+1. The call returns `Timeout`, but **the command may still be executing inside the editor**.
+2. Do not immediately re-issue the same command — a second concurrent build/edit against the same target is not something the handler is designed to reconcile.
+3. Call `uaip_get_editor_status` and follow `RecommendedAction`. While the command is still running, expect `State: "UNRESPONSIVE"` and `RecommendedAction` starting with `WAIT:`.
+4. Once the editor becomes responsive again, its artifacts (if the command produces any) may only appear at that point — check for them rather than assuming the `Timeout` response means nothing happened.
 
 ### Reload config without restarting the MCP client
 

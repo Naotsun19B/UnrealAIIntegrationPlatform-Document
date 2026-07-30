@@ -86,11 +86,13 @@ Confirm with `uaip_describe_command(CommandName="...")` — `Available: false` t
 
 ### "MCP appears stuck — should I kill the editor?"
 
-**No, don't `taskkill` the editor.** That terminates every UE editor instance on the host (including other projects) and leaves `mcp_proxy.lock`. The right sequence:
+**No, don't `taskkill` the editor**, and don't assume it needs restarting just because a call didn't come back. That terminates every UE editor instance on the host (including other projects) and leaves `mcp_proxy.lock` behind. The right sequence:
 
-1. Try `uaip_execute(CommandName="UAIP.Workspace.RestartEditor")` — the bridge handles the restart cleanly.
-2. If MCP itself is unresponsive, restart only the bridge process (the editor stays running).
-3. Only as a last resort, manually `Stop-Process` the specific editor PID after closing the AI client.
+1. **Call `uaip_get_editor_status()` first** — it probes the connection without triggering auto-launch and returns `State` + `RecommendedAction`. See [Connection Methods → Check editor status](connections.md#check-editor-status-uaip_get_editor_status).
+2. If `State` is `UNRESPONSIVE` (port open, game thread not answering), `RecommendedAction` starts with `WAIT:` — **do not restart or kill anything.** A long-running command (see [Long-running commands and the 120 s async timeout](connections.md#long-running-commands-and-the-120-s-async-timeout)) is most likely still executing. Re-check periodically instead.
+3. Only when `RecommendedAction` actually suggests recovering — e.g. `State` is `CRASHED` (`RETRY:`) or `PORT_OCCUPIED` (`CHECK CONFIGURATION:`) — act on it: `uaip_execute(CommandName="UAIP.Editor.Workspace.RestartEditor")` handles a clean restart for you.
+4. If MCP itself is unresponsive (not just the editor), restart only the bridge process; the editor can stay running.
+5. Only as an absolute last resort, manually `Stop-Process` the specific editor PID after closing the AI client — and only after `uaip_get_editor_status` has ruled out `UNRESPONSIVE`.
 
 ---
 

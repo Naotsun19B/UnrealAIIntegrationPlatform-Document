@@ -88,11 +88,13 @@ Live Coding がビルド中でエディタが他のコマンドを受け付け�
 
 ### MCP が固まったように見える — エディタを kill するべき？
 
-**`taskkill` は避けてください。** 同一ホストの UE エディタが全インスタンス（他プロジェクト分も含む）落ちてしまい、`mcp_proxy.lock` が残ります。正しい順序は次のとおりです：
+**`taskkill` は避けてください。** また、呼び出しが返ってこないからといって即座に再起動が必要と判断しないでください。`taskkill` は同一ホストの UE エディタを全インスタンス（他プロジェクト分も含む）落としてしまい、`mcp_proxy.lock` も残ります。正しい順序は次のとおりです：
 
-1. まず `uaip_execute(CommandName="UAIP.Editor.Workspace.RestartEditor")` を試す — Bridge がきれいに再起動処理を行います
-2. MCP 自体が応答しない場合は、Bridge プロセスだけを再起動する（エディタは生かしたままで OK）
-3. 最終手段として、AI クライアントを閉じてから対象エディタの PID を狙って `Stop-Process` を呼ぶ
+1. **まず `uaip_get_editor_status()` を呼ぶ** — 自動起動をトリガーせずに接続状態をプローブし、`State` と `RecommendedAction` を返します。[接続方法 → エディタ状態の確認](connections.md#エディタ状態の確認uaip_get_editor_status) を参照。
+2. `State` が `UNRESPONSIVE`（ポートは開いているがゲームスレッドが応答しない）で `RecommendedAction` が `WAIT:` から始まる場合は、**再起動もプロセス終了も行わないでください。** 長時間コマンド（[長時間コマンドと 120 秒の非同期タイムアウト](connections.md#長時間コマンドと-120-秒の非同期タイムアウト) を参照）がまだ実行中である可能性が最も高いです。時間をおいて再確認してください。
+3. `RecommendedAction` が実際に復旧を促している場合 — 例えば `State` が `CRASHED`（`RETRY:`）や `PORT_OCCUPIED`（`CHECK CONFIGURATION:`）の場合 — にのみ対応してください。`uaip_execute(CommandName="UAIP.Editor.Workspace.RestartEditor")` を呼べば Bridge がきれいに再起動処理を行います。
+4. MCP 自体（エディタではなく）が応答しない場合は、Bridge プロセスだけを再起動してください（エディタは生かしたままで OK）。
+5. 最終手段として、`uaip_get_editor_status` で `UNRESPONSIVE` ではないことを確認した上でのみ、AI クライアントを閉じてから対象エディタの PID を狙って `Stop-Process` を呼んでください。
 
 ---
 

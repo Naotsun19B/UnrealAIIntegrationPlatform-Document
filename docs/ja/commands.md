@@ -100,7 +100,7 @@ UAIP では 2 種類のコマンドを公開しています：
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` を返す |
+| 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` に加え、`ProjectFilePath`（開いている `.uproject` の絶対パス。MCP Bridge が正しいエディタインスタンスへアタッチしているか検証するために使う）・`TransportTimeouts`（トランスポートごとの非同期コマンドタイムアウト秒数。例 `{"HTTP": 120, "WS": 12}`）を返す |
 | 🆓 `GetSystemInfo` | UE バージョン（Major/Minor/Patch/Changelist）・プロジェクト名・プラットフォーム・ビルド設定・UAIP バージョンを返す |
 | 🆓 `QueryCapabilities` | セッションの Capability セットと `OperationalConstraints`（7 つのポリシーフラグ）を返す |
 | 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`GroupFilter`・`KeywordFilter`・`IncludeUnavailable`） |
@@ -955,7 +955,7 @@ MetaHuman キャラクターのオーサリング — アセット作成、体�
 | `RequestAutoRigging` | フェイスリグの生成を開始。⚠️ **キャラクターの顔データを Epic のクラウドリギングサービスへアップロードします** — リグはリモートで生成されてアセットへダウンロードされるため、Epic アカウントへのサインインとネットワーク接続が必要で、キャラクターデータはこのマシンの外へ出ます。リギングには通常数分かかるため `GetRiggingState` をポーリングする（`MetaHumanCloudRigging` 必須） |
 | `GetRiggingState` | リギング状態（`Unrigged` / `RigPending` / `Rigged`）をポーリング。リクエスト終了後に `Unrigged` ならば失敗（多くはサインインまたは接続の問題） |
 | `CanBuildMetaHuman` | `BuildMetaHuman` が当該キャラクターを受け付けるか、受け付けない場合は最初の未充足要件を返す。ビルド前に必ず呼ぶ |
-| `BuildMetaHuman` | キャラクターをコレクション・インスタンス・キャラクターブループリントとして新規サブフォルダに組み立てる。⚠️ **ビルド完了までゲームスレッドを占有します（数秒〜数分）。** エンジンが進捗ダイアログを表示して再描画を続けるため、エディタは応答しなくなるのではなく画面を見られる状態を保ちますが、ビルドが返るまで他のコマンドは一切実行されません。これは MCP ブリッジの freeze 検知（30 秒）と既定のコマンドタイムアウト（60 秒）を超えるため、呼び出し前に `command_timeout_seconds` を引き上げ（シナリオでは `TimeoutSeconds` にも十分な値を設定）してください。先に `CanBuildMetaHuman` を呼ぶこと（オートリギングと合成済みテクスチャが揃っていないビルドは必ず失敗します）。失敗時は出力フォルダ配下に作成されたアセットが削除されます。出力フォルダが既存の場合は拒否されます。ビルド実行中は他の MetaHuman コマンドが拒否されます（`MetaHumanBuild` 必須） |
+| `BuildMetaHuman` | キャラクターをコレクション・インスタンス・キャラクターブループリントとして新規サブフォルダに組み立てる。⚠️ **ビルド完了までゲームスレッドを占有します（数秒〜数分）。** エンジンが進捗ダイアログを表示して再描画を続けるため、エディタは応答しなくなるのではなく画面を見られる状態を保ちますが、ビルドが返るまで他のコマンドは一切実行されません。ビルドが長引くと HTTP トランスポート自体の非同期コマンドタイムアウト（120 秒）を超えることがあり、その場合 `Timeout` が返りますが、**エディタ側ではビルドが実行を継続している可能性があります**。すぐに再実行せず、まず `uaip_get_editor_status` を呼んで `RecommendedAction`（`WAIT` が期待値）に従ってください。artifact はビルドが実際に完了した後になって生成される場合があります。先に `CanBuildMetaHuman` を呼ぶこと（オートリギングと合成済みテクスチャが揃っていないビルドは必ず失敗します）。失敗時は出力フォルダ配下に作成されたアセットが削除されます。出力フォルダが既存の場合は拒否されます。ビルド実行中は他の MetaHuman コマンドが拒否されます（`MetaHumanBuild` 必須） |
 
 #### プレビュー（3）
 

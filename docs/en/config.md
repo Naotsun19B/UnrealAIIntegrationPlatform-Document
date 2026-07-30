@@ -214,7 +214,16 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 | `uproject_path` | string | `""` | Absolute path to the `.uproject` file. Falls back to env override `UAIP_UPROJECT_PATH` (env takes precedence) |
 | `http_port` | int | `8765` | HTTP port for the editor's MCP endpoint. Must match `-uaip-http-port` when set |
 | `http_startup_timeout_seconds` | int | `120` | How long the bridge waits for the editor to become ready after launch |
-| `command_timeout_seconds` | int | `60` | Per-request HTTP timeout for forwarded commands |
+| `command_timeout_seconds` | int | `180` | Per-request HTTP timeout for forwarded commands. **Cannot be set lower than the HTTP transport's own async command timeout (120 s)** — see the invariant note below |
+| `unresponsive_timeout_seconds` | int | `30` | How long a port that is listening but not answering health pings is tolerated before the bridge marks the editor `UNRESPONSIVE`. In this state the bridge neither auto-launches nor auto-restarts — see [Connection Methods → Check editor status](connections.md#check-editor-status-uaip_get_editor_status) |
+| `health_poll_interval_seconds` | int | `15` | Interval between background health pings while the editor is believed to be running |
+| `handshake_timeout_seconds` | int | `10` | Timeout for the `HealthCheck` call used for project-identity verification, and for the `ShutdownEditor` call issued during a config reload |
+| `scenario_timeout_seconds` | int | `1800` | Wall-clock cap applied to `uaip_run_scenario` submissions forwarded through the bridge, matching the route's own 30-minute limit |
+| `artifact_timeout_seconds` | int | `60` | Timeout for artifact downloads, tracked independently of command execution time |
+| `probe_tcp_timeout_seconds` | float | `1.0` | TCP connect timeout used to check whether the editor's port is listening at all |
+| `probe_ping_timeout_seconds` | float | `5.0` | HTTP ping timeout used to check whether a listening editor actually responds |
+| `process_exit_wait_seconds` | int | `10` | How long the bridge waits for a spawned editor process to exit before giving up |
+| `allow_unverified_attach` | bool | `false` | Opt-in to allow attaching to an existing editor whose `HealthCheck` response lacks `ProjectFilePath` (older plugin versions that predate this field). **Denied by default** — a peer that cannot be identity-verified is refused rather than silently attached |
 | `log_level` | string | `"INFO"` | Python logger verbosity — `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `enable_scenario` | bool | `false` | When `true`, the bridge launches the editor with `-uaip-enable-scenario`. Env override: `UAIP_ENABLE_SCENARIO=1` |
 | `inline_artifacts.image` | bool | `false` | Inline PNG artifacts as base64 in MCP responses. **Off by default** to avoid `"Could not process image"` API errors when PNGs accumulate across a long session — use the `Read` tool with the artifact path instead |
@@ -222,6 +231,16 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 | `inline_artifacts.text` | bool | `true` | Inline text artifacts as base64 in MCP responses |
 
 Environment variables (`UAIP_UE_EDITOR_PATH`, `UAIP_UPROJECT_PATH`, `UAIP_ENABLE_SCENARIO`) override the corresponding JSON values when set. See `config.json.example` (shipped inside the bridge zip; after install, at `<bridge-root>/config.json.example`) for a fully-commented template.
+
+### Timeout invariants
+
+The bridge validates its timeout settings and reacts differently depending on which invariant is broken:
+
+- `health_poll_interval_seconds` < `unresponsive_timeout_seconds` < `command_timeout_seconds`, and `unresponsive_timeout_seconds` < `http_startup_timeout_seconds`. These four values are treated as one profile — violating any single comparison resets **all four** to their defaults (with a warning in the bridge log) rather than starting with an inconsistent profile.
+- `handshake_timeout_seconds` < `command_timeout_seconds`, validated independently — a violation resets only `handshake_timeout_seconds`.
+- `TransportTimeouts.HTTP` (the editor's own async command timeout, `120` by default) `<` `command_timeout_seconds` — this one is checked against the **actual value reported by the editor's `HealthCheck` response** right after startup/attach, not against a hardcoded constant. A violation only logs a warning; it does not block startup or reset the value, because the editor process is already live by the time this check runs. Setting `command_timeout_seconds` below the editor's real async timeout means the bridge would give up on a command the editor is still allowed to keep running — see [Connection Methods → Long-running commands](connections.md#long-running-commands-and-the-120-s-async-timeout).
+
+There is no separate `inflight_suppression_max_seconds` key — it is derived as `scenario_timeout_seconds + 60` to avoid racing the scenario route's own timeout at the boundary.
 
 ### Reloading config at runtime (`uaip_reload_config`)
 

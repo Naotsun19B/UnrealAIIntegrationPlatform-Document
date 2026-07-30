@@ -145,7 +145,7 @@ AI クライアント上での表示にしか影響しないので、ユニー�
   "editor_path":                  "",
   "uproject_path":                "",
   "http_startup_timeout_seconds": 120,
-  "command_timeout_seconds":      60,
+  "command_timeout_seconds":      180,
   "log_level":                    "INFO",
   "enable_scenario":              true,
   "inline_artifacts": { "image": false, "json": true, "text": true }
@@ -153,6 +153,51 @@ AI クライアント上での表示にしか影響しないので、ユニー�
 ```
 
 `config.json` の `editor_path` / `uproject_path` はフォールバック値で、MCP クライアントの `env`（`UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`）が優先されます。シナリオで何ができるかは [シナリオ実行](scenario.md)、`config.json` の全キーは [設定リファレンス](config.md#mcp-bridge-configjson) を参照。
+
+### エディタ状態の確認（`uaip_get_editor_status`）
+
+`uaip_get_editor_status` は、**自動起動を一切トリガーせず**、Bridge から見た現在のエディタ接続状態を返します。通常の `uaip_execute` 呼び出しと異なり、エディタの起動やアタッチは行わず、観測のみを行います。
+
+```
+uaip_get_editor_status()
+→ {
+    "IsConnected":      false,
+    "IsPortListening":  true,
+    "State":            "UNRESPONSIVE",
+    "RecommendedAction": "WAIT: the editor port is open but the game thread is not responding. Do not restart or kill the process; a long-running command is likely in progress."
+  }
+```
+
+| フィールド | 意味 |
+|---|---|
+| `IsConnected` | 呼び出し時点で実行される**実測の HTTP ヘルス ping** — キャッシュ値ではない |
+| `IsPortListening` | 呼び出し時点で実行される**実測の TCP connect チェック** — キャッシュ値ではない |
+| `State` | Bridge のライフサイクル状態機械を表す診断用ラベル（`STOPPED` / `STARTING` / `RUNNING` / `UNRESPONSIVE` / `PORT_OCCUPIED` / `CRASHED` / `RESTARTING`） |
+| `RecommendedAction` | 呼び出し側が実際に取るべき行動 |
+
+このツールは**呼び出しごとに**トランスポートをプローブするため、`IsConnected` と `IsPortListening` はどちらも都度の実測値であり、陳腐化しうるバックグラウンドポーリングの値を読んでいるわけではありません。
+
+> **重要 — 判定には `State` ではなく `RecommendedAction` を使ってください。** `State` はログを読む人間向けの診断用文字列であり、将来のリリースで値が追加される可能性があります（それは破壊的変更として扱いません）。安定した機械可読の契約は `RecommendedAction` の方です。先頭は必ず `WAIT:` / `PROCEED:` / `RETRY:` / `CHECK CONFIGURATION:` / `CHECK TRANSPORT SETTINGS:` のいずれかで始まり、呼び出し側は `State` の値集合で分岐するのではなくこの先頭の動詞で分岐してください。
+
+`State` が `UNRESPONSIVE` で `RecommendedAction` が `WAIT:` から始まっている場合は、**エディタを再起動したりプロセスを終了したりしないでください。** ポートは開いていますがゲームスレッドがビジー状態にあるだけで、多くの場合は長時間コマンド（下記「[長時間コマンドと 120 秒の非同期タイムアウト](#長時間コマンドと-120-秒の非同期タイムアウト)」を参照）がまだ実行中です。待ってから再度 `uaip_get_editor_status` で確認してください。
+
+このツールは PID を一切返しません — PID を返すと、それを終了させたくなる誘惑を生むため、`UNRESPONSIVE` の扱いとして避けるべきものです。
+
+主な用途:
+
+- `UAIP.Editor.Workspace.ShutdownEditor` や `UAIP.Editor.Workspace.RestartEditor` のようなライフサイクルコマンドを発行する前に、実際にそれが意味を持つ状態かを確認する。
+- コマンド呼び出しが `Timeout` エラーを返した後、再実行するかどうかを判断する前にエディタがまだ処理中かを確認する。
+
+### 長時間コマンドと 120 秒の非同期タイムアウト
+
+HTTP トランスポートは、Bridge の `command_timeout_seconds` 設定とは独立して、それ自身の非同期コマンドタイムアウト（**120 秒**）を持っています（[設定リファレンス → タイムアウトの不変条件](config.md#タイムアウトの不変条件) を参照）。ゲームスレッドをそれより長く占有するコマンド — 現時点では `UAIP.Editor.MetaHuman.BuildMetaHuman` が代表例 — は、処理自体は正当に継続中であっても、これを超過することがあります。
+
+その場合:
+
+1. 呼び出しは `Timeout` を返しますが、**コマンドはエディタ側で実行を継続している可能性があります**。
+2. 同じコマンドをすぐに再実行しないでください — 同じ対象に対する 2 度目の同時実行を整合させる設計にはなっていません。
+3. `uaip_get_editor_status` を呼んで `RecommendedAction` に従ってください。コマンドがまだ実行中の間は `State: "UNRESPONSIVE"` と `WAIT:` で始まる `RecommendedAction` が返ることが想定されます。
+4. エディタが再び応答するようになった時点で、コマンドが artifact を生成するものであれば、そこで初めて artifact が現れる場合があります。`Timeout` が返ったからといって何も起きていないと決めつけず、確認してください。
 
 ### MCP クライアントを再起動せずに config をリロード
 
