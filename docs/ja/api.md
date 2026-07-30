@@ -174,7 +174,7 @@ stdin-stream モードでも同じマーカーがリクエスト毎に出ます�
 |---|---|---|---|
 | `Success` | 200 | コマンド完了 | — |
 | `CommandNotFound` | 404 | `CommandName` 未登録 | `UAIP.Core.ListCommands` で確認。オプションプラグインコマンドはプラグインロードが必要 |
-| `InvalidParams` | 400 | 必須欠落 / 型不一致 / `AdditionalProperties:false` での未知フィールド | `UAIP.Core.DescribeCommand` でスキーマ再取得 |
+| `InvalidParams` | 400 | 必須欠落 / 型不一致 / `AdditionalProperties:false` での未知フィールド。シナリオでは `${...}` テンプレート参照が解決できなかった場合も含む | `UAIP.Core.DescribeCommand` でスキーマ再取得。テンプレートの失敗は `RetryCount` によるリトライ対象**外**です — [シナリオ API](scenario.md#テンプレート解決の失敗) を参照 |
 | `CapabilityNotAvailable` | 403 | セッションに必要 Capability 不足 | `ErrorMessage` に不足 Capability 名。`Config/DefaultUAIP.ini` で有効化して再起動、または `UAIP.Core.ReloadCapabilities` |
 | `PolicyViolation` | 403 | SafetyPolicy ゲートまたはルート opt-in 不足 | `ErrorMessage` で「SafetyPolicy 拒否」と「環境で未有効」を区別 |
 | `NotFound` | 404 | パラメータ参照のアセット / アクター / オブジェクトが存在しない | `Search*` / `List*` コマンドでパス / GUID 確認 |
@@ -362,14 +362,17 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities")
 |---|---|
 | `${StepName.Success}` | bool |
 | `${StepName.ErrorCode}` | string |
-| `${StepName.Data.<JSON Pointer>}` | そのステップの `Data` 内のポインタ位置の任意 JSON 値 |
+| `${StepName.Data.<pointer>}` | そのステップの `Data` 内のポインタ位置の任意 JSON 値。本体が `/` で始まる場合は strict（RFC 6901 の JSON Pointer としてそのまま読む）、それ以外は lenient（`.` と `/` の両方を区切り文字とする）として扱われます。記法の詳細・エスケープ・制約は [シナリオ実行](scenario.md#json-pointer-の記法) を参照 |
+| `${StepName.Data}` | `Data` オブジェクト全体 |
 | `${StepName.Artifacts[<index>]}` | Artifact id 文字列 |
 | `${StepName.Artifacts.<ArtifactId>}` | Artifact id 文字列 |
 | `${Variables.<key>}` | リクエストの `Variables` マップの値 |
 
-**型保持**：文字列フィールドがちょうど 1 つの `${...}` 式の場合、解決された JSON 値がそのまま置き換わります。混在文字列は文字列化されて連結。
+**型保持**：文字列フィールドがちょうど 1 つの `${...}` 式の場合、解決された JSON 値がそのまま置き換わります。混在文字列は文字列化されて連結。オブジェクト・配列は単一フィールドとしてのみ綴じ込め、より大きな文字列の中に埋め込むとステップが失敗します。
 
 **単一パス不変条件**：テンプレート結果は再評価されません。`Variables` に格納された `${...}` は後続ステップにリテラル文字列として渡ります。
+
+**解決失敗**：不正な `${...}` 参照は `ErrorCode: InvalidParams` でステップを失敗させ、`RetryCount` によるリトライ対象外です。解決時に適用されるバイト上限は [シナリオ実行 → テンプレートのサイズ制限](scenario.md#テンプレートのサイズ制限) を参照してください。
 
 ### 7.3 `ScenarioResponse`
 

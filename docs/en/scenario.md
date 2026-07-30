@@ -97,17 +97,59 @@ uaip_run_scenario(
 
 ## Template splicing `${...}`
 
-Use `${StepName.Data.<path>}` to pass output from an earlier step into a later step's params.
+Use `${StepName.Data.<pointer>}` to pass output from an earlier step into a later step's params.
 
 | Expression | Meaning |
 |---|---|
 | `${StepName.Success}` | bool — true if the step succeeded |
 | `${StepName.ErrorCode}` | string error code |
-| `${StepName.Data.<JsonPointer>}` | Value inside the step's response data |
+| `${StepName.Data.<pointer>}` | Value inside the step's response data — see notation below |
+| `${StepName.Data}` | The whole `Data` object |
 | `${StepName.Artifacts[0]}` | First artifact id of the step |
 | `${Variables.<key>}` | Value from the `Variables` map |
 
+### JSON Pointer notation
+
+The pointer body has **two accepted notations**, told apart by its first character:
+
+| Notation | Trigger | Behaviour |
+|---|---|---|
+| **Strict** | Body starts with `/` | Read verbatim as an RFC 6901 JSON Pointer — `.` is never treated as a separator, so a key that itself contains `.` becomes addressable |
+| **Lenient** | Body starts with anything else | `.` and `/` are both accepted as segment separators — this is how most existing scenarios are written |
+
+Examples:
+
+| Expression | Notation | Pointer | Result |
+|---|---|---|---|
+| `${S.Data.Result}` | lenient | `/Result` | The top-level `Result` field |
+| `${S.Data.Result/0/refPath}` | lenient | `/Result/0/refPath` | Array element 0's `refPath` field |
+| `${S.Data./refPath}` | strict | `/refPath` | Same field, written strictly |
+| `${S.Data./a.b/0}` | strict | `/a.b/0` | Array element 0 under the key `a.b` — only reachable in strict notation, since lenient would split on the `.` |
+| `${S.Data}` | — | *(empty)* | The whole `Data` object |
+| `${S.Data./With~1Slash}` | strict | `/With~1Slash` | A field literally named `With/Slash` (`/` escaped as `~1`) |
+| `${S.Data.With~0Tilde}` | lenient | `/With~0Tilde` | A field literally named `With~Tilde` (`~` escaped as `~0`) |
+
+The `~1` / `~0` escapes are part of JSON Pointer semantics, not of the surface notation, so they apply the same way in **both** strict and lenient form. A key that itself contains `~` must be written as `~0`.
+
+Additional constraints:
+
+- **Object key matching is case-sensitive, exact match.** `refPath` does not match a field named `RefPath` or `REFPATH`.
+- **Array indices** must be `0` or `[1-9][0-9]*` — no leading zeros (`01`), no sign (`+1`), no trailing characters (`1abc`), no leading whitespace.
+- **Objects and arrays can only be spliced as a whole field.** Embedding one inside a larger string (e.g. `"prefix-${S.Data.SomeObject}"`) fails the step instead of silently rendering as an empty string.
+
 Templates are resolved once before the step runs. They are **not** re-evaluated — a template inside `Variables` is passed as a literal string, not re-expanded.
+
+### Template resolution failures
+
+A malformed reference — unknown sub-identifier, empty pointer, invalid `~` escape, a pointer that doesn't match anything in the step's data, an oversized value, an object/array embedded in a mixed string, and so on — fails the step with `ErrorCode: InvalidParams`. This is **not retried**: `RetryCount` only applies to `ExecutionFailed`.
+
+### Template size limits
+
+| Limit | What it bounds | Enforced at |
+|---|---|---|
+| 64 KiB | One `Variables` entry's value | When the variable is stored |
+| 8 KiB | One value spliced from `Step.Data` | Template resolution |
+| 256 KiB | One step's whole Params payload, and the total resolved expansion | Submission, and again at resolution |
 
 ### Single-pass resolution
 
@@ -197,4 +239,5 @@ Setting `AbortOnFailure: false` on the `Stop` step ensures PIE is always termina
 | `PolicyViolation: Scenario execution is not enabled` | `enable_scenario` not set | Add `"enable_scenario": true` to `config.json` |
 | Steps 2+ missing from `StepResults` | Step 1 failed with default `AbortOnFailure: true` | Set `"AbortOnFailure": false` on the failing step if you want to continue |
 | Template left as literal `"${...}"` | Single-pass resolver — `Variables` are not re-expanded | Pass the value directly via `Variables` or split into two steps |
+| Step fails with `InvalidParams` and a template-related message | Malformed `${...}` reference (wrong notation, bad escape, pointer miss, oversized value, object/array in a mixed string) | Re-read [JSON Pointer notation](#json-pointer-notation) above; this is not retried by `RetryCount` |
 | `TooManyRequests` | Another scenario is running | Wait for it to finish |

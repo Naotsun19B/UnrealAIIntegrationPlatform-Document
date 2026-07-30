@@ -95,17 +95,59 @@ uaip_run_scenario(
 
 ## テンプレート `${...}` による値の受け渡し
 
-`${StepName.Data.<path>}` を使って前のステップの出力を後のステップのパラメータに渡せます。
+`${StepName.Data.<pointer>}` を使って前のステップの出力を後のステップのパラメータに渡せます。
 
 | 式 | 意味 |
 |---|---|
 | `${StepName.Success}` | bool — ステップが成功したか |
 | `${StepName.ErrorCode}` | エラーコード文字列 |
-| `${StepName.Data.<JsonPointer>}` | ステップのレスポンスデータ内の値 |
+| `${StepName.Data.<pointer>}` | ステップのレスポンスデータ内の値 — 記法は下記参照 |
+| `${StepName.Data}` | `Data` オブジェクト全体 |
 | `${StepName.Artifacts[0]}` | ステップの最初の Artifact ID |
 | `${Variables.<key>}` | `Variables` マップの値 |
 
+### JSON Pointer の記法
+
+ポインタ本体には**2 つの記法**があり、先頭の文字で判別されます。
+
+| 記法 | 判定条件 | 挙動 |
+|---|---|---|
+| **strict** | 本体が `/` で始まる | RFC 6901 の JSON Pointer としてそのまま読む — `.` は区切り文字として扱われないため、`.` を含むキーもアドレス可能になる |
+| **lenient** | それ以外 | `.` と `/` の両方を区切り文字として受け付ける — 既存シナリオの大半はこの書き方 |
+
+例：
+
+| 式 | 記法 | ポインタ | 結果 |
+|---|---|---|---|
+| `${S.Data.Result}` | lenient | `/Result` | トップレベルの `Result` フィールド |
+| `${S.Data.Result/0/refPath}` | lenient | `/Result/0/refPath` | 配列 0 番の `refPath` フィールド |
+| `${S.Data./refPath}` | strict | `/refPath` | 同じフィールドを strict で書いた場合 |
+| `${S.Data./a.b/0}` | strict | `/a.b/0` | キー `a.b` の下の配列 0 番 — lenient では `.` で分割されるため strict でしか到達できない |
+| `${S.Data}` | — | *(空)* | `Data` オブジェクト全体 |
+| `${S.Data./With~1Slash}` | strict | `/With~1Slash` | `With/Slash` という名前のフィールド（`/` を `~1` としてエスケープ） |
+| `${S.Data.With~0Tilde}` | lenient | `/With~0Tilde` | `With~Tilde` という名前のフィールド（`~` を `~0` としてエスケープ） |
+
+`~1` / `~0` のエスケープは表記方式ではなく JSON Pointer の意味論そのものなので、strict / lenient **どちらでも**同じように働きます。`~` を含むキーは `~0` と書く必要があります。
+
+その他の制約：
+
+- **オブジェクトキーの照合は大文字小文字を区別する完全一致です。** `refPath` は `RefPath` や `REFPATH` という名前のフィールドにはマッチしません。
+- **配列添字**は `0` または `[1-9][0-9]*` のみです — 先頭ゼロ（`01`）・符号（`+1`）・余分な文字（`1abc`）・先頭の空白は不一致になります。
+- **オブジェクト・配列は単一フィールドとしてのみ**綴じ込めます。より大きな文字列の中に埋め込む（例：`"prefix-${S.Data.SomeObject}"`）と、空文字に縮退せずステップが失敗します。
+
 テンプレートはステップ実行直前に 1 回だけ解決されます。`Variables` に `${...}` を書いても再展開はされません（循環展開防止のための仕様）。
+
+### テンプレート解決の失敗
+
+不正な参照（未知のサブ識別子、空のポインタ、不正な `~` エスケープ、ステップのデータに一致しないポインタ、サイズ超過の値、混在文字列へのオブジェクト・配列埋め込みなど）は、`ErrorCode: InvalidParams` でステップを失敗させます。これは**リトライされません**：`RetryCount` は `ExecutionFailed` にのみ適用されます。
+
+### テンプレートのサイズ制限
+
+| 上限 | 縛る対象 | 適用時点 |
+|---|---|---|
+| 64 KiB | 1 つの `Variables` エントリの値 | 変数の格納時 |
+| 8 KiB | `Step.Data` から綴じ込む 1 つの値 | テンプレート解決時 |
+| 256 KiB | 1 ステップの Params 全体 / 展開差分の総量 | 投入時 + 解決時 |
 
 ### 単一パス解決
 
@@ -195,4 +237,5 @@ flowchart LR
 | `PolicyViolation: Scenario execution is not enabled` | `enable_scenario` が未設定 | `config.json` に `"enable_scenario": true` を追加 |
 | `StepResults` に Step 2 以降が含まれない | Step 1 がデフォルトの `AbortOnFailure: true` で失敗 | 続行したいステップに `"AbortOnFailure": false` を設定 |
 | テンプレートが `"${...}"` のまま展開されない | シングルパス解決の仕様 — `Variables` は再展開されない | 値を `Variables` で直接渡すか、2 つのステップに分割する |
+| `InvalidParams` とテンプレート関連のメッセージでステップが失敗する | `${...}` 参照の記法誤り（記法の取り違え・不正なエスケープ・ポインタ不一致・サイズ超過・混在文字列へのオブジェクト/配列埋め込み） | 上記の [JSON Pointer の記法](#json-pointer-の記法) を再確認する。`RetryCount` によるリトライ対象外 |
 | `TooManyRequests` | 別のシナリオが実行中 | 完了するまで待つ |

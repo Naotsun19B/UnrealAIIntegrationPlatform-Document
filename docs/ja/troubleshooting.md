@@ -15,7 +15,7 @@ UAIP のコマンドが失敗すると、レスポンスに `ErrorCode` と `Err
 | `CommandNotFound` | 完全修飾コマンド名が登録されていない | `uaip_list_commands(ProviderPrefix="UAIP.Core")` で正しい名前を確認してください。🧩 マーク付きのコマンドはオプションプラグインの有効化が必要です |
 | `CapabilityNotAvailable` | セッションに必要な Capability がない | `ErrorMessage` に不足している Capability 名が含まれます。`Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy] +AllowedCapabilities=<名前>` に追加し、エディタを再起動するか `UAIP.Core.ReloadCapabilities` を呼び出してください |
 | `PolicyViolation` | SafetyPolicy ゲートで拒否された | `"is denied by SafetyPolicy"` の場合は ini フラグがオフ、`"is not enabled"` の場合は CLI の opt-in フラグ（`-uaip-enable-scenario`・`-uaip-http-enable` など）が起動時に指定されていません |
-| `InvalidParams` | パラメータの誤りや欠落 | `uaip_describe_command(CommandName="...")` でスキーマを再確認してください |
+| `InvalidParams` | パラメータの誤りや欠落。シナリオでは `${...}` テンプレート参照が解決できなかった場合も含む | `uaip_describe_command(CommandName="...")` でスキーマを再確認してください。テンプレートの失敗については [シナリオ実行 → テンプレート解決の失敗](scenario.md#テンプレート解決の失敗) を参照してください — `RetryCount` によるリトライ対象**外**です |
 | `NotFound` | 対象のアセット・アクター・オブジェクトが存在しない | パスや名前を確認し、`SearchAssets` や `ListLevelActors` で実在を確かめてください |
 | `ExecutionFailed` | コマンド内部の Runtime 処理で失敗 | `ErrorMessage` の詳細を確認してください。シナリオの中で起きた場合は該当ステップに `RetryCount` を設定するのが有効です |
 | `NotAllowed` | 禁止パス（`/Engine/` など）や禁止タイミング（PIE 中の Editor 編集） | 別のパスを選ぶか、PIE を停止してから再試行してください |

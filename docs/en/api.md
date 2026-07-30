@@ -174,7 +174,7 @@ In stdin-stream mode the same markers appear per request.
 |---|---|---|---|
 | `Success` | 200 | Command completed | — |
 | `CommandNotFound` | 404 | `CommandName` not registered | Verify with `UAIP.Core.ListCommands`; optional-plugin commands need the plugin loaded |
-| `InvalidParams` | 400 | Missing required / wrong type / unknown field (with `AdditionalProperties:false`) | Re-fetch the schema via `UAIP.Core.DescribeCommand` |
+| `InvalidParams` | 400 | Missing required / wrong type / unknown field (with `AdditionalProperties:false`); in a scenario, also an unresolvable `${...}` template reference | Re-fetch the schema via `UAIP.Core.DescribeCommand`. Template failures are **not** retried by `RetryCount` — see [Scenario Execution](scenario.md#template-resolution-failures) |
 | `CapabilityNotAvailable` | 403 | Session lacks a required Capability | `ErrorMessage` names the missing capability; enable it via `Config/DefaultUAIP.ini` and restart or call `UAIP.Core.ReloadCapabilities` |
 | `PolicyViolation` | 403 | SafetyPolicy gate or missing route opt-in | `ErrorMessage` distinguishes "denied by SafetyPolicy" vs "not enabled in this environment" |
 | `NotFound` | 404 | Asset / actor / object referenced by params doesn't exist | Verify path / GUID with a `Search*` or `List*` command |
@@ -362,14 +362,17 @@ Scenarios run an ordered list of commands as one request. See [Scenario Executio
 |---|---|
 | `${StepName.Success}` | bool |
 | `${StepName.ErrorCode}` | string |
-| `${StepName.Data.<JSON Pointer>}` | Any JSON value at that pointer in the step's `Data` |
+| `${StepName.Data.<pointer>}` | Any JSON value at that pointer in the step's `Data`. Pointer bodies starting with `/` are read as a strict RFC 6901 pointer; anything else is lenient, where `.` and `/` both separate segments. See [Scenario Execution](scenario.md#json-pointer-notation) for the full notation, escapes, and constraints |
+| `${StepName.Data}` | The whole `Data` object |
 | `${StepName.Artifacts[<index>]}` | Artifact id string |
 | `${StepName.Artifacts.<ArtifactId>}` | Artifact id string |
 | `${Variables.<key>}` | Value from the request's `Variables` map |
 
-**Type preservation**: if a string field is exactly one `${...}` expression, the resolved JSON value replaces it verbatim. Mixed strings stringify and concatenate.
+**Type preservation**: if a string field is exactly one `${...}` expression, the resolved JSON value replaces it verbatim. Mixed strings stringify and concatenate. Objects and arrays can only be spliced as a whole field — embedding one inside a larger string fails the step.
 
 **Single-pass invariant**: a template result is never re-evaluated. A `${...}` stored inside `Variables` is passed as a literal string to downstream steps.
+
+**Resolution failures**: a malformed `${...}` reference fails the step with `ErrorCode: InvalidParams`, which is not retried by `RetryCount`. See [Scenario Execution → Template size limits](scenario.md#template-size-limits) for the byte limits enforced during resolution.
 
 ### 7.3 `ScenarioResponse`
 

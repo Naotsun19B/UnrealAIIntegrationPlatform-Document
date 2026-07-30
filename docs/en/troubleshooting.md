@@ -15,7 +15,7 @@ When something fails, the response includes an `ErrorCode` and `ErrorMessage`. T
 | `CommandNotFound` | The fully-qualified command name isn't registered | Verify spelling with `uaip_list_commands(ProviderPrefix="UAIP.Core")`. Optional-plugin commands (marked 🧩) require the plugin to be enabled |
 | `CapabilityNotAvailable` | The session lacks the required capability | Read the missing capability name from `ErrorMessage`, add it to `[UAIP.SafetyPolicy] +AllowedCapabilities=<name>` in `Config/DefaultUAIP.ini`, then restart or call `UAIP.Core.ReloadCapabilities` |
 | `PolicyViolation` | A SafetyPolicy gate rejected the call | `"is denied by SafetyPolicy"` → an ini flag is off; `"is not enabled"` → a CLI opt-in flag (`-uaip-enable-scenario`, `-uaip-http-enable`, etc.) is missing at launch |
-| `InvalidParams` | Wrong / missing parameters | Re-read the schema with `uaip_describe_command(CommandName="...")` |
+| `InvalidParams` | Wrong / missing parameters, or (in a scenario) a `${...}` template reference that couldn't be resolved | Re-read the schema with `uaip_describe_command(CommandName="...")`. For template failures, see [Scenario Execution → Template resolution failures](scenario.md#template-resolution-failures) — this is **not** retried by `RetryCount` |
 | `NotFound` | Target asset / actor / object doesn't exist | Verify the path or name; `SearchAssets` or `ListLevelActors` to confirm |
 | `ExecutionFailed` | Runtime failure inside the command | Read `ErrorMessage` for details. In scenarios, set `RetryCount` on the step |
 | `NotAllowed` | Forbidden path (`/Engine/`) or forbidden timing (editor edits during PIE) | Pick a different target path, or wait until PIE has stopped |
