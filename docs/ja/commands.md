@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 934 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1354 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 948 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1368 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -91,6 +91,8 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | 一部（2/4） |
 | Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | 一部（1/2） |
+| Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | 一部（3/11） |
+| Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
 
 ---
 
@@ -2221,6 +2223,55 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 |---|---|
 | 🆓 `GetConfigValue` | セクション名とキー名を指定して ini キーの文字列値を読み取る。Capability 不要 |
 | `SetConfigValue` | raw ini キーを書き込みまたは削除。`ConfigSettingsEdit` 必要。パッケージ版ビルドでは実行不可。キー・値フィールドへの ini インジェクション文字（`[`・`]`）は拒否 |
+
+---
+
+## UAIP.Runtime.Insights.Trace
+
+Unreal Insights のトレース採取を制御するコマンド群。トレースは常に `Saved/Profiling/UAIP/` 配下のファイルへ書き出されます — **本モジュールのどのコマンドもトレースをネットワーク宛先へ送出できません**。UAIP が開始していないトレースは一切変更しません。`GetTraceStatus` は「他者が採取中である」ことのみを報告し、`StopTrace`（明示的に拒否）を除く制御コマンドはそのトレースに触れません。
+
+読み取り 3 コマンドは `RuntimeInsightsInspect`（DefaultAllow）が必要です。制御 8 コマンドは `RuntimeInsightsControl`（DefaultDenied）が必要です。採取した `.utrace` ファイルの添付にはさらに `RuntimeInsightsAttachTraceFile`（DefaultDenied）が必要です — 詳細は [安全性と Capability](safety.md#runtime-insights-トレース採取) を参照してください。
+
+トレース採取は PIE のライフサイクルから独立しています。PIE の開始・停止はトレースを開始も停止もせず、トレースは PIE セッションをまたいで採取を続けます。
+
+### 読み取り（3）
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `ListTraceChannels` | このビルドが認識するすべてのトレースチャネルを一覧（説明・現在の有効状態・切り替え可否・開示しうる内容）。エンジンが宣言するチャネルプリセットも、展開後のチャネルとその開示クラスとともに一覧します。エンジンのプリセットは大半がログチャネルを含むため、プリセットを `StartTrace` に渡す前に展開後の開示クラスを確認してください |
+| 🆓 `GetTraceStatus` | エンジンが採取中か・採取が一時停止中か・稼働中のトレースが UAIP の開始したものかを報告。UAIP が開始したトレースについてはラベル・ファイル名・チャネル・開示クラス・経過時間・ファイルサイズ・自動停止の上限も報告します。UAIP が開始していないトレースについては活動の種別のみを報告し、宛先・チャネル集合・経過時間・サイズは秘匿します。経過時間とサイズは監視間隔ごとに更新されるため、最大で 1 間隔分古い値になりえます |
+| 🆓 `ListTraceFiles` | UAIP が採取したトレースファイルを新しい順に一覧（ラベル・サイズ・ファイル名に埋め込まれた UTC タイムスタンプ。`MaxCount` は既定 50・上限 500）。ここに出た `FileName` が `AnalyzeTrace` の受け付ける値です。SafetyPolicy で外部トレース解析が有効な場合は、設定された外部ディレクトリ内の `.utrace` も `Source: External` として一覧します。一覧は何も削除しません（ローテーションはトレース開始時に行われます） |
+
+### トレース制御（8）
+
+| コマンド | 説明 |
+|---|---|
+| `StartTrace` | 指定したチャネル / チャネルプリセットを有効にして UAIP 専用のトレースディレクトリへ採取を開始し、書き込み先のファイル名を返します。`Channels` は必須、`Label`・`MaxDurationSeconds`（既定 300、範囲 1〜3600）・`MaxFileSizeMB`（既定 512、範囲 1〜4096）は省略可。UAIP が既に開始しているトレースは再起動されず、追加分のチャネルを有効化して `AlreadyRunning` / `LimitsIgnored` を報告するだけです。**実効チャネル集合**（既に有効 ∪ 要求）がログテキストを記録し `AllowLogDump` が false の場合は `PolicyViolation` で拒否します（要求を通すためにチャネルを無効化することはありません）。両上限は 1 秒ごとの確認のため、サイズ上限は厳密な天井ではありません |
+| `StopTrace` | UAIP が開始したトレースを停止し、`AttachTraceFile` が true なら採取した `.utrace` を artifact として引き渡します。停止は常に成功します（何も採取していなければ成功の no-op、ファイルを引き渡せない場合も `AttachSkippedReason` を付けてスキップし停止自体は成功）。UAIP が開始していないトレースは停止せず `NotAllowed` を返します。⚠️ ファイルの添付は、チャネル構成に関わらず**プロセスのコマンドラインを必ず開示します**。採取中にチャネル集合が変更されたトレース、ログ / ホスト / 画面 / ネットワーク / 未分類のチャネルを含む集合、64 MB を超えるファイルは添付を拒否します |
+| `PauseTrace` | 本モジュールが開始したトレースの採取を、停止せずに一時停止します。冪等（既に一時停止中なら `WasPaused: false`）、UAIP が開始したトレースが稼働していなければ成功の no-op、UAIP が開始していないトレースには `NotAllowed`。一時停止中もチャネル監視は動き続け、時間上限は実際に採取していた秒数のみを消費します |
+| `ResumeTrace` | `PauseTrace` で一時停止した採取を再開します。冪等（一時停止中でなければ `WasResumed: false`）、UAIP が開始していないトレースには `NotAllowed`。名前が `Channel` で終わらないチャネルが再開時に復帰しないというエンジン側の既知不具合があるため、復帰しなかったチャネルは `Warnings` に `ChannelNotRestoredAfterResume` として報告されます（`SetTraceChannels` で再有効化できます） |
+| `SetTraceChannels` | 本モジュールが開始したトレースの採取を続けたままチャネルを有効化 / 無効化します。`EnableChannels` / `DisableChannels` の少なくとも一方が非空である必要があります。チャネル状態はトレースより長く残るため、トレース非稼働時および UAIP が開始していないトレースに対しては `NotAllowed`。判定は「適用後に有効となる集合」に対して行うため、開示するチャネルを**無効化する**要求がそれ自体で拒否されることはありません。⚠️ 本コマンドを使うとトレースのチャネル集合が外部変更済みとしてマークされ、`StopTrace` はファイルの添付を拒否するようになります |
+| `AddTraceBookmark` | 採取中のトレースへ時点マーカー（`Text`）を書き込みます。ブックマークチャネルが無効な場合（何も採取していない時点を含む）は何も書き込まず、`Written: false` で成功します。テキストは解析済みトレースからログテキストと同じポリシーで読み出されるため、`AllowLogDump` が false のときは `PolicyViolation` で拒否します。テキスト中の絶対パスは可搬なプレースホルダに置換されます |
+| `BeginTraceRegion` | 採取中のトレースに名前付き区間（`Name`、省略可の `Category`）を開き、それを閉じるための `RegionId` を返します。区間は名前ではなく id で対応付けるため、入れ子の区間や同名の区間も区別されます。区間チャネルが無効でも `RegionId` は返り（`Written: false`）、閉じ方は同じです。開いたままの区間はトレース停止時とモジュール終了時に自動で閉じられます。`AddTraceBookmark` と同じく `AllowLogDump` でゲートされます |
+| `EndTraceRegion` | `BeginTraceRegion` が開いた区間を `RegionId` で閉じます（開いている区間を指さない id は `NotFound`。自動クローズ済みの id を含む）。`DurationSeconds` はプロセス内で計測するため、区間チャネルが無効で何も書き込まれていなくても報告されます。自身はテキストを持たないため、ログダンプポリシーで拒否されることはありません |
+
+---
+
+## UAIP.Runtime.Insights.Analysis
+
+採取済み `.utrace` ファイルのオフライン解析。本 Provider はトレース解析が有効なビルド構成でのみ登録されます。それ以外（デモ版を含む）ではコマンド自体が存在せず、呼び出すたびに失敗するのではなく `CommandNotFound` を返します。
+
+3 コマンドすべてが `RuntimeInsightsAnalyze`（DefaultDenied）を必要とします（ステータス取得も同様。トレースを解析できない呼び出し元にとって解析の進捗は用途がないため）。
+
+解析は非同期です。`AnalyzeTrace` で `AnalysisId` を取得し、`GetTraceAnalysisStatus` を `State` が `Completed` になるまでポーリングしてから `GetTraceAnalysisResult` を読みます。同時に実行できる解析は 1 件のみで、実行中に届いた要求は `TooManyRequests` で拒否され、実行中の解析をキャンセルする手段はありません。
+
+| コマンド | 説明 |
+|---|---|
+| `AnalyzeTrace` | トレースファイルの解析を開始し `AnalysisId` を返します。`FileName` は `ListTraceFiles` が報告した名前（パスではない）である必要があります。UAIP 以外が採取したトレースは `ExternalTracePath` を渡して解析しますが、これには外部解析のポリシー設定が必要です。省略可のパラメータは `Sections`・`StartTimeSeconds` / `EndTimeSeconds`・`TopN`（既定 32）・`MaxSeries`（既定 256）・`MaxSamplesPerSeries`（既定 1024）・`NameFilter`・`HitchThresholdMs`（既定 33.3）。512 MB を超えるトレースは拒否します。要求された各セクションは完了した順に個別の JSON artifact として書き出されるため、本コマンドは read-only ではありません。チャネルが記録されていないセクションや SafetyPolicy が秘匿するセクションは、実行を失敗させるのではなく理由付きで unavailable として報告されます |
+| `GetTraceAnalysisStatus` | 解析の進行状況を報告します — `Running`（パース中）・`Extracting`（セクション抽出中）・`Completed`・`Failed` と経過時間、`CompletedSections`・`AvailableSections`・`UnavailableSections`（それぞれ理由付き）。`FailureReason` は固定の値集合から選ばれ、`State` が `Failed` のときのみ意味を持ちます。解析エンジン自身が報告したメッセージは絶対パスを含みうるため返さず、出力ログにのみ記録します。read-only |
+| `GetTraceAnalysisResult` | 完了した解析が生成した artifact をセクションごとに返します（セクションごとの `TotalCount` / `ReturnedCount`、いずれかが上限に達した場合の `Truncated` を含む）。読めるのは `State` が `Completed` の解析のみです。本コマンドは参照を返すだけで何も読まないため、必要なセクションだけを取得できます。元の `AnalyzeTrace` が要求しなかったセクションは、ここで解析し直すのではなく拒否されます。結果を読むたびに保持時間が延長されます（1 回の読み取りにつき 15 分、絶対上限 1 時間） |
+
+`Sections` が受け付けるセクション名: `Frames`・`Counters`・`Timers`・`Threads`・`StackSamples`・`LoadTime`・`Memory`・`Allocations`・`Tasks`・`FileActivity`・`NetProfiler`・`CsvProfiler`・`ContextSwitches`・`CookProfiler`・`Bookmarks`・`Regions`・`Diagnostics`・`Channels`・`Log`・`Screenshots`、および `Objects`（UE 5.8 以降のみ。UE 5.7 には対応する Provider が存在しません）。
 
 ---
 

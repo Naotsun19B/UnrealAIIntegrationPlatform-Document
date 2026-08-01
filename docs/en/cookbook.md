@@ -181,7 +181,7 @@ The AI can `Read` the screenshot to verify the dialog actually appeared. For int
 ```json
 {
   "ScenarioName": "PlaytestCharacterMove",
-  "Variables": { "ExpectedHealth": 100 },
+  "Variables": { "ExpectedHealth": "100" },
   "Steps": [
     { "StepName": "Load",  "CommandName": "UAIP.Runtime.PIE.LoadMap",
       "Params": { "MapPath": "/Game/Maps/TestArena" } },

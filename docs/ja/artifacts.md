@@ -15,6 +15,7 @@
 | `Log` | `.log` / `.txt` | OutputLog / MessageLog のダンプ |
 | `Report` | `.json` | Automation Test の結果 |
 | `Bundle` | アーカイブ | 複数 Artifact のまとめ（例：`CheckpointCapture`） |
+| `Trace` | `.utrace` | `StopTrace` が引き渡す Unreal Insights の採取ファイル。⚠️ `RuntimeInsightsAttachTraceFile` Capability が必要で、プロセスのコマンドラインを必ず開示します — [安全性と Capability](safety.md#runtime-insights-トレース採取) を参照 |
 
 ---
 
@@ -26,7 +27,10 @@ Saved/UAIP/<SessionId>/
   Screenshots/  ← PNG キャプチャ
   Logs/         ← ログファイル
   Reports/      ← テストレポート
+  Traces/       ← .utrace 採取ファイル
 ```
+
+トレースファイル自体は `Saved/Profiling/UAIP/` に採取され、`StopTrace` で添付を要求したときにのみ上記のセッションフォルダへコピーされます。
 
 Artifact はセッション単位で保存されます。セッション終了後は GC 対象になります。
 
@@ -161,6 +165,8 @@ PNG をインライン化するかどうかは利用ポリシー次第です。�
 | `DumpSlateTree` | JSON 1本 — Slate ウィジェットツリー |
 | `CheckpointCapture` | PNG + JSON のバンドル |
 | `LoadMap` / `StartPIE` | JSON 2本 — 前後の状態 |
+| `StopTrace` | `.utrace` 1本 — `AttachTraceFile: true` かつ添付条件を満たす場合のみ。満たさない場合は成果物なしで `Data` に `AttachSkippedReason` を返す |
+| `AnalyzeTrace` | 要求した解析セクションごとに JSON 1本（各セクションの抽出完了時に書き出し） |
 
 ---
 

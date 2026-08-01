@@ -176,8 +176,10 @@ Every `[UAIP.SafetyPolicy]` bool flag has a matching `-uaip-policy-*` CLI flag (
 | `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write` |
 | `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass` |
 | `DisablePIEStart` | `-uaip-policy-disable-pie-start` |
+| `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write` |
+| `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis` |
 
-`AllowCapabilityReload`, `AllowedCapabilities`, `DeniedCapabilities`, `DeniedCommands`, and `AllowedArtifactDirectory` are **ini-only** (no CLI equivalents — they control capability escalation and sandbox boundaries that must not be alterable via the process command line).
+`AllowCapabilityReload`, `AllowedCapabilities`, `DeniedCapabilities`, `DeniedCommands`, `AllowedArtifactDirectory`, and `ExternalTraceDirectory` are **ini-only** (no CLI equivalents — they control capability escalation and sandbox boundaries that must not be alterable via the process command line).
 
 ---
 

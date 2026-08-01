@@ -209,7 +209,7 @@ If you want `Field` to actually receive `42`, reference `${B.Data.x}` directly f
 ```json
 {
   "ScenarioName": "PIE_HealthCheck",
-  "Variables": { "ExpectedHp": 100 },
+  "Variables": { "ExpectedHp": "100" },
   "Steps": [
     { "StepName": "Load",   "CommandName": "UAIP.Runtime.PIE.LoadMap",
       "Params": { "MapPath": "/Game/Maps/TestMap" } },

@@ -15,6 +15,7 @@ Every UAIP command returns **artifacts** — output files such as PNG screenshot
 | `Log` | `.log` / `.txt` | OutputLog / MessageLog dumps |
 | `Report` | `.json` | Automation test results |
 | `Bundle` | archive | Several artifacts grouped (e.g. `CheckpointCapture`) |
+| `Trace` | `.utrace` | An Unreal Insights capture handed over by `StopTrace`. ⚠️ Requires the `RuntimeInsightsAttachTraceFile` capability, and always discloses the process command line — see [Safety & Capabilities](safety.md#runtime-insights-trace-capture) |
 
 ---
 
@@ -26,7 +27,10 @@ Saved/UAIP/<SessionId>/
   Screenshots/  ← PNG captures
   Logs/         ← log files
   Reports/      ← test reports
+  Traces/       ← .utrace captures
 ```
+
+Trace files themselves are captured to `Saved/Profiling/UAIP/` and only copied into the session folder above when `StopTrace` is asked to attach one.
 
 Artifacts are stored per session. When a session ends, artifacts become GC candidates.
 
@@ -161,6 +165,8 @@ Whether to inline PNG output is a policy choice. The default is **off** because 
 | `DumpSlateTree` | One JSON — Slate widget tree |
 | `CheckpointCapture` | PNG + JSON bundled together |
 | `LoadMap` / `StartPIE` | Two JSONs — before/after state |
+| `StopTrace` | One `.utrace` — only when `AttachTraceFile: true` and the capture qualifies; otherwise none, with an `AttachSkippedReason` in `Data` |
+| `AnalyzeTrace` | One JSON per requested analysis section, written as each section finishes |
 
 ---
 

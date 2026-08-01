@@ -207,7 +207,7 @@ flowchart LR
 ```json
 {
   "ScenarioName": "PIE_HealthCheck",
-  "Variables": { "ExpectedHp": 100 },
+  "Variables": { "ExpectedHp": "100" },
   "Steps": [
     { "StepName": "Load",   "CommandName": "UAIP.Runtime.PIE.LoadMap",
       "Params": { "MapPath": "/Game/Maps/TestMap" } },

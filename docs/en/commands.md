@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 934 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1354 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 948 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1368 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -91,6 +91,8 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 17 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
+| Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | partial (3/11) |
+| Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
 
 ---
 
@@ -2221,6 +2223,55 @@ Runtime inspection and parameter override for Niagara components in PIE. Require
 ### Toolset bridges (4) 🧩
 
 Provider: `Toolset.Runtime.Niagara.*`. Requires UE 5.8+ and `NiagaraToolsets`. Mirrors the native commands above.
+
+---
+
+## UAIP.Runtime.Insights.Trace
+
+Unreal Insights trace capture control. A trace is always written to a file under `Saved/Profiling/UAIP/` — **no command in this module can send a trace to a network destination**. A trace UAIP did not start is never modified: `GetTraceStatus` reports that something else is recording, and every control command except `StopTrace` (which refuses it explicitly) leaves it alone.
+
+The three read-only commands require `RuntimeInsightsInspect` (DefaultAllow). The eight control commands require `RuntimeInsightsControl` (DefaultDenied). Attaching the captured `.utrace` file additionally requires `RuntimeInsightsAttachTraceFile` (DefaultDenied) — see [Safety & Capabilities](safety.md#runtime-insights-trace-capture).
+
+Trace recording is independent of the PIE lifecycle: starting or stopping PIE neither starts nor stops a trace, and a trace keeps recording across PIE sessions.
+
+### Read-only (3)
+
+| Command | Description |
+|---|---|
+| 🆓 `ListTraceChannels` | List every trace channel this build knows about — description, whether it is currently enabled, whether it can still be toggled, and what it can disclose. Also lists the engine's channel presets, each expanded into its channels and their disclosure classes. Most engine presets include the log channel, so check the expanded classes before passing a preset to `StartTrace` |
+| 🆓 `GetTraceStatus` | Report whether the engine is recording, whether recording is suspended, and whether the running trace is one UAIP started. For a UAIP-started trace also reports its label, file name, channels, disclosure classes, elapsed time, file size and self-stop limits. For a trace UAIP did not start, only the kind of activity is reported — the destination, channel set, elapsed time and size are withheld. Elapsed time and size are refreshed once per monitoring interval and can be up to one interval old |
+| 🆓 `ListTraceFiles` | List the trace files UAIP captured, newest first, with label, size and the UTC timestamp encoded into the name (`MaxCount` default 50, max 500). A `FileName` from this listing is what `AnalyzeTrace` accepts. When the safety policy enables external trace analysis, `.utrace` files in the configured external directory are listed as well with `Source: External`. Listing never deletes anything — rotation happens when a trace starts |
+
+### Trace control (8)
+
+| Command | Description |
+|---|---|
+| `StartTrace` | Start recording into UAIP's own trace directory with the given channels or channel presets enabled, and return the file name being written to. `Channels` is required; `Label`, `MaxDurationSeconds` (default 300, range 1–3600) and `MaxFileSizeMB` (default 512, range 1–4096) are optional. A trace UAIP already started is never restarted — the request only adds channels and reports `AlreadyRunning` / `LimitsIgnored`. Rejected with `PolicyViolation` when the *effective* channel set (already enabled ∪ requested) records log text and `AllowLogDump` is false; no channel is ever turned off to make a request pass. Both limits are checked once per second, so the size limit is not a strict ceiling |
+| `StopTrace` | Stop the trace UAIP started and, when `AttachTraceFile` is true, hand the captured `.utrace` over as an artifact. Stopping always succeeds — nothing recording is a successful no-op, and a file that cannot be handed over is skipped with an `AttachSkippedReason` while the stop itself still succeeds. A trace UAIP did not start is never stopped (`NotAllowed`). ⚠️ Attaching the file always discloses the process command line whatever the channel set was; attaching is refused for a channel set that was mutated while recording, for a set carrying log / host / screen / network / unclassified channels, and for a file larger than 64 MB |
+| `PauseTrace` | Suspend recording of the trace this module started without stopping it. Idempotent (`WasPaused: false` when already paused), a no-op success when nothing UAIP started is running, and `NotAllowed` for a trace UAIP did not start. The channel monitor keeps running while paused, and the duration limit only counts seconds actually spent recording |
+| `ResumeTrace` | Restore recording after `PauseTrace`. Idempotent (`WasResumed: false` when not paused) and `NotAllowed` for a trace UAIP did not start. The engine has a known defect where resuming can fail to restore a channel whose name does not end in `Channel`; such a channel is reported in `Warnings` as `ChannelNotRestoredAfterResume` so it can be re-enabled with `SetTraceChannels` |
+| `SetTraceChannels` | Enable and disable channels on the trace this module started while it keeps recording. At least one of `EnableChannels` / `DisableChannels` must be non-empty. `NotAllowed` when no trace is running or the running trace was not started by UAIP, because channel state outlives the trace. The request is judged by the channel set it would leave in effect, so turning a disclosing channel off is never itself rejected. ⚠️ Using this command marks the trace's channel set as externally mutated, which makes `StopTrace` refuse to attach the file |
+| `AddTraceBookmark` | Write a point-in-time bookmark (`Text`) into the trace that is recording right now. When the bookmark channel is disabled — which includes every moment nothing is recording — nothing is written and the command still succeeds with `Written: false`. Rejected with `PolicyViolation` when `AllowLogDump` is false, because the text is read back under the same policy that gates log text. Absolute paths in the text are replaced with portable placeholders |
+| `BeginTraceRegion` | Open a named span (`Name`, optional `Category`) in the running trace and return the `RegionId` that closes it. Regions are matched by id, never by name, so nested regions and same-named regions stay apart. A `RegionId` is returned even when the region channel is disabled (`Written: false`). Any span still open is closed automatically when the trace stops or the module shuts down. Gated by `AllowLogDump` the same way `AddTraceBookmark` is |
+| `EndTraceRegion` | Close the region `BeginTraceRegion` opened, matched by `RegionId` (`NotFound` for an id that names no open region, including one already closed by the automatic sweep). `DurationSeconds` is measured in-process and is reported even when the region channel was disabled. Never rejected by the log dump policy — it carries no text of its own |
+
+---
+
+## UAIP.Runtime.Insights.Analysis
+
+Offline analysis of a captured `.utrace` file. This provider is only registered in builds where trace analysis is supported; elsewhere (including the demo build) the commands are absent and return `CommandNotFound` rather than failing on every call.
+
+All three commands require `RuntimeInsightsAnalyze` (DefaultDenied) — including the status command, because the progress of an analysis is of no use to a caller that may not analyse a trace.
+
+Analysis is asynchronous: call `AnalyzeTrace` to get an `AnalysisId`, poll `GetTraceAnalysisStatus` until `State` is `Completed`, then read `GetTraceAnalysisResult`. Only one run is ever under way — a request that arrives while another is running is rejected with `TooManyRequests`, and there is no way to cancel a run.
+
+| Command | Description |
+|---|---|
+| `AnalyzeTrace` | Start analysing a trace file and return the `AnalysisId`. `FileName` must be a name `ListTraceFiles` reported (not a path); a trace captured outside UAIP is analysed by passing `ExternalTracePath` instead, which requires the external-analysis policy. Optional `Sections`, `StartTimeSeconds` / `EndTimeSeconds`, `TopN` (default 32), `MaxSeries` (default 256), `MaxSamplesPerSeries` (default 1024), `NameFilter`, `HitchThresholdMs` (default 33.3). A trace larger than 512 MB is rejected. Each requested section is written out as its own JSON artifact as it finishes, which is why the command is not read-only. A section whose channel was not recorded, or whose content the safety policy withholds, is reported as unavailable with a reason rather than failing the run |
+| `GetTraceAnalysisStatus` | Report how far one run has got — `Running` (parsing), `Extracting`, `Completed` or `Failed` — with elapsed time, `CompletedSections`, `AvailableSections` and `UnavailableSections` (each with its reason). `FailureReason` is one of a fixed set of values and is only meaningful once `State` is `Failed`; what the analysis engine itself reported goes to the output log instead, because those messages can carry absolute paths. Read-only |
+| `GetTraceAnalysisResult` | Return the artifacts a finished run produced, one per section, with `TotalCount` / `ReturnedCount` per section and `Truncated` when any of them hit a limit. Only a run whose `State` is `Completed` can be read. The command hands back references and reads nothing, so pick only the sections worth fetching; a section the original `AnalyzeTrace` call did not request is rejected rather than analysed now. Reading a result restarts the time the run is kept for (15 minutes per read, one hour absolute) |
+
+Section names accepted by `Sections`: `Frames`, `Counters`, `Timers`, `Threads`, `StackSamples`, `LoadTime`, `Memory`, `Allocations`, `Tasks`, `FileActivity`, `NetProfiler`, `CsvProfiler`, `ContextSwitches`, `CookProfiler`, `Bookmarks`, `Regions`, `Diagnostics`, `Channels`, `Log`, `Screenshots`, and `Objects` (UE 5.8+ only — the underlying provider does not exist on UE 5.7).
 
 ---
 
