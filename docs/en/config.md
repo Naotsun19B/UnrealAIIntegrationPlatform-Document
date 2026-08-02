@@ -178,6 +178,7 @@ Every `[UAIP.SafetyPolicy]` bool flag has a matching `-uaip-policy-*` CLI flag (
 | `DisablePIEStart` | `-uaip-policy-disable-pie-start` |
 | `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write` |
 | `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis` |
+| `AllowDisclosingTraceAttachment` | `-uaip-policy-allow-disclosing-trace-attachment` |
 
 `AllowCapabilityReload`, `AllowedCapabilities`, `DeniedCapabilities`, `DeniedCommands`, `AllowedArtifactDirectory`, and `ExternalTraceDirectory` are **ini-only** (no CLI equivalents — they control capability escalation and sandbox boundaries that must not be alterable via the process command line).
 

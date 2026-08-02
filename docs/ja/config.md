@@ -178,6 +178,7 @@ UnrealEditor-Cmd.exe MyProject.uproject \
 | `DisablePIEStart` | `-uaip-policy-disable-pie-start` |
 | `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write` |
 | `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis` |
+| `AllowDisclosingTraceAttachment` | `-uaip-policy-allow-disclosing-trace-attachment` |
 
 `AllowCapabilityReload` / `AllowedCapabilities` / `DeniedCapabilities` / `DeniedCommands` / `AllowedArtifactDirectory` / `ExternalTraceDirectory` は **ini 専用**（CLI フラグなし — Capability の昇格やサンドボックス境界に関わるため、プロセスコマンドラインからの変更を許可しない設計）。
 
