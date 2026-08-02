@@ -57,9 +57,9 @@ sequenceDiagram
         Hd-->>Di: StepResult
         Di-->>Sc: StepResult
         alt StepResult.Success == false
-            alt AbortOnFailure == true
-                Note over Sc: skip remaining steps
-            else AbortOnFailure == false
+            alt AbortOnFailure of the failed step == true
+                Note over Sc: skip every remaining step
+            else AbortOnFailure of the failed step == false
                 Note over Sc: continue
             end
         end
@@ -84,7 +84,7 @@ uaip_run_scenario(
       "StepName":        "Load",        # [A-Za-z0-9_]{1,64}, unique
       "CommandName":     "UAIP.Runtime.PIE.LoadMap",
       "Params":          { "MapPath": "/Game/Maps/TestMap" },
-      "AbortOnFailure":  true,          # default: true
+      "AbortOnFailure":  true,          # default: true — see "Failure handling and cleanup"
       "RetryCount":      0,             # default: 0
       "TimeoutSeconds":  60             # default: 60
     },
@@ -223,12 +223,41 @@ If you want `Field` to actually receive `42`, reference `${B.Data.x}` directly f
                   "PropertyName": "Health",
                   "ExpectedValue": "${Variables.ExpectedHp}" } },
     { "StepName": "Stop",   "CommandName": "UAIP.Runtime.PIE.StopPIE",
-      "Params": {}, "AbortOnFailure": false }
+      "Params": {} }
   ]
 }
 ```
 
-Setting `AbortOnFailure: false` on the `Stop` step ensures PIE is always terminated even if an earlier step fails.
+As written, a failure in `Load` … `Assert` finalizes the scenario at that step and `Stop` is never dispatched — PIE stays running. See the next section for why, and what to do about it.
+
+---
+
+## Failure handling and cleanup
+
+`AbortOnFailure` is evaluated on **the step that just failed**, never on the steps that come after it:
+
+- The failed step's own `AbortOnFailure` is `true` (the default) → the scenario finalizes immediately. Every later step is never dispatched and never appears in `StepResults`.
+- The failed step's own `AbortOnFailure` is `false` → execution continues with the next step; the failure is still recorded in `StepResults`.
+
+`AbortOnFailure: false` therefore means "a failure of **this** step is not fatal", not "run this step even after an earlier failure". Putting it only on a trailing cleanup step (`StopPIE`, delete-temp-asset, close-tab, …) does **not** make that step run — it is skipped along with everything else after the failure.
+
+The same rule applies when a step fails template resolution (`InvalidParams`): that step's own flag decides.
+
+### Making a cleanup step actually run
+
+| Approach | What to do | Trade-off |
+|---|---|---|
+| Give up fail-fast | Set `AbortOnFailure: false` on **every step that precedes the cleanup steps**, not only on the cleanup steps | The scenario never stops early, so steps after a failure run against a broken precondition and usually fail too. Read `StepResults` to find the first failure |
+| Clean up outside the scenario | Keep fail-fast and run the cleanup afterwards — a `uaip_execute` call, or a second cleanup-only scenario, issued once the first scenario returns | Extra round trips, but the cleanup is driven by the client, so it also covers the cases below |
+| Leave nothing to clean | Order the scenario so the failure-prone steps come before anything that leaves a trace | Not always possible |
+
+### What no in-scenario pattern can cover
+
+- **Submit-time rejects** (opt-in missing, malformed payload, `TooManyRequests`) — no step runs at all.
+- **The scenario wall-clock watchdog** — when the whole-scenario budget expires, the route responds immediately with a result that carries **no `StepResults`**, while the runner keeps going in the background. The response cannot tell you whether the cleanup step ran, and a new submission is refused until the runner finishes.
+- **An editor crash or hang mid-scenario** — nothing after it runs.
+
+Whichever approach you take, confirm the traces are gone (PIE stopped, temp assets deleted) with a state dump after the scenario returns instead of inferring it from `StepResults`.
 
 ---
 
@@ -237,7 +266,8 @@ Setting `AbortOnFailure: false` on the `Stop` step ensures PIE is always termina
 | Symptom | Cause | Fix |
 |---|---|---|
 | `PolicyViolation: Scenario execution is not enabled` | `enable_scenario` not set | Add `"enable_scenario": true` to `config.json` |
-| Steps 2+ missing from `StepResults` | Step 1 failed with default `AbortOnFailure: true` | Set `"AbortOnFailure": false` on the failing step if you want to continue |
+| Steps 2+ missing from `StepResults` | Step 1 failed with default `AbortOnFailure: true` | Set `"AbortOnFailure": false` on **the failing step**, not on the steps you want to keep running |
+| A cleanup step marked `AbortOnFailure: false` never ran | An earlier step failed with the default `AbortOnFailure: true`, so the scenario finalized before reaching it | See [Failure handling and cleanup](#failure-handling-and-cleanup) — mark every preceding step `false`, or clean up outside the scenario |
 | Template left as literal `"${...}"` | Single-pass resolver — `Variables` are not re-expanded | Pass the value directly via `Variables` or split into two steps |
 | Step fails with `InvalidParams` and a template-related message | Malformed `${...}` reference (wrong notation, bad escape, pointer miss, oversized value, object/array in a mixed string) | Re-read [JSON Pointer notation](#json-pointer-notation) above; this is not retried by `RetryCount` |
 | `TooManyRequests` | Another scenario is running | Wait for it to finish |

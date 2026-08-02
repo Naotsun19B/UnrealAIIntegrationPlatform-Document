@@ -352,7 +352,7 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities")
 | `StepName` | string | — | `[A-Za-z0-9_]{1,64}`、シナリオ内で一意 |
 | `CommandName` | string | — | `uaip_execute` と同じ |
 | `Params` | object | `{}` | テンプレート解決後 |
-| `AbortOnFailure` | bool | `true` | false なら失敗してもシナリオ継続 |
+| `AbortOnFailure` | bool | `true` | **このステップが失敗したとき** に評価される。`true` なら以降のステップをすべてスキップ、`false` ならシナリオを継続。**前のステップ** が失敗した際にこのステップへ到達するかどうかは制御しない — [シナリオ実行](scenario.md#失敗時の挙動とクリーンアップ) を参照 |
 | `RetryCount` | int | `0` | `ExecutionFailed` のみリトライ — `CapabilityNotAvailable` / `PolicyViolation` はしない |
 | `TimeoutSeconds` | int | `60` | ステップ単位の壁時計上限 |
 

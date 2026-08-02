@@ -35,19 +35,21 @@ Demo OK = works on the demo binary. Others require Pro.
   "ScenarioName": "PIE_Smoke_MainMenu",
   "Steps": [
     { "StepName": "Load",   "CommandName": "UAIP.Runtime.PIE.LoadMap",
-      "Params": { "MapPath": "/Game/Maps/MainMenu" } },
-    { "StepName": "Start",  "CommandName": "UAIP.Runtime.PIE.StartPIE" },
+      "Params": { "MapPath": "/Game/Maps/MainMenu" }, "AbortOnFailure": false },
+    { "StepName": "Start",  "CommandName": "UAIP.Runtime.PIE.StartPIE",
+      "AbortOnFailure": false },
     { "StepName": "Settle", "CommandName": "UAIP.Runtime.Assertion.WaitSeconds",
-      "Params": { "Seconds": 3 } },
+      "Params": { "Seconds": 3 }, "AbortOnFailure": false },
     { "StepName": "Shot",   "CommandName": "UAIP.Runtime.Observation.CheckpointCapture",
-      "Params": { "Label": "after-load" } },
-    { "StepName": "Stop",   "CommandName": "UAIP.Runtime.PIE.StopPIE",
-      "AbortOnFailure": false }
+      "Params": { "Label": "after-load" }, "AbortOnFailure": false },
+    { "StepName": "Stop",   "CommandName": "UAIP.Runtime.PIE.StopPIE" }
   ]
 }
 ```
 
-**What you get**: a checkpoint artifact (screenshot + JSON dump) you can `Read` after the run. If any step before `Stop` fails, the scenario aborts but `Stop` still runs (`AbortOnFailure: false` on the cleanup step) so PIE isn't left running.
+**What you get**: a checkpoint artifact (screenshot + JSON dump) you can `Read` after the run.
+
+**Why every step carries `AbortOnFailure: false`**: the flag is evaluated on the step that **failed**, not on the steps after it. If `Load` … `Shot` kept the default `true`, the first failure would finalize the scenario and `Stop` would never be dispatched — PIE left running. Marking the earlier steps `false` is what makes `Stop` reachable; the price is that the scenario no longer stops at the first failure, so read `StepResults` to find it. See [Scenario Execution → Failure handling and cleanup](scenario.md#failure-handling-and-cleanup).
 
 **Capabilities**: `PIEControl`, `RuntimeCapture` — both DefaultAllow.
 
@@ -184,26 +186,29 @@ The AI can `Read` the screenshot to verify the dialog actually appeared. For int
   "Variables": { "ExpectedHealth": "100" },
   "Steps": [
     { "StepName": "Load",  "CommandName": "UAIP.Runtime.PIE.LoadMap",
-      "Params": { "MapPath": "/Game/Maps/TestArena" } },
-    { "StepName": "Play",  "CommandName": "UAIP.Runtime.PIE.StartPIE" },
+      "Params": { "MapPath": "/Game/Maps/TestArena" }, "AbortOnFailure": false },
+    { "StepName": "Play",  "CommandName": "UAIP.Runtime.PIE.StartPIE",
+      "AbortOnFailure": false },
     { "StepName": "T0",    "CommandName": "UAIP.Runtime.Observation.CheckpointCapture",
-      "Params": { "Label": "t0" } },
+      "Params": { "Label": "t0" }, "AbortOnFailure": false },
     { "StepName": "Wait1", "CommandName": "UAIP.Runtime.Assertion.WaitSeconds",
-      "Params": { "Seconds": 5 } },
+      "Params": { "Seconds": 5 }, "AbortOnFailure": false },
     { "StepName": "T5",    "CommandName": "UAIP.Runtime.Observation.CheckpointCapture",
-      "Params": { "Label": "t5" } },
+      "Params": { "Label": "t5" }, "AbortOnFailure": false },
     { "StepName": "Check", "CommandName": "UAIP.Runtime.Assertion.AssertActorProperty",
       "Params": {
         "ActorIdentifier": "PlayerCharacter",
         "PropertyName":    "Health",
         "ExpectedValue":   "${Variables.ExpectedHealth}"
-      } },
-    { "StepName": "Stop",  "CommandName": "UAIP.Runtime.PIE.StopPIE", "AbortOnFailure": false }
+      }, "AbortOnFailure": false },
+    { "StepName": "Stop",  "CommandName": "UAIP.Runtime.PIE.StopPIE" }
   ]
 }
 ```
 
 Compare the two CheckpointCapture artifacts — different position / lighting / state at the two times — so the AI can describe what changed.
+
+Every step before `Stop` is marked `AbortOnFailure: false` for the same reason as recipe 1: without it, the first failure ends the scenario and `Stop` never runs. The assertion result is still visible in `StepResults[].Success` for the `Check` step.
 
 **Capabilities**: `PIEControl`, `RuntimeCapture`, `RuntimeInspect` — DefaultAllow.
 
@@ -252,7 +257,7 @@ The same pattern works for `RunAutomationSpec`, `RunFunctionalTest`, and `RunGau
 ## Patterns worth knowing
 
 - **Scenario templates** (`${StepName.Data.x}`, `${Variables.y}`) let later steps consume earlier-step output. See [Scenario Execution → Templates](scenario.md#4-templates---splice-earlier-results-into-later-steps).
-- **Default `AbortOnFailure: true`** stops the scenario at the first failed step. Override to `false` on cleanup steps so they run even if PIE / asset operations fail mid-flight.
+- **Default `AbortOnFailure: true`** stops the scenario at the first failed step. The flag is read on the step that **failed**, so setting it to `false` only on a trailing cleanup step does nothing — that step is skipped too. To reach the cleanup step, mark every step before it `false`; otherwise clean up with a separate call after the scenario returns. See [Scenario Execution → Failure handling and cleanup](scenario.md#failure-handling-and-cleanup).
 - **Capture commands return artifact IDs, not file paths**. Use `Read` on the artifact's `FilePath` (returned in the response) to view PNG / JSON output. See [Artifacts](artifacts.md).
 - **Sessions isolate work**. Pass `SessionId="my-test"` to keep artifacts grouped per task — they're stored under `Saved/UAIP/<session>/`.
 - **Self-verify before asking the user** — if you wonder "did this work?", call a Capture or Dump command before pinging the user.

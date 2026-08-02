@@ -35,19 +35,21 @@ UAIP でよく出てくるワークフローを、すぐに動かせるレシピ
   "ScenarioName": "PIE_Smoke_MainMenu",
   "Steps": [
     { "StepName": "Load",   "CommandName": "UAIP.Runtime.PIE.LoadMap",
-      "Params": { "MapPath": "/Game/Maps/MainMenu" } },
-    { "StepName": "Start",  "CommandName": "UAIP.Runtime.PIE.StartPIE" },
+      "Params": { "MapPath": "/Game/Maps/MainMenu" }, "AbortOnFailure": false },
+    { "StepName": "Start",  "CommandName": "UAIP.Runtime.PIE.StartPIE",
+      "AbortOnFailure": false },
     { "StepName": "Settle", "CommandName": "UAIP.Runtime.Assertion.WaitSeconds",
-      "Params": { "Seconds": 3 } },
+      "Params": { "Seconds": 3 }, "AbortOnFailure": false },
     { "StepName": "Shot",   "CommandName": "UAIP.Runtime.Observation.CheckpointCapture",
-      "Params": { "Label": "after-load" } },
-    { "StepName": "Stop",   "CommandName": "UAIP.Runtime.PIE.StopPIE",
-      "AbortOnFailure": false }
+      "Params": { "Label": "after-load" }, "AbortOnFailure": false },
+    { "StepName": "Stop",   "CommandName": "UAIP.Runtime.PIE.StopPIE" }
   ]
 }
 ```
 
-**得られる結果**：スクリーンショットと JSON ダンプをまとめたチェックポイント Artifact が返却され、実行後に `Read` で確認できます。途中で失敗してもクリーンアップ用ステップ（`AbortOnFailure: false` を指定した `Stop`）は実行されるため、PIE が起動したまま残ることはありません。
+**得られる結果**：スクリーンショットと JSON ダンプをまとめたチェックポイント Artifact が返却され、実行後に `Read` で確認できます。
+
+**すべてのステップに `AbortOnFailure: false` を付けている理由**：このフラグは **失敗したステップ自身** に対して評価され、後続のステップに設定した値は参照されません。`Load` 〜 `Shot` をデフォルトの `true` のままにすると、最初の失敗でシナリオが終了し `Stop` がディスパッチされず、PIE が起動したまま残ります。`Stop` に到達させるには手前のステップを `false` にする必要があります。代償としてシナリオは最初の失敗で止まらなくなるため、失敗箇所は `StepResults` から特定してください。詳細は [シナリオ実行 → 失敗時の挙動とクリーンアップ](scenario.md#失敗時の挙動とクリーンアップ) を参照してください。
 
 **必要な Capability**：`PIEControl` と `RuntimeCapture`。どちらも DefaultAllow です。
 
@@ -184,26 +186,29 @@ AI はスクリーンショットを `Read` することで、ダイアログが
   "Variables": { "ExpectedHealth": "100" },
   "Steps": [
     { "StepName": "Load",  "CommandName": "UAIP.Runtime.PIE.LoadMap",
-      "Params": { "MapPath": "/Game/Maps/TestArena" } },
-    { "StepName": "Play",  "CommandName": "UAIP.Runtime.PIE.StartPIE" },
+      "Params": { "MapPath": "/Game/Maps/TestArena" }, "AbortOnFailure": false },
+    { "StepName": "Play",  "CommandName": "UAIP.Runtime.PIE.StartPIE",
+      "AbortOnFailure": false },
     { "StepName": "T0",    "CommandName": "UAIP.Runtime.Observation.CheckpointCapture",
-      "Params": { "Label": "t0" } },
+      "Params": { "Label": "t0" }, "AbortOnFailure": false },
     { "StepName": "Wait1", "CommandName": "UAIP.Runtime.Assertion.WaitSeconds",
-      "Params": { "Seconds": 5 } },
+      "Params": { "Seconds": 5 }, "AbortOnFailure": false },
     { "StepName": "T5",    "CommandName": "UAIP.Runtime.Observation.CheckpointCapture",
-      "Params": { "Label": "t5" } },
+      "Params": { "Label": "t5" }, "AbortOnFailure": false },
     { "StepName": "Check", "CommandName": "UAIP.Runtime.Assertion.AssertActorProperty",
       "Params": {
         "ActorIdentifier": "PlayerCharacter",
         "PropertyName":    "Health",
         "ExpectedValue":   "${Variables.ExpectedHealth}"
-      } },
-    { "StepName": "Stop",  "CommandName": "UAIP.Runtime.PIE.StopPIE", "AbortOnFailure": false }
+      }, "AbortOnFailure": false },
+    { "StepName": "Stop",  "CommandName": "UAIP.Runtime.PIE.StopPIE" }
   ]
 }
 ```
 
 2 つの CheckpointCapture の Artifact を見比べれば、AI が「2 時点での位置・ライティング・状態の差分」を文章で説明できます。
+
+`Stop` より前のステップをすべて `AbortOnFailure: false` にしている理由はレシピ 1 と同じで、これを省くと最初の失敗でシナリオが終了し `Stop` が実行されません。アサーションの成否は `Check` ステップの `StepResults[].Success` で確認できます。
 
 **必要な Capability**：`PIEControl`・`RuntimeCapture`・`RuntimeInspect`（いずれも DefaultAllow）。
 
@@ -252,7 +257,7 @@ if (-not $r.Success) { exit 1 }
 ## 押さえておくと便利なパターン
 
 - **シナリオテンプレート**（`${StepName.Data.x}` や `${Variables.y}`）を使うと、後段のステップが前段ステップの出力を引き継げます。詳細は [シナリオ実行 → テンプレート](scenario.md#4-テンプレートで前ステップの結果を後ステップに差し込む) を参照してください。
-- **`AbortOnFailure: true` がデフォルト**のため、最初に失敗したステップでシナリオは中断します。クリーンアップ系のステップは `false` で上書きして、途中で何かが失敗しても確実に実行されるようにしましょう。
+- **`AbortOnFailure: true` がデフォルト**のため、最初に失敗したステップでシナリオは中断します。このフラグは **失敗したステップ自身** に対して評価されるため、末尾のクリーンアップ用ステップにだけ `false` を付けても意味がありません（そのステップもスキップされます）。クリーンアップ用ステップに到達させたい場合は、その前にある全ステップを `false` にするか、シナリオ完了後に別途コマンドを呼んで後始末してください。詳細は [シナリオ実行 → 失敗時の挙動とクリーンアップ](scenario.md#失敗時の挙動とクリーンアップ) を参照してください。
 - **キャプチャコマンドはファイルパスではなく Artifact ID を返します**。PNG や JSON を確認するには、レスポンスに含まれる `FilePath` を `Read` で開いてください。詳細は [Artifacts](artifacts.md) を参照してください。
 - **セッションで作業を分離する**：`SessionId="my-test"` を渡しておけば、Artifact がタスク単位でグループ化されます（保存先は `Saved/UAIP/<session>/`）。
 - **ユーザーに聞く前に自己検証する**：「これうまくいったかな」と思ったら、まず Capture や Dump 系コマンドを呼んで自分で確認しましょう。

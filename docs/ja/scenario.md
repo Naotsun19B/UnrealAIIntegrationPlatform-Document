@@ -55,9 +55,9 @@ sequenceDiagram
         Hd-->>Di: StepResult
         Di-->>Sc: StepResult
         alt StepResult.Success == false
-            alt AbortOnFailure == true
-                Note over Sc: 残り Step をスキップ
-            else AbortOnFailure == false
+            alt 失敗した Step の AbortOnFailure == true
+                Note over Sc: 残り Step をすべてスキップ
+            else 失敗した Step の AbortOnFailure == false
                 Note over Sc: 継続
             end
         end
@@ -82,7 +82,7 @@ uaip_run_scenario(
       "StepName":        "Load",        # [A-Za-z0-9_]{1,64}、Steps 内で一意
       "CommandName":     "UAIP.Runtime.PIE.LoadMap",
       "Params":          { "MapPath": "/Game/Maps/TestMap" },
-      "AbortOnFailure":  true,          # デフォルト: true
+      "AbortOnFailure":  true,          # デフォルト: true（「失敗時の挙動とクリーンアップ」を参照）
       "RetryCount":      0,             # デフォルト: 0
       "TimeoutSeconds":  60             # デフォルト: 60
     },
@@ -221,12 +221,41 @@ flowchart LR
                   "PropertyName": "Health",
                   "ExpectedValue": "${Variables.ExpectedHp}" } },
     { "StepName": "Stop",   "CommandName": "UAIP.Runtime.PIE.StopPIE",
-      "Params": {}, "AbortOnFailure": false }
+      "Params": {} }
   ]
 }
 ```
 
-`Stop` ステップに `AbortOnFailure: false` を設定することで、前のステップが失敗しても必ず PIE を終了させることができます。
+この記述のままでは、`Load` 〜 `Assert` のいずれかが失敗した時点でシナリオが終了し、`Stop` はディスパッチされません（PIE は起動したまま残ります）。理由と対処は次のセクションを参照してください。
+
+---
+
+## 失敗時の挙動とクリーンアップ
+
+`AbortOnFailure` は **失敗したステップ自身** に対して評価されます。後続のステップに設定した値は参照されません。
+
+- 失敗したステップ自身の `AbortOnFailure` が `true`（デフォルト）→ その時点でシナリオが終了します。後続のステップは一切ディスパッチされず、`StepResults` にも現れません。
+- 失敗したステップ自身の `AbortOnFailure` が `false` → 次のステップへ進みます。失敗自体は `StepResults` に記録されます。
+
+つまり `AbortOnFailure: false` は「**このステップ** の失敗を致命的として扱わない」という意味であり、「前のステップが失敗してもこのステップを実行する」という意味ではありません。末尾のクリーンアップ用ステップ（`StopPIE`・一時アセット削除・タブクローズなど）にだけ `false` を付けても、そのステップは他の後続ステップと一緒にスキップされます。
+
+テンプレート解決に失敗した場合（`InvalidParams`）も同じルールで、失敗したステップ自身のフラグが参照されます。
+
+### クリーンアップを実際に実行させる方法
+
+| 方法 | 具体的な対応 | トレードオフ |
+|---|---|---|
+| fail-fast を諦める | クリーンアップ用ステップより **前にある全ステップ** に `AbortOnFailure: false` を設定する（クリーンアップ用ステップだけではない） | シナリオが途中で止まらなくなるため、失敗後のステップも前提が壊れた状態で実行され、多くの場合そのまま失敗します。最初の失敗箇所は `StepResults` から特定してください |
+| シナリオの外でクリーンアップする | fail-fast は維持し、シナリオの応答が返ってから `uaip_execute`（またはクリーンアップ専用のシナリオ）で後始末する | 往復が増えますが、クライアント側が後始末を主導するため、下記のケースもカバーできます |
+| 後始末が不要な構成にする | トレースを残す操作より前に、失敗しやすいステップを配置する | 常に実現できるとは限りません |
+
+### シナリオ内のどのパターンでもカバーできないケース
+
+- **送信時の拒否**（opt-in 未設定・ペイロード不正・`TooManyRequests`）— ステップが 1 つも実行されません。
+- **シナリオ全体のウォッチドッグ** — 制限時間を超過すると、ルートは **`StepResults` を含まない** 結果を即座に返しますが、ランナー自体はバックグラウンドで動き続けます。応答からはクリーンアップが実行されたかどうかを判断できず、ランナーが終わるまで次の送信も拒否されます。
+- **シナリオ実行中のエディタのクラッシュ・ハング** — 以降は何も実行されません。
+
+いずれの方法を採る場合も、シナリオの応答が返った後に状態ダンプを取り、トレースが実際に消えている（PIE が停止している・一時アセットが削除されている）ことを確認してください。`StepResults` からの推測に頼らないでください。
 
 ---
 
@@ -235,7 +264,8 @@ flowchart LR
 | 症状 | 原因 | 対処 |
 |---|---|---|
 | `PolicyViolation: Scenario execution is not enabled` | `enable_scenario` が未設定 | `config.json` に `"enable_scenario": true` を追加 |
-| `StepResults` に Step 2 以降が含まれない | Step 1 がデフォルトの `AbortOnFailure: true` で失敗 | 続行したいステップに `"AbortOnFailure": false` を設定 |
+| `StepResults` に Step 2 以降が含まれない | Step 1 がデフォルトの `AbortOnFailure: true` で失敗 | 続行したいステップではなく、**失敗するステップ側** に `"AbortOnFailure": false` を設定する |
+| `AbortOnFailure: false` を付けたクリーンアップ用ステップが実行されない | 前のステップがデフォルトの `AbortOnFailure: true` で失敗し、到達前にシナリオが終了した | [失敗時の挙動とクリーンアップ](#失敗時の挙動とクリーンアップ) を参照。前にある全ステップを `false` にするか、シナリオの外で後始末する |
 | テンプレートが `"${...}"` のまま展開されない | シングルパス解決の仕様 — `Variables` は再展開されない | 値を `Variables` で直接渡すか、2 つのステップに分割する |
 | `InvalidParams` とテンプレート関連のメッセージでステップが失敗する | `${...}` 参照の記法誤り（記法の取り違え・不正なエスケープ・ポインタ不一致・サイズ超過・混在文字列へのオブジェクト/配列埋め込み） | 上記の [JSON Pointer の記法](#json-pointer-の記法) を再確認する。`RetryCount` によるリトライ対象外 |
 | `TooManyRequests` | 別のシナリオが実行中 | 完了するまで待つ |

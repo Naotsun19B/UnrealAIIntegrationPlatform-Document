@@ -352,7 +352,7 @@ Scenarios run an ordered list of commands as one request. See [Scenario Executio
 | `StepName` | string | — | `[A-Za-z0-9_]{1,64}`, unique per scenario |
 | `CommandName` | string | — | Same as `uaip_execute` |
 | `Params` | object | `{}` | After template resolution |
-| `AbortOnFailure` | bool | `true` | If false, scenario continues even if this step fails |
+| `AbortOnFailure` | bool | `true` | Evaluated on **this** step when it fails: `true` skips every later step, `false` lets the scenario continue. It does not control whether this step is reached after an *earlier* step failed — see [Scenario Execution](scenario.md#failure-handling-and-cleanup) |
 | `RetryCount` | int | `0` | Retry on `ExecutionFailed` only — never on `CapabilityNotAvailable` / `PolicyViolation` |
 | `TimeoutSeconds` | int | `60` | Per-step wall-clock cap |
 
