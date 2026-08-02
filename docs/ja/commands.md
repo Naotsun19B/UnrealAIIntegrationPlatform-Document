@@ -618,7 +618,7 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 
 | コマンド | 説明 |
 |---|---|
-| `ListGameFeatures` 🧩 | GameFeature Plugin 一覧（filter_state：All / Installed / Mounted / Registered / Loaded / Active） |
+| `ListGameFeatures` 🧩 | GameFeature Plugin 一覧（`FilterState`：All / Installed / Mounted / Registered / Loaded / Active） |
 | `GetGameFeatureInfo` 🧩 | GFP 詳細（State・Actions・依存関係） |
 | `GetGameFeatureActions` 🧩 | GameFeature Plugin の `UGameFeatureData` が宣言する Action 一覧 |
 | `CreateGameFeaturePlugin` 🧩 | 新規 GameFeature Plugin のスキャフォールド（名前バリデーション付き） |

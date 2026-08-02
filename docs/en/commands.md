@@ -618,7 +618,7 @@ GameFeature Plugin management. Requires `GameFeatures` + `GameFeaturesEditor` pl
 
 | Command | Description |
 |---|---|
-| `ListGameFeatures` 🧩 | List GameFeature Plugins with state filter (All / Installed / Mounted / Registered / Loaded / Active) |
+| `ListGameFeatures` 🧩 | List GameFeature Plugins with a `FilterState` filter (All / Installed / Mounted / Registered / Loaded / Active) |
 | `GetGameFeatureInfo` 🧩 | GFP details (State, Actions, dependencies) |
 | `GetGameFeatureActions` 🧩 | List the actions declared by a GameFeature Plugin's `UGameFeatureData` |
 | `CreateGameFeaturePlugin` 🧩 | Scaffold a new GameFeature Plugin (with name validation) |
