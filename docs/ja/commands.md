@@ -2247,7 +2247,7 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 | コマンド | 説明 |
 |---|---|
 | `StartTrace` | 指定したチャネル / チャネルプリセットを有効にして UAIP 専用のトレースディレクトリへ採取を開始し、書き込み先のファイル名を返します。`Channels` は必須、`Label`・`MaxDurationSeconds`（既定 300、範囲 1〜3600）・`MaxFileSizeMB`（既定 512、範囲 1〜4096）は省略可。UAIP が既に開始しているトレースは再起動されず、追加分のチャネルを有効化して `AlreadyRunning` / `LimitsIgnored` を報告するだけです。**実効チャネル集合**（既に有効 ∪ 要求）がログテキストを記録し `AllowLogDump` が false の場合は `PolicyViolation` で拒否します（要求を通すためにチャネルを無効化することはありません）。同じ集合に、ポリシーが生ファイルの引き渡しを認めない内容が含まれる場合は、`Warnings` に該当チャネル名と設定名を含む `AttachDisabledByPolicy` を返します（持ち出す前提の採取を無駄に始めずに済みます）。両上限は 1 秒ごとの確認のため、サイズ上限は厳密な天井ではありません |
-| `StopTrace` | UAIP が開始したトレースを停止し、`AttachTraceFile` が true なら採取した `.utrace` を artifact として引き渡します。停止は常に成功します（何も採取していなければ成功の no-op、ファイルを引き渡せない場合も `AttachSkippedReason` を付けてスキップし停止自体は成功）。UAIP が開始していないトレースは停止せず `NotAllowed` を返します。⚠️ ファイルの添付は、チャネル構成に関わらず**プロセスのコマンドラインを必ず開示します**。採取中にチャネル集合が変更されたトレース、未分類チャネルを含む集合、64 MB を超えるファイルは添付を拒否します。ログテキストを含む集合には `AllowLogDump`、ホスト側パス / 画面内容 / ネットワークアドレスを含む集合には `AllowDisclosingTraceAttachment` が必要です（エディタではエンジンが log / screenshot チャネルを自分で有効化するため、通常は両方必要になります） |
+| `StopTrace` | UAIP が開始したトレースを停止し、`AttachTraceFile` が true なら採取した `.utrace` を artifact として引き渡します。停止は常に成功します（何も採取していなければ成功の no-op、停止直後に再度停止した場合も同じ no-op — エンジンはトレースの後始末が終わるまで接続を稼働中として報告し続けますが、呼び出し元から見れば既に終わっています。ファイルを引き渡せない場合も `AttachSkippedReason` を付けてスキップし停止自体は成功）。UAIP が開始していないトレースは停止せず `NotAllowed` を返します。⚠️ ファイルの添付は、チャネル構成に関わらず**プロセスのコマンドラインを必ず開示します**。採取中にチャネル集合が変更されたトレース、未分類チャネルを含む集合、64 MB を超えるファイルは添付を拒否します。ログテキストを含む集合には `AllowLogDump`、ホスト側パス / 画面内容 / ネットワークアドレスを含む集合には `AllowDisclosingTraceAttachment` が必要です（エディタではエンジンが log / screenshot チャネルを自分で有効化するため、通常は両方必要になります）。停止しただけでは採取ファイルは閉じられません — エンジンのトレースライタが少し遅れて別スレッドで閉じます — そのためファイルを要求した場合は最大 3 秒まで解放を待ち、それでも書き込み中なら `AttachSkippedReason: "TraceFileStillOpen"` を返します（少し待ってから再度要求する価値があります）。ファイルを要求しなかった場合は待機しません |
 | `PauseTrace` | 本モジュールが開始したトレースの採取を、停止せずに一時停止します。冪等（既に一時停止中なら `WasPaused: false`）、UAIP が開始したトレースが稼働していなければ成功の no-op、UAIP が開始していないトレースには `NotAllowed`。一時停止中もチャネル監視は動き続け、時間上限は実際に採取していた秒数のみを消費します |
 | `ResumeTrace` | `PauseTrace` で一時停止した採取を再開します。冪等（一時停止中でなければ `WasResumed: false`）、UAIP が開始していないトレースには `NotAllowed`。名前が `Channel` で終わらないチャネルが再開時に復帰しないというエンジン側の既知不具合があるため、復帰しなかったチャネルは `Warnings` に `ChannelNotRestoredAfterResume` として報告されます（`SetTraceChannels` で再有効化できます） |
 | `SetTraceChannels` | 本モジュールが開始したトレースの採取を続けたままチャネルを有効化 / 無効化します。`EnableChannels` / `DisableChannels` の少なくとも一方が非空である必要があります。チャネル状態はトレースより長く残るため、トレース非稼働時および UAIP が開始していないトレースに対しては `NotAllowed`。判定は「適用後に有効となる集合」に対して行うため、開示するチャネルを**無効化する**要求がそれ自体で拒否されることはありません。⚠️ 本コマンドを使うとトレースのチャネル集合が外部変更済みとしてマークされ、`StopTrace` はファイルの添付を拒否するようになります |
@@ -2263,7 +2263,7 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 
 3 コマンドすべてが `RuntimeInsightsAnalyze`（DefaultDenied）を必要とします（ステータス取得も同様。トレースを解析できない呼び出し元にとって解析の進捗は用途がないため）。
 
-解析は非同期です。`AnalyzeTrace` で `AnalysisId` を取得し、`GetTraceAnalysisStatus` を `State` が `Completed` になるまでポーリングしてから `GetTraceAnalysisResult` を読みます。同時に実行できる解析は 1 件のみで、実行中に届いた要求は `TooManyRequests` で拒否され、実行中の解析をキャンセルする手段はありません。
+解析は非同期です。`AnalyzeTrace` で `AnalysisId` を取得し、`GetTraceAnalysisStatus` を `State` が `Completed` になるまでポーリングしてから `GetTraceAnalysisResult` を読みます。同時に実行できる解析は 1 件のみで、パース中 / 抽出中に届いた要求は `TooManyRequests` で拒否されます。このときエラーメッセージには枠を占有している解析の `AnalysisId` が含まれるため、当てずっぽうに再試行するのではなく `GetTraceAnalysisStatus` でその解析を監視できます。実行中の解析をキャンセルする手段はありません。完了した解析は枠を占有しません（保持時間の間は読み取り可能なまま残りますが、次の解析の開始を妨げません）。
 
 | コマンド | 説明 |
 |---|---|
@@ -2272,6 +2272,12 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 | `GetTraceAnalysisResult` | 完了した解析が生成した artifact をセクションごとに返します（セクションごとの `TotalCount` / `ReturnedCount`、いずれかが上限に達した場合の `Truncated` を含む）。読めるのは `State` が `Completed` の解析のみです。本コマンドは参照を返すだけで何も読まないため、必要なセクションだけを取得できます。元の `AnalyzeTrace` が要求しなかったセクションは、ここで解析し直すのではなく拒否されます。結果を読むたびに保持時間が延長されます（1 回の読み取りにつき 15 分、絶対上限 1 時間） |
 
 `Sections` が受け付けるセクション名: `Frames`・`Counters`・`Timers`・`Threads`・`StackSamples`・`LoadTime`・`Memory`・`Allocations`・`Tasks`・`FileActivity`・`NetProfiler`・`CsvProfiler`・`ContextSwitches`・`CookProfiler`・`Bookmarks`・`Regions`・`Diagnostics`・`Channels`・`Log`・`Screenshots`、および `Objects`（UE 5.8 以降のみ。UE 5.7 には対応する Provider が存在しません）。
+
+結果を読む前に知っておくとよいセクション個別の挙動が 3 点あります。
+
+- **`Frames`** は開始と終了の両方が揃ったフレームだけを数えます。採取はフレームの途中で止まるため、各フレーム種別の最後のフレームはほぼ常に開いたままで報告できる長さを持ちません。そうしたフレームは統計からも `TotalCount` からも同様に除外されます。したがって `TotalCount` と `ReturnedCount` が食い違うのは時間範囲を指定したときだけで、本セクションが切り詰めを行うことはありません。
+- **`Screenshots`** はメタデータのみを報告します（各スクリーンショットの識別子・名前・時刻・幅・高さと `ImageDataIncluded: false`）。エンコード済みの画像バイト列は返しません。画像が後から届くことはないため、メタデータ以外に待つものはありません。
+- **`Diagnostics`** は UE 5.7 では `EngineVersion` キー自体を出力しません。UE 5.7 のトレース形式はエンジンバージョンを一切運んでいないため、空文字列（本当に記録がなかった採取と区別できない）ではなくキーの省略で表現しています。
 
 ---
 
