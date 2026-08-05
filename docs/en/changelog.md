@@ -86,6 +86,25 @@ Changes that have shipped in the plugin repository but are not yet released on F
 
 - **Corrected guidance: a scenario cannot guarantee that a cleanup step runs** (documentation and the MCP Bridge guides shipped with the plugin; no behavioural change). `AbortOnFailure` has always been evaluated on the step that **failed**, never on the steps after it — but the guides described the opposite, telling callers that marking a trailing cleanup step `AbortOnFailure: false` would make it run across an earlier failure. It does not: when an earlier step fails with the default `true`, the scenario finalizes there, and the cleanup step is never dispatched and never appears in `StepResults`. ⚠️ **Scenarios written against the earlier guidance have not been running their cleanup step** — a trailing `StopPIE`, `StopTrace`, close-tab or delete-temp-asset step was silently skipped whenever an earlier step failed. The guides now describe what actually works (mark **every** step before the cleanup block `false`, or clean up from the client's own loop after the scenario returns) and name the cases no in-scenario pattern can cover at all: a submit-time rejection, the whole-scenario watchdog (which responds with an empty `StepResults` while the runner keeps going in the background), and an editor crash. See [Scenario Execution → Failure handling and cleanup](scenario.md#failure-handling-and-cleanup).
 
+
+#### MCP Bridge
+
+Unreleased since MCP Bridge 1.1.2. The bridge is versioned and released independently of the plugin; see the version numbering above.
+
+**Fixed**
+
+- **A shutdown the editor refused was reported as a success.** `ShutdownEditor` returned `{"Success": true}` without ever reading what the editor answered, so a refusal — a read-only safety policy declining the command, for instance — looked like a clean shutdown while the process kept running and kept holding its file locks. The bridge now forwards the editor's own error, and confirms the port has actually been released before saying the editor stopped; when it cannot tell, it says so rather than guessing.
+- **A restart left the bridge unable to talk to the editor at all.** `RestartEditor` is the editor relaunching itself, so the successor is not a process the bridge started. The bridge went on holding the dead handle and refused every later command with "the port is occupied by a process that is not this project's editor" — permanently, because that refusal cleared no state. Recovering meant closing the editor by hand. The bridge now adopts the editor answering on the port, after checking it reports the same project.
+- **A response cut short no longer restarts a healthy editor.** A connection that dropped mid-response and one that never opened were classified the same way, so the bridge could restart an editor that was working and resend a request it had already begun. The two are now told apart, and a dropped response only counts as a dead editor when the port has genuinely gone.
+- **A long command no longer looks like a dead editor.** The bridge pings every 15 seconds and declared the editor stopped after 30 seconds of silence, but a command that holds the game thread for longer than that — `BuildMetaHuman` takes about 75 seconds — starved those pings. The bridge would then either launch a second editor against the same project or terminate the healthy one that was still working.
+- **A scenario template with a leading slash no longer misses.** The pointer tokenizer rewrote every `.` to `/`, so a body written as `${S.Data./refPath}` became `//refPath` and matched nothing. A body opening with `/` is now read as a literal JSON pointer — the only way to reach a key that itself contains `.` — while any other body keeps `.` and `/` as interchangeable separators. A failed resolution also names which part failed instead of returning one fixed sentence for every cause.
+
+**Changed**
+
+- **Artifacts that will not be inlined are no longer downloaded.** The bridge fetched an artifact's bytes and then decided whether its MIME type was on the inline allowlist. It now reads the length and content type first and fetches the body only when it is going to be used, which matters most for the binary artifacts the allowlist excludes by design — a `.utrace` capture can be hundreds of megabytes.
+
+---
+
 ### UAIP Plugin 1.1.0 — 2026-07-24
 
 **UAIP 1.1.0 is now live on Fab.** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
