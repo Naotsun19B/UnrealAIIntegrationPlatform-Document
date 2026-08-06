@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 948 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1368 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 951 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1371 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -42,7 +42,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ |
 | Editor Execution | `UAIP.Editor.Execution` | 9 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 46 | 6 | 一部（25/46） |
+| Editor Assets | `UAIP.Editor.Assets` | 49 | 6 | 一部（28/49） |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | 一部（7/16） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
@@ -365,11 +365,14 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `GetAssetReferences` | 指定アセットを起点に参照グラフ（参照元・参照先・両方）を指定深さまで探索する |
 | 🆓 `GetAssetSizeMap` | フォルダ配下のディスクサイズ（任意で常駐メモリサイズ）をアセット単位で集計し降順ソートする |
 | 🆓 `GetAssetSizeMapByClass` | フォルダ配下のディスクサイズをアセットクラス単位で集計し降順ソートする |
-| 🆓 `FindUnreferencedAssets` | フォルダ配下でユーザー参照（Engine/Script以外）が存在しないアセットを検出する（ハードリファレンスヒューリスティック） |
-| 🆓 `FindCircularReferences` | フォルダ配下のアセット間の循環依存チェーンを検出する |
-| 🆓 `FindBrokenReferences` | アセットレジストリに存在しないパッケージへの依存を検出する |
+| 🆓 `FindUnreferencedAssets` | ⚠️ **非推奨** — 代わりに `StartAssetAudit` を使用。フォルダ配下でユーザー参照（Engine/Script以外）が存在しないアセットを検出する（ハードリファレンスヒューリスティック）。動作・進捗発火とも変更なし |
+| 🆓 `FindCircularReferences` | ⚠️ **非推奨** — 代わりに `StartAssetAudit` を使用。フォルダ配下のアセット間の循環依存チェーンを検出する。動作・進捗発火とも変更なし |
+| 🆓 `FindBrokenReferences` | ⚠️ **非推奨** — 代わりに `StartAssetAudit` を使用。アセットレジストリに存在しないパッケージへの依存を検出する。動作・進捗発火とも変更なし |
 | 🆓 `GetAssetDependencyPath` | 2つのアセット間の最短依存/参照パスを検索する |
-| 🆓 `RunAssetAudit` | フォルダ配下の複合監査（未参照アセット・循環参照・壊れた参照・最大サイズアセット）を実行する |
+| 🆓 `RunAssetAudit` | ⚠️ **非推奨** — 代わりに `StartAssetAudit` を使用。フォルダ配下の複合監査（未参照アセット・循環参照・壊れた参照・最大サイズアセット）を実行する。動作・進捗発火とも変更なし。同期実行でゲームスレッドを完了まで占有するため、大規模プロジェクトでは数十秒〜数分エディタ（および他の UAIP コマンド）が固まることがある |
+| 🆓 `StartAssetAudit` | 監査ジョブを開始し、`AuditId` を即座に返す。実際の走査はゲームスレッドを占有せず、エディタのフレームの合間で少しずつ進むため、エディタも他の UAIP コマンドも応答し続ける。パラメータ：`PackagePath`（必須）、`Recursive`（既定 `true`）、`Reports`（`UnreferencedAssets` / `CircularReferences` / `BrokenReferences` / `TopLargestAssets` の配列。既定は全 4 種 — 空配列を明示指定した場合は `InvalidParams`）、`MaxUnreferenced`（既定 `200`、範囲 `[1, 2000]`）、`MaxCycles` / `MaxBroken` / `MaxTopLargest`（`RunAssetAudit` と同じ既定値）。別の監査ジョブが実行中の場合は `TooManyRequests`、エディタがモーダルダイアログやスロータスクのプログレスバーを表示中の場合は `NotAllowed` を返す。**`SessionId` の明示指定が必須** — トランスポートが自動生成した匿名セッションは `InvalidParams` で拒否される（匿名で開始したジョブは後から照会・取得できなくなるため） |
+| 🆓 `GetAssetAuditStatus` | `AuditId` で監査ジョブの状態を照会する — `State`（`Preparing` / `Running` / `Completed` / `Failed`）、現在処理中のレポート種別、処理済み/総件数、経過秒数、失敗時の理由を返す。実行コストはジョブ規模に依存しない（O(1)）。**開始時と同じ `SessionId` が必須** — 未知・期限切れ・他セッションの `AuditId` はいずれも区別されず `NotFound` になる |
+| 🆓 `GetAssetAuditResult` | 完了した監査ジョブの成果物参照を `AuditId` で取得する。取得したいレポートを `Reports` で絞り込むこともできる（省略時は開始時に要求した全レポート。開始時に要求していないレポートを指定した場合はエラーにはならず「要求されていない」扱いで未取得側に分類される）。O(1)。状態が `Completed` に達していない場合は現在の `State` とともに `ExecutionFailed` を返す。**開始時と同じ `SessionId` が必須** |
 | 🆓 `ListPrimaryAssetTypes` | 登録済みの全 `PrimaryAssetType`（`UAssetManager`）をクラス・ディレクトリ・アセット数サマリー付きで一覧取得する |
 | 🆓 `GetPrimaryAssetTypeInfo` | 単一の `PrimaryAssetType` の詳細（ディレクトリ・個別アセット・既定Rule）を取得する |
 | 🆓 `ListPrimaryAssets` | 指定 `PrimaryAssetType` に属する `PrimaryAssetId` とアセット一覧を取得する |
@@ -385,6 +388,8 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | `SetPrimaryAssetRules`（要 `PrimaryAssetRulesOverride`） | 指定 `PrimaryAssetId` の Rule をメモリ内のみ一時的に上書きする（非永続） |
 | `LoadPrimaryAsset`（要 `PrimaryAssetLoad`） | `PrimaryAsset` を明示的にメモリへロードする（ノンブロッキング、PIE中も許可） |
 | `UnloadPrimaryAsset`（要 `PrimaryAssetUnload`） | `PrimaryAsset` を明示的にメモリからアンロードする（PIE中は拒否） |
+
+> **Note**: `StartAssetAudit` は**ジョブ型コマンド**の一例で、呼び出しをブロックせずに即座に応答を返し、実際の処理はエディタのフレームをまたいで進む。`uaip_execute` の呼び出しに MCP の `_meta.progressToken` を添えると、応答待ちの間ブリッジがおよそ 5 秒おきに `notifications/progress` を送出する。内容は経過秒数とエディタ自身の状態（`STARTING` / `RUNNING` / `UNRESPONSIVE`）のみで、**ジョブ内部の進捗は含まれない**（それを知りたい場合は `GetAssetAuditStatus` をポーリングする）。この仕組みは `uaip_execute` にのみ適用され（`uaip_run_scenario` は対象外）、クライアントが進捗トークンを送った場合にのみ働く。また、届いた通知を実際に表示するかどうかは MCP クライアント側の実装による。監査ジョブが 1 フレームあたり走査に使う時間の上限は `Config/DefaultUAIP.ini` の `[UAIP.Jobs] AuditStepBudgetMs` で変更できる（既定 `10.0`、`[1.0, 100.0]` の範囲にクランプされる。範囲外を指定してもエラーにはならず自動的に範囲内へ収められる）。
 
 ### Toolset ブリッジ — Assets（6 件）🧩
 
