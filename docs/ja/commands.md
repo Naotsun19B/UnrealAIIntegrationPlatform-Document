@@ -102,7 +102,7 @@ UAIP では 2 種類のコマンドを公開しています：
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` に加え、`ProjectFilePath`（開いている `.uproject` の絶対パス。MCP Bridge が正しいエディタインスタンスへアタッチしているか検証するために使う）・`TransportTimeouts`（トランスポートごとの非同期コマンドタイムアウト秒数。例 `{"HTTP": 120, "WS": 12}`）を返す |
+| 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` に加え、`ProjectFilePath`（開いている `.uproject` の絶対パス。MCP Bridge が正しいエディタインスタンスへアタッチしているか検証するために使う）・`TransportTimeouts`（トランスポートごとの非同期コマンドタイムアウト秒数。例 `{"HTTP": 120, "WS": 12}`）・`QueueCongestion`（遅延実行キューの混雑度。`None` / `Low` / `High` の 3 段階。正確な待ち件数は他セッションの活動量を推測させるため返しません）を返す |
 | 🆓 `GetSystemInfo` | UE バージョン（Major/Minor/Patch/Changelist）・プロジェクト名・プラットフォーム・ビルド設定・UAIP バージョンを返す |
 | 🆓 `QueryCapabilities` | セッションの Capability セットと `OperationalConstraints`（7 つのポリシーフラグ）を返す |
 | 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`GroupFilter`・`KeywordFilter`・`IncludeUnavailable`） |

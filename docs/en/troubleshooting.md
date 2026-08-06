@@ -84,6 +84,16 @@ Most likely:
 
 Confirm with `uaip_describe_command(CommandName="...")` — `Available: false` tells you which prerequisite is missing.
 
+### "No response at all while the editor is showing a dialog"
+
+Commands run inside the editor's ticker callback, and a modal dialog stops the game thread with that ticker on it. **Nothing is answered for as long as the dialog is up.** The dialog is sometimes behind another window, so from the AI's side this looks like a frozen editor.
+
+Look at the editor and close the dialog; responses resume.
+
+There is a feature that softens this (`[UAIP.CommandPump]`). With it enabled, commands that only read state — `HealthCheck` and the like — are answered while the dialog is up, and commands that change the editor wait their turn instead of failing, running once the dialog closes. **It is off by default**; see the [configuration reference](config.md).
+
+A progress bar (slow task) is different: nothing is answered there even with the feature on. Cutting into an operation that is halfway through would corrupt state, so that case is refused on purpose.
+
 ### "MCP appears stuck — should I kill the editor?"
 
 **No, don't `taskkill` the editor**, and don't assume it needs restarting just because a call didn't come back. That terminates every UE editor instance on the host (including other projects) and leaves `mcp_proxy.lock` behind. The right sequence:

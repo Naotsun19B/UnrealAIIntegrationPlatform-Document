@@ -102,7 +102,7 @@ System-level commands for discovery, health, and session management.
 
 | Command | Description |
 |---|---|
-| 🆓 `HealthCheck` | Plugin connectivity check — returns `Status`, `UAIPVersion`, `EngineVersion`, `BuildConfig`, `ProjectFilePath` (absolute path of the open `.uproject`, used by the MCP Bridge to verify it is attaching to the right editor instance), `TransportTimeouts` (per-transport async command timeout in seconds, e.g. `{"HTTP": 120, "WS": 12}`) |
+| 🆓 `HealthCheck` | Plugin connectivity check — returns `Status`, `UAIPVersion`, `EngineVersion`, `BuildConfig`, `ProjectFilePath` (absolute path of the open `.uproject`, used by the MCP Bridge to verify it is attaching to the right editor instance), `TransportTimeouts` (per-transport async command timeout in seconds, e.g. `{"HTTP": 120, "WS": 12}`), `QueueCongestion` (how busy the deferred-execution queue is, as one of `None` / `Low` / `High` — the exact number waiting is not returned, since it would let one session infer another session's activity) |
 | 🆓 `GetSystemInfo` | Returns UE version (Major/Minor/Patch/Changelist), project name, platform, build config, UAIP version |
 | 🆓 `QueryCapabilities` | Returns the session's capability set and `OperationalConstraints` (7 policy flags) |
 | 🆓 `ListCommands` | Filtered command catalog (filters: `GroupFilter`, `KeywordFilter`, `IncludeUnavailable`) |

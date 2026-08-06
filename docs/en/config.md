@@ -41,6 +41,33 @@ Displays a Slate toast notification each time a command runs. Intended for devel
 
 No CLI equivalents.
 
+### `[UAIP.CommandPump]` — Running commands while a modal dialog is up (off by default)
+
+While the editor shows a modal dialog, UAIP normally cannot answer at all. Commands run inside a ticker callback, and the dialog stops the game thread with that ticker on it. From the AI's side this is indistinguishable from a frozen editor.
+
+Turning this on moves execution away from the moment a command is accepted, to the end of the frame. Commands that only **read** state can then be answered while the dialog is up. Commands that change the editor are not failed; they wait their turn and run once the dialog closes.
+
+> **Off by default.** Enabling it changes when every command runs, so treat it as something to adopt deliberately. It disables itself for commandlet runs, where the end-of-frame delegate may never fire.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `StarvedTickAllowList` | string | `UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities` | Comma-separated fully-qualified names of the commands that may run while a modal dialog is up. Anything not listed is **not rejected — it stays queued** until the dialog closes |
+
+The default list is deliberately two commands: a modal dialog means the editor is halfway through someone else's operation. `ListCommands` and `DescribeCommand` are read-only, but they ask every registered handler for its availability and schema, which would run code from every domain module in exactly that situation. They are left out for that reason.
+
+Matching CLI flag: `-uaip-command-pump-starved-tick-allow-list=...`
+
+#### Console variables
+
+| CVar | Default | Changeable at runtime | Description |
+|---|---|---|---|
+| `uaip.Command.PumpedExecution` | `0` | Yes | Master switch; `1` enables it |
+| `uaip.Command.MaxQueuedCommands` | `32` | Yes | How many commands may be waiting at once. Anything over is answered with `TooManyRequests` — it never ran, so resending is safe. The per-session limit is derived from this value |
+| `uaip.Command.MaxCommandsPerDrain` | `8` | Yes | Most commands to run in a single frame |
+| `uaip.Command.StarvedTickAllowList` | as above | **No** | Read-only; set it from an ini file or the command line |
+
+`StarvedTickAllowList` is read-only because the console is reachable through the very interface this list exists to constrain. A boundary that can be widened from inside is not a boundary.
+
 ### `[UAIP.Session]` — Session persistence
 
 Controls whether session metadata (id, command log, capability set) is persisted to disk so sessions survive editor restarts.
