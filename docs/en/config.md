@@ -57,6 +57,8 @@ The default list is deliberately two commands: a modal dialog means the editor i
 
 Matching CLI flag: `-uaip-command-pump-starved-tick-allow-list=...`
 
+The effective list is resolved at startup and written to the Output Log as a single line (`Starved tick allowlist: ...`). If an ini edit does not appear to take effect, or an entry was dropped for being malformed, **the startup log is where to look**. Note that reading the `uaip.Command.StarvedTickAllowList` console variable only ever returns the default — the ini and the command line layer on top of it rather than writing back to it.
+
 #### Console variables
 
 | CVar | Default | Changeable at runtime | Description |

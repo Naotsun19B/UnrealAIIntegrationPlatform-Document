@@ -57,6 +57,8 @@ CLI フラグ：なし。
 
 対応する CLI フラグ：`-uaip-command-pump-starved-tick-allow-list=...`
 
+実効値は起動時に解決され、Output Log に 1 行だけ記録されます（`Starved tick allowlist: ...`）。ini に書いたのに効いていない場合や、書式を誤って無視されたエントリがある場合は、**起動直後のログで確認できます**。CVar `uaip.Command.StarvedTickAllowList` を読んでも既定値しか返らない点に注意してください — ini とコマンドラインは CVar を書き換えず、その上に重ねます。
+
 #### コンソール変数
 
 | CVar | デフォルト | 実行中の変更 | 説明 |
