@@ -46,7 +46,7 @@ The open protocol used by AI clients (Claude Code, Codex CLI, Cursor, Windsurf, 
 The thin Python proxy (`Plugins/UAIPMCPBridge/thin_proxy.py`) that connects an AI client to the UE Editor. Translates MCP tool calls into UAIP HTTP requests internally, manages editor lifecycle (auto-launch, crash/hang recovery), and handles artifact inlining. Distributed separately from the plugin as `UAIP-MCPBridge-<version>.zip` (under `MCPBridge-v<X.Y.Z>` tags) in the documentation repository's [Releases](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/releases?q=MCPBridge).
 
 ### Operational Constraints
-A snapshot of the SafetyPolicy flags returned by `UAIP.Core.QueryCapabilities` — used by the AI to know in advance whether a given action will be permitted (e.g., `ReadOnly=True` means all writes will fail).
+A snapshot of the SafetyPolicy flags returned by `UAIP.Core.QueryCapabilities` — used by the AI to know in advance whether a given action will be permitted (e.g., `ReadOnly=True` means writes will fail, bar the editor lifecycle commands).
 
 ### PIE (Play in Editor)
 UE's mode for running the game inside the editor. UAIP exposes start / stop / pause / resume / map-load through `UAIP.Runtime.PIE.*` and runtime observation / assertion / input commands during PIE.

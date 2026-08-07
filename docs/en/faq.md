@@ -93,7 +93,9 @@ Full reference: [Safety & Capabilities](safety.md).
 
 ### Can I make the editor effectively read-only for the AI?
 
-Yes. Set `ReadOnly=True` in `[UAIP.SafetyPolicy]`. All mutating commands return `PolicyViolation` regardless of capability set. Useful for evaluation / sandbox environments.
+Yes. Set `ReadOnly=True` in `[UAIP.SafetyPolicy]`. Mutating commands return `PolicyViolation` regardless of capability set. Useful for evaluation / sandbox environments.
+
+The one exception is `ShutdownEditor` / `RestartEditor`, which stay callable under `ReadOnly=True`: they write no project data, and refusing them would leave no way to shut that editor down or restart it through UAIP. See [Safety & Capabilities](safety.md#readonly-and-the-editor-lifecycle-commands) for the detail and for how to block them anyway.
 
 ---
 

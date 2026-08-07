@@ -474,7 +474,7 @@ AllowDisclosingTraceAttachment=False
 
 | Key | Default | Effect |
 |---|---|---|
-| `ReadOnly` | `False` | Reject every mutating command |
+| `ReadOnly` | `False` | Reject mutating commands. The two editor lifecycle commands are the one exception — see below |
 | `DisableSave` | `False` | Reject disk-writing commands |
 | `AllowLogDump` | `False` | Allow `DumpOutputLog` / `DumpMessageLog` |
 | `AllowContextMenuMutation` | `False` | Allow `InvokeContextMenuAction` |
@@ -491,6 +491,20 @@ AllowDisclosingTraceAttachment=False
 | `DeniedCapabilities` | empty | Remove DefaultAllow capabilities from all sessions |
 | `DeniedCommands` | empty | Block commands by fully-qualified name |
 | `AllowCapabilityReload` | `False` | Enable `UAIP.Core.ReloadCapabilities` for hot-reload of capability settings |
+
+### ReadOnly and the editor lifecycle commands
+
+What `ReadOnly` protects is **project data** — assets, levels, config files. Two commands are exempt from it and stay callable while `ReadOnly=True`: `UAIP.Editor.Workspace.ShutdownEditor` and `UAIP.Editor.Workspace.RestartEditor`. `ListCommands` and `DescribeCommand` report them as `Available: true` in that mode, matching what a dispatch actually does.
+
+They are exempt because neither writes anything `ReadOnly` exists to protect; what they change is the lifetime of the editor process itself. Refusing them costs something that has nothing to do with safety: an editor launched with `ReadOnly=True` holds the policy in memory, so editing the ini back does not reach the running process, and with both lifecycle commands refused there is no supported way left to shut that editor down or restart it through UAIP at all.
+
+The exemption removes the `ReadOnly` gate and nothing else:
+
+- Both commands still require the `EditorLifecycle` capability, so `+DeniedCapabilities=EditorLifecycle` still takes them away from every session.
+- `+DeniedCommands=UAIP.Editor.Workspace.ShutdownEditor` still blocks either of them by name. That is the switch to reach for when you want them gone but want the rest of `ReadOnly` left as it is.
+- Their optional `SaveAll` is governed by `DisableSave`, not by `ReadOnly`, so `DisableSave=True` still stops them from writing packages to disk.
+
+Every other mutating command is rejected under `ReadOnly` exactly as before. A handler has to declare the exemption for itself, it defaults to off, and no command other than these two declares it.
 
 ---
 

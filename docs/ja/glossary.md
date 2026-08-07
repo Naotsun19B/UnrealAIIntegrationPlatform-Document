@@ -46,7 +46,7 @@ AI クライアント（Claude Code・Codex CLI・Cursor・Windsurf・Copilot �
 AI クライアントと UE Editor をつなぐ薄い Python プロキシ（`Plugins/UAIPMCPBridge/thin_proxy.py`）です。MCP のツール呼び出しを内部で UAIP の HTTP リクエストに変換し、エディタのライフサイクル（自動起動、クラッシュやハングからの復旧）も管理します。Artifact のインライン化処理もここで行います。プラグイン本体とは別配布で、ドキュメントリポジトリの [Releases](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/releases?q=MCPBridge)（`MCPBridge-v<X.Y.Z>` タグ）から `UAIP-MCPBridge-<version>.zip` として提供されます。
 
 ### Operational Constraints
-`UAIP.Core.QueryCapabilities` が返す SafetyPolicy フラグのスナップショットです。AI が事前に「この操作が許可されるか」を判断するために使います（例：`ReadOnly=True` ならすべての書き込みが失敗することが事前にわかる）。
+`UAIP.Core.QueryCapabilities` が返す SafetyPolicy フラグのスナップショットです。AI が事前に「この操作が許可されるか」を判断するために使います（例：`ReadOnly=True` ならエディタライフサイクルコマンドを除く書き込みが失敗することが事前にわかる）。
 
 ### PIE（Play in Editor）
 エディタ内でゲームを実行する UE のモードです。UAIP は `UAIP.Runtime.PIE.*` で start / stop / pause / resume / map-load を公開しており、PIE 実行中には Runtime の観測・アサート・入力コマンドも利用できます。

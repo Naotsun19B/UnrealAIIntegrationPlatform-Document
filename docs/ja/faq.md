@@ -93,7 +93,9 @@ UAIP v1.0 は **Windows（Win64）のみ対応** です。`.uplugin` の `Platfo
 
 ### AI に対して実質的に Read-Only として運用できますか？
 
-できます。`[UAIP.SafetyPolicy]` に `ReadOnly=True` を設定すれば、Capability セットに関係なくすべての変更系コマンドが `PolicyViolation` を返すようになります。評価環境やサンドボックスとして使う場合に有効です。
+できます。`[UAIP.SafetyPolicy]` に `ReadOnly=True` を設定すれば、Capability セットに関係なく変更系コマンドが `PolicyViolation` を返すようになります。評価環境やサンドボックスとして使う場合に有効です。
+
+例外は `ShutdownEditor` / `RestartEditor` の 2 コマンドだけで、これらは `ReadOnly=True` でも実行できます。プロジェクトのデータを書き換えないことと、拒否するとそのエディタを UAIP 経由で終了・再起動する手段が無くなることが理由です。詳細と、それでも塞ぎたい場合の手段は [Safety & Capabilities](safety.md#readonly-とエディタライフサイクルコマンド) を参照してください。
 
 ---
 

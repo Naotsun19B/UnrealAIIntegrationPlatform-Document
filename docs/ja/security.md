@@ -102,7 +102,7 @@ flowchart TB
 
 | フラグ | 効果 |
 |---|---|
-| `ReadOnly=True` | すべての変更コマンドを拒否（`IsReadOnly=false` ハンドラ） |
+| `ReadOnly=True` | 変更コマンドを拒否（`IsReadOnly=false` ハンドラ）。`ShutdownEditor` / `RestartEditor` のみ例外 — [Safety & Capabilities](safety.md#readonly-とエディタライフサイクルコマンド) を参照 |
 | `DisableSave=True` | すべてのディスク書き込みコマンドを拒否 |
 | `AllowLogDump=False` | `DumpOutputLog` / `DumpMessageLog` を拒否 |
 | `AllowContextMenuMutation=False` | `InvokeContextMenuAction` を拒否 |
@@ -143,7 +143,7 @@ AllowLogDump=True
 DisablePIEStart=False
 ```
 
-AI は観測やキャプチャはできますが、何も編集できない構成です。新しくチェックアウトしたブランチを LLM に PR レビューさせたいときに有用です。
+AI は観測やキャプチャはできますが、何も編集できない構成です。新しくチェックアウトしたブランチを LLM に PR レビューさせたいときに有用です。なおエディタの終了・再起動は依然として可能です。これも塞ぎたい場合は `UAIP.Editor.Workspace.ShutdownEditor` と `UAIP.Editor.Workspace.RestartEditor` を `+DeniedCommands` に追加してください。
 
 ### 「サンドボックスプレイテスト」 — AI 駆動テスト自動化（エディタ編集なし）
 

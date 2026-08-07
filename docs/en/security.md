@@ -102,7 +102,7 @@ Process-wide kill switches:
 
 | Flag | Effect |
 |---|---|
-| `ReadOnly=True` | Reject every mutating command (`IsReadOnly=false` handlers) |
+| `ReadOnly=True` | Reject mutating commands (`IsReadOnly=false` handlers), except `ShutdownEditor` / `RestartEditor` — see [Safety & Capabilities](safety.md#readonly-and-the-editor-lifecycle-commands) |
 | `DisableSave=True` | Reject every disk-writing command |
 | `AllowLogDump=False` | Reject `DumpOutputLog` / `DumpMessageLog` |
 | `AllowContextMenuMutation=False` | Reject `InvokeContextMenuAction` |
@@ -143,7 +143,7 @@ AllowLogDump=True
 DisablePIEStart=False
 ```
 
-The AI can observe and capture but cannot edit anything. Useful when you want an LLM to review a PR by exploring a freshly-checked-out branch.
+The AI can observe and capture but cannot edit anything. Useful when you want an LLM to review a PR by exploring a freshly-checked-out branch. It can still shut the editor down or restart it — add `+DeniedCommands` entries for `UAIP.Editor.Workspace.ShutdownEditor` and `UAIP.Editor.Workspace.RestartEditor` if you would rather it could not.
 
 ### "Sandbox playtest" — for AI-driven test automation, no editor edits
 

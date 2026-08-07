@@ -474,7 +474,7 @@ AllowDisclosingTraceAttachment=False
 
 | キー | デフォルト | 効果 |
 |---|---|---|
-| `ReadOnly` | `False` | すべての書き込みコマンドを拒否 |
+| `ReadOnly` | `False` | 書き込みコマンドを拒否。エディタライフサイクルの 2 コマンドのみ例外 — 下記参照 |
 | `DisableSave` | `False` | ディスク書き込みコマンドを拒否 |
 | `AllowLogDump` | `False` | `DumpOutputLog` / `DumpMessageLog` を許可 |
 | `AllowContextMenuMutation` | `False` | `InvokeContextMenuAction` を許可 |
@@ -491,6 +491,20 @@ AllowDisclosingTraceAttachment=False
 | `DeniedCapabilities` | 空 | DefaultAllow の Capability を全セッションから取り除く |
 | `DeniedCommands` | 空 | 完全修飾名で指定したコマンドをブロック |
 | `AllowCapabilityReload` | `False` | `UAIP.Core.ReloadCapabilities` を有効化（再起動不要で設定反映） |
+
+### ReadOnly とエディタライフサイクルコマンド
+
+`ReadOnly` が守る対象は**プロジェクトのデータ**（アセット・レベル・設定ファイル）です。この拒否には例外が 2 つあり、`UAIP.Editor.Workspace.ShutdownEditor` と `UAIP.Editor.Workspace.RestartEditor` は `ReadOnly=True` でも実行できます。`ListCommands` / `DescribeCommand` もこのモードで両コマンドを `Available: true` として報告します（実際に dispatch した結果と一致させるためです）。
+
+例外にしている理由は、この 2 コマンドが `ReadOnly` の守ろうとしているものを一切書き換えないからです。両コマンドが変更するのはエディタプロセス自身の生存期間だけです。そしてこれらを拒否することには、安全性とは無関係の代償があります。`ReadOnly=True` で起動したエディタはポリシーをメモリ上に保持するため、ini を戻しても走行中のプロセスには届きません。ライフサイクルコマンドまで拒否すると、そのエディタを UAIP 経由で終了・再起動する正規の手段が一つも残らなくなります。
+
+この例外が外すのは `ReadOnly` のゲートだけで、それ以外は何も変わりません。
+
+- 両コマンドは引き続き `EditorLifecycle` Capability を要求します。したがって `+DeniedCapabilities=EditorLifecycle` で全セッションから取り上げることは従来どおり可能です。
+- `+DeniedCommands=UAIP.Editor.Workspace.ShutdownEditor` のようにコマンド名で個別にブロックすることも従来どおり有効です。`ReadOnly` の他の挙動はそのままに、この 2 コマンドだけを止めたい場合はこちらを使ってください。
+- 省略可能な `SaveAll` を制御するのは `ReadOnly` ではなく `DisableSave` です。`DisableSave=True` であればパッケージのディスク書き込みは従来どおり止まります。
+
+それ以外の変更系コマンドは `ReadOnly` 下で従来どおり拒否されます。例外はハンドラ自身が明示的に宣言する仕組みで、既定は無効です。この 2 コマンド以外に宣言しているコマンドはありません。
 
 ---
 
