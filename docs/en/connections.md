@@ -199,6 +199,21 @@ When that happens:
 3. Call `uaip_get_editor_status` and follow `RecommendedAction`. While the command is still running, expect `State: "UNRESPONSIVE"` and `RecommendedAction` starting with `WAIT:`.
 4. Once the editor becomes responsive again, its artifacts (if the command produces any) may only appear at that point — check for them rather than assuming the `Timeout` response means nothing happened.
 
+### Progress notifications while a call is pending
+
+When the AI client attaches an MCP progress token (`_meta.progressToken`) to a `uaip_execute` call, the bridge sends a `notifications/progress` update roughly every 5 seconds until that call returns. Each update carries only what the bridge can see from outside the editor:
+
+- how many seconds the call has been outstanding, and
+- the editor's state, collapsed to `STARTING`, `RUNNING` or `UNRESPONSIVE` — the same three answers that matter while waiting on one call.
+
+Three things follow from that:
+
+- **Nothing from inside the editor is reported.** How far an audit has walked, which report it is on, how far a trace analysis has parsed — none of it reaches the notification. Ask the command that knows: `UAIP.Editor.Assets.GetAssetAuditStatus` for an audit job, `UAIP.Runtime.Insights.Analysis.GetTraceAnalysisStatus` for a trace analysis.
+- **`uaip_execute` only, and only when asked.** `uaip_run_scenario` is out of scope — it has its own wall clock and per-step structure that one elapsed-seconds counter would not describe. With no progress token, nothing is sent at all.
+- **Whether you ever see the update is the client's decision.** The bridge sends it; rendering it is up to the MCP client, and a client that ignores `notifications/progress` shows nothing while the call is pending. Claude Code is one such client as of this writing: a pending call shows its usual spinner and neither value is displayed. That is not a sign the bridge failed to send.
+
+When the client does not surface it, `uaip_get_editor_status` answers the same question on demand — see [Check editor status](#check-editor-status-uaip_get_editor_status) above.
+
 ### Reload config without restarting the MCP client
 
 After editing `config.json`, call `uaip_reload_config` from the AI — the bridge reads the file, shuts down the running editor if launch parameters changed, and restarts it on the next command:

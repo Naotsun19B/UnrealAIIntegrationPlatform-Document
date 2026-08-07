@@ -97,7 +97,7 @@ uaip_execute(
 
 返却される JSON Artifact に該当アセットがすべて含まれます。これを AI に渡して「`BP_` で始まらない、`_Character` で終わらない、または PascalCase でないパス要素を含む Blueprint を列挙して」と依頼します。
 
-依存関係まで踏み込んだ監査（未参照アセット検出・循環参照検出・サイズマップ生成）は計画中で未実装です。[ロードマップ → アセット参照解析・SizeMap](roadmap.md#アセット参照解析sizemap) を参照してください。
+依存関係まで踏み込んだ監査（未参照アセット・循環参照・壊れた参照の検出、サイズマップ生成）は [コマンドリファレンス → `UAIP.Editor.Assets`](commands.md#uaipeditorassets) の監査コマンドを参照してください。フォルダ単位の監査はジョブとして実行されます。`StartAssetAudit` が ID を即座に返し、走査はエディタのフレームの合間で進みます。進み具合は `GetAssetAuditStatus` で確認し、完了後に `GetAssetAuditResult` でレポートごとの Artifact を取得します。3 コマンドとも同じ `SessionId` を明示指定して呼びます。
 
 **必要な Capability**：`EditorInspect`（DefaultAllow）。
 

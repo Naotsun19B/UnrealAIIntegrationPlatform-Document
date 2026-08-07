@@ -83,7 +83,7 @@ UAIP は「誰が」「何のために」「なぜ」使うのか。本ページ
 
 **Cookbook の対応レシピ**：[アセット監査と命名チェック](cookbook.md#3-アセット監査命名チェック)。
 
-**関連するロードマップ項目**：依存関係のより深い解析（未参照アセット検出・循環参照検出・サイズマップ生成）は計画中で未実装です。[ロードマップ → アセット参照解析・SizeMap](roadmap.md#アセット参照解析sizemap) を参照してください。
+**さらに踏み込む場合**：依存関係の解析（未参照アセット・循環参照・壊れた参照の検出、サイズマップ生成）も利用できます。`UAIP.Editor.Assets.StartAssetAudit` はフォルダ単位の監査をジョブとして実行するため、走査中もエディタは応答し続けます。進行と結果は `GetAssetAuditStatus` / `GetAssetAuditResult` で追えます。詳細は [コマンドリファレンス → `UAIP.Editor.Assets`](commands.md#uaipeditorassets) を参照してください。
 
 ---
 

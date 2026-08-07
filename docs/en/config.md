@@ -70,6 +70,20 @@ The effective list is resolved at startup and written to the Output Log as a sin
 
 `StarvedTickAllowList` is read-only because the console is reachable through the very interface this list exists to constrain. A boundary that can be widened from inside is not a boundary.
 
+### `[UAIP.Jobs]` — Per-frame budget for job-style commands
+
+`UAIP.Editor.Assets.StartAssetAudit` returns as soon as the job is registered and advances its scan between editor frames instead of holding the game thread until the whole audit is done. This key sets how much of each frame that scan may take.
+
+| Key | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `AuditStepBudgetMs` | float | `10.0` | `[1.0, 100.0]` | Milliseconds of each frame the audit job may spend scanning. A larger value finishes audits sooner and makes the editor heavier while one runs; a smaller value does the opposite. A value outside the range is clamped rather than rejected |
+
+The value is read once when the module starts, so an edit takes effect the next time the editor starts.
+
+It is a target rather than a guarantee. A step that cannot be cut in half will overrun it — the initial asset-list query that `Preparing` issues, and the disk-size lookup for a single asset, are both indivisible.
+
+No CLI equivalents.
+
 ### `[UAIP.Session]` — Session persistence
 
 Controls whether session metadata (id, command log, capability set) is persisted to disk so sessions survive editor restarts.

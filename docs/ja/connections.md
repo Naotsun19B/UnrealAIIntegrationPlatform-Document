@@ -199,6 +199,21 @@ HTTP トランスポートは、Bridge の `command_timeout_seconds` 設定と�
 3. `uaip_get_editor_status` を呼んで `RecommendedAction` に従ってください。コマンドがまだ実行中の間は `State: "UNRESPONSIVE"` と `WAIT:` で始まる `RecommendedAction` が返ることが想定されます。
 4. エディタが再び応答するようになった時点で、コマンドが artifact を生成するものであれば、そこで初めて artifact が現れる場合があります。`Timeout` が返ったからといって何も起きていないと決めつけず、確認してください。
 
+### 応答待ちの間に送られる進捗通知
+
+AI クライアントが `uaip_execute` の呼び出しに MCP の進捗トークン（`_meta.progressToken`）を添えると、Bridge はその呼び出しが返るまでおよそ 5 秒おきに `notifications/progress` を送出します。内容は Bridge がエディタの外側から観測できる情報だけです：
+
+- その呼び出しが何秒応答待ちになっているか
+- エディタの状態を `STARTING` / `RUNNING` / `UNRESPONSIVE` の 3 値に畳んだもの（1 つの呼び出しを待つ間に必要なのはこの区別だけです）
+
+ここから 3 点が導かれます：
+
+- **エディタ内部の情報は一切含まれません。** 監査が何件目を走査しているか、いまどのレポートを処理しているか、トレース解析がどこまで進んだか — いずれも通知には載りません。それを知るには、その情報を持つコマンドを呼びます（監査ジョブなら `UAIP.Editor.Assets.GetAssetAuditStatus`、トレース解析なら `UAIP.Runtime.Insights.Analysis.GetTraceAnalysisStatus`）。
+- **対象は `uaip_execute` のみで、要求された場合にのみ送られます。** `uaip_run_scenario` は対象外です（独自の実行時間上限とステップ構造を持ち、経過秒数のカウンタ 1 本では説明できないため）。進捗トークンが無ければ何も送られません。
+- **その通知が表示されるかどうかはクライアント側の判断です。** Bridge は送出しますが、描画するかは MCP クライアントの実装次第で、`notifications/progress` を扱わないクライアントでは応答待ちの間に何も表示されません。本ドキュメント執筆時点の Claude Code がその一例で、応答待ちの表示は通常のスピナーのみ、経過秒数もエディタ状態も表示されません。これは Bridge の送出が失敗している兆候ではありません。
+
+クライアントが表示しない場合でも、「エディタは動いているのか」という同じ問いには `uaip_get_editor_status` が必要なときに答えられます — 上の [エディタ状態の確認](#エディタ状態の確認uaip_get_editor_status) を参照してください。
+
 ### MCP クライアントを再起動せずに config をリロード
 
 `config.json` を編集した後、AI から `uaip_reload_config` を呼び出すことで変更を即時反映できます。Bridge がファイルを読み直し、起動パラメータが変わっていればエディタをシャットダウンして次回コマンド時に再起動します：

@@ -97,7 +97,7 @@ uaip_execute(
 
 The JSON artifact lists all matching assets. Hand it to the AI: "Find Blueprints whose name doesn't start with `BP_`, doesn't end with `_Character`, or has a path component that isn't PascalCase."
 
-For dependency-style audits (unused assets, circular references, size maps), see [Roadmap → Asset Audit](roadmap.md#asset-audit--dependency-analysis) — these are planned but not yet implemented.
+For dependency-style audits (unused assets, circular references, broken references, size maps), see the audit commands under [Commands → `UAIP.Editor.Assets`](commands.md#uaipeditorassets). The folder-wide audit runs as a job: `StartAssetAudit` returns an id straight away and the scan advances between editor frames, `GetAssetAuditStatus` reports how far it has got, and `GetAssetAuditResult` returns one artifact per report. All three need the same explicit `SessionId`.
 
 **Capabilities**: `EditorInspect` — DefaultAllow.
 

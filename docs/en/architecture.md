@@ -198,7 +198,7 @@ A session is the unit that owns:
 - Artifact subfolder (`Saved/UAIP/<SessionId>/`)
 - Per-session rate limiters (e.g., scenario submit)
 
-Anonymous sessions (no `SessionId` passed) get an auto-generated `MCP-Anonymous-<guid>` ID — fine for one-off calls, but per-task sessions make artifacts easier to find.
+Anonymous sessions (no `SessionId` passed) get an auto-generated ID — `MCP-Anonymous-<guid>` over the MCP transport — fine for one-off calls, but per-task sessions make artifacts easier to find. A command that hands back an identifier to be polled later refuses an anonymous session outright, because a fresh one is created per call and the identifier could never be looked up again: the asset audit job commands and the trace analysis ones both require an explicit `SessionId`.
 
 ---
 
