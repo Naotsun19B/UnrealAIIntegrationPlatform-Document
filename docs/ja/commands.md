@@ -719,9 +719,9 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `AddUserVariables` 🧩 | システムにユーザー変数を追加 |
 | `RemoveUserVariables` 🧩 | ユーザー変数を削除 |
 | `CompileNiagaraSystem` 🧩 | Niagara システムをコンパイル |
-| `AddSetParametersModule` 🧩 | Set Parameters モジュールをスタックに追加し、初期パラメータエントリを登録する。`default_value` フィールドは一般的な型（float / int / bool / struct）で適用される。 |
-| `AddSetParameterEntry` 🧩 | 既存の Set Parameters モジュールにパラメータエントリを追加する。`script_name`（例：`Spawn` / `Update`）が必須。`default_value` フィールドは一般的な型（float / int / bool / struct）で適用される。 |
-| `RemoveSetParameterEntry` 🧩 | Set Parameters モジュールからパラメータエントリを削除する。`script_name`（例：`Spawn` / `Update`）が必須。 |
+| `AddSetParametersModule` 🧩 | Set Parameters モジュールをスタックに追加し、初期パラメータエントリを登録する。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）で適用される。 |
+| `AddSetParameterEntry` 🧩 | 既存の Set Parameters モジュールにパラメータエントリを追加する。`ScriptName`（例：`Spawn` / `Update`）が必須。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）で適用される。 |
+| `RemoveSetParameterEntry` 🧩 | Set Parameters モジュールからパラメータエントリを削除する。`ScriptName`（例：`Spawn` / `Update`）が必須。 |
 
 #### Blueprint ラッパー（2）
 

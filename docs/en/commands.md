@@ -719,9 +719,9 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 | `AddUserVariables` 🧩 | Add user variables to a system |
 | `RemoveUserVariables` 🧩 | Remove user variables |
 | `CompileNiagaraSystem` 🧩 | Compile the Niagara system |
-| `AddSetParametersModule` 🧩 | Add a Set Parameters module to a stack and register initial parameter entries. The `default_value` field is applied for common types (float, int, bool, struct). |
-| `AddSetParameterEntry` 🧩 | Add a parameter entry to an existing Set Parameters module. Requires `script_name` (e.g. `Spawn`, `Update`). The `default_value` field is applied for common types (float, int, bool, struct). |
-| `RemoveSetParameterEntry` 🧩 | Remove a parameter entry from a Set Parameters module. Requires `script_name` (e.g. `Spawn`, `Update`). |
+| `AddSetParametersModule` 🧩 | Add a Set Parameters module to a stack and register initial parameter entries. The `DefaultValue` field is applied for common types (float, int, bool, struct). |
+| `AddSetParameterEntry` 🧩 | Add a parameter entry to an existing Set Parameters module. Requires `ScriptName` (e.g. `Spawn`, `Update`). The `DefaultValue` field is applied for common types (float, int, bool, struct). |
+| `RemoveSetParameterEntry` 🧩 | Remove a parameter entry from a Set Parameters module. Requires `ScriptName` (e.g. `Spawn`, `Update`). |
 
 #### Blueprint wrappers (2)
 
