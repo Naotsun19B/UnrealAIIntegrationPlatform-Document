@@ -161,6 +161,12 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `SkeletonAssetEdit` | Add, remove, and modify sockets, virtual bones in Skeleton assets |
 | `SkeletalMeshMaterialEdit` | Assign and replace material slots on Skeletal Meshes |
 
+#### Motion Matching / Pose Search editing
+
+| Capability | What it unlocks |
+|---|---|
+| `PoseSearchAssetEdit` 🧩 | Add, remove, reorder, and configure channels and compatible skeletons in PoseSearch Schema assets; add and remove animations, set database schema, animation settings, and Normalization Set membership on PoseSearch Database assets; start database index builds (requires `PoseSearch` plugin) |
+
 #### MetaHuman character editing
 
 These capabilities all require the `MetaHumanCharacter` plugin. They are split by risk profile rather than by command count — creating an asset, reading a file off disk, starting a minutes-long synthesis job, sending data to an external service, and running a build that deletes assets on failure each deserve a separate decision.

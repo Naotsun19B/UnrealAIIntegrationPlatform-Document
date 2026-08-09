@@ -161,6 +161,12 @@ flowchart LR
 | `SkeletonAssetEdit` | Skeleton アセットのソケット・バーチャルボーンの追加・削除・変更 |
 | `SkeletalMeshMaterialEdit` | SkeletalMesh のマテリアルスロットの割り当て・置換 |
 
+#### Motion Matching / Pose Search 編集
+
+| Capability | 有効になる操作 |
+|---|---|
+| `PoseSearchAssetEdit` 🧩 | PoseSearch Schema アセットへのチャンネル・互換 Skeleton の追加・削除・並べ替え・設定、PoseSearch Database アセットへのアニメーション追加・削除、データベーススキーマ・アニメーション設定・Normalization Set 所属の変更、データベースインデックスビルドの開始（`PoseSearch` プラグイン必須） |
+
 #### MetaHuman キャラクター編集
 
 以下の Capability はいずれも `MetaHumanCharacter` プラグインを必要とします。コマンド数ではなくリスクの性質で分割しています — アセットの新規作成、ディスク上のファイル読み込み、数分かかる合成処理の開始、外部サービスへのデータ送信、失敗時にアセットを削除するビルドの実行は、それぞれ個別に判断すべき事項だからです。
