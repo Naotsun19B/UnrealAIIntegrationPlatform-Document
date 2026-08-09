@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 951 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1371 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 973 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1393 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -79,6 +79,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
+| Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 22 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
@@ -2007,6 +2008,60 @@ UE 5.8 Data Registry のエディタ時観測 — 一覧・スキーマ取得・
 | `Toolset.Editor.DataRegistry.ListDataSources` | `DataRegistryToolset` への passthrough |
 | `Toolset.Editor.DataRegistry.ListRuntimeSources` | `DataRegistryToolset` への passthrough |
 | `Toolset.Editor.DataRegistry.GetItems` | `DataRegistryToolset` への passthrough。欠損アイテムは黙って省略、マスキングなし |
+
+---
+
+## UAIP.Editor.MotionMatching 🧩
+
+Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSearchDatabase` へのアニメーション登録、`UPoseSearchSchema` の構造（ロール付きスケルトンとフィーチャーチャンネルツリー）、`UPoseSearchNormalizationSet` のメンバーシップ、非同期インデックスビルド。`PoseSearch` プラグインが必要。
+
+> **Note**: このドメインの編集系コマンドは、自分自身の変更が反映された時点で `Success: true` を返す。これは Schema の `Finalize()` が後続で失敗して巻き戻る場合（スケルトンが未割り当て、あるいは `UPoseSearchFeatureChannel_Group` が空になった場合など）でも同じ。インデックスが構築できる状態かどうかは `Success` 単体ではなく応答の `bSchemaReadyForIndexBuild` を確認すること — ロール付きスケルトンが 1 つもない Schema は、チャンネルをいくつ追加しても `bSchemaReadyForIndexBuild: false` のままなので、先に `AddSkeletonToPoseSearchSchema` でスケルトンを設定すること。`bSchemaReadyForIndexBuild` が保証するのはこの Schema 単体の前提条件のみで、実際のインデックスビルドには Database 側が Schema を参照していること（`SetPoseSearchDatabaseSchema`）とアニメーションが登録済みであること（`AddAnimationToPoseSearchDatabase`）も必要。
+
+### Database（5 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `GetPoseSearchDatabaseInfo` | `UPoseSearchDatabase` の構造情報を取得 — Schema/NormalizationSet 参照、PoseSearchMode、PCA/KDTree 設定、`AnimationAssets` の各エントリ（パス・クラス・有効フラグ・ミラーオプション・サンプリング範囲/グリッド）。Chooser 内包データベースは拒否 |
+| `AddAnimationToPoseSearchDatabase`（要 `PoseSearchAssetEdit`） | アニメーションアセットを `InsertAt` に追加。任意のエントリ設定（有効フラグ・ミラーオプション・サンプリング範囲/グリッド）を指定可能。通常（非 BranchIn）エントリとしてすでに登録済みの場合は冪等 |
+| `RemoveAnimationFromPoseSearchDatabase`（要 `PoseSearchAssetEdit`） | 指定アニメーションアセットを参照する全エントリを削除。全体成功/全体失敗方式 — 一致したエントリのいずれかが PoseSearchBranchIn アニメーション通知で作成されたものだった場合は失敗 |
+| `SetPoseSearchDatabaseAnimationSettings`（要 `PoseSearchAssetEdit`） | 既存の `AnimationAssets` エントリ 1 件の設定を部分更新。アニメーションパスで対象を解決し、必要な場合は `Index` で一意化。UE 5.8 限定（UE 5.7 では `Available: false`） |
+| `SetPoseSearchDatabaseSchema`（要 `PoseSearchAssetEdit`） | データベースの `Schema` 参照を設定。既存の Schema を差し替えるには `bAllowOverwrite` が必要 |
+
+### Schema（11 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `GetPoseSearchSchemaInfo` | `UPoseSearchSchema` の構造情報を取得 — SampleRate、DataPreprocessor、SchemaCardinality、ロール付き `Skeletons` 配列、`Finalize()` 展開後の `Channels` 配列、そして編集系コマンドが実際に対象とする finalize 前の `RawChannels` ツリー（`ChannelPath` / `ClassPath`） |
+| `SetPoseSearchSchemaDataPreprocessor`（要 `PoseSearchAssetEdit`） | `DataPreprocessor` を変更（`None` / `Normalize` / `NormalizeOnlyByDeviation` / `NormalizeWithCommonSchema`）。応答にはこの Schema を参照していると見つかった全データベース（ベストエフォート）を列挙 |
+| `AddPoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `ChannelClass` のチャンネルを作成し、チャンネルツリーへ挿入。任意で `ParentChannelPath` の下へネストし、`InsertAt` で挿入位置を指定可能。冪等ではない — 同じクラスで 2 回呼ぶとチャンネルが 2 つできる |
+| `RemovePoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルを、ネストされた子孫チャンネルもろとも削除。任意の `ExpectedChannelClass` で、古いパスによる誤削除を防止できる |
+| `MovePoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `SourceChannelPath` のチャンネルを、その親の中で `TargetIndex` へ並べ替え。別の親への移動は非対応 — 削除して追加し直すこと |
+| `SetPoseSearchSchemaChannelProperty`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルのトップレベルプロパティへ `Value`（UE テキストインポート形式、最大 4 KiB）を書き込む。書き込み後の検証に失敗した場合は書き込みをロールバック |
+| `AddDefaultPoseSearchSchemaChannels`（要 `PoseSearchAssetEdit`） | エディタの Schema ファクトリが作成するのと同じ既定チャンネル（Trajectory + Pose）を追加。既存チャンネルは削除されず維持される — 2 回呼ぶと重複したペアが追加される |
+| `GetAvailablePoseSearchChannelClasses` | `AddPoseSearchSchemaChannel` が `ChannelClass` として受け付ける `UPoseSearchFeatureChannel` サブクラスを一覧表示。`bCanHostSubChannels` で有効な `ParentChannelPath` の対象を示す。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること |
+| `GetPoseSearchChannelClassSchema` | チャンネルクラスの Details パネル表示プロパティを一覧表示。各プロパティについて `SetPoseSearchSchemaChannelProperty` で書き込み可能かを `bIsWritable` / `NotWritableReason` で示し、`DefaultValueText` はそのまま使えるテキストインポート形式の例を提供 |
+| `AddSkeletonToPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Role` のロール付きスケルトンエントリを追加または置き換え。任意で `MirrorDataTablePath` を指定可能。既存の `Role` を置き換えるには `bAllowOverwrite` が必要 |
+| `RemoveSkeletonFromPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Skeletons` 配列から `Role` のロール付きスケルトンエントリを削除 |
+
+> **Note**: `AddPoseSearchSchemaChannel` の `ChannelClass`、および各編集コマンドの `ExpectedChannelClass` には**完全修飾クラスパス**（例: `/Script/PoseSearch.PoseSearchFeatureChannel_Position`）を渡すこと — `GetPoseSearchSchemaInfo` の `RawChannels[].ClassPath` または `GetAvailablePoseSearchChannelClasses` の `ClassPath` を使い、同じエントリの短い `ChannelClass` フィールドは使わないこと。`ChannelPath` は `RawChannels[]` に対する `/` 区切りのインデックスパス（例: `"0"`、`"2/0"`）であり、`Finalize()` 展開後の `Channels[]` に対するものでは**ない**。編集のたびに後続の兄弟チャンネルの `ChannelPath` がずれうるため、呼び出し前に取得したパスを使い回さず、都度 `RawChannels` を読み直すこと。
+
+### NormalizationSet（4 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `GetPoseSearchNormalizationSetInfo` | `UPoseSearchNormalizationSet` の `Databases` 配列（`Index` / `DatabasePath` / `bIsNull`）を格納順で一覧表示 |
+| `SetPoseSearchDatabaseNormalizationSet`（要 `PoseSearchAssetEdit`） | データベースの `NormalizationSet` 参照を設定またはクリア（`NormalizationSetPath` と `bClearNormalizationSet` は排他）。データベース側のみを編集する — 両側を一致させたい場合は `AddDatabaseToPoseSearchNormalizationSet` と併用すること |
+| `AddDatabaseToPoseSearchNormalizationSet`（要 `PoseSearchAssetEdit`） | `UPoseSearchNormalizationSet` の `Databases` 配列にデータベースを追加。冪等。NormalizationSet 側のみを編集する — `SetPoseSearchDatabaseNormalizationSet` と併用すること |
+| `RemoveDatabaseFromPoseSearchNormalizationSet`（要 `PoseSearchAssetEdit`） | 指定データベースを参照する全スロットを削除。一致したスロットは詰めずに null にクリアされるため、他のスロットの `Index` は変化しない |
+
+### Index Build（2 コマンド）
+
+| コマンド | 説明 |
+|---|---|
+| `StartPoseSearchDatabaseIndexBuild`（要 `PoseSearchAssetEdit`） | データベースのインデックスビルドを非同期で開始し、ポーリング用の `BuildId` を返す。対象データベースによらずエディタ全体で同時に走るビルドは 1 件のみ |
+| `GetPoseSearchDatabaseIndexBuildStatus` | 1 件のビルドの `State`（`Running` / `Succeeded` / `Failed`）と `ElapsedSeconds` を取得。`Succeeded` になると `NumPoses` / `SchemaCardinality` も報告 |
+
+> **Note**: `StartPoseSearchDatabaseIndexBuild` と `GetPoseSearchDatabaseIndexBuildStatus` は、いずれも明示的な `SessionId` を指定して呼び出す必要があり、両方で**同じ** `SessionId` を使うこと。自動生成されるセッションは呼び出しごとに異なるため、そのセッションで開始したビルドを後からポーリングできない。両コマンドとも、匿名または未指定の `SessionId` を `InvalidParams` で拒否する。
 
 ---
 

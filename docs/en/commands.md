@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 951 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1371 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 973 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1393 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -79,6 +79,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
+| Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 22 | — | — |
 | Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | partial (2/3) |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
@@ -2007,6 +2008,60 @@ Mirror of the first 7 native commands via the `DataRegistryToolset` plugin (UE 5
 | `Toolset.Editor.DataRegistry.ListDataSources` | Passthrough to `DataRegistryToolset` |
 | `Toolset.Editor.DataRegistry.ListRuntimeSources` | Passthrough to `DataRegistryToolset` |
 | `Toolset.Editor.DataRegistry.GetItems` | Passthrough to `DataRegistryToolset`; missing items silently omitted, no masking |
+
+---
+
+## UAIP.Editor.MotionMatching 🧩
+
+Motion Matching editing for the Pose Search plugin — `UPoseSearchDatabase` animation registration, `UPoseSearchSchema` structure (roled skeletons and the feature channel tree), `UPoseSearchNormalizationSet` membership, and asynchronous index builds. Requires the `PoseSearch` plugin.
+
+> **Note**: Every edit command in this domain reports `Success: true` once its own mutation lands, even when the schema's `Finalize()` step subsequently rolls back (e.g. no skeleton assigned yet, or a `UPoseSearchFeatureChannel_Group` left empty). Check the response's `bSchemaReadyForIndexBuild` rather than `Success` alone before assuming a schema can build an index — a schema with zero roled skeletons stays `bSchemaReadyForIndexBuild: false` no matter how many channels are added; add one with `AddSkeletonToPoseSearchSchema` first. `bSchemaReadyForIndexBuild` only guarantees this schema's own preconditions are met — an actual index build also requires a `UPoseSearchDatabase` to reference the schema (`SetPoseSearchDatabaseSchema`) and have animations registered (`AddAnimationToPoseSearchDatabase`).
+
+### Database (5)
+
+| Command | Description |
+|---|---|
+| `GetPoseSearchDatabaseInfo` | Structural info for a `UPoseSearchDatabase` — Schema/NormalizationSet references, PoseSearchMode, PCA/KDTree settings, and every `AnimationAssets` entry (path, class, enabled, mirror option, sampling range/grid). Rejects Chooser-owned databases |
+| `AddAnimationToPoseSearchDatabase` (requires `PoseSearchAssetEdit`) | Add an animation asset at `InsertAt` with optional per-entry settings (enabled, mirror option, sampling range/grid). Idempotent for an animation already registered as a normal (non-BranchIn) entry |
+| `RemoveAnimationFromPoseSearchDatabase` (requires `PoseSearchAssetEdit`) | Remove every entry referencing an animation asset. All-or-nothing: fails if any matching entry was created by the PoseSearchBranchIn animation notify |
+| `SetPoseSearchDatabaseAnimationSettings` (requires `PoseSearchAssetEdit`) | Partially update one existing `AnimationAssets` entry's settings, resolved by animation path (disambiguated by `Index` when needed). UE 5.8 only; reports `Available: false` on UE 5.7 |
+| `SetPoseSearchDatabaseSchema` (requires `PoseSearchAssetEdit`) | Set a database's `Schema` reference; replacing an already-assigned one requires `bAllowOverwrite` |
+
+### Schema (11)
+
+| Command | Description |
+|---|---|
+| `GetPoseSearchSchemaInfo` | Structural info for a `UPoseSearchSchema` — SampleRate, DataPreprocessor, SchemaCardinality, the roled `Skeletons` array, the `Finalize()`-expanded `Channels` array, and the pre-finalize `RawChannels` tree (`ChannelPath` / `ClassPath`) the editing commands below actually address |
+| `SetPoseSearchSchemaDataPreprocessor` (requires `PoseSearchAssetEdit`) | Change `DataPreprocessor` (`None` / `Normalize` / `NormalizeOnlyByDeviation` / `NormalizeWithCommonSchema`); response lists every database found to reference the schema (best-effort) |
+| `AddPoseSearchSchemaChannel` (requires `PoseSearchAssetEdit`) | Create a channel of `ChannelClass` and insert it into the channel tree, optionally nested under `ParentChannelPath` at `InsertAt`. Not idempotent — calling it twice creates two channels |
+| `RemovePoseSearchSchemaChannel` (requires `PoseSearchAssetEdit`) | Remove the channel at `ChannelPath` together with every nested descendant; optional `ExpectedChannelClass` guards against removing the wrong channel after a stale path |
+| `MovePoseSearchSchemaChannel` (requires `PoseSearchAssetEdit`) | Reorder the channel at `SourceChannelPath` to `TargetIndex` within its own parent. Moving to a different parent is not supported — remove and re-add instead |
+| `SetPoseSearchSchemaChannelProperty` (requires `PoseSearchAssetEdit`) | Write `Value` (UE text-import syntax, max 4 KiB) into a top-level property of the channel at `ChannelPath`; a post-write validation failure rolls the write back |
+| `AddDefaultPoseSearchSchemaChannels` (requires `PoseSearchAssetEdit`) | Add the same default trajectory + pose channel pair the editor's schema factory creates. Existing channels are kept, not replaced — calling it twice appends a duplicate pair |
+| `GetAvailablePoseSearchChannelClasses` | List every `UPoseSearchFeatureChannel` subclass `AddPoseSearchSchemaChannel` accepts as `ChannelClass`, with `bCanHostSubChannels` marking valid `ParentChannelPath` targets. Heavy — walks every loaded `UClass`; cache the result |
+| `GetPoseSearchChannelClassSchema` | List a channel class's Details-panel properties with `bIsWritable` / `NotWritableReason` for `SetPoseSearchSchemaChannelProperty`, and `DefaultValueText` as a working text-import example for each |
+| `AddSkeletonToPoseSearchSchema` (requires `PoseSearchAssetEdit`) | Add or replace the roled skeleton entry for `Role`, with an optional `MirrorDataTablePath`. Replacing an existing `Role` requires `bAllowOverwrite` |
+| `RemoveSkeletonFromPoseSearchSchema` (requires `PoseSearchAssetEdit`) | Remove the roled skeleton entry for `Role` from the `Skeletons` array |
+
+> **Note**: `AddPoseSearchSchemaChannel`'s `ChannelClass` and every editing command's `ExpectedChannelClass` need the **fully qualified class path** (e.g. `/Script/PoseSearch.PoseSearchFeatureChannel_Position`) — use `GetPoseSearchSchemaInfo`'s `RawChannels[].ClassPath` or `GetAvailablePoseSearchChannelClasses`' `ClassPath`, not the shorter `ChannelClass` field reported alongside them. `ChannelPath` is a `/`-separated index path (e.g. `"0"`, `"2/0"`) into `RawChannels[]`, **not** into the `Finalize()`-expanded `Channels[]`; an edit can shift the `ChannelPath` of later siblings, so re-read `RawChannels` after each call rather than reusing paths obtained before it.
+
+### NormalizationSet (4)
+
+| Command | Description |
+|---|---|
+| `GetPoseSearchNormalizationSetInfo` | List a `UPoseSearchNormalizationSet`'s `Databases` array (`Index` / `DatabasePath` / `bIsNull`) in storage order |
+| `SetPoseSearchDatabaseNormalizationSet` (requires `PoseSearchAssetEdit`) | Set or clear a database's `NormalizationSet` reference (`NormalizationSetPath` and `bClearNormalizationSet` are mutually exclusive). Only edits the database side — pair with `AddDatabaseToPoseSearchNormalizationSet` if both sides need to agree |
+| `AddDatabaseToPoseSearchNormalizationSet` (requires `PoseSearchAssetEdit`) | Add a database to a `UPoseSearchNormalizationSet`'s `Databases` array. Idempotent; only edits the normalization set side — pair with `SetPoseSearchDatabaseNormalizationSet` |
+| `RemoveDatabaseFromPoseSearchNormalizationSet` (requires `PoseSearchAssetEdit`) | Remove every slot referencing a database. Matched slots are cleared to null rather than compacted, so every other `Index` stays stable |
+
+### Index Build (2)
+
+| Command | Description |
+|---|---|
+| `StartPoseSearchDatabaseIndexBuild` (requires `PoseSearchAssetEdit`) | Start a database index build asynchronously and return a `BuildId` to poll. Only one build runs at a time across the whole editor, whichever database it targets |
+| `GetPoseSearchDatabaseIndexBuildStatus` | Poll one build's `State` (`Running` / `Succeeded` / `Failed`) and `ElapsedSeconds`; once `Succeeded`, also reports `NumPoses` / `SchemaCardinality` |
+
+> **Note**: `StartPoseSearchDatabaseIndexBuild` and `GetPoseSearchDatabaseIndexBuildStatus` must both be called with an explicit `SessionId` — the **same** one for both. An automatically generated session differs on every call, so a build started under one could never be polled afterward; both commands reject an anonymous or omitted `SessionId` with `InvalidParams`.
 
 ---
 
