@@ -2022,7 +2022,7 @@ Motion Matching editing for the Pose Search plugin — `UPoseSearchDatabase` ani
 | Command | Description |
 |---|---|
 | `GetPoseSearchDatabaseInfo` | Structural info for a `UPoseSearchDatabase` — Schema/NormalizationSet references, PoseSearchMode, PCA/KDTree settings, and every `AnimationAssets` entry (path, class, enabled, mirror option, sampling range/grid). Rejects Chooser-owned databases |
-| `AddAnimationToPoseSearchDatabase` (requires `PoseSearchAssetEdit`) | Add an animation asset at `InsertAt` with optional per-entry settings (enabled, mirror option, sampling range/grid). Idempotent for an animation already registered as a normal (non-BranchIn) entry |
+| `AddAnimationToPoseSearchDatabase` (requires `PoseSearchAssetEdit`) | Add an animation asset at `InsertAt` with optional per-entry settings (enabled, mirror option, sampling range/grid). Idempotent by default for an animation already registered as a normal (non-BranchIn) entry; set `bAllowDuplicate: true` to bypass that check and always insert a new entry |
 | `RemoveAnimationFromPoseSearchDatabase` (requires `PoseSearchAssetEdit`) | Remove every entry referencing an animation asset. All-or-nothing: fails if any matching entry was created by the PoseSearchBranchIn animation notify |
 | `SetPoseSearchDatabaseAnimationSettings` (requires `PoseSearchAssetEdit`) | Partially update one existing `AnimationAssets` entry's settings, resolved by animation path (disambiguated by `Index` when needed). UE 5.8 only; reports `Available: false` on UE 5.7 |
 | `SetPoseSearchDatabaseSchema` (requires `PoseSearchAssetEdit`) | Set a database's `Schema` reference; replacing an already-assigned one requires `bAllowOverwrite` |
