@@ -167,6 +167,13 @@ flowchart LR
 |---|---|
 | `PoseSearchAssetEdit` 🧩 | PoseSearch Schema アセットへのチャンネル・互換 Skeleton の追加・削除・並べ替え・設定、PoseSearch Database アセットへのアニメーション追加・削除、データベーススキーマ・アニメーション設定・Normalization Set 所属の変更、データベースインデックスビルドの開始（`PoseSearch` プラグイン必須） |
 
+#### AnimNotify 編集
+
+| Capability | 有効になる操作 |
+|---|---|
+| `AnimNotifyEdit` | 通知トラックの追加・削除、`UAnimSequence` / `UAnimMontage` / `UAnimComposite` 上の AnimNotify・AnimNotifyState エントリの追加・削除・編集、無効な通知 guid の修復。`UAIP.Editor.AnimSequence` の全編集系コマンドで必須 |
+| `AnimNotifyReferenceEdit` | `SetAnimNotifyProperty` が、ハードなオブジェクト/クラス参照であるか、それを内包するプロパティへ書き込む場合に `AnimNotifyEdit` に加えて必要 |
+
 #### MetaHuman キャラクター編集
 
 以下の Capability はいずれも `MetaHumanCharacter` プラグインを必要とします。コマンド数ではなくリスクの性質で分割しています — アセットの新規作成、ディスク上のファイル読み込み、数分かかる合成処理の開始、外部サービスへのデータ送信、失敗時にアセットを削除するビルドの実行は、それぞれ個別に判断すべき事項だからです。

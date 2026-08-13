@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 973 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1393 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 985 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1405 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -79,7 +79,8 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
-| Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 22 | — | — |
+| Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 23 | — | — |
+| Editor AnimSequence | `UAIP.Editor.AnimSequence` | 11 | — | — |
 | Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | partial (2/3) |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
@@ -2017,7 +2018,7 @@ Motion Matching editing for the Pose Search plugin — `UPoseSearchDatabase` ani
 
 > **Note**: Every edit command in this domain reports `Success: true` once its own mutation lands, even when the schema's `Finalize()` step subsequently rolls back (e.g. no skeleton assigned yet, or a `UPoseSearchFeatureChannel_Group` left empty). Check the response's `bSchemaReadyForIndexBuild` rather than `Success` alone before assuming a schema can build an index — a schema with zero roled skeletons stays `bSchemaReadyForIndexBuild: false` no matter how many channels are added; add one with `AddSkeletonToPoseSearchSchema` first. `bSchemaReadyForIndexBuild` only guarantees this schema's own preconditions are met — an actual index build also requires a `UPoseSearchDatabase` to reference the schema (`SetPoseSearchDatabaseSchema`) and have animations registered (`AddAnimationToPoseSearchDatabase`).
 
-### Database (5)
+### Database (6)
 
 | Command | Description |
 |---|---|
@@ -2026,6 +2027,7 @@ Motion Matching editing for the Pose Search plugin — `UPoseSearchDatabase` ani
 | `RemoveAnimationFromPoseSearchDatabase` (requires `PoseSearchAssetEdit`) | Remove every entry referencing an animation asset. All-or-nothing: fails if any matching entry was created by the PoseSearchBranchIn animation notify |
 | `SetPoseSearchDatabaseAnimationSettings` (requires `PoseSearchAssetEdit`) | Partially update one existing `AnimationAssets` entry's settings, resolved by animation path (disambiguated by `Index` when needed). UE 5.8 only; reports `Available: false` on UE 5.7 |
 | `SetPoseSearchDatabaseSchema` (requires `PoseSearchAssetEdit`) | Set a database's `Schema` reference; replacing an already-assigned one requires `bAllowOverwrite` |
+| `SynchronizePoseSearchDatabase` (requires `PoseSearchAssetEdit`) | Explicitly merge every `UAnimSequenceBase`'s `PoseSearchBranchIn` notify entries (`BranchInId != 0`) into the database's `AnimationAssets`, since the engine has no reliable event to observe that merge happening on its own — call it after adding/editing a `PoseSearchBranchIn` notify and saving the animation asset, before reading `GetPoseSearchDatabaseInfo`. ⚠️ Calling it in the same request as that save can report zero merged entries: the asset registry's referencer index rebuilds asynchronously after a save, so re-issue the call once the save has settled. Idempotent — nothing new to merge leaves the database untouched. Rejects Chooser-owned databases with `NotAllowed` |
 
 ### Schema (11)
 
@@ -2062,6 +2064,28 @@ Motion Matching editing for the Pose Search plugin — `UPoseSearchDatabase` ani
 | `GetPoseSearchDatabaseIndexBuildStatus` | Poll one build's `State` (`Running` / `Succeeded` / `Failed`) and `ElapsedSeconds`; once `Succeeded`, also reports `NumPoses` / `SchemaCardinality` |
 
 > **Note**: `StartPoseSearchDatabaseIndexBuild` and `GetPoseSearchDatabaseIndexBuildStatus` must both be called with an explicit `SessionId` — the **same** one for both. An automatically generated session differs on every call, so a build started under one could never be polled afterward; both commands reject an anonymous or omitted `SessionId` with `InvalidParams`.
+
+---
+
+## UAIP.Editor.AnimSequence
+
+Add, remove, and edit AnimNotify / AnimNotifyState entries and notify tracks on `UAnimSequence` / `UAnimMontage` / `UAnimComposite` assets. Built entirely on engine-shipped types — no optional plugin required.
+
+> **Note**: `NotifyGuid` is 32 hex digits with no hyphens (`FGuid::ToString(EGuidFormats::Digits)`) — the form `GetAnimNotifyInfo` reports and every other command in this domain expects back. `SetAnimNotifyProperty` requires `AnimNotifyEdit` for every write, and additionally requires `AnimNotifyReferenceEdit` when the property being written is — or contains — a hard object/class reference (`GetAnimNotifyClassSchema` reports this per property as `bIsObjectReference`). Every edit command in this domain is rejected while PIE or SIE is active.
+
+| Command | Description |
+|---|---|
+| `GetAnimNotifyInfo` | Every notify track (`TrackIndex` / `TrackName` / `TrackColor`) and every notify / notify state entry (guid, class, timing, montage-specific fields) on the asset, plus asset-level scalars (`AssetKind` / `PlayLength` / `NumTracks` / `NumNotifies` / `NumInvalidGuids`). For a `UAnimComposite` this only covers the asset's own `Notifies` array, not the notifies carried by its segments' `AnimSequence`s. Read-only, requires `EditorInspect` |
+| `GetAvailableAnimNotifyClasses` | List every `UAnimNotify` / `UAnimNotifyState` subclass `AddAnimNotify` / `AddAnimNotifyState` would accept as `ClassPath`, with `bIsNotifyState` / `bCanBePlaced` / `NotPlaceableReason`. Only currently loaded classes are visible. Heavy — walks every loaded `UClass`; cache the result. Read-only, requires `EditorInspect` |
+| `GetAnimNotifyClassSchema` | List the Details-panel properties of a `UAnimNotify` / `UAnimNotifyState` subclass, each with `bIsWritable` / `NotWritableReason` for `SetAnimNotifyProperty`, `bIsObjectReference`, and `DefaultValueText` as a working text-import example. Read-only, requires `EditorInspect` |
+| `AddAnimNotifyTrack` (requires `AnimNotifyEdit`) | Ensure a notify track named `TrackName` exists, creating it (optional `TrackColor`, default white) when it does not. Idempotent-on-existence — an existing track's `TrackIndex` is returned as-is and `TrackColor` is ignored. Rejected while PIE/SIE is active |
+| `RemoveAnimNotifyTrack` (requires `AnimNotifyEdit`) | Remove the notify track named `TrackName`, deleting every notify placed on it and shifting later tracks' indices down by one; the response's `RemovedNotifyGuids` / `ReindexedNotifies` report the full blast radius. Fails with `NotFound` on an already-removed track. Rejected while PIE/SIE is active |
+| `AddAnimNotify` (requires `AnimNotifyEdit`) | Add a single point notify to `TrackName` at `StartTime`. Exactly one of `ClassPath` (a `UAnimNotify` subclass) / `NotifyName` (class-less, optionally registered on the Skeleton via `bRegisterOnSkeleton`) is required. Not idempotent — repeated calls create independent notifies with new `NotifyGuid`s. Rejected while PIE/SIE is active |
+| `AddAnimNotifyState` (requires `AnimNotifyEdit`) | Add a single notify state spanning `[StartTime, StartTime + Duration]` to `TrackName`; `ClassPath` must resolve to a `UAnimNotifyState` subclass. Not idempotent — repeated calls create independent notify states with new `NotifyGuid`s. Rejected while PIE/SIE is active |
+| `RemoveAnimNotify` (requires `AnimNotifyEdit`) | Remove exactly one notify identified by `NotifyGuid`. Optional `ExpectedNotifyClassPath` / `ExpectedNotifyName` is an optimistic-concurrency guard. Fails with `NotFound` rather than a no-op success once the guid no longer resolves. Rejected with `NotAllowed` while PIE/SIE is active |
+| `SetAnimNotifyEvent` (requires `AnimNotifyEdit`) | Partially update one notify's event fields (`StartTime` / `Duration` / `TrackName` / `NotifyName` / `MontageTickType` / trigger and filter settings) identified by `NotifyGuid` — only the supplied fields change. `Duration` is rejected on a point notify; `MontageTickType` is rejected outside `UAnimMontage`. Rejected with `NotAllowed` while PIE/SIE is active |
+| `SetAnimNotifyProperty` (requires `AnimNotifyEdit`; hard object/class reference writes additionally require `AnimNotifyReferenceEdit`) | Write one top-level property on the notify instance identified by `NotifyGuid`, in the same text-import format `GetAnimNotifyClassSchema` reports as `DefaultValueText`. Soft/weak/lazy references, maps, sets, and reference-containing structs/arrays are not writable. Rejected with `NotAllowed` while PIE/SIE is active |
+| `FixupAnimNotifyGuids` (requires `AnimNotifyEdit`) | Assign a fresh guid to every notify whose guid is currently invalid; legacy notifies otherwise get an unstable guid on every reload until this is run and the asset is saved. Idempotent — nothing to repair succeeds with `NumFixed: 0`. Rejected while PIE/SIE is active |
 
 ---
 
