@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 985 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1405 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 986 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1406 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -80,7 +80,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
 | Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 23 | — | — |
-| Editor AnimSequence | `UAIP.Editor.AnimSequence` | 11 | — | — |
+| Editor AnimSequence | `UAIP.Editor.AnimSequence` | 12 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
@@ -473,7 +473,7 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 ## UAIP.Editor.Property
 
-アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。`Get*` 系コマンドは、シークレットらしきプロパティ値（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）をネストした struct メンバーも含めて `***` でマスクする。
+アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。`Get*` 系コマンドは、シークレットらしきプロパティ値（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）をネストした struct メンバーも含めて `***` でマスクする — シークレットなメンバーを内包する複合値（struct 等）は、その部分だけでなく値全体がマスク対象になる。`Set*` 系コマンドは 17 種の struct 型（ベクトル・回転・Transform・カラー・`FGuid`・区間型・`FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`・`FBoneReference` など）と `int8` から `uint64` までの全整数幅を書き込み可能。配列・マップ・セット・オブジェクト参照はこれらのコマンドからは引き続き書き込み不可。
 
 | コマンド | 説明 |
 |---|---|
@@ -2071,20 +2071,21 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 
 `UAnimSequence` / `UAnimMontage` / `UAnimComposite` アセットの AnimNotify / AnimNotifyState エントリと通知トラックの追加・削除・編集。エンジン標準の型のみで構成されており、オプションプラグインは不要。
 
-> **Note**: `NotifyGuid` はハイフンなしの 32 桁 16 進数（`FGuid::ToString(EGuidFormats::Digits)`）— `GetAnimNotifyInfo` が報告し、本ドメインの他の全コマンドが受け取る形式と同じ。`SetAnimNotifyProperty` はすべての書き込みで `AnimNotifyEdit` を必要とし、書き込むプロパティがハードなオブジェクト/クラス参照であるか、それを内包する場合は追加で `AnimNotifyReferenceEdit` が必要（`GetAnimNotifyClassSchema` がプロパティごとに `bIsObjectReference` として報告）。本ドメインの編集系コマンドはすべて、PIE または SIE 実行中は拒否される。
+> **Note**: `NotifyGuid` はハイフンなしの 32 桁 16 進数（`FGuid::ToString(EGuidFormats::Digits)`）— `GetAnimNotifyInfo` が報告し、本ドメインの他の全コマンドが受け取る形式と同じ。`SetAnimNotifyProperty` はすべての書き込みで `AnimNotifyEdit` を必要とし、書き込むプロパティがハードなオブジェクト/クラス参照であるか、それを内包する場合は追加で `AnimNotifyReferenceEdit` が必要（`GetAnimNotifyClassSchema` がプロパティごとに `bIsObjectReference` として報告）。`GetAnimNotifyProperty` は読み取り専用の対となるコマンドで、`NotifyGuid` / `PropertyName` によるアドレッシングも、`SetAnimNotifyProperty` の `Value` および `GetAnimNotifyClassSchema` の `DefaultValueText` と同じテキスト形式も共通であり、ゼロ値のプロパティ（空文字列ではなく "0" / "False" / "None"）も含めて 3 コマンド間でバイト単位に往復できる。本ドメインの編集系コマンドはすべて、PIE または SIE 実行中は拒否される。
 
 | コマンド | 説明 |
 |---|---|
 | `GetAnimNotifyInfo` | アセット上の全通知トラック（`TrackIndex` / `TrackName` / `TrackColor`）と全通知/通知ステートエントリ（guid・クラス・タイミング・Montage 固有フィールド）、およびアセットレベルのスカラー値（`AssetKind` / `PlayLength` / `NumTracks` / `NumNotifies` / `NumInvalidGuids`）を取得。`UAnimComposite` の場合、対象はアセット自身の `Notifies` 配列のみで、セグメントの `AnimSequence` が持つ通知は含まれない。読み取り専用、要 `EditorInspect` |
 | `GetAvailableAnimNotifyClasses` | `AddAnimNotify` / `AddAnimNotifyState` が `ClassPath` として受け付ける全 `UAnimNotify` / `UAnimNotifyState` サブクラスを一覧表示。`bIsNotifyState` / `bCanBePlaced` / `NotPlaceableReason` を付与。現在ロード済みのクラスのみが対象。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること。読み取り専用、要 `EditorInspect` |
 | `GetAnimNotifyClassSchema` | `UAnimNotify` / `UAnimNotifyState` サブクラスの Details パネル表示プロパティを一覧表示。各プロパティについて `SetAnimNotifyProperty` で書き込み可能かを `bIsWritable` / `NotWritableReason` で示し、`bIsObjectReference` と、そのまま使えるテキストインポート形式の例 `DefaultValueText` を提供。読み取り専用、要 `EditorInspect` |
+| `GetAnimNotifyProperty` | `NotifyGuid` で識別される通知インスタンスについて、プロパティ 1 件（`PropertyName`）、または省略時・空文字時は `GetAnimNotifyClassSchema` が列挙する全プロパティを読み取る。全件読み取りは `PropertyName` / `Value` の代わりに `NumProperties` / `bTruncated` を報告し、上限超過時は切り詰める。単一プロパティ読み取りは切り詰めず、上限超過は `InvalidParams` で拒否する。秘密扱いの値は `GetAnimNotifyClassSchema` の `DefaultValueText` や `SetAnimNotifyProperty` の `AppliedValue` と同じ方式でマスクされる。アセットを変更しない。読み取り専用かつ冪等、要 `EditorInspect` |
 | `AddAnimNotifyTrack`（要 `AnimNotifyEdit`） | `TrackName` という名前の通知トラックが存在することを保証し、存在しない場合は作成する（任意の `TrackColor`、既定は白）。既存判定に対して冪等 — 既存トラックの `TrackIndex` はそのまま返され、`TrackColor` は無視される。PIE/SIE 実行中は拒否 |
 | `RemoveAnimNotifyTrack`（要 `AnimNotifyEdit`） | `TrackName` という名前の通知トラックを削除し、その上に置かれた全通知も削除する。以降のトラックのインデックスは 1 つずつ繰り上がる — 応答の `RemovedNotifyGuids` / `ReindexedNotifies` が影響範囲全体を報告する。すでに削除済みのトラックには `NotFound` で失敗。PIE/SIE 実行中は拒否 |
 | `AddAnimNotify`（要 `AnimNotifyEdit`） | `TrackName` の `StartTime` へ単発の点通知を追加する。`ClassPath`（`UAnimNotify` サブクラス）/ `NotifyName`（クラスなし、`bRegisterOnSkeleton` で Skeleton へ任意登録可能）のいずれか一方が必須。冪等ではない — 繰り返し呼ぶと新しい `NotifyGuid` を持つ独立した通知が作成される。PIE/SIE 実行中は拒否 |
 | `AddAnimNotifyState`（要 `AnimNotifyEdit`） | `TrackName` へ `[StartTime, StartTime + Duration]` にまたがる単発の通知ステートを追加する。`ClassPath` は `UAnimNotifyState` サブクラスを解決する必要がある。冪等ではない — 繰り返し呼ぶと新しい `NotifyGuid` を持つ独立した通知ステートが作成される。PIE/SIE 実行中は拒否 |
 | `RemoveAnimNotify`（要 `AnimNotifyEdit`） | `NotifyGuid` で識別される通知を 1 件だけ削除する。任意の `ExpectedNotifyClassPath` / `ExpectedNotifyName` は楽観的並行性制御のガード。guid が解決できなくなった場合は no-op 成功ではなく `NotFound` で失敗する。PIE/SIE 実行中は `NotAllowed` で拒否 |
 | `SetAnimNotifyEvent`（要 `AnimNotifyEdit`） | `NotifyGuid` で識別される通知のイベントフィールド（`StartTime` / `Duration` / `TrackName` / `NotifyName` / `MontageTickType` / トリガー・フィルタ設定）を部分更新する — 指定したフィールドのみが変更される。`Duration` は点通知に対しては拒否、`MontageTickType` は `UAnimMontage` 以外では拒否。PIE/SIE 実行中は `NotAllowed` で拒否 |
-| `SetAnimNotifyProperty`（要 `AnimNotifyEdit`。ハードなオブジェクト/クラス参照の書き込みは追加で `AnimNotifyReferenceEdit` が必要） | `NotifyGuid` で識別される通知インスタンスのトップレベルプロパティ 1 件を、`GetAnimNotifyClassSchema` が `DefaultValueText` として報告するのと同じテキストインポート形式で書き込む。ソフト/ウィーク/レイジー参照、マップ、セット、参照を含む構造体/配列は書き込み不可。PIE/SIE 実行中は `NotAllowed` で拒否 |
+| `SetAnimNotifyProperty`（要 `AnimNotifyEdit`。ハードなオブジェクト/クラス参照の書き込みは追加で `AnimNotifyReferenceEdit` が必要） | `NotifyGuid` で識別される通知インスタンスのトップレベルプロパティ 1 件を、`GetAnimNotifyClassSchema` が `DefaultValueText` として報告するのと同じテキストインポート形式で書き込む。新たに `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`（未登録タグ、`Categories` / `GameplayTagFilter` の範囲外のタグ、コンテナ内の重複タグはいずれも `InvalidParams` で拒否）と `FBoneReference`（対象スケルトンに存在しないボーン名、または照合先スケルトンを解決できない場合は `InvalidParams` で拒否）も書き込み可能。ソフト/ウィーク/レイジー参照、マップ、セット、参照を含むその他の構造体/配列は引き続き書き込み不可。PIE/SIE 実行中は `NotAllowed` で拒否 |
 | `FixupAnimNotifyGuids`（要 `AnimNotifyEdit`） | guid が現在無効な全通知に新しい guid を割り当てる。レガシー通知はこれを実行してアセットを保存するまで、リロードのたびに不安定な guid を持ち続ける。冪等 — 修復対象がない場合も `NumFixed: 0` で成功する。PIE/SIE 実行中は拒否 |
 
 ---
