@@ -13,10 +13,10 @@ A file produced by a command (PNG screenshot, JSON dump, text log, report bundle
 The 32-character random token UAIP writes at startup to authenticate HTTP and WebSocket requests. Stored at `Saved/UAIP/EditorHttpAuthToken.txt` and `EditorWsAuthToken.txt`. Passed in the `Authorization: Bearer <token>` header (HTTP) or in the first handshake frame (WebSocket). See [Connection Methods](connections.md).
 
 ### Capability
-A per-command, per-session authorization tag (e.g., `BlueprintEdit`, `PIEControl`). Each command handler declares its required capabilities; a session can run a command only if it owns every required capability. Two classes: **DefaultAllow** (granted automatically) and **DefaultDenied** (must be enabled in `Config/DefaultUAIP.ini`). See [Safety & Capabilities](safety.md).
+A per-command authorization tag (e.g., `BlueprintEdit`, `PIEControl`). Each command handler declares its required capabilities; a command runs only when the effective set for the requesting session owns every one of them. Two classes: **DefaultAllow** (granted automatically) and **DefaultDenied** (must be enabled in `Config/DefaultUAIP.ini`). See [Safety & Capabilities](safety.md).
 
 ### Capability Set
-The collection of capabilities owned by a session, computed at spawn time from the project's SafetyPolicy. Queried via `UAIP.Core.QueryCapabilities`.
+The **process-wide** set of capabilities, computed once at editor startup from the project's SafetyPolicy and shared by every session (Layer 1). When the session is bound to a [Role](#role), that role's deny list narrows this set further for that session only (Layer 1.5) — a role can only take capabilities away, never add one the process doesn't already have. `UAIP.Core.QueryCapabilities` returns this narrowed, per-session effective set, not the raw process set.
 
 ### CommandDispatcher
 The Core component that receives a `CommandRequest`, checks capability + policy, resolves the handler, runs it on the game thread, and returns the `CommandResponse`. Shared by all four transports and by the scenario route.
@@ -54,6 +54,9 @@ UE's mode for running the game inside the editor. UAIP exposes start / stop / pa
 ### Provider
 A namespace that groups related commands (e.g., `UAIP.Editor.Observation`, `Toolset.AnimationAssistant`). Each provider is registered by a module at startup. Filter `uaip_list_commands` with `ProviderPrefix` to enumerate one provider's commands.
 
+### Role
+A named, deny-only downgrade of the process-wide [Capability Set](#capability-set), configured under `[UAIP.Roles]` and bound to a session via a Bearer token carried over MCP-mode requests — never inferred from `SessionId`, which is caller-supplied and therefore not trustworthy as an identity. A role can only remove capabilities the process already grants; it can never add one. Enabling roles also gates transports that cannot carry a role identity (WebSocket, CLI, FullHTTP mode) — they refuse to start unless explicitly opted back in. See [Safety & Capabilities → Roles](safety.md#roles-layer-15).
+
 ### SafetyPolicy
 A process-wide configuration (in `Config/DefaultUAIP.ini` under `[UAIP.SafetyPolicy]`) that gates entire categories of operations regardless of capability set — read-only mode, log dump permission, keyboard input permission, scenario opt-in, etc. The AI cannot lift SafetyPolicy at runtime; only the operator can change it (and an editor restart is usually required). See [Safety & Capabilities](safety.md).
 
@@ -64,7 +67,7 @@ A UAIP workflow (Pro only) where AI-proposed asset edits are staged in a **FileS
 An ordered list of commands submitted as one request via `uaip_run_scenario`, `POST /uaip/scenarios`, the WebSocket `ScenarioRequest` frame, or the `-uaip-scenario-file=…` CLI flag. Supports per-step `AbortOnFailure`, `RetryCount`, `TimeoutSeconds`, and template expressions (`${StepName.Data.x}`) to pipe earlier-step output into later steps. See [Scenario Execution](scenario.md).
 
 ### Session
-A per-task scope on the server side. Owns a capability set, an artifact subfolder (`Saved/UAIP/<SessionId>/`), an observed-widget cache, and rate limiters. Created on the first request with a new `SessionId`. Cleaned up on `EndSession` or TTL expiry. Use a fresh `SessionId` per logical task to keep artifacts organized.
+A per-task scope on the server side. Owns a command log, a key-value context map shared between the commands run within it, and — once bound — the name of the [Role](#role) restricting it; artifacts are namespaced under its `SessionId` (`Saved/UAIP/<SessionId>/`). It does **not** own a capability set of its own: the effective capability set is computed on demand from the process-wide set (Layer 1) and, if bound, the role's deny list (Layer 1.5) — nothing is cached on the session itself. Created on the first request with a new `SessionId`. Cleaned up on `EndSession` or TTL expiry. Use a fresh `SessionId` per logical task to keep artifacts organized (over MCP, the bridge does this automatically per connection — see [Session lifecycle](architecture.md#6-session-lifecycle)).
 
 ### Stability
 A descriptor on each command (`Stable`, `Experimental`, `Deprecated`) returned by `uaip_describe_command`. Experimental commands may change without notice. Deprecated commands include a `MigrationTarget` field pointing at the replacement.

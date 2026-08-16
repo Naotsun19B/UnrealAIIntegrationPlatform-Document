@@ -86,7 +86,7 @@ CLI フラグ：なし。
 
 ### `[UAIP.Session]` — セッション永続化
 
-セッションメタデータ（ID・コマンドログ・Capability セット）をディスクに永続化し、エディタ再起動を跨いでセッションを復元する機能の設定。
+セッションメタデータ（ID・コマンドログ・キーバリューのコンテキスト）をディスクに永続化し、エディタ再起動を跨いでセッションを復元する機能の設定。セッションの Capability セットはこの対象に含まれません — そもそもセッション側に保存されるものではなく、プロセス全体の Capability セットと（該当すれば）セッションが束縛された役割から都度計算されます（詳細は [Safety & Capabilities → 役割](safety.md#役割layer-15)）。役割の束縛も再起動を跨いでは残りません — 復元されたセッションは未束縛の状態に戻り、有効な役割の資格情報を運ぶ次のリクエストによって改めて束縛される必要があります。そのため、古いセッションがかつて持っていた役割のまま復活することはありません。
 
 | キー | 型 | デフォルト | 範囲 | 説明 |
 |---|---|---|---|---|
@@ -98,6 +98,10 @@ CLI フラグ：なし。
 | `MaxScanFiles` | int32 | `1000` | `[1, 100000]` | 起動時にセッションを復元する際にスキャンする最大ファイル数 |
 
 CLI フラグ：`-uaip-session-enabled` / `-uaip-session-sub-directory=...` / `-uaip-session-max-command-log-entries=N` / `-uaip-session-lifetime-hours=N` / `-uaip-session-max-allowed-lifetime-hours=N` / `-uaip-session-max-scan-files=N`
+
+### `[UAIP.Roles]` — 役割による Capability の降格
+
+意図的にここでは詳細を扱いません — 役割は Capability をゲートする仕組み（Layer 1.5）であり安全性に関わる事項のため、完全なリファレンス（ini 書式・セッションが役割へ束縛される仕組み・役割を運べない Transport 向けの opt-in フラグ）は、他の認可レイヤーと合わせて [Safety & Capabilities → 役割](safety.md#役割layer-15) にまとめています。概要だけ述べると、`+Role=(Name="...", DeniedCapabilities=(...))` の行で役割を定義し、`AllowRoleBlindTransports`（ini 専用、既定 `False`）で、役割が 1 つでも定義された後に WS・CLI・FullHTTP を明示的に併用できるようにします。
 
 ### `[UAIP.ArtifactGC]` — Artifact 自動 GC
 
@@ -272,11 +276,13 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 | `allow_unverified_attach` | bool | `false` | `HealthCheck` 応答に `ProjectFilePath` を持たない旧バージョンのプラグインへアタッチすることを許可するオプトイン。**既定では拒否**される — 同一性を検証できないピアは黙ってアタッチせず拒否するのが既定の挙動 |
 | `log_level` | string | `"INFO"` | Python logger の冗長度 — `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `enable_scenario` | bool | `false` | `true` のとき Bridge がエディタを `-uaip-enable-scenario` 付きで起動する。環境変数オーバーライド：`UAIP_ENABLE_SCENARIO=1` |
+| `role_name` | string | `""` | エディタの `[UAIP.Roles]` が役割を 1 つ以上定義している場合のみ必要。この Bridge が認証する役割名を指定する。対応するトークンは `Saved/UAIP/Roles/<role_name>.token` から**遅延読み込み**される — 一定周期ではなく、リクエストが `401` で返ってきたときにだけ読み直す。環境変数オーバーライド：`UAIP_ROLE_NAME` |
+| `role_token` | string | `""` | 役割の Bearer Token 値を直接指定し、`role_token_file` の読み込みを完全にバイパスする。トークンをシークレット管理ツールなど別の方法で払い出している場合に使う。設定されていれば `role_name` によるファイル参照より優先される。環境変数オーバーライド：`UAIP_ROLE_TOKEN`。`role_name` と `role_token` を両方とも空のままにすると、役割機能が存在しなかった場合と全く同じリクエストが送信される — 詳細は [Safety & Capabilities → 役割](safety.md#役割layer-15) を参照 |
 | `inline_artifacts.image` | bool | `false` | PNG Artifact を MCP レスポンスに base64 インライン化する。**長時間セッションで PNG が蓄積し `"Could not process image"` API エラーが発生するため、デフォルト OFF** — スクリーンショットは Artifact パスを `Read` ツールに渡して表示する |
 | `inline_artifacts.json` | bool | `true` | JSON Artifact を MCP レスポンスに base64 インライン化する |
 | `inline_artifacts.text` | bool | `true` | テキスト Artifact を MCP レスポンスに base64 インライン化する |
 
-環境変数（`UAIP_UE_EDITOR_PATH`・`UAIP_UPROJECT_PATH`・`UAIP_ENABLE_SCENARIO`）が設定されている場合は対応する JSON 値を上書きします。フルコメント付きテンプレートは `config.json.example`（Bridge zip 同梱、インストール後は `<bridge-root>/config.json.example`）を参照してください。
+環境変数（`UAIP_UE_EDITOR_PATH`・`UAIP_UPROJECT_PATH`・`UAIP_ENABLE_SCENARIO`・`UAIP_ROLE_NAME`・`UAIP_ROLE_TOKEN`）が設定されている場合は対応する JSON 値を上書きします。フルコメント付きテンプレートは `config.json.example`（Bridge zip 同梱、インストール後は `<bridge-root>/config.json.example`）を参照してください。
 
 ### タイムアウトの不変条件
 

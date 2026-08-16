@@ -2,35 +2,42 @@
 
 # Safety & Capabilities
 
-UAIP applies per-command authorization in three layers. Understanding the layers helps you diagnose errors quickly and configure the right permissions for your workflow.
+UAIP applies per-command authorization in four layers. Understanding the layers helps you diagnose errors quickly and configure the right permissions for your workflow.
 
 ---
 
 ## Authorization layers
 
-| Layer | Mechanism | Error on failure |
-|---|---|---|
-| 1 | Session's `FCapabilitySet` — per-session × per-command | `CapabilityNotAvailable` |
-| 2 | `FSafetyPolicy` bool switches / DeniedCapabilities — process-wide | `PolicyViolation` |
-| 3 | Route-specific opt-in (e.g. scenario route) — process-wide | `PolicyViolation` |
+| Layer | Mechanism | Scope | Error on failure |
+|---|---|---|---|
+| 1 | `FCapabilitySet` — the process-wide capability set computed once at editor startup from SafetyPolicy | Process-wide (shared by every session) | `CapabilityNotAvailable` |
+| 1.5 | `FRoleGate` — a deny-only downgrade bound to the session, resolved from an optional role token | Per-session (only narrows what Layer 1 already grants; can never add a capability) | `CapabilityNotAvailable` |
+| 2 | `FSafetyPolicy` bool switches / `DeniedCapabilities` | Process-wide, immutable at runtime | `PolicyViolation` |
+| 3 | Route-specific opt-in (e.g. scenario route) | Process-wide | `PolicyViolation` |
+
+Layer 1 is **not** per-session — it is one capability set that every session shares, fixed at startup (or refreshed process-wide by `ReloadCapabilities`). Layer 1.5 is the only layer that varies per session: when the editor is configured with roles (see [Roles](#roles-layer-15) below) and a session is bound to one, that role's deny list is intersected with Layer 1's set for that session only. A session with no role bound behaves exactly like Layer 1 alone.
 
 ```mermaid
 flowchart TB
     Cmd([CommandRequest])
-    L1[Layer 1: Session Capability Set]
+    L1[Layer 1: Process Capability Set]
+    L15[Layer 1.5: Role Gate<br/>deny-only, session-bound]
     L2[Layer 2: SafetyPolicy + DeniedCapabilities + DeniedCommands]
     L3[Layer 3: Route opt-in flags]
     Exec([Execute on game thread])
 
     Cmd --> L1
     L1 -- "missing required capability" --> E1([CapabilityNotAvailable])
-    L1 -- ok --> L2
+    L1 -- ok --> L15
+    L15 -- "capability denied by the session's role" --> E15([CapabilityNotAvailable])
+    L15 -- ok --> L2
     L2 -- "capability denied / ReadOnly / DisableSave / etc." --> E2([PolicyViolation])
     L2 -- ok --> L3
     L3 -- "route flag not set at launch" --> E3([PolicyViolation])
     L3 -- ok --> Exec
 
     style E1 fill:#fdd
+    style E15 fill:#fdd
     style E2 fill:#fdd
     style E3 fill:#fdd
 ```
@@ -40,7 +47,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     Reg[Module-registered capabilities] --> Allow{"AllowedCapabilities<br/>list"}
-    Allow -- "in list" --> Active(Active in session)
+    Allow -- "in list" --> Active(Active in the process capability set)
     Allow -- "not in list" --> S1{"DefaultAllow?"}
     S1 -- yes --> Active
     S1 -- no --> X1(Inactive)
@@ -53,9 +60,76 @@ flowchart LR
 
 ---
 
+## Roles (Layer 1.5)
+
+A role narrows the process-wide capability set (Layer 1) for the sessions bound to it. Roles are **deny-only**: a role can only take capabilities away from what the process already grants — it can never add one the process doesn't have. This makes privilege escalation through a role definition structurally impossible, not just discouraged by convention.
+
+Roles are for running several AI agents against the same editor with different levels of trust — for example, an implementer agent that can edit assets and a reviewer agent that should never call a mutating command, even by mistake.
+
+### Defining roles
+
+Add one `+Role=` line per role to `[UAIP.Roles]` in `Config/DefaultUAIP.ini`:
+
+```ini
+[UAIP.Roles]
++Role=(Name="reviewer", DeniedCapabilities=("BlueprintEdit","AssetCreate","AssetDelete","EditorActorEdit"))
++Role=(Name="implementer", DeniedCapabilities=())
+
+; Only needed if you also rely on a transport that cannot carry a role identity — see below.
+; AllowRoleBlindTransports=False
+```
+
+- `Name` must match `[A-Za-z0-9_-]{1,64}` and be unique within the section. An invalid or duplicate entry is rejected at editor startup (the offending line is skipped and logged as an error) rather than silently accepted.
+- `DeniedCapabilities` may be empty (`DeniedCapabilities=()`) for a role that denies nothing.
+- Leaving `[UAIP.Roles]` with zero `+Role=` lines keeps the role feature **fully disabled** — every session keeps the unmodified process-wide capability set, exactly as before this feature existed.
+
+### How a session gets bound to a role
+
+A role is never inferred from `SessionId` — that value is a caller-supplied string over MCP and HTTP, so it can't be trusted as an identity. Instead:
+
+- Only **MCP-mode** requests (`-uaip-mcp-enable`) can carry a role, via `Authorization: Bearer <role-token>`.
+- The editor generates one token per defined role at startup and writes it to `Saved/UAIP/Roles/<RoleName>.token` (not committed to source control, same handling as the existing HTTP/WS auth tokens).
+- The MCP Bridge's `config.json` supplies `role_name` (and reads the matching token from that file automatically) or, alternatively, `role_token` directly when the token is provisioned some other way. Both have environment-variable overrides, `UAIP_ROLE_NAME` and `UAIP_ROLE_TOKEN`. Leaving both empty sends requests exactly as they were before roles existed.
+- The first request bearing a given `SessionId` binds that session to the resolved role; every later request for the same `SessionId` is checked against that binding, and a mismatched role is rejected — a session's role never changes mid-connection.
+
+Because roles are configured per MCP client connection (in that client's own bridge config) rather than per request, they compose naturally with one bridge process mapping to one UAIP session — see [Session lifecycle](architecture.md#6-session-lifecycle) in Architecture.
+
+### Transports that can't carry a role
+
+WebSocket, CLI, and the FullHTTP mode of the HTTP transport authenticate with a single shared secret and have no way to identify a role. Once `[UAIP.Roles]` defines at least one role, those transports **refuse to start by default** — starting them would let anyone connecting through one bypass every role restriction silently. Set `AllowRoleBlindTransports=True` to start them anyway; a warning is logged at startup for each affected transport so the bypass stays visible, and commands issued through it run with the unrestricted process-wide capability set.
+
+### How role restrictions surface to a client
+
+- `uaip_list_commands` omits role-denied commands from its default response, the same way it omits any other unavailable command, and counts them under `HiddenReasons.RoleRestricted` (see [Commands Reference → discovery filters](commands.md)).
+- `uaip_describe_command` still shows a role-denied command, with `UnavailableReason: "RoleRestricted"`.
+- `uaip_query_capabilities` reflects the session's role-narrowed set, not the full process set — so a capability a role denies never shows up as "available" to a session bound to that role.
+- Calling a role-denied command returns the same `CapabilityNotAvailable` error code as a missing process capability, but `ErrorMessage` names both the role and the capability, so the remediation reads differently: a missing process capability is fixed by an operator enabling it, while a role restriction is fixed by not performing that operation under that role — there is nothing to enable.
+
+---
+
+## What this protects against (and what it doesn't)
+
+Both Layer 1.5 (roles) and the token authentication that identifies a role exist to prevent **accidents**, not to hold up against an adversary. There is no way to keep credentials secret from an AI agent running under the same user account on the same machine: a token written to a file can be read, one written to an environment variable can be read from the process environment, and one written to a config file can be read from that file. This is a known, permanent limitation — not a bug to be fixed later.
+
+| Attempted action | Effect |
+|---|---|
+| Retrying with a different `SessionId` | **Prevented.** The MCP Bridge overwrites every `SessionId` with the one it minted for its own connection, so an MCP client cannot express a different session at all |
+| Omitting `SessionId` to fall back to an anonymous session | **Prevented.** The bridge injects its session ID on every forwarded call |
+| Connecting through a transport that cannot carry a role identity (WS / CLI / FullHTTP) | **Prevented by default** once at least one role is defined — those transports refuse to start (see [Roles](#roles-layer-15) above). An operator can opt back in with `AllowRoleBlindTransports=True`; doing so makes the bypass visible in the startup log, not undone |
+| Pointing an MCP client at a different bridge instance / a different token | **Not prevented technically.** Whether this is possible depends entirely on operating-system file permissions — specifically, whether the AI agent can edit the MCP client's own configuration file. If an agent has broad file-system access, this assumption does not hold automatically |
+| Calling `POST /mcp` directly with `curl` or a raw HTTP client | **Not prevented.** Token authentication rejects requests with no token or the wrong one, but an agent that can read the token file can construct a valid request |
+| Going around UAIP entirely (a Python script, an Editor Utility Widget, …) | **Not prevented.** Outside UAIP's authorization stack by definition |
+
+What this feature does provide:
+
+1. **An explicit boundary.** Working around it stops being an accident and becomes a deliberate action — one that requires reading a token file, editing a bridge config file, or launching a client another way.
+2. **Observability.** Authentication failures, role-binding mismatches, and role-restricted dispatch rejections are all logged as warnings, so bypass attempts (accidental or deliberate) are visible after the fact.
+
+---
+
 ## Capability reference
 
-Each command declares the capabilities it requires. A command runs only when the session holds every required capability. Capabilities are either **DefaultAllow** (granted automatically) or **DefaultDenied** (must be explicitly enabled in `Config/DefaultUAIP.ini`).
+Each command declares the capabilities it requires. A command runs only when the process holds every required capability (Layer 1) and, if the session is bound to a role, that role doesn't deny any of them (Layer 1.5). Capabilities are either **DefaultAllow** (granted automatically) or **DefaultDenied** (must be explicitly enabled in `Config/DefaultUAIP.ini`).
 
 Capabilities marked 🧩 require an optional plugin. If that plugin is not enabled in your `.uproject`, the capability is never registered and commands that require it return `CommandNotFound`.
 
@@ -502,7 +576,7 @@ AllowDisclosingTraceAttachment=False
 | `AllowDisclosingTraceAttachment` | `False` | Allow `StopTrace` to hand a captured `.utrace` over as an artifact when its channels could have recorded **host paths, screen content or network addresses**. The analysis sections sanitise, mask or reduce those to metadata; the raw file does not, which is why handing it over is a separate decision. Disclosure of **log text** is governed by `AllowLogDump` instead, and an unclassified channel is refused whatever both are set to. Also requires the `RuntimeInsightsAttachTraceFile` capability. In the editor both this and `AllowLogDump` are normally needed, because the engine enables the log and screenshot channels by itself |
 | `AllowedCapabilities` | empty | DefaultDenied capabilities to grant (one `+` entry per line) |
 | `DeniedCapabilities` | empty | Remove DefaultAllow capabilities from all sessions |
-| `DeniedCommands` | empty | Block commands by fully-qualified name |
+| `DeniedCommands` | empty | Block commands by fully-qualified name. Blocked commands are hidden from the default `ListCommands` response and counted in `HiddenReasons.DeniedCommand`; pass `IncludeUnavailable=true` to list them explicitly (`Available: false`, `UnavailableReason: "DeniedCommand"`), or use `DescribeCommand`, which always shows them |
 | `AllowCapabilityReload` | `False` | Enable `UAIP.Core.ReloadCapabilities` for hot-reload of capability settings |
 
 ### ReadOnly and the editor lifecycle commands
@@ -525,7 +599,8 @@ Every other mutating command is rejected under `ReadOnly` exactly as before. A h
 
 | ErrorCode | Diagnosis | Action |
 |---|---|---|
-| `CapabilityNotAvailable` | Session lacks the capability | Read the name from `ErrorMessage`; add it to `AllowedCapabilities` in the ini and restart (or call `ReloadCapabilities`) |
+| `CapabilityNotAvailable` | Process lacks the capability | Read the name from `ErrorMessage`; add it to `AllowedCapabilities` in the ini and restart (or call `ReloadCapabilities`) |
+| `CapabilityNotAvailable` with a role name in `ErrorMessage` | The session's role denies this capability (Layer 1.5) | Nothing to enable — perform the operation from a session bound to a different role, or ask the operator to change the role's `DeniedCapabilities` and restart |
 | `PolicyViolation: ... denied by SafetyPolicy` | SafetyPolicy ini flag is blocking | Set the corresponding flag to `True` in `[UAIP.SafetyPolicy]` and restart |
 | `PolicyViolation: Scenario execution is not enabled` | Scenario route opt-in missing | Add `"enable_scenario": true` to `config.json` |
 | `PolicyViolation: Command is denied` | Command is in `DeniedCommands` | Remove it from `DeniedCommands` in the ini |

@@ -2,35 +2,42 @@
 
 # Safety & Capabilities
 
-UAIP はコマンドごとの認可を 3 つの層で管理します。層を理解することで、エラーの原因を素早く特定し、ワークフローに合った適切な権限を設定できます。
+UAIP はコマンドごとの認可を 4 つの層で管理します。層を理解することで、エラーの原因を素早く特定し、ワークフローに合った適切な権限を設定できます。
 
 ---
 
-## 認可の 3 層構造
+## 認可の 4 層構造
 
-| 層 | メカニズム | 失敗時のエラー |
-|---|---|---|
-| 1 | セッションの `FCapabilitySet` — セッション × コマンド単位 | `CapabilityNotAvailable` |
-| 2 | `FSafetyPolicy` のブールスイッチ / DeniedCapabilities — プロセス全体 | `PolicyViolation` |
-| 3 | ルート単位のオプトイン（シナリオルートなど）— プロセス全体 | `PolicyViolation` |
+| 層 | メカニズム | スコープ | 失敗時のエラー |
+|---|---|---|---|
+| 1 | `FCapabilitySet` — エディタ起動時に SafetyPolicy から一度だけ確定するプロセス全体の Capability セット | プロセス全体（全セッションが共有） | `CapabilityNotAvailable` |
+| 1.5 | `FRoleGate` — セッションに束縛された deny-only の降格。任意の役割トークンから解決される | セッション単位（Layer 1 が許可した範囲を狭めるだけで、Capability を追加することは無い） | `CapabilityNotAvailable` |
+| 2 | `FSafetyPolicy` のブールスイッチ / `DeniedCapabilities` | プロセス全体（実行時不変） | `PolicyViolation` |
+| 3 | ルート単位のオプトイン（シナリオルートなど） | プロセス全体 | `PolicyViolation` |
+
+Layer 1 は「セッション単位」**ではありません** — 起動時に確定し（または `ReloadCapabilities` でプロセス全体として再読込され）、すべてのセッションが共有する単一の Capability セットです。セッションごとに変わるのは Layer 1.5 だけです。役割（後述の [役割](#役割layer-15)）が設定されており、あるセッションがその役割に束縛されている場合、そのセッションに限って役割の deny リストが Layer 1 のセットと積を取られます。役割が束縛されていないセッションは、Layer 1 単独と全く同じ挙動をします。
 
 ```mermaid
 flowchart TB
     Cmd([CommandRequest])
-    L1[Layer 1: セッション Capability セット]
+    L1[Layer 1: プロセス Capability セット]
+    L15[Layer 1.5: Role Gate<br/>deny-only・セッション単位]
     L2[Layer 2: SafetyPolicy + DeniedCapabilities + DeniedCommands]
     L3[Layer 3: ルート opt-in フラグ]
     Exec([ゲームスレッドで実行])
 
     Cmd --> L1
     L1 -- "必要 Capability 不足" --> E1([CapabilityNotAvailable])
-    L1 -- ok --> L2
+    L1 -- ok --> L15
+    L15 -- "セッションの役割が Capability を拒否" --> E15([CapabilityNotAvailable])
+    L15 -- ok --> L2
     L2 -- "Capability 拒否 / ReadOnly / DisableSave 等" --> E2([PolicyViolation])
     L2 -- ok --> L3
     L3 -- "起動時にルートフラグなし" --> E3([PolicyViolation])
     L3 -- ok --> Exec
 
     style E1 fill:#fdd
+    style E15 fill:#fdd
     style E2 fill:#fdd
     style E3 fill:#fdd
 ```
@@ -40,7 +47,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     Reg[モジュール登録の Capability] --> Allow{"AllowedCapabilities<br/>に含まれる?"}
-    Allow -- "含む" --> Active(セッションで有効)
+    Allow -- "含む" --> Active(プロセス Capability セットで有効)
     Allow -- "含まない" --> S1{"DefaultAllow か?"}
     S1 -- はい --> Active
     S1 -- いいえ --> X1(無効)
@@ -53,9 +60,76 @@ flowchart LR
 
 ---
 
+## 役割（Layer 1.5）
+
+役割（role）は、それに束縛されたセッションについて、プロセス全体の Capability セット（Layer 1）を狭めます。役割は **deny-only** です — プロセスが既に持っている Capability を取り上げることしかできず、プロセスが持たない Capability を追加することは決してできません。これにより、役割定義による権限昇格は「規約で避ける」ものではなく「構造的に不可能」になっています。
+
+役割は、同じエディタに対して信頼レベルの異なる複数の AI エージェントを同時に動かす用途を想定しています。例えば、アセットを編集できる実装役のエージェントと、誤操作であっても変更系コマンドを一切呼ばないレビュー役のエージェントを分けたい場合です。
+
+### 役割の定義
+
+`Config/DefaultUAIP.ini` の `[UAIP.Roles]` に、役割ごとに 1 行 `+Role=` を追加します。
+
+```ini
+[UAIP.Roles]
++Role=(Name="reviewer", DeniedCapabilities=("BlueprintEdit","AssetCreate","AssetDelete","EditorActorEdit"))
++Role=(Name="implementer", DeniedCapabilities=())
+
+; 役割を運べない Transport（後述）も併用する場合のみ必要
+; AllowRoleBlindTransports=False
+```
+
+- `Name` は `[A-Za-z0-9_-]{1,64}` に一致し、このセクション内で一意である必要があります。不正な形式・重複する名前はエディタ起動時に拒否されます（該当行はスキップされ、エラーとしてログに記録されます。実行時まで持ち越して黙って受理することはありません）。
+- `DeniedCapabilities` は何も拒否しない役割のために空（`DeniedCapabilities=()`）にできます。
+- `[UAIP.Roles]` に `+Role=` 行が 1 つも無い場合、役割機能は**完全に無効**のままです — 全セッションが、本機能導入前と同じ、プロセス全体の Capability セットをそのまま保持します。
+
+### セッションが役割に束縛される仕組み
+
+役割は `SessionId` から推測されることはありません。この値は MCP / HTTP 経由で呼び出し側が自由に指定できる文字列であり、身元の根拠にはできないためです。代わりに次の仕組みを使います。
+
+- **MCP モード**（`-uaip-mcp-enable`）のリクエストだけが `Authorization: Bearer <role-token>` で役割を運べます。
+- エディタは起動時に定義済みの役割ごとに 1 つトークンを生成し、`Saved/UAIP/Roles/<RoleName>.token` へ書き出します（バージョン管理対象外。既存の HTTP/WS 認証トークンと同じ扱いです）。
+- MCP Bridge の `config.json` は `role_name` を渡すと（対応するトークンファイルを自動で読み込みます）、あるいはトークンを別の方法で払い出している場合は `role_token` を直接渡すこともできます。どちらも環境変数 `UAIP_ROLE_NAME` / `UAIP_ROLE_TOKEN` で上書きできます。両方とも空のままなら、役割導入前と全く同じリクエストが送られます。
+- ある `SessionId` を最初に運んできたリクエストが、そのセッションを解決済みの役割へ束縛します。以降の同じ `SessionId` のリクエストはすべてこの束縛と照合され、不一致の役割は拒否されます — 接続の途中でセッションの役割が変わることはありません。
+
+役割は（リクエストごとではなく）MCP クライアントの接続ごとに、そのクライアント自身の Bridge 設定で構成されるため、「1 つの Bridge プロセスが 1 つの UAIP セッションに対応する」という仕組みと自然に組み合わさります。詳細は Architecture の [セッションライフサイクル](architecture.md#6-セッションライフサイクル) を参照してください。
+
+### 役割を運べない Transport
+
+WebSocket・CLI・HTTP Transport の FullHTTP モードは単一の共有シークレットで認証しており、役割を識別する手段がありません。`[UAIP.Roles]` が 1 つでも役割を定義すると、これらの Transport は**既定で起動を拒否**します — 起動を許すと、これら経由で接続した人が役割の制限をすべて黙って迂回できてしまうためです。`AllowRoleBlindTransports=True` を設定すればそれでも起動しますが、影響を受ける Transport ごとに起動時に警告がログへ出るため、迂回の存在は見える形のままになります。そしてそこ経由で発行されたコマンドは、役割による制限を受けないプロセス全体の Capability セットで実行されます。
+
+### 役割による制限がクライアントにどう見えるか
+
+- `uaip_list_commands` は、役割で拒否されたコマンドを、他の不可用コマンドと同じ扱いで既定応答から除外し、`HiddenReasons.RoleRestricted` に計上します（詳細は [コマンドリファレンス → discovery フィルタ](commands.md) を参照）。
+- `uaip_describe_command` は役割で拒否されたコマンドも隠さず表示し、`UnavailableReason: "RoleRestricted"` を付けます。
+- `uaip_query_capabilities` はプロセス全体のセットではなく、**セッションの役割で絞り込んだ後**のセットを返します。したがって役割が拒否している Capability が、その役割のセッションに対して「使える」と表示されることはありません。
+- 役割で拒否されたコマンドを呼ぶと、プロセス側の Capability 不足と同じ `CapabilityNotAvailable` エラーコードが返りますが、`ErrorMessage` には役割名と Capability 名の両方が入るため、対処の読み方が変わります。プロセス側の Capability 不足は運用者が有効化することで解消しますが、役割による制限は「その役割ではその操作を行わない」ことが解消であり、有効化すべき設定はありません。
+
+---
+
+## この機能が防ぐもの・防がないもの
+
+Layer 1.5（役割）も、役割を識別するトークン認証も、**事故を防ぐための仕組み**であり、敵対者に対する防御境界ではありません。同一ユーザーアカウント・同一マシンで動く AI エージェントに対して資格情報を秘匿する手段は存在しません。トークンをファイルへ書けば読まれ、環境変数へ書けばプロセス環境から読まれ、設定ファイルへ書けば設定ファイルを読まれます。これは既知の恒久的な制約であり、いずれ修正されるバグではありません。
+
+| 想定行動 | 効果 |
+|---|---|
+| 別の `SessionId` を指定して再試行する | **防ぐ**。MCP Bridge が自分の接続用に発行した `SessionId` で毎回上書きするため、MCP クライアント経由では別のセッションをそもそも表現できません |
+| `SessionId` を省略して匿名セッションへ逃げる | **防ぐ**。Bridge が転送するすべての呼び出しへ自分のセッション ID を注入します |
+| 役割を運べない Transport（WS / CLI / FullHTTP）へ接続する | 役割が 1 つでも定義されていれば**既定で防ぐ**（該当 Transport が起動を拒否します。詳細は前述の [役割](#役割layer-15) を参照）。運用者が `AllowRoleBlindTransports=True` で明示的に併用を許可した場合は防げませんが、その場合は迂回の存在が起動ログで可視化されます |
+| 別の Bridge インスタンス・別のトークンへ MCP クライアントを向け直す | **技術的には防ぎません**。これが可能かどうかは、AI エージェントが MCP クライアント自身の設定ファイルを編集できるかという **OS のファイル権限に完全に依存**します。エージェントが広いファイルシステムアクセス権を持つ環境では、この前提は自動的には成立しません |
+| `curl` や生の HTTP クライアントで `POST /mcp` を直接叩く | **防ぎません**。トークン認証はトークンが無い・間違っているリクエストを拒否しますが、トークンファイルを読めるエージェントであれば正しいリクエストを組み立てられます |
+| UAIP を経由しない操作（Python スクリプト、Editor Utility Widget など） | **防ぎません**。定義上 UAIP の認可スタックの管轄外です |
+
+本機能が実際に提供するのは次の2点です。
+
+1. **境界の明示**。迂回はもはや事故ではなく、トークンファイルを読む・Bridge の設定ファイルを書き換える・別の方法でクライアントを起動するといった**意図的な行為**になります。
+2. **可観測性**。認証失敗・役割束縛の不一致・役割制限による dispatch 拒否はすべて警告としてログに記録されるため、迂回の試み（偶発的であれ意図的であれ）は事後に確認できます。
+
+---
+
 ## Capability リファレンス
 
-各コマンドは必要な Capability を宣言しています。セッションが必要な Capability をすべて持っているときのみコマンドを実行できます。Capability には **DefaultAllow**（自動付与）と **DefaultDenied**（`Config/DefaultUAIP.ini` で明示的に有効化が必要）の 2 種類があります。
+各コマンドは必要な Capability を宣言しています。プロセスが必要な Capability をすべて持っており（Layer 1）、かつセッションが役割に束縛されている場合はその役割がいずれも拒否していないとき（Layer 1.5）だけコマンドを実行できます。Capability には **DefaultAllow**（自動付与）と **DefaultDenied**（`Config/DefaultUAIP.ini` で明示的に有効化が必要）の 2 種類があります。
 
 🧩 付きの Capability はオプションプラグインへの依存があります。該当プラグインが `.uproject` で有効になっていない環境では Capability が登録されず、必要とするコマンドは `CommandNotFound` を返します。
 
@@ -502,7 +576,7 @@ AllowDisclosingTraceAttachment=False
 | `AllowDisclosingTraceAttachment` | `False` | 採取した `.utrace` のチャネルが**ホスト側パス・画面内容・ネットワークアドレス**を記録しえた場合に、`StopTrace` がそのファイルを artifact として引き渡すことを許可。解析セクションはこれらをサニタイズ / マスク / メタデータ化して返しますが生ファイルは加工しないため、引き渡しは別の判断になります。**ログテキスト**の開示は本キーではなく `AllowLogDump` が担い、未分類チャネルは両方の設定に関わらず拒否されます。`RuntimeInsightsAttachTraceFile` Capability も別途必要。エディタではエンジンが log / screenshot チャネルを自分で有効化するため、通常は `AllowLogDump` との併用が必要です |
 | `AllowedCapabilities` | 空 | DefaultDenied の Capability を解除（`+` 付きで 1 行に 1 つ） |
 | `DeniedCapabilities` | 空 | DefaultAllow の Capability を全セッションから取り除く |
-| `DeniedCommands` | 空 | 完全修飾名で指定したコマンドをブロック |
+| `DeniedCommands` | 空 | 完全修飾名で指定したコマンドをブロック。ブロックされたコマンドは `ListCommands` の既定応答からは隠れ、`HiddenReasons.DeniedCommand` に計上される。`IncludeUnavailable=true` を指定すると `Available: false`・`UnavailableReason: "DeniedCommand"` として明示的に列挙できる。`DescribeCommand` では常に表示される |
 | `AllowCapabilityReload` | `False` | `UAIP.Core.ReloadCapabilities` を有効化（再起動不要で設定反映） |
 
 ### ReadOnly とエディタライフサイクルコマンド
@@ -525,7 +599,8 @@ AllowDisclosingTraceAttachment=False
 
 | エラーコード | 診断 | 対処 |
 |---|---|---|
-| `CapabilityNotAvailable` | セッションに Capability がない | `ErrorMessage` の Capability 名を `AllowedCapabilities` に追加して再起動（または `ReloadCapabilities`） |
+| `CapabilityNotAvailable` | プロセスに Capability がない | `ErrorMessage` の Capability 名を `AllowedCapabilities` に追加して再起動（または `ReloadCapabilities`） |
+| `CapabilityNotAvailable`（`ErrorMessage` に役割名が入る） | セッションの役割がこの Capability を拒否している（Layer 1.5） | 有効化すべき設定はない — 別の役割のセッションから操作するか、運用者にその役割の `DeniedCapabilities` を変更して再起動してもらう |
 | `PolicyViolation: ... denied by SafetyPolicy` | SafetyPolicy の ini フラグで拒否されている | `[UAIP.SafetyPolicy]` の対応するフラグを `True` にして再起動 |
 | `PolicyViolation: Scenario execution is not enabled` | シナリオルートのオプトイン不足 | `config.json` に `"enable_scenario": true` を追加 |
 | `PolicyViolation: Command is denied` | コマンドが `DeniedCommands` に入っている | ini から該当エントリを削除して再起動 |

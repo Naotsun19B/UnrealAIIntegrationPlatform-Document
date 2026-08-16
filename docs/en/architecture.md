@@ -193,10 +193,12 @@ stateDiagram-v2
 ```
 
 A session is the unit that owns:
-- Capability set (assigned at spawn time from SafetyPolicy)
-- Observed widget cache (for `ObserveWidget`)
-- Artifact subfolder (`Saved/UAIP/<SessionId>/`)
-- Per-session rate limiters (e.g., scenario submit)
+- A command log (persisted; subject to `MaxCommandLogEntries`)
+- A key-value context map shared between the commands run within it
+- The name of the role it is bound to, once a role-bearing request has resolved one (unset otherwise — see [Safety & Capabilities → Roles](safety.md#roles-layer-15))
+- An artifact subfolder, namespaced by its `SessionId` (`Saved/UAIP/<SessionId>/`)
+
+A session does **not** cache a capability set of its own. The effective set used by dispatch and discovery is computed on demand — the process-wide set (Layer 1), narrowed by the session's bound role if any (Layer 1.5) — so a `ReloadCapabilities` call or a fresh role binding is reflected immediately without invalidating anything on the session. Likewise, rate limiting for routes such as scenario submission is a process-wide gate (one scenario running at a time across the whole editor), not a per-session counter.
 
 Anonymous sessions (no `SessionId` passed) get an auto-generated ID — `MCP-Anonymous-<guid>` over the MCP transport — fine for one-off calls, but per-task sessions make artifacts easier to find. A command that hands back an identifier to be polled later refuses an anonymous session outright, because a fresh one is created per call and the identifier could never be looked up again: the asset audit job commands and the trace analysis ones both require an explicit `SessionId`.
 

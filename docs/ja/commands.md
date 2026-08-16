@@ -107,7 +107,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` に加え、`ProjectFilePath`（開いている `.uproject` の絶対パス。MCP Bridge が正しいエディタインスタンスへアタッチしているか検証するために使う）・`TransportTimeouts`（トランスポートごとの非同期コマンドタイムアウト秒数。例 `{"HTTP": 120, "WS": 12}`）・`QueueCongestion`（遅延実行キューの混雑度。`None` / `Low` / `High` の 3 段階。正確な待ち件数は他セッションの活動量を推測させるため返しません）を返す |
 | 🆓 `GetSystemInfo` | UE バージョン（Major/Minor/Patch/Changelist）・プロジェクト名・プラットフォーム・ビルド設定・UAIP バージョンを返す |
 | 🆓 `QueryCapabilities` | セッションの Capability セットと `OperationalConstraints`（7 つのポリシーフラグ）を返す |
-| 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`GroupFilter`・`KeywordFilter`・`IncludeUnavailable`） |
+| 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`ProviderPrefix`・`KeywordFilter`・`IncludeUnavailable`・`Stability`） |
 | 🆓 `DescribeCommand` | 単一コマンドの完全メタデータ（スキーマ・必要 Capability・可用性） |
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
 | 🆓 `EndSession` | セッションを明示的に終了しサーバー側リソースを解放する（成果物は GC 対象になる） |
@@ -890,7 +890,7 @@ MetaHuman キャラクターのオーサリング — アセット作成、体�
 
 編集系コマンドは必要に応じて MetaHuman 編集セッションを開き、そのまま保持します（同一キャラクターに対する連続実行で再オープンのコストを払わないため）。セッションを開くこと自体が編集モードへの移行であるため、**このドメインの読み取り系コマンドの多くは読み取り専用ではありません** — `MetaHumanEdit` を必要とし、SafetyPolicy が読み取り専用モードのときは拒否されます。一連の作業が終わったら `ReleaseEditSession` を呼んでください。唯一の例外は `GetViewportSettings` で、`EditorInspect` のみで実行できます。
 
-**⬆️ = UE 5.8 以降専用。** 以下 56 コマンドのうち 14 コマンドは UE 5.7 に存在しないエンジン API に依存しています。UE 5.7 でも登録自体は行われるため、`uaip_list_commands` には `Available: false` として現れ、実行すると `CommandNotFound` ではなく `PolicyViolation` が返ります。記号のないコマンドは UE 5.7 / UE 5.8 の両方で動作します。この記号は本セクション限定の表記です。
+**⬆️ = UE 5.8 以降専用。** 以下 56 コマンドのうち 14 コマンドは UE 5.7 に存在しないエンジン API に依存しています。UE 5.7 でも登録自体は行われますが、`uaip_list_commands` の既定応答には現れず、`HiddenCount` と `HiddenReasons.HandlerUnavailable` に計上されます。`IncludeUnavailable=true` を指定すると `Available: false` として明示的に列挙されます。`uaip_describe_command` はこのフィルタに関わらず常に表示します。実行すると `CommandNotFound` ではなく `PolicyViolation` が返ります。記号のないコマンドは UE 5.7 / UE 5.8 の両方で動作します。この記号は本セクション限定の表記です。
 
 ### ネイティブ（56）
 

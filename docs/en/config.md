@@ -86,7 +86,7 @@ No CLI equivalents.
 
 ### `[UAIP.Session]` — Session persistence
 
-Controls whether session metadata (id, command log, capability set) is persisted to disk so sessions survive editor restarts.
+Controls whether session metadata (id, command log, key-value context) is persisted to disk so sessions survive editor restarts. A session's capability set is never part of this — it isn't stored on the session at all; it's computed on demand from the process-wide capability set and, if applicable, the session's bound role (see [Safety & Capabilities → Roles](safety.md#roles-layer-15)). A role binding also does not survive a restart: a restored session comes back unbound and must be re-bound by the next request carrying a valid role credential, so a stale session can never resurrect a role it once had.
 
 | Key | Type | Default | Range | Description |
 |---|---|---|---|---|
@@ -98,6 +98,10 @@ Controls whether session metadata (id, command log, capability set) is persisted
 | `MaxScanFiles` | int32 | `1000` | `[1, 100000]` | Max files scanned on startup when rehydrating persisted sessions |
 
 CLI equivalents: `-uaip-session-enabled` / `-uaip-session-sub-directory=...` / `-uaip-session-max-command-log-entries=N` / `-uaip-session-lifetime-hours=N` / `-uaip-session-max-allowed-lifetime-hours=N` / `-uaip-session-max-scan-files=N`.
+
+### `[UAIP.Roles]` — Role-based capability downgrade
+
+Intentionally not detailed here — a role gates capabilities (Layer 1.5), which is a safety concern, so the full reference (ini format, how a session gets bound to a role, opt-in flags for transports that can't carry a role) lives in [Safety & Capabilities → Roles](safety.md#roles-layer-15) alongside the rest of the authorization layers. In short: `+Role=(Name="...", DeniedCapabilities=(...))` lines define roles, and `AllowRoleBlindTransports` (ini-only, default `False`) opts WS / CLI / FullHTTP back in once at least one role is defined.
 
 ### `[UAIP.ArtifactGC]` — Artifact garbage collection
 
@@ -272,11 +276,13 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 | `allow_unverified_attach` | bool | `false` | Opt-in to allow attaching to an existing editor whose `HealthCheck` response lacks `ProjectFilePath` (older plugin versions that predate this field). **Denied by default** — a peer that cannot be identity-verified is refused rather than silently attached |
 | `log_level` | string | `"INFO"` | Python logger verbosity — `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `enable_scenario` | bool | `false` | When `true`, the bridge launches the editor with `-uaip-enable-scenario`. Env override: `UAIP_ENABLE_SCENARIO=1` |
+| `role_name` | string | `""` | Only needed when the editor's `[UAIP.Roles]` defines at least one role. Names the role this bridge authenticates as; the bridge reads the matching token lazily from `Saved/UAIP/Roles/<role_name>.token`, only after a request comes back `401` — never on a fixed schedule. Env override: `UAIP_ROLE_NAME` |
+| `role_token` | string | `""` | Supplies the role's Bearer token value directly, bypassing `role_token_file` entirely. Use when the token is provisioned some other way (e.g. injected by a secrets manager). Takes precedence over `role_name`'s file lookup when set. Env override: `UAIP_ROLE_TOKEN`. Leaving both `role_name` and `role_token` empty sends every request exactly as it would be sent with no roles configured at all — see [Safety & Capabilities → Roles](safety.md#roles-layer-15) |
 | `inline_artifacts.image` | bool | `false` | Inline PNG artifacts as base64 in MCP responses. **Off by default** to avoid `"Could not process image"` API errors when PNGs accumulate across a long session — use the `Read` tool with the artifact path instead |
 | `inline_artifacts.json` | bool | `true` | Inline JSON artifacts as base64 in MCP responses |
 | `inline_artifacts.text` | bool | `true` | Inline text artifacts as base64 in MCP responses |
 
-Environment variables (`UAIP_UE_EDITOR_PATH`, `UAIP_UPROJECT_PATH`, `UAIP_ENABLE_SCENARIO`) override the corresponding JSON values when set. See `config.json.example` (shipped inside the bridge zip; after install, at `<bridge-root>/config.json.example`) for a fully-commented template.
+Environment variables (`UAIP_UE_EDITOR_PATH`, `UAIP_UPROJECT_PATH`, `UAIP_ENABLE_SCENARIO`, `UAIP_ROLE_NAME`, `UAIP_ROLE_TOKEN`) override the corresponding JSON values when set. See `config.json.example` (shipped inside the bridge zip; after install, at `<bridge-root>/config.json.example`) for a fully-commented template.
 
 ### Timeout invariants
 

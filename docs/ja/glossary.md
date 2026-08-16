@@ -13,10 +13,10 @@ UAIP のドキュメントで繰り返し登場する用語の定義です。ア
 HTTP / WebSocket リクエストの認証に使う、32 文字のランダムな文字列です。エディタ起動時に生成され、`Saved/UAIP/EditorHttpAuthToken.txt` と `EditorWsAuthToken.txt` に書き出されます。HTTP は `Authorization: Bearer <token>` ヘッダで、WebSocket は最初のハンドシェイクフレームで渡します。詳細は [接続方法](connections.md) を参照してください。
 
 ### Capability
-コマンド単位・セッション単位の認可タグのことです（例：`BlueprintEdit`、`PIEControl`）。各コマンドハンドラは必要な Capability を宣言しており、セッションがそれらをすべて所有しているときだけコマンドを実行できます。Capability には 2 種類あります — **DefaultAllow**（自動付与）と **DefaultDenied**（`Config/DefaultUAIP.ini` で明示的に有効化が必要）。詳細は [Safety & Capabilities](safety.md) を参照してください。
+コマンド単位の認可タグのことです（例：`BlueprintEdit`、`PIEControl`）。各コマンドハンドラは必要な Capability を宣言しており、リクエスト元セッションの実効セットがそれらをすべて所有しているときだけコマンドを実行できます。Capability には 2 種類あります — **DefaultAllow**（自動付与）と **DefaultDenied**（`Config/DefaultUAIP.ini` で明示的に有効化が必要）。詳細は [Safety & Capabilities](safety.md) を参照してください。
 
 ### Capability Set
-セッションが所有する Capability の集合のことです。セッション生成時に、プロジェクトの SafetyPolicy をもとに決まります。`UAIP.Core.QueryCapabilities` で問い合わせ可能です。
+**プロセス全体**の Capability の集合のことです。エディタ起動時にプロジェクトの SafetyPolicy から一度だけ計算され、すべてのセッションが共有します（Layer 1）。セッションが [役割（Role）](#role役割) に束縛されている場合、その役割の deny リストがそのセッションに限ってさらにこの集合を狭めます（Layer 1.5）— 役割は Capability を取り上げることしかできず、プロセスが持たない Capability を追加することはできません。`UAIP.Core.QueryCapabilities` は、生のプロセス集合ではなく、この役割で絞り込んだ後のセッション単位の実効集合を返します。
 
 ### CommandDispatcher
 `CommandRequest` を受け取り、Capability と Policy をチェックし、ハンドラを解決してゲームスレッドで実行し、`CommandResponse` を返す Core コンポーネントです。4 つのトランスポートとシナリオルートが共通して使います。
@@ -54,6 +54,9 @@ AI クライアントと UE Editor をつなぐ薄い Python プロキシ（`Plu
 ### Provider
 関連するコマンドをまとめる名前空間のことです（例：`UAIP.Editor.Observation`、`Toolset.AnimationAssistant`）。各 Provider は起動時にモジュールが登録します。`uaip_list_commands` を `ProviderPrefix` でフィルタすれば、特定 Provider のコマンドだけを列挙できます。
 
+### Role（役割）
+プロセス全体の [Capability Set](#capability-set) を deny-only で狭める、名前付きの設定です。`[UAIP.Roles]` で定義し、MCP モードのリクエストが運ぶ Bearer Token を介してセッションへ束縛します — `SessionId` から推測されることはありません。`SessionId` は呼び出し側が自由に指定できる値であり、身元の根拠にはできないためです。役割はプロセスが既に持っている Capability を取り上げることしかできず、追加することはできません。役割を有効にすると、役割を運べない Transport（WebSocket・CLI・FullHTTP モード）も制約を受けます — 明示的に併用を許可しない限り起動を拒否します。詳細は [Safety & Capabilities → 役割](safety.md#役割layer-15) を参照してください。
+
 ### SafetyPolicy
 プロセス全体に適用される設定です（`Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` セクション）。Capability セットの内容に関係なく、カテゴリ全体の操作をゲートできます — Read-Only モード、ログダンプ許可、キーボード入力許可、シナリオ opt-in などです。AI が Runtime で SafetyPolicy を解除することはできず、変更できるのはオペレーターだけです（通常はエディタの再起動も必要）。詳細は [Safety & Capabilities](safety.md) を参照してください。
 
@@ -64,7 +67,7 @@ AI が提案したアセット編集を **FileSandbox** セッションに仮置
 順序付きのコマンドリストを 1 リクエストで送信する仕組みのことです（`uaip_run_scenario`、`POST /uaip/scenarios`、WebSocket の `ScenarioRequest` フレーム、CLI の `-uaip-scenario-file=…` フラグから利用可能）。ステップごとの `AbortOnFailure`・`RetryCount`・`TimeoutSeconds`、および前ステップの出力を後ステップに渡すテンプレート式（`${StepName.Data.x}`）に対応しています。詳細は [シナリオ実行](scenario.md) を参照してください。
 
 ### Session（セッション）
-サーバ側のタスク単位のスコープです。Capability セット・Artifact のサブフォルダ（`Saved/UAIP/<SessionId>/`）・Widget 観測キャッシュ・レートリミタを所有します。新しい `SessionId` を使った最初のリクエストで作成され、`EndSession` または TTL 切れで GC されます。論理的なタスクごとに新しい `SessionId` を使うと、Artifact が整理しやすくなります。
+サーバ側のタスク単位のスコープです。コマンドログと、セッション内のコマンド間で共有されるキーバリューのコンテキストを所有し、束縛済みなら [役割（Role）](#role役割) の名前も保持します。Artifact は `SessionId` を単位に格納されます（`Saved/UAIP/<SessionId>/`）。**Capability セットそのものは所有しません** — 実効 Capability セットは、プロセス全体の集合（Layer 1）と、束縛済みなら役割の deny リスト（Layer 1.5）から都度計算されるものであり、セッション側に何かがキャッシュされているわけではありません。新しい `SessionId` を使った最初のリクエストで作成され、`EndSession` または TTL 切れで GC されます。論理的なタスクごとに新しい `SessionId` を使うと Artifact が整理しやすくなります（MCP 経由なら Bridge が接続ごとに自動でこれを行います — 詳細は [セッションライフサイクル](architecture.md#6-セッションライフサイクル) を参照）。
 
 ### Stability（安定性）
 各コマンドに付く記述子（`Stable`・`Experimental`・`Deprecated`）で、`uaip_describe_command` の結果に含まれます。Experimental は予告なしに変更される可能性があり、Deprecated には代替コマンドを示す `MigrationTarget` フィールドが付きます。

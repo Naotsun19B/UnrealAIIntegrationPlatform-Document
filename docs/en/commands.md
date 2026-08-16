@@ -107,7 +107,7 @@ System-level commands for discovery, health, and session management.
 | 🆓 `HealthCheck` | Plugin connectivity check — returns `Status`, `UAIPVersion`, `EngineVersion`, `BuildConfig`, `ProjectFilePath` (absolute path of the open `.uproject`, used by the MCP Bridge to verify it is attaching to the right editor instance), `TransportTimeouts` (per-transport async command timeout in seconds, e.g. `{"HTTP": 120, "WS": 12}`), `QueueCongestion` (how busy the deferred-execution queue is, as one of `None` / `Low` / `High` — the exact number waiting is not returned, since it would let one session infer another session's activity) |
 | 🆓 `GetSystemInfo` | Returns UE version (Major/Minor/Patch/Changelist), project name, platform, build config, UAIP version |
 | 🆓 `QueryCapabilities` | Returns the session's capability set and `OperationalConstraints` (7 policy flags) |
-| 🆓 `ListCommands` | Filtered command catalog (filters: `GroupFilter`, `KeywordFilter`, `IncludeUnavailable`) |
+| 🆓 `ListCommands` | Filtered command catalog (filters: `ProviderPrefix`, `KeywordFilter`, `IncludeUnavailable`, `Stability`) |
 | 🆓 `DescribeCommand` | Full metadata for a single command (schema, required capabilities, availability) |
 | 🆓 `ListPlugins` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.Plugin.ListPlugins` instead. List installed plugins and their enabled state (JSON) |
 | 🆓 `EndSession` | End a session explicitly and release its server-side resources; its artifacts become GC candidates |
@@ -890,7 +890,7 @@ MetaHuman character authoring — asset creation, body / skin / eye / makeup set
 
 Editing commands open a MetaHuman edit session on demand and keep it open, so a run of commands against the same character does not pay the cost of reopening it. Because opening a session is itself an edit-mode entry, **most reads in this domain are not read-only**: they require `MetaHumanEdit` and are refused while the safety policy is in read-only mode. Call `ReleaseEditSession` once a run is finished. The only exception is `GetViewportSettings`, which requires just `EditorInspect`.
 
-**⬆️ = UE 5.8+ only.** 14 of the 56 commands below depend on engine APIs that do not exist on UE 5.7. They are still registered there, so `uaip_list_commands` lists them with `Available: false` and calling one returns `PolicyViolation` (not `CommandNotFound`). Every command without the mark works on both UE 5.7 and UE 5.8. This symbol is used only in this section.
+**⬆️ = UE 5.8+ only.** 14 of the 56 commands below depend on engine APIs that do not exist on UE 5.7. They are still registered there, but the default `uaip_list_commands` response omits them — they are counted in `HiddenCount` and `HiddenReasons.HandlerUnavailable` instead. Pass `IncludeUnavailable=true` to list them explicitly (each entry shows `Available: false`). `uaip_describe_command` continues to show them regardless of this filter. Calling one returns `PolicyViolation` (not `CommandNotFound`). Every command without the mark works on both UE 5.7 and UE 5.8. This symbol is used only in this section.
 
 ### Native (56)
 
