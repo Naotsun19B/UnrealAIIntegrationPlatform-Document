@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 986 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1406 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1015 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1435 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -81,6 +81,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
 | Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 23 | — | — |
 | Editor AnimSequence | `UAIP.Editor.AnimSequence` | 12 | — | — |
+| Editor ChaosDestruction | `UAIP.Editor.ChaosDestruction` | 29 | — | — |
 | Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | partial (2/3) |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
@@ -2087,6 +2088,77 @@ Add, remove, and edit AnimNotify / AnimNotifyState entries and notify tracks on 
 | `SetAnimNotifyEvent` (requires `AnimNotifyEdit`) | Partially update one notify's event fields (`StartTime` / `Duration` / `TrackName` / `NotifyName` / `MontageTickType` / trigger and filter settings) identified by `NotifyGuid` — only the supplied fields change. `Duration` is rejected on a point notify; `MontageTickType` is rejected outside `UAnimMontage`. Rejected with `NotAllowed` while PIE/SIE is active |
 | `SetAnimNotifyProperty` (requires `AnimNotifyEdit`; hard object/class reference writes additionally require `AnimNotifyReferenceEdit`) | Write one top-level property on the notify instance identified by `NotifyGuid`, in the same text-import format `GetAnimNotifyClassSchema` reports as `DefaultValueText`. Also writable now: `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag` (rejected as `InvalidParams` for an unregistered tag, a tag outside a `Categories` / `GameplayTagFilter` scope, or a duplicate tag inside a container) and `FBoneReference` (rejected as `InvalidParams` for a bone the target skeleton does not have, or when no skeleton can be resolved to validate against). Soft/weak/lazy references, maps, sets, and other reference-containing structs/arrays are still not writable. Rejected with `NotAllowed` while PIE/SIE is active |
 | `FixupAnimNotifyGuids` (requires `AnimNotifyEdit`) | Assign a fresh guid to every notify whose guid is currently invalid; legacy notifies otherwise get an unstable guid on every reload until this is run and the asset is saved. Idempotent — nothing to repair succeeds with `NumFixed: 0`. Rejected while PIE/SIE is active |
+
+---
+
+## UAIP.Editor.ChaosDestruction
+
+Geometry Collection (Chaos Destruction) editing — inspect structure, hierarchy, and damage settings; create and merge `UGeometryCollection` assets; fracture them (Uniform / Voronoi / Plane / Slice / Brick / Mesh / Mesh Array); edit the bone cluster hierarchy; clean up and edit geometry attributes; and configure the damage model and clustering settings. Mirrors the tools available in Fracture Editor Mode. No Toolset bridge exists for this domain.
+
+Three DefaultDenied capabilities gate the write commands — `GeometryCollectionCreate` (2 commands), `GeometryCollectionFracture` (12 commands), and `GeometryCollectionEdit` (11 commands); see [Safety & Capabilities](safety.md). 20 of the 29 commands (marked 🧩) additionally require the `Fracture` plugin, and one (marked 🧩) requires the `GeometryCollectionPlugin`; commands without either mark have no plugin dependency. Every write command is rejected while PIE or SIE is active, and — except the settings and merge commands, which use `bAllowOverwrite` — is rejected when the target asset references a Dataflow graph unless `AllowOverwrite` is set.
+
+#### Observation (4) — requires `EditorInspect`
+
+| Command | Description |
+|---|---|
+| `GetGeometryCollectionInfo` | Structural summary — `TransformCount`, `GeometryCount`, `HierarchyDepth`, `MaterialCount`, the Dataflow graph asset path, whether the asset has unsaved changes, and a destruction-settings summary |
+| `GetGeometryCollectionClusterInfo` | Bone-level hierarchy as an array of entries (`BoneIndex`, `Parent`, `Children`, `SimulationType`, `BoneName`, `Level`, `BoundingBox`), capped at 256 entries with `bTruncated` |
+| `GetGeometryCollectionDestructionSettings` | Full damage-model and clustering configuration — `DamageModel`, the per-level `DamageThreshold` array, `SizeSpecificData`, and clustering settings |
+| `SelectGeometryCollectionBones` 🧩 | Run one bone selection query (`Root` / `Parent` / `Children` / `Siblings` / `Level` / `Contact` / `Leaf` / `Cluster` / `BySize` / `ByVolume` / `ByPercentage`) and return the resulting bone index array, ready to feed into other commands' `BoneIndices` parameter. Requires the `Fracture` plugin even though it is read-only |
+
+#### Creation (2) — requires `GeometryCollectionCreate`
+
+| Command | Description |
+|---|---|
+| `CreateGeometryCollectionFromStaticMesh` 🧩 | Create a new `UGeometryCollection` asset by converting a `UStaticMesh`. Applies the project's Fracture Mode default settings when the `ChaosEditor` plugin is available. Rejects an output path that already resolves to an existing asset. Requires the `GeometryCollectionPlugin`; leaves the new asset unsaved |
+| `MergeGeometryCollectionAssets` | Append one Geometry Collection's geometry into another (`UGeometryCollection::AppendGeometry`) without losing existing data on either asset; the two assets must be different. Leaves the target asset unsaved |
+
+#### Fracture (7) — requires `GeometryCollectionFracture`, all 🧩
+
+Each command fractures the selected bones (or every bone under the root, when `BoneIndices` is omitted), replacing each cut bone with its fractured pieces.
+
+| Command | Description |
+|---|---|
+| `FractureGeometryCollectionUniform` 🧩 | Fracture using a Voronoi diagram where every selected bone shares one random site placement. Mirrors Fracture Editor Mode's Uniform tool |
+| `FractureGeometryCollectionVoronoi` 🧩 | Fracture using caller-supplied Voronoi sites, shared by every selected bone |
+| `FractureGeometryCollectionPlane` 🧩 | Fracture against one or more cutting planes — explicit (`CutPlaneTransforms`) and/or randomly-placed (`NumPlanes`), additive |
+| `FractureGeometryCollectionSlice` 🧩 | Fracture with an axis-aligned grid of slicing planes (`SlicesX` × `SlicesY` × `SlicesZ`). Mirrors the Slice tool |
+| `FractureGeometryCollectionBrick` 🧩 | Fracture with a brick-patterned grid of cutting cells. Mirrors the Brick tool |
+| `FractureGeometryCollectionWithMesh` 🧩 | Fracture by cutting against one `UStaticMesh`, once per `CutterMeshTransforms` entry. Mirrors the Mesh Cut tool |
+| `FractureGeometryCollectionWithMeshArray` 🧩 | Fracture by cutting against one or more `UStaticMesh` assets, extending `FractureGeometryCollectionWithMesh` to more than one cutting mesh |
+
+#### Cluster hierarchy (4) — requires `GeometryCollectionEdit`
+
+These only re-parent, rename, or group bones — geometry and topology are unchanged.
+
+| Command | Description |
+|---|---|
+| `ClusterGeometryCollectionBones` | Re-parent the selected bones under a new cluster node (`NewNodeAtIndex` / `NewNodeWithParent` / `AllBonesUnderNewRoot`) |
+| `AutoClusterGeometryCollection` 🧩 | Automatically group the selected bones into new cluster nodes (`AutoCluster` / `ConvexityBasedCluster` / `ClusterMagnet`). Requires the `Fracture` plugin |
+| `UnclusterGeometryCollectionBones` | Remove intermediate cluster nodes or move bones toward the root (5 modes: `MoveUpOneHierarchyLevel` / `CollapseHierarchyOneLevel` / `CollapseLevelHierarchy` / `RemoveDanglingClusters` / `RemoveClustersOfOnlyOneChild`); never deletes a bone that carries geometry |
+| `RenameGeometryCollectionBone` | Rename a single bone; optionally cascades the new name to every descendant (`UpdateChildren`, default true) |
+
+#### Geometry editing & clean-up (11)
+
+| Command | Description |
+|---|---|
+| `MergeGeometryCollectionBones` 🧩 | Merge at least two selected bones — geometrically into one surviving bone (`MergeAllSelectedBones`) or by re-parenting under a shared cluster without touching geometry (`MergeSelectedClusters`). Requires `GeometryCollectionFracture` and the `Fracture` plugin |
+| `DeleteGeometryCollectionBranch` 🧩 | Delete the selected bones and every descendant. Mirrors the Prune tool; a selected bone that is itself the collection's root is never deleted. Requires `GeometryCollectionFracture` and the `Fracture` plugin |
+| `FixGeometryCollectionTinyGeometry` 🧩 | Merge geometry (`MergeGeometry`) or clusters (`MergeClusters`) below a size threshold into a neighboring bone. Mirrors the Geometry Merge tool. `NeighborSelection` value `LargestContactArea` requires UE 5.8+. Requires `GeometryCollectionFracture` and the `Fracture` plugin |
+| `SplitGeometryCollectionIslands` 🧩 | Split the selected bones into their disconnected components. Mirrors the Split Islands tool; finding nothing to split is a successful no-op. Requires `GeometryCollectionFracture` and the `Fracture` plugin |
+| `ValidateGeometryCollection` 🧩 | Clean up unreferenced geometry, single-child clusters, and/or dangling clusters across the entire collection (at least one flag required); finding nothing to clean up is a successful no-op. Requires `GeometryCollectionFracture` and the `Fracture` plugin |
+| `SetGeometryCollectionBoneVisibility` 🧩 | Toggle the `Visible` flag of faces, by bone selection (`SelectionMode: Transform`) or explicit face selection (`SelectionMode: Face`). Requires `GeometryCollectionEdit` and the `Fracture` plugin |
+| `SetGeometryCollectionBoneMaterial` 🧩 | Assign a `MaterialID` to the internal / external / all faces (`TargetFaces`) of a bone selection — useful for pointing newly-exposed fracture faces at a dedicated interior material. Requires `GeometryCollectionEdit` and the `Fracture` plugin |
+| `RecomputeGeometryCollectionNormals` 🧩 | Recompute normals (and, unless `OnlyTangents` is set, tangents) of a bone selection — safe to run after any operation that leaves them stale. Requires `GeometryCollectionEdit` and the `Fracture` plugin |
+| `SimplifyGeometryCollectionConvexHulls` 🧩 | Reduce the triangle count of convex collision hulls (`MeshQSlim` or `AngleTolerance`); fails with `ExecutionFailed` when the collection has no convex hull data. Requires `GeometryCollectionEdit` and the `Fracture` plugin |
+| `GenerateGeometryCollectionExplodedView` 🧩 | Write the exploded-view display attribute driven by the Fracture Mode viewport's "View Exploded Amount" slider. Display-only. Requires `GeometryCollectionEdit` and the `Fracture` plugin |
+| `SetGeometryCollectionBoneColors` 🧩 | Assign the bone-coloring display attribute using one of seven algorithms (`ByParent` / `ByLevel` / `ByCluster` / `ByLeafLevel` / `ByLeaf` / `ByAttr` / `Random`); optionally transfers the result onto vertex colors. Display-only. Requires `GeometryCollectionEdit` and the `Fracture` plugin |
+
+#### Settings (1) — requires `GeometryCollectionEdit`
+
+| Command | Description |
+|---|---|
+| `SetGeometryCollectionDestructionSettings` | Atomically replace the damage-model and clustering configuration — `DamageModel`, the per-level `DamageThreshold` array, `SizeSpecificData`, and clustering settings. No partial-update mode; read the current settings with `GetGeometryCollectionDestructionSettings` first |
 
 ---
 

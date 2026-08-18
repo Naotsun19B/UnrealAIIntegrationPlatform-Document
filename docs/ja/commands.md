@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 986 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1406 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1015 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1435 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -81,6 +81,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
 | Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 23 | — | — |
 | Editor AnimSequence | `UAIP.Editor.AnimSequence` | 12 | — | — |
+| Editor ChaosDestruction | `UAIP.Editor.ChaosDestruction` | 29 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
@@ -2087,6 +2088,77 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 | `SetAnimNotifyEvent`（要 `AnimNotifyEdit`） | `NotifyGuid` で識別される通知のイベントフィールド（`StartTime` / `Duration` / `TrackName` / `NotifyName` / `MontageTickType` / トリガー・フィルタ設定）を部分更新する — 指定したフィールドのみが変更される。`Duration` は点通知に対しては拒否、`MontageTickType` は `UAnimMontage` 以外では拒否。PIE/SIE 実行中は `NotAllowed` で拒否 |
 | `SetAnimNotifyProperty`（要 `AnimNotifyEdit`。ハードなオブジェクト/クラス参照の書き込みは追加で `AnimNotifyReferenceEdit` が必要） | `NotifyGuid` で識別される通知インスタンスのトップレベルプロパティ 1 件を、`GetAnimNotifyClassSchema` が `DefaultValueText` として報告するのと同じテキストインポート形式で書き込む。新たに `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`（未登録タグ、`Categories` / `GameplayTagFilter` の範囲外のタグ、コンテナ内の重複タグはいずれも `InvalidParams` で拒否）と `FBoneReference`（対象スケルトンに存在しないボーン名、または照合先スケルトンを解決できない場合は `InvalidParams` で拒否）も書き込み可能。ソフト/ウィーク/レイジー参照、マップ、セット、参照を含むその他の構造体/配列は引き続き書き込み不可。PIE/SIE 実行中は `NotAllowed` で拒否 |
 | `FixupAnimNotifyGuids`（要 `AnimNotifyEdit`） | guid が現在無効な全通知に新しい guid を割り当てる。レガシー通知はこれを実行してアセットを保存するまで、リロードのたびに不安定な guid を持ち続ける。冪等 — 修復対象がない場合も `NumFixed: 0` で成功する。PIE/SIE 実行中は拒否 |
+
+---
+
+## UAIP.Editor.ChaosDestruction
+
+Geometry Collection（Chaos Destruction）編集 — `UGeometryCollection` アセットの構造・階層・ダメージ設定の読み取り、アセットの新規作成・マージ、フラクチャ（Uniform / Voronoi / Plane / Slice / Brick / Mesh / Mesh Array）、ボーンのクラスタ階層編集、ジオメトリ属性のクリーンアップ・編集、ダメージモデルとクラスタリング設定の変更。Fracture Editor Mode のツール群に対応します。本ドメインに Toolset ブリッジはありません。
+
+書き込み系コマンドは 3 つの DefaultDenied capability で保護されています — `GeometryCollectionCreate`（2 コマンド）、`GeometryCollectionFracture`（12 コマンド）、`GeometryCollectionEdit`（11 コマンド）。詳細は [Safety & Capabilities](safety.md) を参照してください。29 コマンド中 20 コマンド（🧩 印）は追加で `Fracture` プラグインを、1 コマンド（🧩 印）は `GeometryCollectionPlugin` を必要とします。印の無いコマンドにプラグイン依存はありません。書き込み系コマンドはすべて PIE/SIE 実行中は拒否され、また設定系・マージ系コマンド（`bAllowOverwrite` を使用）を除き、対象アセットが Dataflow グラフを参照している場合は `AllowOverwrite` を指定しない限り拒否されます。
+
+#### Observation（4）— 要 `EditorInspect`
+
+| コマンド | 説明 |
+|---|---|
+| `GetGeometryCollectionInfo` | 構造サマリ — `TransformCount`・`GeometryCount`・`HierarchyDepth`・`MaterialCount`・Dataflow グラフアセットのパス・未保存変更の有無・破壊設定サマリを取得 |
+| `GetGeometryCollectionClusterInfo` | ボーン単位の階層をエントリ配列として取得（`BoneIndex`・`Parent`・`Children`・`SimulationType`・`BoneName`・`Level`・`BoundingBox`）。上限 256 件、超過時は `bTruncated` を設定 |
+| `GetGeometryCollectionDestructionSettings` | 完全なダメージモデル・クラスタリング設定を取得 — `DamageModel`・階層レベルごとの `DamageThreshold` 配列・`SizeSpecificData`・クラスタリング設定 |
+| `SelectGeometryCollectionBones` 🧩 | ボーン選択クエリを 1 件実行（`Root` / `Parent` / `Children` / `Siblings` / `Level` / `Contact` / `Leaf` / `Cluster` / `BySize` / `ByVolume` / `ByPercentage`）し、結果のボーンインデックス配列を返す。他コマンドの `BoneIndices` パラメータへそのまま渡せる。読み取り専用だが `Fracture` プラグインが必要 |
+
+#### Creation（2）— 要 `GeometryCollectionCreate`
+
+| コマンド | 説明 |
+|---|---|
+| `CreateGeometryCollectionFromStaticMesh` 🧩 | `UStaticMesh` を変換して新規 `UGeometryCollection` アセットを作成する。`ChaosEditor` プラグインが利用可能な場合はプロジェクトの Fracture Mode 既定設定を適用する。出力先パスが既存アセットと衝突する場合は拒否する。`GeometryCollectionPlugin` が必要。新規アセットは未保存のまま残る |
+| `MergeGeometryCollectionAssets` | 片方のジオメトリをもう片方へ追加する（`UGeometryCollection::AppendGeometry`）。既存データはどちらのアセットでも失われない。2 つのアセットは異なる必要がある。対象アセットは未保存のまま残る |
+
+#### Fracture（7）— 要 `GeometryCollectionFracture`、すべて 🧩
+
+各コマンドは選択したボーン（`BoneIndices` 省略時はルート以下すべて）をフラクチャし、切断された各ボーンをフラクチャ片で置き換えます。
+
+| コマンド | 説明 |
+|---|---|
+| `FractureGeometryCollectionUniform` 🧩 | 選択した全ボーンが 1 つのランダムなサイト配置を共有する Voronoi 図でフラクチャする。Fracture Editor Mode の Uniform ツールに対応 |
+| `FractureGeometryCollectionVoronoi` 🧩 | 呼び出し側が指定した Voronoi サイト（全選択ボーンで共有）でフラクチャする |
+| `FractureGeometryCollectionPlane` 🧩 | 1 つ以上の切断平面でフラクチャする — 明示的な平面（`CutPlaneTransforms`）とランダム配置の平面（`NumPlanes`）は加算方式 |
+| `FractureGeometryCollectionSlice` 🧩 | 軸整列グリッド状の切断平面（`SlicesX` × `SlicesY` × `SlicesZ`）でフラクチャする。Slice ツールに対応 |
+| `FractureGeometryCollectionBrick` 🧩 | レンガ状パターンの切断セルグリッドでフラクチャする。Brick ツールに対応 |
+| `FractureGeometryCollectionWithMesh` 🧩 | 1 つの `UStaticMesh` を切断カッターとして使用し、`CutterMeshTransforms` エントリごとに 1 回フラクチャする。Mesh Cut ツールに対応 |
+| `FractureGeometryCollectionWithMeshArray` 🧩 | 1 つ以上の `UStaticMesh` アセットを切断カッターとして使用してフラクチャする。`FractureGeometryCollectionWithMesh` を複数カッターメッシュに拡張したもの |
+
+#### Cluster hierarchy（4）— 要 `GeometryCollectionEdit`
+
+ボーンの再親子付け・リネーム・グループ化のみを行い、ジオメトリとトポロジーは変更されません。
+
+| コマンド | 説明 |
+|---|---|
+| `ClusterGeometryCollectionBones` | 選択したボーンを新しいクラスタノードの下に再親子付けする（`NewNodeAtIndex` / `NewNodeWithParent` / `AllBonesUnderNewRoot`） |
+| `AutoClusterGeometryCollection` 🧩 | 選択したボーンを自動的に新しいクラスタノードへグループ化する（`AutoCluster` / `ConvexityBasedCluster` / `ClusterMagnet`）。`Fracture` プラグインが必要 |
+| `UnclusterGeometryCollectionBones` | 中間クラスタノードの削除、またはボーンをルート方向へ移動する（5 モード: `MoveUpOneHierarchyLevel` / `CollapseHierarchyOneLevel` / `CollapseLevelHierarchy` / `RemoveDanglingClusters` / `RemoveClustersOfOnlyOneChild`）。ジオメトリを持つボーンが削除されることはない |
+| `RenameGeometryCollectionBone` | ボーンを 1 件リネームする。任意で全子孫へも新しい名前を伝播できる（`UpdateChildren`、既定 true） |
+
+#### Geometry editing & clean-up（11）
+
+| コマンド | 説明 |
+|---|---|
+| `MergeGeometryCollectionBones` 🧩 | 選択した 2 件以上のボーンをマージする — 1 つの生存ボーンへジオメトリごと統合する（`MergeAllSelectedBones`）か、ジオメトリに触れず共有クラスタの下へ再親子付けする（`MergeSelectedClusters`）。`GeometryCollectionFracture` と `Fracture` プラグインが必要 |
+| `DeleteGeometryCollectionBranch` 🧩 | 選択したボーンとその全子孫を削除する。Prune ツールに対応。選択ボーン自身がコレクションのルートの場合は削除されない。`GeometryCollectionFracture` と `Fracture` プラグインが必要 |
+| `FixGeometryCollectionTinyGeometry` 🧩 | サイズ閾値未満のジオメトリ（`MergeGeometry`）またはクラスタ（`MergeClusters`）を隣接ボーンへマージする。Geometry Merge ツールに対応。`NeighborSelection` の値 `LargestContactArea` は UE 5.8 以降が必要。`GeometryCollectionFracture` と `Fracture` プラグインが必要 |
+| `SplitGeometryCollectionIslands` 🧩 | 選択したボーンを非連結成分ごとに分割する。Split Islands ツールに対応。分割対象が無い場合は成功扱いの no-op となる。`GeometryCollectionFracture` と `Fracture` プラグインが必要 |
+| `ValidateGeometryCollection` 🧩 | コレクション全体を対象に、未参照ジオメトリ・単一子クラスタ・孤立クラスタをクリーンアップする（少なくとも 1 つのフラグが必要）。対象が無い場合は成功扱いの no-op となる。`GeometryCollectionFracture` と `Fracture` プラグインが必要 |
+| `SetGeometryCollectionBoneVisibility` 🧩 | ボーン選択（`SelectionMode: Transform`）または明示的な面選択（`SelectionMode: Face`）で面の `Visible` フラグを切り替える。`GeometryCollectionEdit` と `Fracture` プラグインが必要 |
+| `SetGeometryCollectionBoneMaterial` 🧩 | ボーン選択の内側 / 外側 / 全面（`TargetFaces`）へ `MaterialID` を割り当てる — フラクチャで新たに露出した面（`TargetFaces` の `InternalFaces`）へ専用の内部マテリアルを指定する用途に有用。`GeometryCollectionEdit` と `Fracture` プラグインが必要 |
+| `RecomputeGeometryCollectionNormals` 🧩 | ボーン選択の法線（`OnlyTangents` 未指定時は接線も）を再計算する — 値が古くなる操作の後に実行しても安全。`GeometryCollectionEdit` と `Fracture` プラグインが必要 |
+| `SimplifyGeometryCollectionConvexHulls` 🧩 | 凸包コリジョンの三角形数を削減する（`MeshQSlim` または `AngleTolerance`）。コレクションに凸包データが無い場合は `ExecutionFailed` で失敗する。`GeometryCollectionEdit` と `Fracture` プラグインが必要 |
+| `GenerateGeometryCollectionExplodedView` 🧩 | Fracture Mode ビューポートの「View Exploded Amount」スライダーが駆動する分解ビュー表示属性を書き込む。表示専用。`GeometryCollectionEdit` と `Fracture` プラグインが必要 |
+| `SetGeometryCollectionBoneColors` 🧩 | 7 種類のアルゴリズム（`ByParent` / `ByLevel` / `ByCluster` / `ByLeafLevel` / `ByLeaf` / `ByAttr` / `Random`）のいずれかでボーンカラー表示属性を割り当てる。任意で頂点カラーへも転送できる。表示専用。`GeometryCollectionEdit` と `Fracture` プラグインが必要 |
+
+#### Settings（1）— 要 `GeometryCollectionEdit`
+
+| コマンド | 説明 |
+|---|---|
+| `SetGeometryCollectionDestructionSettings` | ダメージモデルとクラスタリング設定を原子的に置き換える — `DamageModel`・階層レベルごとの `DamageThreshold` 配列・`SizeSpecificData`・クラスタリング設定。部分更新モードは無い。事前に `GetGeometryCollectionDestructionSettings` で現在の設定を読み取ること |
 
 ---
 

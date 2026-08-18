@@ -235,6 +235,16 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `SkeletonAssetEdit` | Skeleton アセットのソケット・バーチャルボーンの追加・削除・変更 |
 | `SkeletalMeshMaterialEdit` | SkeletalMesh のマテリアルスロットの割り当て・置換 |
 
+#### Geometry Collection（Chaos Destruction）編集
+
+読み取り専用の観測コマンド（`GetGeometryCollectionInfo`・`GetGeometryCollectionClusterInfo`・`GetGeometryCollectionDestructionSettings`）は DefaultAllow の `EditorInspect` です。読み取り専用の `SelectGeometryCollectionBones` も同じく `EditorInspect` ですが、追加で `Fracture` プラグインが必要です — 詳細は [Commands Reference](commands.md) を参照してください。書き込み系はリスクの性質ごとに 3 つの capability へ分割されています: アセットの作成・マージ、ボーンのフラクチャ・マージ・削除・分割・検証（いずれも破壊的なジオメトリ操作）、それ以外（クラスタ階層・ジオメトリ属性・ダメージ設定）。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `GeometryCollectionCreate` | Static Mesh から新規 `UGeometryCollection` を作成（`CreateGeometryCollectionFromStaticMesh` 🧩、`GeometryCollectionPlugin` が必要）、および片方のコレクションのジオメトリをもう片方へマージ（`MergeGeometryCollectionAssets`、プラグイン依存なし） |
+| `GeometryCollectionFracture` 🧩 | コレクションをフラクチャ（`FractureGeometryCollectionUniform` / `Voronoi` / `Plane` / `Slice` / `Brick` / `WithMesh` / `WithMeshArray`）、ボーンのマージ・削除（`MergeGeometryCollectionBones`・`DeleteGeometryCollectionBranch`）、微小ジオメトリのマージ（`FixGeometryCollectionTinyGeometry`）、非連結アイランドの分割（`SplitGeometryCollectionIslands`）、構造的不整合のクリーンアップ（`ValidateGeometryCollection`）— 計 12 コマンド、いずれも `Fracture` プラグインが必要 |
+| `GeometryCollectionEdit` | ボーンのクラスタ階層編集（`ClusterGeometryCollectionBones`・`UnclusterGeometryCollectionBones`・`RenameGeometryCollectionBone`）、ジオメトリの表示 / 派生データ属性編集（可視性・マテリアル・法線・凸包・分解ビュー・ボーンカラー）、ダメージモデル / クラスタリング設定（`SetGeometryCollectionDestructionSettings`）— 計 11 コマンド。`AutoClusterGeometryCollection` と属性編集系 6 コマンド（🧩 印）は追加で `Fracture` プラグインが必要、残る 4 コマンドにプラグイン依存は無い |
+
 #### Motion Matching / Pose Search 編集
 
 | Capability | 有効になる操作 |
