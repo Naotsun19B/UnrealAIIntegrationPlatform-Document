@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1015 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1435 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1022 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1442 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -82,6 +82,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 23 | — | — |
 | Editor AnimSequence | `UAIP.Editor.AnimSequence` | 12 | — | — |
 | Editor ChaosDestruction | `UAIP.Editor.ChaosDestruction` | 29 | — | — |
+| Editor Validation 🧩 | `UAIP.Editor.Validation` | 7 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
@@ -2159,6 +2160,49 @@ Geometry Collection（Chaos Destruction）編集 — `UGeometryCollection` ア�
 | コマンド | 説明 |
 |---|---|
 | `SetGeometryCollectionDestructionSettings` | ダメージモデルとクラスタリング設定を原子的に置き換える — `DamageModel`・階層レベルごとの `DamageThreshold` 配列・`SizeSpecificData`・クラスタリング設定。部分更新モードは無い。事前に `GetGeometryCollectionDestructionSettings` で現在の設定を読み取ること |
+
+---
+
+## UAIP.Editor.Validation 🧩
+
+プロジェクトが登録したアセットバリデータを、少数のアセットに対してもコンテンツフォルダ全体に対しても実行し、検出された内容を読み、バリデータが提供する修正を適用します。何が「正しい」かを UAIP が決めることはありません — 判定はすべて `UEditorValidatorSubsystem` と、そこにエンジンおよびプロジェクトが登録したバリデータに由来します。`DataValidation` プラグインが必要です。このドメインに Toolset ブリッジは存在しません。
+
+> **前提条件**: `DataValidation` はエンジン同梱で既定有効ですが、UAIP がリンクするのはプロジェクトが**明示的に**宣言している場合だけです。`.uproject` の `Plugins` 配列へ `{ "Name": "DataValidation", "Enabled": true }` を追加してリビルドしてください。このエントリがないとドメインごと `uaip_list_commands` に現れず、`uaip_list_commands(IncludeUnavailable=true)` が `UnavailableReason: HandlerUnavailable` を返します。
+
+> **Note — マテリアル検証にはさらに設定が必要です**: エンジンのマテリアルバリデータは、プロジェクトの `MaterialValidationPlatforms` 設定が空の間はすべてのマテリアルをスキップします。このプラットフォーム一覧はバリデータのクラスデフォルトオブジェクトの構築時に 1 度だけ作られるため、**設定変更はエディタを再起動するまで反映されません**。`ListValidators` はこれについて観測できる内容を `MaterialValidation` として返しますが、`EffectivelyRunnable` は答えではなく推定値です — バリデータが実際に保持している一覧は外部から読めないため、すべてのフラグが true でもマテリアルがスキップされることがあります。
+>
+> **Note — ジョブの結果は 1 回の呼び出しと一致するとは保証されません**: `StartValidationJob` はエディタを操作可能なまま保つために少しずつ検証しますが、エンジンはバッチ単位の検証フックをチャンクごとに発火させます。そのため、バッチ全体を集約するプロジェクト独自バリデータは 1 つのバッチではなく複数のバッチを見ることになります。一致が重要な場合は `ValidateAssets`（1 回の呼び出しで検証。最大 8 件）を使ってください。
+>
+> **Note — 修正はエンジンではなくプロジェクトが提供するものです**: エンジン同梱のバリデータは修正を 1 つも生成しないため、`Assets[].Fixes[]` が空なのは異常ではなく通常の状態です。修正は、それを提供するバリデータをプロジェクトが自作している場合にのみ現れます。また、検証と修正の届く範囲は意図的に異なります — 検証はエンジン・プラグインコンテンツを含むすべてのマウント済みコンテンツルートを読みますが、`ApplyValidationFix` は UAIP が書き込まないルート（`/Engine/` など）配下のアセットを `NotAllowed` で拒否します。その種のアセットはプロジェクトコンテンツへ複写してから修正してください。
+>
+> **Note — `ListValidators` 以外のすべてのコマンドは明示的な `SessionId` を要求します**。検証は開始した呼び出しの後から追跡・取得・修正されるものであり、それに到達できるのは開始したセッションだけだからです。呼び出し元セッションが到達できない識別子は、理由を問わず（不明・期限切れ・他セッションのもの・ジョブ系コマンドへ `ResultId` を渡した場合）すべて `NotFound` となります。なお `ListValidators` が列挙できるのはエンジンが**有効とみなす**バリデータだけで、無効なものが何件あるかは観測できません。
+
+#### Validator observation（1 コマンド）— 要 `EditorInspect`
+
+| コマンド | 説明 |
+|---|---|
+| `ListValidators` | エディタが現在有効とみなしているバリデータを、`ClassPath` / `ClassName` / `IsEnabled` とともに列挙し、`EnabledCount` と `MaterialValidation` ブロック（`ValidatorPresent`、`SettingsEnabled`、`PlatformsConfigured`、`EffectivelyRunnable`、`Note`）を返します。「問題がなかった」のか「そもそも検査されていない」のかを切り分けるために使います。このドメインで唯一、明示的な `SessionId` なしで呼べるコマンドです |
+
+#### Validation（2 コマンド）— 要 `AssetValidation`
+
+| コマンド | 説明 |
+|---|---|
+| `ValidateAssets` | 1〜8 件のアセットを同期的に検証して結果を返します。無効だったアセット、警告のあるアセット、検査されなかったアセットは個別に列挙され、何も見つからなかったアセットは `Summary` に集計され、`IncludeValid` が true のときにのみ列挙されます。結果 JSON は 64 KiB 未満の間はインラインで返され、いずれにせよ artifact としても書き出されます。⚠️ 本コマンドには時間予算も中断点も進捗取得もありません — マテリアル 1 件の検証だけでシェーダーコンパイルを伴い数秒かかりうるため、重いアセットを含む呼び出しはエディタを数秒〜数十秒応答させなくしうることに注意してください。`ResultId` は、結果に修正が 1 件以上含まれるときにのみ返ります。`AssetPaths` 内で重複したパスは、黙って重複除去せず `InvalidParams` で拒否します（8 件を明示指定したのに 7 件しか検証されない結果は分かりにくいため） |
+| `StartValidationJob` | フォルダ（`PackagePath` + `Recursive`）または明示的な `AssetPaths` リスト — どちらか一方だけであり、両方指定も両方省略も不可 — を複数フレームに分けて検証し、結果ではなく `JobId` を返します。`MaxAssets` は、リダイレクタ解決と外部オブジェクトの所有者への畳み込みの後に残る件数を制限します（切り捨てた場合は `Summary.AssetLimitReached` が立ちます）。列挙だけで内部上限を超えるほど広いフォルダは、先頭の一部を検証するのではなく `EnumerationLimitExceeded` で失敗しますので、`MaxAssets` を下げるのではなくフォルダを絞ってください。同一セッションのジョブが実行中に 2 つ目を開始すると前のジョブが中断され `ReplacedPreviousJob` が返り、前回からの間隔が短すぎる場合は `TooManyRequests` が返ります。`Recursive` は `PackagePath` と併用したときにのみ意味を持つため、`AssetPaths` と同時に指定した場合は黙って無視せず拒否します（20,000 件を超える `AssetPaths` も同様です） |
+
+#### Job observation & control（3 コマンド）— 要 `EditorInspect`
+
+| コマンド | 説明 |
+|---|---|
+| `GetValidationJobStatus` | ジョブの進捗を問い合わせます。`State`（`Preparing` / `Enumerating` / `Normalizing` / `Validating` / `Finalizing` / `Completed` / `Failed` / `Aborted`）、`PhaseLabel`、`ProcessedCount` / `TotalCount`、`ElapsedSeconds`、`FailureReason`（固定の列挙値。失敗するまでは `None`）、および途中集計の `NumInvalid` / `NumWarnings` を返します。返されるのは件数・状態・経過秒だけで、バリデータのメッセージもアセットパスも含まれません。応答コストはジョブの規模によらず一定なので、ポーリングが検証を遅くすることはありません |
+| `GetValidationJobResult` | ジョブが生成した結果を取得します。ジョブ全体の集計をインラインで、完全な結果を JSON artifact として返します（無効だったアセット・警告のあるアセット・検査されなかったアセットの明細）。ここで再検証・再走査は行いません。完了したジョブだけでなく、失敗したジョブや中断されたジョブに対しても結果を返します — 停止するまでに検証されていた分は artifact に含まれ、何が落ちたかは `Truncation` が説明します。未完了のジョブに対して部分結果を返すことはありませんので、先にステータスをポーリングしてください。読み取りに成功するとジョブの保持期限が延長されます |
+| `CancelValidationJob` | ジョブを次のチャンク境界で停止します — **即時ではありません**。エンジンの検証呼び出しは一度入ると中断できないため、実行中のチャンク 1 つ分は最後まで走り、その結果も保持されます。直後に進捗を見るとまだ実行中に見えることがあります。ジョブは識別子と結果を保持したまま `Aborted` になります（長い実行を途中で止める目的は通常これです）。すでに終了したジョブへの中断要求は成功し、`WasRunning: false` を返して何もしません。⚠️ ジョブを `Aborted` へ遷移させる状態変更を伴いますが、観測系コマンドと同じく read-only 宣言・`EditorInspect` ゲートです。これを境界づけているのはジョブの所有権です |
+
+#### Fix application（1 コマンド）— 要 `AssetValidationFix`
+
+| コマンド | 説明 |
+|---|---|
+| `ApplyValidationFix` | バリデータがメッセージに添えて提供した修正を 1 件適用します。`ResultId`（`StartValidationJob` が返した `JobId`、または `ValidateAssets` が返した `ResultId`）と、その結果の `Assets[].Fixes[]` から引いた `FixId` で指定します。修正は 1 件ずつ適用します。ある修正を適用すると排他関係にあった他の修正が適用不可になりうるため、応答には `UpdatedFixes`（その結果が保持する全修正の適用可否を適用後に再取得したもの）が含まれます。修正へはそれを生成した結果経由でしか到達できません — その結果が保持していない識別子は `NotFound` となり、識別子の文字列からアセットを引き当てることはありません（検証していないアセットの修正に結果をチケットとして使えないため）。`AssetSaved` はアセットがディスクへ保存されたかを表します。このドメインで唯一 read-only ではないコマンドで、`DisableSave` が有効な間は一律に拒否されます（修正が保存を伴うかどうかを fixer に事前に問う手段がないため） |
 
 ---
 

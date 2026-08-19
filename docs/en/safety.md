@@ -511,6 +511,15 @@ These capabilities all require the `FileSandbox` plugin.
 | `SandboxPersist` 🧩 | Flush sandbox changes to disk — `CommitSandboxChanges` |
 | `SandboxRevert` 🧩 | Discard pending sandbox changes — `RevertSandboxChanges` |
 
+#### Asset validation
+
+These capabilities require the `DataValidation` plugin, which the project must name explicitly in its `.uproject` — see the `UAIP.Editor.Validation` section of the [Commands Reference](commands.md). Listing the validators, following a validation job and reading its result are DefaultAllow (`EditorInspect`); only running validators and applying their fixes are gated here.
+
+| Capability | What it unlocks |
+|---|---|
+| `AssetValidation` 🧩 | Run the validators the project registered over assets — `ValidateAssets` (synchronous, up to 8 assets) and `StartValidationJob` (a folder or a list, validated in steps). Denied by default because validation executes project-supplied C++ / Blueprint / Python code that the engine does not forbid from having side effects, and because it loads assets and can trigger shader compilation. Both commands declare themselves read-only so an unrelated session holding a sandbox open cannot block them, but they evaluate the `ReadOnly` policy themselves and refuse while it is in force |
+| `AssetValidationFix` 🧩 | Apply one fix a validator offered for a message it produced — `ApplyValidationFix`. Denied by default because it rewrites a real asset and the fixer may leave it saved to disk. Refused outright while `DisableSave` is in force, whatever the fix would do, and refused for an asset under a root UAIP will not write to — validation reads from engine content, repair does not reach it |
+
 ---
 
 ## Enabling DefaultDenied capabilities

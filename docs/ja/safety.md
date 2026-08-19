@@ -511,6 +511,15 @@ ExternalTraceDirectory=D:/TraceDrop
 | `SandboxPersist` 🧩 | Sandbox 変更のディスクへのフラッシュ — `CommitSandboxChanges` |
 | `SandboxRevert` 🧩 | 保留中の Sandbox 変更の破棄 — `RevertSandboxChanges` |
 
+#### アセット検証
+
+これらの Capability は `DataValidation` プラグインが必要で、プロジェクトの `.uproject` で明示的に宣言しておく必要があります（[コマンドリファレンス](commands.md)の `UAIP.Editor.Validation` セクション参照）。バリデータの列挙、検証ジョブの追跡、結果の取得は DefaultAllow（`EditorInspect`）で、ここでゲートされるのはバリデータの実行と修正の適用だけです。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `AssetValidation` 🧩 | プロジェクトが登録したバリデータをアセットに対して実行 — `ValidateAssets`（同期、最大 8 件）と `StartValidationJob`（フォルダまたはリストを段階実行）。検証はプロジェクトが提供する任意の C++ / Blueprint / Python コードを実行し、エンジンはそれらに副作用を禁じていないこと、およびアセットのロードとシェーダーコンパイルを伴うことから、既定では拒否されます。両コマンドは無関係のセッションが Sandbox を開いているだけで止まらないよう read-only を宣言しますが、`ReadOnly` ポリシーは自前で評価し、有効なら拒否します |
+| `AssetValidationFix` 🧩 | バリデータが提供した修正を 1 件適用 — `ApplyValidationFix`。実アセットを書き換え、fixer 経由でディスクへ保存されうるため、既定では拒否されます。`DisableSave` が有効な間は修正の種類を問わず一律に拒否され、UAIP が書き込まないルート配下のアセットも拒否されます — 検証はエンジンコンテンツを読めますが、修正はそこまで届きません |
+
 ---
 
 ## DefaultDenied Capability を有効にする

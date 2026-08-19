@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1015 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1435 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1022 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1442 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -82,6 +82,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 23 | — | — |
 | Editor AnimSequence | `UAIP.Editor.AnimSequence` | 12 | — | — |
 | Editor ChaosDestruction | `UAIP.Editor.ChaosDestruction` | 29 | — | — |
+| Editor Validation 🧩 | `UAIP.Editor.Validation` | 7 | — | — |
 | Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | partial (2/3) |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
@@ -2159,6 +2160,49 @@ These only re-parent, rename, or group bones — geometry and topology are uncha
 | Command | Description |
 |---|---|
 | `SetGeometryCollectionDestructionSettings` | Atomically replace the damage-model and clustering configuration — `DamageModel`, the per-level `DamageThreshold` array, `SizeSpecificData`, and clustering settings. No partial-update mode; read the current settings with `GetGeometryCollectionDestructionSettings` first |
+
+---
+
+## UAIP.Editor.Validation 🧩
+
+Run the asset validators a project has registered — over a handful of named assets or over a whole content folder — read what they found, and apply the fixes they offered. UAIP never decides what "correct" means here: every judgement comes from `UEditorValidatorSubsystem` and the validators the engine and the project registered with it. Requires the `DataValidation` plugin. No Toolset bridge exists for this domain.
+
+> **Prerequisite**: `DataValidation` ships with the engine and is enabled by default, but UAIP links against it only when the project names it **explicitly**. Add `{ "Name": "DataValidation", "Enabled": true }` to the `Plugins` array of your `.uproject` and rebuild. Without that entry the whole domain is missing from `uaip_list_commands`, and `uaip_list_commands(IncludeUnavailable=true)` reports it as `UnavailableReason: HandlerUnavailable`.
+
+> **Note — material validation needs one more setting**: the engine's material validator skips every material while the project's `MaterialValidationPlatforms` setting is empty. That platform list is built once when the validator's class default object is constructed, so **changing the setting takes effect only after the editor is restarted**. `ListValidators` reports what can be observed about this under `MaterialValidation`; its `EffectivelyRunnable` is an estimate rather than an answer, because the list the validator actually holds cannot be read from outside — materials may still be skipped while every flag reads true.
+>
+> **Note — a job's result is not promised to equal a single call's**: `StartValidationJob` validates a few assets at a time so that the editor stays usable, and the engine raises its per-batch validation hooks once per chunk. A project validator that aggregates across a batch therefore sees several batches instead of one. Use `ValidateAssets` when that matters; it validates in a single call, for up to 8 assets.
+>
+> **Note — fixes come from the project, not from the engine**: no validator the engine ships offers a fix, so an empty `Assets[].Fixes[]` is the ordinary outcome rather than a sign of trouble. Fixes appear only where a project has written a validator that offers them. Validation and repair also reach different distances on purpose: validation reads from every mounted content root, engine and plugin content included, while `ApplyValidationFix` refuses with `NotAllowed` for an asset under a root UAIP will not write to (`/Engine/` and the like) — copy such an asset into project content and fix the copy.
+>
+> **Note — every command but `ListValidators` requires an explicitly given `SessionId`**, because a validation is followed, read and repaired after the call that started it, and only the session that started one can reach it. An identifier that names nothing the calling session may reach answers `NotFound` whatever the reason — unknown, expired, another session's, or a `ResultId` handed to a job command. Separately, `ListValidators` can only enumerate the validators the engine considers **enabled**; how many exist but are switched off is not observable.
+
+#### Validator observation (1) — requires `EditorInspect`
+
+| Command | Description |
+|---|---|
+| `ListValidators` | List the validators the editor currently considers enabled, each with `ClassPath` / `ClassName` / `IsEnabled`, plus `EnabledCount` and a `MaterialValidation` block (`ValidatorPresent`, `SettingsEnabled`, `PlatformsConfigured`, `EffectivelyRunnable`, `Note`). Use it to tell "nothing was wrong" apart from "nothing was inspected" — a result with no findings means little while it is unknown whether any validator was enabled at all. The one command in this domain callable without an explicit `SessionId` |
+
+#### Validation (2) — requires `AssetValidation`
+
+| Command | Description |
+|---|---|
+| `ValidateAssets` | Validate 1–8 assets synchronously and answer with the result. Assets that came back invalid, that carry a warning, or that were not inspected at all are listed individually; the ones nothing was found on are counted in `Summary` and listed only when `IncludeValid` is true. The result JSON is answered inline while it stays under 64 KiB and is written as an artifact either way. ⚠️ The call has no time budget, no interruption point and no progress to poll — validating a single material compiles shaders and can take seconds on its own, so a call carrying heavy assets can leave the editor unresponsive for seconds to tens of seconds. A `ResultId` is answered only when the result carries at least one fix. A path repeated inside `AssetPaths` is rejected with `InvalidParams` rather than silently de-duplicated — an explicit list of 8 paths that validates 7 assets would be a confusing answer |
+| `StartValidationJob` | Validate a folder (`PackagePath` + `Recursive`) or an explicit `AssetPaths` list — one or the other, never both and never neither — in steps across many frames, and answer with a `JobId` rather than a result. `MaxAssets` bounds what is kept after redirectors are resolved and external objects are folded into their owners; anything dropped raises `Summary.AssetLimitReached`. A folder so wide that enumeration alone exceeds the internal ceiling fails outright with `EnumerationLimitExceeded` rather than validating an arbitrary prefix of it, so narrow the folder rather than lowering `MaxAssets`. Starting a second job while one of the same session is still running stops the earlier one and reports `ReplacedPreviousJob`; starting again too soon after the last one answers `TooManyRequests`. `Recursive` is meaningful only alongside `PackagePath`; passing it with `AssetPaths` is rejected rather than ignored, as is an `AssetPaths` list longer than 20,000 |
+
+#### Job observation & control (3) — requires `EditorInspect`
+
+| Command | Description |
+|---|---|
+| `GetValidationJobStatus` | Poll one job: `State` (`Preparing` / `Enumerating` / `Normalizing` / `Validating` / `Finalizing` / `Completed` / `Failed` / `Aborted`), `PhaseLabel`, `ProcessedCount` / `TotalCount`, `ElapsedSeconds`, `FailureReason` (one of a fixed set of values, reading `None` until the job fails), and the running totals `NumInvalid` / `NumWarnings`. Counts, states and durations are the whole of what is reported — no message a validator produced and no asset path appears here. Answering costs the same whatever the size of the job, so polling does not slow the validation down |
+| `GetValidationJobResult` | Fetch what a job produced: the job-wide counts inline, plus the full result as a JSON artifact listing every asset that came back invalid, carried a warning, or was not inspected. Nothing is validated or scanned again. Answered for a job that failed or was cancelled as well as for one that completed — whatever had been validated before it stopped is in the artifact, and `Truncation` explains what was left out. A job that has not finished yet is not answered with a partial result; poll the status first. A successful read restarts the job's retention countdown |
+| `CancelValidationJob` | Stop a job at its next chunk boundary — **not immediately**: the engine's validation call cannot be broken into once entered, so the chunk in flight runs to completion and what it produced is still kept. Polling right afterwards may therefore still show the job working. The job keeps its identifier and its result and reads `Aborted` from then on, which is usually the point of stopping a long run rather than abandoning it. Cancelling an already-finished job succeeds and does nothing, reporting `WasRunning: false`. ⚠️ Declared read-only and gated by `EditorInspect` alongside the observing commands even though it moves a job to `Aborted`; what bounds it is ownership of the job |
+
+#### Fix application (1) — requires `AssetValidationFix`
+
+| Command | Description |
+|---|---|
+| `ApplyValidationFix` | Apply one fix a validator offered alongside a message it produced, named by `ResultId` (the `JobId` `StartValidationJob` returned, or the `ResultId` `ValidateAssets` returned) and the `FixId` quoted from that result's `Assets[].Fixes[]`. Fixes are applied one at a time, and applying one can rule out the alternatives it was mutually exclusive with, so the answer carries `UpdatedFixes`: the applicability of every fix still held for that result, re-queried afterwards. A fix is reachable only through the result that produced it — an identifier that result does not hold reports `NotFound`, and the identifier's own text is never used to find an asset, so a result cannot be used as a ticket for repairing something it never validated. `AssetSaved` reports whether the asset was left written to disk. The one command in this domain that is not read-only, and it is refused outright while `DisableSave` is in force, because a fixer cannot be asked whether it will save what it repairs |
 
 ---
 
