@@ -126,6 +126,41 @@ Controls where the scanner looks for `@uaip_command`-decorated Python files. Onl
 
 No CLI equivalents.
 
+### `[UAIP.Transport]` — Auto-starting the MCP transport on a normal launch
+
+Lets a normally-launched editor (Epic Games Launcher, double-clicking the `.uproject`, an IDE's Debug run — anything that does not already pass `-uaip-mcp-enable` / `-uaip-http-enable`) start listening for MCP connections on its own, so a bridge configured for guest mode has something to attach to later. See [Connection Methods → Guest-mode connections](connections.md#guest-mode-connections) for the end-to-end flow.
+
+| Key | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `AutoStartMCP` | bool | `False` | — | Master switch. When `True`, the editor starts the transport in **MCPOnly mode** on `OnPostEngineInit`. There is no ini key to auto-start FullHTTP this way |
+| `AutoStartPort` | int32 | `0` | `[0, 65535]` | First port to try. `0` means the transport's compiled-in default port (`8765`) |
+| `AutoStartPortScanCount` | int32 | `8` | `[1, 64]` | How many consecutive ports, starting at `AutoStartPort`, to try before giving up |
+
+CLI equivalents (a one-shot opt-in without editing the ini): `-uaip-auto-start-mcp` / `-uaip-auto-start-port=N` / `-uaip-auto-start-port-scan-count=N`.
+
+A value outside the documented range is **not clamped** — it is rejected with a startup warning and the key keeps its default (same "warn and leave unchanged" behavior as every other ranged ini key UAIP reads). If `-uaip-mcp-enable` or `-uaip-http-enable` is present on the command line, this section is not read at all — an explicit flag always wins over auto-start.
+
+This section is ignored in the demo build; the demo already starts MCPOnly unconditionally regardless of any ini setting here.
+
+> **Security note**: `Config/DefaultUAIP.ini` is committed to source control and the editor has no per-user override layer. Enabling `AutoStartMCP=True` there means every developer who opens the project gets a listening MCP endpoint on every normal launch, with no per-developer opt-out — see [Security → Operational security notes](security.md#operational-security-notes).
+
+#### Endpoint descriptor file
+
+Whenever the HTTP transport actually starts — whether from `AutoStartMCP`, `-uaip-mcp-enable`, or `-uaip-http-enable` — it writes `<Project>/Saved/UAIP/EditorEndpoint.json`:
+
+```json
+{
+  "Port": 8765,
+  "Mode": "MCPOnly",
+  "ProjectFilePath": "F:/MyProjects/MyGame/MyGame.uproject"
+}
+```
+
+- Written atomically (temp file + rename) once the listener is genuinely bound; removed on a clean shutdown
+- Capped at 1024 bytes on read — anything larger is ignored rather than parsed
+- **Not an input to any permission decision.** It only tells a would-be guest connection which port to try; it carries no role name, no auth token, and no process id. A reader still has to pass the normal `HealthCheck`-based project-identity check before treating the port as the right editor
+- If the editor exits abnormally, a stale descriptor can be left behind. A reader that finds one probes the port before trusting it, and falls back to the configured port when nothing is listening there
+
 > `[UAIP.SafetyPolicy]` is intentionally not listed here — see [Safety & Capabilities](safety.md) for the full SafetyPolicy reference, including `AllowedCapabilities`, `DeniedCapabilities`, `DeniedCommands`, and `AllowCapabilityReload`.
 
 ### `AllowedArtifactDirectory` override
@@ -153,7 +188,7 @@ Every transport is disabled by default and must be opted in at launch.
 
 | Flag | Description |
 |---|---|
-| `-uaip-http-enable` | Enable HTTP API mode (FullHTTP). Binds `0.0.0.0:<port>` and exposes `/uaip/*` + `/mcp`. Requires Bearer token unless `-uaip-http-no-auth` is set |
+| `-uaip-http-enable` | Enable HTTP API mode (FullHTTP). Binds loopback (`127.0.0.1:<port>`) and exposes `/uaip/*` + `/mcp`. Requires Bearer token unless `-uaip-http-no-auth` is set — see [Security → Network surface](security.md#network-surface) |
 | `-uaip-mcp-enable` | Enable MCP-only mode. Implies `-uaip-http-enable` but only exposes `/mcp` and `/uaip/artifacts/*`. Enforces 5-stage localhost check (PeerAddress / Host / Origin). No auth required |
 | `-uaip-ws-enable` | Enable WebSocket transport. Binds `127.0.0.1:<port>` (hard-coded). Requires Bearer token in the first frame unless `-uaip-ws-no-auth` is set |
 | `-uaip-enable-scenario` | Enable the `uaip_run_scenario` route. Without this, scenario submissions return `PolicyViolation: Scenario execution is not enabled` |
@@ -260,8 +295,9 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `editor_path` | string | `""` | Absolute path to `UnrealEditor.exe`. Falls back to env override `UAIP_UE_EDITOR_PATH` (env takes precedence) |
-| `uproject_path` | string | `""` | Absolute path to the `.uproject` file. Falls back to env override `UAIP_UPROJECT_PATH` (env takes precedence) |
+| `editor_path` | string | `""` | Absolute path to `UnrealEditor.exe`. Falls back to env override `UAIP_UE_EDITOR_PATH` (env takes precedence). **Not required when `attach_only` is `true`** — a guest-mode bridge never launches an editor, so it has nothing to point this at |
+| `uproject_path` | string | `""` | Absolute path to the `.uproject` file. Falls back to env override `UAIP_UPROJECT_PATH` (env takes precedence). **Always required**, in every mode — used for project-identity verification, auth-token resolution, crash-marker paths, and endpoint-descriptor resolution |
+| `attach_only` | bool | `false` | Guest mode. When `true`, the bridge never launches an editor of its own — it only attaches to one it finds already listening, resolving the port from the [endpoint descriptor](config.md#endpoint-descriptor-file) with a fallback to `http_port`. It also never launches a replacement when the attached editor's connection drops, whether from a health-check failure or a config reload. See [Connection Methods → Guest-mode connections](connections.md#guest-mode-connections). Env override: `UAIP_ATTACH_ONLY` (`1` / `true` / `yes`) |
 | `http_port` | int | `8765` | HTTP port for the editor's MCP endpoint. Must match `-uaip-http-port` when set |
 | `http_startup_timeout_seconds` | int | `120` | How long the bridge waits for the editor to become ready after launch |
 | `command_timeout_seconds` | int | `180` | Per-request HTTP timeout for forwarded commands. **Cannot be set lower than the HTTP transport's own async command timeout (120 s)** — see the invariant note below |

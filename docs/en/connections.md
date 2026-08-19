@@ -154,6 +154,27 @@ Full installer / paths reference: `<bridge-root>/install/SETUP.md` (deployed alo
 
 `editor_path` / `uproject_path` in `config.json` are fallbacks; per-connection paths supplied through the MCP client's `env` block (`UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`) take precedence. See [Scenario Execution](scenario.md) for what scenarios enable and [Configuration](config.md#mcp-bridge-configjson) for the full key list.
 
+### Guest-mode connections
+
+Guest mode lets a bridge attach to an editor a human already has open — the workflow behind running an AI CLI from the editor's built-in Terminal panel and having it drive that same editor — instead of launching an editor of its own.
+
+**What guest mode changes:**
+
+- The bridge never calls into `launch_editor()` — not on the first tool call, not to recover from a crash, and not as a side effect of `uaip_reload_config`. If no editor answers, the bridge reports the situation instead of starting one.
+- `editor_path` becomes optional in `config.json` — see [Configuration → MCP Bridge config.json](config.md#mcp-bridge-configjson).
+- Port resolution tries the [endpoint descriptor](config.md#endpoint-descriptor-file) written by the editor first, then falls back to `http_port`.
+
+**Setup:**
+
+1. Enable `[UAIP.Transport].AutoStartMCP=True` in `Config/DefaultUAIP.ini` (see [Configuration](config.md#uaiptransport--auto-starting-the-mcp-transport-on-a-normal-launch)), or launch the editor with an explicit `-uaip-mcp-enable` flag if you would rather not change the shared ini.
+2. Launch the editor normally — Epic Games Launcher, double-clicking the `.uproject`, an IDE's Debug run. No special flags are needed once `AutoStartMCP` is on.
+3. In the guest bridge's `config.json`, set `attach_only: true` (or `UAIP_ATTACH_ONLY=1` in its environment). `uproject_path` still has to point at the same project; `editor_path` can be left empty.
+4. Point the AI client at that bridge as usual. The first `uaip_execute` call resolves the port, verifies project identity through `HealthCheck`, and attaches — no new editor process starts.
+
+> **Recommended**: assign the guest bridge a restricted [role](safety.md#roles-layer-15) rather than leaving `[UAIP.Roles]` undefined. Without a role, a guest connection can execute anything a first-party session could. See [Security → Operational security notes](security.md#operational-security-notes).
+
+If the attached editor stops answering, guest mode never launches a replacement — and neither does an ordinary (non-guest) bridge that happens to be `ATTACHED` to someone else's editor. Both report the situation through `RecommendedAction` (see [Check editor status](#check-editor-status-uaip_get_editor_status) below) instead of silently starting a second editor.
+
 ### Check editor status (`uaip_get_editor_status`)
 
 `uaip_get_editor_status` reports the bridge's current view of the editor connection **without triggering auto-launch**. Unlike a regular `uaip_execute` call, it never spawns or attaches to an editor — it only observes.
@@ -164,6 +185,8 @@ uaip_get_editor_status()
     "IsConnected":      false,
     "IsPortListening":  true,
     "State":            "UNRESPONSIVE",
+    "Ownership":        "ATTACHED",
+    "IsAttachOnly":     false,
     "RecommendedAction": "WAIT: the editor port is open but the game thread is not responding. Do not restart or kill the process; a long-running command is likely in progress."
   }
 ```
@@ -173,7 +196,11 @@ uaip_get_editor_status()
 | `IsConnected` | A **real HTTP health ping** issued at call time — not a cached value |
 | `IsPortListening` | A **real TCP connect check** issued at call time — not a cached value |
 | `State` | A diagnostic label describing the bridge's lifecycle state machine (`STOPPED` / `STARTING` / `RUNNING` / `UNRESPONSIVE` / `PORT_OCCUPIED` / `CRASHED` / `RESTARTING`) |
+| `Ownership` | Whether this bridge launched the editor itself (`OWNED`), attached to one it did not launch (`ATTACHED`), or has neither launched nor attached yet (`NONE`) — an observation at call time, not a history. See [Guest-mode connections](#guest-mode-connections) |
+| `IsAttachOnly` | Whether this bridge is configured for guest mode (`attach_only` in `config.json`) |
 | `RecommendedAction` | The action the caller should actually take |
+
+For a guest-mode bridge, or an ordinary bridge that happens to be `ATTACHED` to someone else's editor, `RecommendedAction` never promises an automatic launch. Where an owner-mode bridge would say `RETRY: ... The next tool call launches a fresh one automatically`, these report `CHECK CONFIGURATION: ...` instead once that editor stops answering — because launching a replacement is exactly what they must not do.
 
 The tool probes the transport on **every call**, so both `IsConnected` and `IsPortListening` are fresh measurements, not values read from a background poll that may be stale.
 
@@ -248,7 +275,7 @@ For broader diagnostics, see [Troubleshooting](troubleshooting.md).
 
 ## HTTP API (Pro)
 
-The HTTP API exposes a REST interface. It's suited for custom scripts, CI/CD pipelines, and any integration where an AI client isn't involved. The socket binds to `0.0.0.0`, so with the Bearer token and a firewall allowance the editor can be reached from another machine (FullHTTP mode). Access control is the responsibility of the token and your network setup — see [Security → Network surface](security.md#network-surface) for the detailed model.
+The HTTP API exposes a REST interface. It's suited for custom scripts, CI/CD pipelines, and any integration where an AI client isn't involved. The socket binds to loopback (`127.0.0.1`) even in FullHTTP mode — reaching it from another machine requires an operator-applied bind-address override at the engine-config layer, which UAIP does not expose a setting for. See [Security → Network surface](security.md#network-surface) for the detailed model.
 
 ### Enable
 

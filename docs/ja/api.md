@@ -30,7 +30,7 @@
 
 | Transport | 形式 | エディタポート | パッケージポート | bind 層 | 認証 |
 |---|---|---|---|---|---|
-| HTTP（製品版） | REST + JSON | 8765 | 8767 | `0.0.0.0`（FullHTTP モードはリモート到達可、MCPOnly モードはアプリ層で localhost 強制） | `Authorization: Bearer <token>` |
+| HTTP（製品版） | REST + JSON | 8765 | 8767 | FullHTTP・MCPOnly ともループバック（`127.0.0.1`）。MCPOnly はさらにアプリ層で localhost を強制 — [Security → ネットワーク面](security.md#ネットワーク面) を参照 | `Authorization: Bearer <token>` |
 | WebSocket（製品版） | JSON フレーム | 8766 | 8768 | `127.0.0.1` 固定 | 最初のフレームの `Token` フィールド |
 | CLI（製品版） | stdin/stdout + CLI フラグ | — | — | — | なし（プロセス内） |
 | MCP | AI クライアントの stdio 子プロセス | — | — | — | なし（子プロセス） |

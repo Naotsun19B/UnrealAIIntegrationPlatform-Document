@@ -154,6 +154,27 @@ AI クライアント上での表示にしか影響しないので、ユニー�
 
 `config.json` の `editor_path` / `uproject_path` はフォールバック値で、MCP クライアントの `env`（`UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`）が優先されます。シナリオで何ができるかは [シナリオ実行](scenario.md)、`config.json` の全キーは [設定リファレンス](config.md#mcp-bridge-configjson) を参照。
 
+### ゲストモード接続
+
+ゲストモードは、Bridge が自分でエディタを起動する代わりに、人間が既に開いているエディタへアタッチできるようにする仕組みです。エディタ内蔵の Terminal パネルから AI CLI を起動し、その AI にホスト側のエディタそのものを操作させるワークフローの土台になります。
+
+**ゲストモードで変わること:**
+
+- Bridge は `launch_editor()` を一切呼びません — 最初のツール呼び出しでも、クラッシュからの自動復旧でも、`uaip_reload_config` の副作用としても起動しません。応答するエディタが見つからない場合は、起動する代わりに状況を報告します。
+- `config.json` の `editor_path` が不要になります — 詳細は [設定リファレンス → MCP Bridge config.json](config.md#mcp-bridge-configjson) を参照。
+- ポート解決は、まずエディタが書き出す[接続情報の記述子ファイル](config.md#接続情報の記述子ファイル)を試し、駄目なら `http_port` へフォールバックします。
+
+**設定手順:**
+
+1. `Config/DefaultUAIP.ini` で `[UAIP.Transport].AutoStartMCP=True` を有効にする（[設定リファレンス](config.md#uaiptransport--通常起動のエディタで-mcp-transport-を自動起動する) を参照）。共有 ini を変更したくない場合は、`-uaip-mcp-enable` フラグを明示してエディタを起動してもかまいません。
+2. エディタを通常どおり起動する — Epic Games Launcher・`.uproject` のダブルクリック・IDE のデバッグ実行など。`AutoStartMCP` を有効にしていれば特別なフラグは不要です。
+3. ゲスト側 Bridge の `config.json` で `attach_only: true` を設定する（または環境変数 `UAIP_ATTACH_ONLY=1`）。`uproject_path` は引き続き同じプロジェクトを指す必要がありますが、`editor_path` は空のままでかまいません。
+4. AI クライアントをいつもどおりその Bridge へ向ける。最初の `uaip_execute` 呼び出しでポートが解決され、`HealthCheck` でプロジェクトの同一性が検証されてからアタッチします — 新しいエディタプロセスは起動しません。
+
+> **推奨**: `[UAIP.Roles]` を未定義のままにせず、ゲスト側 Bridge には制限付きの[役割](safety.md#役割layer-15)を割り当ててください。役割を設定していない場合、ゲスト接続は一次接続と同じことを何でも実行できます。詳細は [Security → 運用上のセキュリティ注意点](security.md#運用上のセキュリティ注意点) を参照。
+
+アタッチ先のエディタが応答しなくなっても、ゲストモードは代わりのエディタを起動しません。これは、たまたま他人のエディタへ `ATTACHED` になっている通常（非ゲスト）の Bridge でも同じです。どちらも、黙って 2 つ目のエディタを起動する代わりに `RecommendedAction`（下記「[エディタ状態の確認](#エディタ状態の確認uaip_get_editor_status)」を参照）を通じて状況を報告します。
+
 ### エディタ状態の確認（`uaip_get_editor_status`）
 
 `uaip_get_editor_status` は、**自動起動を一切トリガーせず**、Bridge から見た現在のエディタ接続状態を返します。通常の `uaip_execute` 呼び出しと異なり、エディタの起動やアタッチは行わず、観測のみを行います。
@@ -164,6 +185,8 @@ uaip_get_editor_status()
     "IsConnected":      false,
     "IsPortListening":  true,
     "State":            "UNRESPONSIVE",
+    "Ownership":        "ATTACHED",
+    "IsAttachOnly":     false,
     "RecommendedAction": "WAIT: the editor port is open but the game thread is not responding. Do not restart or kill the process; a long-running command is likely in progress."
   }
 ```
@@ -173,7 +196,11 @@ uaip_get_editor_status()
 | `IsConnected` | 呼び出し時点で実行される**実測の HTTP ヘルス ping** — キャッシュ値ではない |
 | `IsPortListening` | 呼び出し時点で実行される**実測の TCP connect チェック** — キャッシュ値ではない |
 | `State` | Bridge のライフサイクル状態機械を表す診断用ラベル（`STOPPED` / `STARTING` / `RUNNING` / `UNRESPONSIVE` / `PORT_OCCUPIED` / `CRASHED` / `RESTARTING`） |
+| `Ownership` | この Bridge がエディタを自分で起動したか（`OWNED`）、自分では起動していないエディタへアタッチしたか（`ATTACHED`）、まだどちらも行っていないか（`NONE`）。あくまで呼び出し時点の観測値であり履歴ではない。詳細は [ゲストモード接続](#ゲストモード接続) を参照 |
+| `IsAttachOnly` | この Bridge がゲストモード（`config.json` の `attach_only`）で設定されているか |
 | `RecommendedAction` | 呼び出し側が実際に取るべき行動 |
+
+ゲストモードの Bridge、および他人のエディタへたまたま `ATTACHED` になっている通常の Bridge では、`RecommendedAction` が自動起動を約束することは決してありません。オーナーモードの Bridge なら `RETRY: ... The next tool call launches a fresh one automatically` と返す場面でも、これらはそのエディタが応答しなくなった時点で代わりに `CHECK CONFIGURATION: ...` を返します — 代わりのエディタを起動することこそが、してはならない動作だからです。
 
 このツールは**呼び出しごとに**トランスポートをプローブするため、`IsConnected` と `IsPortListening` はどちらも都度の実測値であり、陳腐化しうるバックグラウンドポーリングの値を読んでいるわけではありません。
 
@@ -248,7 +275,7 @@ uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\
 
 ## HTTP API（製品版）
 
-HTTP API は REST インターフェースを公開します。AI クライアントを介さない独自スクリプト・CI/CD・独自ツール連携に向いています。socket 層は `0.0.0.0` にバインドするため、Bearer トークンとファイアウォール越しに別 PC からも到達できます（FullHTTP モード）。アクセス制御はトークンと運用側のネットワーク設定で担保してください。詳細は [セキュリティ → ネットワーク面](security.md#ネットワーク面) を参照。
+HTTP API は REST インターフェースを公開します。AI クライアントを介さない独自スクリプト・CI/CD・独自ツール連携に向いています。FullHTTP モードでも socket 層はループバック（`127.0.0.1`）にバインドされ、別 PC から到達するにはエンジン設定層での bind アドレス上書きを運用者が明示的に行う必要があります（UAIP 側にはそのための設定項目はありません）。詳細は [セキュリティ → ネットワーク面](security.md#ネットワーク面) を参照。
 
 ### 有効化
 

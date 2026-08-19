@@ -12,7 +12,7 @@ UAIP is designed for **developer machines and trusted internal CI**, not as a pu
 
 | Threat | Mitigation |
 |---|---|
-| Network attacker scanning ports | WebSocket binds to loopback; HTTP MCPOnly enforces localhost at the app layer (HTTP FullHTTP intentionally allows remote agents via token + firewall) |
+| Network attacker scanning ports | Every transport binds to loopback (`127.0.0.1`) by default — HTTP MCPOnly additionally enforces localhost at the app layer. Reaching UAIP from another machine requires an operator-applied bind-address override at the engine-config layer, which is outside UAIP's own configuration surface (see [Network surface](#network-surface)) |
 | Local non-UAIP process invoking commands | Bearer token authentication on HTTP / WebSocket |
 | AI hallucinating a destructive command | Capability gates (deny-by-default for edits) + per-command `IsReadOnly` flag |
 | AI getting tricked into making a wide-scope change | SafetyPolicy can put the editor in process-wide read-only mode |
@@ -30,14 +30,16 @@ The threats it does **not** mitigate:
 
 | Component | Bind layer | App-layer filter | Auth | Reachable from another machine |
 |---|---|---|---|---|
-| HTTP transport — FullHTTP (`-uaip-http-enable`) | `0.0.0.0` | none | Bearer token | **Yes** (with token + firewall allowance — by design) |
-| HTTP transport — MCPOnly (`-uaip-mcp-enable`) | `0.0.0.0` | 5-stage localhost enforcement (PeerAddress / Host / Origin) | none (localhost-only by design) | No |
-| HTTP transport — `-uaip-http-no-auth` | `0.0.0.0` | none | none | Yes (development-only — never enable in production) |
+| HTTP transport — FullHTTP (`-uaip-http-enable`) | loopback (`127.0.0.1`) | none | Bearer token | No — see note below |
+| HTTP transport — MCPOnly (`-uaip-mcp-enable`) | loopback (`127.0.0.1`) | 5-stage localhost enforcement (PeerAddress / Host / Origin) | none (localhost-only by design) | No |
+| HTTP transport — `-uaip-http-no-auth` | loopback (`127.0.0.1`) | none | none | No |
 | WebSocket transport (`-uaip-ws-enable`) | `127.0.0.1` (hard-coded) | ClientIP double-check | Bearer token (first frame) | No |
 | MCP Bridge | stdio between AI client and bridge process | — | none — relies on host trust | — |
 | CLI transport | none (in-process) | — | none | — |
 
-Only WebSocket is bound to `127.0.0.1` at the socket layer. HTTP FullHTTP intentionally listens on `0.0.0.0` because it's designed to be reached by remote agents — access is gated by the Bearer token and your firewall. If you expose HTTP across machines, secure the token storage and lock down firewall rules at the operator level.
+Every HTTP transport mode binds to loopback, not just WebSocket. UAIP never passes a bind address to `FHttpServerModule::GetHttpRouter()`; the underlying `FHttpServerListenerConfig::BindAddress` defaults to `"localhost"` in UE, and neither `Config/DefaultUAIP.ini` nor `DefaultEngine.ini` overrides `[HTTPServer.Listeners]` in this project. This is true for FullHTTP just as much as MCPOnly — FullHTTP's Bearer-token authentication was designed with a remote agent in mind, but as shipped the socket itself never leaves the local machine. `-uaip-http-no-auth` only removes the token check; it does not change the bind address either.
+
+An operator who genuinely wants FullHTTP reachable from another machine has to override `BindAddress` for the relevant port under `[HTTPServer.Listeners]` at the engine-config layer themselves — UAIP does not expose a setting for this. Doing so puts the Bearer token and your firewall between the open port and the network; treat that as an explicit, separate decision from just launching with `-uaip-http-enable`.
 
 ---
 
@@ -63,7 +65,7 @@ UnrealEditor.exe MyProject.uproject -uaip-http-enable -uaip-http-no-auth
 UnrealEditor.exe MyProject.uproject -uaip-ws-enable -uaip-ws-no-auth
 ```
 
-Use **only** on isolated dev machines or CI runners with no untrusted processes. HTTP's `-uaip-http-no-auth` keeps the socket on `0.0.0.0`, so the editor stays reachable from other machines if the firewall is open. WebSocket's `-uaip-ws-no-auth` keeps the socket on loopback, but any local process can still issue commands.
+Use **only** on isolated dev machines or CI runners with no untrusted processes. HTTP's `-uaip-http-no-auth` only removes the Bearer-token check — the socket itself stays on loopback, so the editor does not become reachable from other machines by setting this flag. WebSocket's `-uaip-ws-no-auth` keeps the socket on loopback too, but in both cases any local process can still issue commands with no credential at all.
 
 ### MCP Bridge
 
@@ -128,6 +130,24 @@ Some features require a CLI flag at editor launch:
 Without the flag, the corresponding code path is not registered at all (not "registered but rejected"). Demo binaries reject the HTTP / WS / CLI flags silently.
 
 See [Safety & Capabilities](safety.md) for the full reference and ini examples.
+
+---
+
+## Operational security notes
+
+These cover behavior that is easy to misread as a bug, or a decision that is easy to make without realizing its blast radius. They matter most for the "attach to an already-running editor" workflow — see [Connection Methods → Guest-mode connections](connections.md#guest-mode-connections).
+
+### Auto-start config is shared, not per-developer
+
+`[UAIP.Transport].AutoStartMCP` (see [Configuration](config.md#uaiptransport--auto-starting-the-mcp-transport-on-a-normal-launch)) lives in `Config/DefaultUAIP.ini`, which is committed to source control. The editor has no per-user override layer for it — the runtime override mechanism only applies to packaged, non-editor builds (see [Configuration → Runtime override mechanism](config.md#runtime-override-mechanism-packaged-builds)). If `AutoStartMCP=True` is committed, **every developer who opens that project gets a listening MCP endpoint on every normal launch**, with no way to opt out individually short of editing the ini locally and not committing the change. Treat enabling it in the shared ini as a team-wide decision, not a personal convenience setting.
+
+### Commands can queue behind a modal dialog
+
+An editor started **without** `-unattended` (a normally launched, human-facing editor, as opposed to one the MCP Bridge launches for itself) still runs UAIP commands on the game thread. While a modal dialog is on screen (a "Save changes?" prompt, an asset-validation warning, …), only the small allowlist configured under `[UAIP.CommandPump]` — `UAIP.Core.HealthCheck` and `UAIP.Core.QueryCapabilities` by default — gets answered. Everything else is **held, not rejected**, until the dialog closes. This is deliberate: UAIP does not mutate editor state while a human is mid-decision. But from the caller's side it looks identical to a hang. If a call is unexpectedly slow against a human-attended editor, check whether a dialog is open before assuming something crashed — and be aware that a command held long enough can still time out on the caller's side even though the editor itself is fine.
+
+### Assign a restricted role to guest connections
+
+A "guest" connection — a bridge configured to attach to an editor it did not launch, instead of starting one of its own (`attach_only`, see [Connection Methods → Guest-mode connections](connections.md#guest-mode-connections)) — inherits whatever capabilities that session would normally get. If the project has not defined any [`[UAIP.Roles]`](safety.md#roles-layer-15), a guest attaching to a human's editor can execute anything a first-party session could, including every DefaultAllow capability — the same "same machine is trusted" posture the rest of this page describes, just extended for as long as the human keeps that editor open. Define at least one restricted role (a read-only reviewer role is a reasonable starting point) and configure the guest bridge to authenticate as that role before pointing it at someone else's running editor. Without a role assigned, there is no way to tell — from the editor's side — that a given connection is a guest at all.
 
 ---
 

@@ -126,6 +126,41 @@ CLI フラグ：`-uaip-gc-enabled` / `-uaip-gc-max-age-hours=N` / `-uaip-gc-max-
 
 CLI フラグ：なし。
 
+### `[UAIP.Transport]` — 通常起動のエディタで MCP transport を自動起動する
+
+通常の手順で起動したエディタ（Epic Games Launcher・`.uproject` のダブルクリック・IDE のデバッグ実行など、`-uaip-mcp-enable` / `-uaip-http-enable` を指定していない起動）が、自ら MCP 接続を受け付ける状態になれるようにします。これにより、ゲストモードで設定した Bridge が後から接続できる相手が用意されます。一連の流れは [接続方法 → ゲストモード接続](connections.md#ゲストモード接続) を参照してください。
+
+| キー | 型 | デフォルト | 範囲 | 説明 |
+|---|---|---|---|---|
+| `AutoStartMCP` | bool | `False` | — | マスタースイッチ。`True` のとき、エディタは `OnPostEngineInit` で **MCPOnly モード**として transport を起動します。この方法で FullHTTP を自動起動する ini キーはありません |
+| `AutoStartPort` | int32 | `0` | `[0, 65535]` | 最初に試すポート。`0` は transport の組み込み既定ポート（`8765`）を意味します |
+| `AutoStartPortScanCount` | int32 | `8` | `[1, 64]` | `AutoStartPort` から何個連続したポートを試すか |
+
+CLI フラグ（ini を編集せずに 1 回だけ試すための alias）：`-uaip-auto-start-mcp` / `-uaip-auto-start-port=N` / `-uaip-auto-start-port-scan-count=N`
+
+範囲外の値は**丸められません** — 起動時に Warning を出したうえで既定値のまま動作します（UAIP が読む他の範囲付き ini キーと同じ「警告して変更しない」挙動です）。コマンドラインに `-uaip-mcp-enable` または `-uaip-http-enable` が指定されている場合、このセクションはそもそも読まれません — 明示フラグは常に自動起動より優先されます。
+
+このセクションはデモビルドでは読まれません。デモは以前からこのセクションの設定に関係なく MCPOnly として無条件に起動します。
+
+> **セキュリティ上の注意**: `Config/DefaultUAIP.ini` はバージョン管理対象で、エディタには per-user のオーバーライド層がありません。`AutoStartMCP=True` をそこで有効化すると、そのプロジェクトを開く全開発者が通常起動のたびに接続を受け付ける MCP エンドポイントを持つことになり、個人単位で打ち消す方法もありません — [Security → 運用上のセキュリティ注意点](security.md#運用上のセキュリティ注意点) を参照。
+
+#### 接続情報の記述子ファイル
+
+HTTP transport が実際に起動すると（`AutoStartMCP` 経由でも、`-uaip-mcp-enable` / `-uaip-http-enable` 経由でも）、`<Project>/Saved/UAIP/EditorEndpoint.json` を書き出します：
+
+```json
+{
+  "Port": 8765,
+  "Mode": "MCPOnly",
+  "ProjectFilePath": "F:/MyProjects/MyGame/MyGame.uproject"
+}
+```
+
+- リスナーが実際に bind された時点で原子的に（一時ファイル + リネームで）書き出され、正常終了時に削除されます
+- 読み取り時は 1024 バイトの上限があり、超えるものは解析せず無視されます
+- **権限判断の入力には一切なりません。** ゲスト接続候補にどのポートを試すかを伝えるだけのヒントであり、役割名・認証トークン・プロセス ID は含みません。読み手は、そのポートを目的のエディタとして扱う前に、既存の `HealthCheck` によるプロジェクト同一性検証を必ず通す必要があります
+- エディタが異常終了すると、古い記述子が残ることがあります。読み手はそれを見つけても信用する前にポートへ probe し、待ち受けていなければ設定に書かれたポートへフォールバックします
+
 > `[UAIP.SafetyPolicy]` セクションは意図的にこのページから除外しています — `AllowedCapabilities` / `DeniedCapabilities` / `DeniedCommands` / `AllowCapabilityReload` を含む完全なリファレンスは [Safety & Capabilities](safety.md) を参照。
 
 ### `AllowedArtifactDirectory` オーバーライド
@@ -153,7 +188,7 @@ CLI フラグはエディタプロセスのコマンドライン（`UnrealEditor
 
 | フラグ | 説明 |
 |---|---|
-| `-uaip-http-enable` | HTTP API モード（FullHTTP）を有効化。`0.0.0.0:<port>` にバインドし `/uaip/*` + `/mcp` を公開。`-uaip-http-no-auth` がない限り Bearer Token 必須 |
+| `-uaip-http-enable` | HTTP API モード（FullHTTP）を有効化。ループバック（`127.0.0.1:<port>`）にバインドし `/uaip/*` + `/mcp` を公開。`-uaip-http-no-auth` がない限り Bearer Token 必須 — [Security → ネットワーク面](security.md#ネットワーク面) を参照 |
 | `-uaip-mcp-enable` | MCP 専用モードを有効化。`-uaip-http-enable` を暗黙的に有効化するが `/mcp` と `/uaip/artifacts/*` のみ公開。5 段階の localhost チェック（PeerAddress / Host / Origin）を強制。認証不要 |
 | `-uaip-ws-enable` | WebSocket Transport を有効化。`127.0.0.1:<port>` にバインド（ハードコード）。`-uaip-ws-no-auth` がない限り初回フレームに Bearer Token 必須 |
 | `-uaip-enable-scenario` | `uaip_run_scenario` ルートを有効化。これがないと scenario 送信時に `PolicyViolation: Scenario execution is not enabled` |
@@ -260,8 +295,9 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 
 | キー | 型 | デフォルト | 説明 |
 |---|---|---|---|
-| `editor_path` | string | `""` | `UnrealEditor.exe` の絶対パス。環境変数 `UAIP_UE_EDITOR_PATH` が設定されている場合はそちらが優先 |
-| `uproject_path` | string | `""` | `.uproject` ファイルの絶対パス。環境変数 `UAIP_UPROJECT_PATH` が設定されている場合はそちらが優先 |
+| `editor_path` | string | `""` | `UnrealEditor.exe` の絶対パス。環境変数 `UAIP_UE_EDITOR_PATH` が設定されている場合はそちらが優先。**`attach_only` が `true` のときは不要** — ゲストモードの Bridge はエディタを一切起動しないため、指す先が無い |
+| `uproject_path` | string | `""` | `.uproject` ファイルの絶対パス。環境変数 `UAIP_UPROJECT_PATH` が設定されている場合はそちらが優先。**どのモードでも常に必須** — プロジェクト同一性検証・認証トークンの解決・crash marker のパス・接続情報記述子の解決に使われる |
+| `attach_only` | bool | `false` | ゲストモード。`true` のとき、Bridge は自分ではエディタを一切起動せず、既に待ち受けているエディタへアタッチするだけになる。ポートは[接続情報の記述子ファイル](config.md#接続情報の記述子ファイル)から解決し、見つからなければ `http_port` へフォールバックする。アタッチ中のエディタとの接続が切れても（ヘルスチェック失敗・config リロードのいずれでも）代わりのエディタを起動しない。詳細は [接続方法 → ゲストモード接続](connections.md#ゲストモード接続) を参照。環境変数オーバーライド：`UAIP_ATTACH_ONLY`（`1` / `true` / `yes`） |
 | `http_port` | int | `8765` | エディタ側 MCP エンドポイントの HTTP ポート。`-uaip-http-port` と一致させること |
 | `http_startup_timeout_seconds` | int | `120` | Bridge が起動後のエディタ準備完了を待つ最大秒数 |
 | `command_timeout_seconds` | int | `180` | 転送されるコマンドのリクエストごとの HTTP タイムアウト。**HTTP トランスポート自身の非同期コマンドタイムアウト（120 秒）より小さい値には設定できない** — 詳細は下記「タイムアウトの不変条件」を参照 |

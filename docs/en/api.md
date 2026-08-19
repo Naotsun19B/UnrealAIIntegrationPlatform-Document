@@ -30,7 +30,7 @@ Every transport eventually lands on the same `CommandDispatcher`, so capability,
 
 | Transport | Format | Editor port | Packaged port | Bind layer | Auth |
 |---|---|---|---|---|---|
-| HTTP (Pro) | REST + JSON | 8765 | 8767 | `0.0.0.0` — FullHTTP is reachable from another machine; MCPOnly mode enforces localhost at the app layer | `Authorization: Bearer <token>` |
+| HTTP (Pro) | REST + JSON | 8765 | 8767 | loopback (`127.0.0.1`) for both FullHTTP and MCPOnly; MCPOnly additionally enforces localhost at the app layer — see [Security → Network surface](security.md#network-surface) | `Authorization: Bearer <token>` |
 | WebSocket (Pro) | JSON frames | 8766 | 8768 | `127.0.0.1` (hard-coded) | First frame `Token` field |
 | CLI (Pro) | stdin/stdout + CLI flags | n/a | n/a | — | none (in-process) |
 | MCP | stdio child of AI client | n/a | n/a | — | none (child process) |
