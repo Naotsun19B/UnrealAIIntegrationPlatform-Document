@@ -2171,6 +2171,8 @@ Geometry Collection（Chaos Destruction）編集 — `UGeometryCollection` ア�
 
 > **Note — マテリアル検証にはさらに設定が必要です**: エンジンのマテリアルバリデータは、プロジェクトの `MaterialValidationPlatforms` 設定が空の間はすべてのマテリアルをスキップします。このプラットフォーム一覧はバリデータのクラスデフォルトオブジェクトの構築時に 1 度だけ作られるため、**設定変更はエディタを再起動するまで反映されません**。`ListValidators` はこれについて観測できる内容を `MaterialValidation` として返しますが、`EffectivelyRunnable` は答えではなく推定値です — バリデータが実際に保持している一覧は外部から読めないため、すべてのフラグが true でもマテリアルがスキップされることがあります。
 >
+> **Note — この設定は UAIP からは書き込めません**: `UAIP.Editor.Engine.ConfigSettings.SetSettingsValues` は `MaterialValidationPlatforms` を受け付けて `ChangedCount: 1` を返し、続く `SaveSettings` も成功し、その直後の `ListValidators` は `PlatformsConfigured: true` を返します — しかし値はメモリ上の設定オブジェクトにしか届いていません。どの `.ini` にも書き込まれず、エディタを再起動すると失われます。設定は **Project Settings → Editor → Data Validation → Material Validation Platforms** から行うか、`Config/DefaultEditor.ini`（`[/Script/DataValidation.DataValidationSettings]` セクション）を直接編集し、その後エディタを再起動してください。
+>
 > **Note — ジョブの結果は 1 回の呼び出しと一致するとは保証されません**: `StartValidationJob` はエディタを操作可能なまま保つために少しずつ検証しますが、エンジンはバッチ単位の検証フックをチャンクごとに発火させます。そのため、バッチ全体を集約するプロジェクト独自バリデータは 1 つのバッチではなく複数のバッチを見ることになります。一致が重要な場合は `ValidateAssets`（1 回の呼び出しで検証。最大 8 件）を使ってください。
 >
 > **Note — 修正はエンジンではなくプロジェクトが提供するものです**: エンジン同梱のバリデータは修正を 1 つも生成しないため、`Assets[].Fixes[]` が空なのは異常ではなく通常の状態です。修正は、それを提供するバリデータをプロジェクトが自作している場合にのみ現れます。また、検証と修正の届く範囲は意図的に異なります — 検証はエンジン・プラグインコンテンツを含むすべてのマウント済みコンテンツルートを読みますが、`ApplyValidationFix` は UAIP が書き込まないルート（`/Engine/` など）配下のアセットを `NotAllowed` で拒否します。その種のアセットはプロジェクトコンテンツへ複写してから修正してください。
