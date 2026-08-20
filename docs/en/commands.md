@@ -42,7 +42,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ |
 | Editor Execution | `UAIP.Editor.Execution` | 9 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 49 | 6 | partial (28/49) |
+| Editor Assets | `UAIP.Editor.Assets` | 51 | 6 | partial (29/51) |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | partial (7/16) |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | partial (6/12) |
@@ -345,6 +345,8 @@ Open, search, create, duplicate, rename, delete assets and folders.
 |---|---|
 | `OpenAsset` | Open the specified asset in its editor |
 | `CloseAsset` | Close all editors for the specified asset |
+| `SaveAsset` | Write only the named assets to disk (requires `AssetMutate`). Shows no dialog, so it completes unattended |
+| 🆓 `ListDirtyPackages` | List the packages holding unsaved changes (pre-flight check before saving) |
 | 🆓 `SearchAssets` | Search assets by path / class / tag |
 | `CreateAsset` | Create a new asset of the specified class |
 | 🆓 `ListCreatableAssetClasses` | Return every UClass that `CreateAsset` can target, with factory count and default factory (heavy call) |
@@ -394,6 +396,12 @@ Open, search, create, duplicate, rename, delete assets and folders.
 | `UnloadPrimaryAsset` (requires `PrimaryAssetUnload`) | Explicitly unload `PrimaryAsset`s from memory (rejected during PIE) |
 
 > **Note**: `StartAssetAudit` is a **job-style command** — it returns immediately and the work continues across editor frames rather than blocking the call. If your `uaip_execute` call includes an MCP `_meta.progressToken`, the bridge sends a `notifications/progress` update roughly every 5 seconds while the call is pending, carrying only the elapsed time and the editor's own state (`STARTING` / `RUNNING` / `UNRESPONSIVE`) — it never carries the job's internal progress; poll `GetAssetAuditStatus` for that. This applies to `uaip_execute` only (not `uaip_run_scenario`), only when the client sends a progress token, and whether the notification is actually surfaced to you depends on the MCP client. The per-frame time budget the audit job spends on each scan step is configurable via `Config/DefaultUAIP.ini` → `[UAIP.Jobs] AuditStepBudgetMs` (default `10.0`, clamped to `[1.0, 100.0]`; a value outside that range is silently clamped rather than rejected).
+
+> **Note**: There are two ways to save, and they differ in blast radius. `SaveAllPackages` writes **every** package holding unsaved changes, so work a person left in progress is committed alongside yours. When you know what you changed, name it with `SaveAsset` instead. To find out what a save would write, call `ListDirtyPackages` first: it reads the same source the editor-wide save consults (`GetDirtyContentPackages` / `GetDirtyWorldPackages`), so its list and the set `SaveAllPackages` would write are the same.
+>
+> `SaveAsset` only ever writes packages that are **loaded and dirty**. An asset that was never loaded cannot hold unsaved changes, so it is returned under `Skipped` with `Reason: "NotLoaded"` rather than being loaded just to write it back; one that is already saved comes back as `NotDirty`. Neither is an error. Paths under `/Engine/` and `/Script/` are refused as `Failed` with `WriteForbidden` because they reach outside the project, but the call itself still succeeds and the remaining assets are saved. Only `DisableSave=True` in the safety policy rejects the whole call, with `PolicyViolation`.
+>
+> **Relationship to `ApplyValidationFix`**: when a validator wraps its fix in `FAutoSavingFixer`, applying it through UAIP does **not** write to disk. The engine performs that auto-save through a modal confirmation dialog, which cannot complete when nobody is there to answer it. `ApplyValidationFix` reports `Applied: true` together with `AssetSaved: false` in that case, so **treat `AssetSaved: false` as the signal to persist the change yourself with `SaveAsset`**.
 
 ### Toolset bridges — Assets (6) 🧩
 

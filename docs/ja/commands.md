@@ -42,7 +42,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ |
 | Editor Execution | `UAIP.Editor.Execution` | 9 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
-| Editor Assets | `UAIP.Editor.Assets` | 49 | 6 | 一部（28/49） |
+| Editor Assets | `UAIP.Editor.Assets` | 51 | 6 | 一部（29/51） |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 16 | 8 | 一部（7/16） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
@@ -345,6 +345,8 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 |---|---|
 | `OpenAsset` | 指定アセットをエディタで開く |
 | `CloseAsset` | 指定アセットの全エディタを閉じる |
+| `SaveAsset` | 名指ししたアセットだけをディスクへ書き込む（`AssetMutate` 必要）。確認ダイアログを出さないため非対話でも完結する |
+| 🆓 `ListDirtyPackages` | 未保存の変更を持つパッケージを列挙する（保存前の事前確認用） |
 | 🆓 `SearchAssets` | パス・クラス・タグでアセットを検索 |
 | `CreateAsset` | 指定クラスの新規アセットを作成 |
 | 🆓 `ListCreatableAssetClasses` | `CreateAsset` が作成可能な全 UClass をFactory数・デフォルトFactory付きで返す（重い呼び出し） |
@@ -394,6 +396,12 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | `UnloadPrimaryAsset`（要 `PrimaryAssetUnload`） | `PrimaryAsset` を明示的にメモリからアンロードする（PIE中は拒否） |
 
 > **Note**: `StartAssetAudit` は**ジョブ型コマンド**の一例で、呼び出しをブロックせずに即座に応答を返し、実際の処理はエディタのフレームをまたいで進む。`uaip_execute` の呼び出しに MCP の `_meta.progressToken` を添えると、応答待ちの間ブリッジがおよそ 5 秒おきに `notifications/progress` を送出する。内容は経過秒数とエディタ自身の状態（`STARTING` / `RUNNING` / `UNRESPONSIVE`）のみで、**ジョブ内部の進捗は含まれない**（それを知りたい場合は `GetAssetAuditStatus` をポーリングする）。この仕組みは `uaip_execute` にのみ適用され（`uaip_run_scenario` は対象外）、クライアントが進捗トークンを送った場合にのみ働く。また、届いた通知を実際に表示するかどうかは MCP クライアント側の実装による。監査ジョブが 1 フレームあたり走査に使う時間の上限は `Config/DefaultUAIP.ini` の `[UAIP.Jobs] AuditStepBudgetMs` で変更できる（既定 `10.0`、`[1.0, 100.0]` の範囲にクランプされる。範囲外を指定してもエラーにはならず自動的に範囲内へ収められる）。
+
+> **Note**: 保存には `SaveAsset` と `UAIP.Editor.Workspace.SaveAllPackages` の 2 つがあり、影響範囲が異なる。`SaveAllPackages` は**未保存のパッケージをすべて**書き込むため、人が編集途中で放置していた無関係な変更まで一緒に確定してしまう。対象が分かっているなら `SaveAsset` で名指しすること。何が書き込まれるかを事前に知りたい場合は `ListDirtyPackages` を呼ぶ — これはエディタ全体保存が参照するのと同じ情報源（`GetDirtyContentPackages` / `GetDirtyWorldPackages`）を使うため、返る一覧と `SaveAllPackages` が書き込む集合は一致する。
+>
+> `SaveAsset` が対象にするのは**ロード済みかつ未保存の変更を持つパッケージだけ**。未ロードのアセットは未保存の変更を持ちようがないため、ロードして書き戻すことはせず `Skipped`（`Reason: "NotLoaded"`）として返る。すでに保存済みのものも `Skipped`（`NotDirty`）になる。どちらもエラーではない。`/Engine/` と `/Script/` 配下はプロジェクト外へ影響するため `Failed`（`WriteForbidden`）として拒否されるが、呼び出し全体は失敗せず、他のアセットの保存はそのまま行われる。SafetyPolicy が `DisableSave=True` の場合のみ呼び出し全体が `PolicyViolation` になる。
+>
+> **`ApplyValidationFix` との関係**: バリデータが提供する修正が `FAutoSavingFixer` で包まれていても、UAIP 経由の適用では**ディスクへ書き込まれない**。エンジンの自動保存が人間の確認を求めるモーダルダイアログ経由であり、応答する人がいない非対話実行では成立しないため。この場合 `ApplyValidationFix` は `Applied: true` と `AssetSaved: false` を返すので、**`AssetSaved` が `false` なら `SaveAsset` で明示的に保存する**こと。
 
 ### Toolset ブリッジ — Assets（6 件）🧩
 
