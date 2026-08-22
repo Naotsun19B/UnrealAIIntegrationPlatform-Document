@@ -143,7 +143,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 |---|---|
 | `EditorObservation` | スクリーンショット（`CaptureActiveWindowImage`、`CaptureEditorTabImage`、`CaptureGraphViewportImage`）および JSON 状態ダンプ（`DumpEditorState`、`DumpSlateTree`、`DumpSelectionState`、`DumpOutputLog`、`DumpMessageLog` など） |
 | `EditorInspect` | Editor 状態の読み取り専用検査 — アセット・詳細パネル・ビューポート・グラフ情報。共有インフラコマンドが使用 |
-| `EditorUIAutomation` | UI 駆動コマンド — `ClickWidget`、`SelectMenuItem`、`InputText`、`SetCheckboxState`、`DragGraphNode`、`AcceptDialog`、`CancelDialog`、`InvokeContextMenuAction`、`WaitForWidget`、`FillForm` など |
+| `EditorUIAutomation` | UI 駆動コマンド — `ClickWidget`、`SelectMenuItem`、`InputText`、`SetCheckboxState`、`DragGraphNode`、`AcceptDialog`、`CancelDialog`、`InvokeContextMenuAction`、`WaitForWidget`、`FillForm`、`SnapshotUI` など、およびその `Toolset.Editor.SlateInspector.*` ブリッジ版。ブリッジ版も同じ Capability を要求するようになった（旧リリースでは Capability チェックなしにディスパッチされていた） |
 | `EditorWorkspaceControl` | タブ・パネル管理 — タブの開閉、グラフエディタのフォーカス、エディタレイアウトの制御 |
 | `EditorLifecycle` | エディタライフサイクル操作 — `SaveAll`、`ShutdownEditor`、`RestartEditor` |
 | `EditorExecution` | エディタからの Automation Test 実行・Editor Utility Blueprint の実行 |
@@ -160,6 +160,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `RuntimeNiagaraInspect` 🧩 | PIE 中の Niagara コンポーネント状態読み取り — `GetUserVariables`、`GetVariable`（`Niagara` プラグイン必須） |
 | `SandboxObserve` 🧩 | アクティブな Sandbox の観測 — `GetSandboxStatus`、`GetSandboxChanges`（`FileSandbox` プラグイン必須） |
 | `RuntimeInsightsInspect` | Unreal Insights トレースの読み取り専用検査 — `ListTraceChannels`、`GetTraceStatus`、`ListTraceFiles`。トレースの開始・停止・変更は一切できません |
+| `PendingInteractionInspect` | 保留中の対話の状態照会・キャンセル — `GetPendingInteractionStatus`、`WaitForPendingInteraction`、`CancelPendingInteraction`。読み取り専用の照会のみで、対話の開始（`DrawPCGSpline` など）は対話型コマンド自身の Capability と `SafetyPolicy.AllowUserInteractionPrompt` によって別途ゲートされます |
 
 ---
 
@@ -353,7 +354,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 
 | Capability | 有効になる操作 |
 |---|---|
-| `EditorKeyboardInput` | Editor UI ウィジェットへのキーボード入力シミュレート（`PressKey`） |
+| `EditorKeyboardInput` | Editor UI ウィジェットへのキーボード入力シミュレート — ネイティブ `PressKey` と `Toolset.Editor.SlateInspector.PressKey` ブリッジ（ブリッジ版も `AllowKeyboardInput` / `AllowKeyboardModifierInput` と危険ショートカットのブロックリストを適用するようになった。ネイティブより厳格な唯一の点は [コマンドリファレンス](commands.md#uaipeditoruiautomation) 参照） |
 | `EditorExecCommand` | `GUnrealEd->Exec` 経由の低レベル Editor コマンド実行 |
 | `LogVerbosityEdit` | ログ詳細レベルの変更 — `SetLogVerbosity` native および `Toolset.Editor.Toolset.Logs.SetVerbosity` bridge |
 | `ViewportAnnotationCapture` | ワールド座標ラベル付きビューポート画像のキャプチャ — `CaptureViewportImageAnnotated` |
@@ -444,6 +445,7 @@ ExternalTraceDirectory=D:/TraceDrop
 | `PCGVolumeSpawn` 🧩 | `PCG` | APCGVolume アクターを World にスポーン（`SpawnPCGGraphInstance`） — ⚠️ `DefaultUAIP.ini` の `AllowedCapabilities` への追記禁止（World ミューテーションリスク） |
 | `PCGNodeInspect` 🧩 | `PCG` | PCG ノードの実行データビューを検査（`GetPCGNodeDataView`） — `PCG_PROFILING_ENABLED=1` 時のみ有効 |
 | `PCGToolsetUnsafeNodeAdd` 🧩 | `PCG` + `PCGToolset` | `Toolset.Editor.PCG.AddNode` のノードタイプ Allowlist ガードをバイパス — ⚠️ `DefaultUAIP.ini` の `AllowedCapabilities` への追記禁止（Allowlist 迂回リスク） |
+| `PCGSplineDraw` 🧩 | `PCG` | レベルビューポートを人間へ引き渡すスプライン描画の対話を開始 — ネイティブ `DrawPCGSpline` と `Toolset.Editor.PCG.DrawSpline` ブリッジ。`SafetyPolicy.AllowUserInteractionPrompt` も別途必要。この Capability は「何に触れてよいか」を、ポリシーフラグは「対話を開始すること自体が人間のビューポートと入力フォーカスを奪う」ことを表す |
 | `ConversationGraphEdit` 🧩 | `CommonConversation` | `UConversationDatabase` アセットの構造的編集 |
 | `EQSAssetEdit` 🧩 | `EnvironmentQueryEditor` | EQS クエリへの Generator・Test の追加・削除・プロパティ設定 |
 | `WorldConditionStructureEdit` 🧩 | `WorldConditions` | WorldCondition アセットへの条件追加・削除 |
@@ -511,6 +513,26 @@ ExternalTraceDirectory=D:/TraceDrop
 | `SandboxPersist` 🧩 | Sandbox 変更のディスクへのフラッシュ — `CommitSandboxChanges` |
 | `SandboxRevert` 🧩 | 保留中の Sandbox 変更の破棄 — `RevertSandboxChanges` |
 
+#### Subsonic 編集・試聴
+
+これらの Capability はいずれも UE 5.8 以降と `Subsonic` プラグイン（Experimental）が必要です。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `SubsonicEventEdit` 🧩 | `USubsonicEventCollection` アセットに対する編集系の event / action / modifier / parameter / property-binding コマンドすべて — 16 コマンド。いずれも 1 つのアセットを 1 トランザクション内で変更するため、`PhysicsAssetEdit` と同じ粒度でまとめられている |
+| `SubsonicEventAudition` 🧩 | イベントの試聴と現在の試聴の停止 — `AuditionSubsonicEvent`、`StopSubsonicAudition`。試聴はアセットを変更しないが、オーディオデバイスの副作用を駆動しロード済みアクション型の `Execute()` を実行するため、`SubsonicEventEdit` とは別に切り出されている |
+
+#### Groom 編集
+
+これらの Capability はいずれも `HairStrands` プラグイン（Optional・既定無効）が必要です。プラグインが無効な場合、`UAIP.Editor.GroomAsset` ドメイン全体が利用できません。分割はコマンド数ではなく「失敗すると何を失うか」の観点で行っています — 設定変更はソースのカーブデータに触れず古い値を書き戻せば復元でき、新規アセット生成は既存の何も破壊せず、カーブ/バインディングの作り直しは呼び出し側が取り戻せない形でデータを失いうるためです。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `GroomAssetEdit` 🧩 | グループ/LOD/補間/レンダリング設定のパッチ、アセット全体設定、LOD スロットの追加・削除、カード/メッシュのソース設定と派生データビルド、非破壊な Dataflow グラフ割り当て — 12 コマンド。影響するのはいずれも保存された設定値であり、呼び出し側が以前の値を書き戻せば復元できる。ソースのカーブデータ自体には一切触れない |
+| `GroomAssetCreate` 🧩 | Groom から元を変更せずに新規アセットを作る操作 — 毛根マスク/ストランドテクスチャの生成（`GenerateGroomFollicleMaskTexture`、`GenerateGroomStrandsTextures`）と、RBF 変形を新規 `UGroomAsset` へ焼き込む操作（`BakeGroomRBFDeformation`）— 3 コマンド。既存の何かが失われることは無いが、いずれも重い処理（GPU でのテクスチャ生成、または失敗時にエディタプロセスをクラッシュさせうるエンジン側の RBF ルートデータ生成を伴う焼き込み。詳細は[コマンドリファレンス](commands.md)の `BakeGroomRBFDeformation` の項を参照） |
+| `GroomCurveEdit` 🧩 | ガイド/ストランドのカーブ制御点を上書きしうる操作すべて — 直接書き込み（`SetGroomGuideCurves`、`SetGroomStrandCurves`）、Dataflow グラフの実行（`EvaluateGroomDataflow`）、元ファイルからの Groom 再取り込み（`ReimportGroom`）— 4 コマンド。この経路で失われたカーブデータは設定の書き戻しでは復元できない。特に再取り込みの失敗は、アセットの以前の内容が保たれる保証が無い |
+| `GroomBindingEdit` 🧩 | 対象の SkeletalMesh または GeometryCache に対する `UGroomBindingAsset` の作成、および既存バインディングの派生データのその場での再ビルド — 3 コマンド（`CreateGroomBinding`、`CreateGeometryCacheGroomBinding`、`RebuildGroomBinding`）。作成は何も破壊しないが、再ビルドの失敗は破壊的である — エンジンが再生成の前にバインディングの既存の派生データを破棄するため |
+
 #### アセット検証
 
 これらの Capability は `DataValidation` プラグインが必要で、プロジェクトの `.uproject` で明示的に宣言しておく必要があります（[コマンドリファレンス](commands.md)の `UAIP.Editor.Validation` セクション参照）。バリデータの列挙、検証ジョブの追跡、結果の取得は DefaultAllow（`EditorInspect`）で、ここでゲートされるのはバリデータの実行と修正の適用だけです。
@@ -560,6 +582,7 @@ DisablePIEStart=False
 AllowCheatCVarWrite=False
 AllowExternalTraceAnalysis=False
 AllowDisclosingTraceAttachment=False
+AllowUserInteractionPrompt=False
 
 ; UAIP 以外が採取した .utrace を解析してよいディレクトリ。
 ; 既定値はなく、AllowExternalTraceAnalysis だけでは何も開きません。
@@ -593,6 +616,7 @@ AllowDisclosingTraceAttachment=False
 | `AllowExternalTraceAnalysis` | `False` | UAIP 以外が採取した `.utrace` の `AnalyzeTrace` による読み取りを許可。**単体では何も許可しません** — `ExternalTraceDirectory` の設定も必須 |
 | `ExternalTraceDirectory` | 未設定 | UAIP 以外が採取した `.utrace` が置かれていなければならないルートディレクトリ。ini のみ（CLI での上書き不可）で、意図的に既定値を持ちません |
 | `AllowDisclosingTraceAttachment` | `False` | 採取した `.utrace` のチャネルが**ホスト側パス・画面内容・ネットワークアドレス**を記録しえた場合に、`StopTrace` がそのファイルを artifact として引き渡すことを許可。解析セクションはこれらをサニタイズ / マスク / メタデータ化して返しますが生ファイルは加工しないため、引き渡しは別の判断になります。**ログテキスト**の開示は本キーではなく `AllowLogDump` が担い、未分類チャネルは両方の設定に関わらず拒否されます。`RuntimeInsightsAttachTraceFile` Capability も別途必要。エディタではエンジンが log / screenshot チャネルを自分で有効化するため、通常は `AllowLogDump` との併用が必要です |
+| `AllowUserInteractionPrompt` | `False` | 保留中の対話（自力では完了せずエディタ内の人間へ処理を委ねるコマンド。例：`DrawPCGSpline`）の開始自体を許可する。無効時はリソースの予約やエディタへの変更が一切行われる前に `PolicyViolation` で拒否されます。対話型コマンド自身の DefaultDenied Capability（例：`PCGSplineDraw`）とは別の軸で、Capability が「何に触れてよいか」を表すのに対し、本フラグは「人間のビューポートと入力フォーカスを奪うこと自体を許可するか」を表します。本フラグとは独立に、人間へプロンプトを提示できるものが現在何も登録されていない場合も開始は拒否されます — [コマンドリファレンス](commands.md) の `UAIP.Editor.PCG` セクション参照 |
 | `AllowedCapabilities` | 空 | DefaultDenied の Capability を解除（`+` 付きで 1 行に 1 つ） |
 | `DeniedCapabilities` | 空 | DefaultAllow の Capability を全セッションから取り除く |
 | `DeniedCommands` | 空 | 完全修飾名で指定したコマンドをブロック。ブロックされたコマンドは `ListCommands` の既定応答からは隠れ、`HiddenReasons.DeniedCommand` に計上される。`IncludeUnavailable=true` を指定すると `Available: false`・`UnavailableReason: "DeniedCommand"` として明示的に列挙できる。`DescribeCommand` では常に表示される |

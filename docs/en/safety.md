@@ -143,7 +143,7 @@ These are active in every session without any configuration. They cover read-onl
 |---|---|
 | `EditorObservation` | Screenshots (`CaptureActiveWindowImage`, `CaptureEditorTabImage`, `CaptureGraphViewportImage`) and JSON state dumps (`DumpEditorState`, `DumpSlateTree`, `DumpSelectionState`, `DumpOutputLog`, `DumpMessageLog`, etc.) |
 | `EditorInspect` | Read-only inspection of editor state — assets, details panel, viewport, graph info. Used by shared infrastructure commands |
-| `EditorUIAutomation` | UI-driving commands — `ClickWidget`, `SelectMenuItem`, `InputText`, `SetCheckboxState`, `DragGraphNode`, `AcceptDialog`, `CancelDialog`, `InvokeContextMenuAction`, `WaitForWidget`, `FillForm`, etc. |
+| `EditorUIAutomation` | UI-driving commands — `ClickWidget`, `SelectMenuItem`, `InputText`, `SetCheckboxState`, `DragGraphNode`, `AcceptDialog`, `CancelDialog`, `InvokeContextMenuAction`, `WaitForWidget`, `FillForm`, `SnapshotUI`, etc. — and their `Toolset.Editor.SlateInspector.*` bridge counterparts, which now require the same capability (earlier releases dispatched the bridge commands without a capability check) |
 | `EditorWorkspaceControl` | Tab and panel management — open/close tabs, focus graph editors, manage editor layout |
 | `EditorLifecycle` | Editor lifecycle operations — `SaveAll`, `ShutdownEditor`, `RestartEditor` |
 | `EditorExecution` | Run Automation Tests and Editor Utility Blueprints from the editor |
@@ -160,6 +160,7 @@ These are active in every session without any configuration. They cover read-onl
 | `RuntimeNiagaraInspect` 🧩 | Read Niagara component state during PIE — `GetUserVariables`, `GetVariable` (requires `Niagara` plugin) |
 | `SandboxObserve` 🧩 | Observe the active sandbox — `GetSandboxStatus`, `GetSandboxChanges` (requires `FileSandbox` plugin) |
 | `RuntimeInsightsInspect` | Read-only inspection of Unreal Insights tracing — `ListTraceChannels`, `GetTraceStatus`, `ListTraceFiles`. Does not allow starting, stopping or otherwise altering a trace |
+| `PendingInteractionInspect` | Poll and cancel a pending interaction — `GetPendingInteractionStatus`, `WaitForPendingInteraction`, `CancelPendingInteraction`. Read-only lookups only; starting an interaction (e.g. `DrawPCGSpline`) is gated separately by the interactive command's own capability plus `SafetyPolicy.AllowUserInteractionPrompt` |
 
 ---
 
@@ -353,7 +354,7 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 
 | Capability | What it unlocks |
 |---|---|
-| `EditorKeyboardInput` | Simulate keyboard input to editor UI widgets (`PressKey`) |
+| `EditorKeyboardInput` | Simulate keyboard input to editor UI widgets — `PressKey` native and `Toolset.Editor.SlateInspector.PressKey` bridge (the bridge also now applies `AllowKeyboardInput` / `AllowKeyboardModifierInput` and the blocked-shortcut list; see [Commands Reference](commands.md#uaipeditoruiautomation) for the one place it stays stricter than native) |
 | `EditorExecCommand` | Execute low-level editor commands via `GUnrealEd->Exec` |
 | `LogVerbosityEdit` | Change log verbosity levels — `SetLogVerbosity` native and `Toolset.Editor.Toolset.Logs.SetVerbosity` bridge |
 | `ViewportAnnotationCapture` | Capture annotated viewport images with world-coordinate labels — `CaptureViewportImageAnnotated` |
@@ -444,6 +445,7 @@ These capabilities depend on specific optional plugins. If the plugin is not ena
 | `PCGVolumeSpawn` 🧩 | `PCG` | Spawn APCGVolume actors into the world (`SpawnPCGGraphInstance`) — ⚠️ do not add to `AllowedCapabilities` in DefaultUAIP.ini (world mutation risk) |
 | `PCGNodeInspect` 🧩 | `PCG` | Inspect PCG node execution data views (`GetPCGNodeDataView`) — only functional when `PCG_PROFILING_ENABLED=1` |
 | `PCGToolsetUnsafeNodeAdd` 🧩 | `PCG` + `PCGToolset` | Bypass the node-type allowlist guard in `Toolset.Editor.PCG.AddNode` — ⚠️ do not add to `AllowedCapabilities` in DefaultUAIP.ini (allowlist bypass risk) |
+| `PCGSplineDraw` 🧩 | `PCG` | Start an interactive spline-draw pending interaction that hands the level viewport over to the human — `DrawPCGSpline` native and `Toolset.Editor.PCG.DrawSpline` bridge. Also requires `SafetyPolicy.AllowUserInteractionPrompt`: this capability states *what* may be touched, the policy flag states that starting one at all takes over the human's viewport and input focus |
 | `ConversationGraphEdit` 🧩 | `CommonConversation` | Structurally edit `UConversationDatabase` assets |
 | `EQSAssetEdit` 🧩 | `EnvironmentQueryEditor` | Add / remove EQS Generators and Tests; set their properties |
 | `WorldConditionStructureEdit` 🧩 | `WorldConditions` | Add and remove conditions in WorldCondition assets |
@@ -511,6 +513,26 @@ These capabilities all require the `FileSandbox` plugin.
 | `SandboxPersist` 🧩 | Flush sandbox changes to disk — `CommitSandboxChanges` |
 | `SandboxRevert` 🧩 | Discard pending sandbox changes — `RevertSandboxChanges` |
 
+#### Subsonic editing & audition
+
+These capabilities all require UE 5.8+ and the `Subsonic` plugin (Experimental).
+
+| Capability | What it unlocks |
+|---|---|
+| `SubsonicEventEdit` 🧩 | Every mutating event / action / modifier / parameter / property-binding command on a `USubsonicEventCollection` asset — 16 commands. All of them mutate a single asset within a single transaction, so they are bundled at the same granularity as `PhysicsAssetEdit` |
+| `SubsonicEventAudition` 🧩 | Audition an event and stop the current audition — `AuditionSubsonicEvent`, `StopSubsonicAudition`. Kept separate from `SubsonicEventEdit` because auditioning does not mutate the asset, but drives audio device side effects and executes the `Execute()` of loaded action types |
+
+#### Groom editing
+
+These capabilities all require the `HairStrands` plugin (Optional, disabled by default); the whole `UAIP.Editor.GroomAsset` domain is unavailable when it is disabled. Split by what a failure can destroy, not by command count — settings changes leave the source curve data untouched and can be restored by writing the old values back, new-asset generation destroys nothing at all, and curve/binding rebuilds can permanently lose data the caller cannot get back.
+
+| Capability | What it unlocks |
+|---|---|
+| `GroomAssetEdit` 🧩 | Group/LOD/interpolation/rendering settings patches, asset-wide settings, LOD slot add/remove, Cards/Meshes source configuration and derived-data builds, and non-destructive Dataflow graph assignment — 12 commands. Every affected value is a saved setting the caller can restore by writing the prior value back; the source curve data itself is never touched |
+| `GroomAssetCreate` 🧩 | Create a new asset from a Groom without modifying the source — follicle-mask and strands texture generation (`GenerateGroomFollicleMaskTexture`, `GenerateGroomStrandsTextures`) and RBF deformation baking into a new `UGroomAsset` (`BakeGroomRBFDeformation`) — 3 commands. Nothing existing is ever lost, but the commands are heavy (GPU texture generation, or a bake whose engine-side root-data generation can crash the editor process on failure — see the `BakeGroomRBFDeformation` entry in the [Commands Reference](commands.md)) |
+| `GroomCurveEdit` 🧩 | Everything that can overwrite guide/strand curve control points — direct writes (`SetGroomGuideCurves`, `SetGroomStrandCurves`), Dataflow graph evaluation (`EvaluateGroomDataflow`), and reimporting a Groom from its source file (`ReimportGroom`) — 4 commands. Curve data lost this way cannot be recovered by writing settings back; a failed reimport in particular is not guaranteed to leave the asset's prior content intact |
+| `GroomBindingEdit` 🧩 | Create a `UGroomBindingAsset` against a target SkeletalMesh or GeometryCache, and rebuild an existing binding's derived data in place — 3 commands (`CreateGroomBinding`, `CreateGeometryCacheGroomBinding`, `RebuildGroomBinding`). Creation destroys nothing; a failed rebuild does, because the engine discards the binding's prior derived data before regenerating it |
+
 #### Asset validation
 
 These capabilities require the `DataValidation` plugin, which the project must name explicitly in its `.uproject` — see the `UAIP.Editor.Validation` section of the [Commands Reference](commands.md). Listing the validators, following a validation job and reading its result are DefaultAllow (`EditorInspect`); only running validators and applying their fixes are gated here.
@@ -560,6 +582,7 @@ DisablePIEStart=False
 AllowCheatCVarWrite=False
 AllowExternalTraceAnalysis=False
 AllowDisclosingTraceAttachment=False
+AllowUserInteractionPrompt=False
 
 ; Directory externally captured .utrace files may be analysed from.
 ; Has no default; AllowExternalTraceAnalysis alone opens nothing.
@@ -593,6 +616,7 @@ AllowDisclosingTraceAttachment=False
 | `AllowExternalTraceAnalysis` | `False` | Allow `AnalyzeTrace` to read a `.utrace` captured outside UAIP. **Grants nothing on its own** — `ExternalTraceDirectory` must be set as well |
 | `ExternalTraceDirectory` | unset | Root directory an externally captured `.utrace` must live under. ini only (no CLI override), and deliberately has no default |
 | `AllowDisclosingTraceAttachment` | `False` | Allow `StopTrace` to hand a captured `.utrace` over as an artifact when its channels could have recorded **host paths, screen content or network addresses**. The analysis sections sanitise, mask or reduce those to metadata; the raw file does not, which is why handing it over is a separate decision. Disclosure of **log text** is governed by `AllowLogDump` instead, and an unclassified channel is refused whatever both are set to. Also requires the `RuntimeInsightsAttachTraceFile` capability. In the editor both this and `AllowLogDump` are normally needed, because the engine enables the log and screenshot channels by itself |
+| `AllowUserInteractionPrompt` | `False` | Allow a pending interaction (a command that hands off to a human in the editor instead of finishing on its own, e.g. `DrawPCGSpline`) to start at all. Rejected with `PolicyViolation` before it ever reserves a resource or changes anything in the editor. A separate axis from the interactive command's own DefaultDenied capability (e.g. `PCGSplineDraw`): the capability states *what* may be touched, this flag states that taking over the human's viewport and input focus is allowed in the first place. Independently of this flag, starting one is also refused when nothing registered can currently show the human a prompt — see the `UAIP.Editor.PCG` section of the [Commands Reference](commands.md) |
 | `AllowedCapabilities` | empty | DefaultDenied capabilities to grant (one `+` entry per line) |
 | `DeniedCapabilities` | empty | Remove DefaultAllow capabilities from all sessions |
 | `DeniedCommands` | empty | Block commands by fully-qualified name. Blocked commands are hidden from the default `ListCommands` response and counted in `HiddenReasons.DeniedCommand`; pass `IncludeUnavailable=true` to list them explicitly (`Available: false`, `UnavailableReason: "DeniedCommand"`), or use `DescribeCommand`, which always shows them |

@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1022 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 420 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1442 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1083 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1504 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -33,7 +33,7 @@ UAIP では 2 種類のコマンドを公開しています：
 
 | ドメイン | プロバイダプレフィックス | UAIP コマンド | Toolset ブリッジ | デモ |
 |---|---|---:|---:|---:|
-| Core | `UAIP.Core` | 8 | — | ✅ |
+| Core | `UAIP.Core` | 11 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | 1 | 一部（13/18） |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
@@ -68,7 +68,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Sequencer | `UAIP.Editor.Sequencer` | 123 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 30 | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 34 | 31 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 107 | — |
@@ -82,6 +82,8 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 23 | — | — |
 | Editor AnimSequence | `UAIP.Editor.AnimSequence` | 12 | — | — |
 | Editor ChaosDestruction | `UAIP.Editor.ChaosDestruction` | 29 | — | — |
+| Editor Subsonic 🧩 | `UAIP.Editor.Subsonic` | 22 | — | — |
+| Editor GroomAsset 🧩 | `UAIP.Editor.GroomAsset` | 35 | — | — |
 | Editor Validation 🧩 | `UAIP.Editor.Validation` | 7 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
@@ -114,6 +116,9 @@ UAIP では 2 種類のコマンドを公開しています：
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
 | 🆓 `EndSession` | セッションを明示的に終了しサーバー側リソースを解放する（成果物は GC 対象になる） |
 | 🆓 `ReloadCapabilities` | エディタを再起動せずに `Config/DefaultUAIP.ini` から Capability セットを再読み込みする（`AllowCapabilityReload=True` のときのみ登録） |
+| 🆓 `GetPendingInteractionStatus` | 保留中の対話 1 件の状態 — `State`・`Cause`・`ElapsedSeconds`・`Prompt`・`Reason`・`Result` — を、変化を待たずに報告する。対話（`DrawPCGSpline` などの対話型コマンド）を開始したときと同じ `SessionId` を明示的に指定する必要があり、未知・期限切れ・他セッション所有はすべて同じ `NotFound` として扱われる |
+| 🆓 `WaitForPendingInteraction` | 対話が `AwaitingUser` を離れるか、この呼び出し自身の `TimeoutSeconds` 上限（デフォルト 30、範囲 [1, 600]）に達するまでブロックする。タイムアウトしても対話自体には影響せず、人間の応答を待ち続ける。同じ対話を同時に監視できる呼び出しは最大 4 件までだが、2 件目以降には `[UAIP.Transport] AllowConcurrentPassiveWaits` が必要（[設定](config.md) 参照） |
+| 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックする |
 
 ---
 
@@ -315,12 +320,22 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `PressKey` | 修飾キー対応のキー入力をシミュレート（危険ショートカットブラックリスト付き） |
 | 🆓 `WaitForWidget` | ウィジェットが期待状態になるまでポーリング |
 | 🆓 `FillForm` | フォームウィジェットへの一括入力を逐次 state machine で実行 |
-| 🆓 `SnapshotUI` | UI の構造スナップショットを取得 |
+| 🆓 `SnapshotUI` | 範囲を絞り込め、除外分も報告する UI の構造スナップショットを取得 |
 | 🆓 `OpenPasswordTestWindow` | パスワード用 `SEditableTextBox` を持つフローティングテストウィンドウを開く（パスワードフィールドのポリシーテスト用ターゲット） |
+
+> **Note**: `SnapshotUI` は任意の走査範囲を指定できます。起点には `RootWidgetRef` または `RootWidgetPath`（互いに排他。どちらも `WindowTitle` とは併用不可）、走査量には `MaxDepth`（既定 30）と `MaxNodes`（既定 50000。1 回の呼び出しで訪れる全ルートで共有される単一予算）、絞り込みには `WidgetTypes` + `WidgetTypeMode`（`"Add"` は既定の対象に追加、`"Only"` は指定した型だけに限定）と `LabelContains`、既定で外れるウィジェットを拾うには `bIncludeInvisible` / `bIncludeUnclassified` を使います。応答には常に `EmittedCount`・`FilteredCount`・`FilteredReasons`（0 件でも常に存在する 6 つの理由キー — `InvisibleSubtreeRoot` / `StructuralContainer` / `TypeFilterMismatch` / `LabelFilterMismatch` / `Unclassified` / `RegistrationFailed`）・`UnclassifiedTypes`（`Type` + `Count` を件数降順・同数なら型名昇順で最大 200 件。各 `Type` はそのまま `WidgetTypes` に渡せる）・`Traversal`（`Complete` / `NodeLimitReached` / `DepthLimitReached` / `VisitedNodeCount`）・`MatchedRootCount`・`EffectiveParams`（クランプ・正規化後に実際に適用された値）が含まれます。
+>
+> 応答が答えられるのは常に「現在のフィルタを通過した集合に無い」までです。これを「UI 上のどこにも存在しない」と読み替えてよいのは、次のすべてが成り立つときに限ります: 走査が打ち切られていない（`Traversal.Complete == true`）、未分類型の一覧が全件かつ名指し可能（`UnclassifiedTypesComplete == true` かつ `UnaddressableUnclassifiedCount == 0`）、不可視ウィジェットを刈り取っていない（`FilteredReasons.InvisibleSubtreeRoot == 0`、または `bIncludeInvisible` を指定済み）、`WidgetTypeMode` が `"Add"`（型で絞り込んでいない）、`LabelContains` が空、Ref の登録に失敗したウィジェットが無い（`FilteredReasons.RegistrationFailed == 0`）、`WindowTitle` / `RootWidgetRef` / `RootWidgetPath` のいずれでも呼び出しを絞り込んでいない（絞り込んでいる場合はその範囲内でしか結論が成り立たない）。これらすべてを満たしていても、**構造コンテナ**型（後述）は `Widgets` にも `UnclassifiedTypes` にも現れません — `WidgetTypes` で名指しして確認してください。
+>
+> 構造コンテナ — レイアウトを組むためだけに存在するウィジェット — は走査はされますが emit されず、未分類型としても列挙されません。代わりに `FilteredReasons.StructuralContainer` にまとめて計上されます: `SBox` / `SBorder` / `SOverlay` / `SSpacer` / `SConstraintCanvas` / `SHorizontalBox` / `SVerticalBox` / `SGridPanel` / `SWrapBox` / `SWidgetSwitcher` / `SCanvas` / `SScaleBox` / `SSizeBox` / `SNullWidget` / `SInvalidationPanel` / `SRetainerWidget`。これらを `WidgetTypes` で名指しすれば emit されます — 明示的な型指定は常に分類より優先されます。
+>
+> 型名は `SWidget::GetTypeAsString()` から取得されます。これはウィジェットの構築サイトで `SNew(...)` に渡した識別子であり、動的な型ではありません。`SNew(基底型)` で構築されたウィジェットは、実際の型が異なっていても基底クラス名を返します。また `SNew` を経由せずに構築されたウィジェット（例: `MakeShared<SFoo>()`）は、型名としてリテラル文字列 `"None"` を返します。
+>
+> `RootWidgetRef` は使い捨てです。呼び出しが完了すると、指定した Ref だけでなく**そのセッションの `WidgetRef` がすべて**無効化されます — `SnapshotUI` の呼び出しごとに新しい世代が始まるためです。以前の Ref を残したまま段階的に絞り込みたい場合は `RootWidgetPath` を使ってください。`SnapshotUI` は引き続き `IsReadOnly() == true` を宣言し `bReadOnly` 下でも実行できます — リセットされるのは UAIP 側の Ref キャッシュのみで、永続的なエディタの状態は変わりません。UI Automation の全コマンドを通じて、`WidgetRef` はそれを発行したスナップショットから 60 秒で失効します。
 
 ### Toolset ブリッジ — SlateInspector（10 件）🧩
 
-`SlateInspectorToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SlateInspector.*`。ネイティブ側のウィジェットパス記法ではなく refPath でウィジェットを指定します。
+`SlateInspectorToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SlateInspector.*`。ネイティブ側のウィジェットパス記法ではなく refPath でウィジェットを指定します。このセクションの全ブリッジコマンドは、対応するネイティブコマンドと同じ Capability を要求するようになりました（[Safety & Capabilities](safety.md) 参照）— それまでのリリースでは Capability チェックなしにディスパッチされていました。
 
 | コマンド | 説明 |
 |---|---|
@@ -334,6 +349,8 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | `Toolset.Editor.SlateInspector.PressKey` | キー入力を送信（`Ctrl+S` のような修飾キープレフィックス対応） |
 | `Toolset.Editor.SlateInspector.SetComboSelection` | コンボボックスウィジェットの項目を選択 |
 | `Toolset.Editor.SlateInspector.FillForm` | 複数のフォームフィールドを 1 回の呼び出しで入力 |
+
+> **Note**: `Toolset.Editor.SlateInspector.PressKey` はネイティブの `PressKey` と同じ危険ショートカットのブロックリストを適用しますが、現在どのウィジェットにフォーカスがあるかを解決する手段が無いため、**Backspace を常時ブロック**します — ネイティブコマンドが持つ「テキスト入力ウィジェットにフォーカスがある場合の例外」はブリッジには引き継がれません。
 
 ---
 
@@ -396,6 +413,7 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | `UnloadPrimaryAsset`（要 `PrimaryAssetUnload`） | `PrimaryAsset` を明示的にメモリからアンロードする（PIE中は拒否） |
 
 > **Note**: `StartAssetAudit` は**ジョブ型コマンド**の一例で、呼び出しをブロックせずに即座に応答を返し、実際の処理はエディタのフレームをまたいで進む。`uaip_execute` の呼び出しに MCP の `_meta.progressToken` を添えると、応答待ちの間ブリッジがおよそ 5 秒おきに `notifications/progress` を送出する。内容は経過秒数とエディタ自身の状態（`STARTING` / `RUNNING` / `UNRESPONSIVE`）のみで、**ジョブ内部の進捗は含まれない**（それを知りたい場合は `GetAssetAuditStatus` をポーリングする）。この仕組みは `uaip_execute` にのみ適用され（`uaip_run_scenario` は対象外）、クライアントが進捗トークンを送った場合にのみ働く。また、届いた通知を実際に表示するかどうかは MCP クライアント側の実装による。監査ジョブが 1 フレームあたり走査に使う時間の上限は `Config/DefaultUAIP.ini` の `[UAIP.Jobs] AuditStepBudgetMs` で変更できる（既定 `10.0`、`[1.0, 100.0]` の範囲にクランプされる。範囲外を指定してもエラーにはならず自動的に範囲内へ収められる）。
+
 
 > **Note**: 保存には `SaveAsset` と `UAIP.Editor.Workspace.SaveAllPackages` の 2 つがあり、影響範囲が異なる。`SaveAllPackages` は**未保存のパッケージをすべて**書き込むため、人が編集途中で放置していた無関係な変更まで一緒に確定してしまう。対象が分かっているなら `SaveAsset` で名指しすること。何が書き込まれるかを事前に知りたい場合は `ListDirtyPackages` を呼ぶ — これはエディタ全体保存が参照するのと同じ情報源（`GetDirtyContentPackages` / `GetDirtyWorldPackages`）を使うため、返る一覧と `SaveAllPackages` が書き込む集合は一致する。
 >
@@ -1602,8 +1620,9 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 | `RemovePCGCommentBox` 🧩 | コメントボックスを削除（`PCGGraphEdit` 必須） |
 | `GetPCGNodeDataView` 🧩 | PCG ノードの実行データビューを取得（`PCGNodeInspect` 必須。`PCG_PROFILING_ENABLED=0` 時は CapabilityNotAvailable） |
 | `RunPCGInstantGraph` 🧩 | アクター / コンポーネント不要の fire-and-forget PCG グラフ実行（`PCGGraphExecute` 必須） |
+| `DrawPCGSpline` 🧩 | レベルビューポートで人間がスプラインを描き終える対話を開始し、待たずに `InteractionId` を返す（`IsInteractive: true`）。`GetPendingInteractionStatus` でポーリング、`WaitForPendingInteraction` で短時間ブロック、`CancelPendingInteraction` でキャンセルできる。`PCGSplineDraw` と `SafetyPolicy.AllowUserInteractionPrompt`（別ゲート）が必須。ビューポートを保持できる対話は同時に 1 件のみ |
 
-### Toolset ブリッジ — PCG（30 件）🧩
+### Toolset ブリッジ — PCG（31 件）🧩
 
 `PCGToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.PCG.*`。アクティブな PCG エディタタブが必要なコマンドは非インタラクティブコンテキストで `ExecutionFailed` を返す場合があります（PCGToolset の既知の制約）。
 
@@ -1639,6 +1658,7 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 | `Toolset.Editor.PCG.UpdateCommentBox` 🧩 | コメントボックスを更新（`PCGGraphEdit` 必須） |
 | `Toolset.Editor.PCG.RemoveCommentBox` 🧩 | コメントボックスを削除（`PCGGraphEdit` 必須） |
 | `Toolset.Editor.PCG.RunPCGInstantGraph` 🧩 | `UPCGSpatialToolset` 経由で PCG グラフを即時実行（`PCGGraphExecute` 必須；非同期・デフォルト 300 秒） |
+| `Toolset.Editor.PCG.DrawSpline` 🧩 | `UAIP.Editor.PCG.DrawPCGSpline` のブリッジ版。`UPCGToolset::DrawSpline` に委譲する（Experimental）。Admission ルールと Capability ゲートはネイティブ版と同じだが、登録する待機時間は Toolset ディスパッチ自体の上限により 600 秒でクランプされる（ネイティブ版のデフォルト 1800 秒とは異なる） |
 
 ---
 
@@ -2168,6 +2188,148 @@ Geometry Collection（Chaos Destruction）編集 — `UGeometryCollection` ア�
 | コマンド | 説明 |
 |---|---|
 | `SetGeometryCollectionDestructionSettings` | ダメージモデルとクラスタリング設定を原子的に置き換える — `DamageModel`・階層レベルごとの `DamageThreshold` 配列・`SizeSpecificData`・クラスタリング設定。部分更新モードは無い。事前に `GetGeometryCollectionDestructionSettings` で現在の設定を読み取ること |
+
+---
+
+## UAIP.Editor.Subsonic 🧩
+
+Subsonic オーディオイベントシステム向け `USubsonicEventCollection` アセットの構造編集 — イベント、そのアクションシーケンス、アクションごとの Modifier、Collection/Event スコープのパラメータ、プロパティ⇔パラメータのバインディング — に加え、エディタを離れずにイベントを試聴できます。UE 5.8 以降かつ `Subsonic` プラグイン（Experimental）が必要です。UE 5.7、またはプラグイン無効時はドメイン全体が存在しません。本ドメインに Toolset ブリッジはありません。
+
+> **Note**: アクションまたは Modifier へのインデックスベースの書き込み（`RemoveSubsonicEventAction`、`MoveSubsonicEventAction`、`SetSubsonicEventActionProperty`、`AddSubsonicActionModifier`、`RemoveSubsonicActionModifier`、`MoveSubsonicActionModifier`、`SetSubsonicActionModifierProperty`、および `InsertIndex` を明示指定した `AddSubsonicEventAction`）はすべて `ExpectedActionFingerprint`（`Move*` 系コマンドと挿入位置指定を伴う呼び出しではさらに `ExpectedActionsFingerprint`）を要求し、呼び出し側が直前に観測した値と一致しない場合は拒否されます。これは権限チェックではなく楽観的並行性制御です — インデックスベースのアドレッシングは、そうしなければ同時編集によって別のアクションを黙って壊しうるため安全ではありません。拒否された場合はコレクションを読み直すか、直前の書き込みが返した `ActionsFingerprint` / `Actions[]` を使って現在値を取得してください。
+>
+> `AuditionSubsonicEvent` の応答フィールドは「再生された」ではなく `EventDispatched` です — イベントが解決され、public であり、そのアクションの `Execute()` が呼ばれたことを意味するだけで、実際に何か聞こえたことを保証しません。`StopSubsonicAudition` はその executor 自身のスコープが所有する音のみを解放します — `Global` 実行スコープで開始された音は**停止しません**。試聴の発行前に、イベントから静的に到達可能な `FGameplayTag` 参照を走査し、循環している、またはチェーン深度・到達可能アクション数の上限を超える場合は `ExecutionFailed`（応答に `CyclePath`）で拒否します — 実行時にタグを組み立てるプロジェクト独自のアクション型は、このチェックからは見えません。
+>
+> プロパティ⇔パラメータのバインディング（`AddSubsonicPropertyBinding`）に `ParameterScope` 引数はありません — 対象の `ParameterName` は名前のみで解決され、Event スコープのパラメータは同名の Collection スコープのパラメータを覆い隠します。
+
+#### Observation（4 コマンド）— 要 `EditorInspect`
+
+| コマンド | 説明 |
+|---|---|
+| `ListSubsonicEventCollections` | AssetRegistry 経由で `USubsonicEventCollection` アセットを `AssetPath` 順に一覧表示。各エントリは `AssetPath` のみ — 詳細には `GetSubsonicEventCollectionInfo` を使用。`PageIndex` / `PageSize` でページング、`PathFilter` でコンテンツブラウザのパスプレフィックスによる絞り込みが可能 |
+| `GetSubsonicEventCollectionInfo` | 1 つのコレクションの完全な event/action/modifier/parameter/binding 内訳を取得。`EventTagFilter` は `EventTag` に対するプレフィックス一致で絞り込む。`MaxEvents` / `MaxTotalItems` / `MaxResponseBytes` / `MaxContainerElements` / `MaxRecursionDepth` で上限を設定できる（下げることのみ可能、ハード上限は超えられない）。応答本文は artifact として保存され、`Data` にはサマリのみが入る。PIE 実行中でも呼び出し可能 |
+| `ListSubsonicActionTypes` | 検出可能な Subsonic アクション構造体型（非 `Abstract` / 非 `Hidden` / 非 `Deprecated`）を、各型ごとに `SetSubsonicEventActionProperty` が受け付けるプロパティスキーマとともに一覧表示。必須入力は無し。`MaxTotalItems` / `MaxResponseBytes` で上限を設定可能 |
+| `ListSubsonicModifierTypes` | `ActionStructPath` / `PropertyName` で指定された、ネストされた instanced-struct 配列の検出可能な派生型をすべて一覧表示し、各型について `SetSubsonicActionModifierProperty` が受け付けるプロパティスキーマを付与する。基底型はプロパティの `BaseStruct` メタデータから解決されるため、任意の `TArray<TInstancedStruct<...>>` プロパティに対して機能する |
+
+#### Event & Action editing（7 コマンド）— 要 `SubsonicEventEdit`
+
+| コマンド | 説明 |
+|---|---|
+| `AddSubsonicEvent` | `EventTag` のイベントを追加する。冪等 — 既に存在するタグの場合は何も変更せず `AlreadyExisted: true` を返す。`EventTag` は登録済みの GameplayTag である必要がある。プレイセッション実行中は拒否 |
+| `RemoveSubsonicEvent` | `EventTag` のイベントを、それが所有する全アクション・Event スコープのパラメータ・プロパティバインディングごと削除し、それぞれの削除件数を報告する。`EventTag` を持つイベントが無い場合は `NotFound` で失敗。`AffectedEvents` は常に空 — イベントの削除はそのイベントにスコープされた状態のみを削除する。プレイセッション実行中は拒否 |
+| `SetSubsonicEventSettings` | `EventTag` のイベントの設定を更新する。現在設定可能なフィールドは `IsPublic` のみ。少なくとも 1 つの設定を指定する必要があり、何も変更しないリクエストは no-op として成功するのではなく `InvalidParams` で拒否される。プレイセッション実行中は拒否 |
+| `AddSubsonicEventAction` | `ActionStructPath` をインスタンス化し、`EventTag` のアクションシーケンスの `InsertIndex` へ挿入、省略時は末尾に追加する。`ExpectedActionsFingerprint` は `InsertIndex` を指定した場合のみ必須。更新後の `ActionsFingerprint` と、上限付きの `Actions[]` を返す。プレイセッション実行中は拒否 |
+| `RemoveSubsonicEventAction` | `EventTag` のアクションシーケンスから `Index` のアクション（およびそのプロパティバインディング）を削除する。`ExpectedActionFingerprint` は常に必須。更新後の `ActionsFingerprint` と `Actions[]` を返す。プレイセッション実行中は拒否 |
+| `MoveSubsonicEventAction` | `FromIndex` のアクションを移動し、`ToIndex`（移動対象を取り除いた後の配列における位置）へ配置する。`FromIndex == ToIndex` は成功する no-op。`ExpectedActionFingerprint` と `ExpectedActionsFingerprint` の両方が常に必須。プレイセッション実行中は拒否 |
+| `SetSubsonicEventActionProperty` | `Index` のアクションのトップレベルプロパティ `PropertyName` へ `Value` を書き込む。ネストされた `TArray<TInstancedStruct<...>>`（`Modifiers`）プロパティは拒否される — 代わりに専用の `AddSubsonicActionModifier` / `RemoveSubsonicActionModifier` / `MoveSubsonicActionModifier` / `SetSubsonicActionModifierProperty` を使用すること。`ExpectedActionFingerprint` は常に必須。プレイセッション実行中は拒否 |
+
+#### Action Modifier editing（4 コマンド）— 要 `SubsonicEventEdit`
+
+| コマンド | 説明 |
+|---|---|
+| `AddSubsonicActionModifier` | `ModifierStructPath` をインスタンス化し、`Index` のアクションの `ModifiersPropertyName` 配列へ、`InsertIndex` または末尾に挿入する。冪等ではない — 同じ引数で繰り返し呼ぶと複数の Modifier が追加される。Modifier 配列はその所有アクションの fingerprint の一部であるため、常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
+| `RemoveSubsonicActionModifier` | `Index` のアクションの `ModifiersPropertyName` 配列から `ModifierIndex` の Modifier を削除する。常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
+| `MoveSubsonicActionModifier` | `Index` のアクションの `ModifiersPropertyName` 配列内で、`ModifierFromIndex` の Modifier を `ModifierToIndex` へ移動する。同一インデックスの指定はトランザクションを開かず成功する no-op。常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
+| `SetSubsonicActionModifierProperty` | `ModifierIndex` の Modifier のトップレベルプロパティ `PropertyName` へ `Value` を書き込む。常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
+
+#### Parameter editing（3 コマンド）— 要 `SubsonicEventEdit`
+
+| コマンド | 説明 |
+|---|---|
+| `AddSubsonicParameter` | `Scope`（`Collection` または `Event`。`Event` の場合は `EventTag` が必須）で選択された `FInstancedPropertyBag` へ、`ParameterName` という名前のパラメータを追加する。`ParameterType` は `EPropertyBagPropertyType` の列挙子名（`Bool` / `Int32` / `Int64` / `Float` / `Double` / `Name` / `String` / `Enum` / `Object` / `Struct`）。`ValueTypePath` は `Enum` / `Object` / `Struct` でのみ必須で、それ以外では省略が必要 — struct 型の `ValueTypePath` はさらに `FGameplayTag`（現時点で書き込み可能な唯一の struct 型）に限定される。既存のパラメータ名を再度追加しようとした場合は、上書きではなく拒否される。プレイセッション実行中は拒否 |
+| `RemoveSubsonicParameter` | 選択された `Scope` のバッグから `ParameterName` のパラメータを削除する。`UnboundPropertyCount` / `ReboundPropertyCount` は、そのパラメータにバインドされていた全アクションプロパティの結果を分類する — rebind されたプロパティは、同名かつ型互換の Collection レベルのパラメータが引き継いだために解決を維持できたもの（`Scope: "Event"` の場合のみ発生しうる）。選択したスコープに `ParameterName` のパラメータが無い場合は `NotFound` で失敗。プレイセッション実行中は拒否 |
+| `SetSubsonicParameterValue` | 選択された `Scope` のバッグにある既存パラメータ `ParameterName` の既定値を設定する。`Value` はアクションプロパティの setter と同じ許可リストで検証され、`Float` / `Double` の NaN/Inf も拒否される。選択したスコープに `ParameterName` のパラメータが無い場合は `NotFound` で失敗。プレイセッション実行中は拒否 |
+
+#### Property Binding editing（2 コマンド）— 要 `SubsonicEventEdit`
+
+| コマンド | 説明 |
+|---|---|
+| `AddSubsonicPropertyBinding` | イベント `EventTag` の `Index` のアクションが持つ、`PropertyName` という名前のアクションプロパティを `ParameterName` のパラメータへバインドし、既存のバインディングを置き換える。プロパティが `NoBinding` メタデータを持つ場合、値の許可リスト外である場合、またはパラメータと型が非互換の場合は拒否される。`ExpectedActionFingerprint` は常に必須。プレイセッション実行中は拒否 |
+| `RemoveSubsonicPropertyBinding` | イベント `EventTag` の `Index` のアクションが持つ、`PropertyName` という名前のアクションプロパティのバインディングを削除する。現在バインドされていないプロパティは no-op 成功ではなく `NotFound` として報告される。`ExpectedActionFingerprint` は常に必須。プレイセッション実行中は拒否 |
+
+#### Audition（2 コマンド）— 要 `SubsonicEventAudition`
+
+| コマンド | 説明 |
+|---|---|
+| `AuditionSubsonicEvent` | `USubsonicEventCollection` アセット内の `EventTag` のイベントを試聴する。このセッションが以前保持していた試聴があれば置き換える。`EventDispatched` の意味と到達可能性の循環チェックについては上記の Note を参照。プレイセッション実行中は拒否 |
+| `StopSubsonicAudition` | このセッションが現在試聴しているものを、保持している executor の登録解除・解放によって停止する。入力は不要 — 停止対象は常にリクエスト自身の `SessionId`。冪等 — 試聴していないセッションでもコマンドが失敗するのではなく `AuditionWasActive: false` で成功する。`Global` 実行スコープで開始された音は**停止しない** — 解放されるのは executor 自身のスコープが所有するソースのみ |
+
+---
+
+## UAIP.Editor.GroomAsset 🧩
+
+`UGroomAsset`（Strand-Based Hair）アセットの構造編集 — グループ/LOD/シミュレーション/補間/レンダリング設定、カード/メッシュのソース設定と派生データビルド、ガイド/ストランドのカーブ制御点、Dataflow グラフの割り当てと実行、毛根マスク/ストランドテクスチャの生成、対象メッシュへのバインディング生成、再取り込み、RBF 変形の焼き込み。`HairStrands` プラグイン（Optional・既定無効）が必要です。プラグインが無効な場合はドメイン全体が利用できません。本ドメインに Toolset ブリッジはありません — エンジンが Groom ドメイン向けの Toolset を出荷していないためです。
+
+4 つの DefaultDenied Capability が書き込み系コマンドを制御します — `GroomAssetEdit`（12 コマンド）、`GroomAssetCreate`（3 コマンド）、`GroomCurveEdit`（4 コマンド）、`GroomBindingEdit`（3 コマンド）。詳細は [Safety & Capabilities](safety.md) を参照してください。書き込み系コマンドはすべて PIE / SIE 実行中は拒否されます。ほとんどの書き込みコマンドは対象アセットを未保存のまま残します（各コマンドの説明にその旨が明記されています）。永続化するには `UAIP.Editor.Workspace.SaveAllPackages` を使用してください。新規アセットを生成する 5 コマンド（`GenerateGroomFollicleMaskTexture`、`GenerateGroomStrandsTextures`、`CreateGroomBinding`、`CreateGeometryCacheGroomBinding`、`BakeGroomRBFDeformation`）は、応答を返す前に生成物を保存します。
+
+#### Observation（13 コマンド）— 要 `EditorInspect`
+
+| コマンド | 説明 |
+|---|---|
+| `GetGroomAssetInfo` | グループ数、グループごとの `FHairGroupInfo` フィールド（カーブ/ガイド/頂点数、最大カーブ長）、グループ自身の LOD スロット数（グループ間の最大値ではない）、アセット全体の設定（マテリアルスロット数、Dataflow アセットパス、未保存フラグ、グローバル補間 / シミュレーションキャッシュ / ヘア補間種別） |
+| `GetGroomLODSettings` | 各グループの `AutoLODBias` と、全 LOD スロットの `FHairLODSettings` 全体。出力の形は `SetGroomLODSettings` の入力と一致する |
+| `GetGroomSimulationSettings` | 各グループの `FHairGroupsPhysics` 全体（ソルバー、外力、曲げ/伸び/衝突拘束、ストランドパラメータ）。4 種のスカラーカーブをキー単位でシリアライズする。出力の形は `SetGroomSimulationSettings` の入力と一致する |
+| `GetGroomInterpolationSettings` | 各グループの `FHairGroupsInterpolation` 全体（デシメーション・補間設定）。出力の形は `SetGroomInterpolationSettings` の入力と一致する |
+| `GetGroomRenderingSettings` | 各グループの `FHairGroupsRendering` 全体（ジオメトリ/シャドウ/上級者向け設定）。出力の形は `SetGroomRenderingSettings` の入力と一致する |
+| `GetGroomCardsInfo` | 全 `FHairGroupsCardsSourceDescription` エントリ（元メッシュ、ガイド種別、テクスチャレイアウトとパス、カード/頂点数）と、`"HairCardGenerator"` 実装が現在登録されているかどうか |
+| `GetGroomMeshesInfo` | 全 `FHairGroupsMeshesSourceDescription` エントリ（元メッシュ、テクスチャレイアウトとパス） |
+| `GetGroomGuideCurves` | 1 グループのガイドカーブ制御点を、呼び出し側が指定した 1 つ以上の範囲で取得する（「全件ダンプ」モードは無い）。範囲が 1 応答あたりの上限を超える場合は拒否ではなく切り詰め、`bTruncated` と実際に返した範囲を報告する |
+| `GetGroomStrandCurves` | ストランドカーブの制御点。範囲・切り詰めの契約は `GetGroomGuideCurves` と同じで、頂点ごとの色/ラフネス/AO とカーブごとのガイドウェイトフィールドが加わる |
+| `GetGroomDataflowInfo` | 現在割り当てられている `UDataflow` アセット（未割り当てなら空）と、設定されたターミナルノード名。未割り当ては通常の結果でありエラーではない |
+| `GetGroomBindingInfo` | `UGroomBindingAsset` 自体のプロパティ — バインディング種別、元/対象メッシュのパス、補間点数、グループごとの `GroupInfos`、コンパイル中かどうか、有効性 |
+| `ListGroomBindings` | 対象の `UGroomAsset` を参照する全 `UGroomBindingAsset`。Asset Registry のタグのみから回答し、候補となるバインディングは一切ロードしない |
+| `GetGroomCacheInfo` | `UGroomCache` 自体の内容 — 種別（Strands/Guides）、フレーム範囲、尺、保存されているアニメーション情報の属性フラグ |
+
+#### Settings & LOD writes（7 コマンド）— 要 `GroomAssetEdit`
+
+| コマンド | 説明 |
+|---|---|
+| `SetGroomSimulationSettings` | 1 グループの物理設定への部分パッチ。4 種のスカラーカーブは全キー置換となる。`GetGroomSimulationSettings` が返す形をそのまま受け付けるため、Get → 編集 → Set の往復ができる |
+| `SetGroomLODSettings` | 既存の 1 LOD スロットのフィールドと、所属グループの `AutoLODBias` への部分パッチ。スロットの追加・削除は行わない |
+| `SetGroomInterpolationSettings` | 1 グループのデシメーション/補間設定への部分パッチ。対象が Dataflow アセットを参照している場合、`bAllowOverwrite` を指定しない限り拒否される — `GuideType` はまさに Dataflow の実行が上書きする値のため |
+| `SetGroomRenderingSettings` | 1 グループのジオメトリ/シャドウ/上級者向けレンダリング設定への部分パッチ |
+| `SetGroomAssetSettings` | アセット全体の 3 フィールド（`EnableGlobalInterpolation`、`EnableSimulationCache`、`HairInterpolationType`）への部分パッチ — 上記のグループ単位の書き込みと異なり `GroupIndex` を持たない |
+| `AddGroomLOD` | 既定値で構築した LOD スロットを 1 つグループへ追加し、新スロットのインデックスを返す。以後の設定は `SetGroomLODSettings` で行う |
+| `RemoveGroomLOD` | LOD スロットを 1 つ削除する。失われるのはそのスロット自身の設定値のみ — グループのカーブデータは無傷 — だが元に戻すには削除前の全フィールドを `AddGroomLOD` + `SetGroomLODSettings` で再適用する必要がある |
+
+#### Cards / Meshes（4 コマンド）— 要 `GroomAssetEdit`
+
+| コマンド | 説明 |
+|---|---|
+| `SetGroomCardsSource` | `FHairGroupsCardsSourceDescription` エントリを 1 つ upsert する（ガイド種別、取り込み済みメッシュ、テクスチャレイアウト/パス）— 既存の（グループ, LOD）エントリがあればパッチし、無ければ新規追加する。カードの派生データはビルドしない |
+| `SetGroomMeshesSource` | `FHairGroupsMeshesSourceDescription` エントリを 1 つ upsert する。パッチ/追加の契約は同じ。メッシュの派生データはビルドしない |
+| `BuildGroomCardsData` | `UGroomAsset::BuildCardsData()` を強制実行する（Derived Data Cache の参照/ビルド、Heavy、上限時間なし）。ソース記述が `GuideType == Generated` を要求しており `"HairCardGenerator"` 実装が未登録の場合、事前に `NotAllowed` で拒否する |
+| `BuildGroomMeshesData` | `UGroomAsset::BuildMeshesData()` を強制実行する（Derived Data Cache の参照/ビルド、Heavy、上限時間なし） |
+
+#### Texture generation（2 コマンド）— 要 `GroomAssetCreate`
+
+| コマンド | 説明 |
+|---|---|
+| `GenerateGroomFollicleMaskTexture` | 元の Groom 自身のパッケージの隣に新規の毛根マスク `UTexture2D` を作成し、そのピクセル生成を投入する。保証されるのは投入のみ — GPU での生成/読み戻しは以降の複数フレームにわたって完了するが、エンジンは完了シグナルを一切公開しない。生成したテクスチャを Groom へ紐付けはしない — 紐付けには `SetGroomCardsSource`/`SetGroomMeshesSource` を使用する |
+| `GenerateGroomStrandsTextures` | 選択した Layout が要求するスロット数分の新規ストランドテクスチャ（`UTexture2D`）を作成し、SkeletalMesh または StaticMesh に対してストランド形状をトレースして生成を投入する。投入のみ保証・自動紐付けなしという契約は `GenerateGroomFollicleMaskTexture` と同じ |
+
+#### Curve editing & Dataflow（4 コマンド）
+
+| コマンド | Capability | 説明 |
+|---|---|---|
+| `SetGroomGuideCurves` | `GroomCurveEdit` | グループ内の 1 つ以上の範囲について、ガイドカーブの制御点を単一の `ConvertFromGroomAsset` → `ConvertToGroomAsset` 往復で差し替える。`GetGroomGuideCurves` が返す形をそのまま受け付ける。書き込みはカーブの追加・削除を一切行わず、（読み取りと異なり）範囲がグループの終端を越える場合は切り詰めではなく拒否される。対象が Dataflow アセットを参照している場合、`bAllowOverwrite` を指定しない限り拒否される |
+| `SetGroomStrandCurves` | `GroomCurveEdit` | `SetGroomGuideCurves` と同じ契約で、ストランドカーブを対象とする |
+| `SetGroomDataflowAsset` | `GroomAssetEdit` | Dataflow 割り当て（アセットパス / ターミナルノード名）への部分パッチ。非破壊 — 割り当てを変更するだけで、グラフを実行したりカーブデータに触れたりはしない |
+| `EvaluateGroomDataflow` | `GroomCurveEdit` | 割り当てられた Dataflow グラフを実行する（`FDataflowInstance::UpdateOwnerAsset()`）。全グループのガイド/ストランドのカーブ形状と `GuideType` をグラフの出力で上書きする — 実行前のカーブはこのコマンドでは復元できない。Dataflow アセットが割り当てられていない場合は `NotFound` を返す。実行のたびにエンジン側の無害な「Ensure condition failed」警告がログに 1 件出る |
+
+#### Bindings（3 コマンド）— 要 `GroomBindingEdit`
+
+| コマンド | 説明 |
+|---|---|
+| `CreateGroomBinding` | Groom を対象の `USkeletalMesh` にバインドする新規 `UGroomBindingAsset` を作成し、ビルド完了まで待ってから結果を保存する。元メッシュ（Source）を省略すると、後で `BakeGroomRBFDeformation` に使えないバインディングになる。指定パスが既存アセットと衝突した場合は上書きせず別名（連番）で作成し、応答が実際のパスを報告する |
+| `CreateGeometryCacheGroomBinding` | `CreateGroomBinding` と同じ契約で、代わりに `UGeometryCache` へバインドする（このバインディング種別ではビルドは同期実行） |
+| `RebuildGroomBinding` | 既存バインディングの派生データをその場で再ビルドし、ビルド完了まで待ってから応答する。同じバインディングを別のリクエストが既にビルド中の場合は待たずに即座に `TooManyRequests` を返す。再ビルドの失敗は元に戻せない — エンジンは再生成の前に既存の派生データを破棄するため |
+
+#### Import / Bake（2 コマンド）
+
+| コマンド | Capability | 説明 |
+|---|---|---|
+| `ReimportGroom` | `GroomCurveEdit` | Groom のヘア記述を、元ファイル（省略時はアセット自身の既存の取り込みファイル）から新たに翻訳した内容で置き換え、派生データをその場で再ビルドする。元ファイルの翻訳自体が失敗した場合、アセットは変更されない。翻訳は成功したが後続の取り込み/再ビルドが失敗した場合、アセットの以前の内容が保たれる保証はない。対象が Dataflow アセットを参照している場合は `bAllowOverwrite` を指定して再取り込みする |
+| `BakeGroomRBFDeformation` | `GroomAssetCreate` | バインディングの RBF 変形を、そのバインディングの元 Groom から複製した（カード/メッシュのジオメトリを含む）新規の `UGroomAsset` へ焼き込む。元の Groom とバインディングは一切変更しない。バインディングが元/対象両方の SkeletalMesh を持ち、かつ全グループのデシメーションが無効（`VertexDecimation=1`、`CurveDecimation=1`）であることを要求し、満たさない場合は事前に拒否する。**検証可能な前提条件をすべて満たしていても、エンジン自身の RBF ルートデータ生成が予測不能な形で失敗し、エディタプロセスがクラッシュすることがある** — このコマンドが `GroomAssetCreate`（既定無効）の背後にあるのは、まさにこの残存リスクのためである |
 
 ---
 

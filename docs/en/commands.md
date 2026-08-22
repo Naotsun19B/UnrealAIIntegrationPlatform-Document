@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1022 **UAIP commands** (provided directly by the plugin itself) and 420 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1442 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1083 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1504 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -33,7 +33,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 
 | Domain | Provider prefix | UAIP commands | Toolset bridge | Demo |
 |---|---|---:|---:|---:|
-| Core | `UAIP.Core` | 8 | — | ✅ |
+| Core | `UAIP.Core` | 11 | — | ✅ |
 | Editor Workspace | `UAIP.Editor.Workspace` | 18 | 1 | partial (13/18) |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | partial (5/9) |
@@ -68,7 +68,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Sequencer | `UAIP.Editor.Sequencer` | 123 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG 🧩 | `UAIP.Editor.PCG` | 33 | 30 | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 34 | 31 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 107 | — |
@@ -82,6 +82,8 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 23 | — | — |
 | Editor AnimSequence | `UAIP.Editor.AnimSequence` | 12 | — | — |
 | Editor ChaosDestruction | `UAIP.Editor.ChaosDestruction` | 29 | — | — |
+| Editor Subsonic 🧩 | `UAIP.Editor.Subsonic` | 22 | — | — |
+| Editor GroomAsset 🧩 | `UAIP.Editor.GroomAsset` | 35 | — | — |
 | Editor Validation 🧩 | `UAIP.Editor.Validation` | 7 | — | — |
 | Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | partial (2/3) |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
@@ -114,6 +116,9 @@ System-level commands for discovery, health, and session management.
 | 🆓 `ListPlugins` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.Plugin.ListPlugins` instead. List installed plugins and their enabled state (JSON) |
 | 🆓 `EndSession` | End a session explicitly and release its server-side resources; its artifacts become GC candidates |
 | 🆓 `ReloadCapabilities` | Reload the capability set from `Config/DefaultUAIP.ini` without restarting the editor (only registered when `AllowCapabilityReload=True`) |
+| 🆓 `GetPendingInteractionStatus` | Reports where one pending interaction stands — `State`, `Cause`, `ElapsedSeconds`, `Prompt`, `Reason`, `Result` — without waiting for it to change. Requires the same explicitly given `SessionId` that started the interaction (an interactive command such as `DrawPCGSpline`); unknown, expired, and other-session all report `NotFound` identically |
+| 🆓 `WaitForPendingInteraction` | Blocks until a pending interaction leaves `AwaitingUser`, or until this call's own `TimeoutSeconds` ceiling is reached (default 30, range [1, 600]), whichever comes first; on timeout the interaction itself is unaffected and keeps waiting for the human. Up to 4 concurrent calls may watch the same interaction, but reaching more than one requires `[UAIP.Transport] AllowConcurrentPassiveWaits` — see [Configuration](config.md) |
+| 🆓 `CancelPendingInteraction` | Cancels a pending interaction the calling session started, without waiting for the human to act. An interaction already `Completed` is answered with `Success` rather than an error; the capabilities the starting command declared are re-checked against the session's current capability set |
 
 ---
 
@@ -315,12 +320,22 @@ Drive the editor UI — click, type, select, drag.
 | 🆓 `PressKey` | Simulate a key press with modifiers (blacklist for dangerous shortcuts) |
 | 🆓 `WaitForWidget` | Poll until a widget reaches an expected state |
 | 🆓 `FillForm` | Bulk-fill a form widget using a sequential state machine |
-| 🆓 `SnapshotUI` | Capture a structured snapshot of the UI |
+| 🆓 `SnapshotUI` | Capture a structured, scope-filterable snapshot of the UI and report what was left out |
 | 🆓 `OpenPasswordTestWindow` | Open a floating test window holding a password `SEditableTextBox` — provides a target for password-field policy tests |
+
+> **Note**: `SnapshotUI` takes an optional scope — `RootWidgetRef` or `RootWidgetPath` (mutually exclusive; neither combines with `WindowTitle`) to pick a starting widget, `MaxDepth` (default 30) and `MaxNodes` (default 50000, shared across every root the call visits) to bound the walk, `WidgetTypes` + `WidgetTypeMode` (`"Add"` layers extra types on top of the usual roster, `"Only"` restricts to just the listed types) and `LabelContains` to filter, and `bIncludeInvisible` / `bIncludeUnclassified` to opt into widgets the default scan skips. The response always carries `EmittedCount`, `FilteredCount`, `FilteredReasons` (six reason keys present even at zero — `InvisibleSubtreeRoot`, `StructuralContainer`, `TypeFilterMismatch`, `LabelFilterMismatch`, `Unclassified`, `RegistrationFailed`), `UnclassifiedTypes` (up to 200 entries of `Type` + `Count`, sorted by count then name — each `Type` can be passed straight back into `WidgetTypes`), `Traversal` (`Complete` / `NodeLimitReached` / `DepthLimitReached` / `VisitedNodeCount`), `MatchedRootCount`, and `EffectiveParams` (the clamped/normalized values actually applied).
+>
+> A response can only ever say "not in the set that passed the current filters." Reading that as "does not exist anywhere in the UI" requires all of: the walk was not cut off (`Traversal.Complete == true`); the unclassified-type list is complete and every entry is addressable (`UnclassifiedTypesComplete == true` and `UnaddressableUnclassifiedCount == 0`); invisible widgets were not pruned (`FilteredReasons.InvisibleSubtreeRoot == 0`, or `bIncludeInvisible` was set); `WidgetTypeMode` was `"Add"` (no type restriction); `LabelContains` was empty; no widget failed ref registration (`FilteredReasons.RegistrationFailed == 0`); and no `WindowTitle` / `RootWidgetRef` / `RootWidgetPath` scoped the call (otherwise the conclusion only holds within that scope). Even when all of those hold, a **structural container** type (below) never appears in `Widgets` or `UnclassifiedTypes` — name it explicitly via `WidgetTypes` to check for one.
+>
+> Structural containers — widgets that exist purely to compose layout — are traversed but never emitted and never listed as an unclassified type; they are folded into `FilteredReasons.StructuralContainer` instead: `SBox`, `SBorder`, `SOverlay`, `SSpacer`, `SConstraintCanvas`, `SHorizontalBox`, `SVerticalBox`, `SGridPanel`, `SWrapBox`, `SWidgetSwitcher`, `SCanvas`, `SScaleBox`, `SSizeBox`, `SNullWidget`, `SInvalidationPanel`, `SRetainerWidget`. Naming one of these in `WidgetTypes` still emits it — an explicit type name always wins over classification.
+>
+> Type names come from `SWidget::GetTypeAsString()` — the identifier passed to `SNew(...)` at the widget's construction site, not a dynamic type. A widget built as `SNew(TBaseClass)` reports the base class name even where the concrete type differs, and a widget constructed without `SNew` (e.g. `MakeShared<SFoo>()`) reports the literal type name `"None"`.
+>
+> `RootWidgetRef` is single-use: once the call completes, **every** `WidgetRef` from that session is invalidated, not just the one passed in — each `SnapshotUI` call starts a fresh generation. Use `RootWidgetPath` instead when narrowing down step by step while keeping earlier refs alive. `SnapshotUI` still declares `IsReadOnly() == true` and runs under `bReadOnly`; only the UAIP-side ref cache is reset, no persistent editor state changes. Every `WidgetRef` — from any UI Automation command — expires 60 seconds after the snapshot that produced it.
 
 ### Toolset bridges — SlateInspector (10) 🧩
 
-Bridge commands via the `SlateInspectorToolset` (UE 5.8+). Provider: `Toolset.Editor.SlateInspector.*`. Widgets are addressed by refPath rather than by the widget-path syntax the native commands use.
+Bridge commands via the `SlateInspectorToolset` (UE 5.8+). Provider: `Toolset.Editor.SlateInspector.*`. Widgets are addressed by refPath rather than by the widget-path syntax the native commands use. Every bridge command in this section now requires the same capability as its native counterpart (see [Safety & Capabilities](safety.md)) — earlier releases dispatched these without a capability check.
 
 | Command | Description |
 |---|---|
@@ -334,6 +349,8 @@ Bridge commands via the `SlateInspectorToolset` (UE 5.8+). Provider: `Toolset.Ed
 | `Toolset.Editor.SlateInspector.PressKey` | Send a key press; modifier prefixes are supported (e.g. `Ctrl+S`) |
 | `Toolset.Editor.SlateInspector.SetComboSelection` | Select an option in a combo box widget |
 | `Toolset.Editor.SlateInspector.FillForm` | Fill multiple form fields in a single call |
+
+> **Note**: `Toolset.Editor.SlateInspector.PressKey` applies the same blocked-shortcut list as the native `PressKey` command, but it has no way to resolve which widget currently has focus, so it blocks **Backspace unconditionally** — the native command's exemption for a focused text-input widget does not carry over to the bridge.
 
 ---
 
@@ -396,6 +413,7 @@ Open, search, create, duplicate, rename, delete assets and folders.
 | `UnloadPrimaryAsset` (requires `PrimaryAssetUnload`) | Explicitly unload `PrimaryAsset`s from memory (rejected during PIE) |
 
 > **Note**: `StartAssetAudit` is a **job-style command** — it returns immediately and the work continues across editor frames rather than blocking the call. If your `uaip_execute` call includes an MCP `_meta.progressToken`, the bridge sends a `notifications/progress` update roughly every 5 seconds while the call is pending, carrying only the elapsed time and the editor's own state (`STARTING` / `RUNNING` / `UNRESPONSIVE`) — it never carries the job's internal progress; poll `GetAssetAuditStatus` for that. This applies to `uaip_execute` only (not `uaip_run_scenario`), only when the client sends a progress token, and whether the notification is actually surfaced to you depends on the MCP client. The per-frame time budget the audit job spends on each scan step is configurable via `Config/DefaultUAIP.ini` → `[UAIP.Jobs] AuditStepBudgetMs` (default `10.0`, clamped to `[1.0, 100.0]`; a value outside that range is silently clamped rather than rejected).
+
 
 > **Note**: There are two ways to save, and they differ in blast radius. `SaveAllPackages` writes **every** package holding unsaved changes, so work a person left in progress is committed alongside yours. When you know what you changed, name it with `SaveAsset` instead. To find out what a save would write, call `ListDirtyPackages` first: it reads the same source the editor-wide save consults (`GetDirtyContentPackages` / `GetDirtyWorldPackages`), so its list and the set `SaveAllPackages` would write are the same.
 >
@@ -1602,8 +1620,9 @@ PCG graph editing. Requires `PCG` plugin.
 | `RemovePCGCommentBox` 🧩 | Remove a comment box (requires `PCGGraphEdit`) |
 | `GetPCGNodeDataView` 🧩 | Get a PCG node's execution data view (requires `PCGNodeInspect`; returns CapabilityNotAvailable when `PCG_PROFILING_ENABLED=0`) |
 | `RunPCGInstantGraph` 🧩 | Fire-and-forget PCG graph execution with no actor or component required (requires `PCGGraphExecute`) |
+| `DrawPCGSpline` 🧩 | Starts an interactive spline draw the human finishes in the level viewport and returns an `InteractionId` right away (`IsInteractive: true`) — poll with `GetPendingInteractionStatus`, block briefly with `WaitForPendingInteraction`, or cancel with `CancelPendingInteraction`. Requires `PCGSplineDraw` and `SafetyPolicy.AllowUserInteractionPrompt` (a separate gate); one interaction may hold the level viewport at a time |
 
-### Toolset bridges — PCG (30) 🧩
+### Toolset bridges — PCG (31) 🧩
 
 Bridge commands via the `PCGToolset` (UE 5.8+). Provider: `Toolset.Editor.PCG.*`. Commands that require an active open PCG editor tab may return `ExecutionFailed` in non-interactive contexts (known PCGToolset constraint).
 
@@ -1639,6 +1658,7 @@ Bridge commands via the `PCGToolset` (UE 5.8+). Provider: `Toolset.Editor.PCG.*`
 | `Toolset.Editor.PCG.UpdateCommentBox` | Update a comment box (requires `PCGGraphEdit`) |
 | `Toolset.Editor.PCG.RemoveCommentBox` | Remove a comment box (requires `PCGGraphEdit`) |
 | `Toolset.Editor.PCG.RunPCGInstantGraph` | Execute a PCG graph instantly via `UPCGSpatialToolset` (requires `PCGGraphExecute`; async, 300 s default) |
+| `Toolset.Editor.PCG.DrawSpline` | Bridge equivalent of `UAIP.Editor.PCG.DrawPCGSpline`, delegating to `UPCGToolset::DrawSpline` (Experimental). Same admission rules and capability gates as the native command, but the wait it registers is capped at 600 s (the toolset dispatch's own hard clamp) rather than the native command's full 1800 s default |
 
 ---
 
@@ -2168,6 +2188,148 @@ These only re-parent, rename, or group bones — geometry and topology are uncha
 | Command | Description |
 |---|---|
 | `SetGeometryCollectionDestructionSettings` | Atomically replace the damage-model and clustering configuration — `DamageModel`, the per-level `DamageThreshold` array, `SizeSpecificData`, and clustering settings. No partial-update mode; read the current settings with `GetGeometryCollectionDestructionSettings` first |
+
+---
+
+## UAIP.Editor.Subsonic 🧩
+
+Structural editing of `USubsonicEventCollection` assets for the Subsonic audio event system — events, their action sequences, per-action modifiers, Collection/Event-scoped parameters, and property-to-parameter bindings — plus auditioning an event without leaving the editor. Requires UE 5.8+ and the `Subsonic` plugin (Experimental); the whole domain is unavailable on UE 5.7 or with the plugin disabled. No Toolset bridge exists for this domain.
+
+> **Note**: Every index-based write on an action or modifier (`RemoveSubsonicEventAction`, `MoveSubsonicEventAction`, `SetSubsonicEventActionProperty`, `AddSubsonicActionModifier`, `RemoveSubsonicActionModifier`, `MoveSubsonicActionModifier`, `SetSubsonicActionModifierProperty`, and inserting `AddSubsonicEventAction` at an explicit `InsertIndex`) requires an `ExpectedActionFingerprint` (and, for the `Move*` commands and insert-at-index calls, `ExpectedActionsFingerprint`) matching what the caller last observed. This is optimistic concurrency, not a permission check — index-based addressing is otherwise unsafe against a concurrent edit silently corrupting the wrong action. Re-read the collection, or use the `ActionsFingerprint` / `Actions[]` a prior write already returned, to get a current value after a rejection.
+>
+> `AuditionSubsonicEvent`'s response field is `EventDispatched`, not "played": it is `true` once the event resolved, was public, and had `Execute()` called on its actions — it does not guarantee anything was actually audible. `StopSubsonicAudition` only releases sound owned by that executor's own scope; it does **not** stop anything started in the `Global` execution scope. Before dispatching, audition statically walks the event's reachable `FGameplayTag` references and refuses with `ExecutionFailed` (`CyclePath` in the response) if they cycle or exceed the chain-depth / reachable-action-count limits — a project-defined action type that assembles a tag at runtime is invisible to this check.
+>
+> Property-to-parameter bindings (`AddSubsonicPropertyBinding`) have no `ParameterScope` argument: the target `ParameterName` is resolved by name alone, and an event-scoped parameter shadows a collection-scoped parameter of the same name.
+
+#### Observation (4) — requires `EditorInspect`
+
+| Command | Description |
+|---|---|
+| `ListSubsonicEventCollections` | List `USubsonicEventCollection` assets via the AssetRegistry, sorted by `AssetPath`. Each entry has `AssetPath` only — use `GetSubsonicEventCollectionInfo` for details. Paged with `PageIndex` / `PageSize`; `PathFilter` narrows by content-browser path prefix |
+| `GetSubsonicEventCollectionInfo` | Full event/action/modifier/parameter/binding breakdown of one collection. `EventTagFilter` narrows by an `EventTag` prefix match. Bounded by `MaxEvents` / `MaxTotalItems` / `MaxResponseBytes` / `MaxContainerElements` / `MaxRecursionDepth` (may be lowered but never raised past their hard limits). The response body is saved as an artifact; `Data` only carries a summary. Legal to call while PIE is running |
+| `ListSubsonicActionTypes` | List every discoverable Subsonic action struct type (non-`Abstract` / non-`Hidden` / non-`Deprecated`), with the property schema `SetSubsonicEventActionProperty` would accept for each. Takes no required input. Bounded by `MaxTotalItems` / `MaxResponseBytes` |
+| `ListSubsonicModifierTypes` | List every discoverable derived type of the nested instanced-struct array named by `ActionStructPath` / `PropertyName`, with the property schema `SetSubsonicActionModifierProperty` would accept for each. The base type is resolved from the property's `BaseStruct` metadata, so this works for any `TArray<TInstancedStruct<...>>` property |
+
+#### Event & Action editing (7) — requires `SubsonicEventEdit`
+
+| Command | Description |
+|---|---|
+| `AddSubsonicEvent` | Add an event tagged `EventTag`. Idempotent — an already-existing tag reports `AlreadyExisted: true` and mutates nothing. `EventTag` must be a registered GameplayTag. Rejected while a play session is in progress |
+| `RemoveSubsonicEvent` | Remove the event tagged `EventTag`, along with every action, event-scoped parameter, and property binding it owns; reports how many of each were removed. Fails with `NotFound` when no event carries `EventTag`. `AffectedEvents` is always empty — removing an event only deletes state scoped to that event. Rejected while a play session is in progress |
+| `SetSubsonicEventSettings` | Update settings on the event tagged `EventTag`. Currently the only settable field is `IsPublic`. At least one setting must be specified — a request that changes nothing is rejected with `InvalidParams` rather than silently doing nothing. Rejected while a play session is in progress |
+| `AddSubsonicEventAction` | Instantiate `ActionStructPath` and insert it into `EventTag`'s action sequence at `InsertIndex`, or append when omitted. `ExpectedActionsFingerprint` is required only when `InsertIndex` is set. Returns the updated `ActionsFingerprint` and a bounded `Actions[]` list. Rejected while a play session is in progress |
+| `RemoveSubsonicEventAction` | Remove the action at `Index` (together with its property bindings) from `EventTag`'s action sequence. `ExpectedActionFingerprint` is always required. Returns the updated `ActionsFingerprint` and `Actions[]`. Rejected while a play session is in progress |
+| `MoveSubsonicEventAction` | Relocate the action at `FromIndex` so it ends up at `ToIndex` (the position in the resulting array with the moved element already taken out). `FromIndex == ToIndex` succeeds as a no-op. `ExpectedActionFingerprint` and `ExpectedActionsFingerprint` are both always required. Rejected while a play session is in progress |
+| `SetSubsonicEventActionProperty` | Write `Value` into the top-level `PropertyName` property of the action at `Index`. A nested `TArray<TInstancedStruct<...>>` (`Modifiers`) property is rejected — use the dedicated `AddSubsonicActionModifier` / `RemoveSubsonicActionModifier` / `MoveSubsonicActionModifier` / `SetSubsonicActionModifierProperty` commands instead. `ExpectedActionFingerprint` is always required. Rejected while a play session is in progress |
+
+#### Action Modifier editing (4) — requires `SubsonicEventEdit`
+
+| Command | Description |
+|---|---|
+| `AddSubsonicActionModifier` | Instantiate `ModifierStructPath` and insert it into the `ModifiersPropertyName` array of the action at `Index`, at `InsertIndex` or appended. Not idempotent — repeated calls with the same arguments add multiple modifiers. Always requires `ExpectedActionFingerprint`, because a modifier array is part of its owning action's fingerprint. Rejected while a play session is in progress |
+| `RemoveSubsonicActionModifier` | Remove the modifier at `ModifierIndex` from the `ModifiersPropertyName` array of the action at `Index`. Always requires `ExpectedActionFingerprint`. Rejected while a play session is in progress |
+| `MoveSubsonicActionModifier` | Relocate the modifier at `ModifierFromIndex` so it ends up at `ModifierToIndex`, within the `ModifiersPropertyName` array of the action at `Index`. Equal indices succeed as a no-op that opens no transaction. Always requires `ExpectedActionFingerprint`. Rejected while a play session is in progress |
+| `SetSubsonicActionModifierProperty` | Write `Value` into the top-level `PropertyName` property of the modifier at `ModifierIndex`. Always requires `ExpectedActionFingerprint`. Rejected while a play session is in progress |
+
+#### Parameter editing (3) — requires `SubsonicEventEdit`
+
+| Command | Description |
+|---|---|
+| `AddSubsonicParameter` | Add a parameter named `ParameterName` to the `FInstancedPropertyBag` selected by `Scope` (`Collection` or `Event`; `EventTag` required for `Event`). `ParameterType` is an `EPropertyBagPropertyType` enumerator name (`Bool` / `Int32` / `Int64` / `Float` / `Double` / `Name` / `String` / `Enum` / `Object` / `Struct`); `ValueTypePath` is required for `Enum` / `Object` / `Struct` and must be omitted for every other type — a struct `ValueTypePath` is additionally limited to `FGameplayTag`, the only currently writable struct type. Re-adding an existing parameter name is rejected rather than overwritten, so an existing binding's type can never change silently. Rejected while a play session is in progress |
+| `RemoveSubsonicParameter` | Remove the parameter named `ParameterName` from the selected `Scope`'s bag. `UnboundPropertyCount` / `ReboundPropertyCount` classify what happened to every action property that was bound to it — rebound properties kept resolving because a same-named, type-compatible collection-level parameter took over (only possible for `Scope: "Event"`). Fails with `NotFound` when no parameter named `ParameterName` exists in the selected scope. Rejected while a play session is in progress |
+| `SetSubsonicParameterValue` | Set the default value of the existing parameter named `ParameterName` in the selected `Scope`'s bag. `Value` is validated through the same allowlist the action-property setters use, including NaN/Inf rejection for `Float` / `Double`. Fails with `NotFound` when no parameter named `ParameterName` exists in the selected scope. Rejected while a play session is in progress |
+
+#### Property Binding editing (2) — requires `SubsonicEventEdit`
+
+| Command | Description |
+|---|---|
+| `AddSubsonicPropertyBinding` | Bind the action property named `PropertyName` on the action at `Index` of event `EventTag` to the parameter named `ParameterName`, replacing any previous binding of that property. Rejected when the property carries the `NoBinding` metadata, is outside the value allowlist, or is not type-compatible with the parameter. `ExpectedActionFingerprint` is always required. Rejected while a play session is in progress |
+| `RemoveSubsonicPropertyBinding` | Remove the binding of the action property named `PropertyName` on the action at `Index` of event `EventTag`. A property that is not currently bound is reported as `NotFound` rather than succeeding as a no-op. `ExpectedActionFingerprint` is always required. Rejected while a play session is in progress |
+
+#### Audition (2) — requires `SubsonicEventAudition`
+
+| Command | Description |
+|---|---|
+| `AuditionSubsonicEvent` | Audition the event tagged `EventTag` in a `USubsonicEventCollection` asset. Replaces this session's previously held audition, if any. See the note above for what `EventDispatched` means and how the reachability-cycle check works. Rejected while a play session is in progress |
+| `StopSubsonicAudition` | Stop whatever this session is currently auditioning, by unregistering and releasing its held executor. Takes no input — the session to stop is always the request's own `SessionId`. Idempotent: a session holding no audition still succeeds, with `AuditionWasActive: false` instead of the command failing. Does **not** stop sound started in the `Global` execution scope — only sources owned by the executor's own scope are cleared |
+
+---
+
+## UAIP.Editor.GroomAsset 🧩
+
+Structural editing of `UGroomAsset` (Strand-Based Hair) assets — group/LOD/simulation/interpolation/rendering settings, Cards/Meshes source configuration and derived-data builds, guide/strand curve control points, Dataflow graph assignment and evaluation, follicle-mask/strands texture generation, binding creation to a target mesh, reimport, and RBF deformation baking. Requires the `HairStrands` plugin (Optional, disabled by default); the whole domain is unavailable when the plugin is disabled. No Toolset bridge exists for this domain — the engine ships no Groom-domain Toolset.
+
+Four DefaultDenied capabilities gate the write commands — `GroomAssetEdit` (12 commands), `GroomAssetCreate` (3 commands), `GroomCurveEdit` (4 commands), and `GroomBindingEdit` (3 commands); see [Safety & Capabilities](safety.md). Every write command is rejected while PIE or SIE is active. Most write commands leave the target asset unsaved (its own description says so); persist with `UAIP.Editor.Workspace.SaveAllPackages`. The four commands that create a brand-new asset (`GenerateGroomFollicleMaskTexture`, `GenerateGroomStrandsTextures`, `CreateGroomBinding`, `CreateGeometryCacheGroomBinding`, `BakeGroomRBFDeformation`) save it before responding instead.
+
+#### Observation (13) — requires `EditorInspect`
+
+| Command | Description |
+|---|---|
+| `GetGroomAssetInfo` | Group count, per-group `FHairGroupInfo` fields (curve/guide/vertex counts, max curve length), each group's own LOD slot count (never the cross-group maximum), and asset-wide settings (material slot count, Dataflow asset path, unsaved-changes flag, global interpolation / simulation cache / hair interpolation type) |
+| `GetGroomLODSettings` | Every group's `AutoLODBias` plus the full `FHairLODSettings` of every LOD slot. Output shape mirrors `SetGroomLODSettings`'s input |
+| `GetGroomSimulationSettings` | Every group's full `FHairGroupsPhysics` (solver, external forces, bend/stretch/collision constraints, strands parameters), including the four scalar curves serialized key by key. Output shape mirrors `SetGroomSimulationSettings`'s input |
+| `GetGroomInterpolationSettings` | Every group's full `FHairGroupsInterpolation` (decimation and interpolation settings). Output shape mirrors `SetGroomInterpolationSettings`'s input |
+| `GetGroomRenderingSettings` | Every group's full `FHairGroupsRendering` (geometry/shadow/advanced settings). Output shape mirrors `SetGroomRenderingSettings`'s input |
+| `GetGroomCardsInfo` | Every `FHairGroupsCardsSourceDescription` entry (source mesh, guide type, texture layout and paths, card/vertex counts) plus whether a `"HairCardGenerator"` implementation is currently registered |
+| `GetGroomMeshesInfo` | Every `FHairGroupsMeshesSourceDescription` entry (source mesh, texture layout and paths) |
+| `GetGroomGuideCurves` | Guide curve control points for one group, over one or more caller-supplied ranges (no "dump everything" mode). Truncates rather than rejects when a range exceeds the per-response cap, reporting `bTruncated` and the actually-returned range |
+| `GetGroomStrandCurves` | Strand curve control points, same range/truncation contract as `GetGroomGuideCurves`, plus per-vertex color/roughness/AO and per-curve guide-weight fields |
+| `GetGroomDataflowInfo` | The `UDataflow` asset currently assigned (empty when none) and the configured terminal node name. Unassigned is a normal result, not an error |
+| `GetGroomBindingInfo` | Properties of a `UGroomBindingAsset` directly — binding type, source/target mesh paths, interpolation point count, per-group `GroupInfos`, whether it is currently compiling, validity |
+| `ListGroomBindings` | Every `UGroomBindingAsset` that references the target `UGroomAsset`, answered entirely from Asset Registry tags — no candidate binding is loaded |
+| `GetGroomCacheInfo` | Contents of a `UGroomCache` directly — type (Strands/Guides), frame range, duration, and stored animation-info attribute flags |
+
+#### Settings & LOD writes (7) — requires `GroomAssetEdit`
+
+| Command | Description |
+|---|---|
+| `SetGroomSimulationSettings` | Partial patch to one group's physics settings, including full-curve replacement for the four scalar curves. Accepts the shape `GetGroomSimulationSettings` returns, so a caller can round-trip Get → edit → Set |
+| `SetGroomLODSettings` | Partial patch to one existing LOD slot's fields plus the owning group's `AutoLODBias`. Does not add or remove slots |
+| `SetGroomInterpolationSettings` | Partial patch to one group's decimation/interpolation settings. Rejected when the target references a Dataflow asset unless `bAllowOverwrite` is set, because `GuideType` is exactly what Dataflow evaluation overwrites |
+| `SetGroomRenderingSettings` | Partial patch to one group's geometry/shadow/advanced rendering settings |
+| `SetGroomAssetSettings` | Partial patch to the three asset-wide fields (`EnableGlobalInterpolation`, `EnableSimulationCache`, `HairInterpolationType`) — no `GroupIndex`, unlike the group-scoped writes above |
+| `AddGroomLOD` | Append one default-constructed LOD slot to a group; returns the new slot's index. Configure it afterward with `SetGroomLODSettings` |
+| `RemoveGroomLOD` | Remove one LOD slot. Only the slot's own settings are lost — the group's curve data is untouched — but restoring it afterward means reapplying every field via `AddGroomLOD` + `SetGroomLODSettings` |
+
+#### Cards / Meshes (4) — requires `GroomAssetEdit`
+
+| Command | Description |
+|---|---|
+| `SetGroomCardsSource` | Upsert one `FHairGroupsCardsSourceDescription` entry (guide type, imported mesh, texture layout/paths) — patches an existing (group, LOD) entry or appends a new one. Does not build cards derived data |
+| `SetGroomMeshesSource` | Upsert one `FHairGroupsMeshesSourceDescription` entry, same patch/append contract. Does not build meshes derived data |
+| `BuildGroomCardsData` | Force `UGroomAsset::BuildCardsData()` (Derived Data Cache lookup/build, Heavy, no upper time bound). Rejects up front with `NotAllowed` when a source description asks for `GuideType == Generated` and no `"HairCardGenerator"` implementation is registered |
+| `BuildGroomMeshesData` | Force `UGroomAsset::BuildMeshesData()` (Derived Data Cache lookup/build, Heavy, no upper time bound) |
+
+#### Texture generation (2) — requires `GroomAssetCreate`
+
+| Command | Description |
+|---|---|
+| `GenerateGroomFollicleMaskTexture` | Create a new follicle-mask `UTexture2D` next to the source Groom's own package and submit its pixel generation. Only submission is guaranteed — GPU generation/readback completes over the following frames with no completion signal the engine exposes. Does not link the texture to the Groom; use `SetGroomCardsSource`/`SetGroomMeshesSource` for that |
+| `GenerateGroomStrandsTextures` | Create one new strands `UTexture2D` per slot the chosen layout requires, tracing strand geometry against a SkeletalMesh or StaticMesh. Same submission-only guarantee and no-auto-link behavior as `GenerateGroomFollicleMaskTexture` |
+
+#### Curve editing & Dataflow (4)
+
+| Command | Capability | Description |
+|---|---|---|
+| `SetGroomGuideCurves` | `GroomCurveEdit` | Replace guide curve control points for one or more ranges within a group, via a single `ConvertFromGroomAsset` → `ConvertToGroomAsset` round trip. Accepts exactly the shape `GetGroomGuideCurves` returns; a write never adds/removes curves, and an out-of-range write is rejected rather than truncated. Rejected when the target references a Dataflow asset unless `bAllowOverwrite` is set |
+| `SetGroomStrandCurves` | `GroomCurveEdit` | Same contract as `SetGroomGuideCurves`, for strand curves |
+| `SetGroomDataflowAsset` | `GroomAssetEdit` | Partial patch to the Dataflow assignment (asset path / terminal node name). Non-destructive — only changes the assignment, does not evaluate the graph or touch curve data |
+| `EvaluateGroomDataflow` | `GroomCurveEdit` | Evaluate the assigned Dataflow graph (`FDataflowInstance::UpdateOwnerAsset()`). Overwrites every group's guide/strand curve geometry and `GuideType` with the graph's output — the prior curves are not recoverable through this command. Returns `NotFound` when no Dataflow asset is assigned. Logs one harmless engine-side "Ensure condition failed" warning on every evaluation |
+
+#### Bindings (3) — requires `GroomBindingEdit`
+
+| Command | Description |
+|---|---|
+| `CreateGroomBinding` | Create a new `UGroomBindingAsset` binding a Groom to a target `USkeletalMesh`, wait for the build to finish, and save the result before responding. Omitting the source SkeletalMesh produces a binding `BakeGroomRBFDeformation` cannot later use. A path collision creates the binding under a different (numbered) name instead of overwriting — the response reports the actual path |
+| `CreateGeometryCacheGroomBinding` | Same contract as `CreateGroomBinding`, binding to a `UGeometryCache` instead (synchronous build for this binding type) |
+| `RebuildGroomBinding` | Rebuild an existing binding's derived data in place and wait for the build to finish. Returns `TooManyRequests` immediately (does not wait) when another request is already building the same binding. A failed rebuild cannot be undone — the engine discards the prior derived data before regenerating |
+
+#### Import / Bake (2)
+
+| Command | Capability | Description |
+|---|---|---|
+| `ReimportGroom` | `GroomCurveEdit` | Replace a Groom's hair description with a fresh translation of a source file (or the asset's own existing import file) and rebuild its derived data in place. If the source-file translation itself fails, the asset is left unmodified; if translation succeeds but the subsequent import/rebuild step fails, the asset's prior content is not guaranteed to survive. Set `bAllowOverwrite` to reimport a target that references a Dataflow asset |
+| `BakeGroomRBFDeformation` | `GroomAssetCreate` | Bake a binding's RBF deformation into a brand-new `UGroomAsset`, duplicated from the binding's source Groom (including Cards/Meshes geometry). Never modifies the source Groom or the binding. Requires the binding to have both a source and target SkeletalMesh, and every group's decimation disabled (`VertexDecimation=1`, `CurveDecimation=1`) — rejected up front otherwise. **Even with every checkable precondition satisfied, the engine's own RBF root-data generation can still fail in a way that crashes the editor process** — this command is gated behind `GroomAssetCreate` (denied by default) specifically because of this residual risk |
 
 ---
 
