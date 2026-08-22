@@ -298,6 +298,14 @@ Run tests, Python scripts, and Editor Utility Blueprints.
 | `RunEditorUtilityBlueprint` | Run a specified Editor Utility Blueprint |
 | `RunNamedEditorCommand` | Run a named editor console command via `GUnrealEd->Exec` |
 
+> **Note**: `RunAutomationTest` (and its runtime counterpart `RunRuntimeAutomationTest`) runs **every matching test** when `RunAllMatching=true`, which is the default. To bound the run, pass `MaxMatchingTests` (1 or greater; omit it for no bound). `0` is rejected rather than read as "no bound" — they are opposite requests, and quietly turning one into the other is how a bounded run starts claiming full coverage.
+>
+> The report always carries `Summary.Matched` (how many tests matched the filter) and `Summary.Selected` (how many were actually run). **Both are stated whether or not they differ** — a line that appears only on truncation is one the reader has to already know about, since its absence would otherwise be indistinguishable from a build that never emitted it. The human-readable report and the Output Log carry the same pair.
+>
+> `TimeoutSec` bounds **each individual test**, not the batch (60 seconds by default). A larger match set still runs in full as long as every test finishes within that time. Separately, the runtime `RunRuntimeAutomationTest` bounds the whole bulk run at 600 seconds of wall clock; reaching it adds a `(bulk execution time limit reached)` entry to the report as an `Error`.
+>
+> **Changed in v1.1.0**: earlier releases stopped at a hundred matches and **gave the caller no way to tell** — `Pass=100 Fail=0` reads exactly like a clean run over the whole set. If you relied on that ceiling, pass `MaxMatchingTests=100` explicitly.
+
 ---
 
 ## UAIP.Editor.UIAutomation

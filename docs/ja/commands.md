@@ -298,6 +298,14 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | `RunEditorUtilityBlueprint` | 指定 Editor Utility Blueprint を実行 |
 | `RunNamedEditorCommand` | `GUnrealEd->Exec` 経由で名前付き Editor コンソールコマンドを実行 |
 
+> **Note**: `RunAutomationTest`（および Runtime 側の `RunRuntimeAutomationTest`）は、`RunAllMatching=true`（既定）のとき**マッチした全件を実行します**。件数を絞るには `MaxMatchingTests`（1 以上。省略すると上限なし）を指定してください。`0` は「上限なし」ではなく無効値として拒否されます — 両者は正反対の要求であり、読み替えると絞った実行が全件カバーを名乗ることになるためです。
+>
+> レポートには常に `Summary.Matched`（フィルタに一致した数）と `Summary.Selected`（実際に走らせた数）が入ります。**差の有無に関わらず必ず出力されます** — 差があるときだけ出す形式では、その行が無いことが「全件だった」のか「その版が出力しないだけ」なのか読み手に区別できないためです。人間向けレポート本文と Output Log にも同じ 2 つが出ます。
+>
+> `TimeoutSec` は**バッチ全体ではなく 1 テストごとの上限**です（既定 60 秒）。マッチ件数が増えても各テストがこの時間内に終わる限り全件走ります。なお Runtime 側の `RunRuntimeAutomationTest` にはこれとは別に一括実行全体の壁時計上限（600 秒）があり、到達した場合はレポートに `(bulk execution time limit reached)` というエントリが `Error` として現れます。
+>
+> **v1.1.0 での変更**: 以前は 100 件で打ち切られ、**打ち切られたことが応答から分かりませんでした**（`Pass=100 Fail=0` は全件成功と字面が同じです）。100 件で止まる挙動に依存していた場合は `MaxMatchingTests=100` を明示してください。
+
 ---
 
 ## UAIP.Editor.UIAutomation
