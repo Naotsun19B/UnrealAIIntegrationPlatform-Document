@@ -161,6 +161,27 @@ HTTP transport が実際に起動すると（`AutoStartMCP` 経由でも、`-uai
 - **権限判断の入力には一切なりません。** ゲスト接続候補にどのポートを試すかを伝えるだけのヒントであり、役割名・認証トークン・プロセス ID は含みません。読み手は、そのポートを目的のエディタとして扱う前に、既存の `HealthCheck` によるプロジェクト同一性検証を必ず通す必要があります
 - エディタが異常終了すると、古い記述子が残ることがあります。読み手はそれを見つけても信用する前にポートへ probe し、待ち受けていなければ設定に書かれたポートへフォールバックします
 
+### `[UAIP.Transport]` — 受動的待機の同時実行（既定オフ）
+
+HTTP / MCP transport は、プロセス全体で**同時に in-flight 1 件まで**しかコマンドを受け付けません。人間の操作待ち・シェーダーコンパイル待ち・ウィジェット出現待ちのように「ただ待つだけ」のコマンドも、待っている間ずっとこの唯一の枠を占有し続けるため、その間は他の全セッションが締め出されます。このセクションは、受動的に待つだけのコマンドをこの枠の勘定から切り離すための設定です。
+
+| キー | 型 | デフォルト | 範囲 | 説明 |
+|---|---|---|---|---|
+| `AllowConcurrentPassiveWaits` | bool | `False` | — | `True` にすると、受動的待機だと自ら宣言しているコマンドが通常の同時コマンド枠を消費しなくなります。**HTTP / MCP のみ**が対象で、WebSocket は対象外です（理由は後述） |
+| `MaxConcurrentPassiveWaits` | int32 | `16` | `[1, 64]` | 上のフラグが `True` のときに意味を持つ、受動的待機を同時に何本まで通すかの全体上限。フラグが `False` の間は無意味 |
+
+- **1 セッションあたりの上限は個別に設定できません** — 全体上限から `max(1, MaxConcurrentPassiveWaits / 4)`（既定値では 4 本）として導出されます。これは意図的な仕様です。セッションごとの上限を個別に設定できてしまうと、1 セッションが全体の枠を独占できる構成を作れてしまいます。
+- **範囲外の値は丸められず、無視されます。** 起動時に Warning を出したうえで、直前の値（多くの場合は既定値）のまま動作します。これは上の `[UAIP.Transport].AutoStartPort` と同じ「警告して変更しない」挙動で、`MaxConcurrentPassiveWaits=100` は `64` ではなく `16` になります。
+- 対応する CLI フラグ：`-uaip-allow-concurrent-passive-waits` / `-uaip-max-concurrent-passive-waits=N`
+- **どちらのキーにもコンソール変数は用意されていません**（他の多くの Transport 設定と違う点です）— コンソールへ到達できる AI セッションが、自分を縛る制約を自分で広げられてはならないためです。どちらも ini / CLI 専用で、起動時に一度だけ読まれます。変更にはエディタの再起動が必要です。
+- 現時点で受動的待機を自己宣言しているコマンド：`UAIP.Core.WaitForPendingInteraction` / `UAIP.Editor.Workspace.WaitForShaderCompilation` / `UAIP.Runtime.Assertion.WaitForCondition` / `UAIP.Runtime.Assertion.WaitSeconds` / `UAIP.Editor.UIAutomation.WaitForWidget` / `UAIP.Editor.Observation.ObserveWidget`。どのコマンドが対象かはコマンド自身の性質であり、この ini セクションで選べる allowlist ではありません。
+- 全体上限・セッション上限のいずれを超えても `TooManyRequests` で断られます。通常の単一コマンド枠を超えたときと同じ扱いです。どちらの上限に当たったかは応答からは分かりません。
+- 受動枠に入ったコマンドは、実際に終わるまで枠を保持し続けます — HTTP / MCP の 120 秒応答タイムアウトでは**解放されません**。これは意図的な設計です。応答タイムアウトで解放してしまうと、`WaitForPendingInteraction`（最大 600 秒）のような自身の上限より長く裏で生き続け、再投入によって上限を迂回できてしまいます。自力で終了しない待機は、次のエディタ再起動まで枠を占有し続けます。
+- この設定は状態を変更するコマンドの同時実行数（既定 1）には影響しません。また、シナリオが実行中かどうかとも独立ではなく、**シナリオ実行中は本設定に関わらず単発コマンドは弾かれます**。ただし受動的待機だけは例外で、このフラグが有効な限りシナリオ実行中でも通ります（[シナリオ実行 → 単発コマンドとの排他](scenario.md#単発コマンドとの排他) を参照）。
+- 実効設定は起動時に一度だけ Output Log へ 1 行出力されます。`[UAIP.CommandPump]` の allowlist ログと同じ形式です：`Transport concurrency: MaxConcurrentCommands=1, ConcurrentPassiveWaits=enabled(total=16, per-session=4)`（無効時は `disabled`）。ini を編集したのに効いていないように見える場合 — セクション名やキー名の誤り、再起動していない、値が範囲外で捨てられた、`AllowConcurrentPassiveWaits` を立てずに `MaxConcurrentPassiveWaits` だけ書いた等 — このログ行を確認してください。
+
+> **なぜ WebSocket は対象外か**: WS の 1 接続は内部的に in-flight リクエストを 1 件分しか保持できません。同じ接続上で複数の受動的待機を通すと、片方の待機が完了したときに別の待機の枠まで誤って解放してしまいます。ただし WS には既に別の回避手段があります — 長い待機で行き詰まったクライアントは、同じ接続で待つ代わりに別の接続をもう 1 本開けます（1 エディタあたり最大 4 接続まで同時に張れます）。
+
 > `[UAIP.SafetyPolicy]` セクションは意図的にこのページから除外しています — `AllowedCapabilities` / `DeniedCapabilities` / `DeniedCommands` / `AllowCapabilityReload` を含む完全なリファレンスは [Safety & Capabilities](safety.md) を参照。
 
 ### `AllowedArtifactDirectory` オーバーライド
@@ -366,5 +387,6 @@ uaip_reload_config()
 | 録画時にエディタのトーストが映り込む | `[UAIP.CommandNotification].Enabled=False` |
 | Bearer Token が拒否される | `Saved/UAIP/Auth/http_token.txt`（HTTP）または `ws_token.txt`（WS）と Token 値が一致しているか確認。[Security](security.md) を参照 |
 | `CapabilityNotAvailable: <name>` | `[UAIP.SafetyPolicy]` に `+AllowedCapabilities=<name>` を追記して `UAIP.Core.ReloadCapabilities` を実行（または再起動） |
+| `AllowConcurrentPassiveWaits=True` にしたのに待機コマンドが他セッションを止めたまま | 起動時ログの `Transport concurrency: ...` を確認 — 反映には再起動が必要で、対象は HTTP / MCP のみ（WebSocket は対象外） |
 
 それ以外のケースは [Troubleshooting](troubleshooting.md) を参照。

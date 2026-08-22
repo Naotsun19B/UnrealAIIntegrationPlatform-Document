@@ -204,6 +204,19 @@ If you want `Field` to actually receive `42`, reference `${B.Data.x}` directly f
 
 ---
 
+## Exclusivity with single commands
+
+A scenario's exclusivity is not limited to other scenarios — it also excludes single commands submitted through `uaip_execute`, in both directions, across **every transport** (HTTP, MCP, and WebSocket alike):
+
+- **While a scenario is running**, a single command submitted by any session — including the session that submitted the scenario — is refused with `TooManyRequests`. This holds for the whole run, up to the 1800-second wall-clock cap; if the wall-clock watchdog fires without the runner actually finishing, the gate stays closed until it does. The one exception is a passive-wait command (see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default)): those are still admitted while a scenario runs, provided `AllowConcurrentPassiveWaits=True` is set — they don't change editor state, so they can't interleave with a scenario's steps.
+- **The reverse also holds**: submitting a scenario is refused with `TooManyRequests` while a non-passive command is still executing anywhere in the editor — even one that has already timed out its own response (the HTTP/MCP 120-second async timeout) but is still running server-side, such as a map load or a shader recompile still in progress. Passive waits don't count toward this check, so a long-running wait never blocks starting a scenario.
+- If the same command stays in flight for far longer than a scenario's own wall-clock cap would allow, the rejection changes from `TooManyRequests` to `InternalError` with a message indicating the editor needs to be restarted — this distinguishes ordinary congestion (worth retrying) from a wedged handler (not worth retrying).
+- Neither direction reveals *what* is currently running, only that something is.
+
+This is a correctness fix, not a new restriction you opt into: earlier releases only excluded other scenarios, so a single command could interleave mid-scenario. If your scenario-based workflow relied on being able to slip a single command in between two scenario submissions from the same session, that no longer works — split the work into two scenarios instead, or issue the single command before or after the scenario, not during.
+
+---
+
 ## Example — full PIE validation flow
 
 ```json

@@ -181,7 +181,7 @@ stdin-stream モードでも同じマーカーがリクエスト毎に出ます�
 | `NotAllowed` | 409 | 禁止パス（例：`/Engine/`）または禁止タイミング（PIE 中の Editor 編集） | 別パスを選ぶか PIE 停止まで待つ |
 | `ExecutionFailed` | 500 | ハンドラ内の Runtime 失敗 | `ErrorMessage` に詳細。シナリオでは `RetryCount` 活用 |
 | `Timeout` | 408 | ステップ単位 / シナリオ単位の壁時計上限超過 | `TimeoutSeconds` を増やすかシナリオ分割 |
-| `TooManyRequests` | 429 | 並行性制限ヒット（シナリオ同時 1 等） | 進行中リクエスト終了待ち |
+| `TooManyRequests` | 429 | 並行性制限ヒット — 単一コマンド枠、シナリオの同時実行（1 件まで）、シナリオ実行中の単発コマンド（逆方向も含む）、有効化時の受動的待機プールのいずれか — [設定リファレンス → `[UAIP.Transport]` 受動的待機の同時実行](config.md#uaiptransport--受動的待機の同時実行既定オフ) と [シナリオ実行 → 単発コマンドとの排他](scenario.md#単発コマンドとの排他) を参照 | 進行中リクエスト終了待ち。HTTP レスポンスには `Retry-After: 1` が付く |
 | `InternalError` | 500 | プロセス障害レベル（ハンドラ例外、ディスパッチャ不変条件違反） | `RestartEditor`、継続なら `Saved/Crashes/` 添付で Issue 起票 |
 
 HTTP ステータスは参考値 — 分岐は常に `ErrorCode` で。WebSocket と CLI は HTTP ステータスを持ちません。
@@ -413,6 +413,7 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities")
 | 最大ステップ数 | 100 |
 | シナリオ単位壁時計上限 | 1800 秒 |
 | 同時実行シナリオ | 1（それ以外は `TooManyRequests`） |
+| シナリオ実行中の単発コマンド | HTTP / MCP / WS すべてで `TooManyRequests`（許可済みの受動的待機を除く）— [シナリオ実行 → 単発コマンドとの排他](scenario.md#単発コマンドとの排他) を参照 |
 | ステップ単位 `Params` 文字列 | 8 KiB |
 | 合計 `Params` ペイロード | 256 KiB |
 | `ScenarioRequest` 合計サイズ | 1 MiB |

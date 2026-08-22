@@ -356,7 +356,7 @@ Response:
 |---|---|
 | Max request body | 64 KiB |
 | Max artifact response | 100 MiB |
-| Max concurrent commands | 1 |
+| Max concurrent commands | 1 (default; passive-wait commands can be excluded via ini — HTTP / MCP only, see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default)) |
 | Command timeout | 120 s |
 
 ---

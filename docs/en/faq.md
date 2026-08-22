@@ -133,7 +133,11 @@ Technically yes, via the CLI transport (Pro). See [Cookbook recipe 7](cookbook.m
 
 ### Can multiple AI agents share one editor?
 
-The MCP Bridge currently assumes one editor per project. Concurrent commands within one editor are serialized at the dispatcher; concurrent scenarios are rejected with `TooManyRequests`. Use separate editors / projects if you need parallel agent work.
+Yes, multiple sessions can connect to the same editor, but by default only one command runs at a time — the limit is enforced by the **transport** (a single in-flight command slot), not by the dispatcher itself. While one session's command is still in flight, every other session's command is refused outright with `TooManyRequests` (there is no queueing), and the caller is expected to retry. Concurrent scenario submissions are rejected the same way; only one scenario can run at a time.
+
+The single-slot limit hurts most when a command just *waits* rather than changes anything — a session watching for a human to finish an interaction, or waiting on a shader compile, can hold that slot for minutes and block every other session for the whole time. Set `[UAIP.Transport].AllowConcurrentPassiveWaits=True` in `Config/DefaultUAIP.ini` (HTTP / MCP only) to let those specific wait commands run without holding the slot — see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default). State-changing commands still run one at a time regardless of this setting; that part is unaffected because parallel edits to the same editor would be non-deterministic to unwind.
+
+If you need genuinely parallel editing work (not just parallel waiting), use separate editors / projects instead — this setting does not enable that.
 
 ### Does UAIP affect packaged builds?
 

@@ -161,6 +161,27 @@ Whenever the HTTP transport actually starts — whether from `AutoStartMCP`, `-u
 - **Not an input to any permission decision.** It only tells a would-be guest connection which port to try; it carries no role name, no auth token, and no process id. A reader still has to pass the normal `HealthCheck`-based project-identity check before treating the port as the right editor
 - If the editor exits abnormally, a stale descriptor can be left behind. A reader that finds one probes the port before trusting it, and falls back to the configured port when nothing is listening there
 
+### `[UAIP.Transport]` — Passive-wait concurrency (off by default)
+
+The HTTP / MCP transports admit only **one in-flight command at a time**, process-wide. A command that just waits for something to happen — a human finishing an interaction, a shader compile, a widget appearing — holds that single slot for as long as it waits, so every other session is blocked behind it for the duration. This section lets you carve passive waits out of that single slot so they no longer block other sessions.
+
+| Key | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `AllowConcurrentPassiveWaits` | bool | `False` | — | When `True`, commands that declare themselves as passive waits no longer consume the ordinary single command slot. Applies to **HTTP and MCP only** — WebSocket is not covered (see below) |
+| `MaxConcurrentPassiveWaits` | int32 | `16` | `[1, 64]` | Overall cap on passive waits admitted concurrently once the flag above is `True`. Meaningless while it is `False` |
+
+- A per-session cap is **not configurable separately** — it is derived as `max(1, MaxConcurrentPassiveWaits / 4)` (`4` with the default total). This is deliberate: letting the per-session cap be set independently would let one session claim the entire overall pool.
+- **A value outside `[1, 64]` is not clamped — it is ignored**, with a startup warning, and the key keeps its previous/default value. This is the same "warn and leave unchanged" behavior documented for `[UAIP.Transport].AutoStartPort` above; `MaxConcurrentPassiveWaits=100` becomes `16`, not `64`.
+- CLI equivalents: `-uaip-allow-concurrent-passive-waits` / `-uaip-max-concurrent-passive-waits=N`.
+- **No console variable is exposed for either key**, unlike most other transport settings — an AI session that can reach the console (`ExecuteConsoleCommand`) must not be able to widen the constraint that limits it. Both keys are ini/CLI only, and are read once at startup; changing them requires an editor restart.
+- The commands that currently declare themselves as passive waits: `UAIP.Core.WaitForPendingInteraction`, `UAIP.Editor.Workspace.WaitForShaderCompilation`, `UAIP.Runtime.Assertion.WaitForCondition`, `UAIP.Runtime.Assertion.WaitSeconds`, `UAIP.Editor.UIAutomation.WaitForWidget`, `UAIP.Editor.Observation.ObserveWidget`. Which commands qualify is a property of the command itself, not of this ini section — it is not a configurable allowlist.
+- Exceeding either cap (overall or per-session) is refused with `TooManyRequests`, the same as exceeding the ordinary single command slot. The response does not reveal which cap was hit.
+- A passive wait that is admitted into this pool holds its slot until it actually finishes — the HTTP/MCP 120-second response timeout does **not** release it. This is intentional: releasing on response timeout would let a caller re-submit past the wait's own ceiling (up to 600 s for `WaitForPendingInteraction`) and route around the cap. A wait that never finishes on its own therefore keeps its slot until the editor restarts.
+- This setting does not change how many state-changing (non-passive) commands can run concurrently — that stays at 1. It does not apply while a scenario is running either way: while a scenario executes, single commands are blocked regardless of this setting, *except* passive waits, which are still admitted when this flag is on (see [Scenario Execution → Exclusivity with single commands](scenario.md#exclusivity-with-single-commands)).
+- The effective configuration is written to the Output Log once at startup, in the same style as the `[UAIP.CommandPump]` allowlist line: `Transport concurrency: MaxConcurrentCommands=1, ConcurrentPassiveWaits=enabled(total=16, per-session=4)` (or `disabled` when the flag is off). If an ini edit does not seem to take effect — wrong section name, forgot to restart, value out of range and silently dropped, or `MaxConcurrentPassiveWaits` set without also setting `AllowConcurrentPassiveWaits`  — this log line is the place to check.
+
+> **Why not WebSocket?** A WS connection can only track one in-flight request at a time internally; admitting several passive waits on the same connection would make one wait's completion incorrectly release another wait's slot. WS already has an independent way to work around a long wait, though: a client can open another connection (up to 4 concurrent connections per editor) instead of waiting on the same one.
+
 > `[UAIP.SafetyPolicy]` is intentionally not listed here — see [Safety & Capabilities](safety.md) for the full SafetyPolicy reference, including `AllowedCapabilities`, `DeniedCapabilities`, `DeniedCommands`, and `AllowCapabilityReload`.
 
 ### `AllowedArtifactDirectory` override
@@ -366,5 +387,6 @@ Typical flow after editing `config.json`:
 | Editor toast spam during recording | `[UAIP.CommandNotification].Enabled=False` |
 | Bearer token rejected | Check the token value matches the one written to `Saved/UAIP/Auth/http_token.txt` (HTTP) or `ws_token.txt` (WS). See [Security](security.md) |
 | `CapabilityNotAvailable: <name>` | Add `+AllowedCapabilities=<name>` under `[UAIP.SafetyPolicy]` and call `UAIP.Core.ReloadCapabilities` (or restart) |
+| A wait command still blocks other sessions after setting `AllowConcurrentPassiveWaits=True` | Check the `Transport concurrency: ...` startup log line — the flag needs a restart to take effect, and only applies to HTTP / MCP, not WebSocket |
 
 For everything else, see [Troubleshooting](troubleshooting.md).

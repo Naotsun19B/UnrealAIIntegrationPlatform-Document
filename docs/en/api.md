@@ -181,7 +181,7 @@ In stdin-stream mode the same markers appear per request.
 | `NotAllowed` | 409 | Forbidden path (e.g. `/Engine/`) or forbidden timing (editor edit during PIE) | Choose a different path or wait for PIE to stop |
 | `ExecutionFailed` | 500 | Runtime failure inside the handler | `ErrorMessage` carries detail; inside a scenario use `RetryCount` |
 | `Timeout` | 408 | Per-step or per-scenario wall-clock cap exceeded | Increase `TimeoutSeconds` or split the scenario |
-| `TooManyRequests` | 429 | Concurrency limit hit (1 scenario at a time, etc.) | Wait for the in-flight request to finish |
+| `TooManyRequests` | 429 | Concurrency limit hit — the single command slot, a scenario already running (1 at a time), a single command while a scenario is running (or vice versa), or the passive-wait pool if enabled — see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default) and [Scenario Execution → Exclusivity with single commands](scenario.md#exclusivity-with-single-commands) | Wait for the in-flight request to finish; the HTTP response includes `Retry-After: 1` |
 | `InternalError` | 500 | Process-fault level (handler threw, dispatcher invariant broken) | `RestartEditor`; if it persists, capture `Saved/Crashes/` and file an issue |
 
 HTTP status codes are advisory — always rely on `ErrorCode` for branching. WebSocket and CLI don't carry HTTP statuses.
@@ -413,6 +413,7 @@ Scenarios run an ordered list of commands as one request. See [Scenario Executio
 | Max steps | 100 |
 | Per-scenario wall-clock cap | 1800 s |
 | Concurrent scenarios | 1 (`TooManyRequests` otherwise) |
+| Single commands while a scenario runs | Refused with `TooManyRequests`, across HTTP / MCP / WS, except admitted passive waits — see [Scenario Execution → Exclusivity with single commands](scenario.md#exclusivity-with-single-commands) |
 | Per-step `Params` string | 8 KiB |
 | Total `Params` payload | 256 KiB |
 | Total `ScenarioRequest` size | 1 MiB |

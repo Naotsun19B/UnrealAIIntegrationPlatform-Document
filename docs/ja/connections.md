@@ -356,7 +356,7 @@ Authorization: Bearer <token>
 |---|---|
 | 最大リクエストボディ | 64 KiB |
 | 最大 Artifact レスポンス | 100 MiB |
-| 最大同時コマンド数 | 1 |
+| 最大同時コマンド数 | 1（既定。ini で受動的待機コマンドを除外可能 — HTTP / MCP のみ。[設定リファレンス → `[UAIP.Transport]` 受動的待機の同時実行](config.md#uaiptransport--受動的待機の同時実行既定オフ) 参照） |
 | コマンドタイムアウト | 120 秒 |
 
 ---
