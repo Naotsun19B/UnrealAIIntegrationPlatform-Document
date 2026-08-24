@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1083 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1504 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1116 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1537 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -17,6 +17,7 @@ UAIP は 1083 個の **UAIP コマンド**（プラグイン本体が直接提�
 | 🆓 | デモバイナリで利用可能（製品版でも利用可能） |
 | (記号なし) | 製品版限定コマンド |
 | 🧩 | オプションプラグインが必要（プラグインが無効の場合は登録されません） |
+| ⚠️ | Experimental — 挙動や契約が変わる可能性がある、または既知の制約により記載どおりに動作しない |
 
 ## UAIP コマンドと Toolset ブリッジコマンド
 
@@ -71,7 +72,9 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor PCG 🧩 | `UAIP.Editor.PCG` | 34 | 31 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
-| Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 107 | — |
+| Editor ControlRig | `UAIP.Editor.ControlRig` | 68 | 107 | — |
+| Editor ControlRig Dynamics 🧩 | `UAIP.Editor.ControlRig.Dynamics` | 16 | — | — |
+| Editor ControlRig Physics 🧩 | `UAIP.Editor.ControlRig.Physics` | 8 | — | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 8 | 14 | — |
 | Editor Python Extension 🧩 | `UAIP.Editor.Python` | 2 | — | — |
@@ -843,15 +846,15 @@ Dataflow グラフ編集。`DataflowEditor` プラグインが必要です。
 
 | コマンド | 説明 |
 |---|---|
-| `GetDataflowGraphInfo` 🧩 | グラフのノード / エッジ / 変数を取得（JSON） |
+| `GetDataflowGraphInfo` 🧩 | グラフのノード / エッジ / 変数を取得（JSON）。各ノードは `NodeName`（グラフ内の実名。`SetGroomDataflowAsset` の `TerminalNodeName` 等で指定するのはこちら）と `DisplayName`（ノード型の表示名）の両方を返す |
 | `ListDataflowNodeTypes` 🧩 | 利用可能な Dataflow ノードタイプ一覧 |
-| `AddDataflowNode` 🧩 | Dataflow グラフにノードを追加 |
+| `AddDataflowNode` 🧩 | Dataflow グラフにノードを追加。任意の `NodeName` でグラフ内の名前を指定できる（省略時はノード型名を基底とした一意名を採番）。確定した名前は応答の `NodeName` に含まれる |
 | `RemoveDataflowNode` 🧩 | Dataflow グラフからノードを削除 |
 | `ConnectDataflowPins` 🧩 | 2 ピンを接続 |
 | `DisconnectDataflowPins` 🧩 | ピン接続を切断 |
 | `ListDataflowVariables` 🧩 | グラフ変数一覧 |
 | `GetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を取得（プリミティブ / enum / FName / FString / 単純構造体） |
-| `SetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を設定。ドメイン非依存（Cloth の Weight Map・シミュレーション設定ノード等から利用される） |
+| `SetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を設定。ドメイン非依存（Cloth の Weight Map・シミュレーション設定ノード等から利用される）。トップレベルのハードなオブジェクト / クラス参照（例: `TObjectPtr<UGroomAsset>`）も書き込める — 値は**既にロード済み**のアセットのオブジェクトパスで、`DataflowGraphEdit` に加えて `DataflowReferenceEdit` が必要。プロパティ書き込みが副作用でアセットをロードすることはない。ソフト / ウィーク / レイジー参照と、参照を含む構造体・配列は引き続き書き込めない |
 
 ### Toolset ブリッジ — Dataflow（7 件）🧩
 
@@ -1733,7 +1736,7 @@ ConversationDB グラフ編集。`CommonConversation` プラグインが必要�
 
 ControlRig ヒエラルキーと RigVM グラフ編集。
 
-### ネイティブ（59）
+### ネイティブ（68）
 
 #### ヒエラルキー観測（10）
 
@@ -1827,12 +1830,42 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 | `ChangeVariableType` | RigVM 変数の型を変更 |
 | `RemoveVariable` | RigVM 変数を削除 |
 
+#### リグヒエラルキーコンポーネント（9）
+
+ヒエラルキー要素に取り付けられたコンポーネント（`FRigBaseComponent` 派生構造体）を扱う汎用コマンド群です。モジュール allowlist が許可するすべてのコンポーネント型に対して動作し、後述の 2 ドメインが型ごとの専用コマンドを提供する ControlRigDynamics / ControlRigPhysics の型も含みます。コンポーネントは `ElementName` と `ElementType`（`Bone` / `Null` / `Control`。`All` は不可）と `ComponentName` の組で指定します。読み取り 4 コマンドは `EditorInspect` を、書き込み 5 コマンドは `ControlRigComponentEdit`（既定無効）を要求し、PIE 実行中は拒否されます。
+
+| コマンド | 説明 |
+|---|---|
+| `ListComponents` | 1 要素のコンポーネント一覧。`ElementName` と `ElementType` をどちらも省略するとヒエラルキー全体を列挙する。各エントリは所属要素・型パス・`IsProcedural` を持ち、レスポンスは `TotalCount` / `ReturnedCount` / `Truncated` を返す |
+| `GetComponent` | 1 コンポーネントの型と内容。`ContentText`（エンジンのエクスポート形式）は常に返る。`Content`（JSON）は JSON で表現できない型の場合に明示的な `null` と `ContentConversion` 理由になり、変換不能なコンポーネントが空のものと取り違えられることはない |
+| `ListAddableComponentTypes` | エディタが知る `FRigBaseComponent` 派生構造体をすべて列挙する（対象ヒエラルキーにコンポーネントが 1 つも無くても列挙できる）。各エントリは `AddComponent` が検証するのと同じポリシー由来の `Addable` フラグを持ち、false のときは `NotAddableReason` が付く |
+| `CanAddComponent` | ある型をある要素に取り付けられるかどうかを、実際に取り付けずに判定する。`CanAdd` が false のときは `FailureReason` に、ポリシー段階（型そのものが許可されていない）かエンジン自身の拒否（要素が受け付けない）かが示される |
+| `AddComponent` | 新しいコンポーネントを取り付ける。初期内容は任意で、`Content`（JSON）**または** `ContentText`（エクスポート形式）のどちらか一方のみ。作成前に内容を完全に検証するため、拒否された要求はコンポーネントを残さない |
+| `RemoveComponent` | コンポーネントを削除する。そのキーを保持する他コンポーネントの扱いは `ReferenceHandling` が決める（`Reject`＝既定 / `Detach` / `Force`）。見つかった参照はすべて `References` に、どう扱われたかとともに返る |
+| `RenameComponent` | コンポーネントを `NewName` へ改名し、そのコンポーネントを指していた参照を張り替える |
+| `ReparentComponent` | `NewParentName` と `NewParentType` が指す要素へコンポーネントを付け替え、参照を張り替える。存在しない付け替え先は、何も変更する前に拒否される |
+| `SetComponentContent` | コンポーネントの内容を置き換える（`Content` **または** `ContentText` のどちらか一方が必須）。書き込み後に読み戻し、実際に書き込まれた内容を返す |
+
+> **Note — 指定した名前がそのまま付くとは限りません**: `AddComponent`・`RenameComponent`・`ReparentComponent` は名前の衝突で失敗しません。エンジンが空いている名前を割り当て、結果には**実際に付いたキー**が返ります（`RenameComponent` / `ReparentComponent` は `NameChanged` も返します）。以降はその返されたキーを使ってください。今と同じ名前への改名、今ぶら下がっている要素への付け替えは、成功して何も変わりません。
+>
+> **Note — 書き込まれなかったプロパティは「一覧化」されるのであって「既定値に戻る」のではありません**: オブジェクト参照・デリゲート・実行時専用の状態は外部から書き込みません。`AddComponent`・`SetComponentContent`、および後述 2 ドメインの型付き `Set*` コマンドはそれらを `FilteredProperties` として返し、各項目は**いまの値のまま**残ります。
+>
+> **Note — `ReferenceWarnings` が空でも「何も壊れていない」とは限りません**: `Detach` または `Force` を指定した `RemoveComponent` は、片端が解決できなくなったコンポーネントを `ReferenceWarnings` として返します。この状態についてエンジンもシミュレーションも何も言わないためです — 揺れ物側では、パーティクルを失った拘束がメッセージ無しで読み飛ばされ、物理側では、ソルバーや親ボディを失ったボディ／ジョイントがエンジンの自動探索の結果へ黙って繋ぎ変わります。これらのコンポーネントはそのまま残され、代わりに削除されることはありません。このコマンドが型を知らないコンポーネントは警告の対象にできないため、`References` も併せて読んでください。`Reject` と `Detach` はそうした参照を残すくらいなら拒否します — その安全弁を外すのが `Force` です。
+>
+> **Note — リグが自分で作ったコンポーネントは編集できません**: `IsProcedural: true` のエントリは手で作られたものではなくリグ実行が再生成するもので、ここの書き込みコマンドはすべて拒否します。
+
 #### その他（2）
 
 | コマンド | 説明 |
 |---|---|
 | `CompileControlRig` | ControlRig をコンパイル（セッション単位 1 秒レートリミット） |
-| `GetAvailableRigVMUnitStructs` | FRigUnit 派生 UScriptStruct 一覧（上限 1000 件） |
+| `GetAvailableRigVMUnitStructs` | FRigUnit 派生 UScriptStruct 一覧（上限 1000 件）。各エントリは `AddGraphNode` が検証するのと同じポリシー由来の `Addable` フラグを持ち、false のときは `NotAddableReason` が付く。`SchemaVersion` / `TotalCount` / `ReturnedCount` / `Truncated` を返す |
+
+> **⚠️ 変更 — `GetAvailableRigVMUnitStructs` の出力が `SchemaVersion: 2` になりました**: 各エントリが `Addable` を持ち、false のときは機械可読な `NotAddableReason`（`InvalidFormat` / `InvalidPrefix` / `StructNotFound` / `ModuleNotAllowed` / `NotARigUnit` / `DeprecatedOrHidden` のいずれか）が付きます。レスポンスは `SchemaVersion`・`TotalCount`（件数上限を適用する前の総数）・`ReturnedCount`・`Truncated` も返します。いずれも追加のみで、`ClassPath` と `ClassDisplayName` は変わらないため、既存の読み取りコードはそのまま動作します。変わったのは、このフラグが `AddGraphNode` の検証に使われるポリシーそのものから作られる点（一覧に出ているのに `AddGraphNode` が受け付けない、という食い違いが起きなくなりました）と、件数上限で打ち切られたレスポンスがそれを明示するようになった点です。
+>
+> **⚠️ 破壊的変更 — `AddGraphNode` の背後にあるモジュール allowlist が完全一致になりました**: 従来は `StructPath` の所属パッケージが `/Script/ControlRig`・`/Script/AnimationCore`・`/Script/Engine` のいずれかで**始まってさえいれば**受理していました。今後は 7 モジュール（`/Script/ControlRig`、`/Script/ControlRigDynamics`、`/Script/ControlRigPhysics`、`/Script/ControlRigSpline`、`/Script/ControlRigModules`、`/Script/AnimationCore`、`/Script/Engine`）との**等価比較**になります。前方が一致していただけのパッケージ — `/Script/ControlRigDeveloper`、`/Script/ControlRigEditor`、`/Script/EngineMessages` など — は以前は受理されていましたが、今後は `ModuleNotAllowed` で拒否されます。前方一致の挙動に依存していた呼び出しは動かなくなります。回避手段はありません（この allowlist はもともとそれらのモジュールへ届くことを意図していません）。
+>
+> **Note — ControlRig 系の兄弟モジュールは、今回から意図して一覧に載っています**: `/Script/ControlRigDynamics`、`/Script/ControlRigPhysics`、`/Script/ControlRigSpline`、`/Script/ControlRigModules` は、従来は `/Script/ControlRig` の前方一致の副作用として偶然到達できていただけでした。今回これらを明示的に列挙したため、物理系の RigUnit 約 73 件（`FRigUnit_SpawnPhysicsSolver`、`FRigUnit_AddPhysicsBody`、`FRigUnit_AddPhysicsJoint` など）は、厳格化された規則に巻き込まれることなく引き続き追加できます。ノード用とコンポーネント用の allowlist は同じモジュール集合を対象としているため、コンポーネントとして作れる型はノードとしても置けます。
 
 ### Toolset ブリッジ（107）🧩
 
@@ -1855,6 +1888,89 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 | FBX | 2 | `ExportFBXFromRig`・`ImportFBXToRig` |
 | Sequencer 問い合わせ | 4 | `GetSequencerControlRigs`・`GetSequencerControlsInfo`・`Get`/`SetControlRigTransformInSequencer` |
 | アニメーションモード設定 | 12 | `AnimModeGizmoScale`・`AnimModeHierarchy`・`AnimModeNulls`・`AnimModeHideManips`・`AnimModeOnlyRigSel`・`AnimModeLocalSpaces` の `Get`/`Set` |
+
+---
+
+## UAIP.Editor.ControlRig.Dynamics 🧩
+
+ControlRig ヒエラルキー上の `ControlRigDynamics` コンポーネント型（ソルバー・パーティクル・コライダー・拘束・コーンリミット・コンファイナー）を型ごとに編集します。加えて、一連の構成をまとめて構築・付け替えする 4 コマンドを提供します。UE 5.8+ と `ControlRigDynamics` プラグイン（Experimental）が必要で、UE 5.7 またはプラグイン無効時はドメインごと利用できません。[`UAIP.Editor.ControlRig`](#uaipeditorcontrolrig) の汎用コンポーネントコマンドは、このプラグイン無しでもまったく同じコンポーネントに到達できます — ここで増えるのは、型ごとに項目名が付き、範囲検査が入ったスキーマです。このドメインに Toolset ブリッジは存在しません。
+
+`ControlRigDynamics` は Experimental のエンジンプラグインであり、その構造体はエンジンのマイナーバージョン間で変わりうるため、**このドメインのコマンドはすべて `Stability: Experimental`** を返します。読み取りは `EditorInspect`、書き込みはすべて `ControlRigComponentEdit`（既定無効）を要求し、PIE 実行中は拒否されます。本ドメインと `UAIP.Editor.ControlRig.Physics` は互いに独立しており、片方だけを持つプロジェクト構成でもそれぞれ単独で現れます。
+
+> **前提条件 — プラグインを `.uproject` に明記する必要があります**: UAIP が `ControlRigDynamics` にリンクするのは、プロジェクトが**明示的に**宣言している場合だけです。`.uproject` の `Plugins` 配列へ `{ "Name": "ControlRigDynamics", "Enabled": true }` を追加してリビルドしてください。判定はこのエントリだけを読みます — それ以外の理由でエンジンが有効とみなしているプラグインは数えません。エントリが無いとドメインごと `uaip_list_commands` に現れず、`uaip_list_commands(IncludeUnavailable=true)` が `UnavailableReason: HandlerUnavailable` を返します。
+
+#### Typed reads（6 コマンド）— 要 `EditorInspect`
+
+| コマンド | 説明 |
+|---|---|
+| `GetDynamicsSolverSettings` | `FRigDynamicsSolverComponent` の `Settings`・`SpaceMotion`・`TeleportDetection`。`Particles` / `Colliders` / `Constraints` / `ConeLimits` / `Confiners` の参照配列はここでは返らない — `GetComponent` で読む |
+| `GetDynamicsParticleProperties` | `FRigDynamicsParticleComponent` の `ParticleProperties` |
+| `GetDynamicsColliderShapes` | `FRigDynamicsColliderComponent` の `Shapes`（`Boxes`・`Capsules`・`Planes`）。`SetDynamicsColliderShapes` がそのまま受け取れる形状 |
+| `GetDynamicsConstraintSettings` | `FRigDynamicsConstraintComponent` の `ConstraintType`・`Strength`・`DampingRatio`・`ExtraDamping`・`bAccelerationMode`・`LengthMultiplier`・`ExtraLength`。トポロジのキーはここでは返らない |
+| `GetDynamicsConeLimitSettings` | `FRigDynamicsConeLimitComponent` の `Strength`・`DampingRatio`・`Angle`。トポロジのキーはここでは返らない |
+| `GetDynamicsConfinerSettings` | `FRigDynamicsConfinerComponent` の `Shapes` と `Strength` |
+
+#### Typed writes（6 コマンド）— 要 `ControlRigComponentEdit`
+
+| コマンド | 説明 |
+|---|---|
+| `SetDynamicsSolverSettings` | `Settings`・`SpaceMotion`・`TeleportDetection` を置き換える。ソルバーの参照配列はここでは変更できない — `AddComponentToDynamicsSolver` / `RemoveComponentFromDynamicsSolver` を使う |
+| `SetDynamicsParticleProperties` | `ParticleProperties` の 1 つ以上の項目を置き換える。`Radius` と `Mass` は正、`Strength`・`DampingRatio`・`ExtraDamping`・`AngleLimit`・`AngleLimitStrength`・`Damping` は非負、`TargetMode` は 0.0〜1.0、`MovementType` は `Kinematic` か `Simulated` |
+| `SetDynamicsColliderShapes` | `Shapes` コレクション全体を置き換える。各トランスフォームは有限、ボックス／平面の extent は全軸で正、カプセルの半径は正、カプセルの長さは非負 |
+| `SetDynamicsConstraintSettings` | 1 つ以上の設定を置き換える。`ConstraintType` は `Hard` か `Soft`、`Strength`・`DampingRatio`・`ExtraDamping`・`LengthMultiplier` は非負、`ExtraLength` は有限であれば正負どちらでもよい。トポロジのキーはそのまま引き継がれる |
+| `SetDynamicsConeLimitSettings` | `Strength`・`DampingRatio`・`Angle` を置き換える。3 つとも負または非有限なら拒否。トポロジのキーはここでは変更できない — `SetComponentContent` を使う |
+| `SetDynamicsConfinerSettings` | `Shapes` と `Strength` を置き換える。形状の検査は `SetDynamicsColliderShapes` と同じ。`Strength` は有限かつ非負 |
+
+#### Orchestration（4 コマンド）— 要 `ControlRigComponentEdit`
+
+| コマンド | 説明 |
+|---|---|
+| `AddDynamicsChain` | チェーンを 1 コマンドで構築する。`StartElementName` から `EndElementName` までの各要素にパーティクルを、隣接するペアごとに拘束を作り、それらすべてを指定ソルバーへ登録する。`StartElementName` は `EndElementName` の祖先である必要があり、両者が同一要素であってはならない。任意の `ParticleContent` / `ConstraintContent` はその種類のすべてに適用される。`ConstraintContent` はトポロジのキーを指定できない（どのパーティクル同士を繋ぐかはチェーン側が決めるため） |
+| `ImportDynamicsCollidersFromPhysicsAsset` | PhysicsAsset の各ボディのうち、対応する骨がリグに存在するものについてコライダーを 1 つずつ作る。ボックス・スフィア・カプセルの形状を変換する（スフィアは長さ 0 のカプセルになる）。作成したものの一覧と、`SkippedBodies` として飛ばしたものとその理由を返す |
+| `AddComponentToDynamicsSolver` | Dynamics コンポーネントをソルバーへ登録する。ソルバーのどの配列へ入るかは型から決まり、選べない。使われた配列は `SolverArray` として返る。既に登録済みのものを登録しても何も変わらず、`Added: false` が返る |
+| `RemoveComponentFromDynamicsSolver` | ソルバーのすべての参照配列からコンポーネントを外す。ソルバーが参照していないものを外しても何も変わらず、`Removed: false` が返る |
+
+> **Note — 型付き `Set*` は部分書き込みですが、空の書き込みは認められません**: 各項目は独立して省略可能ですが、少なくとも 1 つは必須です。省略した項目は型の既定値に戻るのではなく、**いまの値のまま**残ります。シミュレーションが受け付けない値（非有限な数値、負の質量や強さ、0〜1 の外の比率、0 以下のタイムステップや反復回数）は拒否され、コンポーネントは変更されません。汎用の `SetComponentContent` も同じ検査を行うため、型付きコマンドを迂回して不正値を通す抜け道はありません。
+>
+> **Note — 違う型のコンポーネント名を渡すと `NotFound` であり、ポリシーエラーではありません**: コライダー用のコマンドに拘束の名前を渡すと `NotFound` が返ります。型の取り違えは「どのコンポーネントを指していたか」の勘違いであることがほとんどで、どの型が許可されているかという話ではないためです。
+>
+> **Note — `ImportDynamicsCollidersFromPhysicsAsset` は 2 種類の「合わない」を区別します**: 対応する骨がリグに無い、その要素にはコライダーを付けられない、変換対象の形状が 1 つも無い（凸包・テーパードカプセル・レベルセットは変換しない）ボディは**飛ばして**残りを取り込み、理由付きで `SkippedBodies` に返します。骨は実在するのに形状の値が使えないボディは**リクエスト全体を拒否**します — 黙って一部だけ作るのを避けるためです。作られたコライダーはどのソルバーにも登録されません。登録は `AddComponentToDynamicsSolver` で明示的に行ってください。
+>
+> **Note — `RemoveComponentFromDynamicsSolver` は登録解除であって削除ではありません**: コンポーネント自体はヒエラルキーに残ります（削除は `RemoveComponent`）。対象が既に存在しなくても構わないため、削除済みコンポーネントが残したキーの掃除にも使えます。また、どの配列かを指定する引数は無く、ソルバーのすべての配列から外します。ソルバーがまだシミュレートしている拘束やコーンリミットのうちその対象を指しているものは `ReferenceWarnings` として返り、そのまま残されます — ソルバーはパーティクルを解決できない拘束を、エラーも警告も出さずに読み飛ばすためです。
+
+---
+
+## UAIP.Editor.ControlRig.Physics 🧩
+
+ControlRig ヒエラルキー上の `ControlRigPhysics` コンポーネント型（ソルバー・ボディ・ジョイント・コントロール）を型ごとに編集します。`ControlRigPhysics` プラグイン（Beta）が必要です。上記の Dynamics ドメインと異なり、UE 5.8 だけでなく UE 5.7 でも利用できます。[`UAIP.Editor.ControlRig`](#uaipeditorcontrolrig) の汎用コンポーネントコマンドは、このプラグイン無しでもまったく同じコンポーネントに到達できます。このドメインに Toolset ブリッジは存在しません。
+
+読み取りは `EditorInspect`、書き込みはすべて `ControlRigComponentEdit`（既定無効）を要求し、PIE 実行中および ModularRig アセットに対しては拒否されます。本ドメインと `UAIP.Editor.ControlRig.Dynamics` は互いに独立しており、片方だけを持つプロジェクト構成でもそれぞれ単独で現れます。
+
+> **⚠️ 前提条件 — 「プラグインは有効なのにコマンドが無い」はここから始まります**: `ControlRigPhysics` はエンジン既定で有効（`EnabledByDefault`）のため、Plugins ウィンドウでは有効と表示され、その RigUnit も ControlRig エディタに既に出ています — それでも、プロジェクトがプラグインを**明示的に**宣言するまで UAIP はこれらのコマンドを 1 つも登録しません。`.uproject` の `Plugins` 配列へ `{ "Name": "ControlRigPhysics", "Enabled": true }` を追加してリビルドしてください。判定はこのエントリだけを読み、エンジンが既定で有効にしているという事実は見えていません。エントリが無いとドメインごと `uaip_list_commands` に現れず、`uaip_list_commands(IncludeUnavailable=true)` が `UnavailableReason: HandlerUnavailable` を返します。
+
+#### Typed reads（4 コマンド）— 要 `EditorInspect`
+
+| コマンド | 説明 |
+|---|---|
+| `GetPhysicsSolverSettings` | UE 5.8 では `FRigPhysicsSolverComponent` の `SolverSettings`・`SpaceMotion`・`TeleportDetection`（UE 5.7 では `SolverSettings` と `SimulationSpaceSettings`）。`SolverSettings.SpaceBone` はここでは返らない — `GetComponent` で読む |
+| `GetPhysicsBodySettings` | `FRigPhysicsBodyComponent` の調整可能な設定（質量・慣性のオーバーライド、ダンピング、`MovementType`、`CollisionType`、`KinematicTargetSpace`、重力倍率、ブレンドウェイト、CCD ほか）をトップレベルで返す。トポロジ・コリジョン形状・キネマティックターゲットはここでは返らない |
+| `GetPhysicsJointSettings` | `FRigPhysicsJointComponent` の `JointData` と `DriveData` を JSON オブジェクトとして返す。親／子ボディのキーはここでは返らない |
+| `GetPhysicsControlSettings` | `FRigPhysicsControlComponent` の `ControlData`・`ControlMultiplier`・`ControlTarget`・`UseParentBodyAsDefault`。親／子ボディのキーはここでは返らない |
+
+#### Typed writes（4 コマンド）— 要 `ControlRigComponentEdit`
+
+| コマンド | 説明 |
+|---|---|
+| `SetPhysicsSolverSettings` | UE 5.8 では `SolverSettings`・`SpaceMotion`・`TeleportDetection` を置き換える（UE 5.7 では `SolverSettings` と `SimulationSpaceSettings`）。`SpaceBone` を指定した `SolverSettings` は拒否される |
+| `SetPhysicsBodySettings` | 1 つ以上のボディ設定を置き換える。`MovementType` は `Static` / `Kinematic` / `Simulated` / `Default`、`CollisionType` は `NoCollision` / `QueryOnly` / `PhysicsOnly` / `QueryAndPhysics` / `ProbeOnly` / `QueryAndProbe`、`KinematicTargetSpace` は `World` / `Component` / `OffsetInBoneSpace` / `OffsetInWorldSpace`。`LinearDamping` と `AngularDamping` は非負。トポロジ・コリジョン形状・キネマティックターゲットはそのまま引き継がれる |
+| `SetPhysicsJointSettings` | `JointData` と `DriveData` を置き換える。`LinearProjectionAmount` と `AngularProjectionAmount` は 0.0〜1.0、`ParentInverseMassScale` は非負。親／子ボディのキーはここでは変更できない — `SetComponentContent` を使う |
+| `SetPhysicsControlSettings` | `ControlData`・`ControlMultiplier`・`ControlTarget`・`UseParentBodyAsDefault` を置き換える。負の強さ・ダンピング・倍率は拒否される。親／子ボディのキーはここでは変更できない — `SetComponentContent` を使う |
+
+> **⚠️ Note — ソルバー系コマンドは UE 5.7 と UE 5.8 でスキーマが異なります**: UE 5.8 の `GetPhysicsSolverSettings` / `SetPhysicsSolverSettings` は `SolverSettings`・`SpaceMotion`・`TeleportDetection` を扱いますが、UE 5.7 の同じ 2 コマンドは `SolverSettings` と `SimulationSpaceSettings` を扱います。これはエンジンプラグイン側の構造体の構成に従ったものです。形状を決め打ちせず、実行時に `uaip_describe_command` でコマンド自身の `Description` を読んでください。残り 6 コマンドは両バージョンで同じスキーマです。
+>
+> **Note — 型付き `Set*` は部分書き込みですが、空の書き込みは認められません**: 各項目は独立して省略可能ですが、少なくとも 1 つは必須です。省略した項目は型の既定値に戻るのではなく、いまの値のまま残ります。ソルバーが受け付けない値（非有限な数値、下限を下回る反復数やステップ数、負のしきい値、0〜1 の外の比率）は拒否され、コンポーネントは変更されません。汎用の `SetComponentContent` も同じ検査を行います。
+>
+> **Note — 違う型のコンポーネント名を渡すと `NotFound` であり、ポリシーエラーではありません**: ボディ用のコマンドにジョイントの名前を渡すと `NotFound` が返ります。理由は Dynamics ドメインと同じです。
 
 ---
 
@@ -2322,7 +2438,7 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 | `SetGroomGuideCurves` | `GroomCurveEdit` | グループ内の 1 つ以上の範囲について、ガイドカーブの制御点を単一の `ConvertFromGroomAsset` → `ConvertToGroomAsset` 往復で差し替える。`GetGroomGuideCurves` が返す形をそのまま受け付ける。書き込みはカーブの追加・削除を一切行わず、（読み取りと異なり）範囲がグループの終端を越える場合は切り詰めではなく拒否される。対象が Dataflow アセットを参照している場合、`bAllowOverwrite` を指定しない限り拒否される |
 | `SetGroomStrandCurves` | `GroomCurveEdit` | `SetGroomGuideCurves` と同じ契約で、ストランドカーブを対象とする |
 | `SetGroomDataflowAsset` | `GroomAssetEdit` | Dataflow 割り当て（アセットパス / ターミナルノード名）への部分パッチ。非破壊 — 割り当てを変更するだけで、グラフを実行したりカーブデータに触れたりはしない |
-| `EvaluateGroomDataflow` | `GroomCurveEdit` | 割り当てられた Dataflow グラフを実行する（`FDataflowInstance::UpdateOwnerAsset()`）。全グループのガイド/ストランドのカーブ形状と `GuideType` をグラフの出力で上書きする — 実行前のカーブはこのコマンドでは復元できない。Dataflow アセットが割り当てられていない場合は `NotFound` を返す。実行のたびにエンジン側の無害な「Ensure condition failed」警告がログに 1 件出る |
+| `EvaluateGroomDataflow` ⚠️ | `GroomCurveEdit` | **Experimental — 現時点で有用な結果を生みません。** 割り当てられた Dataflow グラフを実行する（`FDataflowInstance::UpdateOwnerAsset()`）。全グループのガイド/ストランドのカーブ形状と `GuideType` をグラフの出力で上書きする — 実行前のカーブはこのコマンドでは復元できない。Dataflow アセットが割り当てられていない場合は `NotFound` を返す。**既知のエンジン側の不具合**: Groom の終端ノードは `FDataflowTerminalNode` の 2 引数版 `Evaluate()` しか実装しておらず、`UpdateOwnerAsset()` が呼ぶ 1 引数版の基底実装は `ensure(false)` である。そのためグラフは評価されないまま終端ノードが空の結果を書き込み、**対象のヘアグループが消える**。エンジン自身の経路（コンテンツブラウザの Re-evaluate Dataflow、`RegenerateAssetFromDataflow` / `EvaluateTerminalNodeByName`）でも同じ結果になるため、本コマンド固有の問題ではない。UE 5.8 で確認。成功応答は「要求がエンジンへ届いた」ことを示すに留まるので、実行後にグループ数を確認すること |
 
 #### Bindings（3 コマンド）— 要 `GroomBindingEdit`
 

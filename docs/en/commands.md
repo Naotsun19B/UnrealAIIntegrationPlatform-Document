@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1083 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1504 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1116 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1537 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -17,6 +17,7 @@ UAIP exposes 1083 **UAIP commands** (provided directly by the plugin itself) and
 | 🆓 | Available in the demo binary (also in Pro) |
 | (no mark) | Pro-only command |
 | 🧩 | Requires an optional UE plugin (the command is not registered if the plugin is disabled) |
+| ⚠️ | Experimental — the behaviour or the contract may change, or a known limitation prevents it from working as documented |
 
 ## UAIP commands vs Toolset bridge commands
 
@@ -71,7 +72,9 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor PCG 🧩 | `UAIP.Editor.PCG` | 34 | 31 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
-| Editor ControlRig | `UAIP.Editor.ControlRig` | 59 | 107 | — |
+| Editor ControlRig | `UAIP.Editor.ControlRig` | 68 | 107 | — |
+| Editor ControlRig Dynamics 🧩 | `UAIP.Editor.ControlRig.Dynamics` | 16 | — | — |
+| Editor ControlRig Physics 🧩 | `UAIP.Editor.ControlRig.Physics` | 8 | — | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 8 | 14 | — |
 | Editor Python Extension 🧩 | `UAIP.Editor.Python` | 2 | — | — |
@@ -843,15 +846,15 @@ Dataflow graph editing. Requires `DataflowEditor` plugin.
 
 | Command | Description |
 |---|---|
-| `GetDataflowGraphInfo` 🧩 | Get graph nodes / edges / variables (JSON) |
+| `GetDataflowGraphInfo` 🧩 | Get graph nodes / edges / variables (JSON). Each node reports both `NodeName` (its actual name within the graph — this is what `SetGroomDataflowAsset`'s `TerminalNodeName` and similar fields expect) and `DisplayName` (the node type's display name) |
 | `ListDataflowNodeTypes` 🧩 | List available Dataflow node types |
-| `AddDataflowNode` 🧩 | Add a node to a Dataflow graph |
+| `AddDataflowNode` 🧩 | Add a node to a Dataflow graph. An optional `NodeName` sets its name within the graph; when omitted, a unique name is derived from the node type. The resulting name is reported back in the response's `NodeName` |
 | `RemoveDataflowNode` 🧩 | Remove a node from a Dataflow graph |
 | `ConnectDataflowPins` 🧩 | Connect two pins |
 | `DisconnectDataflowPins` 🧩 | Disconnect a pin connection |
 | `ListDataflowVariables` 🧩 | List graph variables |
 | `GetDataflowNodeProperty` 🧩 | Read a node's `EditAnywhere` property value (primitives / enum / FName / FString / simple structs) |
-| `SetDataflowNodeProperty` 🧩 | Write a node's `EditAnywhere` property value. Domain-agnostic — used by Cloth Weight Map / simulation config nodes among others |
+| `SetDataflowNodeProperty` 🧩 | Write a node's `EditAnywhere` property value. Domain-agnostic — used by Cloth Weight Map / simulation config nodes among others. A top-level hard object/class reference (e.g. `TObjectPtr<UGroomAsset>`) can also be written: the value is the object path of an **already-loaded** asset, and it requires `DataflowReferenceEdit` on top of `DataflowGraphEdit`. A property write never loads an asset as a side effect. Soft, weak and lazy references — and any struct or array containing a reference — remain unwritable |
 
 ### Toolset bridges — Dataflow (7) 🧩
 
@@ -1733,7 +1736,7 @@ Bridge commands via the `ConversationToolset` (UE 5.8+). Provider: `Toolset.Edit
 
 ControlRig hierarchy and RigVM graph editing.
 
-### Native (59)
+### Native (68)
 
 #### Hierarchy observation (10)
 
@@ -1827,12 +1830,42 @@ ControlRig hierarchy and RigVM graph editing.
 | `ChangeVariableType` | Change a RigVM variable's type |
 | `RemoveVariable` | Remove a RigVM variable |
 
+#### Rig hierarchy components (9)
+
+Components (`FRigBaseComponent` substructs) attached to a hierarchy element. These are the generic commands: they work for every component type the module allowlist covers, including the ControlRigDynamics and ControlRigPhysics types that the two domains below give typed commands for. A component is addressed by `ElementName` plus `ElementType` (`Bone`, `Null`, or `Control` — `All` is not accepted) plus `ComponentName`. The four read commands require `EditorInspect`; the five write commands require `ControlRigComponentEdit` (denied by default) and are rejected while PIE is running.
+
+| Command | Description |
+|---|---|
+| `ListComponents` | List one element's components, or the whole hierarchy's when neither `ElementName` nor `ElementType` is given. Each entry carries the owning element, the type path, and `IsProcedural`; the response reports `TotalCount` / `ReturnedCount` / `Truncated` |
+| `GetComponent` | Type and content of one component. `ContentText` (the engine export form) is always present; `Content` (JSON) is an explicit `null` with a `ContentConversion` reason when the type cannot be expressed as JSON, so an unconvertible component is never mistaken for an empty one |
+| `ListAddableComponentTypes` | Every `FRigBaseComponent` substruct the running editor knows, whether or not the target hierarchy holds any components yet. Each entry carries an `Addable` flag from the same policy `AddComponent` validates against, and a `NotAddableReason` when it is false |
+| `CanAddComponent` | Whether a type could be attached to an element, without attaching it. `CanAdd` is false with a `FailureReason` naming either the policy step (the type itself is not allowed) or the engine's own refusal (the element will not host it) |
+| `AddComponent` | Attach a new component, optionally with initial content — `Content` (JSON) **or** `ContentText` (export form), not both. Validated in full before anything is created, so a rejected request leaves nothing behind |
+| `RemoveComponent` | Remove a component. `ReferenceHandling` decides what happens to components that hold its key — `Reject` (default), `Detach`, or `Force`. Every reference found is reported under `References` with what happened to it |
+| `RenameComponent` | Rename a component to `NewName` and repoint the references to it |
+| `ReparentComponent` | Move a component to the element named by `NewParentName` plus `NewParentType`, and repoint the references to it. A destination element that does not exist is refused before anything changes |
+| `SetComponentContent` | Replace a component's content — `Content` **or** `ContentText`, exactly one required — then read the component back and report what was actually written |
+
+> **Note — the name you asked for is not always the name you get**: `AddComponent`, `RenameComponent` and `ReparentComponent` do not fail on a name collision. The engine assigns a free name instead, and the result reports the key the component actually carries (`RenameComponent` and `ReparentComponent` also set `NameChanged`). Use the reported key from then on. Renaming to the name a component already has, or reparenting to the element it already hangs off, succeeds and changes nothing.
+>
+> **Note — properties that are not written are listed, not reset**: object references, delegates and runtime-only state are never written from outside. `AddComponent`, `SetComponentContent` and the typed `Set*` commands of the two domains below report them under `FilteredProperties`, and each of them keeps the value it already had rather than falling back to a default.
+>
+> **Note — an empty `ReferenceWarnings` does not on its own mean nothing broke**: `RemoveComponent` with `Detach` or `Force` reports under `ReferenceWarnings` every component left with an end that resolves to nothing, because neither the engine nor the simulation says anything when that happens — a dynamics constraint that loses one of its particles is skipped without a message, and a physics body or joint that loses its solver or its parent body silently attaches itself to whatever the engine's automatic search finds instead. Those components are left in place; nothing is removed on their behalf. A component whose type this command does not understand cannot be warned about, so read `References` as well. `Reject` and `Detach` both refuse rather than leave such a reference behind — `Force` is the mode that removes that safeguard.
+>
+> **Note — components the rig created for itself cannot be edited**: an entry reported with `IsProcedural: true` is rebuilt by rig execution rather than authored, and every write command here refuses it.
+
 #### Other (2)
 
 | Command | Description |
 |---|---|
 | `CompileControlRig` | Compile the ControlRig (per-session 1 s rate limit) |
-| `GetAvailableRigVMUnitStructs` | List FRigUnit-derived UScriptStructs (max 1000) |
+| `GetAvailableRigVMUnitStructs` | List FRigUnit-derived UScriptStructs (max 1000), each with an `Addable` flag from the same policy `AddGraphNode` validates against and a `NotAddableReason` when it is false. Reports `SchemaVersion`, `TotalCount`, `ReturnedCount`, `Truncated` |
+
+> **⚠️ Changed — `GetAvailableRigVMUnitStructs` now answers with `SchemaVersion: 2`**: each entry carries `Addable` and, when that is false, a machine-readable `NotAddableReason` (one of `InvalidFormat`, `InvalidPrefix`, `StructNotFound`, `ModuleNotAllowed`, `NotARigUnit`, `DeprecatedOrHidden`). The response also reports `SchemaVersion`, `TotalCount` (the full count before the entry cap), `ReturnedCount`, and `Truncated`. Every one of these is additive — `ClassPath` and `ClassDisplayName` are unchanged, so an existing reader keeps working. What changes is that the flag comes from the very policy `AddGraphNode` validates against, so a listed entry can no longer disagree with what `AddGraphNode` will accept, and that a response cut short by the entry cap now says so instead of looking complete.
+>
+> **⚠️ Breaking — the module allowlist behind `AddGraphNode` is now an exact match**: a `StructPath`'s owning package used to be accepted whenever it merely **began with** `/Script/ControlRig`, `/Script/AnimationCore`, or `/Script/Engine`. It is now compared for equality against a list of seven modules — `/Script/ControlRig`, `/Script/ControlRigDynamics`, `/Script/ControlRigPhysics`, `/Script/ControlRigSpline`, `/Script/ControlRigModules`, `/Script/AnimationCore`, `/Script/Engine`. A package that only shared a prefix — `/Script/ControlRigDeveloper`, `/Script/ControlRigEditor`, `/Script/EngineMessages` and the like — was accepted before and is now rejected with `ModuleNotAllowed`. A call that relied on that stops working, and there is no opt-out: the list was never meant to reach those modules.
+>
+> **Note — the ControlRig sibling modules are on that list on purpose now**: `/Script/ControlRigDynamics`, `/Script/ControlRigPhysics`, `/Script/ControlRigSpline` and `/Script/ControlRigModules` used to be reachable only incidentally, as a side effect of the `/Script/ControlRig` prefix. They are named explicitly, so the roughly 73 physics rig units (`FRigUnit_SpawnPhysicsSolver`, `FRigUnit_AddPhysicsBody`, `FRigUnit_AddPhysicsJoint`, and so on) stay addable under the stricter rule rather than being caught by it. The node allowlist and the component allowlist cover the same set of modules, so a type you can create a component of is also a type you can place as a node.
 
 ### Toolset bridges (107) 🧩
 
@@ -1855,6 +1888,89 @@ Two bridge providers, both delegating to `AnimationAssistantToolset` (UE 5.8+).
 | FBX | 2 | `ExportFBXFromRig`, `ImportFBXToRig` |
 | Sequencer queries | 4 | `GetSequencerControlRigs`, `GetSequencerControlsInfo`, `Get`/`SetControlRigTransformInSequencer` |
 | Anim mode settings | 12 | `Get`/`Set` for `AnimModeGizmoScale`, `AnimModeHierarchy`, `AnimModeNulls`, `AnimModeHideManips`, `AnimModeOnlyRigSel`, `AnimModeLocalSpaces` |
+
+---
+
+## UAIP.Editor.ControlRig.Dynamics 🧩
+
+Typed editing of the `ControlRigDynamics` component types on a ControlRig hierarchy — solver, particle, collider, constraint, cone limit and confiner — plus four commands that build or rewire a whole setup in one call. Requires UE 5.8+ and the `ControlRigDynamics` plugin (Experimental); the whole domain is unavailable on UE 5.7 or with the plugin disabled. The generic component commands under [`UAIP.Editor.ControlRig`](#uaipeditorcontrolrig) reach the very same components without this plugin — what these commands add is a named, range-checked schema per type. No Toolset bridge exists for this domain.
+
+Every command here reports `Stability: Experimental`, because `ControlRigDynamics` is an Experimental engine plugin and its structs may change across engine minor versions. Reads require `EditorInspect`; every write requires `ControlRigComponentEdit` (denied by default) and is rejected while PIE is running. This domain and `UAIP.Editor.ControlRig.Physics` are independent of each other — a project can have either one without the other, and each appears on its own.
+
+> **Prerequisite — the plugin has to be named in your `.uproject`**: UAIP links against `ControlRigDynamics` only when the project declares it **explicitly**. Add `{ "Name": "ControlRigDynamics", "Enabled": true }` to the `Plugins` array of your `.uproject` and rebuild. The check reads that entry and nothing else — a plugin the engine considers enabled for any other reason does not count. Without the entry the whole domain is missing from `uaip_list_commands`, and `uaip_list_commands(IncludeUnavailable=true)` reports it as `UnavailableReason: HandlerUnavailable`.
+
+#### Typed reads (6) — requires `EditorInspect`
+
+| Command | Description |
+|---|---|
+| `GetDynamicsSolverSettings` | `Settings`, `SpaceMotion` and `TeleportDetection` of a `FRigDynamicsSolverComponent`. Its `Particles` / `Colliders` / `Constraints` / `ConeLimits` / `Confiners` reference arrays are not reported here — read them with `GetComponent` |
+| `GetDynamicsParticleProperties` | `ParticleProperties` of a `FRigDynamicsParticleComponent` |
+| `GetDynamicsColliderShapes` | `Shapes` (`Boxes`, `Capsules`, `Planes`) of a `FRigDynamicsColliderComponent`, shaped the same way `SetDynamicsColliderShapes` accepts them back |
+| `GetDynamicsConstraintSettings` | `ConstraintType`, `Strength`, `DampingRatio`, `ExtraDamping`, `bAccelerationMode`, `LengthMultiplier` and `ExtraLength` of a `FRigDynamicsConstraintComponent`. The topology keys are not reported here |
+| `GetDynamicsConeLimitSettings` | `Strength`, `DampingRatio` and `Angle` of a `FRigDynamicsConeLimitComponent`. The topology keys are not reported here |
+| `GetDynamicsConfinerSettings` | `Shapes` and `Strength` of a `FRigDynamicsConfinerComponent` |
+
+#### Typed writes (6) — requires `ControlRigComponentEdit`
+
+| Command | Description |
+|---|---|
+| `SetDynamicsSolverSettings` | Replace `Settings`, `SpaceMotion` and/or `TeleportDetection`. The solver's reference arrays cannot be changed here — use `AddComponentToDynamicsSolver` / `RemoveComponentFromDynamicsSolver` |
+| `SetDynamicsParticleProperties` | Replace one or more `ParticleProperties` fields. `Radius` and `Mass` must be strictly positive; `Strength`, `DampingRatio`, `ExtraDamping`, `AngleLimit`, `AngleLimitStrength` and `Damping` must not be negative; `TargetMode` is 0.0–1.0; `MovementType` is `Kinematic` or `Simulated` |
+| `SetDynamicsColliderShapes` | Replace the whole `Shapes` collection. Every transform must be finite, box and plane extents positive on every axis, capsule radius positive, capsule length not negative |
+| `SetDynamicsConstraintSettings` | Replace one or more settings. `ConstraintType` is `Hard` or `Soft`; `Strength`, `DampingRatio`, `ExtraDamping` and `LengthMultiplier` must not be negative; `ExtraLength` may be any finite number. The topology keys are carried through unchanged |
+| `SetDynamicsConeLimitSettings` | Replace `Strength`, `DampingRatio` and/or `Angle`; all three are refused when negative or non-finite. The topology keys cannot be changed here — use `SetComponentContent` |
+| `SetDynamicsConfinerSettings` | Replace `Shapes` and/or `Strength`. Shape validation matches `SetDynamicsColliderShapes`; `Strength` must be finite and not negative |
+
+#### Orchestration (4) — requires `ControlRigComponentEdit`
+
+| Command | Description |
+|---|---|
+| `AddDynamicsChain` | Build a whole chain in one call: a particle on every element from `StartElementName` down to `EndElementName`, a constraint between every adjacent pair, and one registration of all of them with the named solver. `StartElementName` must be an ancestor of `EndElementName` and the two may not be the same element. Optional `ParticleContent` / `ConstraintContent` are applied to every component of that kind; `ConstraintContent` may not name the topology keys, since the chain decides which particles each constraint joins |
+| `ImportDynamicsCollidersFromPhysicsAsset` | Create one collider per body of a PhysicsAsset whose bone exists on the rig, converting box, sphere and capsule shapes (a sphere becomes a zero-length capsule). Reports what it created and, under `SkippedBodies`, what it skipped and why |
+| `AddComponentToDynamicsSolver` | Register a dynamics component with a solver. Which of the solver's arrays it goes into follows from the component's type and cannot be chosen; the array used is reported as `SolverArray`. Registering something the solver already names changes nothing and reports `Added: false` |
+| `RemoveComponentFromDynamicsSolver` | Take a component out of every reference array of a solver. Removing something the solver does not refer to changes nothing and reports `Removed: false` |
+
+> **Note — every typed `Set*` is a partial write, but never an empty one**: each field is independently optional and at least one is required. A field left out keeps the value the component already holds rather than falling back to the type default. Values outside the range the simulation accepts — a non-finite number, a negative mass or strength, a ratio outside 0–1, a timestep or iteration count of zero or less — are refused and leave the component unchanged. The generic `SetComponentContent` applies the same checks, so routing around a typed command does not get a rejected value in.
+>
+> **Note — naming a component of the wrong type answers `NotFound`, not a policy error**: passing a constraint's name to a collider command reports `NotFound`, because a mismatched type is almost always a mix-up about *which* component was meant rather than a question of which types are allowed.
+>
+> **Note — `ImportDynamicsCollidersFromPhysicsAsset` tells two kinds of mismatch apart**: a body whose bone is missing from the rig, whose element will not host a collider, or whose shapes are all of a kind that is not converted (convex hulls, tapered capsules, level sets) is **skipped**, and reported under `SkippedBodies` with the reason — the rest of the import goes ahead. A body whose bone does exist but whose shape values cannot be used is **refused outright**: nothing at all is created, rather than a silently partial result. The colliders it creates are not registered with any solver; do that explicitly with `AddComponentToDynamicsSolver`.
+>
+> **Note — `RemoveComponentFromDynamicsSolver` unregisters, it does not delete**: the component stays in the hierarchy (use `RemoveComponent` to delete it), it does not even have to still exist — a key left behind by an already-deleted component can be cleaned up this way — and it is taken out of every one of the solver's arrays rather than a chosen one. Constraints and cone limits the solver still simulates that name it are reported under `ReferenceWarnings` and left in place, because the solver skips a constraint whose particle it cannot resolve without an error or a warning.
+
+---
+
+## UAIP.Editor.ControlRig.Physics 🧩
+
+Typed editing of the `ControlRigPhysics` component types on a ControlRig hierarchy — solver, body, joint and control. Requires the `ControlRigPhysics` plugin (Beta), which is available on UE 5.7 as well as UE 5.8, unlike the Dynamics domain above. The generic component commands under [`UAIP.Editor.ControlRig`](#uaipeditorcontrolrig) reach the very same components without this plugin. No Toolset bridge exists for this domain.
+
+Reads require `EditorInspect`; every write requires `ControlRigComponentEdit` (denied by default), is rejected while PIE is running, and is rejected against a ModularRig asset. This domain and `UAIP.Editor.ControlRig.Dynamics` are independent of each other — a project can have either one without the other, and each appears on its own.
+
+> **⚠️ Prerequisite — "the plugin is enabled but the commands are missing" starts here**: `ControlRigPhysics` is enabled by default by the engine, so the Plugins window shows it as on and its rig units already appear in the ControlRig editor — and yet UAIP registers none of these commands until the project names the plugin **explicitly**. Add `{ "Name": "ControlRigPhysics", "Enabled": true }` to the `Plugins` array of your `.uproject` and rebuild. The check reads that entry and nothing else; a plugin the engine turns on by default is invisible to it. Without the entry the whole domain is missing from `uaip_list_commands`, and `uaip_list_commands(IncludeUnavailable=true)` reports it as `UnavailableReason: HandlerUnavailable`.
+
+#### Typed reads (4) — requires `EditorInspect`
+
+| Command | Description |
+|---|---|
+| `GetPhysicsSolverSettings` | `SolverSettings`, `SpaceMotion` and `TeleportDetection` of a `FRigPhysicsSolverComponent` on UE 5.8 (`SolverSettings` and `SimulationSpaceSettings` on UE 5.7). `SolverSettings.SpaceBone` is not reported here — read it with `GetComponent` |
+| `GetPhysicsBodySettings` | The tunable settings of a `FRigPhysicsBodyComponent` — mass and inertia overrides, damping, `MovementType`, `CollisionType`, `KinematicTargetSpace`, gravity multiplier, blend weight, CCD, and the rest — reported at the top level. Topology, collision shapes and the kinematic target are not reported here |
+| `GetPhysicsJointSettings` | `JointData` and `DriveData` of a `FRigPhysicsJointComponent`, as whole JSON objects. The parent / child body keys are not reported here |
+| `GetPhysicsControlSettings` | `ControlData`, `ControlMultiplier`, `ControlTarget` and `UseParentBodyAsDefault` of a `FRigPhysicsControlComponent`. The parent / child body keys are not reported here |
+
+#### Typed writes (4) — requires `ControlRigComponentEdit`
+
+| Command | Description |
+|---|---|
+| `SetPhysicsSolverSettings` | Replace `SolverSettings`, `SpaceMotion` and/or `TeleportDetection` on UE 5.8 (`SolverSettings` and/or `SimulationSpaceSettings` on UE 5.7). A `SolverSettings` object that names `SpaceBone` is refused |
+| `SetPhysicsBodySettings` | Replace one or more body settings. `MovementType` is `Static`, `Kinematic`, `Simulated` or `Default`; `CollisionType` is `NoCollision`, `QueryOnly`, `PhysicsOnly`, `QueryAndPhysics`, `ProbeOnly` or `QueryAndProbe`; `KinematicTargetSpace` is `World`, `Component`, `OffsetInBoneSpace` or `OffsetInWorldSpace`. `LinearDamping` and `AngularDamping` must not be negative. Topology, collision shapes and the kinematic target are carried through unchanged |
+| `SetPhysicsJointSettings` | Replace `JointData` and/or `DriveData`. `LinearProjectionAmount` and `AngularProjectionAmount` must fall within 0.0–1.0 and `ParentInverseMassScale` must not be negative. The parent / child body keys cannot be changed here — use `SetComponentContent` |
+| `SetPhysicsControlSettings` | Replace `ControlData`, `ControlMultiplier`, `ControlTarget` and/or `UseParentBodyAsDefault`. A negative strength, damping or multiplier is refused. The parent / child body keys cannot be changed here — use `SetComponentContent` |
+
+> **⚠️ Note — the solver commands have a different schema on UE 5.7 and UE 5.8**: on UE 5.8 `GetPhysicsSolverSettings` / `SetPhysicsSolverSettings` work in terms of `SolverSettings`, `SpaceMotion` and `TeleportDetection`; on UE 5.7 the same two commands work in terms of `SolverSettings` and `SimulationSpaceSettings`. This follows the engine plugin's own struct layout. Read the command's `Description` through `uaip_describe_command` at runtime rather than assuming one shape. The other six commands have the same schema on both versions.
+>
+> **Note — every typed `Set*` is a partial write, but never an empty one**: each field is independently optional and at least one is required. A field left out keeps the value the component already holds rather than falling back to the type default. Values outside the range the solver accepts — a non-finite number, an iteration or step count below its minimum, a negative threshold, a ratio outside 0–1 — are refused and leave the component unchanged. The generic `SetComponentContent` applies the same checks.
+>
+> **Note — naming a component of the wrong type answers `NotFound`, not a policy error**: passing a joint's name to a body command reports `NotFound`, for the same reason as in the Dynamics domain.
 
 ---
 
@@ -2322,7 +2438,7 @@ Four DefaultDenied capabilities gate the write commands — `GroomAssetEdit` (12
 | `SetGroomGuideCurves` | `GroomCurveEdit` | Replace guide curve control points for one or more ranges within a group, via a single `ConvertFromGroomAsset` → `ConvertToGroomAsset` round trip. Accepts exactly the shape `GetGroomGuideCurves` returns; a write never adds/removes curves, and an out-of-range write is rejected rather than truncated. Rejected when the target references a Dataflow asset unless `bAllowOverwrite` is set |
 | `SetGroomStrandCurves` | `GroomCurveEdit` | Same contract as `SetGroomGuideCurves`, for strand curves |
 | `SetGroomDataflowAsset` | `GroomAssetEdit` | Partial patch to the Dataflow assignment (asset path / terminal node name). Non-destructive — only changes the assignment, does not evaluate the graph or touch curve data |
-| `EvaluateGroomDataflow` | `GroomCurveEdit` | Evaluate the assigned Dataflow graph (`FDataflowInstance::UpdateOwnerAsset()`). Overwrites every group's guide/strand curve geometry and `GuideType` with the graph's output — the prior curves are not recoverable through this command. Returns `NotFound` when no Dataflow asset is assigned. Logs one harmless engine-side "Ensure condition failed" warning on every evaluation |
+| `EvaluateGroomDataflow` ⚠️ | `GroomCurveEdit` | **Experimental — cannot currently produce a useful result.** Evaluate the assigned Dataflow graph (`FDataflowInstance::UpdateOwnerAsset()`). Overwrites every group's guide/strand curve geometry and `GuideType` with the graph's output — the prior curves are not recoverable through this command. Returns `NotFound` when no Dataflow asset is assigned. **Known engine limitation**: the Groom terminal nodes implement only `FDataflowTerminalNode`'s two-argument `Evaluate()`, while `UpdateOwnerAsset()` calls the single-argument overload whose base implementation is `ensure(false)`. The graph is therefore never evaluated, yet the terminal still writes an empty result and **clears the target's hair groups**. The same happens through the engine's own paths (the Content Browser's Re-evaluate Dataflow action, `RegenerateAssetFromDataflow` / `EvaluateTerminalNodeByName`), so it is not specific to this command. Verified on UE 5.8. Treat a success response as "the request reached the engine", not as "the curves were rebuilt", and check the group count afterwards |
 
 #### Bindings (3) — requires `GroomBindingEdit`
 

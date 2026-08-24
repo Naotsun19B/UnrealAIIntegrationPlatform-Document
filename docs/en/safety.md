@@ -298,6 +298,7 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `ControlRigHierarchyEdit` | Add / remove / transform Control elements, bones, and nulls in the ControlRig hierarchy |
 | `ControlRigGraphEdit` | Add, delete, and connect nodes in RigVM graphs; compile ControlRigs |
 | `ControlRigBlueprintCreate` | Create ControlRigBlueprint assets via `CreateAsset` |
+| `ControlRigComponentEdit` | Add, remove, rename, reparent, and rewrite the content of components on hierarchy elements (`FRigBaseComponent` substructs) — the generic component commands under `UAIP.Editor.ControlRig`, and every write in `UAIP.Editor.ControlRig.Dynamics` and `UAIP.Editor.ControlRig.Physics`. One capability covers all of them deliberately: creating a component with initial content reaches the same import path as replacing the content of an existing one, so granting them separately would only offer a way around the other's checks |
 
 #### AI systems
 
@@ -436,6 +437,7 @@ These capabilities depend on specific optional plugins. If the plugin is not ena
 |---|---|---|
 | `MetaSoundGraphEdit` 🧩 | `Metasound` | Add, delete, and connect nodes in MetaSound graphs |
 | `DataflowGraphEdit` 🧩 | `Dataflow` | Add, delete, and connect nodes in Dataflow graphs; get/set node properties |
+| `DataflowReferenceEdit` 🧩 | `Dataflow` | Write object/class reference properties on Dataflow nodes. Required **in addition to** `DataflowGraphEdit`. The target must already be loaded (a write never loads an asset as a side effect); gated separately because it can repoint a graph at a different asset |
 | `ClothAssetEdit` 🧩 | `ChaosClothAsset` | Create/convert Chaos Cloth Assets, create legacy Clothing Assets, bind/unbind them to Skeletal Mesh sections, set Weight Map vertex values, and set Import node mesh references (all destructive operations) |
 | `PCGGraphEdit` 🧩 | `PCG` | Add, delete, connect, and reposition nodes; edit graph/instance parameters; manage comment boxes and subgraph nodes in PCG graphs |
 | `PCGCustomNodeEdit` 🧩 | `PCG` | Write properties on C++ custom PCG nodes (`SetCustomCppPCGNodeProperty`) |
