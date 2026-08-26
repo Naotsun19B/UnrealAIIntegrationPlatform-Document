@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1116 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1537 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1119 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1540 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -35,7 +35,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Domain | Provider prefix | UAIP commands | Toolset bridge | Demo |
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 11 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 18 | 1 | partial (13/18) |
+| Editor Workspace | `UAIP.Editor.Workspace` | 21 | 1 | partial (13/21) |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | partial (5/9) |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
@@ -133,6 +133,9 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 |---|---|
 | 🆓 `FocusEditorTab` | Bring the editor tab for an asset to the front. The target is addressed by `AssetPath`, **not** by a Slate layout tab identifier — the `ActiveTabId` reported by `DumpEditorState` (`"Viewport"`, `"Inspector"`, …) is rejected here. Use the `TabId` parameter of `CaptureEditorTabImage` when you need to address a tab by its layout identifier |
 | 🆓 `CloseEditorTab` | Close the editor tab for an asset. Takes `AssetPath`, addressed the same way as `FocusEditorTab` |
+| `ListSpawnableTabs` | List editor tabs that can currently be opened, each row giving `TabId` / `OwnerMajorTabId` / `OwnerInstanceId` to pass straight into `OpenTabById` / `CloseTabById` as `TabId` / `OwnerTabId` / `OwnerInstanceId`, plus display name, tooltip, and whether that owner already has the tab open. Not exhaustive — every response repeats `EnumerationScope: "MenuVisible"`: a `TabId` missing from the list may still open (it may just be excluded from generated menus), or may be permanently refused by configuration, so treat an absence as unlisted, never as nonexistent. Read-only, but still requires `EditorTabSpawn` because reading display names and tooltips can evaluate third-party delegates |
+| `OpenTabById` | Open the editor tab named by its Slate layout identifier (`TabId`) — a different identifier space from `FocusEditorTab`'s `AssetPath` — reaching tabs neither `FocusEditorTab` nor menu-driven navigation can, including tabs registered only through legacy menus never wired into ToolMenus, and tabs whose owning window is not currently in front. Pass `OwnerTabId` `"Global"` for tabs registered editor-wide (Output Log and similar), or a major tab's own `TabId` (plus `OwnerInstanceId` to disambiguate) to reach a panel that lives inside it; opens that owning window first when it is not already open. The response reports the `InstanceId` of the tab actually opened — the only place that value can be obtained — plus `WasAlreadyOpen` and `OwnerOpenedByThisCall`, so callers know what to close afterward (target tab first, then the owning window). On failure, everything this call opened is closed again. Run `ListSpawnableTabs` to discover valid combinations (requires `EditorTabSpawn`) |
+| `CloseTabById` | Close a currently live editor tab addressed the same way as `OpenTabById` (`TabId` / `OwnerTabId` / `InstanceId` / `OwnerInstanceId`), never by asset path. Unlike `OpenTabById`, it never opens `OwnerTabId` to reach something inside it — an owner that is not already open reports `NotFound` instead of being spawned — and it skips the tab permission check, since refusing to clean up a tab this call is meant to close, purely because policy tightened at runtime, would defeat the purpose. As a result its target is any tab that happens to be live right now, including one a person opened by hand, not only tabs this session opened itself (requires `EditorTabSpawn`) |
 | 🆓 `NormalizeEditorLayout` | Focus the main graph tab and hide transient panels |
 | 🆓 `SetGraphZoom` | Set graph viewport zoom level |
 | 🆓 `FrameGraphAll` | Zoom the graph viewport to fit all nodes |

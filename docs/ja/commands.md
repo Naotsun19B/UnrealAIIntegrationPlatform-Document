@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1116 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1537 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1119 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1540 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -35,7 +35,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | ドメイン | プロバイダプレフィックス | UAIP コマンド | Toolset ブリッジ | デモ |
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 11 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 18 | 1 | 一部（13/18） |
+| Editor Workspace | `UAIP.Editor.Workspace` | 21 | 1 | 一部（13/21） |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
@@ -133,6 +133,9 @@ UAIP では 2 種類のコマンドを公開しています：
 |---|---|
 | 🆓 `FocusEditorTab` | 指定アセットのエディタタブを前面に出す。対象は `AssetPath` で指定し、Slate レイアウトのタブ識別子では**ない** — `DumpEditorState` が返す `ActiveTabId`（`"Viewport"` / `"Inspector"` など）はここでは拒否される。レイアウト識別子でタブを指定したい場合は `CaptureEditorTabImage` の `TabId` を使う |
 | 🆓 `CloseEditorTab` | 指定アセットのエディタタブを閉じる。`FocusEditorTab` と同じく `AssetPath` で指定する |
+| `ListSpawnableTabs` | 開けるエディタタブの候補を一覧で返す。各行の `TabId` / `OwnerMajorTabId` / `OwnerInstanceId` はそのまま `OpenTabById` / `CloseTabById` の `TabId` / `OwnerTabId` / `OwnerInstanceId` として渡せる。表示名・ツールチップ・その所属先で既にタブが開いているかどうかも含む。網羅的な一覧ではなく、応答は常に `EnumerationScope: "MenuVisible"` を返す — 一覧に無い `TabId` でも開ける場合があり（生成メニューから外れているだけの場合がある）、逆に設定で恒久的に拒否されている場合もあるため、「一覧に無い」は「未列挙」であって「存在しない」ではない。読み取り専用だが、表示名・ツールチップの取得が第三者のデリゲートを評価しうるため `EditorTabSpawn` を要求する |
+| `OpenTabById` | Slate レイアウトのタブ識別子（`TabId`。`FocusEditorTab` の `AssetPath` とは別の識別子空間）を指定してエディタタブを開く。`FocusEditorTab` やメニュー操作代行では届かないタブ — ToolMenus に一度も登録されていないレガシーメニュー経由のタブや、所属ウィンドウが前面にないタブ — にも到達できる。`OwnerTabId` に `"Global"` を指定するとエディタ全体に登録されたタブ（Output Log 等）を、major tab 自身の `TabId`（複数該当する場合は `OwnerInstanceId` で絞り込み）を指定するとその内部のパネルを対象にできる。所属先のウィンドウがまだ開いていなければ先に開く。応答には実際に開いたタブの `InstanceId`（この応答からしか得られない値）、`WasAlreadyOpen`、`OwnerOpenedByThisCall` が含まれ、後始末で何を閉じるべきかを判断できる（閉じる順序は対象タブ→所属先）。失敗時はこの呼び出しが開いたものを取り除く。候補の発見には `ListSpawnableTabs` を使う（`EditorTabSpawn` 必要） |
+| `CloseTabById` | `OpenTabById` と同じ指定（`TabId` / `OwnerTabId` / `InstanceId` / `OwnerInstanceId`）でタブを閉じる。アセットパスでは指定できない。`OpenTabById` と異なり `OwnerTabId` が開いていなくても新たに開くことはせず、その場合は `NotFound` になる。許可判定も行わない — 実行時にポリシーが変わったせいで後始末そのものが失敗する方が悪いという判断による。そのため対象は「このセッションが開いたタブ」に限らず、人間が手動で開いたものも含め、いま生きている任意のタブになる（`EditorTabSpawn` 必要） |
 | 🆓 `NormalizeEditorLayout` | メイングラフタブをフォーカスし、一時パネルを非表示にする |
 | 🆓 `SetGraphZoom` | グラフビューポートのズーム倍率を設定 |
 | 🆓 `FrameGraphAll` | グラフビューポートを全ノードが収まるようにズーム |

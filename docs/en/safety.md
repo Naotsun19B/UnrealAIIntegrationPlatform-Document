@@ -359,6 +359,7 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `EditorExecCommand` | Execute low-level editor commands via `GUnrealEd->Exec` |
 | `LogVerbosityEdit` | Change log verbosity levels — `SetLogVerbosity` native and `Toolset.Editor.Toolset.Logs.SetVerbosity` bridge |
 | `ViewportAnnotationCapture` | Capture annotated viewport images with world-coordinate labels — `CaptureViewportImageAnnotated` |
+| `EditorTabSpawn` | Open, close, and enumerate editor tabs by their Slate `FTabId` — `OpenTabById`, `CloseTabById`, `ListSpawnableTabs`. Distinct from the DefaultAllow `EditorWorkspaceControl`, which only reaches asset-editor tabs through `AssetPath`: an arbitrary `TabId` can run a third party's bound delegate — `CanSpawnTab`/`OnSpawnTab` when opening, `OnCanCloseTab`/`OnTabClosed` when closing, and the display-name/tooltip `TAttribute` accessors when listing — including internal tabs never shown in a menu. `ListSpawnableTabs` requires the same capability rather than being DefaultAllow: enumerating carries the same delegate-execution risk, and the only use for the list is deciding what to open or close. Closing is not limited to tabs this session opened — any tab currently open can be closed, including ones a human has open for their own work, and closing bypasses the tab permission list entirely so that cleanup never fails after a permission change |
 
 #### Script execution
 

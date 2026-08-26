@@ -359,6 +359,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `EditorExecCommand` | `GUnrealEd->Exec` 経由の低レベル Editor コマンド実行 |
 | `LogVerbosityEdit` | ログ詳細レベルの変更 — `SetLogVerbosity` native および `Toolset.Editor.Toolset.Logs.SetVerbosity` bridge |
 | `ViewportAnnotationCapture` | ワールド座標ラベル付きビューポート画像のキャプチャ — `CaptureViewportImageAnnotated` |
+| `EditorTabSpawn` | Slate の `FTabId` でエディタタブを開く・閉じる・列挙する — `OpenTabById`、`CloseTabById`、`ListSpawnableTabs`。DefaultAllow の `EditorWorkspaceControl`（`AssetPath` でアセットエディタタブのみに到達する）とは別物です。任意の `TabId` を指定できるということは第三者プラグインが登録したデリゲートを実行しうるということであり、該当するのは開く側の `CanSpawnTab` / `OnSpawnTab`、閉じる側の `OnCanCloseTab` / `OnTabClosed`、読み取り専用の列挙側の表示名・ツールチップ取得（`TAttribute` の bound デリゲート）です。これはメニューに一切表示されない内部タブも対象に含みます。`ListSpawnableTabs` を DefaultAllow にせず同じ Capability を要求するのは、列挙自体が同じデリゲート実行リスクを持つことと、一覧の唯一の用途が開閉の判断であることによります。閉じる操作は**このセッションが開いたタブに限定されません** — 人間が作業のために開いているものを含め、いま開いている任意のタブを閉じられます。また閉じる操作はタブ許可リストを一切通さないため、許可設定を変更した後でも後始末が失敗することはありません |
 
 #### スクリプト実行
 
