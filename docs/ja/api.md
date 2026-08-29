@@ -306,20 +306,53 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities")
 
 ```json
 {
-  "Capabilities": ["EditorInspect", "PIEControl", "RuntimeCapture", ...],
+  "Capabilities": ["EditorInspect", "PIEControl", "RuntimeCapture", "..."],
+  "RegisteredCapabilityCount": 163,
+  "UngrantedCapabilityCount": 41,
+  "OperationalConstraints": { "...": "下記参照" }
+}
+```
+
+ロード済みモジュールが宣言したすべての Capability を保有の有無に関わらず列挙する `RegisteredCapabilities` カタログは、この応答には**含まれません**。通常のエディタでは 100 件を優に超えるため、`uaip_list_commands` が既定で利用不可のコマンドを隠すのと同じくオプトインです。2 つの件数は常に返るので、一度もオプトインしていない呼び出し側でも、カタログの存在と「このセッションが使えない件数」は分かります。
+
+受け取るには次のようにします。
+
+```
+uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
+             Params={"IncludeUnavailable": true})
+```
+
+レスポンス `Data`（同じフィールドにカタログが加わります）：
+
+```json
+{
+  "Capabilities": ["EditorInspect", "PIEControl", "RuntimeCapture", "..."],
+  "RegisteredCapabilityCount": 163,
+  "UngrantedCapabilityCount": 41,
+  "RegisteredCapabilities": [
+    { "Name": "EditorInspect",         "DefaultPolicy": "Allowed", "IsGranted": true  },
+    { "Name": "PropertyReferenceEdit", "DefaultPolicy": "Denied",  "IsGranted": false },
+    { "Name": "PropertyStructuredEdit","DefaultPolicy": "Denied",  "IsGranted": false }
+  ],
   "OperationalConstraints": {
-    "ReadOnly":              false,
-    "DisableSave":           false,
-    "AllowLogDump":          true,
-    "AllowContextMenuMutation": false,
-    "AllowKeyboardInput":    true,
-    "AllowKeyboardModifierInput": false,
-    "DisablePIEStart":       false
+    "IsReadOnly":                    false,
+    "IsSaveDisabled":                false,
+    "IsLogDumpAllowed":              true,
+    "IsContextMenuMutationAllowed":  false,
+    "IsPIEStartDisabled":            false,
+    "HasDeniedCommands":             false,
+    "IsKeyboardInputAllowed":        true,
+    "IsKeyboardModifierInputAllowed":false,
+    "IsPasswordFieldWriteAllowed":   false
   }
 }
 ```
 
-`OperationalConstraints` を先読みゲートとして利用：`ReadOnly:true` なら変更系コマンドを試行しない。
+2 つの配列は別の問いに答えます。`Capabilities` は**実効セット**で、このセッションが今使えるものです。`RegisteredCapabilities` は**カタログ**で、ロード済みモジュールが宣言したすべての Capability を保有の有無に関わらず列挙します。したがって、ある名前が `IsGranted: false` でカタログに現れ、同時に `Capabilities` には現れない、という状態が普通に起こります。上記の 3 件は抜粋で、実際の件数は `RegisteredCapabilityCount` が示します（この値は `IncludeUnavailable` によって変わりません）。
+
+既定で拒否される Capability の一覧を返す専用フィールドはありません。導出できるからです — **運用者が有効化しなければならないものは、カタログのうち `DefaultPolicy` が `Denied` の要素**です。[安全性 → どんな Capability が存在するかを調べる](safety.md#どんな-capability-が存在するかを調べる) を参照。
+
+`OperationalConstraints` を先読みゲートとして利用：`IsReadOnly:true` なら変更系コマンドを試行しない。
 
 ---
 

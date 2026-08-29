@@ -102,7 +102,7 @@ WebSocket・CLI・HTTP Transport の FullHTTP モードは単一の共有シー�
 
 - `uaip_list_commands` は、役割で拒否されたコマンドを、他の不可用コマンドと同じ扱いで既定応答から除外し、`HiddenReasons.RoleRestricted` に計上します（詳細は [コマンドリファレンス → discovery フィルタ](commands.md) を参照）。
 - `uaip_describe_command` は役割で拒否されたコマンドも隠さず表示し、`UnavailableReason: "RoleRestricted"` を付けます。
-- `uaip_query_capabilities` はプロセス全体のセットではなく、**セッションの役割で絞り込んだ後**のセットを返します。したがって役割が拒否している Capability が、その役割のセッションに対して「使える」と表示されることはありません。
+- `uaip_query_capabilities` の `Capabilities` フィールドは、プロセス全体のセットではなく **セッションの役割で絞り込んだ後**のセットを返します。したがって役割が拒否している Capability が、その役割のセッションに対して「使える」と表示されることはありません。一方 `RegisteredCapabilities` カタログ（`IncludeUnavailable: true` で要求します）は**絞り込みません** — ロード済みモジュールが宣言したすべての Capability を列挙し、このセッションが使えないものには `IsGranted: false` を付けます。これは意図的な設計です。ある Capability の存在を見られなければ、クライアントは運用者へ有効化を依頼することも、期待したコマンドが無い理由を理解することもできません。カタログに現れるのは名前と既定方針だけで、操作そのものは引き続き役割が拒否します。
 - 役割で拒否されたコマンドを呼ぶと、プロセス側の Capability 不足と同じ `CapabilityNotAvailable` エラーコードが返りますが、`ErrorMessage` には役割名と Capability 名の両方が入るため、対処の読み方が変わります。プロセス側の Capability 不足は運用者が有効化することで解消しますが、役割による制限は「その役割ではその操作を行わない」ことが解消であり、有効化すべき設定はありません。
 
 ---
@@ -132,6 +132,24 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 各コマンドは必要な Capability を宣言しています。プロセスが必要な Capability をすべて持っており（Layer 1）、かつセッションが役割に束縛されている場合はその役割がいずれも拒否していないとき（Layer 1.5）だけコマンドを実行できます。Capability には **DefaultAllow**（自動付与）と **DefaultDenied**（`Config/DefaultUAIP.ini` で明示的に有効化が必要）の 2 種類があります。
 
 🧩 付きの Capability はオプションプラグインへの依存があります。該当プラグインが `.uproject` で有効になっていない環境では Capability が登録されず、必要とするコマンドは `CommandNotFound` を返します。
+
+### どんな Capability が存在するかを調べる
+
+`QueryCapabilities` は 1 つの応答で異なる 2 つの問いに答えます。両者は区別して読んでください。
+
+| フィールド | 答える問い |
+|---|---|
+| `Capabilities` | **このセッションが今使えるものは何か。** 実効セット — プロセスの Capability セットから `DeniedCapabilities` の分を引き、さらにセッションが束縛されている役割が拒否する分を引いたもの |
+| `RegisteredCapabilityCount` / `UngrantedCapabilityCount` | **どれだけ存在し、そのうちこのセッションが使えないものは何件か。** 常に返します（0 件のときも返します）。フィールドが無いことから「未付与は無い」を推測する必要がありません |
+| `RegisteredCapabilities` | **そもそも何が存在するか。** ロード済みモジュールが宣言したすべての Capability を、このセッションが保有しているかどうかに関わらず列挙します。各要素は `Name`・`DefaultPolicy`（`Allowed` / `Denied`）・`IsGranted` を持ちます。ここに `IsGranted: false` で現れる名前が、運用者へ有効化を依頼すべきものです。**`IncludeUnavailable: true` を渡したときだけ返ります** |
+
+カタログは**オプトイン**です。`uaip_list_commands` が既定で利用不可のコマンドを隠すのと同じ理由で、通常のエディタでは 100 件を優に超えるうえ、このコマンドは「最初に呼べ」と案内しているものだからです。受け取るには `IncludeUnavailable: true` を渡します。一方で、**カタログの存在自体は隠しません** — 2 つの件数は毎回返るため、一度もオプトインしていないセッションでも「保有していない Capability が何件あるか」を知り、そのうえで一覧を要求できます。
+
+**「運用者が有効化しなければならないものは何か」は `RegisteredCapabilities` だけで分かります** — `DefaultPolicy` が `Denied` の要素がそれにあたります。この一覧を別フィールドとして返すことは意図的にしていません。カタログに既にある名前を繰り返すだけで、新しい情報を持たないからです。
+
+このカタログが必要なのは、DefaultDenied な Capability が定義上そもそも実効セットに現れないためです。多くの場合これは問題になりません — いずれかのコマンドの `RequiredCapabilities` に現れるので `uaip_describe_command` で名前が分かります。例外が `PropertyReferenceEdit` と `PropertyStructuredEdit` で、この 2 つは書き込み対象プロパティの型から dispatch のはるか後に判定されるため、どのコマンドも宣言しません。付与される前にこの 2 つを見つけられる場所は、このカタログだけです。
+
+開示されるのは Capability の名前と既定方針だけです。プロジェクトの内容も値も含まれません。
 
 ---
 
@@ -187,8 +205,16 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `EditorLevelLoad` | エディタビューポートでのレベルオープン・新規作成 |
 | `EditorViewportControl` | Level Editor ビューポートカメラの操作 — `FocusOnActors`、`GetCameraTransform`、`SetCameraTransform` |
 | `PropertyEdit` | 詳細パネル経由でのアクター / アセットプロパティの読み書き（`GetActorProperty`、`SetActorProperty`、`GetAssetProperty`、`SetAssetProperty` など） |
+| `PropertyReferenceEdit` | 値がオブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパスであるか、それらを（どの深さであれ）内包するプロパティの書き込み。参照を空にする操作にも必要 — 依存関係を付けることと外すことは同じ種類の変更であるため |
+| `PropertyStructuredEdit` | 組み込みの値カタログ外の構造体・配列・セット・マップ・オプショナル・固定長配列の書き込みと、値全体を置き換える代わりにコンテナの要素 1 つを操作すること |
 | `ProjectConfigEdit` | プロジェクト設定の読み書き（`GetProjectSetting`、`SetProjectSetting`） |
 | `EditorUndoRedo` | エディタ操作の Undo / Redo |
+
+> **Note**: `PropertyReferenceEdit` と `PropertyStructuredEdit` は `UAIP.Editor.Property` 限定ではありません。Blueprint SCS コンポーネント、Sequencer セクション、Sound / SoundCue アセット、PCG / 会話ノード、DataTable 行、World / プロジェクト設定など、**プロパティを書き込むすべてのドメイン**で参照・構造体・コンテナの書き込みを制御します。参照を内包する構造体の書き込みには両方が必要なので、構造側だけで参照のゲートを迂回することはできません。
+>
+> すでに独自の Capability で参照の書き込みを管理しているモジュールは、参照側についてはその名前を使い続けます — `SetAnimNotifyProperty` は `AnimNotifyReferenceEdit`、`SetDataflowNodeProperty` は `DataflowReferenceEdit`、Subsonic のプロパティ setter 群は `SubsonicEventEdit` です。構造・コンテナ側は常に `PropertyStructuredEdit` です。例外は `SetPoseSearchSchemaChannelProperty` で、参照については付与できる Capability がありません — 参照を内包する型を一律拒否します。チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうためです。
+>
+> どちらも書き込み実行時にプロパティの型から決まるため、**いずれのコマンドの `RequiredCapabilities` にも現れず**、`uaip_describe_command` にも表示されません。ただし書き込みを試さずに見つけることはできます — `QueryCapabilities` を `IncludeUnavailable: true` で呼ぶと `RegisteredCapabilities` カタログがこの 2 つを列挙し、運用者が有効化するまで `DefaultPolicy: "Denied"` / `IsGranted: false` を返します（[どんな Capability が存在するかを調べる](#どんな-capability-が存在するかを調べる) 参照）。**個別のプロパティ**に何が必要かを知るには、先にそのプロパティを読む（`WriteRequirements` オブジェクトが、書き込みに必要なものと、そのうちセッションが既に保有しているものを返します）か、拒否の返答から名前を読み取ってください。[コマンドリファレンス — 参照・構造体・コンテナの書き込み](commands.md#参照構造体コンテナの書き込み) を参照。
 
 #### アセット管理
 
@@ -250,14 +276,14 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 
 | Capability | 有効になる操作 |
 |---|---|
-| `PoseSearchAssetEdit` 🧩 | PoseSearch Schema アセットへのチャンネル・互換 Skeleton の追加・削除・並べ替え・設定、PoseSearch Database アセットへのアニメーション追加・削除、データベーススキーマ・アニメーション設定・Normalization Set 所属の変更、データベースインデックスビルドの開始（`PoseSearch` プラグイン必須） |
+| `PoseSearchAssetEdit` 🧩 | PoseSearch Schema アセットへのチャンネル・互換 Skeleton の追加・削除・並べ替え・設定、PoseSearch Database アセットへのアニメーション追加・削除、データベーススキーマ・アニメーション設定・Normalization Set 所属の変更、データベースインデックスビルドの開始（`PoseSearch` プラグイン必須）。`SetPoseSearchSchemaChannelProperty` で構造体・コンテナを書き込むにはさらに `PropertyStructuredEdit` が必要。参照を内包する型は一律拒否され、これを解除できる Capability は存在しない |
 
 #### AnimNotify 編集
 
 | Capability | 有効になる操作 |
 |---|---|
 | `AnimNotifyEdit` | 通知トラックの追加・削除、`UAnimSequence` / `UAnimMontage` / `UAnimComposite` 上の AnimNotify・AnimNotifyState エントリの追加・削除・編集、無効な通知 guid の修復。`UAIP.Editor.AnimSequence` の全編集系コマンドで必須 |
-| `AnimNotifyReferenceEdit` | `SetAnimNotifyProperty` が、ハードなオブジェクト/クラス参照であるか、それを内包するプロパティへ書き込む場合に `AnimNotifyEdit` に加えて必要 |
+| `AnimNotifyReferenceEdit` | `SetAnimNotifyProperty` が、あらゆる種類の参照（オブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパス）であるか、それを内包するプロパティへ書き込む場合に `AnimNotifyEdit` に加えて必要。構造体・コンテナの書き込みにはさらに `PropertyStructuredEdit` が必要 |
 
 #### MetaHuman キャラクター編集
 
@@ -438,7 +464,7 @@ ExternalTraceDirectory=D:/TraceDrop
 |---|---|---|
 | `MetaSoundGraphEdit` 🧩 | `Metasound` | MetaSound グラフへのノード追加・削除・接続 |
 | `DataflowGraphEdit` 🧩 | `Dataflow` | Dataflow グラフへのノード追加・削除・接続、ノードプロパティの取得・設定 |
-| `DataflowReferenceEdit` 🧩 | `Dataflow` | Dataflow ノードのオブジェクト / クラス参照プロパティへの書き込み。`DataflowGraphEdit` に**追加で**必要。参照先は既にロード済みでなければならず（書き込みが副作用でアセットをロードすることはない）、グラフが指すアセットを差し替えられるため独立した権限としている |
+| `DataflowReferenceEdit` 🧩 | `Dataflow` | Dataflow ノードの、あらゆる種類の参照プロパティ（オブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパス。構造体・コンテナに内包されたものを含む）への書き込み。`DataflowGraphEdit` に**追加で**必要で、構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。ハード参照の参照先は既にロード済みでなければならず（書き込みが副作用でアセットをロードすることはない）、ソフト参照はアセットレジストリに対して検証される。グラフが指すアセットを差し替えられるため独立した権限としている |
 | `ClothAssetEdit` 🧩 | `ChaosClothAsset` | Chaos Cloth Asset の作成・変換、legacy Clothing Asset の作成、Skeletal Mesh セクションへのバインド/解除、Weight Map 頂点値の設定、Import ノードへのインポート元メッシュ参照設定（いずれも破壊的操作） |
 | `PCGGraphEdit` 🧩 | `PCG` | PCG グラフへのノード追加・削除・接続・移動、グラフ / インスタンスパラメータ編集、コメントボックス・サブグラフノード管理 |
 | `PCGCustomNodeEdit` 🧩 | `PCG` | C++ カスタム PCG ノードへのプロパティ書き込み（`SetCustomCppPCGNodeProperty`） |
@@ -522,7 +548,7 @@ ExternalTraceDirectory=D:/TraceDrop
 
 | Capability | 有効になる操作 |
 |---|---|
-| `SubsonicEventEdit` 🧩 | `USubsonicEventCollection` アセットに対する編集系の event / action / modifier / parameter / property-binding コマンドすべて — 16 コマンド。いずれも 1 つのアセットを 1 トランザクション内で変更するため、`PhysicsAssetEdit` と同じ粒度でまとめられている |
+| `SubsonicEventEdit` 🧩 | `USubsonicEventCollection` アセットに対する編集系の event / action / modifier / parameter / property-binding コマンドすべて — 16 コマンド。いずれも 1 つのアセットを 1 トランザクション内で変更するため、`PhysicsAssetEdit` と同じ粒度でまとめられている。3 つのプロパティ setter における参照側の Capability も兼ねるため、参照の書き込みに別途の付与は不要。ただし構造体・コンテナの書き込みにはさらに `PropertyStructuredEdit` が必要 |
 | `SubsonicEventAudition` 🧩 | イベントの試聴と現在の試聴の停止 — `AuditionSubsonicEvent`、`StopSubsonicAudition`。試聴はアセットを変更しないが、オーディオデバイスの副作用を駆動しロード済みアクション型の `Execute()` を実行するため、`SubsonicEventEdit` とは別に切り出されている |
 
 #### Groom 編集

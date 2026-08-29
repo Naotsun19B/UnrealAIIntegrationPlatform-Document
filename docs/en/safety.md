@@ -102,7 +102,7 @@ WebSocket, CLI, and the FullHTTP mode of the HTTP transport authenticate with a 
 
 - `uaip_list_commands` omits role-denied commands from its default response, the same way it omits any other unavailable command, and counts them under `HiddenReasons.RoleRestricted` (see [Commands Reference → discovery filters](commands.md)).
 - `uaip_describe_command` still shows a role-denied command, with `UnavailableReason: "RoleRestricted"`.
-- `uaip_query_capabilities` reflects the session's role-narrowed set, not the full process set — so a capability a role denies never shows up as "available" to a session bound to that role.
+- `uaip_query_capabilities` reflects the session's role-narrowed set in its `Capabilities` field, not the full process set — so a capability a role denies never shows up as "available" to a session bound to that role. Its `RegisteredCapabilities` catalog (requested with `IncludeUnavailable: true`) is **not** narrowed: it names every capability the loaded modules declare, with `IsGranted: false` on the ones this session cannot use. That is deliberate — a client has to be able to see that a capability exists in order to ask an operator for it, or to understand why a command it expected is missing. Only names and default policies appear there; a role still denies the operation itself.
 - Calling a role-denied command returns the same `CapabilityNotAvailable` error code as a missing process capability, but `ErrorMessage` names both the role and the capability, so the remediation reads differently: a missing process capability is fixed by an operator enabling it, while a role restriction is fixed by not performing that operation under that role — there is nothing to enable.
 
 ---
@@ -132,6 +132,24 @@ What this feature does provide:
 Each command declares the capabilities it requires. A command runs only when the process holds every required capability (Layer 1) and, if the session is bound to a role, that role doesn't deny any of them (Layer 1.5). Capabilities are either **DefaultAllow** (granted automatically) or **DefaultDenied** (must be explicitly enabled in `Config/DefaultUAIP.ini`).
 
 Capabilities marked 🧩 require an optional plugin. If that plugin is not enabled in your `.uproject`, the capability is never registered and commands that require it return `CommandNotFound`.
+
+### Finding out which capabilities exist
+
+`QueryCapabilities` answers two different questions in one response, and it is worth keeping them apart:
+
+| Field | Question it answers |
+|---|---|
+| `Capabilities` | **What can this session use right now?** The effective set — the process capability set, minus anything `DeniedCapabilities` removes, minus anything the session's bound role denies |
+| `RegisteredCapabilityCount` / `UngrantedCapabilityCount` | **How much is there, and how much of it can't this session use?** Always returned, including when both are what you hoped — so "nothing is ungranted" never has to be guessed from a missing field |
+| `RegisteredCapabilities` | **What exists at all?** Every capability the loaded modules have declared, whether or not this session holds it. Each entry carries `Name`, `DefaultPolicy` (`Allowed` or `Denied`) and `IsGranted` — so a name present here with `IsGranted: false` is one to ask an operator to enable. **Returned only when you pass `IncludeUnavailable: true`** |
+
+The catalog is **opt-in**, for the same reason `uaip_list_commands` hides unavailable commands by default: it runs to well over a hundred entries in a normal editor, and this is the command you are told to call first. Pass `IncludeUnavailable: true` to receive it. What is *not* optional is knowing it is there — the two counts come back on every call, so a session that never opts in still learns how many capabilities it does not hold, and can then ask for the list.
+
+**"What would an operator have to enable?" is answered from `RegisteredCapabilities` alone**: those are the entries whose `DefaultPolicy` is `Denied`. The response carries no separate list of them, deliberately — it would repeat names already in the catalog without adding anything.
+
+The catalog matters because a DefaultDenied capability is invisible to the effective set by definition. For most of them that is not a problem — they appear in some command's `RequiredCapabilities`, so `uaip_describe_command` names them. `PropertyReferenceEdit` and `PropertyStructuredEdit` are the exception: they are decided from the type of the property being written, long after dispatch, so no command declares them and the catalog is the only place they can be found before one is granted.
+
+Only capability names and their default policies are disclosed. Nothing about the project's contents, and no values, are involved.
 
 ---
 
@@ -187,8 +205,16 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `EditorLevelLoad` | Open and create levels in the editor viewport |
 | `EditorViewportControl` | Control the level editor viewport camera — `FocusOnActors`, `GetCameraTransform`, `SetCameraTransform` |
 | `PropertyEdit` | Read and write actor / asset properties via the Details panel (`GetActorProperty`, `SetActorProperty`, `GetAssetProperty`, `SetAssetProperty`, etc.) |
+| `PropertyReferenceEdit` | Write a property whose value is — or contains, at any depth — an object / class / soft / weak / lazy / interface reference, a delegate or a field path. Clearing a reference needs it too, since attaching and detaching a dependency are the same kind of change |
+| `PropertyStructuredEdit` | Write a struct outside the built-in value catalogue, an array, a set, a map, an optional or a fixed-size array — and operate on a single container element rather than replacing the whole value |
 | `ProjectConfigEdit` | Read and write project settings (`GetProjectSetting`, `SetProjectSetting`) |
 | `EditorUndoRedo` | Undo and redo editor operations |
+
+> **Note**: `PropertyReferenceEdit` and `PropertyStructuredEdit` are not confined to `UAIP.Editor.Property`. They gate reference / struct / container writes in **every** domain that writes properties — Blueprint SCS components, Sequencer sections, Sound and SoundCue assets, PCG and Conversation nodes, DataTable rows, World and project settings, and more. Writing a struct that contains a reference needs both, so the structured one alone is never a way around the reference gate.
+>
+> A module that already governs reference writes through a capability of its own keeps that name for the reference half — `AnimNotifyReferenceEdit` for `SetAnimNotifyProperty`, `DataflowReferenceEdit` for `SetDataflowNodeProperty`, `SubsonicEventEdit` for the Subsonic property setters — while the struct / container half is always `PropertyStructuredEdit`. `SetPoseSearchSchemaChannelProperty` is the exception that grants nothing for references: it refuses a reference-bearing type outright, because writing a channel's sub-channel array directly would sidestep the class allowlist `AddPoseSearchSchemaChannel` enforces.
+>
+> Because both are decided from the property's type while the write runs, **neither appears in any command's declared `RequiredCapabilities`** and `uaip_describe_command` will not show them. They can still be found without attempting a write: `QueryCapabilities` lists both in its `RegisteredCapabilities` catalog — call it with `IncludeUnavailable: true` — with `DefaultPolicy: "Denied"` and `IsGranted: false` until an operator enables them (see [Finding out which capabilities exist](#finding-out-which-capabilities-exist)). To learn what a **particular** property would need, read it first — its `WriteRequirements` object names what a write would need and which of those the session already holds — or take the name out of the refusal. See [Commands — Writing references, structs and containers](commands.md#writing-references-structs-and-containers).
 
 #### Asset management
 
@@ -250,14 +276,14 @@ Read-only inspection (`GetGeometryCollectionInfo`, `GetGeometryCollectionCluster
 
 | Capability | What it unlocks |
 |---|---|
-| `PoseSearchAssetEdit` 🧩 | Add, remove, reorder, and configure channels and compatible skeletons in PoseSearch Schema assets; add and remove animations, set database schema, animation settings, and Normalization Set membership on PoseSearch Database assets; start database index builds (requires `PoseSearch` plugin) |
+| `PoseSearchAssetEdit` 🧩 | Add, remove, reorder, and configure channels and compatible skeletons in PoseSearch Schema assets; add and remove animations, set database schema, animation settings, and Normalization Set membership on PoseSearch Database assets; start database index builds (requires `PoseSearch` plugin). Writing a struct or container through `SetPoseSearchSchemaChannelProperty` additionally requires `PropertyStructuredEdit`; a reference-bearing type is refused outright and no capability lifts that |
 
 #### AnimNotify editing
 
 | Capability | What it unlocks |
 |---|---|
 | `AnimNotifyEdit` | Add / remove notify tracks; add / remove / edit AnimNotify and AnimNotifyState entries on `UAnimSequence` / `UAnimMontage` / `UAnimComposite`; fix up invalid notify guids. Required by every edit command in `UAIP.Editor.AnimSequence` |
-| `AnimNotifyReferenceEdit` | Required in addition to `AnimNotifyEdit` when `SetAnimNotifyProperty` writes a property that is — or contains — a hard object/class reference |
+| `AnimNotifyReferenceEdit` | Required in addition to `AnimNotifyEdit` when `SetAnimNotifyProperty` writes a property that is — or contains — a reference of any kind (object / class / soft / weak / lazy / interface, delegate, field path). Writing a struct or container additionally requires `PropertyStructuredEdit` |
 
 #### MetaHuman character editing
 
@@ -438,7 +464,7 @@ These capabilities depend on specific optional plugins. If the plugin is not ena
 |---|---|---|
 | `MetaSoundGraphEdit` 🧩 | `Metasound` | Add, delete, and connect nodes in MetaSound graphs |
 | `DataflowGraphEdit` 🧩 | `Dataflow` | Add, delete, and connect nodes in Dataflow graphs; get/set node properties |
-| `DataflowReferenceEdit` 🧩 | `Dataflow` | Write object/class reference properties on Dataflow nodes. Required **in addition to** `DataflowGraphEdit`. The target must already be loaded (a write never loads an asset as a side effect); gated separately because it can repoint a graph at a different asset |
+| `DataflowReferenceEdit` 🧩 | `Dataflow` | Write a reference property of any kind — object / class / soft / weak / lazy / interface, delegate, field path — on Dataflow nodes, including one nested inside a struct or container. Required **in addition to** `DataflowGraphEdit`; a struct or container additionally requires `PropertyStructuredEdit`. A hard reference's target must already be loaded (a write never loads an asset as a side effect), while a soft one is validated against the asset registry. Gated separately because it can repoint a graph at a different asset |
 | `ClothAssetEdit` 🧩 | `ChaosClothAsset` | Create/convert Chaos Cloth Assets, create legacy Clothing Assets, bind/unbind them to Skeletal Mesh sections, set Weight Map vertex values, and set Import node mesh references (all destructive operations) |
 | `PCGGraphEdit` 🧩 | `PCG` | Add, delete, connect, and reposition nodes; edit graph/instance parameters; manage comment boxes and subgraph nodes in PCG graphs |
 | `PCGCustomNodeEdit` 🧩 | `PCG` | Write properties on C++ custom PCG nodes (`SetCustomCppPCGNodeProperty`) |
@@ -522,7 +548,7 @@ These capabilities all require UE 5.8+ and the `Subsonic` plugin (Experimental).
 
 | Capability | What it unlocks |
 |---|---|
-| `SubsonicEventEdit` 🧩 | Every mutating event / action / modifier / parameter / property-binding command on a `USubsonicEventCollection` asset — 16 commands. All of them mutate a single asset within a single transaction, so they are bundled at the same granularity as `PhysicsAssetEdit` |
+| `SubsonicEventEdit` 🧩 | Every mutating event / action / modifier / parameter / property-binding command on a `USubsonicEventCollection` asset — 16 commands. All of them mutate a single asset within a single transaction, so they are bundled at the same granularity as `PhysicsAssetEdit`. It also serves as the reference capability for the three property setters, so no separate grant is needed to write a reference; writing a struct or container through them additionally requires `PropertyStructuredEdit` |
 | `SubsonicEventAudition` 🧩 | Audition an event and stop the current audition — `AuditionSubsonicEvent`, `StopSubsonicAudition`. Kept separate from `SubsonicEventEdit` because auditioning does not mutate the asset, but drives audio device side effects and executes the `Execute()` of loaded action types |
 
 #### Groom editing

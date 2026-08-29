@@ -306,20 +306,53 @@ Response `Data`:
 
 ```json
 {
-  "Capabilities": ["EditorInspect", "PIEControl", "RuntimeCapture", ...],
+  "Capabilities": ["EditorInspect", "PIEControl", "RuntimeCapture", "..."],
+  "RegisteredCapabilityCount": 163,
+  "UngrantedCapabilityCount": 41,
+  "OperationalConstraints": { "...": "see below" }
+}
+```
+
+The `RegisteredCapabilities` catalog — every capability the loaded modules declare, held or not — is **not** in that response. It runs to well over a hundred entries, so it is opt-in, the same way `uaip_list_commands` hides unavailable commands by default. The two counts always come back, so a caller that never opts in still learns the catalog exists and how much of it this session cannot use.
+
+To receive it:
+
+```
+uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
+             Params={"IncludeUnavailable": true})
+```
+
+Response `Data` (the same fields, plus the catalog):
+
+```json
+{
+  "Capabilities": ["EditorInspect", "PIEControl", "RuntimeCapture", "..."],
+  "RegisteredCapabilityCount": 163,
+  "UngrantedCapabilityCount": 41,
+  "RegisteredCapabilities": [
+    { "Name": "EditorInspect",         "DefaultPolicy": "Allowed", "IsGranted": true  },
+    { "Name": "PropertyReferenceEdit", "DefaultPolicy": "Denied",  "IsGranted": false },
+    { "Name": "PropertyStructuredEdit","DefaultPolicy": "Denied",  "IsGranted": false }
+  ],
   "OperationalConstraints": {
-    "ReadOnly":              false,
-    "DisableSave":           false,
-    "AllowLogDump":          true,
-    "AllowContextMenuMutation": false,
-    "AllowKeyboardInput":    true,
-    "AllowKeyboardModifierInput": false,
-    "DisablePIEStart":       false
+    "IsReadOnly":                    false,
+    "IsSaveDisabled":                false,
+    "IsLogDumpAllowed":              true,
+    "IsContextMenuMutationAllowed":  false,
+    "IsPIEStartDisabled":            false,
+    "HasDeniedCommands":             false,
+    "IsKeyboardInputAllowed":        true,
+    "IsKeyboardModifierInputAllowed":false,
+    "IsPasswordFieldWriteAllowed":   false
   }
 }
 ```
 
-Use `OperationalConstraints` as a forward-looking gate: if `ReadOnly:true`, don't attempt mutating commands.
+The two arrays answer different questions. `Capabilities` is the **effective set** — what this session can use right now. `RegisteredCapabilities` is the **catalog** — every capability the loaded modules declare, held or not, so a name can appear there with `IsGranted: false` and be absent from `Capabilities`. The three entries above are an excerpt; `RegisteredCapabilityCount` is the real length, and it does not change with `IncludeUnavailable`.
+
+There is no separate list of the deny-by-default capabilities, because it is derivable: **the ones an operator would have to enable are the catalog entries whose `DefaultPolicy` is `Denied`.** See [Safety → Finding out which capabilities exist](safety.md#finding-out-which-capabilities-exist).
+
+Use `OperationalConstraints` as a forward-looking gate: if `IsReadOnly:true`, don't attempt mutating commands.
 
 ---
 

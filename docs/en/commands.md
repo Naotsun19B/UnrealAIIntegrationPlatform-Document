@@ -105,6 +105,121 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 
 ---
 
+## Writing references, structs and containers
+
+The property-writing commands listed below take the value in either of two forms, and can operate on a single container element instead of replacing the whole value. Which capability a write needs is decided from the property's type while the write runs, so it never appears in the command's declared `RequiredCapabilities` — read the property first (see [Finding out what a write needs](#finding-out-what-a-write-needs)) or take the missing name out of the refusal.
+
+### Capabilities
+
+| Capability | Required when |
+|---|---|
+| `PropertyReferenceEdit` | the value being written is — or contains, at any depth — an object / class / soft / weak / lazy / interface reference, a delegate, or a field path. Clearing a reference needs it too: attaching and detaching a dependency are the same kind of change |
+| `PropertyStructuredEdit` | the property is a struct outside the built-in value catalogue, an array, a set, a map, an optional, or a fixed-size array |
+
+Both are DefaultDenied — enable them in `Config/DefaultUAIP.ini`, see [Safety & Capabilities](safety.md). Writing a struct that contains a reference needs both, so the structured capability alone is not a way around the reference gate.
+
+A module that already governs reference writes through a capability of its own keeps using that name for the reference half: `SetAnimNotifyProperty` reads `AnimNotifyReferenceEdit`, `SetDataflowNodeProperty` reads `DataflowReferenceEdit`, and the Subsonic commands read `SubsonicEventEdit`. The struct / container half is always `PropertyStructuredEdit`. A refusal names the capability that command's own write path actually reads, so the name you are handed is always the one worth asking an operator for.
+
+### Parameters
+
+| Parameter | Type | Meaning |
+|---|---|---|
+| `ValueJson` | any JSON value | The value as a JSON document instead of engine text. Carries the whole new value for a `Replace`, the element for an array `Insert`, and the value half of the pair for a map `Insert` |
+| `Operation` | string | `Replace` (default) / `Insert` / `Remove` / `Clear`. Omitting it leaves the command behaving exactly as it did before element operations existed |
+| `ElementIndex` | integer | The position an array element is inserted at or removed from. An `Insert` may name the position one past the last element, to append. Must be a whole number that fits in a 32-bit signed integer — `1.5` is refused rather than rounded |
+| `ElementKeyJson` | any JSON value | The element a set operation names, or the key half of the pair a map operation names |
+
+`ValueJson` is mutually exclusive with the command's text value parameter — `Value` on every command below except `SetSectionProperty`, which spells it `PropertyValue`. Supplying both is `InvalidParams`.
+
+| Operation | Array | Set | Map |
+|---|---|---|---|
+| `Replace` | replaces the whole container | replaces the whole container | replaces the whole container |
+| `Insert` | inserts `ValueJson` at `ElementIndex` | adds `ElementKeyJson` if it is not already present | stores `ValueJson` under `ElementKeyJson`, overwriting any value that key already had |
+| `Remove` | removes the element at `ElementIndex` | removes `ElementKeyJson` | removes the entry keyed by `ElementKeyJson` |
+| `Clear` | empties the container | empties the container | empties the container |
+
+Which parameters each operation accepts:
+
+- `Replace` takes exactly one of the text value or `ValueJson`, and neither `ElementIndex` nor `ElementKeyJson`
+- `Insert` and `Remove` take exactly one of `ElementIndex` or `ElementKeyJson`, and never the text value
+- `Clear` takes none of `ElementIndex` / `ElementKeyJson` / `ValueJson`
+
+Every violation is refused with `InvalidParams` **before** the property path is resolved, so the answer never depends on which property was named.
+
+A JSON `null` in `ValueJson` is a value, not an omission — it is how a reference is cleared.
+
+### `Value` is no longer a required parameter
+
+On every command in the table below, the text value parameter — `Value`, or `PropertyValue` on `SetSectionProperty` — moved from `Required` to `Optional` in the schema. A schema cannot say "exactly one of these two", and leaving the parameter required would have made `Remove`, `Clear` and every `ValueJson` write unreachable. The Subsonic commands' `Value` changed the same way.
+
+**The set of requests that get refused is unchanged, but the refusal moved and its wording changed.** A `Replace` supplying no value at all used to be rejected by schema validation with a message naming `Value` as a required parameter. It is now rejected by the command itself, with:
+
+- `Invalid parameters: operation 'Replace' requires either 'Value' or 'ValueJson'.` on the fifteen commands that accept both forms
+- `Invalid parameters: operation 'Replace' requires 'Value'.` on the three Subsonic commands, which have no `ValueJson`
+
+`ErrorCode` is `InvalidParams` either way. If your tooling matches on the old message text, update the match.
+
+Other things worth knowing about element operations:
+
+- They are idempotent where the container makes them so. Adding an element a set already holds, or removing one it never held, succeeds. `Success` on its own therefore does not tell you whether anything moved — the artifact carries a `Changed` field next to `Operation` for exactly that, and it is written for a `Replace` too.
+- A container already holding more than 4096 elements is refused whatever the operation, `Remove` and `Clear` included. The whole container is copied and validated before anything is committed, so the ceiling is about the cost of reading it rather than about what the operation would do to it.
+- A key whose type is a reference cannot be rewritten in place — remove the entry and insert it again.
+- Replacing a map wholesale with a document that repeats a key keeps the last occurrence, matching what `Insert` does.
+- An optional value distinguishes three states: absent, present but empty, and present with a value. It takes `Replace` only — the three states already express what `Insert` / `Remove` / `Clear` would say.
+- A fixed-size array (`int32 Values[3]` and the like) also takes `Replace` only, and the JSON array supplied must have exactly as many elements as the property declares.
+- **Replacing one array element in place is expressed in `PropertyPath`, not in `Operation`.** Write `Arr[3]` with the default `Replace`; `Insert` means "put a new element in", never "overwrite the one at this position".
+
+### Commands that accept these parameters
+
+| Command | Domain | Text value parameter | `ValueJson` | Capability for the reference half |
+|---|---|---|---|---|
+| `SetActorProperty` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetAssetProperty` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetBlueprintDefault` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetWorldSetting` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetProjectSetting` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetDataTableRow` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetBlueprintComponentProperty` | `UAIP.Editor.Blueprint` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetSectionProperty` | `UAIP.Editor.Sequencer` | `PropertyValue` | ✅ | `PropertyReferenceEdit` |
+| `SetSoundClassSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetSoundAttenuationSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetSoundMixSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetSoundCueNodeProperty` | `UAIP.Editor.SoundCue` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetDataflowNodeProperty` 🧩 | `UAIP.Editor.Dataflow` | `Value` | ✅ | `DataflowReferenceEdit` |
+| `SetAnimNotifyProperty` | `UAIP.Editor.AnimSequence` | `Value` | ✅ | `AnimNotifyReferenceEdit` |
+| `SetPoseSearchSchemaChannelProperty` 🧩 | `UAIP.Editor.MotionMatching` | `Value` | ✅ | — (references are refused outright) |
+| `SetSubsonicEventActionProperty` 🧩 | `UAIP.Editor.Subsonic` | `Value` (already a JSON value) | — | `SubsonicEventEdit` |
+| `SetSubsonicActionModifierProperty` 🧩 | `UAIP.Editor.Subsonic` | `Value` (already a JSON value) | — | `SubsonicEventEdit` |
+| `SetSubsonicParameterValue` 🧩 | `UAIP.Editor.Subsonic` | `Value` (already a JSON value) | — | `SubsonicEventEdit` |
+
+The three Subsonic commands **do not** take `ValueJson`. Their existing `Value` parameter is already a JSON value rather than engine text, so it carries the structured value directly; a second parameter with the same meaning would only leave callers guessing which one to use. They take `Operation` / `ElementIndex` / `ElementKeyJson` like the rest. Their refusals name `Value` alone and never mention a parameter they do not declare: a `Replace` requires `Value`, and a `Clear` refuses it.
+
+`SetPCGNodeProperty`, `SetCustomCppPCGNodeProperty`, `SetCustomBlueprintPCGNodeProperty` and `SetConversationNodeProperty` already took their value as a JSON document and do not take element operations. What changed for them is that references, structs and containers are no longer refused permanently — those writes are now gated by the two capabilities above, like everywhere else.
+
+### Finding out what a write needs
+
+The matching `Get*` command attaches a `WriteRequirements` object to the value it read:
+
+| Field | Meaning |
+|---|---|
+| `RequiredCapabilities` | the capability names that command's own write path looks up, so granting them actually unblocks the write |
+| `HeldCapabilities` / `MissingCapabilities` | the same names split by whether the session that issued the read holds them |
+| `IsWritable` / `RefusalReason` | whether the property's type and flags permit a write at all, whatever the session holds |
+| `WriteInputForm` | `TextOrJson` or `JsonOnly` — which input field the value has to be supplied in |
+
+A few commands decide writability on their own terms and do not attach this report. For those, attempt the write: the refusal names the capability that is missing. The guidance is what is absent, not the way forward.
+
+### Things that catch people out
+
+- **A hard reference can only point at an asset that is already loaded.** A property write never loads an asset as a side effect, so an object path resolves only if something already has that asset open. "Does not exist" and "exists but is not loaded" come back as the same refusal, because resolving without loading cannot tell them apart — open the asset first, then write. Soft references (`TSoftObjectPtr` / `TSoftClassPtr` / `FSoftObjectPath` / `FSoftClassPath`) are exempt: those are validated against the asset registry and never need the target loaded. This rule now holds for **every** UAIP command that writes a reference, including the Subsonic ones, which used to load the target implicitly — a write that used to succeed may now need the asset opened first.
+- **References and composite values cannot be written as text.** Their `WriteInputForm` is `JsonOnly`: passing an object path in `Value` is refused even with the capability granted, because the text import path would resolve and load the reference behind the capability gate. Use `ValueJson` (or, on the Subsonic commands, the JSON `Value` they already take). A small number of value types go the other way and accept only the text form; `WriteInputForm` is what tells the two apart.
+- **A few commands refuse references outright, capability or not.** `SetPoseSearchSchemaChannelProperty` will not write a reference-bearing type at all: a channel's sub-channel array is how channels are created, and writing it directly would sidestep the class allowlist `AddPoseSearchSchemaChannel` enforces. Use the dedicated channel commands instead. The refusal is a `PolicyViolation` rather than something a permission fixes.
+- **On user-authored PCG nodes, a session without the capabilities sees a narrowed set of types.** `GetCustomPCGNodeSchema`, `GetCustomBlueprintPCGNodeSchema` and `GetPCGNativeNodeSchema` list only the curated types for such a session, and the matching setter's refusal deliberately does not name the type it refused. The response still says that something was left out: `HiddenCount`, `HiddenCapabilities` (which permissions would reveal them) and a `HiddenReasons` object whose `MissingCapability` and `Unwritable` keys are always present and always sum to `HiddenCount`. Grant the named capabilities and the hidden entries appear, with `HiddenCount` back to 0. Property *names* were never hidden — a misspelt name still comes back as "no such property", so a typo stays distinguishable from a missing permission.
+- **Intermediate path segments are checked, not just the last one.** `Struct.Inner` is refused when `Struct` itself is read-only, deprecated, or absent from the Details panel; naming an inner member no longer walks past a read-only level. The same check applies through a container index (`Array[0].Inner`), where it is the container that is inspected.
+- **Values that hold an asset path are written whole.** `FSoftObjectPath`, `FSoftClassPath` and `FTopLevelAssetPath` cannot be addressed member by member — writing their internals would be a way past the reference gate.
+
+---
+
 ## UAIP.Core
 
 System-level commands for discovery, health, and session management.
@@ -113,7 +228,7 @@ System-level commands for discovery, health, and session management.
 |---|---|
 | 🆓 `HealthCheck` | Plugin connectivity check — returns `Status`, `UAIPVersion`, `EngineVersion`, `BuildConfig`, `ProjectFilePath` (absolute path of the open `.uproject`, used by the MCP Bridge to verify it is attaching to the right editor instance), `TransportTimeouts` (per-transport async command timeout in seconds, e.g. `{"HTTP": 120, "WS": 12}`), `QueueCongestion` (how busy the deferred-execution queue is, as one of `None` / `Low` / `High` — the exact number waiting is not returned, since it would let one session infer another session's activity) |
 | 🆓 `GetSystemInfo` | Returns UE version (Major/Minor/Patch/Changelist), project name, platform, build config, UAIP version |
-| 🆓 `QueryCapabilities` | Returns the session's capability set and `OperationalConstraints` (7 policy flags) |
+| 🆓 `QueryCapabilities` | Returns `Capabilities` (the session's effective set), `RegisteredCapabilityCount` / `UngrantedCapabilityCount` (always) and `OperationalConstraints` (9 policy flags). Pass `IncludeUnavailable: true` to also get `RegisteredCapabilities` — every capability the loaded modules declare, each with `Name` / `DefaultPolicy` / `IsGranted`, so one this session does not hold can still be found by name; the deny-by-default ones are the entries whose `DefaultPolicy` is `Denied` |
 | 🆓 `ListCommands` | Filtered command catalog (filters: `ProviderPrefix`, `KeywordFilter`, `IncludeUnavailable`, `Stability`) |
 | 🆓 `DescribeCommand` | Full metadata for a single command (schema, required capabilities, availability) |
 | 🆓 `ListPlugins` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.Plugin.ListPlugins` instead. List installed plugins and their enabled state (JSON) |
@@ -515,7 +630,7 @@ Bridge commands via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Prov
 
 ## UAIP.Editor.Property
 
-Read and write properties on actors, assets, Blueprint defaults, DataTable rows, World / Project settings. `Get*` commands mask secret-looking property values (name matches a secret pattern, has secret metadata, or is a file path type) with `***` — a compound value (e.g. a struct) containing a secret member is masked as a whole, not just the secret sub-field. `Set*` commands accept 17 struct types (vectors, rotators, transforms, colors, `FGuid`, intervals, `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`, `FBoneReference`, …) and every integer width from `int8` through `uint64`; arrays, maps, sets, and object references remain unwritable through these commands.
+Read and write properties on actors, assets, Blueprint defaults, DataTable rows, World / Project settings. `Get*` commands mask secret-looking property values (name matches a secret pattern, has secret metadata, or is a file path type) with `***` — a compound value (e.g. a struct) containing a secret member is masked as a whole, not just the secret sub-field. `Set*` commands accept 17 struct types (vectors, rotators, transforms, colors, `FGuid`, intervals, `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`, `FBoneReference`, …) and every integer width from `int8` through `uint64` in the text `Value`. Arrays, maps, sets, optionals, other structs and object references go in `ValueJson` instead, and a single container element can be addressed with `Operation` / `ElementIndex` / `ElementKeyJson` — see [Writing references, structs and containers](#writing-references-structs-and-containers) for those parameters and the two capabilities (`PropertyReferenceEdit` / `PropertyStructuredEdit`) that gate them.
 
 | Command | Description |
 |---|---|
@@ -564,7 +679,7 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 | `ReparentBlueprintComponent` | Change an SCS component's parent |
 | `DuplicateBlueprintComponent` | Duplicate an SCS component |
 | `GetBlueprintComponentProperty` | Get a property value from an SCS component |
-| `SetBlueprintComponentProperty` | Set a property on an SCS component |
+| `SetBlueprintComponentProperty` | Set a property on an SCS component. The value goes in `Value` as engine text or in `ValueJson` as JSON, and `Operation` / `ElementIndex` / `ElementKeyJson` address a single container element — see [Writing references, structs and containers](#writing-references-structs-and-containers) |
 
 ### Compile (2)
 
@@ -857,7 +972,7 @@ Dataflow graph editing. Requires `DataflowEditor` plugin.
 | `DisconnectDataflowPins` 🧩 | Disconnect a pin connection |
 | `ListDataflowVariables` 🧩 | List graph variables |
 | `GetDataflowNodeProperty` 🧩 | Read a node's `EditAnywhere` property value (primitives / enum / FName / FString / simple structs) |
-| `SetDataflowNodeProperty` 🧩 | Write a node's `EditAnywhere` property value. Domain-agnostic — used by Cloth Weight Map / simulation config nodes among others. A top-level hard object/class reference (e.g. `TObjectPtr<UGroomAsset>`) can also be written: the value is the object path of an **already-loaded** asset, and it requires `DataflowReferenceEdit` on top of `DataflowGraphEdit`. A property write never loads an asset as a side effect. Soft, weak and lazy references — and any struct or array containing a reference — remain unwritable |
+| `SetDataflowNodeProperty` 🧩 | Write a node's `EditAnywhere` property value. Domain-agnostic — used by Cloth Weight Map / simulation config nodes among others. References, structs and containers are written through `ValueJson`, with a single container element addressed by `Operation` / `ElementIndex` / `ElementKeyJson` — see [Writing references, structs and containers](#writing-references-structs-and-containers). A write that touches a reference requires `DataflowReferenceEdit` on top of `DataflowGraphEdit`; a struct or container requires `PropertyStructuredEdit` as well. A hard reference (e.g. `TObjectPtr<UGroomAsset>`) is the object path of an **already-loaded** asset, since a property write never loads an asset as a side effect; soft references are validated against the asset registry and do not need the target loaded |
 
 ### Toolset bridges — Dataflow (7) 🧩
 
@@ -1105,7 +1220,7 @@ SoundCue graph editing.
 | `RemoveSoundCueNode` | Remove a node by NodeId (root deletion returns Conflict) |
 | `ConnectSoundCuePins` | Connect two pins (cycle / dynamic input pin auto-add) |
 | `DisconnectSoundCuePins` | Disconnect a pin connection (PinIndex=-1 disconnects all) |
-| `SetSoundCueNodeProperty` | Set a SoundCue node property (Object / Class / Delegate denylist) |
+| `SetSoundCueNodeProperty` | Set a SoundCue node property. Object / class / delegate references, structs and containers are no longer refused outright — they go in `ValueJson` and are gated by `PropertyReferenceEdit` / `PropertyStructuredEdit`, see [Writing references, structs and containers](#writing-references-structs-and-containers) |
 | `CompileSoundCue` | Rebuild the SoundNode tree from the graph |
 
 ---
@@ -1113,6 +1228,8 @@ SoundCue graph editing.
 ## UAIP.Editor.SoundSettings
 
 SoundClass hierarchy, SoundAttenuation, and SoundMix asset property editing.
+
+The three `Set*Settings` commands take the value in `Value` as engine text or in `ValueJson` as JSON, and address a single container element with `Operation` / `ElementIndex` / `ElementKeyJson` — see [Writing references, structs and containers](#writing-references-structs-and-containers).
 
 | Command | Description |
 |---|---|
@@ -1373,7 +1490,7 @@ LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 | Command | Description |
 |---|---|
 | `GetSectionProperty` | Get a UMovieSceneSection property value |
-| `SetSectionProperty` | Set a UMovieSceneSection property value |
+| `SetSectionProperty` | Set a UMovieSceneSection property value. The value goes in `PropertyValue` as engine text or in `ValueJson` as JSON, and `Operation` / `ElementIndex` / `ElementKeyJson` address a single container element — see [Writing references, structs and containers](#writing-references-structs-and-containers) |
 | `GetSectionWeight` | Get a section's weight |
 | `SetSectionWeight` | Set a section's weight |
 
@@ -1607,13 +1724,13 @@ PCG graph editing. Requires `PCG` plugin.
 | `RemovePCGNode` 🧩 | Remove a node by NodePath (cascades edge removal) |
 | `ConnectPCGPins` 🧩 | Connect pins by NodePath + PinLabel |
 | `DisconnectPCGPins` 🧩 | Disconnect pins (specific pair or all from an output pin) |
-| `SetPCGNodeProperty` 🧩 | Set a UPCGSettings EditAnywhere property (complex types rejected) |
+| `SetPCGNodeProperty` 🧩 | Set a UPCGSettings EditAnywhere property. The value is a JSON document; references, structs and containers are no longer refused permanently but gated by `PropertyReferenceEdit` / `PropertyStructuredEdit` — see [Writing references, structs and containers](#writing-references-structs-and-containers) |
 | `ExecutePCGGraph` 🧩 | Trigger `UPCGComponent::Generate` |
 | `ListCustomPCGNodeTypes` 🧩 | List C++ / Blueprint custom PCG node types |
-| `GetCustomPCGNodeSchema` 🧩 | JSON schema of C++ UPCGSettings subclass EditAnywhere properties |
-| `GetCustomBlueprintPCGNodeSchema` 🧩 | JSON schema of Blueprint UPCGBlueprintSettings subclass properties |
-| `SetCustomCppPCGNodeProperty` 🧩 | Set a property on a C++ custom node (`RecompileTriggered` flag) |
-| `SetCustomBlueprintPCGNodeProperty` 🧩 | Set a property on a BP custom node (Class CDO / per-Instance modes) |
+| `GetCustomPCGNodeSchema` 🧩 | JSON schema of C++ UPCGSettings subclass EditAnywhere properties. A session holding neither `PropertyReferenceEdit` nor `PropertyStructuredEdit` sees a narrowed set of types; what was left out is reported as `HiddenCount` / `HiddenCapabilities` / `HiddenReasons` rather than silently omitted |
+| `GetCustomBlueprintPCGNodeSchema` 🧩 | JSON schema of Blueprint UPCGBlueprintSettings subclass properties. Narrowed the same way as `GetCustomPCGNodeSchema`, with one `HiddenCount` / `HiddenCapabilities` / `HiddenReasons` accounting covering both classes it enumerates |
+| `SetCustomCppPCGNodeProperty` 🧩 | Set a property on a C++ custom node (`RecompileTriggered` flag). References, structs and containers are gated by `PropertyReferenceEdit` / `PropertyStructuredEdit`; the refusal deliberately does not name the property's type — see [Writing references, structs and containers](#writing-references-structs-and-containers) |
+| `SetCustomBlueprintPCGNodeProperty` 🧩 | Set a property on a BP custom node (Class CDO / per-Instance modes). Gated the same way as `SetCustomCppPCGNodeProperty` |
 | `CreatePCGGraph` 🧩 | Create a new UPCGGraph asset in the Content directory (requires `PCGGraphAssetCreate`) |
 | `GetPCGGraphSchema` 🧩 | Return the graph's node / pin structure in schema form |
 | `GetPCGGraphDescription` 🧩 | Get the graph's Description string |
@@ -1626,7 +1743,7 @@ PCG graph editing. Requires `PCG` plugin.
 | `SetPCGGraphInstanceParams` 🧩 | Override instance parameters (requires `PCGGraphEdit`) |
 | `ResetPCGGraphInstanceParams` 🧩 | Reset instance parameters to graph defaults (requires `PCGGraphEdit`) |
 | `ListPCGAvailableSubgraphs` 🧩 | List subgraph candidates in the project |
-| `GetPCGNativeNodeSchema` 🧩 | JSON schema of native PCG node class EditAnywhere properties |
+| `GetPCGNativeNodeSchema` 🧩 | JSON schema of native PCG node class EditAnywhere properties. Narrowed the same way as `GetCustomPCGNodeSchema`, and reports `HiddenCount` / `HiddenCapabilities` / `HiddenReasons` |
 | `AddPCGSubgraphNode` 🧩 | Add a subgraph reference node (requires `PCGGraphEdit`) |
 | `RepositionPCGNode` 🧩 | Move a node to a new position (requires `PCGGraphEdit`) |
 | `AddPCGCommentBox` 🧩 | Add a comment box (requires `PCGGraphEdit`) |
@@ -1719,7 +1836,7 @@ ConversationDB graph editing. Requires `CommonConversation` plugin.
 | `RemoveConversationNode` 🧩 | Remove a node by NodeGuid |
 | `ConnectConversationNodes` 🧩 | Add a transition edge between nodes |
 | `DisconnectConversationNodes` 🧩 | Remove a transition edge |
-| `SetConversationNodeProperty` 🧩 | Set a property (FText sanitized — BIDI strip, PUA reject, 4096 char limit) |
+| `SetConversationNodeProperty` 🧩 | Set a property (FText sanitized — BIDI strip, PUA reject, 4096 char limit). The value is a JSON document; references, structs and containers are no longer refused permanently but gated by `PropertyReferenceEdit` / `PropertyStructuredEdit` — see [Writing references, structs and containers](#writing-references-structs-and-containers) |
 
 ### Toolset bridges — Conversation (5) 🧩
 
@@ -2195,10 +2312,10 @@ Motion Matching editing for the Pose Search plugin — `UPoseSearchDatabase` ani
 | `AddPoseSearchSchemaChannel` (requires `PoseSearchAssetEdit`) | Create a channel of `ChannelClass` and insert it into the channel tree, optionally nested under `ParentChannelPath` at `InsertAt`. Not idempotent — calling it twice creates two channels |
 | `RemovePoseSearchSchemaChannel` (requires `PoseSearchAssetEdit`) | Remove the channel at `ChannelPath` together with every nested descendant; optional `ExpectedChannelClass` guards against removing the wrong channel after a stale path |
 | `MovePoseSearchSchemaChannel` (requires `PoseSearchAssetEdit`) | Reorder the channel at `SourceChannelPath` to `TargetIndex` within its own parent. Moving to a different parent is not supported — remove and re-add instead |
-| `SetPoseSearchSchemaChannelProperty` (requires `PoseSearchAssetEdit`) | Write `Value` (UE text-import syntax, max 4 KiB) into a top-level property of the channel at `ChannelPath`; a post-write validation failure rolls the write back |
+| `SetPoseSearchSchemaChannelProperty` (requires `PoseSearchAssetEdit`) | Write into a top-level property of the channel at `ChannelPath` — `Value` in UE text-import syntax (max 4 KiB), or `ValueJson` as JSON with `Operation` / `ElementIndex` / `ElementKeyJson` for a single container element (see [Writing references, structs and containers](#writing-references-structs-and-containers)). A struct or container additionally requires `PropertyStructuredEdit`. A reference-bearing type is refused with `PolicyViolation` whatever the session holds, because writing a channel's sub-channel array directly would sidestep the class allowlist `AddPoseSearchSchemaChannel` enforces — add channels with that command instead. A post-write validation failure rolls the write back |
 | `AddDefaultPoseSearchSchemaChannels` (requires `PoseSearchAssetEdit`) | Add the same default trajectory + pose channel pair the editor's schema factory creates. Existing channels are kept, not replaced — calling it twice appends a duplicate pair |
 | `GetAvailablePoseSearchChannelClasses` | List every `UPoseSearchFeatureChannel` subclass `AddPoseSearchSchemaChannel` accepts as `ChannelClass`, with `bCanHostSubChannels` marking valid `ParentChannelPath` targets. Heavy — walks every loaded `UClass`; cache the result |
-| `GetPoseSearchChannelClassSchema` | List a channel class's Details-panel properties with `bIsWritable` / `NotWritableReason` for `SetPoseSearchSchemaChannelProperty`, and `DefaultValueText` as a working text-import example for each |
+| `GetPoseSearchChannelClassSchema` | List a channel class's Details-panel properties with `bIsWritable` / `NotWritableReason` for `SetPoseSearchSchemaChannelProperty`, `WriteInputForm` (`TextOrJson` / `JsonOnly` / `None`) and `RequiredCapabilities` naming what a structured write would need, and `DefaultValueText` as a working text-import example for each |
 | `AddSkeletonToPoseSearchSchema` (requires `PoseSearchAssetEdit`) | Add or replace the roled skeleton entry for `Role`, with an optional `MirrorDataTablePath`. Replacing an existing `Role` requires `bAllowOverwrite` |
 | `RemoveSkeletonFromPoseSearchSchema` (requires `PoseSearchAssetEdit`) | Remove the roled skeleton entry for `Role` from the `Skeletons` array |
 
@@ -2228,13 +2345,13 @@ Motion Matching editing for the Pose Search plugin — `UPoseSearchDatabase` ani
 
 Add, remove, and edit AnimNotify / AnimNotifyState entries and notify tracks on `UAnimSequence` / `UAnimMontage` / `UAnimComposite` assets. Built entirely on engine-shipped types — no optional plugin required.
 
-> **Note**: `NotifyGuid` is 32 hex digits with no hyphens (`FGuid::ToString(EGuidFormats::Digits)`) — the form `GetAnimNotifyInfo` reports and every other command in this domain expects back. `SetAnimNotifyProperty` requires `AnimNotifyEdit` for every write, and additionally requires `AnimNotifyReferenceEdit` when the property being written is — or contains — a hard object/class reference (`GetAnimNotifyClassSchema` reports this per property as `bIsObjectReference`). `GetAnimNotifyProperty` is the read-only counterpart — same `NotifyGuid` / `PropertyName` addressing and the same text format as `SetAnimNotifyProperty`'s `Value` and `GetAnimNotifyClassSchema`'s `DefaultValueText`, so all three round-trip byte-for-byte, including a zero-valued property ("0" / "False" / "None" rather than an empty string). Every edit command in this domain is rejected while PIE or SIE is active.
+> **Note**: `NotifyGuid` is 32 hex digits with no hyphens (`FGuid::ToString(EGuidFormats::Digits)`) — the form `GetAnimNotifyInfo` reports and every other command in this domain expects back. `SetAnimNotifyProperty` requires `AnimNotifyEdit` for every write, additionally requires `AnimNotifyReferenceEdit` when the property being written is — or contains — a reference (`GetAnimNotifyClassSchema` reports this per property as `bIsObjectReference`), and additionally requires `PropertyStructuredEdit` when it is a struct outside the value catalogue, an array, a set, a map or an optional. `GetAnimNotifyClassSchema` names both per property under `RequiredCapabilities` and says which input field the value belongs in under `WriteInputForm`. `GetAnimNotifyProperty` is the read-only counterpart — same `NotifyGuid` / `PropertyName` addressing and the same text format as `SetAnimNotifyProperty`'s `Value` and `GetAnimNotifyClassSchema`'s `DefaultValueText`, so all three round-trip byte-for-byte, including a zero-valued property ("0" / "False" / "None" rather than an empty string). Every edit command in this domain is rejected while PIE or SIE is active.
 
 | Command | Description |
 |---|---|
 | `GetAnimNotifyInfo` | Every notify track (`TrackIndex` / `TrackName` / `TrackColor`) and every notify / notify state entry (guid, class, timing, montage-specific fields) on the asset, plus asset-level scalars (`AssetKind` / `PlayLength` / `NumTracks` / `NumNotifies` / `NumInvalidGuids`). For a `UAnimComposite` this only covers the asset's own `Notifies` array, not the notifies carried by its segments' `AnimSequence`s. Read-only, requires `EditorInspect` |
 | `GetAvailableAnimNotifyClasses` | List every `UAnimNotify` / `UAnimNotifyState` subclass `AddAnimNotify` / `AddAnimNotifyState` would accept as `ClassPath`, with `bIsNotifyState` / `bCanBePlaced` / `NotPlaceableReason`. Only currently loaded classes are visible. Heavy — walks every loaded `UClass`; cache the result. Read-only, requires `EditorInspect` |
-| `GetAnimNotifyClassSchema` | List the Details-panel properties of a `UAnimNotify` / `UAnimNotifyState` subclass, each with `bIsWritable` / `NotWritableReason` for `SetAnimNotifyProperty`, `bIsObjectReference`, and `DefaultValueText` as a working text-import example. Read-only, requires `EditorInspect` |
+| `GetAnimNotifyClassSchema` | List the Details-panel properties of a `UAnimNotify` / `UAnimNotifyState` subclass, each with `bIsWritable` / `NotWritableReason` for `SetAnimNotifyProperty`, `WriteInputForm` (`TextOrJson` / `JsonOnly` / `None`), `RequiredCapabilities`, `bIsObjectReference`, and `DefaultValueText` as a working text-import example. Read-only, requires `EditorInspect` |
 | `GetAnimNotifyProperty` | Read one property (`PropertyName`) or, when it is omitted or empty, every property `GetAnimNotifyClassSchema` would enumerate for the notify instance identified by `NotifyGuid`. All-properties reads report `NumProperties` / `bTruncated` in place of `PropertyName` / `Value` and truncate on overflow; a single-property read instead fails with `InvalidParams` rather than being cut short. Secret-looking values are masked the same way `GetAnimNotifyClassSchema`'s `DefaultValueText` and `SetAnimNotifyProperty`'s `AppliedValue` are. Never mutates the asset. Read-only and Idempotent, requires `EditorInspect` |
 | `AddAnimNotifyTrack` (requires `AnimNotifyEdit`) | Ensure a notify track named `TrackName` exists, creating it (optional `TrackColor`, default white) when it does not. Idempotent-on-existence — an existing track's `TrackIndex` is returned as-is and `TrackColor` is ignored. Rejected while PIE/SIE is active |
 | `RemoveAnimNotifyTrack` (requires `AnimNotifyEdit`) | Remove the notify track named `TrackName`, deleting every notify placed on it and shifting later tracks' indices down by one; the response's `RemovedNotifyGuids` / `ReindexedNotifies` report the full blast radius. Fails with `NotFound` on an already-removed track. Rejected while PIE/SIE is active |
@@ -2242,7 +2359,7 @@ Add, remove, and edit AnimNotify / AnimNotifyState entries and notify tracks on 
 | `AddAnimNotifyState` (requires `AnimNotifyEdit`) | Add a single notify state spanning `[StartTime, StartTime + Duration]` to `TrackName`; `ClassPath` must resolve to a `UAnimNotifyState` subclass. Not idempotent — repeated calls create independent notify states with new `NotifyGuid`s. Rejected while PIE/SIE is active |
 | `RemoveAnimNotify` (requires `AnimNotifyEdit`) | Remove exactly one notify identified by `NotifyGuid`. Optional `ExpectedNotifyClassPath` / `ExpectedNotifyName` is an optimistic-concurrency guard. Fails with `NotFound` rather than a no-op success once the guid no longer resolves. Rejected with `NotAllowed` while PIE/SIE is active |
 | `SetAnimNotifyEvent` (requires `AnimNotifyEdit`) | Partially update one notify's event fields (`StartTime` / `Duration` / `TrackName` / `NotifyName` / `MontageTickType` / trigger and filter settings) identified by `NotifyGuid` — only the supplied fields change. `Duration` is rejected on a point notify; `MontageTickType` is rejected outside `UAnimMontage`. Rejected with `NotAllowed` while PIE/SIE is active |
-| `SetAnimNotifyProperty` (requires `AnimNotifyEdit`; hard object/class reference writes additionally require `AnimNotifyReferenceEdit`) | Write one top-level property on the notify instance identified by `NotifyGuid`, in the same text-import format `GetAnimNotifyClassSchema` reports as `DefaultValueText`. Also writable now: `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag` (rejected as `InvalidParams` for an unregistered tag, a tag outside a `Categories` / `GameplayTagFilter` scope, or a duplicate tag inside a container) and `FBoneReference` (rejected as `InvalidParams` for a bone the target skeleton does not have, or when no skeleton can be resolved to validate against). Soft/weak/lazy references, maps, sets, and other reference-containing structs/arrays are still not writable. Rejected with `NotAllowed` while PIE/SIE is active |
+| `SetAnimNotifyProperty` (requires `AnimNotifyEdit`; hard object/class reference writes additionally require `AnimNotifyReferenceEdit`) | Write one top-level property on the notify instance identified by `NotifyGuid`, in the same text-import format `GetAnimNotifyClassSchema` reports as `DefaultValueText`. Also writable now: `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag` (rejected as `InvalidParams` for an unregistered tag, a tag outside a `Categories` / `GameplayTagFilter` scope, or a duplicate tag inside a container) and `FBoneReference` (rejected as `InvalidParams` for a bone the target skeleton does not have, or when no skeleton can be resolved to validate against). Soft / weak / lazy references, maps, sets, optionals and other structs or arrays — reference-containing ones included — are written through `ValueJson`, with a single container element addressed by `Operation` / `ElementIndex` / `ElementKeyJson` (see [Writing references, structs and containers](#writing-references-structs-and-containers)); a hard reference names an **already-loaded** asset, since a write never loads one as a side effect. Rejected with `NotAllowed` while PIE/SIE is active |
 | `FixupAnimNotifyGuids` (requires `AnimNotifyEdit`) | Assign a fresh guid to every notify whose guid is currently invalid; legacy notifies otherwise get an unstable guid on every reload until this is run and the asset is saved. Idempotent — nothing to repair succeeds with `NumFixed: 0`. Rejected while PIE/SIE is active |
 
 ---
@@ -2347,7 +2464,7 @@ Structural editing of `USubsonicEventCollection` assets for the Subsonic audio e
 | `AddSubsonicEventAction` | Instantiate `ActionStructPath` and insert it into `EventTag`'s action sequence at `InsertIndex`, or append when omitted. `ExpectedActionsFingerprint` is required only when `InsertIndex` is set. Returns the updated `ActionsFingerprint` and a bounded `Actions[]` list. Rejected while a play session is in progress |
 | `RemoveSubsonicEventAction` | Remove the action at `Index` (together with its property bindings) from `EventTag`'s action sequence. `ExpectedActionFingerprint` is always required. Returns the updated `ActionsFingerprint` and `Actions[]`. Rejected while a play session is in progress |
 | `MoveSubsonicEventAction` | Relocate the action at `FromIndex` so it ends up at `ToIndex` (the position in the resulting array with the moved element already taken out). `FromIndex == ToIndex` succeeds as a no-op. `ExpectedActionFingerprint` and `ExpectedActionsFingerprint` are both always required. Rejected while a play session is in progress |
-| `SetSubsonicEventActionProperty` | Write `Value` into the top-level `PropertyName` property of the action at `Index`. A nested `TArray<TInstancedStruct<...>>` (`Modifiers`) property is rejected — use the dedicated `AddSubsonicActionModifier` / `RemoveSubsonicActionModifier` / `MoveSubsonicActionModifier` / `SetSubsonicActionModifierProperty` commands instead. `ExpectedActionFingerprint` is always required. Rejected while a play session is in progress |
+| `SetSubsonicEventActionProperty` | Write `Value` into the top-level `PropertyName` property of the action at `Index`. `Value` is already a JSON value and carries structured values directly, so this command has no `ValueJson`; `Operation` / `ElementIndex` / `ElementKeyJson` address a single container element (see [Writing references, structs and containers](#writing-references-structs-and-containers)). A struct or container additionally requires `PropertyStructuredEdit`. A reference names an **already-loaded** asset — this command no longer loads the target implicitly, so a write that used to succeed may now need the asset opened first. A nested `TArray<TInstancedStruct<...>>` (`Modifiers`) property is rejected — use the dedicated `AddSubsonicActionModifier` / `RemoveSubsonicActionModifier` / `MoveSubsonicActionModifier` / `SetSubsonicActionModifierProperty` commands instead. `ExpectedActionFingerprint` is always required. Rejected while a play session is in progress |
 
 #### Action Modifier editing (4) — requires `SubsonicEventEdit`
 
@@ -2356,7 +2473,7 @@ Structural editing of `USubsonicEventCollection` assets for the Subsonic audio e
 | `AddSubsonicActionModifier` | Instantiate `ModifierStructPath` and insert it into the `ModifiersPropertyName` array of the action at `Index`, at `InsertIndex` or appended. Not idempotent — repeated calls with the same arguments add multiple modifiers. Always requires `ExpectedActionFingerprint`, because a modifier array is part of its owning action's fingerprint. Rejected while a play session is in progress |
 | `RemoveSubsonicActionModifier` | Remove the modifier at `ModifierIndex` from the `ModifiersPropertyName` array of the action at `Index`. Always requires `ExpectedActionFingerprint`. Rejected while a play session is in progress |
 | `MoveSubsonicActionModifier` | Relocate the modifier at `ModifierFromIndex` so it ends up at `ModifierToIndex`, within the `ModifiersPropertyName` array of the action at `Index`. Equal indices succeed as a no-op that opens no transaction. Always requires `ExpectedActionFingerprint`. Rejected while a play session is in progress |
-| `SetSubsonicActionModifierProperty` | Write `Value` into the top-level `PropertyName` property of the modifier at `ModifierIndex`. Always requires `ExpectedActionFingerprint`. Rejected while a play session is in progress |
+| `SetSubsonicActionModifierProperty` | Write `Value` into the top-level `PropertyName` property of the modifier at `ModifierIndex`. `Value` is already a JSON value and there is no `ValueJson`; `Operation` / `ElementIndex` / `ElementKeyJson` address a single container element (see [Writing references, structs and containers](#writing-references-structs-and-containers)). A struct or container additionally requires `PropertyStructuredEdit`, and a reference names an **already-loaded** asset — the target is no longer loaded implicitly. Always requires `ExpectedActionFingerprint`. Rejected while a play session is in progress |
 
 #### Parameter editing (3) — requires `SubsonicEventEdit`
 
@@ -2364,7 +2481,7 @@ Structural editing of `USubsonicEventCollection` assets for the Subsonic audio e
 |---|---|
 | `AddSubsonicParameter` | Add a parameter named `ParameterName` to the `FInstancedPropertyBag` selected by `Scope` (`Collection` or `Event`; `EventTag` required for `Event`). `ParameterType` is an `EPropertyBagPropertyType` enumerator name (`Bool` / `Int32` / `Int64` / `Float` / `Double` / `Name` / `String` / `Enum` / `Object` / `Struct`); `ValueTypePath` is required for `Enum` / `Object` / `Struct` and must be omitted for every other type — a struct `ValueTypePath` is additionally limited to `FGameplayTag`, the only currently writable struct type. Re-adding an existing parameter name is rejected rather than overwritten, so an existing binding's type can never change silently. Rejected while a play session is in progress |
 | `RemoveSubsonicParameter` | Remove the parameter named `ParameterName` from the selected `Scope`'s bag. `UnboundPropertyCount` / `ReboundPropertyCount` classify what happened to every action property that was bound to it — rebound properties kept resolving because a same-named, type-compatible collection-level parameter took over (only possible for `Scope: "Event"`). Fails with `NotFound` when no parameter named `ParameterName` exists in the selected scope. Rejected while a play session is in progress |
-| `SetSubsonicParameterValue` | Set the default value of the existing parameter named `ParameterName` in the selected `Scope`'s bag. `Value` is validated through the same allowlist the action-property setters use, including NaN/Inf rejection for `Float` / `Double`. Fails with `NotFound` when no parameter named `ParameterName` exists in the selected scope. Rejected while a play session is in progress |
+| `SetSubsonicParameterValue` | Set the default value of the existing parameter named `ParameterName` in the selected `Scope`'s bag. `Value` is validated through the same allowlist the action-property setters use, including NaN/Inf rejection for `Float` / `Double`. `Value` is already a JSON value and there is no `ValueJson`; `Operation` / `ElementIndex` / `ElementKeyJson` address a single container element (see [Writing references, structs and containers](#writing-references-structs-and-containers)). A struct or container additionally requires `PropertyStructuredEdit`, and a reference names an **already-loaded** asset — the target is no longer loaded implicitly. Fails with `NotFound` when no parameter named `ParameterName` exists in the selected scope. Rejected while a play session is in progress |
 
 #### Property Binding editing (2) — requires `SubsonicEventEdit`
 

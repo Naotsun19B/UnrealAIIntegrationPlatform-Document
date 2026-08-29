@@ -105,6 +105,121 @@ UAIP では 2 種類のコマンドを公開しています：
 
 ---
 
+## 参照・構造体・コンテナの書き込み
+
+以下に挙げるプロパティ書き込みコマンドは、値を 2 通りの形式で受け取り、値全体を置き換える代わりにコンテナの要素 1 つだけを操作することもできます。どの Capability が必要になるかは書き込み実行時にプロパティの型から決まるため、コマンドが宣言する `RequiredCapabilities` には現れません — 先にプロパティを読む（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）か、拒否の返答から不足している名前を読み取ってください。
+
+### Capability
+
+| Capability | 必要になる条件 |
+|---|---|
+| `PropertyReferenceEdit` | 書き込む値がオブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパスであるか、それらを（どの深さであれ）内包している場合。参照を空にする操作にも必要です — 依存関係を付けることと外すことは同じ種類の変更だからです |
+| `PropertyStructuredEdit` | プロパティが、組み込みの値カタログ外の構造体・配列・セット・マップ・オプショナル・固定長配列である場合 |
+
+どちらも DefaultDenied です — `Config/DefaultUAIP.ini` で有効化してください（[Safety & Capabilities](safety.md) 参照）。参照を内包する構造体の書き込みには**両方**が必要なので、構造側の Capability だけで参照のゲートを迂回することはできません。
+
+すでに独自の Capability で参照の書き込みを管理しているモジュールは、参照側についてはその名前を使い続けます — `SetAnimNotifyProperty` は `AnimNotifyReferenceEdit`、`SetDataflowNodeProperty` は `DataflowReferenceEdit`、Subsonic の各コマンドは `SubsonicEventEdit` を参照します。構造・コンテナ側は常に `PropertyStructuredEdit` です。拒否の返答は、そのコマンド自身の書き込み経路が実際に参照する Capability 名を返すため、案内された名前は常に運用者へ依頼する価値のある名前になっています。
+
+### パラメータ
+
+| パラメータ | 型 | 意味 |
+|---|---|---|
+| `ValueJson` | 任意の JSON 値 | エンジンのテキスト形式ではなく JSON ドキュメントとしての値。`Replace` では新しい値そのもの、配列の `Insert` では挿入する要素、マップの `Insert` ではペアの値側を運びます |
+| `Operation` | 文字列 | `Replace`（既定）/ `Insert` / `Remove` / `Clear`。省略すると、要素操作が存在しなかった頃とまったく同じ挙動になります |
+| `ElementIndex` | 整数 | 配列要素を挿入・削除する位置。`Insert` では最後の要素の 1 つ後ろの位置を指定して末尾へ追加できます。32 ビット符号付き整数に収まる整数値である必要があります — `1.5` は丸められるのではなく拒否されます |
+| `ElementKeyJson` | 任意の JSON 値 | セット操作が指す要素、またはマップ操作が指すペアのキー側 |
+
+`ValueJson` はそのコマンドのテキスト値パラメータと排他です — 以下のコマンドではすべて `Value` ですが、`SetSectionProperty` だけは `PropertyValue` という綴りです。両方を指定すると `InvalidParams` になります。
+
+| 操作 | 配列 | セット | マップ |
+|---|---|---|---|
+| `Replace` | コンテナ全体を置き換える | コンテナ全体を置き換える | コンテナ全体を置き換える |
+| `Insert` | `ElementIndex` の位置へ `ValueJson` を挿入 | `ElementKeyJson` がまだ無ければ追加 | `ElementKeyJson` をキーとして `ValueJson` を格納（既存の値は上書き） |
+| `Remove` | `ElementIndex` の要素を削除 | `ElementKeyJson` を削除 | `ElementKeyJson` をキーとするエントリを削除 |
+| `Clear` | コンテナを空にする | コンテナを空にする | コンテナを空にする |
+
+各操作が受け付けるパラメータ：
+
+- `Replace` はテキスト値と `ValueJson` の**ちょうど一方**を取り、`ElementIndex` / `ElementKeyJson` はいずれも取りません
+- `Insert` / `Remove` は `ElementIndex` と `ElementKeyJson` の**ちょうど一方**を取り、テキスト値は取りません
+- `Clear` は `ElementIndex` / `ElementKeyJson` / `ValueJson` のいずれも取りません
+
+これらの違反はすべて、プロパティパスを解決する**前**に `InvalidParams` として拒否されます。したがって答えが「たまたま名指ししたプロパティの事情」に左右されることはありません。
+
+`ValueJson` に JSON の `null` を指定するのは「値の省略」ではなく「値として null を指定する」ことであり、参照を空にする方法がこれです。
+
+### `Value` は必須パラメータではなくなりました
+
+下表のすべてのコマンドで、テキスト値のパラメータ（`Value`、`SetSectionProperty` では `PropertyValue`）がスキーマ上 `Required` から `Optional` へ変わりました。スキーマは「どちらか一方が必要」を表現できず、必須のままでは `Remove` / `Clear` と `ValueJson` による書き込みがすべて到達不能になるためです。Subsonic の各コマンドの `Value` も同様に変わりました。
+
+**拒否されるリクエストの集合は変わっていませんが、拒否される段と文言が変わりました。** 値を何も指定しない `Replace` は、従来はスキーマ検証の段で「`Value` が必須である」旨のメッセージとともに拒否されていました。現在はコマンド自身が次の文言で拒否します。
+
+- 両方の形式を受け付ける 15 コマンド: `Invalid parameters: operation 'Replace' requires either 'Value' or 'ValueJson'.`
+- `ValueJson` を持たない Subsonic の 3 コマンド: `Invalid parameters: operation 'Replace' requires 'Value'.`
+
+`ErrorCode` はいずれも `InvalidParams` のままです。古いメッセージ本文で分岐している場合は書き換えてください。
+
+要素操作について知っておくとよいこと：
+
+- コンテナの性質上そうなる範囲で冪等です。セットに既にある要素を足す、セットやマップに無い要素を消す、といった操作は成功します。したがって `Success` だけでは何かが動いたかどうかは分かりません — そのために成果物には `Operation` と並んで `Changed` フィールドが載ります（`Replace` でも載ります）
+- 既に 4096 要素を超えるコンテナは、`Remove` / `Clear` を含めどの操作でも拒否されます。コミット前にコンテナ全体をコピーして検証するため、この上限は「その操作がコンテナに何をするか」ではなく「コンテナを読むコスト」に対するものです
+- キーの型が参照であるエントリは、キーだけを書き換えることはできません — 削除してから挿入し直してください
+- マップを丸ごと置き換えるドキュメントに同じキーが複数含まれる場合は、後から現れたものが残ります（`Insert` と同じ扱い）
+- オプショナルな値は「値なし」「値ありだが中身が空」「値あり」の 3 状態を区別します。受け付ける操作は `Replace` のみです — `Insert` / `Remove` / `Clear` が言おうとすることは、この 3 状態で既に表現できるためです
+- 固定長配列（`int32 Values[3]` のような形）も `Replace` のみを受け付け、渡す JSON 配列の要素数はプロパティが宣言する個数と一致している必要があります
+- **配列要素をその場で置き換える操作は `Operation` ではなく `PropertyPath` で表します。** `Arr[3]` を既定の `Replace` で書いてください。`Insert` は「新しい要素を差し込む」操作であり、「その位置の要素を上書きする」操作ではありません
+
+### これらのパラメータを受け付けるコマンド
+
+| コマンド | ドメイン | テキスト値のパラメータ | `ValueJson` | 参照側の Capability |
+|---|---|---|---|---|
+| `SetActorProperty` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetAssetProperty` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetBlueprintDefault` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetWorldSetting` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetProjectSetting` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetDataTableRow` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetBlueprintComponentProperty` | `UAIP.Editor.Blueprint` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetSectionProperty` | `UAIP.Editor.Sequencer` | `PropertyValue` | ✅ | `PropertyReferenceEdit` |
+| `SetSoundClassSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetSoundAttenuationSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetSoundMixSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetSoundCueNodeProperty` | `UAIP.Editor.SoundCue` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetDataflowNodeProperty` 🧩 | `UAIP.Editor.Dataflow` | `Value` | ✅ | `DataflowReferenceEdit` |
+| `SetAnimNotifyProperty` | `UAIP.Editor.AnimSequence` | `Value` | ✅ | `AnimNotifyReferenceEdit` |
+| `SetPoseSearchSchemaChannelProperty` 🧩 | `UAIP.Editor.MotionMatching` | `Value` | ✅ | —（参照は一律拒否） |
+| `SetSubsonicEventActionProperty` 🧩 | `UAIP.Editor.Subsonic` | `Value`（元から JSON 値） | — | `SubsonicEventEdit` |
+| `SetSubsonicActionModifierProperty` 🧩 | `UAIP.Editor.Subsonic` | `Value`（元から JSON 値） | — | `SubsonicEventEdit` |
+| `SetSubsonicParameterValue` 🧩 | `UAIP.Editor.Subsonic` | `Value`（元から JSON 値） | — | `SubsonicEventEdit` |
+
+Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `Value` パラメータがエンジンのテキストではなく元から JSON 値であり、構造化された値をそのまま運べるためです。同じ意味のパラメータを 2 つ並べても、利用者がどちらを使うべきか判断できなくなるだけです。`Operation` / `ElementIndex` / `ElementKeyJson` は他と同様に受け付けます。拒否文も `Value` だけを名指しし、宣言していないパラメータには一切触れません — `Replace` は `Value` を必要とし、`Clear` は `Value` を拒否します。
+
+`SetPCGNodeProperty` / `SetCustomCppPCGNodeProperty` / `SetCustomBlueprintPCGNodeProperty` / `SetConversationNodeProperty` は、元から値を JSON ドキュメントとして受け取っており、要素操作は取りません。これらで変わったのは、参照・構造体・コンテナを**恒久的に拒否しなくなった**点です — 他と同じく、上記 2 つの Capability で開くようになりました。
+
+### 書き込みに何が必要かを知る
+
+対応する `Get*` コマンドは、読み取った値に `WriteRequirements` オブジェクトを添えて返します。
+
+| フィールド | 意味 |
+|---|---|
+| `RequiredCapabilities` | そのコマンド自身の書き込み経路が実際に照会する Capability 名。付与すれば実際に書けるようになる名前 |
+| `HeldCapabilities` / `MissingCapabilities` | 上記のうち、読み取りを発行したセッションが保有しているもの / していないもの |
+| `IsWritable` / `RefusalReason` | セッションが何を持っているかに関わらず、そのプロパティの型とフラグが書き込みを許すかどうか |
+| `WriteInputForm` | `TextOrJson` または `JsonOnly` — 値をどちらの入力欄で渡す必要があるか |
+
+一部のコマンドは独自の判定で書き込み可否を決めており、この報告を添えません。その場合は書き込みを試してください — 拒否の返答に不足している Capability 名が載ります。無いのは事前の案内だけで、進めなくなるわけではありません。
+
+### つまずきやすいところ
+
+- **ハード参照は、既に読み込まれているアセットしか指せません。** プロパティの書き込みが副作用でアセットを読み込むことはないため、オブジェクトパスは、そのアセットを既に何かが開いている場合にのみ解決されます。「存在しない」と「存在するが読み込まれていない」は同じ拒否として返ります — 読み込まずに両者を区別する手段がないためです。先にアセットを開いてから書き込んでください。ソフト参照（`TSoftObjectPtr` / `TSoftClassPtr` / `FSoftObjectPath` / `FSoftClassPath`）は対象外で、アセットレジストリに対して検証されるため対象の読み込みを必要としません。この規則は、参照を書き込む**すべての** UAIP コマンドに及びます — 従来は参照先を暗黙に読み込んでいた Subsonic の各コマンドも含まれるため、以前は通っていた書き込みが、先にアセットを開かないと通らなくなる場合があります。
+- **参照と複合値はテキスト形式では書けません。** これらの `WriteInputForm` は `JsonOnly` で、Capability を付与してもオブジェクトパスを `Value` に渡すと拒否されます。テキストインポート経路は Capability のゲートの内側で参照を解決・ロードしてしまうためです。`ValueJson`（Subsonic の各コマンドでは元から JSON である `Value`）を使ってください。逆にテキスト形式でしか書けない値型もわずかに存在します。どちらかは `WriteInputForm` が示します。
+- **一部のコマンドは、Capability の有無に関わらず参照そのものを拒否します。** `SetPoseSearchSchemaChannelProperty` は参照を内包する型を一切書き込みません — チャンネルのサブチャンネル配列はチャンネルを作成する経路そのものであり、そこへ直接書けると `AddPoseSearchSchemaChannel` が持つクラス許可リストを迂回できてしまうためです。専用のチャンネルコマンドを使ってください。これは権限で解除できるものではなく `PolicyViolation` として返ります。
+- **ユーザー製 PCG ノードでは、Capability を持たないセッションに見える型が絞られます。** `GetCustomPCGNodeSchema` / `GetCustomBlueprintPCGNodeSchema` / `GetPCGNativeNodeSchema` はそうしたセッションに対して curated な型だけを列挙し、対応する setter の拒否文も意図的に型名を明かしません。ただし応答は「何かが除かれたこと」自体は伝えます — `HiddenCount`、`HiddenCapabilities`（どの権限があれば見えるか）、そして `MissingCapability` / `Unwritable` の 2 キーを常に持ち合計が `HiddenCount` と一致する `HiddenReasons` オブジェクトが返ります。案内された Capability を付与すれば隠れていた項目が現れ、`HiddenCount` は 0 に戻ります。なお**プロパティ名**は元から隠していません — 綴りを間違えれば「そのプロパティは無い」と返るため、打ち間違いと権限不足は引き続き区別できます。
+- **パスの途中のセグメントも検査されます。** `Struct` 自体が読み取り専用・非推奨・Details パネルに現れない場合、`Struct.Inner` は拒否されます — 内側のメンバーを名指しして読み取り専用の階層を通り抜けることはできません。コンテナのインデックスを挟む場合（`Array[0].Inner`）にも同じ検査が働き、判定対象はコンテナ本体になります。
+- **アセットパスを保持する値は 1 つのまとまりとして書き込みます。** `FSoftObjectPath` / `FSoftClassPath` / `FTopLevelAssetPath` はメンバー単位では指定できません — 内側を書き換えられると参照のゲートを素通りできてしまうためです。
+
+---
+
 ## UAIP.Core
 
 検索・ヘルスチェック・セッション管理などのシステムレベルコマンド。
@@ -113,7 +228,7 @@ UAIP では 2 種類のコマンドを公開しています：
 |---|---|
 | 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` に加え、`ProjectFilePath`（開いている `.uproject` の絶対パス。MCP Bridge が正しいエディタインスタンスへアタッチしているか検証するために使う）・`TransportTimeouts`（トランスポートごとの非同期コマンドタイムアウト秒数。例 `{"HTTP": 120, "WS": 12}`）・`QueueCongestion`（遅延実行キューの混雑度。`None` / `Low` / `High` の 3 段階。正確な待ち件数は他セッションの活動量を推測させるため返しません）を返す |
 | 🆓 `GetSystemInfo` | UE バージョン（Major/Minor/Patch/Changelist）・プロジェクト名・プラットフォーム・ビルド設定・UAIP バージョンを返す |
-| 🆓 `QueryCapabilities` | セッションの Capability セットと `OperationalConstraints`（7 つのポリシーフラグ）を返す |
+| 🆓 `QueryCapabilities` | `Capabilities`（セッションの実効セット）・`RegisteredCapabilityCount` / `UngrantedCapabilityCount`（常に返る）・`OperationalConstraints`（9 つのポリシーフラグ）を返す。`IncludeUnavailable: true` を渡すと `RegisteredCapabilities`（ロード済みモジュールが宣言したすべての Capability。各要素が `Name` / `DefaultPolicy` / `IsGranted` を持つため、このセッションが保有していないものも名前で見つけられる。既定で拒否されるものは `DefaultPolicy` が `Denied` の要素）も返る |
 | 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`ProviderPrefix`・`KeywordFilter`・`IncludeUnavailable`・`Stability`） |
 | 🆓 `DescribeCommand` | 単一コマンドの完全メタデータ（スキーマ・必要 Capability・可用性） |
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
@@ -515,7 +630,7 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 ## UAIP.Editor.Property
 
-アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。`Get*` 系コマンドは、シークレットらしきプロパティ値（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）をネストした struct メンバーも含めて `***` でマスクする — シークレットなメンバーを内包する複合値（struct 等）は、その部分だけでなく値全体がマスク対象になる。`Set*` 系コマンドは 17 種の struct 型（ベクトル・回転・Transform・カラー・`FGuid`・区間型・`FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`・`FBoneReference` など）と `int8` から `uint64` までの全整数幅を書き込み可能。配列・マップ・セット・オブジェクト参照はこれらのコマンドからは引き続き書き込み不可。
+アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。`Get*` 系コマンドは、シークレットらしきプロパティ値（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）をネストした struct メンバーも含めて `***` でマスクする — シークレットなメンバーを内包する複合値（struct 等）は、その部分だけでなく値全体がマスク対象になる。`Set*` 系コマンドは、テキスト値 `Value` で 17 種の struct 型（ベクトル・回転・Transform・カラー・`FGuid`・区間型・`FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`・`FBoneReference` など）と `int8` から `uint64` までの全整数幅を書き込める。配列・マップ・セット・オプショナル・その他の構造体・オブジェクト参照は `ValueJson` で渡し、コンテナの要素 1 つだけを `Operation` / `ElementIndex` / `ElementKeyJson` で操作できる — パラメータと、これらを制御する 2 つの Capability（`PropertyReferenceEdit` / `PropertyStructuredEdit`）については [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。
 
 | コマンド | 説明 |
 |---|---|
@@ -564,7 +679,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `ReparentBlueprintComponent` | SCS コンポーネントの親を変更 |
 | `DuplicateBlueprintComponent` | SCS コンポーネントを複製 |
 | `GetBlueprintComponentProperty` | SCS コンポーネントのプロパティ値を取得 |
-| `SetBlueprintComponentProperty` | SCS コンポーネントのプロパティを設定 |
+| `SetBlueprintComponentProperty` | SCS コンポーネントのプロパティを設定。値はエンジンテキストなら `Value`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
 
 ### コンパイル（2）
 
@@ -857,7 +972,7 @@ Dataflow グラフ編集。`DataflowEditor` プラグインが必要です。
 | `DisconnectDataflowPins` 🧩 | ピン接続を切断 |
 | `ListDataflowVariables` 🧩 | グラフ変数一覧 |
 | `GetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を取得（プリミティブ / enum / FName / FString / 単純構造体） |
-| `SetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を設定。ドメイン非依存（Cloth の Weight Map・シミュレーション設定ノード等から利用される）。トップレベルのハードなオブジェクト / クラス参照（例: `TObjectPtr<UGroomAsset>`）も書き込める — 値は**既にロード済み**のアセットのオブジェクトパスで、`DataflowGraphEdit` に加えて `DataflowReferenceEdit` が必要。プロパティ書き込みが副作用でアセットをロードすることはない。ソフト / ウィーク / レイジー参照と、参照を含む構造体・配列は引き続き書き込めない |
+| `SetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を設定。ドメイン非依存（Cloth の Weight Map・シミュレーション設定ノード等から利用される）。参照・構造体・コンテナは `ValueJson` で書き込み、コンテナの要素 1 つは `Operation` / `ElementIndex` / `ElementKeyJson` で指定する — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。参照に触れる書き込みは `DataflowGraphEdit` に加えて `DataflowReferenceEdit` が必要で、構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。ハード参照（例: `TObjectPtr<UGroomAsset>`）の値は**既にロード済み**のアセットのオブジェクトパス — プロパティ書き込みが副作用でアセットをロードすることはない。ソフト参照はアセットレジストリに対して検証されるため、対象のロードを必要としない |
 
 ### Toolset ブリッジ — Dataflow（7 件）🧩
 
@@ -1105,7 +1220,7 @@ SoundCue グラフ編集。
 | `RemoveSoundCueNode` | NodeId 指定でノードを削除（ルート削除は Conflict） |
 | `ConnectSoundCuePins` | 2 ピンを接続（循環検出・動的入力ピン自動追加） |
 | `DisconnectSoundCuePins` | ピン接続を切断（PinIndex=-1 で全切断） |
-| `SetSoundCueNodeProperty` | SoundCue ノードのプロパティを設定（Object / Class / Delegate denylist） |
+| `SetSoundCueNodeProperty` | SoundCue ノードのプロパティを設定。オブジェクト / クラス / デリゲート参照・構造体・コンテナは恒久的に拒否されなくなり、`ValueJson` で渡して `PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
 | `CompileSoundCue` | SoundNode ツリーをグラフから再構築 |
 
 ---
@@ -1113,6 +1228,8 @@ SoundCue グラフ編集。
 ## UAIP.Editor.SoundSettings
 
 SoundClass ツリー・SoundAttenuation・SoundMix アセットのプロパティ設定。
+
+下記 3 つの `Set*Settings` コマンドは、値をエンジンテキストなら `Value`、JSON なら `ValueJson` で受け取り、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。
 
 | コマンド | 説明 |
 |---|---|
@@ -1373,7 +1490,7 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | コマンド | 説明 |
 |---|---|
 | `GetSectionProperty` | UMovieSceneSection のプロパティ値を取得 |
-| `SetSectionProperty` | UMovieSceneSection のプロパティを設定 |
+| `SetSectionProperty` | UMovieSceneSection のプロパティを設定。値はエンジンテキストなら `PropertyValue`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
 | `GetSectionWeight` | セクションの重みを取得 |
 | `SetSectionWeight` | セクションの重みを設定 |
 
@@ -1607,13 +1724,13 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 | `RemovePCGNode` 🧩 | NodePath 指定でノードを削除（接続エッジも同時削除） |
 | `ConnectPCGPins` 🧩 | NodePath + PinLabel でピンを接続 |
 | `DisconnectPCGPins` 🧩 | ピン切断（特定ペア / 出力ピンからの全切断） |
-| `SetPCGNodeProperty` 🧩 | UPCGSettings EditAnywhere プロパティを設定（複合型は拒否） |
+| `SetPCGNodeProperty` 🧩 | UPCGSettings EditAnywhere プロパティを設定。値は JSON ドキュメント。参照・構造体・コンテナは恒久的に拒否されなくなり、`PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
 | `ExecutePCGGraph` 🧩 | `UPCGComponent::Generate` を起動 |
 | `ListCustomPCGNodeTypes` 🧩 | C++ / Blueprint カスタム PCG ノードタイプ一覧 |
-| `GetCustomPCGNodeSchema` 🧩 | C++ UPCGSettings サブクラスの EditAnywhere プロパティを JSON スキーマで返す |
-| `GetCustomBlueprintPCGNodeSchema` 🧩 | Blueprint UPCGBlueprintSettings サブクラスのプロパティを JSON スキーマで返す |
-| `SetCustomCppPCGNodeProperty` 🧩 | C++ カスタムノードのプロパティを書き換え（`RecompileTriggered` フラグ） |
-| `SetCustomBlueprintPCGNodeProperty` 🧩 | BP カスタムノードのプロパティを書き換え（Class CDO / Instance の 2 モード） |
+| `GetCustomPCGNodeSchema` 🧩 | C++ UPCGSettings サブクラスの EditAnywhere プロパティを JSON スキーマで返す。`PropertyReferenceEdit` / `PropertyStructuredEdit` のいずれも持たないセッションには型を絞った集合を返す。除かれた分は黙って省略せず `HiddenCount` / `HiddenCapabilities` / `HiddenReasons` として報告する |
+| `GetCustomBlueprintPCGNodeSchema` 🧩 | Blueprint UPCGBlueprintSettings サブクラスのプロパティを JSON スキーマで返す。`GetCustomPCGNodeSchema` と同じ絞り込みが働き、列挙する 2 クラス分をまとめた 1 つの `HiddenCount` / `HiddenCapabilities` / `HiddenReasons` を返す |
+| `SetCustomCppPCGNodeProperty` 🧩 | C++ カスタムノードのプロパティを書き換え（`RecompileTriggered` フラグ）。参照・構造体・コンテナは `PropertyReferenceEdit` / `PropertyStructuredEdit` で制御され、拒否文は意図的にプロパティの型を明かさない — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
+| `SetCustomBlueprintPCGNodeProperty` 🧩 | BP カスタムノードのプロパティを書き換え（Class CDO / Instance の 2 モード）。制御のされ方は `SetCustomCppPCGNodeProperty` と同じ |
 | `CreatePCGGraph` 🧩 | 新規 UPCGGraph アセットを Content ディレクトリに作成（`PCGGraphAssetCreate` 必須） |
 | `GetPCGGraphSchema` 🧩 | グラフのノード / ピン構成をスキーマ形式で取得 |
 | `GetPCGGraphDescription` 🧩 | グラフの Description 文字列を取得 |
@@ -1626,7 +1743,7 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 | `SetPCGGraphInstanceParams` 🧩 | インスタンスパラメータをオーバーライド（`PCGGraphEdit` 必須） |
 | `ResetPCGGraphInstanceParams` 🧩 | インスタンスパラメータをデフォルトにリセット（`PCGGraphEdit` 必須） |
 | `ListPCGAvailableSubgraphs` 🧩 | プロジェクト内のサブグラフ候補を列挙 |
-| `GetPCGNativeNodeSchema` 🧩 | ネイティブ PCG ノードクラスの EditAnywhere プロパティを JSON スキーマで返す |
+| `GetPCGNativeNodeSchema` 🧩 | ネイティブ PCG ノードクラスの EditAnywhere プロパティを JSON スキーマで返す。`GetCustomPCGNodeSchema` と同じ絞り込みが働き、`HiddenCount` / `HiddenCapabilities` / `HiddenReasons` を返す |
 | `AddPCGSubgraphNode` 🧩 | サブグラフ参照ノードを追加（`PCGGraphEdit` 必須） |
 | `RepositionPCGNode` 🧩 | ノード位置を変更（`PCGGraphEdit` 必須） |
 | `AddPCGCommentBox` 🧩 | コメントボックスを追加（`PCGGraphEdit` 必須） |
@@ -1719,7 +1836,7 @@ ConversationDB グラフ編集。`CommonConversation` プラグインが必要�
 | `RemoveConversationNode` 🧩 | NodeGuid 指定でノードを削除 |
 | `ConnectConversationNodes` 🧩 | ノード間の遷移エッジを追加 |
 | `DisconnectConversationNodes` 🧩 | 遷移エッジを削除 |
-| `SetConversationNodeProperty` 🧩 | プロパティを設定（FText は BIDI strip・PUA reject・4096 文字上限） |
+| `SetConversationNodeProperty` 🧩 | プロパティを設定（FText は BIDI strip・PUA reject・4096 文字上限）。値は JSON ドキュメント。参照・構造体・コンテナは恒久的に拒否されなくなり、`PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
 
 ### Toolset ブリッジ — Conversation（5 件）🧩
 
@@ -2195,10 +2312,10 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 | `AddPoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `ChannelClass` のチャンネルを作成し、チャンネルツリーへ挿入。任意で `ParentChannelPath` の下へネストし、`InsertAt` で挿入位置を指定可能。冪等ではない — 同じクラスで 2 回呼ぶとチャンネルが 2 つできる |
 | `RemovePoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルを、ネストされた子孫チャンネルもろとも削除。任意の `ExpectedChannelClass` で、古いパスによる誤削除を防止できる |
 | `MovePoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `SourceChannelPath` のチャンネルを、その親の中で `TargetIndex` へ並べ替え。別の親への移動は非対応 — 削除して追加し直すこと |
-| `SetPoseSearchSchemaChannelProperty`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルのトップレベルプロパティへ `Value`（UE テキストインポート形式、最大 4 KiB）を書き込む。書き込み後の検証に失敗した場合は書き込みをロールバック |
+| `SetPoseSearchSchemaChannelProperty`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルのトップレベルプロパティへ書き込む — `Value`（UE テキストインポート形式、最大 4 KiB）または `ValueJson`（JSON）で値を渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。参照を内包する型はセッションの保有 Capability に関わらず `PolicyViolation` で拒否される — チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうため、チャンネルの追加は専用コマンドで行うこと。書き込み後の検証に失敗した場合は書き込みをロールバック |
 | `AddDefaultPoseSearchSchemaChannels`（要 `PoseSearchAssetEdit`） | エディタの Schema ファクトリが作成するのと同じ既定チャンネル（Trajectory + Pose）を追加。既存チャンネルは削除されず維持される — 2 回呼ぶと重複したペアが追加される |
 | `GetAvailablePoseSearchChannelClasses` | `AddPoseSearchSchemaChannel` が `ChannelClass` として受け付ける `UPoseSearchFeatureChannel` サブクラスを一覧表示。`bCanHostSubChannels` で有効な `ParentChannelPath` の対象を示す。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること |
-| `GetPoseSearchChannelClassSchema` | チャンネルクラスの Details パネル表示プロパティを一覧表示。各プロパティについて `SetPoseSearchSchemaChannelProperty` で書き込み可能かを `bIsWritable` / `NotWritableReason` で示し、`DefaultValueText` はそのまま使えるテキストインポート形式の例を提供 |
+| `GetPoseSearchChannelClassSchema` | チャンネルクラスの Details パネル表示プロパティを一覧表示。各プロパティについて `SetPoseSearchSchemaChannelProperty` で書き込み可能かを `bIsWritable` / `NotWritableReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と、構造化形式での書き込みが要求する `RequiredCapabilities` を返す。`DefaultValueText` はそのまま使えるテキストインポート形式の例を提供 |
 | `AddSkeletonToPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Role` のロール付きスケルトンエントリを追加または置き換え。任意で `MirrorDataTablePath` を指定可能。既存の `Role` を置き換えるには `bAllowOverwrite` が必要 |
 | `RemoveSkeletonFromPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Skeletons` 配列から `Role` のロール付きスケルトンエントリを削除 |
 
@@ -2228,13 +2345,13 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 
 `UAnimSequence` / `UAnimMontage` / `UAnimComposite` アセットの AnimNotify / AnimNotifyState エントリと通知トラックの追加・削除・編集。エンジン標準の型のみで構成されており、オプションプラグインは不要。
 
-> **Note**: `NotifyGuid` はハイフンなしの 32 桁 16 進数（`FGuid::ToString(EGuidFormats::Digits)`）— `GetAnimNotifyInfo` が報告し、本ドメインの他の全コマンドが受け取る形式と同じ。`SetAnimNotifyProperty` はすべての書き込みで `AnimNotifyEdit` を必要とし、書き込むプロパティがハードなオブジェクト/クラス参照であるか、それを内包する場合は追加で `AnimNotifyReferenceEdit` が必要（`GetAnimNotifyClassSchema` がプロパティごとに `bIsObjectReference` として報告）。`GetAnimNotifyProperty` は読み取り専用の対となるコマンドで、`NotifyGuid` / `PropertyName` によるアドレッシングも、`SetAnimNotifyProperty` の `Value` および `GetAnimNotifyClassSchema` の `DefaultValueText` と同じテキスト形式も共通であり、ゼロ値のプロパティ（空文字列ではなく "0" / "False" / "None"）も含めて 3 コマンド間でバイト単位に往復できる。本ドメインの編集系コマンドはすべて、PIE または SIE 実行中は拒否される。
+> **Note**: `NotifyGuid` はハイフンなしの 32 桁 16 進数（`FGuid::ToString(EGuidFormats::Digits)`）— `GetAnimNotifyInfo` が報告し、本ドメインの他の全コマンドが受け取る形式と同じ。`SetAnimNotifyProperty` はすべての書き込みで `AnimNotifyEdit` を必要とし、書き込むプロパティが参照であるか、それを内包する場合は追加で `AnimNotifyReferenceEdit` が（`GetAnimNotifyClassSchema` がプロパティごとに `bIsObjectReference` として報告）、値カタログ外の構造体・配列・セット・マップ・オプショナルの場合はさらに `PropertyStructuredEdit` が必要。`GetAnimNotifyClassSchema` は両者をプロパティごとに `RequiredCapabilities` として、値をどちらの入力欄で渡すかを `WriteInputForm` として返す。`GetAnimNotifyProperty` は読み取り専用の対となるコマンドで、`NotifyGuid` / `PropertyName` によるアドレッシングも、`SetAnimNotifyProperty` の `Value` および `GetAnimNotifyClassSchema` の `DefaultValueText` と同じテキスト形式も共通であり、ゼロ値のプロパティ（空文字列ではなく "0" / "False" / "None"）も含めて 3 コマンド間でバイト単位に往復できる。本ドメインの編集系コマンドはすべて、PIE または SIE 実行中は拒否される。
 
 | コマンド | 説明 |
 |---|---|
 | `GetAnimNotifyInfo` | アセット上の全通知トラック（`TrackIndex` / `TrackName` / `TrackColor`）と全通知/通知ステートエントリ（guid・クラス・タイミング・Montage 固有フィールド）、およびアセットレベルのスカラー値（`AssetKind` / `PlayLength` / `NumTracks` / `NumNotifies` / `NumInvalidGuids`）を取得。`UAnimComposite` の場合、対象はアセット自身の `Notifies` 配列のみで、セグメントの `AnimSequence` が持つ通知は含まれない。読み取り専用、要 `EditorInspect` |
 | `GetAvailableAnimNotifyClasses` | `AddAnimNotify` / `AddAnimNotifyState` が `ClassPath` として受け付ける全 `UAnimNotify` / `UAnimNotifyState` サブクラスを一覧表示。`bIsNotifyState` / `bCanBePlaced` / `NotPlaceableReason` を付与。現在ロード済みのクラスのみが対象。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること。読み取り専用、要 `EditorInspect` |
-| `GetAnimNotifyClassSchema` | `UAnimNotify` / `UAnimNotifyState` サブクラスの Details パネル表示プロパティを一覧表示。各プロパティについて `SetAnimNotifyProperty` で書き込み可能かを `bIsWritable` / `NotWritableReason` で示し、`bIsObjectReference` と、そのまま使えるテキストインポート形式の例 `DefaultValueText` を提供。読み取り専用、要 `EditorInspect` |
+| `GetAnimNotifyClassSchema` | `UAnimNotify` / `UAnimNotifyState` サブクラスの Details パネル表示プロパティを一覧表示。各プロパティについて `SetAnimNotifyProperty` で書き込み可能かを `bIsWritable` / `NotWritableReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）・`RequiredCapabilities`・`bIsObjectReference` と、そのまま使えるテキストインポート形式の例 `DefaultValueText` を提供。読み取り専用、要 `EditorInspect` |
 | `GetAnimNotifyProperty` | `NotifyGuid` で識別される通知インスタンスについて、プロパティ 1 件（`PropertyName`）、または省略時・空文字時は `GetAnimNotifyClassSchema` が列挙する全プロパティを読み取る。全件読み取りは `PropertyName` / `Value` の代わりに `NumProperties` / `bTruncated` を報告し、上限超過時は切り詰める。単一プロパティ読み取りは切り詰めず、上限超過は `InvalidParams` で拒否する。秘密扱いの値は `GetAnimNotifyClassSchema` の `DefaultValueText` や `SetAnimNotifyProperty` の `AppliedValue` と同じ方式でマスクされる。アセットを変更しない。読み取り専用かつ冪等、要 `EditorInspect` |
 | `AddAnimNotifyTrack`（要 `AnimNotifyEdit`） | `TrackName` という名前の通知トラックが存在することを保証し、存在しない場合は作成する（任意の `TrackColor`、既定は白）。既存判定に対して冪等 — 既存トラックの `TrackIndex` はそのまま返され、`TrackColor` は無視される。PIE/SIE 実行中は拒否 |
 | `RemoveAnimNotifyTrack`（要 `AnimNotifyEdit`） | `TrackName` という名前の通知トラックを削除し、その上に置かれた全通知も削除する。以降のトラックのインデックスは 1 つずつ繰り上がる — 応答の `RemovedNotifyGuids` / `ReindexedNotifies` が影響範囲全体を報告する。すでに削除済みのトラックには `NotFound` で失敗。PIE/SIE 実行中は拒否 |
@@ -2242,7 +2359,7 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 | `AddAnimNotifyState`（要 `AnimNotifyEdit`） | `TrackName` へ `[StartTime, StartTime + Duration]` にまたがる単発の通知ステートを追加する。`ClassPath` は `UAnimNotifyState` サブクラスを解決する必要がある。冪等ではない — 繰り返し呼ぶと新しい `NotifyGuid` を持つ独立した通知ステートが作成される。PIE/SIE 実行中は拒否 |
 | `RemoveAnimNotify`（要 `AnimNotifyEdit`） | `NotifyGuid` で識別される通知を 1 件だけ削除する。任意の `ExpectedNotifyClassPath` / `ExpectedNotifyName` は楽観的並行性制御のガード。guid が解決できなくなった場合は no-op 成功ではなく `NotFound` で失敗する。PIE/SIE 実行中は `NotAllowed` で拒否 |
 | `SetAnimNotifyEvent`（要 `AnimNotifyEdit`） | `NotifyGuid` で識別される通知のイベントフィールド（`StartTime` / `Duration` / `TrackName` / `NotifyName` / `MontageTickType` / トリガー・フィルタ設定）を部分更新する — 指定したフィールドのみが変更される。`Duration` は点通知に対しては拒否、`MontageTickType` は `UAnimMontage` 以外では拒否。PIE/SIE 実行中は `NotAllowed` で拒否 |
-| `SetAnimNotifyProperty`（要 `AnimNotifyEdit`。ハードなオブジェクト/クラス参照の書き込みは追加で `AnimNotifyReferenceEdit` が必要） | `NotifyGuid` で識別される通知インスタンスのトップレベルプロパティ 1 件を、`GetAnimNotifyClassSchema` が `DefaultValueText` として報告するのと同じテキストインポート形式で書き込む。新たに `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`（未登録タグ、`Categories` / `GameplayTagFilter` の範囲外のタグ、コンテナ内の重複タグはいずれも `InvalidParams` で拒否）と `FBoneReference`（対象スケルトンに存在しないボーン名、または照合先スケルトンを解決できない場合は `InvalidParams` で拒否）も書き込み可能。ソフト/ウィーク/レイジー参照、マップ、セット、参照を含むその他の構造体/配列は引き続き書き込み不可。PIE/SIE 実行中は `NotAllowed` で拒否 |
+| `SetAnimNotifyProperty`（要 `AnimNotifyEdit`。ハードなオブジェクト/クラス参照の書き込みは追加で `AnimNotifyReferenceEdit` が必要） | `NotifyGuid` で識別される通知インスタンスのトップレベルプロパティ 1 件を、`GetAnimNotifyClassSchema` が `DefaultValueText` として報告するのと同じテキストインポート形式で書き込む。新たに `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`（未登録タグ、`Categories` / `GameplayTagFilter` の範囲外のタグ、コンテナ内の重複タグはいずれも `InvalidParams` で拒否）と `FBoneReference`（対象スケルトンに存在しないボーン名、または照合先スケルトンを解決できない場合は `InvalidParams` で拒否）も書き込み可能。ソフト/ウィーク/レイジー参照、マップ、セット、オプショナル、参照を含むものも含めたその他の構造体/配列は `ValueJson` で書き込み、コンテナの要素 1 つは `Operation` / `ElementIndex` / `ElementKeyJson` で指定する（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。ハード参照の値は**既にロード済み**のアセットを指すもので、書き込みが副作用でアセットをロードすることはない。PIE/SIE 実行中は `NotAllowed` で拒否 |
 | `FixupAnimNotifyGuids`（要 `AnimNotifyEdit`） | guid が現在無効な全通知に新しい guid を割り当てる。レガシー通知はこれを実行してアセットを保存するまで、リロードのたびに不安定な guid を持ち続ける。冪等 — 修復対象がない場合も `NumFixed: 0` で成功する。PIE/SIE 実行中は拒否 |
 
 ---
@@ -2347,7 +2464,7 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 | `AddSubsonicEventAction` | `ActionStructPath` をインスタンス化し、`EventTag` のアクションシーケンスの `InsertIndex` へ挿入、省略時は末尾に追加する。`ExpectedActionsFingerprint` は `InsertIndex` を指定した場合のみ必須。更新後の `ActionsFingerprint` と、上限付きの `Actions[]` を返す。プレイセッション実行中は拒否 |
 | `RemoveSubsonicEventAction` | `EventTag` のアクションシーケンスから `Index` のアクション（およびそのプロパティバインディング）を削除する。`ExpectedActionFingerprint` は常に必須。更新後の `ActionsFingerprint` と `Actions[]` を返す。プレイセッション実行中は拒否 |
 | `MoveSubsonicEventAction` | `FromIndex` のアクションを移動し、`ToIndex`（移動対象を取り除いた後の配列における位置）へ配置する。`FromIndex == ToIndex` は成功する no-op。`ExpectedActionFingerprint` と `ExpectedActionsFingerprint` の両方が常に必須。プレイセッション実行中は拒否 |
-| `SetSubsonicEventActionProperty` | `Index` のアクションのトップレベルプロパティ `PropertyName` へ `Value` を書き込む。ネストされた `TArray<TInstancedStruct<...>>`（`Modifiers`）プロパティは拒否される — 代わりに専用の `AddSubsonicActionModifier` / `RemoveSubsonicActionModifier` / `MoveSubsonicActionModifier` / `SetSubsonicActionModifierProperty` を使用すること。`ExpectedActionFingerprint` は常に必須。プレイセッション実行中は拒否 |
+| `SetSubsonicEventActionProperty` | `Index` のアクションのトップレベルプロパティ `PropertyName` へ `Value` を書き込む。`Value` は元から JSON 値で構造化された値をそのまま運べるため、このコマンドに `ValueJson` は無い。`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。参照の値は**既にロード済み**のアセットを指すもので、このコマンドは参照先を暗黙にロードしなくなったため、以前は通っていた書き込みが先にアセットを開かないと通らなくなる場合がある。ネストされた `TArray<TInstancedStruct<...>>`（`Modifiers`）プロパティは拒否される — 代わりに専用の `AddSubsonicActionModifier` / `RemoveSubsonicActionModifier` / `MoveSubsonicActionModifier` / `SetSubsonicActionModifierProperty` を使用すること。`ExpectedActionFingerprint` は常に必須。プレイセッション実行中は拒否 |
 
 #### Action Modifier editing（4 コマンド）— 要 `SubsonicEventEdit`
 
@@ -2356,7 +2473,7 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 | `AddSubsonicActionModifier` | `ModifierStructPath` をインスタンス化し、`Index` のアクションの `ModifiersPropertyName` 配列へ、`InsertIndex` または末尾に挿入する。冪等ではない — 同じ引数で繰り返し呼ぶと複数の Modifier が追加される。Modifier 配列はその所有アクションの fingerprint の一部であるため、常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
 | `RemoveSubsonicActionModifier` | `Index` のアクションの `ModifiersPropertyName` 配列から `ModifierIndex` の Modifier を削除する。常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
 | `MoveSubsonicActionModifier` | `Index` のアクションの `ModifiersPropertyName` 配列内で、`ModifierFromIndex` の Modifier を `ModifierToIndex` へ移動する。同一インデックスの指定はトランザクションを開かず成功する no-op。常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
-| `SetSubsonicActionModifierProperty` | `ModifierIndex` の Modifier のトップレベルプロパティ `PropertyName` へ `Value` を書き込む。常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
+| `SetSubsonicActionModifierProperty` | `ModifierIndex` の Modifier のトップレベルプロパティ `PropertyName` へ `Value` を書き込む。`Value` は元から JSON 値のため `ValueJson` は無く、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要で、参照の値は**既にロード済み**のアセットを指す（参照先は暗黙にロードされなくなった）。常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
 
 #### Parameter editing（3 コマンド）— 要 `SubsonicEventEdit`
 
@@ -2364,7 +2481,7 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 |---|---|
 | `AddSubsonicParameter` | `Scope`（`Collection` または `Event`。`Event` の場合は `EventTag` が必須）で選択された `FInstancedPropertyBag` へ、`ParameterName` という名前のパラメータを追加する。`ParameterType` は `EPropertyBagPropertyType` の列挙子名（`Bool` / `Int32` / `Int64` / `Float` / `Double` / `Name` / `String` / `Enum` / `Object` / `Struct`）。`ValueTypePath` は `Enum` / `Object` / `Struct` でのみ必須で、それ以外では省略が必要 — struct 型の `ValueTypePath` はさらに `FGameplayTag`（現時点で書き込み可能な唯一の struct 型）に限定される。既存のパラメータ名を再度追加しようとした場合は、上書きではなく拒否される。プレイセッション実行中は拒否 |
 | `RemoveSubsonicParameter` | 選択された `Scope` のバッグから `ParameterName` のパラメータを削除する。`UnboundPropertyCount` / `ReboundPropertyCount` は、そのパラメータにバインドされていた全アクションプロパティの結果を分類する — rebind されたプロパティは、同名かつ型互換の Collection レベルのパラメータが引き継いだために解決を維持できたもの（`Scope: "Event"` の場合のみ発生しうる）。選択したスコープに `ParameterName` のパラメータが無い場合は `NotFound` で失敗。プレイセッション実行中は拒否 |
-| `SetSubsonicParameterValue` | 選択された `Scope` のバッグにある既存パラメータ `ParameterName` の既定値を設定する。`Value` はアクションプロパティの setter と同じ許可リストで検証され、`Float` / `Double` の NaN/Inf も拒否される。選択したスコープに `ParameterName` のパラメータが無い場合は `NotFound` で失敗。プレイセッション実行中は拒否 |
+| `SetSubsonicParameterValue` | 選択された `Scope` のバッグにある既存パラメータ `ParameterName` の既定値を設定する。`Value` はアクションプロパティの setter と同じ許可リストで検証され、`Float` / `Double` の NaN/Inf も拒否される。`Value` は元から JSON 値のため `ValueJson` は無く、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要で、参照の値は**既にロード済み**のアセットを指す（参照先は暗黙にロードされなくなった）。選択したスコープに `ParameterName` のパラメータが無い場合は `NotFound` で失敗。プレイセッション実行中は拒否 |
 
 #### Property Binding editing（2 コマンド）— 要 `SubsonicEventEdit`
 
