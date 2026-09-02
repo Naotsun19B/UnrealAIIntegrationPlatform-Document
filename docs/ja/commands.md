@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1125 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1546 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1158 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1579 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -56,10 +56,13 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
 | Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | 7 | — |
 | Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
-| Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
+| Editor Skeleton | `UAIP.Editor.Skeleton` | 11 | — | — |
 | Editor MetaHuman 🧩 | `UAIP.Editor.MetaHuman` | 56 | 9 | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 8 | — | — |
-| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 11 | — | — |
+| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 19 | — | — |
+| Editor AnimBlueprint UAF 🧩 | `UAIP.Editor.AnimBlueprint.UAF` | 1 | — | — |
+| Editor UAF 🧩 | `UAIP.Editor.UAF` | 19 | — | — |
+| Editor UAF AnimGraph 🧩 | `UAIP.Editor.UAF.AnimGraph` | 1 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
 | Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
@@ -73,7 +76,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 68 | 107 | — |
-| Editor ControlRig Dynamics 🧩 | `UAIP.Editor.ControlRig.Dynamics` | 16 | — | — |
+| Editor ControlRig Dynamics 🧩 | `UAIP.Editor.ControlRig.Dynamics` | 17 | — | — |
 | Editor ControlRig Physics 🧩 | `UAIP.Editor.ControlRig.Physics` | 8 | — | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 8 | 14 | — |
@@ -185,6 +188,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | `SetSoundAttenuationSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
 | `SetSoundMixSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
 | `SetSoundCueNodeProperty` | `UAIP.Editor.SoundCue` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetAnimGraphNodeProperty` | `UAIP.Editor.AnimBlueprint` | `Value` | ✅ | `AnimBlueprintReferenceEdit` |
 | `SetDataflowNodeProperty` 🧩 | `UAIP.Editor.Dataflow` | `Value` | ✅ | `DataflowReferenceEdit` |
 | `SetAnimNotifyProperty` | `UAIP.Editor.AnimSequence` | `Value` | ✅ | `AnimNotifyReferenceEdit` |
 | `SetPoseSearchSchemaChannelProperty` 🧩 | `UAIP.Editor.MotionMatching` | `Value` | ✅ | —（参照は一律拒否） |
@@ -238,7 +242,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ## Capability でゲートされたカスタム型
 
-いくつかのドメインは、プロジェクトやプラグインが定義した型を Capability の付与があって初めて通します — 各ドメイン自身の Note を参照してください（例: [UAIP.Editor.Material](#uaipeditormaterial)、[UAIP.Editor.AnimBlueprint](#uaipeditoranimblueprint)）。以下はそれらすべてに共通する内容で、ドメインごとには繰り返しません。
+いくつかのドメインは、プロジェクトやプラグインが定義した型を Capability の付与があって初めて通します — 各ドメイン自身の Note を参照してください（例: [UAIP.Editor.Material](#uaipeditormaterial)、[UAIP.Editor.AnimBlueprint](#uaipeditoranimblueprint)、[UAIP.Editor.UAF](#uaipeditoruaf-)、[UAIP.Editor.BehaviorTree](#uaipeditorbehaviortree)、[UAIP.Editor.MetaSound](#uaipeditormetasound-)、[UAIP.Editor.EQS](#uaipeditoreqs-)、[UAIP.Editor.StateTree](#uaipeditorstatetree)）。以下はそれらすべてに共通する内容で、ドメインごとには繰り返しません。
 
 - **確認は `Add*` だけでなく、その型に触る操作すべてで行われます。** ゲートされた型のノードがグラフに存在するようになった後は、そのノードを編集・接続・切断・コンパイル・削除するとき、また実効型を変更する（Reparent）ときや参照を新規作成・差し替えるときにも、同じ Capability があらためて確認されます。追加時に Capability を持っていたことは以降の呼び出しには引き継がれません — セッションが後から Capability を失えば（role の変更、`AllowedCapabilities` の絞り込みなど）、それらの後続操作も `Add*` と同じように権限不足で断られます。
 - **⚠️ 破壊的変更 — 削除と切断は従来ゲートされていませんでした。** この変更以前は、各ドメインの `Add*` コマンドだけが追加する型を検査しており、ノードの削除やピンの切断はノードの型に関わらず無条件で通っていました。現在はそうではありません。ゲートされた型のノードを削除・切断するには、それを最初に作成するときに `Add*` が要求したのと同じ Capability が必要です。
@@ -1089,6 +1093,11 @@ Skeleton と SkeletalMesh 編集。
 | `RemoveVirtualBone` | バーチャルボーンを削除 |
 | `GetSkeletalMeshInfo` | USkeletalMesh の LOD・マテリアルスロット・関連 Skeleton パス（読み取り専用） |
 | `SetSkeletalMeshMaterial` | SkeletalMesh のマテリアルスロットにマテリアルを割り当て |
+| `CreateBlendProfile` | Skeleton に BlendProfile を新規作成 — `Mode` は `TimeFactor` / `WeightFactor` / `BlendMask` のいずれか（`LayeredBoneBlend` ノードの `BlendMasks` に割り当てる場合は `BlendMask` を使う。他の 2 モードはそこでは何も効果を持たない） |
+| `SetBlendProfileBoneScale` | 既存の BlendProfile 内にある 1 ボーンの Blend Scale を設定 |
+| `ListBlendProfiles` | Skeleton に登録済みの BlendProfile を列挙（読み取り専用） |
+
+> **Note**: このドメインの書き込みコマンドはすべて、`/Game/` プレフィックスの条件は満たすもののより深い検証に失敗するパス（`..` によるパストラバーサル・512 文字超過・不可視の制御文字・不正なパッケージ名）に対して、従来の `NotFound` ではなく `NotAllowed` を返すようになりました。これは破壊的変更ではありません — これらのパスは従来も成功しておらず、この端ケース固有の従来のエラーコードもドキュメント化されていませんでした — が、`ErrorCode` でパス拒否を判定しているツールがあれば留意してください。
 
 ---
 
@@ -1246,7 +1255,7 @@ Anim Blueprint グラフと StateMachine 編集。
 
 | コマンド | 説明 |
 |---|---|
-| `GetAnimBlueprintInfo` | AnimGraph ノード一覧と StateMachine 構造（PIE 中は degraded モード） |
+| `GetAnimBlueprintInfo` | AnimGraph ノード一覧と StateMachine 構造（PIE 中は degraded モード）。任意引数 `IncludePins`（既定 false）を true にすると各ノードエントリに `Pins[]` 配列が追加される。省略時の出力は従来どおり変わらない |
 | `GetAvailableAnimGraphNodeClasses` | `UAnimGraphNode_Base` サブクラス一覧 — `ClassPath` を `AddAnimGraphNode` に渡す |
 | `AddAnimGraphNode` | `UAnimGraphNode_Base` 派生ノードを NodeClass 指定で追加 — プロジェクトやプラグインが定義したクラスには Capability が必要、詳細は下記の Note を参照 |
 | `RemoveAnimGraphNode` | NodeId 指定でノードを削除 |
@@ -1257,6 +1266,14 @@ Anim Blueprint グラフと StateMachine 編集。
 | `AddAnimTransition` | From→To Transition を追加（重複時 idempotent） |
 | `RemoveAnimTransition` | NodeId 指定で Transition を削除 |
 | `CompileAnimBlueprint` | コンパイルし CompileStatus + エラーログを返す |
+| `SetAnimGraphNodeProperty` | AnimGraph ノードの `EditAnywhere` プロパティをドット記法の `PropertyPath` で書き込み。参照は `ValueJson` + `AnimBlueprintReferenceEdit`、構造体・コンテナは `PropertyStructuredEdit` 経由 — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
+| `GetAnimGraphNodeDetails` | AnimGraph ノード 1 個分のピン・プロパティ詳細（読み取り専用。秘匿値は `IsSecret: true` のみ報告され `Value` は省略される） |
+| `AddAnimGraphNodePosePin` | 動的な Pose 入力ピンを 1 つ追加（現状は `UAnimGraphNode_LayeredBoneBlend` のみ対応）。非冪等 |
+| `RemoveAnimGraphNodePosePin` | `PinIndex` 指定で動的な Pose 入力ピンを 1 つ削除。削除すると残りのピン番号が繰り上がる |
+| `AddAnimLayerGraph` | ルート AnimBlueprint 上に自己完結型の Anim Layer グラフを新規作成。派生 AnimBlueprint 上では拒否される |
+| `RemoveAnimLayerGraph` | 自己完結型の Anim Layer グラフを削除。`RemoveReferencingNodes` が true の場合、参照している `LinkedAnimLayer` ノードも合わせて削除 |
+| `ImplementAnimLayerInterface` | `UAnimLayerInterface` 派生インターフェースを実装し、宣言された anim-layer 関数ごとに 1 つずつレイヤーグラフを生成。`AnimBlueprintReferenceEdit` が必要（実装インターフェース一覧へクラス参照を書き込むため） |
+| `AddLinkedAnimLayerNode` | 自己完結型レイヤー、または（`InterfacePath` 指定時は）実装済みインターフェースのレイヤー関数を指す `LinkedAnimLayer` ノードを配置。後者はさらに `AnimBlueprintReferenceEdit` が必要 |
 
 > **Note — プロジェクト定義・プラグイン定義の AnimGraph ノードクラスは Capability で制御されます**: このドメインが従来から信頼してきた 3 モジュール（`AnimGraph` / `AnimGraphRuntime` / `Engine`）由来の `NodeClass` は、従来どおり追加できます。それ以外のモジュール由来のクラス — プロジェクトやプラグインが定義した `UAnimGraphNode_Base` 派生クラス — は `AnimBlueprintCustomTypeEdit` が必要になりました。Material とは異なり、このドメインには対になる「危険なノード」用の Capability はありません — 8 種のノード（`UAnimGraphNode_StateResult` / `TransitionResult` / `TransitionPoseEvaluator` / `Root` / `StateMachineBase` / `LinkedAnimGraph` / `LinkedAnimLayer` / `CustomProperty`）は、**どの Capability を持っていても** AnimGraph のルートには置けません — これらは内部専用・サブグラフ専用のノード種別であり、グラフがその方向からの追加を受け付けないという話であって、権限で解禁できる危険性ではありません。`AnimBlueprintCustomTypeEdit` を含むいかなる Capability もこの結果を変えません。[Safety & Capabilities](safety.md#blueprintanimblueprint-編集) を参照。
 >
@@ -1265,6 +1282,62 @@ Anim Blueprint グラフと StateMachine 編集。
 > ⚠️ **破壊的変更**: プロジェクト定義・プラグイン定義の `NodeClass` は従来、無条件で `PolicyViolation` として拒否されていました。`AddAnimGraphNode` は現在、クラスが読み込まれていれば `CapabilityNotAvailable` を返し `AnimBlueprintCustomTypeEdit` の名前を挙げます。旧エラーコードとの移行期間は設けていません — 旧コードは「権限を与えても通らない」ことを意味していたため、残すと存在しない権限体系を案内することになるためです。上記 8 種の内部専用・サブグラフ専用ノードはこの変更の対象外で、引き続き `PolicyViolation` を返します。
 >
 > `NodeClass` はあらかじめ読み込まれている必要があります。`AddAnimGraphNode` は副作用としてクラスを読み込まなくなり、解決できないクラスには `NotFound` を返します。
+
+---
+
+## UAIP.Editor.AnimBlueprint.UAF 🧩
+
+Unified Animation Framework のグラフを AnimBlueprint に埋め込む唯一のコマンド。Engine の `UAFAnimGraph` プラグイン（`UAF` 本体も必須）が必要で、どちらかが無効な場合はこのコマンドは登録されません。
+
+[UAIP.Editor.UAF](#uaipeditoruaf-) と同じ理由で **`Stability: Experimental`** です。
+
+| コマンド | 説明 |
+|---|---|
+| `AddUAFGraphNodeToAnimBlueprint` | `UAnimGraphNode_AnimNextGraph` ノードを `TargetGraph`（既定は最初の AnimGraph）に配置し、`UAFGraphPath` で指定した `UUAFAnimGraph` アセットを指す。`UAFGraphPath` はこのエディタに既にロード済みのものだけを解決対象とし、強制ロードは行わない。解決するのは必要な Capability がすべて確認できた後。`AnimBlueprintGraphEdit` / `AnimBlueprintReferenceEdit` / `AnimBlueprintCustomTypeEdit`（ノードクラスがこのドメインの同梱外モジュール由来のため）が必要。Play-in-Editor 中は不可 |
+
+---
+
+## UAIP.Editor.UAF 🧩
+
+Unified Animation Framework アセット（`UUAFAnimGraph` / `UUAFSystem`）の編集・調査 — RigVM グラフノード、ピン、変数、イベントグラフ。Engine 本体の `UAF` プラグインが必要で、無効な場合これらのコマンドは一切登録されません。
+
+**このセクションの全コマンドは `Stability: Experimental` です**。基盤となる UAF プラグイン自体がエンジン側の Experimental 機能であり、将来のエンジンリリースで API が予告なく変わりうるためです。
+
+| コマンド | 説明 |
+|---|---|
+| `GetUAFAssetInfo` | UAF アセットの概要情報 — アセットクラス・エントリ数・degraded フラグ（読み取り専用） |
+| `ListUAFEntries` | UAF アセットのエディタデータに格納された全エントリ（グラフ・変数・共有変数・カテゴリなど）を列挙（読み取り専用） |
+| `ListUAFGraphs` | RigVM グラフを保持する全エントリ（アニメーショングラフエントリ・イベントグラフエントリなど）を列挙（読み取り専用） |
+| `ListUAFNodes` | UAF アセットエントリが持つ RigVM グラフの全ノード名を列挙（読み取り専用） |
+| `GetUAFNodeInfo` | UAF アセットエントリの RigVM グラフ内の 1 ノードについて、構造体パスとピン記述を返す（読み取り専用） |
+| `ListUAFPins` | UAF アセットエントリの RigVM グラフ内の 1 ノードの全ピン記述を返す（読み取り専用） |
+| `GetUAFPinValue` | `NodeName.PinName` で指定したピンの既定値を返す（読み取り専用） |
+| `ListUAFVariables` | UAF アセットのメンバー変数を全て列挙（読み取り専用） |
+| `GetUAFVariable` | 指定した名前のメンバー変数の記述を返す（読み取り専用） |
+| `GetAvailableUAFUnitStructs` | 利用可能な `FRigUnit_AnimNextBase` サブ構造体を列挙 — `ClassPath` を `AddUAFGraphNode` の `StructPath` として渡す。各エントリは `Admission` と `RequiredCapabilities` / `MissingCapabilities` を持ち、今は追加できない構造体でも必要になる Capability を示す |
+| `AddUAFGraphNode` | `StructPath`（このエディタに既にロード済みの構造体のみ解決対象、オンデマンドロードなし）経由で RigVM Unit ノードを追加。このドメインの同梱外モジュール由来の構造体には `UAFCustomTypeEdit` が必要 |
+| `RemoveUAFGraphNode` | 名前指定で RigVM ノードを削除。削除するノードの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit` が必要 |
+| `ConnectUAFPins` | 出力ピンと入力ピンを接続（`NodeName.PinName` 形式）。接続の両端いずれかの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit` が必要 |
+| `DisconnectUAFPins` | 出力ピンと入力ピンの接続を切断。`ConnectUAFPins` と同じ `UAFCustomTypeEdit` の条件が適用される |
+| `SetUAFPinValue` | ピンの既定値を設定（UE テキストインポート表記）。所有ノードの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit`、ピンの宣言型がオブジェクト／クラス参照を含む場合は `UAFReferenceEdit` が必要 |
+| `AddUAFVariable` | メンバー変数を新規作成。`ValueType` / `ContainerType` は `EPropertyBagPropertyType` / `EPropertyBagContainerType` の列挙子名。参照型の変数には `UAFReferenceEdit` が必要 |
+| `RemoveUAFVariable` | 名前指定でメンバー変数を削除（同名のエントリが存在しない場合も、存在するが変数でない場合も `VariableNotFound`） |
+| `AddUAFEventGraph` | `StructPath` で指定した RigVM Unit 構造体をルートとする新規イベントグラフエントリを追加。`UUAFSystem` 専用 — `UUAFAnimGraph` はアニメーショングラフエントリを 1 つ固定で持ちイベントグラフの余地がないため `UnsupportedOperation` で拒否される |
+| `CompileUAFAsset` | `RequestAssetCompilation` 経由で同期コンパイルを実行。アセットごとにセッション単位のレート制限（`MinCompileIntervalSeconds`）あり |
+
+上記の書き込み系 9 コマンドはすべて、静的な必須 Capability として `UAFGraphEdit` を要求します。
+
+---
+
+## UAIP.Editor.UAF.AnimGraph 🧩
+
+UAF アニメーショングラフアセットに固有の読み取り専用コマンド 1 個。Engine の `UAFAnimGraph` プラグイン（`UAF` 本体も必須）が必要です。
+
+[UAIP.Editor.UAF](#uaipeditoruaf-) と同じ理由で **`Stability: Experimental`** です。
+
+| コマンド | 説明 |
+|---|---|
+| `GetAvailableUAFTraits` | 利用可能な `FAnimNextTraitSharedData` サブ構造体（UAF アニメーション Trait）を列挙 — `ClassPath` を `AddUAFGraphNode` の `StructPath` として渡す。`GetAvailableUAFUnitStructs` と同じ `Admission` / Capability プレビュー形式 |
 
 ---
 
@@ -1396,21 +1469,43 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 |---|---|
 | `GetBehaviorTreeNodeList` | 全ノードのフラットな一覧 — `NodeGuid`・`NodeClass`・`DisplayName`・`Depth`（0 = ルート Composite）・`ParentNodeGuid` |
 | `GetBehaviorTreeSubtree` | `NodeGuid` を起点としたサブツリー（Composite / Task / Decorator / Service）を再帰 JSON で返す（`MaxDepth` 1〜32） |
-| `GetAvailableBTCompositeClasses` | `UBTCompositeNode` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeCompositeNode` に渡す |
-| `GetAvailableBTTaskClasses` | `UBTTaskNode` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeTaskNode` に渡す |
-| `GetAvailableBTDecoratorClasses` | `UBTDecorator` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeDecoratorNode` に渡す |
-| `GetAvailableBTServiceClasses` | `UBTService` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeServiceNode` に渡す |
-| `AddBehaviorTreeCompositeNode` | Composite ノードを追加（Sequence / Selector / SimpleParallel） |
-| `AddBehaviorTreeTaskNode` | TaskClass 指定で Task ノードを追加 |
-| `AddBehaviorTreeDecoratorNode` | 親ノードに Decorator を附加 |
-| `AddBehaviorTreeServiceNode` | 親 Composite ノードに Service を附加 |
-| `RemoveBehaviorTreeNode` | NodeId 指定でノードを削除 |
-| `SetBehaviorTreeNodeProperty` | ノードプロパティを設定（FBlackboardKeySelector / 汎用 ImportText_Direct）。ツリーに Blackboard アセットが設定されていない場合、キーセレクタへの書き込みは拒否されるようになりました — Blackboard が無いとキー名の妥当性を確認できず、従来は名前と種類が食い違った状態が残ることがありました。拒否された書き込みはアセットを dirty にせず、空の undo エントリも残しません |
+| `GetAvailableBTCompositeClasses` | `UBTCompositeNode` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeCompositeNode` に渡す。各エントリは追加コマンドと同じ policy から得た `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を併記するようになりました。このドメインが出荷しているモジュールでの絞り込みは廃止しています。`ClassPath` 昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200 件）を報告します。`SchemaVersion` は `2` になりました — 下の Note を参照してください |
+| `GetAvailableBTTaskClasses` | `UBTTaskNode` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeTaskNode` に渡す。上と同じ Admission・件数フィールドを報告します |
+| `GetAvailableBTDecoratorClasses` | `UBTDecorator` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeDecoratorNode` に渡す。上と同じ Admission・件数フィールドを報告します |
+| `GetAvailableBTServiceClasses` | `UBTService` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeServiceNode` に渡す。上と同じ Admission・件数フィールドを報告します |
+| `AddBehaviorTreeCompositeNode` | Composite ノードを追加（Sequence / Selector / SimpleParallel）— このドメインが出荷していないモジュール由来のクラスには Capability が要ります。下の Note を参照してください |
+| `AddBehaviorTreeTaskNode` | TaskClass 指定で Task ノードを追加 — サブツリー実行ノードと Blueprint ベースの Task には別の Capability が追加で要ります。下の Note を参照してください |
+| `AddBehaviorTreeDecoratorNode` | 親ノードに Decorator を附加 — 確認内容は上と同じ |
+| `AddBehaviorTreeServiceNode` | 親 Composite ノードに Service を附加 — 確認内容は上と同じ |
+| `RemoveBehaviorTreeNode` | NodeId 指定でノードを削除 — そのノードのクラスが要求する Capability が同じく必要です |
+| `SetBehaviorTreeNodeProperty` | ノードプロパティを設定（FBlackboardKeySelector / 汎用 ImportText_Direct）。書き込み対象ノードのクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です。ツリーに Blackboard アセットが設定されていない場合、キーセレクタへの書き込みは拒否されるようになりました — Blackboard が無いとキー名の妥当性を確認できず、従来は名前と種類が食い違った状態が残ることがありました。拒否された書き込みはアセットを dirty にせず、空の undo エントリも残しません |
 | `ListBlackboardKeys` | Blackboard アセットのキー一覧（PIE 中も許可） |
-| `AddBlackboardKey` | キーを追加（KeyType allowlist・重複名チェック） |
-| `RemoveBlackboardKey` | 未参照のキーを削除（使用中は Conflict + 参照元を返す） |
+| `AddBlackboardKey` | キーを追加（重複名チェック）。`/Script/AIModule` 以外のキー型と、書き込み側が指す先を選べる 2 種のキー型には、それぞれ Capability が要ります — 下の Note を参照してください |
+| `RemoveBlackboardKey` | 未参照のキーを削除（使用中は Conflict + 参照元を返す）— そのキーの型が要求する Capability が同じく必要です |
 | `SetBehaviorTreeBlackboard` | BT アセットの参照 Blackboard を変更 |
 | `RequestBehaviorTreeAutoArrange` | 開いている BT エディタで AutoArrange パスを実行 |
+
+> **Note — このドメインは 3 か所で型を受理しており、Capability も 3 つあります**: 配置・操作されるノードのクラス、書き込まれるノードプロパティを宣言しているクラス、宣言・削除される Blackboard キー型のクラス、の 3 か所です。それぞれ従来から受け入れてきたモジュールの集合が異なり、その非対称は意図的なものです。
+>
+> - **`BehaviorTreeCustomTypeEdit`** — 型がこのドメインの出荷物の外から来た場合に必要です。ノードクラスなら `/Script/AIModule` または `/Script/AITestSuite`、ノードプロパティの宣言クラスなら `/Script/AIModule` または `/Script/Engine`、Blackboard キー型なら `/Script/AIModule` のみが「出荷物」です。プロジェクトのモジュール、プラグインのモジュール（`GameplayBehaviorSmartObjects` のようなエンジンプラグインを含む）、Blueprint 生成クラスはいずれも外側になります。3 か所で 1 つの名前を共有しているのは意図的で、「このドメインが出荷していない型を扱う」という 1 つの許可を表すためです。プロジェクト製の型がどの面から届くかは、その許可を与える運用者が別々に決めたい事柄ではありません。
+> - **`BehaviorTreeExternalBehaviorNodeEdit`** — ノードの本体がクラス自身ではない場所にある 5 系統に必要です。別の Behavior Tree アセットをまるごと実行する `UBTTask_RunBehavior` / `UBTTask_RunBehaviorDynamic` と、サブクラスがエディタで組まれたグラフを持つ `UBTTask_BlueprintBase` / `UBTDecorator_BlueprintBase` / `UBTService_BlueprintBase` です。名前の一致ではなく継承で判定します。
+> - **`BlackboardReferenceKeyTypeEdit`** — 保持する値が「書き込む側が指す先を選べる参照」である 2 種のキー型に必要です。プロジェクト内の任意の UObject を受け付ける `UBlackboardKeyType_Object` と、クラス名を保持してエンジンに解決させる `UBlackboardKeyType_Class` です。これも継承で判定します。
+>
+> いずれも既定では付与されません。[安全性と Capability](safety.md#ai-システム) を参照してください。
+>
+> ⚠️ **Blueprint で作った Behavior Tree ノードには Capability が 2 つ要ります。** そのクラスは「このドメインが出荷していない型」であると同時に「本体がグラフである型」でもあるため、`BehaviorTreeCustomTypeEdit` と `BehaviorTreeExternalBehaviorNodeEdit` の**両方**が必要です。片方だけを保有していてもリクエストは拒否され、まだ足りないもう一方が名指しで返ります。プロジェクト製の `UBlackboardKeyType_Object` 派生キー型も同様で、`BehaviorTreeCustomTypeEdit` と `BlackboardReferenceKeyTypeEdit` の両方が要ります。1 つの型に 2 つの Capability が掛かるのは Material に続いて 2 例目であり、驚かれやすい箇所です。カスタム型の Capability だけを付与した運用者は、プロジェクトが定義した Blueprint ノードのすべてで依然として拒否されます。
+>
+> **ツリーの組み直しは、そのツリーが既に含んでいるクラスによってゲートされることはありません。** 主ノードの追加・削除の後にはツリーのノードテンプレート鎖が書き直されますが、その書き直しはアセットに既に入っているクラスについて何も要求しません。そうでなければ、プロジェクト製のノードクラスを 1 つでも含むツリーは Capability の付与なしには一切編集できなくなってしまいます。ゲートされるのは、リクエストが**名指しした**クラスと、リクエストが**操作対象にした**ノードだけです。Blackboard キー型についても同じで、キーの宣言はスロットの形を述べるだけなので、オブジェクトキーを持つ Blackboard を参照している Behavior Tree は `BlackboardReferenceKeyTypeEdit` なしで編集できます。
+>
+> **認可の後にエンジン側が拒否することはありません。** Material や ControlRig と異なり、このドメインにはクラス単位で問い合わせるエンジン述語がありません。Behavior Tree エディタが答えるのは「そのグラフが Behavior Tree グラフか」であって「そのクラスがそこに属するか」ではなく、Blackboard も受け入れるキー型についてスキーマを持ちません。したがって残る要件が Capability だけの型は、その Capability を保有した時点で受理されます。
+>
+> これらの確認は `Add*` コマンドに限りません — 既存ノードの編集・削除、既存キーの削除でも同じ Capability があらためて確認されます。詳細と削除に関する破壊的変更は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
+>
+> ⚠️ **破壊的変更**: こうしたクラスは従来 `PolicyViolation` で拒否されていました。4 つの `Add*` コマンドと `AddBlackboardKey` は `CapabilityNotAvailable` を返し、不足している Capability をすべて一度に名指しします。あわせて 2 つのエラーコードが変わりました。現在ロードされている中に該当が無いクラスパスは `InvalidParams` ではなく `NotFound` に、abstract・deprecated・新版あり・そもそも Behavior Tree ノードでないクラスは `PolicyViolation` ではなく `InvalidParams` になります。旧コードの互換期間は設けません — 旧コードは「どんな許可でも通らない」という意味であり、残せば存在しない権限体系を案内することになるためです。**クラスパスの解決のためにロードは行いません** — 4 つの `Add*` コマンドと `AddBlackboardKey` は、名指しされたクラスが未ロードのときにロードへフォールバックしていましたが、これを廃止しました。
+>
+> **Note — 4 つの一覧は何も隠さなくなり、各クラスに何が要るかを述べます**: 従来は「具象で、deprecated でなく、新版が無く、エディタのドロップダウンで非表示にされていない」クラスだけを返しており、追加経路が使う policy を一切参照していませんでした。その結果、食い違いが両方向に生じていました — サブツリー実行ノードやプロジェクト製ノードは一覧に出るのに追加は拒否され、逆にドロップダウン非表示マーカーを持つクラスは追加経路では通るのに、それを見つけられる唯一の場所から消えていました。現在は 4 つとも同じ policy から答え、エントリごとに `Admission` を報告し、そもそも配置できないクラスも落とさずに `NotAddable` として載せます。`ClassPath` 昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated` を報告するため、打ち切られた応答でも常に同じ先頭クラス群が返ります（従来はクラス走査が先に到達したものが返っていました）。一覧はスナップショットであって認可ではありません — 一覧取得から mutation までの間に Capability や role は変わりうるため、各コマンドは自身のリクエストで判定をやり直します。
+>
+> **Blackboard キー型の一覧コマンドはありません。** ゲートされる 3 か所の開示状況は同じではありません。ノードクラスには上の 4 つの一覧がありますが、Blackboard が受け付けるキー型と、ノードが公開するプロパティには、Admission 付きで列挙するコマンドがありません。キー型のために `BlackboardReferenceKeyTypeEdit` や `BehaviorTreeCustomTypeEdit` を付与する運用者は、クラスパスを事前に知っている必要があります。
 
 ### Toolset ブリッジ — AIModule（7 件）🧩
 
@@ -1434,16 +1529,28 @@ MetaSound グラフ編集。`Metasound` プラグインが必要です。
 
 | コマンド | 説明 |
 |---|---|
-| `GetMetaSoundInfo` 🧩 | MetaSoundSource / MetaSoundPatch のグラフトポロジー（ノード一覧・接続・I/O 頂点） |
-| `GetAvailableMetaSoundNodeClasses` 🧩 | Frontend レジストリのノードクラス一覧（`ClassName`・`Variant`・`MajorVersion`・`DisplayName`）。`AddMetaSoundNode` の引数に使う。エンジン標準の名前空間に絞り込み済み |
-| `AddMetaSoundNode` 🧩 | `Namespace::Name` 形式でノードを追加（MajorVersion 対応・5 ステップ Policy） |
-| `RemoveMetaSoundNode` 🧩 | NodeId 指定でノードを削除 |
-| `ConnectMetaSoundPins` 🧩 | 2 ピンを接続（重複時 idempotent フラグ付き） |
-| `DisconnectMetaSoundPins` 🧩 | ピン接続を切断 |
+| `GetMetaSoundInfo` 🧩 | MetaSoundSource / MetaSoundPatch のグラフトポロジー（ノード一覧・接続・I/O 頂点）。各ノードは実際の `ClassName` に加え、そのノードに触るのに必要な `Admission` / `RequiredCapabilities` / `MissingCapabilities` を返す — 詳細は下記の Note を参照 |
+| `GetAvailableMetaSoundNodeClasses` 🧩 | Frontend レジストリのノードクラス一覧（`ClassName`・`Variant`・`MajorVersion`・`DisplayName`）。`AddMetaSoundNode` の引数に使う。各エントリは `AddMetaSoundNode` が検証するのと同じポリシー由来の `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持つ。エンジン標準の名前空間による絞り込みは廃止。`ClassName` 昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 1000 件）を返す — 詳細は下記の Note を参照 |
+| `AddMetaSoundNode` 🧩 | `Namespace::Name` 形式でノードを追加（MajorVersion 対応）— エンジンの 4 Namespace 外のクラスには Capability が必要、詳細は下記の Note を参照 |
+| `RemoveMetaSoundNode` 🧩 | NodeId 指定でノードを削除 — 対象ノードがそれらのクラスの場合は同じ Capability が必要 |
+| `ConnectMetaSoundPins` 🧩 | 2 ピンを接続（重複時 idempotent フラグ付き）— 両端が確認される |
+| `DisconnectMetaSoundPins` 🧩 | ピン接続を切断 — 両端が確認される |
 | `AddMetaSoundInput` 🧩 | 入力頂点を追加（単一ページアセットのみ） |
 | `AddMetaSoundOutput` 🧩 | 出力頂点を追加（単一ページアセットのみ） |
-| `SetMetaSoundNodeProperty` 🧩 | 入力デフォルト値を設定（Bool / Int / Float / String、NaN / Inf 拒否） |
-| `CompileMetaSound` 🧩 | Frontend に登録（セッション単位 1 秒レートリミット） |
+| `SetMetaSoundNodeProperty` 🧩 | 入力デフォルト値を設定（Bool / Int / Float / String、NaN / Inf 拒否）— 対象ノードがそれらのクラスの場合は同じ Capability が必要 |
+| `CompileMetaSound` 🧩 | Frontend に登録（セッション単位 1 秒レートリミット）— カスタム型の Capability を要求することはない |
+
+> **Note — エンジンの 4 Namespace 外のノードクラスは Capability で制御されます**: `ClassName` の Namespace が `UE` / `Metasound` / `MetasoundStandardNodes` / `MetasoundEditor` のいずれかであれば従来どおり追加できます。それ以外の Namespace のクラス — プロジェクトやプラグインのモジュールが独自に登録したもの — は、無条件で拒否されるのではなく `MetaSoundCustomTypeEdit` が必要になりました。既定では付与されません。[Safety & Capabilities](safety.md#オプショングラフエディタ) を参照。このドメインには（AnimBlueprint・ControlRig・Enhanced Input と同じく、Material とは異なり）対になる「危険な型」用の Capability はありません — MetaSound ノードはレジストリエントリが記述する固定の信号処理を評価するだけで、リクエストが持ち込んだコードは実行しないためです。
+>
+> ⚠️ **このドメインでは、ゲート対象の他ドメインより通常のグラフへの影響が大きく出ます。Capability を付与するか否かを決める前に必ずお読みください。** MetaSound は**すべての MetaSound アセット自身のグラフクラスを Namespace なしで登録します**。そして、別の MetaSound アセットを参照するノード — サブグラフ、およびプリセットの参照先 — はまさにそのクラスとして現れます。したがってそうしたノードは構成上つねに 4 Namespace の外に落ち、`MetaSoundCustomTypeEdit` を持たないセッションは**サブグラフやプリセットのノードに対する接続・切断・削除・入力デフォルト値の設定を一切行えません**。グラフ自体に特殊な点は何もなくてもそうなります。MetaSound ではサブグラフの再利用が、このゲートが対象とする他ドメインとは違って通常の作り方ですので、実際のオーサリング作業ではこの Capability を付与することになる場面が多いと考えてください。除外していないのは、プロジェクト自身のアセットが登録したグラフクラスは紛れもなくプロジェクト自身の型であり、除外するとこのドメインでは Capability の意味がほとんど失われるためです。
+>
+> **コンパイルはこの Capability を要求しません。** `CompileMetaSound` も、各 mutation コマンドが自身の変更後に行う暗黙の再登録も、アセットが単に**含んでいる**だけのクラスについては何も要求しません — そうでなければ、プロジェクト自身のアセットを 1 つでも参照する MetaSound は権限なしには一切コンパイルできなくなるためです。ゲートされるのは、リクエストが**名指しした**クラスと、リクエストが**操作対象にした**ノードだけです。
+>
+> これらの確認は `AddMetaSoundNode` だけに限りません — 既存ノードの編集・接続・切断・削除でも同じ Capability があらためて確認されます。削除・切断固有の破壊的変更を含め、詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
+>
+> ⚠️ **破壊的変更**: これらのクラスは従来 `PolicyViolation` で拒否されていました。`AddMetaSoundNode` は現在 `CapabilityNotAvailable` を返し、不足している Capability 名を挙げます。あわせて 2 つのコードが変わりました — Frontend レジストリに存在しない `ClassName` は `PolicyViolation` ではなく `NotFound`、非推奨クラスは `PolicyViolation` ではなく `InvalidParams` になります。テンプレートクラス（`Reroute` など）は従来どおり `PolicyViolation` のままです。旧エラーコードとの移行期間は設けていません — 旧コードは「権限を与えても通らない」ことを意味していたため、残すと存在しない権限体系を案内することになるためです。クラス名の解決にあたって何かがロードされることはありません（レジストリは現状のまま読まれます）。
+>
+> **Note — 2 つの一覧は Admission を報告するようになり、何も隠さなくなりました**: `GetAvailableMetaSoundNodeClasses` は従来、4 Namespace 外のクラスをレスポンスから除外していたため、アクセスを許可した運用者から見てもプロジェクト自身のノードは一覧に現れませんでした。現在はレジストリの External クラスを `ClassName` 昇順ですべて返し、各エントリに `Admission` — `Allowed`、`RequiresCapabilities`（`MissingCapabilities` に挙がるものを付与すれば使える。`MissingCapabilities` は `RequiredCapabilities` の部分集合）、`NotAddable`（非推奨・テンプレートクラス・レジストリに存在しない等、Capability をどれだけ付与しても解消しない構造的な拒否）、`CompatibilityUnknownUntilAuthorized` — を付け、新設の 1000 件上限に対する `TotalCount` / `ReturnedCount` / `Truncated` も返します。⚠️ `GetMetaSoundInfo` も同様に、さらに大きく変わりました。従来は 4 Namespace 外のノードを `ClassName: "<Unknown>"` として報告し、**その端点を持つ辺をすべて出力から除外していた**ため、返されるトポロジーがアセットの実態と一致していませんでした。現在は実際のクラス名とすべての辺を返し、編集系の経路が問うのと同じ問いから得た `Admission` / `RequiredCapabilities` / `MissingCapabilities` を各ノードに付けます。`"<Unknown>"` を番兵として扱っていた呼び出し側、辺の一覧が事前にフィルタされている前提の呼び出し側は修正が必要です。どちらの一覧も権威的な判定ではなくスナップショットです — 一覧取得後に Capability や role が変わり得るため、実際の可否は各コマンド側で毎回あらためて判定されます。
 
 ---
 
@@ -1453,16 +1560,40 @@ EQS クエリ編集。`EnvironmentQueryEditor` プラグインが必要です。
 
 | コマンド | 説明 |
 |---|---|
-| `GetEQSQueryInfo` 🧩 | EQS Generator Option / Test 構造（PIE 中は degraded モード） |
-| `GetAvailableEQSGeneratorClasses` 🧩 | `UEnvQueryGenerator` サブクラス一覧 — `ClassPath` を `AddEQSGenerator` に渡す |
-| `GetAvailableEQSTestClasses` 🧩 | `UEnvQueryTest` サブクラス一覧 — `ClassPath` を `AddEQSTest` に渡す |
-| `AddEQSGenerator` 🧩 | Generator Option を追加（GeneratorClass・6 ステップ allowlist） |
-| `RemoveEQSGenerator` 🧩 | NodeId 指定で Generator Option を削除（配下 Test も一括削除） |
-| `AddEQSTest` 🧩 | Generator Option に Test を追加 |
-| `RemoveEQSTest` 🧩 | NodeId 指定で Test を削除 |
-| `SetEQSGeneratorProperty` 🧩 | Generator プロパティを設定（汎用 ImportText_Direct） |
-| `SetEQSTestProperty` 🧩 | Test プロパティを設定（`param:<Name>` → `UAIDataProvider_QueryParams`） |
+| `GetEQSQueryInfo` 🧩 | EQS Generator Option / Test 構造。すべての Option と Test が実際のクラス名を返すようになりました — degraded（PIE 中）の読み取りでも伏せ字にしません — あわせて `Admission` / `RequiredCapabilities` / `MissingCapabilities` を報告します。詳細は下記の Note を参照。degraded モードでは引き続き `NodeX` / `NodeY` と `GeneratorProperties` を省略します。`SchemaVersion` は `2` になりました |
+| `GetAvailableEQSGeneratorClasses` 🧩 | `UEnvQueryGenerator` サブクラス一覧 — `ClassPath` を `AddEQSGenerator` に渡す。各エントリは追加コマンドと同じ policy から得た `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を併記するようになりました。このドメインが出荷しているモジュールでの絞り込みは廃止しています。`ClassPath` 昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200 件）を報告します。`SchemaVersion` は `2` になりました — 下の Note を参照してください |
+| `GetAvailableEQSTestClasses` 🧩 | `UEnvQueryTest` サブクラス一覧 — `ClassPath` を `AddEQSTest` に渡す。上と同じ Admission・件数フィールドを報告します |
+| `AddEQSGenerator` 🧩 | Generator Option を追加 — このドメインが出荷していないモジュール由来のクラスには Capability が要ります。下の Note を参照してください |
+| `RemoveEQSGenerator` 🧩 | NodeId 指定で Generator Option を削除（配下 Test も一括削除）— その Generator のクラスが要求する Capability が同じく必要です |
+| `AddEQSTest` 🧩 | Generator Option に Test を追加 — 確認内容は `AddEQSGenerator` と同じ |
+| `RemoveEQSTest` 🧩 | NodeId 指定で Test を削除 — その Test のクラスが要求する Capability が同じく必要です |
+| `SetEQSGeneratorProperty` 🧩 | Generator プロパティを設定（汎用 ImportText_Direct）— 書き込み対象 Generator のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
+| `SetEQSTestProperty` 🧩 | Test プロパティを設定（`param:<Name>` → `UAIDataProvider_QueryParams`）— 確認内容は上と同じ。`bTestEnabled` の切り替え（`PropertyName: "TestEnabled"`）も、そのフラグ自体はグラフノード側にあり Test インスタンス側にはないにもかかわらず、Test 自身のクラスによってゲートされるようになりました — この経路は従来まったくゲートされていませんでした。下の Note を参照してください |
 
+> **Note — このドメインは 3 か所で型を受理しており、Capability は 2 つあります**: 配置・操作される Generator のクラス、配置・操作される Test のクラス、書き込まれるノードプロパティを宣言しているクラス、の 3 か所です。3 つの面はいずれも従来から `/Script/AIModule` という同じ 1 つのモジュールだけを受け入れてきました。
+>
+> - **`EQSCustomTypeEdit`** — 型が `/Script/AIModule` の外から来た場合に必要です。プロジェクトのモジュール、プラグインのモジュール（`SmartObjects` や `MassEQS` のようなエンジンプラグインを含む）、Blueprint 生成の Test クラスはいずれも外側になります。3 か所で 1 つの名前を共有しているのは他の対象ドメインと同じ理由です — プロジェクト製の型が Generator・Test・プロパティ宣言者のどの面から届くかは、その許可を与える運用者が別々に決めたい事柄ではありません。
+> - **`EQSDelegatedGeneratorEdit`** — 項目の生成が自身のコンパイル済みコードではない Generator 種別に必要です。内部に保持した複数の子 Generator インスタンスを走らせる `UEnvQueryGenerator_Composite` と、サブクラスがエディタで組まれたグラフを持つ `UEnvQueryGenerator_BlueprintBase` です。名前の一致ではなく継承で判定し、クラスの出自とは関係なく要求されます — `/Script/AIModule` 自身がこの 2 種を出荷しているため、モジュールを信頼するだけでは何を実行するかについて何も言えないためです。そうした Generator が宣言するプロパティにも同じ Capability が要ります（Composite Generator 自身のプロパティは、それが走らせる子 Generator 群を記述するものだからです）。
+>
+> いずれも既定では付与されません。[安全性と Capability](safety.md#オプショングラフエディタ) を参照してください。
+>
+> ⚠️ **プロジェクト製の Composite 派生 Generator には Capability が 2 つ要ります。** そのクラスは「このドメインが出荷していない型」であると同時に「項目の生成が他所で行われる型」でもあるため、`EQSCustomTypeEdit` と `EQSDelegatedGeneratorEdit` の**両方**が必要です。片方だけを保有していてもリクエストは拒否され、まだ足りないもう一方が名指しで返ります。そのクラスが宣言するプロパティについても同様です。
+>
+> **Test 面には対になる「危険な型」用の Capability がありません。** Generator 面と異なり、このドメインが受け入れる Test はどれも自身のコンパイル済みクラス以外の場所でコードを実行しません — Blueprint で作られた Test のグラフも、他のプロジェクト製クラスと同じく出自だけで判定され、2 つ目の判定基準は存在しません。
+>
+> **クエリの組み直しは、そのクエリが既に含んでいるクラスによってゲートされることはありません。** Generator や Test の追加・削除の後にはグラフがクエリの Option 一覧へ書き戻されますが、その書き戻しはアセットに既に入っているクラスについて何も要求しません。そうでなければ、プロジェクト製の Generator や Test クラスを 1 つでも含むクエリは Capability の付与なしには一切編集できなくなってしまいます。ゲートされるのは、リクエストが**名指しした**クラスと、リクエストが**操作対象にした**ノードだけです。
+>
+> **認可の後にエンジン側が拒否することはありません。** このドメインにはクラス単位で問い合わせるエンジン述語がありません。環境クエリエディタはサブクラスを列挙して abstract・deprecated・非表示のものを落とすことでクラスメニューを構築するだけで、グラフスキーマが答えるのは「そのグラフがクエリグラフか」であって「その Generator や Test がそこに属するか」ではありません。したがって残る要件が Capability だけの型は、その Capability を保有した時点で受理されます。
+>
+> これらの確認は `Add*` コマンドに限りません — 既存の Generator や Test の編集・削除でも同じ Capability があらためて確認されます。詳細と削除に関する破壊的変更は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。⚠️ **`bTestEnabled` の切り替えは削除・切断とともに従来まったくゲートされていませんでした** — この変更より前は `Add*` と `Set*`（ノードインスタンスへ書くプロパティに限る）だけが型 policy を確認しており、この経路は Test のクラスにかかわらずアセットへ到達していました。
+>
+> ⚠️ **破壊的変更**: こうしたクラスは従来 `PolicyViolation` で拒否されていました。`AddEQSGenerator` / `AddEQSTest` / `SetEQSGeneratorProperty` / `SetEQSTestProperty` は `CapabilityNotAvailable` を返し、不足している Capability をすべて一度に名指しします。現在ロードされている中に該当が無いクラスパスは `InvalidParams` ではなく `NotFound` になります — このドメインはもともと未解決クラスをロードへフォールバックしていなかったため、この点に変化はありません。旧コードの互換期間は設けません — 旧コードは「どんな許可でも通らない」という意味であり、残せば存在しない権限体系を案内することになるためです。
+>
+> **Note — 2 つの一覧は何も隠さなくなり、各クラスに何が要るかを述べます**: 従来は基底型とクラスフラグだけでクラスを列挙しており、追加経路が使う policy を一切参照せず、`/Script/AIModule` 以外のクラスをすべてレスポンスから除外していました。その結果、食い違いが両方向に生じていました — Composite Generator やプロジェクト製クラスは一覧に出るのに追加は拒否され、逆に `UEnvQueryGenerator_BlueprintBase` のような abstract クラスは正しく拒否されているのに、それを見つけられる唯一の場所から消えていました。現在は 2 つとも同じ policy から答え、エントリごとに `Admission` を報告し、そもそも配置できないクラスも落とさずに `NotAddable` として載せます。`ClassPath` 昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200 件）を報告するため、打ち切られた応答でも常に同じ先頭クラス群が返ります（従来はクラス走査が先に到達したものが返っていました）。一覧はスナップショットであって認可ではありません — 一覧取得から mutation までの間に Capability や role は変わりうるため、各コマンドは自身のリクエストで判定をやり直します。
+>
+> **`GetEQSQueryInfo` はクラス名を伏せ字にしなくなりました。** これまで、すべての Option と Test は、このドメインが無条件では受け入れないクラスについて、degraded（PIE 中）の読み取りではクラス名の代わりに `<redacted>` を報告しており、そのノードが何なのかも、何をすれば使えるようになるのかも呼び出し側には分かりませんでした。現在は常に実際のクラス名を報告し、あわせて `SetEQSGeneratorProperty` / `SetEQSTestProperty` / `RemoveEQSGenerator` / `RemoveEQSTest` が問うのと同じ問いに対する `Admission` / `RequiredCapabilities` / `MissingCapabilities` を返します。
+
+---
 ---
 
 ## UAIP.Editor.Sequencer
@@ -1659,7 +1790,7 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `SetControlsMask` | 指定コントロールの表示状態を設定（未指定のコントロールは現状維持） |
 | `ShowAllControls` | セクション内の全コントロールを表示 |
 | `HideAllControls` | セクション内の全コントロールを非表示 |
-| `LoadAnimIntoRig` | ⚠️ 常に `UnsupportedOperation` を返す — エンジン API が静的アセット編集では取得できない `USkeletalMeshComponent*` を要求するため。代わりに `Toolset.Editor.SequencerControlRig.LoadAnimIntoRig` を使用 |
+| `LoadAnimIntoRig` | AnimSequence を ControlRig セクションのコントロールへ焼き込む。トラックのバインディングが解決するスケルタルメッシュを通してアニメーションをサンプリングするため、対象アクターのいるレベルが開かれている必要がある（開かれていない場合は `NotFound`） |
 | `GetActorTransformAtFrame` | 指定フレームでシーケンスを評価し、名前指定したアクターのワールドトランスフォームを返す |
 
 ### Toolset ブリッジ（61）🧩
@@ -1682,21 +1813,25 @@ StateTree 編集。
 |---|---|
 | `GetRootStates` | トップレベル State のディスクリプタ（`StateId`・`Name`・`Type`・`ParentStateId`・`ChildCount`） |
 | `GetStateChildren` | 単一 State の直下の子 State ディスクリプタ |
-| `GetStateTasks` | 単一 State の Task 一覧（PIE 中の degraded モードではクラス名を秘匿） |
+| `GetStateTasks` | 単一 State の Task 一覧（PIE 中の degraded モードではクラス名を秘匿）。各エントリは Task 自身のクラスに対する `Admission` / `RequiredCapabilities` / `MissingCapabilities` を併記するようになりました — 下の Note を参照してください。`SchemaVersion` は `2` になりました |
 | `GetStateTransitions` | 単一 State の Transition 一覧（PIE 中は遷移先 State ID を秘匿） |
-| `GetStateEnterConditions` | 単一 State の Enter Condition 一覧 |
-| `GetStateTreeGlobalTasks` | アセットのグローバル Task 一覧（アクティブ State に関係なく実行される） |
-| `GetStateTreeEvaluators` | アセットの Evaluator 一覧（毎 Tick 実行され共有データを更新する） |
+| `GetStateEnterConditions` | 単一 State の Enter Condition 一覧。`GetStateTasks` と同じ Admission フィールドを報告します。`SchemaVersion` は `2` になりました |
+| `GetStateTreeGlobalTasks` | アセットのグローバル Task 一覧（アクティブ State に関係なく実行される）。`GetStateTasks` と同じ Admission フィールドを報告します。`SchemaVersion` は `2` になりました |
+| `GetStateTreeEvaluators` | アセットの Evaluator 一覧（毎 Tick 実行され共有データを更新する）。`GetStateTasks` と同じ Admission フィールドを報告します。`SchemaVersion` は `2` になりました |
 | `GetStateNodeDescription` | ノード GUID のクラスパスと表示名（グローバル Task・Evaluator・全 State を横断検索） |
+
+> **Note — 上の 4 つのノード一覧は、このドメインが出荷していないクラスをもう秘匿しません。** 従来は追加経路が拒否するノードについて `TaskClass` / `ConditionClass` / `EvaluatorClass` を `"<redacted>"` に置き換え、`MaskedDueToPolicy: true` を立てていました。現在は 4 つとも実クラス名を返し、代わりに `Admission` / `RequiredCapabilities` / `MissingCapabilities` を併記します。これは下記の `GetAvailableTaskClasses` / `GetAvailableConditionClasses` / `GetAvailableEvaluatorClasses` が未配置のクラスについて既に行っている報告と同じ形です。`MaskedDueToPolicy` フィールドは互換のため残していますが、常に `false` になりました。**これは degraded（PIE）読み取り中に依然として掛かる秘匿とは無関係です** — この機能より前から存在する理由により、PIE 中は Capability の有無にかかわらず引き続きクラス名を `"<redacted>"` に置き換えます。
+>
+> ⚠️ あわせて無関係な 2 つの不具合も修正しました。ネイティブ struct（Blueprint インスタンスではなく）が裏付けとなるグローバル Task・Evaluator・Enter Condition ノードは、従来ノードクラスポリシーを一切経由せず Admission フィールドが一度も付与されていませんでしたが、現在は経由するようになりました。Evaluator・Enter Condition ノードは従来 Task ノードとして判定されており、追加経路では通るクラスに対して `WrongBaseType` 相当の拒否を報告することがありましたが、現在は自分自身の基底クラスに対して判定します。
 
 #### クラス / スキーマ探索（5）
 
 | コマンド | 説明 |
 |---|---|
-| `GetAvailableTaskClasses` | ノードクラスポリシーで許可された Task クラス（ネイティブ struct + Blueprint） |
-| `GetAvailableConditionClasses` | Condition クラス（ネイティブ struct + Blueprint） |
-| `GetAvailableEvaluatorClasses` | Evaluator クラス（ネイティブ struct + Blueprint） |
-| `GetAvailableStateTreeSchemaClasses` | `UStateTreeSchema` サブクラス — `ClassPath` を `CreateAsset` の `FactoryParams.SchemaClass` に渡す |
+| `GetAvailableTaskClasses` | `FStateTreeTaskBase` フィールド一覧（ネイティブ struct + Blueprint）— `ClassPath` を `AddStateTask` / `AddGlobalTask` に渡す。各エントリは追加コマンドと同じ policy から得た `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を併記するようになりました — ネイティブ struct 階層を含みます（従来のフィルタはこの階層を一切参照していませんでした）。`ClassPath` 昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200 件。struct 階層と class 階層を合算したうえで 1 回だけ適用）を報告します。`SchemaVersion` は `2` になりました — 下の Note を参照してください |
+| `GetAvailableConditionClasses` | `FStateTreeConditionBase` フィールド一覧（ネイティブ struct + Blueprint）— `ClassPath` を `AddStateEnterCondition` に渡す。上と同じ Admission・件数フィールドを報告します |
+| `GetAvailableEvaluatorClasses` | `FStateTreeEvaluatorBase` フィールド一覧（ネイティブ struct + Blueprint）— `ClassPath` を `AddEvaluator` に渡す。上と同じ Admission・件数フィールドを報告します |
+| `GetAvailableStateTreeSchemaClasses` | `UStateTreeSchema` サブクラス — `ClassPath` を `CreateAsset` の `FactoryParams.SchemaClass` に渡す。下記の Capability ゲートの対象外です — Schema クラスは Task・Evaluator・Enter Condition のいずれのフィールドでもないため、ノードクラスポリシーが関与しません |
 | `GetStateTreeSchema` | アセットの Schema クラスパスとルートパラメータのディスクリプタ |
 
 #### State 構造編集（4）
@@ -1712,26 +1847,38 @@ StateTree 編集。
 
 | コマンド | 説明 |
 |---|---|
-| `AddStateTask` | State に Task を追加（8 ステップ allowlist）。`TaskId` を返す |
-| `RemoveStateTask` | TaskId 指定で Task を削除 |
+| `AddStateTask` | State に Task を追加 — このドメインが出荷していないモジュール由来のクラスには Capability が要ります。下の Note を参照してください。`TaskId` を返す |
+| `RemoveStateTask` | TaskId 指定で Task を削除 — 削除される Task 自身のクラスが要求する Capability が同じく必要です |
 | `AddStateTransition` | Transition を追加（`Succeeded` / `Failed` / `NextState` / `NextSelectableState` / GUID 指定）。`OnDelegate` は非対応 |
 | `RemoveStateTransition` | TransitionId 指定で Transition を削除 |
-| `AddStateEnterCondition` | State に Enter Condition を追加。`ConditionId` を返す |
-| `RemoveStateEnterCondition` | ConditionId 指定で Enter Condition を削除 |
-| `SetEnterConditionProperty` | Enter Condition ノードのプロパティを設定 |
+| `AddStateEnterCondition` | State に Enter Condition を追加 — `AddStateTask` と同じ Capability 確認。`ConditionId` を返す |
+| `RemoveStateEnterCondition` | ConditionId 指定で Enter Condition を削除 — 削除される Condition 自身のクラスが要求する Capability が同じく必要です |
+| `SetEnterConditionProperty` | Enter Condition ノードのプロパティを設定 — Condition 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
 | `GetStateNodeProperty` | ノード GUID のトップレベルプロパティ 1 件をエクスポートテキストで取得 |
-| `SetStateNodeProperty` | Task ノードのプロパティを設定（汎用 ImportText_Direct） |
+| `SetStateNodeProperty` | Task ノードのプロパティを設定（汎用 ImportText_Direct）— Task 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
 
 #### グローバル Task / Evaluator 編集（6）
 
 | コマンド | 説明 |
 |---|---|
-| `AddGlobalTask` | グローバル Task を追加。`TaskId` を返す |
-| `RemoveGlobalTask` | TaskId 指定でグローバル Task を削除 |
-| `SetGlobalTaskProperty` | グローバル Task ノードのプロパティを設定 |
-| `AddEvaluator` | Evaluator を追加。`EvaluatorId` を返す |
-| `RemoveEvaluator` | EvaluatorId 指定で Evaluator を削除 |
-| `SetEvaluatorProperty` | Evaluator ノードのプロパティを設定 |
+| `AddGlobalTask` | グローバル Task を追加 — `AddStateTask` と同じ Capability 確認。`TaskId` を返す |
+| `RemoveGlobalTask` | TaskId 指定でグローバル Task を削除 — 削除される Task 自身のクラスが要求する Capability が同じく必要です |
+| `SetGlobalTaskProperty` | グローバル Task ノードのプロパティを設定 — Task 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
+| `AddEvaluator` | Evaluator を追加 — `AddStateTask` と同じ Capability 確認。`EvaluatorId` を返す |
+| `RemoveEvaluator` | EvaluatorId 指定で Evaluator を削除 — 削除される Evaluator 自身のクラスが要求する Capability が同じく必要です |
+| `SetEvaluatorProperty` | Evaluator ノードのプロパティを設定 — Evaluator 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
+
+> **Note — プロジェクト製の Task・Evaluator・Enter Condition クラスは Capability でゲートされ、無条件に拒否されることはありません**: `/Script/StateTreeModule`・`/Script/AIModule`・`/Script/GameplayStateTreeModule` 以外から来たクラスまたは struct — プロジェクトのモジュール、プラグインのモジュール、Blueprint 生成クラス — には `StateTreeCustomTypeEdit` が必要です。既定では付与されません。[安全性と Capability](safety.md#ai-システム) を参照してください。MetaSound や Enhanced Input と同様、Material とは異なり、このドメインに「危険な型」用の別 Capability はありません。Task・Evaluator・Enter Condition フィールドはツリーが自身のインスタンスデータの値で呼び出すコンパイル済み関数であり、ノードプロパティは単なるデータメンバです — どちらも呼び出し元が持ち込んだコードを運びません。
+>
+> **プロパティの書き込みは 2 つのクラスを独立して確認します。** `SetStateNodeProperty` / `SetGlobalTaskProperty` / `SetEvaluatorProperty` / `SetEnterConditionProperty` はいずれも、ノード自身のクラスと、書き込まれるプロパティを宣言している struct/class を別々の問いとして admit します。どちらか一方でもセッションが持たない Capability を要求すれば書き込み全体が拒否され、拒否メッセージは両方の不足 Capability を一度に名指しします。
+>
+> **コンパイルはこの Capability によってゲートされることはありません。** `CompileStateTree` は、アセットが単に含んでいるクラスについては何も要求しません — そうでなければ、プロジェクト製の Task を 1 つでも含む StateTree は Capability の付与なしには一切コンパイルできなくなってしまいます。ゲートされるのは、リクエストが**名指しした**クラスと、リクエストが**操作対象にした**ノードだけです。
+>
+> これらの確認は `Add*` コマンドに限りません — 既存ノードの編集・削除でも同じ Capability があらためて確認されます。詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
+>
+> ⚠️ **破壊的変更**: こうしたクラスは従来 `PolicyViolation` で拒否されていました。`AddStateTask` / `AddGlobalTask` / `AddEvaluator` / `AddStateEnterCondition` と 4 つの `Set*Property` コマンドは `CapabilityNotAvailable` を返し、不足している Capability をすべて一度に名指しします。現在ロードされている中に該当が無いクラスパスは `NotFound`、abstract・deprecated・新版あり・そもそも StateTree ノードでないクラスは `InvalidParams` になります。**`RemoveStateTask` / `RemoveGlobalTask` / `RemoveEvaluator` / `RemoveStateEnterCondition` は、今回初めて Capability を確認するようになりました** — 従来はこの 4 つのいずれも policy を一切参照しておらず、削除はクラスにかかわらず拒否されることがありませんでした。クラスパスの解決のためのロードは行いません — クラス解決は従来から `FindObject` のみを使っており、ロードへのフォールバックはありません。
+>
+> **Note — 3 つのクラス一覧は、ネイティブ struct 階層をもう隠しません。何が要るかも一緒に述べます**: `GetAvailableTaskClasses`・`GetAvailableConditionClasses`・`GetAvailableEvaluatorClasses` は、従来ネイティブな `FStateTree*Base` struct 階層を一切 policy に通さず、Blueprint のクラス階層についても `GetAvailableTaskClasses` でしか通していませんでした — その結果、プロジェクト製の struct ベース Task はエンジン同梱のものとまったく同じ自由さで一覧に載り、Blueprint ベースの Condition や Evaluator も出自を問わず一覧に載っていました。現在は 3 つとも両方の階層を追加コマンドと同じ policy から答え、エントリごとに `Admission` を報告し、そもそも配置できないクラスも落とさず `NotAddable` として載せます。2 つの階層は 1 つの整列・打ち切り済み集合へ統合されました — 従来は階層ごとに独立して上限を適用していたため、応答が理論上、明示された上限の最大 2 倍まで膨らみうるバグがありました。一覧はスナップショットであって認可ではありません — 一覧取得から mutation までの間に Capability や role は変わりうるため、各コマンドは自身のリクエストで判定をやり直します。
 
 #### パラメータ・バインディング・コンパイル（7）
 
@@ -2128,7 +2275,7 @@ ControlRig ヒエラルキー上の `ControlRigDynamics` コンポーネント�
 | `SetDynamicsConeLimitSettings` | `Strength`・`DampingRatio`・`Angle` を置き換える。3 つとも負または非有限なら拒否。トポロジのキーはここでは変更できない — `SetComponentContent` を使う |
 | `SetDynamicsConfinerSettings` | `Shapes` と `Strength` を置き換える。形状の検査は `SetDynamicsColliderShapes` と同じ。`Strength` は有限かつ非負 |
 
-#### Orchestration（4 コマンド）— 要 `ControlRigComponentEdit`
+#### Orchestration（5 コマンド）— 要 `ControlRigComponentEdit`
 
 | コマンド | 説明 |
 |---|---|
@@ -2136,6 +2283,7 @@ ControlRig ヒエラルキー上の `ControlRigDynamics` コンポーネント�
 | `ImportDynamicsCollidersFromPhysicsAsset` | PhysicsAsset の各ボディのうち、対応する骨がリグに存在するものについてコライダーを 1 つずつ作る。ボックス・スフィア・カプセルの形状を変換する（スフィアは長さ 0 のカプセルになる）。作成したものの一覧と、`SkippedBodies` として飛ばしたものとその理由を返す |
 | `AddComponentToDynamicsSolver` | Dynamics コンポーネントをソルバーへ登録する。ソルバーのどの配列へ入るかは型から決まり、選べない。使われた配列は `SolverArray` として返る。既に登録済みのものを登録しても何も変わらず、`Added: false` が返る |
 | `RemoveComponentFromDynamicsSolver` | ソルバーのすべての参照配列からコンポーネントを外す。ソルバーが参照していないものを外しても何も変わらず、`Removed: false` が返る |
+| `RemoveDynamicsChain` | チェーンを 1 コマンドで撤収する。`AddDynamicsChain` に渡したのと同じ指定（`StartElementName` / `EndElementName` / `ElementType`）、またはその応答が返した実キー（`Particles[]` / `Constraints[]`）でチェーンを同定し、ソルバーの登録から外し、拘束を消し、パーティクルを消す。同定が曖昧・不完全なら**何も変更せずに**拒否する。`DryRun` では削除せず、対象と外部参照だけを返す |
 
 > **Note — 型付き `Set*` は部分書き込みですが、空の書き込みは認められません**: 各項目は独立して省略可能ですが、少なくとも 1 つは必須です。省略した項目は型の既定値に戻るのではなく、**いまの値のまま**残ります。シミュレーションが受け付けない値（非有限な数値、負の質量や強さ、0〜1 の外の比率、0 以下のタイムステップや反復回数）は拒否され、コンポーネントは変更されません。汎用の `SetComponentContent` も同じ検査を行うため、型付きコマンドを迂回して不正値を通す抜け道はありません。
 >
@@ -2144,6 +2292,12 @@ ControlRig ヒエラルキー上の `ControlRigDynamics` コンポーネント�
 > **Note — `ImportDynamicsCollidersFromPhysicsAsset` は 2 種類の「合わない」を区別します**: 対応する骨がリグに無い、その要素にはコライダーを付けられない、変換対象の形状が 1 つも無い（凸包・テーパードカプセル・レベルセットは変換しない）ボディは**飛ばして**残りを取り込み、理由付きで `SkippedBodies` に返します。骨は実在するのに形状の値が使えないボディは**リクエスト全体を拒否**します — 黙って一部だけ作るのを避けるためです。作られたコライダーはどのソルバーにも登録されません。登録は `AddComponentToDynamicsSolver` で明示的に行ってください。
 >
 > **Note — `RemoveComponentFromDynamicsSolver` は登録解除であって削除ではありません**: コンポーネント自体はヒエラルキーに残ります（削除は `RemoveComponent`）。対象が既に存在しなくても構わないため、削除済みコンポーネントが残したキーの掃除にも使えます。また、どの配列かを指定する引数は無く、ソルバーのすべての配列から外します。ソルバーがまだシミュレートしている拘束やコーンリミットのうちその対象を指しているものは `ReferenceWarnings` として返り、そのまま残されます — ソルバーはパーティクルを解決できない拘束を、エラーも警告も出さずに読み飛ばすためです。
+>
+> **Note — `RemoveDynamicsChain` はチェーンの指し方をちょうど 1 通りだけ受け付けます**: `AddDynamicsChain` に渡したのと同じ `StartElementName` / `EndElementName` / `ElementType`（とソルバー）による指定、またはその応答が返した実キーの `Particles[]` / `Constraints[]` による指定のどちらか一方だけです。両方渡す、またはどちらも渡さない場合は `InvalidParams` です。どちらの指定でも、対象は**分岐も輪も欠けも無い 1 本の連なり**にちょうど一致していなければなりません。それ以外はアセットを変更せずに拒否されます — 候補が複数あれば `AmbiguousElements[]`、足りない箇所があれば `IncompleteElements[]` が返ります。「そこに何も無い」場合の扱いは指定のしかたで変わります — 範囲の指定でチェーンが無ければ「既に片付いている」扱い（`Status: AlreadyAbsent`、成功扱いの no-op で、繰り返し呼んでも安全）ですが、実キーの指定で名指ししたキーが存在しなければ `NotFound` になります。個体を名指ししている以上、無いことは「何もしなくてよい」ではなく実際のエラーだからです。
+>
+> **Note — チェーンの外からの参照の扱いは `ReferenceHandling` が決めます**。値は上記 `RemoveComponent` と同じ 3 つで、大文字小文字も区別されます: `Reject`（既定）は拒否し、見つかった外部参照をすべて `References` に返します。`Detach` は先に参照を外しますが、1 件でも外せないものがあれば**外す前に**拒否します。`Force` は参照を残したまま撤収し、片端が解決できなくなったものは `RemoveComponent` と同じ形で `ReferenceWarnings` に返ります。`DryRun` はこの確認を含むすべての検査を行い、対象と外部参照だけをアセットに触れずに返します（`Status: Previewed`、`RemovedCount: 0`）。同じ指定から `DryRun` を外して呼び直せば、ここで示されたものがそのまま撤収されます。
+>
+> **Note — 事前の拒否は無変更を保証しますが、削除の途中の失敗は完全な復元を保証しません**: すべての検査を通過した後に何かが失敗すると、`Status` は `RolledBack` または `RollbackFailed` にもなり得ます。ロールバックはできる範囲を戻し、`RemovedBeforeFailure[]` / `RestoredComponents[]` / `MissingAfterRollback[]` / `UnrestoredReferrers[]` / `SolverRestored` で達成範囲を開示します — 完全な復元を主張するのではありません。削除済みコンポーネントを作り直しても、同じキーが再現される保証が無いためです。⚠️ 撤収そのものは成功したのに応答の記録が保存できなかった場合、チェーンは既に消えているにもかかわらず `ExecutionFailed` が返ります — その旨は `ErrorMessage` に明記されます。このドメインで artifact の保存を検査しているのはこのコマンドだけです。
 
 ---
 

@@ -199,6 +199,7 @@ uaip_get_editor_status()
 | `Ownership` | Whether this bridge launched the editor itself (`OWNED`), attached to one it did not launch (`ATTACHED`), or has neither launched nor attached yet (`NONE`) — an observation at call time, not a history. See [Guest-mode connections](#guest-mode-connections) |
 | `IsAttachOnly` | Whether this bridge is configured for guest mode (`attach_only` in `config.json`) |
 | `RecommendedAction` | The action the caller should actually take |
+| `Lock` | A diagnostic snapshot of the on-disk `mcp_proxy.lock` file for this project — see [Lock diagnostics](#lock-diagnostics) below |
 
 For a guest-mode bridge, or an ordinary bridge that happens to be `ATTACHED` to someone else's editor, `RecommendedAction` never promises an automatic launch. Where an owner-mode bridge would say `RETRY: ... The next tool call launches a fresh one automatically`, these report `CHECK CONFIGURATION: ...` instead once that editor stops answering — because launching a replacement is exactly what they must not do.
 
@@ -209,6 +210,32 @@ The tool probes the transport on **every call**, so both `IsConnected` and `IsPo
 If you see `RecommendedAction` starting with `WAIT:` while `State` is `UNRESPONSIVE`: **do not restart the editor and do not try to kill the process.** The port is open but the game thread is busy — most often because a long-running command (see [Long-running commands and the 120 s async timeout](#long-running-commands-and-the-120-s-async-timeout) below) is still executing. Wait and re-check with `uaip_get_editor_status` instead.
 
 No process id is ever returned by this tool — naming a PID invites terminating it, which is exactly what `UNRESPONSIVE` handling must avoid.
+
+#### Lock diagnostics
+
+`Data.Lock` reports what the bridge currently sees in the `mcp_proxy.lock` file for this project, independent of `State` / `Ownership`:
+
+```json
+"Lock": {
+  "Present": true,
+  "HeldByThisBridge": false,
+  "RecordedPort": 8765,
+  "RecordedProject": "F:/Projects/MyProject/MyProject.uproject",
+  "RecordedAt": "2026-09-02T10:15:00Z",
+  "RecordedPortListening": true
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `Present` | Whether a lock file exists on disk. **Existence alone does not mean it is currently held** — a bridge that exits (cleanly or forcibly) releases the lock, but the file itself can be left behind, and the next bridge to start simply overwrites it. |
+| `HeldByThisBridge` | Whether this bridge process is the one currently holding the lock. |
+| `RecordedPort` | The HTTP port recorded in the lock file, or `null` if the file is missing or could not be parsed. |
+| `RecordedProject` | The `.uproject` path recorded in the lock file, or `null` if unavailable. |
+| `RecordedAt` | The timestamp the lock file was written, or `null` if unavailable. Display-only — do not use it to judge whether the lock is stale. |
+| `RecordedPortListening` | Whether `RecordedPort` currently has something listening on it. `null` when this cannot be determined: either `RecordedPort` does not match this bridge's own configured port (a diagnostic probe can only observe its own port, not an arbitrary other one), or `RecordedPort` itself could not be read from the lock file. |
+
+Read this alongside `RecommendedAction`: when another bridge genuinely holds the lock, `RecommendedAction` points at disconnecting or stopping that session — never at deleting the lock file. A lock file that is `Present` but not `HeldByThisBridge`, with `RecordedPortListening: false`, usually means the file was simply left behind and the next launch will take it over without issue.
 
 Typical uses:
 

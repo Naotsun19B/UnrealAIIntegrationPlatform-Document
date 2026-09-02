@@ -73,7 +73,7 @@ UAIP edits do call `MarkPackageDirty` (or the equivalent), but the file on disk 
 
 ### "Live Coding rebuild is blocked"
 
-When Live Coding is mid-build and the editor refuses other commands, ask the AI to call `UAIP.Workspace.GetLiveCodingStatus` first; if a build is in progress, wait. Forcing other operations during a Live Coding build leads to undefined behavior. If you need to shut down for a full rebuild, prefer `UAIP.Workspace.ShutdownEditor` over `taskkill` — `taskkill` leaves `mcp_proxy.lock` behind and causes the next session to disconnect.
+When Live Coding is mid-build and the editor refuses other commands, ask the AI to call `UAIP.Workspace.GetLiveCodingStatus` first; if a build is in progress, wait. Forcing other operations during a Live Coding build leads to undefined behavior. If you need to shut down for a full rebuild, prefer `UAIP.Workspace.ShutdownEditor` over `taskkill` — `taskkill` still terminates every UE editor instance on the host (including other projects), so it remains best avoided for that reason. It no longer leaves `mcp_proxy.lock` behind, though: the bridge notices the editor disappeared from the port and releases the lock on its own (unless it is mid a self-requested restart), and even if the bridge process itself were force-terminated, the OS releases the lock the instant that process ends. There is nothing to clean up by hand.
 
 ### "I got `CommandNotFound` for a command listed in the docs"
 
@@ -96,7 +96,7 @@ A progress bar (slow task) is different: nothing is answered there even with the
 
 ### "MCP appears stuck — should I kill the editor?"
 
-**No, don't `taskkill` the editor**, and don't assume it needs restarting just because a call didn't come back. That terminates every UE editor instance on the host (including other projects) and leaves `mcp_proxy.lock` behind. The right sequence:
+**No, don't `taskkill` the editor**, and don't assume it needs restarting just because a call didn't come back. `taskkill` still terminates every UE editor instance on the host (including other projects), so it remains a bad idea for that reason alone — but it no longer leaves `mcp_proxy.lock` behind. The bridge notices the editor disappeared from the port and releases the lock itself (unless it is mid a self-requested restart), so a stale lock is not something you need to clean up by hand anymore. The right sequence:
 
 1. **Call `uaip_get_editor_status()` first** — it probes the connection without triggering auto-launch and returns `State` + `RecommendedAction`. See [Connection Methods → Check editor status](connections.md#check-editor-status-uaip_get_editor_status).
 2. If `State` is `UNRESPONSIVE` (port open, game thread not answering), `RecommendedAction` starts with `WAIT:` — **do not restart or kill anything.** A long-running command (see [Long-running commands and the 120 s async timeout](connections.md#long-running-commands-and-the-120-s-async-timeout)) is most likely still executing. Re-check periodically instead.

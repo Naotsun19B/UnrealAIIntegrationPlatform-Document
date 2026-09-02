@@ -103,6 +103,6 @@ cp Plugins/UAIPMCPBridge/install/guides/*.md ~/.claude/rules/uaip/
 | `claude mcp list` でサーバが Failed と表示される | `python <thin_proxy.py のパス>` を直接実行してみてください。stderr にエラーが出力されます |
 | `thin_proxy.py` 起動時に `TypeError: ...` が出る | Python のバージョンが古い可能性があります。`python --version` で 3.10 以上か確認してください |
 | `HealthCheck` は 1 回成功したのに、その後ハングする | エディタがクラッシュして Bridge が再接続中の可能性があります。60 秒ほど待つか `Saved/Crashes/` を確認してください |
-| エディタ再起動後に "Couldn't reach MCP" になる | 前回の `taskkill` で `mcp_proxy.lock` が残っているのが原因です。`Saved/UAIP/` から削除して再起動してください |
+| エディタ再起動後に "Couldn't reach MCP" になる | `uaip_get_editor_status()` の `Data.Lock`（[接続方法 → ロック診断](../connections.md#ロック診断)）を確認してください。保持していたプロセスがどう終了しても OS がその瞬間にロックを解放するため、`mcp_proxy.lock` が残っていること自体は原因になりません。別のブリッジが本当にロックを保持したままで起動が断られている場合は正常な動作です。ロックファイルを削除するのではなく、該当セッションの切断・停止で復帰してください |
 
 完全なエラーコードリファレンスは [トラブルシューティング](../troubleshooting.md) を参照。

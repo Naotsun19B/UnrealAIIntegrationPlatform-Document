@@ -199,6 +199,7 @@ uaip_get_editor_status()
 | `Ownership` | この Bridge がエディタを自分で起動したか（`OWNED`）、自分では起動していないエディタへアタッチしたか（`ATTACHED`）、まだどちらも行っていないか（`NONE`）。あくまで呼び出し時点の観測値であり履歴ではない。詳細は [ゲストモード接続](#ゲストモード接続) を参照 |
 | `IsAttachOnly` | この Bridge がゲストモード（`config.json` の `attach_only`）で設定されているか |
 | `RecommendedAction` | 呼び出し側が実際に取るべき行動 |
+| `Lock` | このプロジェクトのディスク上の `mcp_proxy.lock` ファイルの診断スナップショット。詳細は下記「[ロック診断](#ロック診断)」を参照 |
 
 ゲストモードの Bridge、および他人のエディタへたまたま `ATTACHED` になっている通常の Bridge では、`RecommendedAction` が自動起動を約束することは決してありません。オーナーモードの Bridge なら `RETRY: ... The next tool call launches a fresh one automatically` と返す場面でも、これらはそのエディタが応答しなくなった時点で代わりに `CHECK CONFIGURATION: ...` を返します — 代わりのエディタを起動することこそが、してはならない動作だからです。
 
@@ -209,6 +210,32 @@ uaip_get_editor_status()
 `State` が `UNRESPONSIVE` で `RecommendedAction` が `WAIT:` から始まっている場合は、**エディタを再起動したりプロセスを終了したりしないでください。** ポートは開いていますがゲームスレッドがビジー状態にあるだけで、多くの場合は長時間コマンド（下記「[長時間コマンドと 120 秒の非同期タイムアウト](#長時間コマンドと-120-秒の非同期タイムアウト)」を参照）がまだ実行中です。待ってから再度 `uaip_get_editor_status` で確認してください。
 
 このツールは PID を一切返しません — PID を返すと、それを終了させたくなる誘惑を生むため、`UNRESPONSIVE` の扱いとして避けるべきものです。
+
+#### ロック診断
+
+`Data.Lock` は、このプロジェクトの `mcp_proxy.lock` ファイルについて Bridge が現在把握している内容を報告します。`State` / `Ownership` とは独立した情報です：
+
+```json
+"Lock": {
+  "Present": true,
+  "HeldByThisBridge": false,
+  "RecordedPort": 8765,
+  "RecordedProject": "F:/Projects/MyProject/MyProject.uproject",
+  "RecordedAt": "2026-09-02T10:15:00Z",
+  "RecordedPortListening": true
+}
+```
+
+| フィールド | 意味 |
+|---|---|
+| `Present` | ロックファイルがディスク上に存在するか。**存在すること自体は、現在誰かが保持していることを意味しません** — Bridge が終了する（正常終了・強制終了のどちらでも）とロックは解放されますが、ファイル自体が残ることはあり、次に起動する Bridge がそのまま上書きして取得します。 |
+| `HeldByThisBridge` | 現在このロックを保持しているのが、このブリッジプロセス自身かどうか。 |
+| `RecordedPort` | ロックファイルに記録されている HTTP ポート。ファイルが存在しない、または解釈できない場合は `null`。 |
+| `RecordedProject` | ロックファイルに記録されている `.uproject` パス。取得できない場合は `null`。 |
+| `RecordedAt` | ロックファイルが書き込まれた時刻。取得できない場合は `null`。表示専用であり、ロックが古いかどうかの判定には使わないでください。 |
+| `RecordedPortListening` | `RecordedPort` に現在何かが listening しているか。判定できない場合は `null` になります： `RecordedPort` がこのブリッジ自身の設定ポートと一致しない場合（診断プローブは自分自身のポートしか観測できず、任意の別ポートは観測できません）、または `RecordedPort` 自体をロックファイルから読み取れなかった場合のいずれかです。 |
+
+`RecommendedAction` と併せて読んでください。別の Bridge が本当にロックを保持している場合、`RecommendedAction` はそのセッションの切断・停止を指します — ロックファイルの削除を指すことは決してありません。`Present` が `true` で `HeldByThisBridge` が `false`、かつ `RecordedPortListening` が `false` の組み合わせは、多くの場合ファイルが単に残っているだけで、次の起動がそのまま問題なく引き継ぐことを意味します。
 
 主な用途:
 

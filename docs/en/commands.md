@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1125 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1546 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1158 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1579 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -56,10 +56,13 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
 | Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | 7 | — |
 | Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
-| Editor Skeleton | `UAIP.Editor.Skeleton` | 8 | — | — |
+| Editor Skeleton | `UAIP.Editor.Skeleton` | 11 | — | — |
 | Editor MetaHuman 🧩 | `UAIP.Editor.MetaHuman` | 56 | 9 | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 8 | — | — |
-| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 11 | — | — |
+| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 19 | — | — |
+| Editor AnimBlueprint UAF 🧩 | `UAIP.Editor.AnimBlueprint.UAF` | 1 | — | — |
+| Editor UAF 🧩 | `UAIP.Editor.UAF` | 19 | — | — |
+| Editor UAF AnimGraph 🧩 | `UAIP.Editor.UAF.AnimGraph` | 1 | — | — |
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
 | Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
@@ -73,7 +76,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
 | Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 68 | 107 | — |
-| Editor ControlRig Dynamics 🧩 | `UAIP.Editor.ControlRig.Dynamics` | 16 | — | — |
+| Editor ControlRig Dynamics 🧩 | `UAIP.Editor.ControlRig.Dynamics` | 17 | — | — |
 | Editor ControlRig Physics 🧩 | `UAIP.Editor.ControlRig.Physics` | 8 | — | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 8 | 14 | — |
@@ -185,6 +188,7 @@ Other things worth knowing about element operations:
 | `SetSoundAttenuationSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
 | `SetSoundMixSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
 | `SetSoundCueNodeProperty` | `UAIP.Editor.SoundCue` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetAnimGraphNodeProperty` | `UAIP.Editor.AnimBlueprint` | `Value` | ✅ | `AnimBlueprintReferenceEdit` |
 | `SetDataflowNodeProperty` 🧩 | `UAIP.Editor.Dataflow` | `Value` | ✅ | `DataflowReferenceEdit` |
 | `SetAnimNotifyProperty` | `UAIP.Editor.AnimSequence` | `Value` | ✅ | `AnimNotifyReferenceEdit` |
 | `SetPoseSearchSchemaChannelProperty` 🧩 | `UAIP.Editor.MotionMatching` | `Value` | ✅ | — (references are refused outright) |
@@ -238,7 +242,7 @@ The value maps themselves (`Properties`, `Params`) did not change shape, so a ca
 
 ## Capability-gated custom types
 
-Several domains only let a project- or plugin-defined type through once a capability is granted for it — see the domain's own note, for example [UAIP.Editor.Material](#uaipeditormaterial) and [UAIP.Editor.AnimBlueprint](#uaipeditoranimblueprint). What follows applies the same way in every one of them and is not repeated per domain.
+Several domains only let a project- or plugin-defined type through once a capability is granted for it — see the domain's own note, for example [UAIP.Editor.Material](#uaipeditormaterial), [UAIP.Editor.AnimBlueprint](#uaipeditoranimblueprint), [UAIP.Editor.UAF](#uaipeditoruaf-), [UAIP.Editor.BehaviorTree](#uaipeditorbehaviortree), [UAIP.Editor.MetaSound](#uaipeditormetasound-), [UAIP.Editor.EQS](#uaipeditoreqs-) and [UAIP.Editor.StateTree](#uaipeditorstatetree). What follows applies the same way in every one of them and is not repeated per domain.
 
 - **The check runs on every operation that touches the type, not only `Add*`.** Once a node of a gated type exists in a graph, the same capability is re-evaluated whenever that node is edited, connected, disconnected, compiled, or deleted — and whenever its effective type is changed (reparenting) or a reference to it is created or replaced. Holding the capability when the node was added does not carry forward to later calls: if the session subsequently loses it (a role change, a narrower `AllowedCapabilities`), those later operations are refused too, exactly as `Add*` would have refused them.
 - **⚠️ Breaking change — delete and disconnect used to be ungated.** Before this change, only each domain's `Add*` command checked the type being added; deleting a node or disconnecting its pins went through unconditionally, whatever type the node was. That is no longer the case: deleting or disconnecting a node of a gated type now needs the same capability `Add*` would have required to create it in the first place.
@@ -1089,6 +1093,11 @@ Skeleton and SkeletalMesh editing.
 | `RemoveVirtualBone` | Remove a virtual bone |
 | `GetSkeletalMeshInfo` | USkeletalMesh LODs, material slots, related Skeleton path (read-only) |
 | `SetSkeletalMeshMaterial` | Assign a material to a slot on a SkeletalMesh |
+| `CreateBlendProfile` | Create a BlendProfile on a Skeleton — `Mode` is `TimeFactor`, `WeightFactor`, or `BlendMask` (use `BlendMask` when the profile will be assigned to a `LayeredBoneBlend` node's `BlendMasks`; the other two modes are silently ineffective there) |
+| `SetBlendProfileBoneScale` | Set the blend scale of one bone within an existing BlendProfile |
+| `ListBlendProfiles` | List every BlendProfile currently registered on a Skeleton (read-only) |
+
+> **Note**: for every write command in this domain, a path that satisfies the `/Game/` prefix check but fails deeper validation (`..` path traversal, over 512 characters, an invisible control character, or a malformed package name) answers `NotAllowed` rather than `NotFound`. This is not a breaking change — such paths never succeeded before either, and the previous error code for this specific edge case was never documented — but note it if your tooling matches on `ErrorCode` for path rejections.
 
 ---
 
@@ -1246,7 +1255,7 @@ Anim Blueprint graph and StateMachine editing.
 
 | Command | Description |
 |---|---|
-| `GetAnimBlueprintInfo` | AnimGraph node list and StateMachine structure (degraded mode during PIE) |
+| `GetAnimBlueprintInfo` | AnimGraph node list and StateMachine structure (degraded mode during PIE). Optional `IncludePins` (default false) adds a `Pins[]` array to each node entry; omitting it leaves the output unchanged from before |
 | `GetAvailableAnimGraphNodeClasses` | List `UAnimGraphNode_Base` subclasses — feed `ClassPath` to `AddAnimGraphNode` |
 | `AddAnimGraphNode` | Add a `UAnimGraphNode_Base` derived node by NodeClass — a project- or plugin-defined class needs a capability, see the note below |
 | `RemoveAnimGraphNode` | Remove a node by NodeId |
@@ -1257,6 +1266,14 @@ Anim Blueprint graph and StateMachine editing.
 | `AddAnimTransition` | Add a From→To Transition (idempotent on duplicates) |
 | `RemoveAnimTransition` | Remove a Transition by NodeId |
 | `CompileAnimBlueprint` | Compile and return CompileStatus + error log |
+| `SetAnimGraphNodeProperty` | Write an `EditAnywhere` property on an AnimGraph node by dot-notation `PropertyPath`. References go through `ValueJson` and `AnimBlueprintReferenceEdit`, structs / containers through `PropertyStructuredEdit` — see [Writing references, structs and containers](#writing-references-structs-and-containers) |
+| `GetAnimGraphNodeDetails` | Pin and property details for a single AnimGraph node (read-only; secret values report `IsSecret: true` with `Value` omitted) |
+| `AddAnimGraphNodePosePin` | Add one dynamic pose input pin to a node that supports it (currently only `UAnimGraphNode_LayeredBoneBlend`); non-idempotent |
+| `RemoveAnimGraphNodePosePin` | Remove one dynamic pose input pin by `PinIndex`; removing a pin renumbers the rest |
+| `AddAnimLayerGraph` | Create a new self-contained Anim Layer graph on a root AnimBlueprint; refused on a derived AnimBlueprint |
+| `RemoveAnimLayerGraph` | Remove a self-contained Anim Layer graph, and every `LinkedAnimLayer` node still referencing it when `RemoveReferencingNodes` is true |
+| `ImplementAnimLayerInterface` | Implement a `UAnimLayerInterface`-derived interface, generating one layer graph per anim-layer function it declares. Requires `AnimBlueprintReferenceEdit` (writes a class reference into the implemented interface list) |
+| `AddLinkedAnimLayerNode` | Place a `LinkedAnimLayer` node pointing at a self-contained layer, or (with `InterfacePath` set) at one of an already-implemented interface's layer functions — the latter additionally requires `AnimBlueprintReferenceEdit` |
 
 > **Note — project- and plugin-defined AnimGraph node classes are capability-gated**: a `NodeClass` from one of the three modules this domain has always trusted (`AnimGraph`, `AnimGraphRuntime`, `Engine`) is added the same way as before. A class outside those modules — a project- or plugin-defined `UAnimGraphNode_Base` subclass — now requires `AnimBlueprintCustomTypeEdit`. Unlike Material, there is no companion "dangerous node" capability here: eight node kinds (`UAnimGraphNode_StateResult`, `TransitionResult`, `TransitionPoseEvaluator`, `Root`, `StateMachineBase`, `LinkedAnimGraph`, `LinkedAnimLayer`, `CustomProperty`) cannot be placed at the AnimGraph root **regardless of any capability held** — they are internal- or sub-graph-only node kinds the graph does not accept from that direction, not a danger a capability grant unlocks. Neither `AnimBlueprintCustomTypeEdit` nor any other capability changes this outcome; see [Safety & Capabilities](safety.md#blueprint--anim-blueprint-editing).
 >
@@ -1265,6 +1282,62 @@ Anim Blueprint graph and StateMachine editing.
 > ⚠️ **Breaking change**: a project- or plugin-defined `NodeClass` used to be refused outright with `PolicyViolation`. `AddAnimGraphNode` now answers `CapabilityNotAvailable` and names `AnimBlueprintCustomTypeEdit` once the class is loaded. There is no compatibility window for the old code: it meant "no permission would have helped", so keeping it would describe a permission system that did not exist. The eight internal/sub-graph-only kinds above are unaffected by this change and keep returning `PolicyViolation`.
 >
 > `NodeClass` must already be loaded — `AddAnimGraphNode` no longer loads it as a side effect, and answers `NotFound` for a class it cannot resolve.
+
+---
+
+## UAIP.Editor.AnimBlueprint.UAF 🧩
+
+The one command that embeds a Unified Animation Framework graph into an AnimBlueprint. Requires the Engine's `UAFAnimGraph` plugin (which itself requires `UAF`); if either is disabled this command is not registered.
+
+**`Stability: Experimental`**, for the same reason as [UAIP.Editor.UAF](#uaipeditoruaf-).
+
+| Command | Description |
+|---|---|
+| `AddUAFGraphNodeToAnimBlueprint` | Place a `UAnimGraphNode_AnimNextGraph` node into `TargetGraph` (defaulting to the first AnimGraph) pointing at a `UUAFAnimGraph` asset given by `UAFGraphPath`. `UAFGraphPath` must already be loaded in this editor — it is never force-loaded, and only resolved after every required capability is confirmed. Requires `AnimBlueprintGraphEdit`, `AnimBlueprintReferenceEdit`, and `AnimBlueprintCustomTypeEdit` (the node class comes from a module this domain does not ship). Not allowed during Play-in-Editor |
+
+---
+
+## UAIP.Editor.UAF 🧩
+
+Editing and inspection of Unified Animation Framework assets (`UUAFAnimGraph` / `UUAFSystem`) — RigVM graph nodes, pins, variables, and event graphs. Requires the Engine's own `UAF` plugin; if it is disabled none of these commands are registered.
+
+**Every command in this section is `Stability: Experimental`**, because the underlying UAF plugin is itself an Experimental engine feature and its API may change without notice in a future engine release.
+
+| Command | Description |
+|---|---|
+| `GetUAFAssetInfo` | Summary information about a UAF asset — asset class, entry count, degraded flag (read-only) |
+| `ListUAFEntries` | List every entry (graphs, variables, shared variables, categories, …) stored in a UAF asset's editor data (read-only) |
+| `ListUAFGraphs` | List every entry that carries a RigVM graph — animation graph entries, event graph entries, etc. (read-only) |
+| `ListUAFNodes` | List all node names in the RigVM graph owned by a UAF asset entry (read-only) |
+| `GetUAFNodeInfo` | Struct path and pin descriptions for a node in a UAF asset entry's RigVM graph (read-only) |
+| `ListUAFPins` | All pin descriptions for a node in a UAF asset entry's RigVM graph (read-only) |
+| `GetUAFPinValue` | The default value of a pin, addressed as `NodeName.PinName` (read-only) |
+| `ListUAFVariables` | List every member variable of a UAF asset (read-only) |
+| `GetUAFVariable` | Description of one named member variable (read-only) |
+| `GetAvailableUAFUnitStructs` | List available `FRigUnit_AnimNextBase` substructs — feed `ClassPath` to `AddUAFGraphNode` as `StructPath`. Each entry carries `Admission` plus `RequiredCapabilities` / `MissingCapabilities`, so a struct that cannot be added yet still says what it would take |
+| `AddUAFGraphNode` | Add a RigVM unit node via `StructPath` (resolved against structs already loaded, never loaded on demand); a struct outside the modules this domain ships requires `UAFCustomTypeEdit` |
+| `RemoveUAFGraphNode` | Remove a RigVM node by name; requires `UAFCustomTypeEdit` when the removed node's struct is not one this domain ships |
+| `ConnectUAFPins` | Connect an output pin to an input pin (`NodeName.PinName` format); requires `UAFCustomTypeEdit` when either endpoint's struct is not one this domain ships |
+| `DisconnectUAFPins` | Disconnect an output pin from an input pin; same `UAFCustomTypeEdit` condition as `ConnectUAFPins` |
+| `SetUAFPinValue` | Set the default value of a pin (UE text import notation). Requires `UAFCustomTypeEdit` when the owning node's struct is not one this domain ships, and `UAFReferenceEdit` when the pin's declared type is — or contains — an object / class reference |
+| `AddUAFVariable` | Create a new member variable; `ValueType` / `ContainerType` name `EPropertyBagPropertyType` / `EPropertyBagContainerType` enumerators. Requires `UAFReferenceEdit` for a reference-typed variable |
+| `RemoveUAFVariable` | Remove a member variable by name (`VariableNotFound` both when nothing of that name exists and when it exists but is not a variable) |
+| `AddUAFEventGraph` | Add a new event graph entry rooted at the RigVM unit struct named by `StructPath`. `UUAFSystem` only — refused with `UnsupportedOperation` on `UUAFAnimGraph`, which has a single fixed animation graph entry and no room for one |
+| `CompileUAFAsset` | Trigger a synchronous compile via `RequestAssetCompilation`, subject to per-session rate limiting (`MinCompileIntervalSeconds` between calls per asset) |
+
+All nine mutating commands above require `UAFGraphEdit` as their static capability.
+
+---
+
+## UAIP.Editor.UAF.AnimGraph 🧩
+
+One read-only command specific to UAF animation graph assets. Requires the Engine's `UAFAnimGraph` plugin (which itself requires `UAF`).
+
+**`Stability: Experimental`**, for the same reason as [UAIP.Editor.UAF](#uaipeditoruaf-).
+
+| Command | Description |
+|---|---|
+| `GetAvailableUAFTraits` | List available `FAnimNextTraitSharedData` substructs (UAF animation traits) — feed `ClassPath` to `AddUAFGraphNode` as `StructPath`. Same `Admission` / capability-preview shape as `GetAvailableUAFUnitStructs` |
 
 ---
 
@@ -1396,21 +1469,43 @@ Behavior Tree graph editing and Blackboard key management.
 |---|---|
 | `GetBehaviorTreeNodeList` | Flat list of every node — `NodeGuid`, `NodeClass`, `DisplayName`, `Depth` (0 = root composite), `ParentNodeGuid` |
 | `GetBehaviorTreeSubtree` | Recursive subtree (Composite / Task / Decorator / Service) rooted at a `NodeGuid`, `MaxDepth` 1–32 |
-| `GetAvailableBTCompositeClasses` | List `UBTCompositeNode` subclasses — feed `ClassPath` to `AddBehaviorTreeCompositeNode` |
-| `GetAvailableBTTaskClasses` | List `UBTTaskNode` subclasses — feed `ClassPath` to `AddBehaviorTreeTaskNode` |
-| `GetAvailableBTDecoratorClasses` | List `UBTDecorator` subclasses — feed `ClassPath` to `AddBehaviorTreeDecoratorNode` |
-| `GetAvailableBTServiceClasses` | List `UBTService` subclasses — feed `ClassPath` to `AddBehaviorTreeServiceNode` |
-| `AddBehaviorTreeCompositeNode` | Add a Composite node (Sequence / Selector / SimpleParallel) |
-| `AddBehaviorTreeTaskNode` | Add a Task node by TaskClass |
-| `AddBehaviorTreeDecoratorNode` | Attach a Decorator to a parent node |
-| `AddBehaviorTreeServiceNode` | Attach a Service to a parent Composite node |
-| `RemoveBehaviorTreeNode` | Remove a node by NodeId |
-| `SetBehaviorTreeNodeProperty` | Set a node property (FBlackboardKeySelector / generic ImportText_Direct). A key-selector write is now refused when the tree has no Blackboard asset assigned — the key name cannot be validated without one, and the write used to leave a name and a type that did not match. A refused write no longer marks the asset dirty or leaves an empty undo entry |
+| `GetAvailableBTCompositeClasses` | List `UBTCompositeNode` subclasses — feed `ClassPath` to `AddBehaviorTreeCompositeNode`. Each entry now carries `Admission` (`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`) plus `RequiredCapabilities` / `MissingCapabilities`, from the same policy the add command validates against. No longer filtered to the modules this domain ships. Ordered by `ClassPath`; reports `TotalCount`, `ReturnedCount`, `Truncated` (max 200). `SchemaVersion` is now `2` — see the note below |
+| `GetAvailableBTTaskClasses` | List `UBTTaskNode` subclasses — feed `ClassPath` to `AddBehaviorTreeTaskNode`. Reports the same admission and count fields as above |
+| `GetAvailableBTDecoratorClasses` | List `UBTDecorator` subclasses — feed `ClassPath` to `AddBehaviorTreeDecoratorNode`. Reports the same admission and count fields as above |
+| `GetAvailableBTServiceClasses` | List `UBTService` subclasses — feed `ClassPath` to `AddBehaviorTreeServiceNode`. Reports the same admission and count fields as above |
+| `AddBehaviorTreeCompositeNode` | Add a Composite node (Sequence / Selector / SimpleParallel) — a class from outside the modules this domain ships needs a capability, see the note below |
+| `AddBehaviorTreeTaskNode` | Add a Task node by TaskClass — sub-tree runners and Blueprint-backed tasks additionally need their own capability, see the note below |
+| `AddBehaviorTreeDecoratorNode` | Attach a Decorator to a parent node — same checks as above |
+| `AddBehaviorTreeServiceNode` | Attach a Service to a parent Composite node — same checks as above |
+| `RemoveBehaviorTreeNode` | Remove a node by NodeId — needs the same capabilities the node's own class asks for |
+| `SetBehaviorTreeNodeProperty` | Set a node property (FBlackboardKeySelector / generic ImportText_Direct). Needs the capabilities asked for by the class of the node being written **and** by the class that declares the property. A key-selector write is now refused when the tree has no Blackboard asset assigned — the key name cannot be validated without one, and the write used to leave a name and a type that did not match. A refused write no longer marks the asset dirty or leaves an empty undo entry |
 | `ListBlackboardKeys` | List Blackboard asset keys (allowed during PIE) |
-| `AddBlackboardKey` | Add a key (KeyType allowlist, duplicate-name check) |
-| `RemoveBlackboardKey` | Remove an unreferenced key (returns Conflict + referencers if in use) |
+| `AddBlackboardKey` | Add a key (duplicate-name check). A key type outside `/Script/AIModule`, and the two key kinds that hold a reference the writer chooses, each need a capability — see the note below |
+| `RemoveBlackboardKey` | Remove an unreferenced key (returns Conflict + referencers if in use) — needs the same capabilities the key's own type asks for |
 | `SetBehaviorTreeBlackboard` | Change the Blackboard asset a BT references |
 | `RequestBehaviorTreeAutoArrange` | Run the AutoArrange pass on an open BT editor |
+
+> **Note — this domain gates types at three separate places, behind three capabilities**: the class of a node being placed or worked on, the class that declares a node property being written, and the class of a Blackboard key type being declared or removed. Each place has its own set of modules it has always accepted, and those sets are deliberately not the same.
+>
+> - **`BehaviorTreeCustomTypeEdit`** — required when the type comes from outside what this domain ships: `/Script/AIModule` or `/Script/AITestSuite` for a node class, `/Script/AIModule` or `/Script/Engine` for the class declaring a node property, and `/Script/AIModule` alone for a Blackboard key type. A project module, a plugin module (including an engine plugin such as `GameplayBehaviorSmartObjects`), or a Blueprint generated class all fall outside. One name covers all three places on purpose: it stands for a single permission — work with types this domain does not ship — and which place a project's own type is reached through is not something an operator granting that permission would want to decide separately.
+> - **`BehaviorTreeExternalBehaviorNodeEdit`** — required for the five node kinds whose body is defined somewhere other than the class itself: `UBTTask_RunBehavior` and `UBTTask_RunBehaviorDynamic`, which execute a whole other Behavior Tree asset, and `UBTTask_BlueprintBase` / `UBTDecorator_BlueprintBase` / `UBTService_BlueprintBase`, whose subclasses carry a graph authored in the editor. Matched by inheritance, not by name.
+> - **`BlackboardReferenceKeyTypeEdit`** — required for the two key kinds whose stored value is a reference the writer gets to choose: `UBlackboardKeyType_Object`, which accepts any object in the project, and `UBlackboardKeyType_Class`, which names a class and has the engine resolve it. Also matched by inheritance.
+>
+> None is granted by default; see [Safety & Capabilities](safety.md#ai-systems).
+>
+> ⚠️ **A Blueprint-authored Behavior Tree node needs two capabilities, not one.** It is both a class this domain does not ship and a class whose body is a graph, so `BehaviorTreeCustomTypeEdit` and `BehaviorTreeExternalBehaviorNodeEdit` are required **together**; holding one leaves the request refused, naming the other as still missing. The same applies to a project-defined subclass of `UBlackboardKeyType_Object`, which needs `BehaviorTreeCustomTypeEdit` and `BlackboardReferenceKeyTypeEdit`. This domain is the second after Material where two capabilities can apply to one type, and it is the case most likely to surprise: an operator who grants only the custom-type capability will still be refused for every Blueprint node the project defines.
+>
+> **Rebuilding a tree is never gated by the classes it already contains.** Adding or removing a main node rewrites the tree's node template chain afterwards, and that rewrite asks nothing for the classes already sitting in the asset — otherwise a tree holding one node class of the project's own could never be edited without a grant. Only the class a request *names*, and the nodes a request *acts on*, are gated. The same holds for Blackboard key types: declaring a key describes the shape of a slot, so a Behavior Tree naming a Blackboard that has an object key stays editable without `BlackboardReferenceKeyTypeEdit`.
+>
+> **Nothing here is refused by the engine after authorization.** Unlike Material and ControlRig, this domain has no per-class engine predicate to consult: the Behavior Tree editor answers whether a graph is a Behavior Tree graph rather than whether a class belongs in one, and a Blackboard imposes no schema on the key types it accepts. A type whose only remaining requirement is a capability is therefore accepted once that capability is held.
+>
+> These checks are not limited to the `Add*` commands — see [Capability-gated custom types](#capability-gated-custom-types) for how the same capabilities are re-checked when an existing node is edited or deleted, or an existing key removed, and for the breaking change on delete specifically.
+>
+> ⚠️ **Breaking change**: such a class used to be refused with `PolicyViolation`. The four `Add*` commands and `AddBlackboardKey` now answer `CapabilityNotAvailable` and name every missing capability at once. Two other codes moved with them: a class path nothing currently loaded answers to is now `NotFound` rather than `InvalidParams`, and a class that is abstract, deprecated, superseded, or not a Behavior Tree node at all is now `InvalidParams` rather than `PolicyViolation`. There is no compatibility window for the old codes: they meant "no permission would have helped", so keeping them would describe a permission system that did not exist. **Nothing is loaded to resolve a class path** — the four `Add*` commands and `AddBlackboardKey` used to fall back to loading the named class when it was not already in memory, and no longer do.
+>
+> **Note — the four listings no longer hide anything, and say what each class would take**: they used to return only classes that were concrete, not deprecated, not superseded, and not marked as hidden in the editor's own drop-down, without ever consulting the policy the add path uses. That produced disagreements in both directions — a sub-tree runner or a project's own node was offered and then refused, while a class carrying the hidden-drop-down marker was accepted by the add path yet absent from the one place it could have been discovered. All four now answer from the same policy, report `Admission` per entry, and include the classes that cannot be placed at all as `NotAddable` rather than dropping them. They are ordered by `ClassPath` and report `TotalCount` / `ReturnedCount` / `Truncated`, so a capped answer always carries the same leading classes instead of whichever ones the class walk reached first. A listing is a snapshot, not an authorization: capabilities and roles can change between the listing and the mutation, so each command re-evaluates on its own request.
+>
+> **There is no listing for Blackboard key types.** The three gated places are not equally discoverable: node classes have the four listings above, while the key types a Blackboard will accept, and the properties a node exposes, have no command that enumerates them with their admission. An operator granting `BlackboardReferenceKeyTypeEdit` or `BehaviorTreeCustomTypeEdit` for a key type has to know the class path in advance.
 
 ### Toolset bridges — AIModule (7) 🧩
 
@@ -1434,16 +1529,28 @@ MetaSound graph editing. Requires `Metasound` plugin.
 
 | Command | Description |
 |---|---|
-| `GetMetaSoundInfo` 🧩 | MetaSoundSource / MetaSoundPatch graph topology (nodes, connections, I/O vertices) |
-| `GetAvailableMetaSoundNodeClasses` 🧩 | List frontend-registry node classes (`ClassName`, `Variant`, `MajorVersion`, `DisplayName`) for `AddMetaSoundNode`; filtered to engine-standard namespaces |
-| `AddMetaSoundNode` 🧩 | Add a node by `Namespace::Name` (MajorVersion-aware, 5-step policy) |
-| `RemoveMetaSoundNode` 🧩 | Remove a node by NodeId |
-| `ConnectMetaSoundPins` 🧩 | Connect two pins (idempotent flag on duplicates) |
-| `DisconnectMetaSoundPins` 🧩 | Disconnect a pin connection |
+| `GetMetaSoundInfo` 🧩 | MetaSoundSource / MetaSoundPatch graph topology (nodes, connections, I/O vertices). Every node reports its real `ClassName` plus `Admission` / `RequiredCapabilities` / `MissingCapabilities` for working on it — see the note below |
+| `GetAvailableMetaSoundNodeClasses` 🧩 | List frontend-registry node classes (`ClassName`, `Variant`, `MajorVersion`, `DisplayName`) for `AddMetaSoundNode`, each with `Admission` (`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`) plus `RequiredCapabilities` / `MissingCapabilities` from the same policy `AddMetaSoundNode` validates against. No longer filtered to engine-standard namespaces. Ordered by `ClassName`; reports `TotalCount`, `ReturnedCount`, `Truncated` (max 1000) — see the note below |
+| `AddMetaSoundNode` 🧩 | Add a node by `Namespace::Name` (MajorVersion-aware) — a class from outside the four engine namespaces needs a capability, see the note below |
+| `RemoveMetaSoundNode` 🧩 | Remove a node by NodeId — needs the same capability when the node is one of those classes |
+| `ConnectMetaSoundPins` 🧩 | Connect two pins (idempotent flag on duplicates) — both ends are checked |
+| `DisconnectMetaSoundPins` 🧩 | Disconnect a pin connection — both ends are checked |
 | `AddMetaSoundInput` 🧩 | Add an input vertex (single-page assets only) |
 | `AddMetaSoundOutput` 🧩 | Add an output vertex (single-page assets only) |
-| `SetMetaSoundNodeProperty` 🧩 | Set an input default (Bool / Int / Float / String, NaN / Inf rejected) |
-| `CompileMetaSound` 🧩 | Register with Frontend (per-session 1 s rate limit) |
+| `SetMetaSoundNodeProperty` 🧩 | Set an input default (Bool / Int / Float / String, NaN / Inf rejected) — needs the same capability when the node is one of those classes |
+| `CompileMetaSound` 🧩 | Register with Frontend (per-session 1 s rate limit) — never gated by the custom-type capability |
+
+> **Note — node classes outside the four engine namespaces are capability-gated**: a `ClassName` whose namespace is `UE`, `Metasound`, `MetasoundStandardNodes` or `MetasoundEditor` is added the same way as before. A class from any other namespace — one a project or plugin module registered under its own — now requires `MetaSoundCustomTypeEdit` instead of being refused outright. Not granted by default; see [Safety & Capabilities](safety.md#optional-graph-editors). There is no companion "dangerous type" capability for this domain, as in AnimBlueprint, ControlRig and Enhanced Input and unlike Material: a MetaSound node evaluates the fixed signal operation its registry entry describes and runs nothing the caller supplied.
+>
+> ⚠️ **This affects ordinary graphs more here than in the other gated domains — read this before granting or withholding the capability.** MetaSound registers **every MetaSound asset's own graph class without a namespace**, and that is exactly what a node referencing another MetaSound asset is: a subgraph, or the target of a preset. Such a node therefore always falls outside the four namespaces, so a session without `MetaSoundCustomTypeEdit` **cannot connect, disconnect, remove, or write an input default on any node of a subgraph or preset**, even though nothing about the graph is unusual. Subgraph reuse is normal practice in MetaSound in a way it is not in the other domains this gate covers, so expect to grant this capability for most real authoring work. It is not exempted, because a graph class registered by an asset of the project's own *is* a type of the project's own, and exempting it would empty the capability of most of its meaning in this domain.
+>
+> **Compiling is never gated by it.** `CompileMetaSound`, and the implicit re-registration every mutating command performs after its own change, ask nothing for the classes an asset merely contains — otherwise a MetaSound referencing one asset of the project's own could never be compiled without a grant. Only the class a request *names*, and the nodes a request *acts on*, are gated.
+>
+> These checks are not limited to `AddMetaSoundNode` — see [Capability-gated custom types](#capability-gated-custom-types) for how the same capability is re-checked when an existing node is edited, connected, disconnected, or deleted, and for the breaking change on delete / disconnect specifically.
+>
+> ⚠️ **Breaking change**: such a class used to be refused with `PolicyViolation`. `AddMetaSoundNode` now answers `CapabilityNotAvailable` and names the missing capability. Two other codes moved with it: a `ClassName` nothing in the frontend registry answers to is now `NotFound` rather than `PolicyViolation`, and a deprecated class is now `InvalidParams` rather than `PolicyViolation`. A template class (`Reroute` and the like) keeps returning `PolicyViolation`. There is no compatibility window for the old codes: they meant "no permission would have helped", so keeping them would describe a permission system that did not exist. Nothing is loaded to resolve a class name — the registry is read as it stands.
+>
+> **Note — the two listings now report admission and no longer hide anything**: `GetAvailableMetaSoundNodeClasses` used to drop every class outside the four namespaces from its response, so a project's own nodes were invisible to it even for an operator who had granted access to them. It now returns the registry's external classes in full, ordered by `ClassName`, each with `Admission` — `Allowed`, `RequiresCapabilities` (grant what `MissingCapabilities` names, itself a subset of `RequiredCapabilities`), `NotAddable` (a structural refusal no grant fixes — deprecated, a template class, or nothing registered answers to it), or `CompatibilityUnknownUntilAuthorized` — plus `TotalCount` / `ReturnedCount` / `Truncated` for a new 1000-entry cap. ⚠️ `GetMetaSoundInfo` changed the same way and more sharply: it used to report any node outside those namespaces as `ClassName: "<Unknown>"` **and drop every edge touching one**, so the returned topology did not match the asset. It now reports real class names and all edges, and attaches `Admission` / `RequiredCapabilities` / `MissingCapabilities` to each node from the same question the editing routes ask. A caller that treated `"<Unknown>"` as a sentinel, or that relied on the edge list being pre-filtered, must stop. Both reports are snapshots, not authorizations: capabilities and roles can change between the listing and the mutation, so each command re-evaluates on its own request.
 
 ---
 
@@ -1453,15 +1560,38 @@ EQS query editing. Requires `EnvironmentQueryEditor` plugin.
 
 | Command | Description |
 |---|---|
-| `GetEQSQueryInfo` 🧩 | EQS Generator Option / Test structure (degraded mode during PIE) |
-| `GetAvailableEQSGeneratorClasses` 🧩 | List `UEnvQueryGenerator` subclasses — feed `ClassPath` to `AddEQSGenerator` |
-| `GetAvailableEQSTestClasses` 🧩 | List `UEnvQueryTest` subclasses — feed `ClassPath` to `AddEQSTest` |
-| `AddEQSGenerator` 🧩 | Add a Generator Option (GeneratorClass, 6-step allowlist) |
-| `RemoveEQSGenerator` 🧩 | Remove a Generator Option by NodeId (cascading Test deletion) |
-| `AddEQSTest` 🧩 | Add a Test to a Generator Option |
-| `RemoveEQSTest` 🧩 | Remove a Test by NodeId |
-| `SetEQSGeneratorProperty` 🧩 | Set a Generator property (generic ImportText_Direct) |
-| `SetEQSTestProperty` 🧩 | Set a Test property (`param:<Name>` → `UAIDataProvider_QueryParams`) |
+| `GetEQSQueryInfo` 🧩 | EQS Generator Option / Test structure. Every Option and Test now reports its real class name — no longer redacted during degraded (PIE) reads — plus `Admission` / `RequiredCapabilities` / `MissingCapabilities` for it, see the note below. Degraded mode still omits `NodeX` / `NodeY` and `GeneratorProperties`. `SchemaVersion` is now `2` |
+| `GetAvailableEQSGeneratorClasses` 🧩 | List `UEnvQueryGenerator` subclasses — feed `ClassPath` to `AddEQSGenerator`. Each entry now carries `Admission` (`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`) plus `RequiredCapabilities` / `MissingCapabilities`, from the same policy the add command validates against. No longer filtered to the module this domain ships. Ordered by `ClassPath`; reports `TotalCount`, `ReturnedCount`, `Truncated` (max 200). `SchemaVersion` is now `2` — see the note below |
+| `GetAvailableEQSTestClasses` 🧩 | List `UEnvQueryTest` subclasses — feed `ClassPath` to `AddEQSTest`. Reports the same admission and count fields as above |
+| `AddEQSGenerator` 🧩 | Add a Generator Option — a class from outside the module this domain ships needs a capability, see the note below |
+| `RemoveEQSGenerator` 🧩 | Remove a Generator Option by NodeId (cascading Test deletion) — needs the same capabilities the Generator's own class asks for |
+| `AddEQSTest` 🧩 | Add a Test to a Generator Option — same checks as `AddEQSGenerator` |
+| `RemoveEQSTest` 🧩 | Remove a Test by NodeId — needs the same capabilities the Test's own class asks for |
+| `SetEQSGeneratorProperty` 🧩 | Set a Generator property (generic ImportText_Direct) — needs the capabilities asked for by the class of the Generator being written **and** by the class that declares the property |
+| `SetEQSTestProperty` 🧩 | Set a Test property (`param:<Name>` → `UAIDataProvider_QueryParams`) — same checks as above; toggling `bTestEnabled` (`PropertyName: "TestEnabled"`) is gated by the Test's own class too, even though the flag itself lives on the graph node rather than on the Test instance — this route was previously ungated entirely, see the note below |
+
+> **Note — this domain gates types at three separate places, behind two capabilities**: the class of a Generator being placed or worked on, the class of a Test being placed or worked on, and the class that declares a node property being written. All three places have always accepted the same single module, `/Script/AIModule`.
+>
+> - **`EQSCustomTypeEdit`** — required when the type comes from outside `/Script/AIModule`: a project module, a plugin module (including an engine plugin such as `SmartObjects` or `MassEQS`), or a Blueprint generated Test class. One name covers all three places on purpose, for the same reason as the other gated domains: which place a project's own type is reached through — as a Generator, a Test, or the declarer of a property — is not something an operator granting this permission would want to decide separately.
+> - **`EQSDelegatedGeneratorEdit`** — required for a Generator kind whose item production is not its own compiled code: `UEnvQueryGenerator_Composite`, which runs a set of nested Generator instances held inside it, and `UEnvQueryGenerator_BlueprintBase`, whose subclasses carry a graph authored in the editor. Matched by inheritance, not by name, and required independently of where the class came from — `/Script/AIModule` ships both kinds itself, so the module a class comes from says nothing about what it will run. Also required for a property such a Generator declares (a Composite Generator's own properties describe the child Generators it runs).
+>
+> Neither is granted by default; see [Safety & Capabilities](safety.md#optional-graph-editors).
+>
+> ⚠️ **A project-defined Composite-derived Generator needs both capabilities, not one.** It is both a class this domain does not ship and a class whose item production runs elsewhere, so `EQSCustomTypeEdit` and `EQSDelegatedGeneratorEdit` are required **together**; holding one leaves the request refused, naming the other as still missing. The same applies to a property such a class declares.
+>
+> **The Test surface has no companion "dangerous type" capability.** Unlike the Generator surface, nothing this domain accepts as a Test runs code somewhere other than its own compiled class — a Blueprint-authored Test's graph is answered by origin, the same as any other project-defined class, rather than by a second finding.
+>
+> **Rebuilding a query is never gated by the classes it already contains.** Adding or removing a Generator or Test writes the graph back into the query's Option list afterward, and that rewrite asks nothing for the classes already sitting in the asset — otherwise a query holding one Generator or Test class of the project's own could never be edited without a grant. Only the class a request *names*, and the nodes a request *acts on*, are gated.
+>
+> **Nothing here is refused by the engine after authorization.** This domain has no per-class engine predicate to consult: the environment query editor builds its class menus by enumerating subclasses and dropping the abstract, deprecated and hidden ones, and the graph schema answers whether a graph is a query graph rather than whether a given Generator or Test belongs in one. A type whose only remaining requirement is a capability is therefore accepted once that capability is held.
+>
+> These checks are not limited to the `Add*` commands — see [Capability-gated custom types](#capability-gated-custom-types) for how the same capabilities are re-checked when an existing Generator or Test is edited or deleted, and for the breaking change on delete specifically. ⚠️ **Toggling `bTestEnabled` used to be entirely ungated**, along with delete and disconnect — before this change, only the `Add*` and `Set*` (for the property it writes to the node instance) commands consulted the type policy, so this route reached the asset regardless of what the Test's class was.
+>
+> ⚠️ **Breaking change**: such a class used to be refused with `PolicyViolation`. `AddEQSGenerator`, `AddEQSTest`, `SetEQSGeneratorProperty` and `SetEQSTestProperty` now answer `CapabilityNotAvailable` and name every missing capability at once. A class path nothing currently loaded answers to is now `NotFound` rather than `InvalidParams`; this domain never fell back to loading an unresolved class as a side effect, so nothing changes there. There is no compatibility window for the old codes: they meant "no permission would have helped", so keeping them would describe a permission system that did not exist.
+>
+> **Note — the two listings no longer hide anything, and say what each class would take**: they used to enumerate classes by base type and class flags alone, without consulting the policy the add path uses, and dropped every class outside `/Script/AIModule` from the response. That produced disagreements in both directions — a Composite Generator or a project's own class was offered and then refused, while an abstract class such as `UEnvQueryGenerator_BlueprintBase` was correctly refused yet absent from the one place it could have been discovered. Both listings now answer from the same policy, report `Admission` per entry, and include the classes that cannot be placed at all as `NotAddable` rather than dropping them. They are ordered by `ClassPath` and report `TotalCount` / `ReturnedCount` / `Truncated` (max 200), so a capped answer always carries the same leading classes instead of whichever ones the class walk reached first. A listing is a snapshot, not an authorization: capabilities and roles can change between the listing and the mutation, so each command re-evaluates on its own request.
+>
+> **`GetEQSQueryInfo` no longer withholds a class name.** Every Option and Test used to report `<redacted>` in place of the class name during a degraded (PIE) read for a type the domain would not accept outright, which told the caller neither what the node was nor what would make it usable. It now always reports the real class name, alongside `Admission` / `RequiredCapabilities` / `MissingCapabilities` for the same question `SetEQSGeneratorProperty` / `SetEQSTestProperty` / `RemoveEQSGenerator` / `RemoveEQSTest` would ask about it.
 
 ---
 
@@ -1659,7 +1789,7 @@ ControlRig authoring **inside a LevelSequence**. For editing a ControlRig asset 
 | `SetControlsMask` | Set visibility for named controls; unnamed controls keep their state |
 | `ShowAllControls` | Make every control in the section visible |
 | `HideAllControls` | Hide every control in the section |
-| `LoadAnimIntoRig` | ⚠️ Always returns `UnsupportedOperation` — the engine API needs a `USkeletalMeshComponent*` unavailable in static asset editing. Use `Toolset.Editor.SequencerControlRig.LoadAnimIntoRig` instead |
+| `LoadAnimIntoRig` | Bakes an AnimSequence onto the controls of a ControlRig section. The animation is sampled through the skeletal mesh the track's binding resolves to, so the level holding the bound actor must be open; otherwise the command fails with `NotFound` |
 | `GetActorTransformAtFrame` | Evaluate the sequence at a frame and return the named actor's world transform |
 
 ### Toolset bridges (61) 🧩
@@ -1682,21 +1812,25 @@ StateTree editing.
 |---|---|
 | `GetRootStates` | Top-level state descriptors (`StateId`, `Name`, `Type`, `ParentStateId`, `ChildCount`) |
 | `GetStateChildren` | Direct child state descriptors of one state |
-| `GetStateTasks` | Tasks of one state (class names redacted in degraded mode during PIE) |
+| `GetStateTasks` | Tasks of one state (class names redacted in degraded mode during PIE). Each entry carries `Admission` / `RequiredCapabilities` / `MissingCapabilities` for the task's own class — see the note below. `SchemaVersion` is now `2` |
 | `GetStateTransitions` | Transitions of one state (target state IDs suppressed during PIE) |
-| `GetStateEnterConditions` | Enter conditions of one state |
-| `GetStateTreeGlobalTasks` | Global tasks of the asset (run regardless of the active state) |
-| `GetStateTreeEvaluators` | Evaluators of the asset (run every tick to update shared data) |
+| `GetStateEnterConditions` | Enter conditions of one state. Reports the same admission fields as `GetStateTasks`. `SchemaVersion` is now `2` |
+| `GetStateTreeGlobalTasks` | Global tasks of the asset (run regardless of the active state). Reports the same admission fields as `GetStateTasks`. `SchemaVersion` is now `2` |
+| `GetStateTreeEvaluators` | Evaluators of the asset (run every tick to update shared data). Reports the same admission fields as `GetStateTasks`. `SchemaVersion` is now `2` |
 | `GetStateNodeDescription` | Class path and display name of a node GUID (searches global tasks, evaluators, all states) |
+
+> **Note — the four node listings above no longer mask a class this domain does not ship.** They used to replace `TaskClass` / `ConditionClass` / `EvaluatorClass` with `"<redacted>"` and set `MaskedDueToPolicy: true` for a node whose class the add path would refuse. All four now name the real class and instead attach `Admission` / `RequiredCapabilities` / `MissingCapabilities`, matching how `GetAvailableTaskClasses` / `GetAvailableConditionClasses` / `GetAvailableEvaluatorClasses` below already report classes not yet placed. `MaskedDueToPolicy` is still present in the response for compatibility but is now always `false`. **This is unrelated to the redaction that still applies during a degraded (PIE) read** (the `TaskClass` / `ConditionClass` / `EvaluatorClass` field itself, not `MaskedDueToPolicy`) — which continues to replace every class name with `"<redacted>"` regardless of capability, for reasons that predate this feature.
+>
+> ⚠️ Two node kinds were also affected by two unrelated fixes made alongside the above. Global task, evaluator and enter condition nodes backed by a native struct (as opposed to a Blueprint instance) previously bypassed the node class policy entirely and were never reported with any admission fields at all; they now are. Evaluator and enter condition nodes were previously judged as though they were Task nodes, which could report `WrongBaseType`-style refusals for classes the add path accepts; they are now judged against their own base.
 
 #### Class / schema discovery (5)
 
 | Command | Description |
 |---|---|
-| `GetAvailableTaskClasses` | Task classes (native struct + Blueprint) permitted by the active node class policy |
-| `GetAvailableConditionClasses` | Condition classes (native struct + Blueprint) |
-| `GetAvailableEvaluatorClasses` | Evaluator classes (native struct + Blueprint) |
-| `GetAvailableStateTreeSchemaClasses` | `UStateTreeSchema` subclasses — feed `ClassPath` to `CreateAsset` as `FactoryParams.SchemaClass` |
+| `GetAvailableTaskClasses` | `FStateTreeTaskBase` fields (native struct + Blueprint) — feed `ClassPath` to `AddStateTask` / `AddGlobalTask`. Each entry now carries `Admission` (`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`) plus `RequiredCapabilities` / `MissingCapabilities`, from the same policy the add commands validate against — including the native struct hierarchy, which the previous filter never consulted at all. Ordered by `ClassPath`; reports `TotalCount`, `ReturnedCount`, `Truncated` (max 200, applied once to the struct and class hierarchies combined). `SchemaVersion` is now `2` — see the note below |
+| `GetAvailableConditionClasses` | `FStateTreeConditionBase` fields (native struct + Blueprint) — feed `ClassPath` to `AddStateEnterCondition`. Reports the same admission and count fields as above |
+| `GetAvailableEvaluatorClasses` | `FStateTreeEvaluatorBase` fields (native struct + Blueprint) — feed `ClassPath` to `AddEvaluator`. Reports the same admission and count fields as above |
+| `GetAvailableStateTreeSchemaClasses` | `UStateTreeSchema` subclasses — feed `ClassPath` to `CreateAsset` as `FactoryParams.SchemaClass`. Not part of the capability gate described below: a schema class is not a task, evaluator or enter condition field, so no node class policy applies to it |
 | `GetStateTreeSchema` | Schema class path and root parameter descriptors of an asset |
 
 #### State structure editing (4)
@@ -1712,28 +1846,38 @@ StateTree editing.
 
 | Command | Description |
 |---|---|
-| `AddStateTask` | Add a Task to a State (8-step allowlist); returns `TaskId` |
-| `RemoveStateTask` | Remove a Task by `TaskId` |
+| `AddStateTask` | Add a Task to a State — a class from outside the modules this domain ships needs a capability, see the note below; returns `TaskId` |
+| `RemoveStateTask` | Remove a Task by `TaskId` — needs the same capability the removed task's own class asks for |
 | `AddStateTransition` | Add a Transition (`Succeeded` / `Failed` / `NextState` / `NextSelectableState` / GUID target). `OnDelegate` is not supported |
 | `RemoveStateTransition` | Remove a Transition by `TransitionId` |
-| `AddStateEnterCondition` | Add an enter condition to a state; returns `ConditionId` |
-| `RemoveStateEnterCondition` | Remove an enter condition by `ConditionId` |
-| `SetEnterConditionProperty` | Set a property on an enter condition node |
+| `AddStateEnterCondition` | Add an enter condition to a state — same capability check as `AddStateTask`; returns `ConditionId` |
+| `RemoveStateEnterCondition` | Remove an enter condition by `ConditionId` — needs the same capability the removed condition's own class asks for |
+| `SetEnterConditionProperty` | Set a property on an enter condition node — needs the capabilities asked for by the condition's own class **and** by the class that declares the property |
 | `GetStateNodeProperty` | Read one top-level property of a node GUID as exported text |
-| `SetStateNodeProperty` | Set a Task node property (generic `ImportText_Direct`) |
+| `SetStateNodeProperty` | Set a Task node property (generic `ImportText_Direct`) — needs the capabilities asked for by the task's own class **and** by the class that declares the property |
 
 #### Global task / evaluator editing (6)
 
 | Command | Description |
 |---|---|
-| `AddGlobalTask` | Add a global task; returns `TaskId` |
-| `RemoveGlobalTask` | Remove a global task by `TaskId` |
-| `SetGlobalTaskProperty` | Set a property on a global task node |
-| `AddEvaluator` | Add an evaluator; returns `EvaluatorId` |
-| `RemoveEvaluator` | Remove an evaluator by `EvaluatorId` |
-| `SetEvaluatorProperty` | Set a property on an evaluator node |
+| `AddGlobalTask` | Add a global task — same capability check as `AddStateTask`; returns `TaskId` |
+| `RemoveGlobalTask` | Remove a global task by `TaskId` — needs the same capability the removed task's own class asks for |
+| `SetGlobalTaskProperty` | Set a property on a global task node — needs the capabilities asked for by the task's own class **and** by the class that declares the property |
+| `AddEvaluator` | Add an evaluator — same capability check as `AddStateTask`; returns `EvaluatorId` |
+| `RemoveEvaluator` | Remove an evaluator by `EvaluatorId` — needs the same capability the removed evaluator's own class asks for |
+| `SetEvaluatorProperty` | Set a property on an evaluator node — needs the capabilities asked for by the evaluator's own class **and** by the class that declares the property |
 
-#### Parameters, bindings and compile (7)
+> **Note — a project's own task, evaluator or enter condition class is capability-gated, not refused outright**: a class or struct from outside `/Script/StateTreeModule`, `/Script/AIModule` and `/Script/GameplayStateTreeModule` — a project module, a plugin module, or a Blueprint generated class — needs `StateTreeCustomTypeEdit`. Not granted by default; see [Safety & Capabilities](safety.md#ai-systems). There is no companion "dangerous type" capability for this domain, as in MetaSound and Enhanced Input and unlike Material: a task, evaluator or enter condition field is a compiled function the tree calls with values from its own instance data, and a node property is a plain data member — neither carries code the caller wrote.
+>
+> **A property write checks two classes independently, not one.** `SetStateNodeProperty`, `SetGlobalTaskProperty`, `SetEvaluatorProperty` and `SetEnterConditionProperty` each admit the node's own class and the struct or class declaring the property being written as two separate questions; either one asking for a capability the session lacks refuses the whole write, and the refusal names every missing capability from both at once.
+>
+> **Compiling is never gated by it.** `CompileStateTree` asks nothing about the classes an asset merely contains — otherwise a StateTree holding one task of the project's own could never be compiled without a grant. Only the class a request *names*, and the nodes a request *acts on*, are gated.
+>
+> These checks are not limited to the `Add*` commands — see [Capability-gated custom types](#capability-gated-custom-types) for how the same capability is re-checked when an existing node is edited or deleted.
+>
+> ⚠️ **Breaking change**: such a class used to be refused with `PolicyViolation`. `AddStateTask`, `AddGlobalTask`, `AddEvaluator`, `AddStateEnterCondition` and the four `Set*Property` commands now answer `CapabilityNotAvailable` and name every missing capability at once. A class path nothing currently loaded answers to is `NotFound`; a class that is abstract, deprecated, superseded, or not a StateTree node at all is `InvalidParams`. **`RemoveStateTask`, `RemoveGlobalTask`, `RemoveEvaluator` and `RemoveStateEnterCondition` now check a capability at all** — previously none of the four consulted any policy, so removing a node was never refused regardless of its class. Nothing is loaded to resolve a class path; class resolution has always used `FindObject` rather than a loading fallback.
+>
+> **Note — the three class listings no longer hide the native struct hierarchy, and say what each class would take**: `GetAvailableTaskClasses`, `GetAvailableConditionClasses` and `GetAvailableEvaluatorClasses` used to run the native `FStateTree*Base` struct hierarchy through no policy at all, and ran the Blueprint class hierarchy through it only for `GetAvailableTaskClasses` — so a project's own struct-based task was listed exactly as freely as an engine-shipped one, and a Blueprint-backed condition or evaluator was listed without regard to where it came from either. All three now answer both hierarchies from the same policy the add commands validate against, report `Admission` per entry, and include classes that cannot be placed at all as `NotAddable` rather than dropping them. The two hierarchies are combined into one ordered, capped set — previously each hierarchy was capped independently, so a response could in principle carry up to twice the stated limit. A listing is a snapshot, not an authorization: capabilities and roles can change between the listing and the mutation, so each command re-evaluates on its own request.
 
 | Command | Description |
 |---|---|
@@ -2128,7 +2272,7 @@ Every command here reports `Stability: Experimental`, because `ControlRigDynamic
 | `SetDynamicsConeLimitSettings` | Replace `Strength`, `DampingRatio` and/or `Angle`; all three are refused when negative or non-finite. The topology keys cannot be changed here — use `SetComponentContent` |
 | `SetDynamicsConfinerSettings` | Replace `Shapes` and/or `Strength`. Shape validation matches `SetDynamicsColliderShapes`; `Strength` must be finite and not negative |
 
-#### Orchestration (4) — requires `ControlRigComponentEdit`
+#### Orchestration (5) — requires `ControlRigComponentEdit`
 
 | Command | Description |
 |---|---|
@@ -2136,6 +2280,7 @@ Every command here reports `Stability: Experimental`, because `ControlRigDynamic
 | `ImportDynamicsCollidersFromPhysicsAsset` | Create one collider per body of a PhysicsAsset whose bone exists on the rig, converting box, sphere and capsule shapes (a sphere becomes a zero-length capsule). Reports what it created and, under `SkippedBodies`, what it skipped and why |
 | `AddComponentToDynamicsSolver` | Register a dynamics component with a solver. Which of the solver's arrays it goes into follows from the component's type and cannot be chosen; the array used is reported as `SolverArray`. Registering something the solver already names changes nothing and reports `Added: false` |
 | `RemoveComponentFromDynamicsSolver` | Take a component out of every reference array of a solver. Removing something the solver does not refer to changes nothing and reports `Removed: false` |
+| `RemoveDynamicsChain` | Tear down a whole chain in one call: identify it either the way `AddDynamicsChain` built it (`StartElementName` / `EndElementName` / `ElementType`) or by the exact `Particles[]` / `Constraints[]` it returned, then unregister it from the solver, delete the constraints, and delete the particles. Refuses **without changing anything** when the match is ambiguous or incomplete; `DryRun` reports the target and any external references instead of removing them |
 
 > **Note — every typed `Set*` is a partial write, but never an empty one**: each field is independently optional and at least one is required. A field left out keeps the value the component already holds rather than falling back to the type default. Values outside the range the simulation accepts — a non-finite number, a negative mass or strength, a ratio outside 0–1, a timestep or iteration count of zero or less — are refused and leave the component unchanged. The generic `SetComponentContent` applies the same checks, so routing around a typed command does not get a rejected value in.
 >
@@ -2144,6 +2289,12 @@ Every command here reports `Stability: Experimental`, because `ControlRigDynamic
 > **Note — `ImportDynamicsCollidersFromPhysicsAsset` tells two kinds of mismatch apart**: a body whose bone is missing from the rig, whose element will not host a collider, or whose shapes are all of a kind that is not converted (convex hulls, tapered capsules, level sets) is **skipped**, and reported under `SkippedBodies` with the reason — the rest of the import goes ahead. A body whose bone does exist but whose shape values cannot be used is **refused outright**: nothing at all is created, rather than a silently partial result. The colliders it creates are not registered with any solver; do that explicitly with `AddComponentToDynamicsSolver`.
 >
 > **Note — `RemoveComponentFromDynamicsSolver` unregisters, it does not delete**: the component stays in the hierarchy (use `RemoveComponent` to delete it), it does not even have to still exist — a key left behind by an already-deleted component can be cleaned up this way — and it is taken out of every one of the solver's arrays rather than a chosen one. Constraints and cone limits the solver still simulates that name it are reported under `ReferenceWarnings` and left in place, because the solver skips a constraint whose particle it cannot resolve without an error or a warning.
+>
+> **Note — `RemoveDynamicsChain` takes exactly one way of pointing at the chain**: either the same `StartElementName` / `EndElementName` / `ElementType` (plus the solver) that `AddDynamicsChain` was given, or the exact `Particles[]` / `Constraints[]` it returned. Passing both, or neither, is `InvalidParams`. Either way the match has to be exact — a single unbroken run of particles and constraints, no branch, no loop, no gap. Anything else is refused without changing the asset: more than one candidate reports `AmbiguousElements[]`, a missing piece reports `IncompleteElements[]`. "Nothing there" reads differently by mode — a range with no chain on it is treated as already done (`Status: AlreadyAbsent`, a no-op success safe to repeat), while an exact key that does not exist is `NotFound`, since naming an individual key that is missing is a real error rather than nothing to do.
+>
+> **Note — `ReferenceHandling` decides what happens to references from outside the chain**, the same three values as `RemoveComponent` above (case-sensitive): `Reject` (default) refuses and reports every external reference under `References`; `Detach` removes them first, refusing upfront instead if even one cannot be detached; `Force` leaves them in place, and any left pointing at nothing are reported under `ReferenceWarnings` the same way `RemoveComponent`'s does. `DryRun` runs every check, including this one, and reports the target and any external references without touching the asset (`Status: Previewed`, `RemovedCount: 0`) — repeating the same call without `DryRun` removes exactly what was previewed.
+>
+> **Note — a pre-flight refusal guarantees no change; a mid-removal failure does not guarantee full recovery**: `Status` can also come back `RolledBack` or `RollbackFailed` when something fails after every check already passed. A rollback restores what it can and reports the achieved extent — `RemovedBeforeFailure[]`, `RestoredComponents[]`, `MissingAfterRollback[]`, `UnrestoredReferrers[]`, `SolverRestored` — rather than claiming full recovery, because recreating a deleted component does not reliably reproduce the same key. ⚠️ If the removal itself succeeds but the response record fails to save, the command answers `ExecutionFailed` even though the chain is already gone — `ErrorMessage` says so explicitly; this is the one command in this domain that checks the artifact save.
 
 ---
 

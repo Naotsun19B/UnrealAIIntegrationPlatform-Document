@@ -103,6 +103,6 @@ Expected response shape:
 | `claude mcp list` shows the server as failed | Run `python <path-to>/thin_proxy.py` directly — the error appears in stderr |
 | `TypeError: ...` from `thin_proxy.py` startup | Wrong Python version. Confirm `python --version` is 3.10+ |
 | `HealthCheck` works once, then later calls hang | The editor crashed and the bridge is reconnecting. Wait 60 s or check `Saved/Crashes/` |
-| "Couldn't reach MCP" after editor restart | `mcp_proxy.lock` left over from a previous `taskkill`. Delete it from `Saved/UAIP/` and restart |
+| "Couldn't reach MCP" after editor restart | Check `Data.Lock` from `uaip_get_editor_status()` (see [Connection Methods → Lock diagnostics](../connections.md#lock-diagnostics)). The OS releases `mcp_proxy.lock` the instant the holding process ends, however it exited, so a leftover lock file is not the cause. A launch refused because another bridge is genuinely still holding the lock is expected — disconnect or stop that session rather than deleting the file |
 
 See [Troubleshooting](../troubleshooting.md) for the full error code reference.

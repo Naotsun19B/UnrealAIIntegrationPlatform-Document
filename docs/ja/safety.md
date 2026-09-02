@@ -197,6 +197,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `AnimBlueprintGraphEdit` | AnimGraph へのノード追加・削除・接続、Anim Blueprint のコンパイル |
 | `AnimBlueprintCustomTypeEdit` | `AddAnimGraphNode` の `NodeClass` が、このドメインが信頼する 3 モジュール（`AnimGraph` / `AnimGraphRuntime` / `Engine`）以外 — プロジェクトやプラグインが定義した `UAnimGraphNode_Base` 派生クラス — のとき必要。このドメインには対になる「危険なノード」用の Capability はない。8 種のノードは、どの Capability を持っていても無条件で拒否される。[コマンド — UAIP.Editor.AnimBlueprint](commands.md#uaipeditoranimblueprint) を参照 |
 | `AnimStateMachineEdit` | Anim ステートマシンへの State・Transition の追加・削除 |
+| `AnimBlueprintReferenceEdit` | Anim Blueprint 上でオブジェクト参照を含む（または参照そのものである）プロパティ・実装済みインターフェース参照・埋め込み UAF グラフ参照を書き込むときに必要。`SetAnimGraphNodeProperty` は書き込みが実際に参照へ触れるときだけ動的に確認する。`ImplementAnimLayerInterface` と `AddUAFGraphNodeToAnimBlueprint` は毎回参照を書き込むため静的に宣言する。`AddLinkedAnimLayerNode` は `InterfacePath` 指定時だけ動的に確認する（自己完結型レイヤーノードは参照を書き込まない） |
 
 #### Level / アクター / プロパティ編集
 
@@ -242,7 +243,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `MaterialCustomNodeEdit` | `AddMaterialNode` の `ExpressionClass` が `UMaterialExpressionCustom` / `UMaterialExpressionCustomOutput`、またはそのいずれかの派生クラス（任意の HLSL を含められる）のとき、どのモジュール由来かに関わらず必要。この変更以前から登録されていたが、これまでどのコマンドも要求していなかった |
 | `MaterialCustomTypeEdit` | `AddMaterialNode` の `ExpressionClass` がエンジン組み込みモジュール（`Engine` / `RenderCore` / `MaterialEditor` / `Landscape`）以外 — プロジェクトやプラグインが定義した `UMaterialExpression` 派生クラス — のとき必要。プロジェクト定義かつカスタム HLSL のクラスは `MaterialCustomNodeEdit` とあわせて両方が必要 |
 
-> **Note**: `MaterialCustomNodeEdit` / `MaterialCustomTypeEdit`、（上の [Blueprint・AnimBlueprint 編集](#blueprintanimblueprint-編集) にある）`AnimBlueprintCustomTypeEdit`、（下の [ControlRig 編集](#controlrig-編集) にある）`ControlRigCustomTypeEdit`、および（下の [ゲームプレイシステム](#ゲームプレイシステム) にある）`EnhancedInputCustomTypeEdit` は、ゲートされた型のノードを追加するときだけでなく、その既存ノードに触るあらゆる操作 — 編集・接続・切断・コンパイル・Reparent・削除 — でも同じ Capability があらためて確認されます。⚠️ この変更以前は、こうしたノードの削除・切断は無条件でゲートされていませんでした。もう追加できない型であることは、それ自体では既存ノードを削除・切断できない理由にはなりません。詳細は [コマンドリファレンス — Capability でゲートされたカスタム型](commands.md#capability-でゲートされたカスタム型) を参照してください。
+> **Note**: `MaterialCustomNodeEdit` / `MaterialCustomTypeEdit`、（上の [Blueprint・AnimBlueprint 編集](#blueprintanimblueprint-編集) にある）`AnimBlueprintCustomTypeEdit`、（下の [ControlRig 編集](#controlrig-編集) にある）`ControlRigCustomTypeEdit`、（下の [AI システム](#ai-システム) にある）`BehaviorTreeCustomTypeEdit` / `BehaviorTreeExternalBehaviorNodeEdit` / `BlackboardReferenceKeyTypeEdit`、（下の [ゲームプレイシステム](#ゲームプレイシステム) にある）`EnhancedInputCustomTypeEdit`、および（下の [オプショングラフエディタ](#オプショングラフエディタ) にある）`MetaSoundCustomTypeEdit` / `EQSCustomTypeEdit` / `EQSDelegatedGeneratorEdit` は、ゲートされた型のノードを追加するときだけでなく、その既存ノードに触るあらゆる操作 — 編集・接続・切断・コンパイル・Reparent・削除 — でも同じ Capability があらためて確認されます。⚠️ この変更以前は、こうしたノードの削除・切断は無条件でゲートされていませんでした。もう追加できない型であることは、それ自体では既存ノードを削除・切断できない理由にはなりません。詳細は [コマンドリファレンス — Capability でゲートされたカスタム型](commands.md#capability-でゲートされたカスタム型) を参照してください。
 
 #### DataTable 編集
 
@@ -263,8 +264,18 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 
 | Capability | 有効になる操作 |
 |---|---|
-| `SkeletonAssetEdit` | Skeleton アセットのソケット・バーチャルボーンの追加・削除・変更 |
+| `SkeletonAssetEdit` | Skeleton アセットのソケット・バーチャルボーン・BlendProfile の追加・削除・変更 |
 | `SkeletalMeshMaterialEdit` | SkeletalMesh のマテリアルスロットの割り当て・置換 |
+
+#### Unified Animation Framework（UAF）編集 🧩
+
+Engine 本体の `UAF` プラグインが必要で、無効な場合は以下のコマンドは一切登録されません。**この 3 つの Capability でゲートされるコマンドはすべて `Stability: Experimental` です** — UAF プラグイン自体がエンジン側の Experimental 機能であり、将来のエンジンリリースで API が予告なく変わりうるためです。`UAFReferenceEdit` と（上記の）`AnimBlueprintReferenceEdit` は別々にゲートされています — 前者は UAF ピン参照、後者は Anim Blueprint 上の実装済みインターフェース参照・埋め込みグラフ参照と、指す対象が異なるためです。`AddUAFGraphNodeToAnimBlueprint`（UAF グラフを Anim Blueprint に埋め込むコマンド）は上記の Anim Blueprint 系 Capability でゲートされ、この 3 つでは制御されません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `UAFGraphEdit` | UAF アセットのグラフ・変数・コンパイル編集（`AddUAFGraphNode` / `RemoveUAFGraphNode` / `ConnectUAFPins` / `DisconnectUAFPins` / `SetUAFPinValue` / `AddUAFVariable` / `RemoveUAFVariable` / `AddUAFEventGraph` / `CompileUAFAsset`） |
+| `UAFCustomTypeEdit` | 追加・接続・切断・削除操作が対象とする RigVM Unit 構造体またはアニメーション Trait が、フレームワーク自身のパッケージ由来でないとき必要 — オプションの UAF サブプラグイン・プロジェクトモジュール・その他このセット外から提供された型。`GetAvailableUAFUnitStructs` と `GetAvailableUAFTraits` は各エントリに必要な Capability を報告する |
+| `UAFReferenceEdit` | `SetUAFPinValue` がピンへオブジェクト参照・クラス参照を書き込むとき必要 — ピン自身の宣言型、またはその型グラフのどこかで参照を宣言する構造体のいずれか |
 
 #### Geometry Collection（Chaos Destruction）編集
 
@@ -338,6 +349,9 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 |---|---|
 | `BehaviorTreeGraphEdit` | Behavior Tree グラフへのノード追加・削除・プロパティ設定 |
 | `BlackboardEdit` | Blackboard キーの追加・削除 |
+| `BehaviorTreeCustomTypeEdit` | 型がこのドメインの出荷物の外から来た場合に、`BehaviorTreeGraphEdit` または `BlackboardEdit` に加えて必要です。このドメインが型を受理する 3 か所すべてを対象とし、受け入れモジュールはそれぞれ異なります — `/Script/AIModule` / `/Script/AITestSuite` 以外のノードクラス、`/Script/AIModule` / `/Script/Engine` 以外のクラスが宣言したノードプロパティ、`/Script/AIModule` 以外の Blackboard キー型。プロジェクトのモジュール、プラグインのモジュール（`GameplayBehaviorSmartObjects` などエンジンプラグインを含む）、Blueprint 生成クラスが該当します。そうした型が名指しされたときの 4 つの `Add*` ノードコマンドと `AddBlackboardKey`、対象がそうした型であるときの `RemoveBehaviorTreeNode` / `SetBehaviorTreeNodeProperty` / `RemoveBlackboardKey` をゲートします。コマンドではなくリクエストで名指しされた型（または対象が持つ型）から判定されるため、どのハンドラーの宣言 `RequiredCapabilities` にも現れません |
+| `BehaviorTreeExternalBehaviorNodeEdit` | ノードの本体がクラス自身ではない場所にある 5 系統について、`BehaviorTreeGraphEdit` に加えて必要です — 別の Behavior Tree アセットをまるごと実行する `UBTTask_RunBehavior` / `UBTTask_RunBehaviorDynamic` と、サブクラスがエディタで組まれたグラフを持つ `UBTTask_BlueprintBase` / `UBTDecorator_BlueprintBase` / `UBTService_BlueprintBase`。継承で判定し、クラスの出自とは独立に要求されます — これらの系統は `/Script/AIModule` 自身が出荷しているため、クラスを信頼できることは「そのクラスが何を実行するか」について何も語らないからです。⚠️ プロジェクト製の Blueprint ノードは**両方**に該当するため、これと `BehaviorTreeCustomTypeEdit` が同時に必要です。片方だけを付与しても拒否され、もう一方が不足として名指しされます |
+| `BlackboardReferenceKeyTypeEdit` | 保持する値が「書き込む側が指す先を選べる参照」である 2 種のキー型について、`BlackboardEdit` に加えて必要です — プロジェクト内の任意の UObject を受け付ける `UBlackboardKeyType_Object` と、クラス名を保持してエンジンに解決させる `UBlackboardKeyType_Class`。これも継承で判定します。`BehaviorTreeExternalBehaviorNodeEdit` とは意図的に別の名前です — 一方は本体が外にあるノード、他方は値の指す先が外にあるキーを守っており、名前を共有すると前者を許可した運用者が知らないうちに後者も許可してしまうためです。`AddBlackboardKey` と `RemoveBlackboardKey` をゲートします。**Blackboard にそうしたキーが宣言されていても、その Blackboard を参照する Behavior Tree 側でこの Capability が要ることにはなりません**ので、通常のツリー編集はこれなしで通ります。[コマンドリファレンス — UAIP.Editor.BehaviorTree](commands.md#uaipeditorbehaviortree) を参照してください |
 
 #### StateTree 編集
 
@@ -345,6 +359,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 |---|---|
 | `StateTreeStructureEdit` | StateTree への State 追加・削除、アセットのコンパイル |
 | `StateTreeNodeEdit` | Task・Transition の追加・削除、ノードプロパティの編集 |
+| `StateTreeCustomTypeEdit` | Task・Evaluator・Enter Condition フィールドが `/Script/StateTreeModule`・`/Script/AIModule`・`/Script/GameplayStateTreeModule` のいずれでもないモジュール由来（プロジェクトのモジュール、プラグインのモジュール、Blueprint 生成クラス）である場合、またはノードプロパティを宣言しているクラス・struct がこの 3 つの外にある場合に、`StateTreeNodeEdit` に加えて必要。そのようなフィールドまたは宣言型が名指しされたときの `AddStateTask` / `AddGlobalTask` / `AddEvaluator` / `AddStateEnterCondition` と 4 つの `Set*Property` コマンド、削除対象がそのようなノードであるときの `RemoveStateTask` / `RemoveGlobalTask` / `RemoveEvaluator` / `RemoveStateEnterCondition` をゲートする。プロパティの書き込みでは、ノード自身のクラスとプロパティの宣言型を 2 つの独立した問いとして確認し、どちらの不足としても名指しされうる。コマンドではなくリクエストで名指しされた型（または削除対象のノードで見つかった型）から決まるため、いずれのハンドラの宣言する `RequiredCapabilities` にも現れない。そのようなフィールドを単に含んでいるだけのアセットのコンパイルには一切要らない — ゲートされるのは、リクエストが名指しした型、またはリクエストが操作対象にした型だけ。[コマンド — UAIP.Editor.StateTree](commands.md#uaipeditorstatetree) を参照 |
 | `StateTreeParameterReferenceEdit` | `SetStateTreeParameter` が、あらゆる種類の参照であるか、それを内包するルートパラメータ値へ書き込む場合に必要。書き込み実行時にパラメータの `PropertyBag` 値型から決まるため `SetStateTreeParameter` の宣言する `RequiredCapabilities` には現れない — [Level / アクター / プロパティ編集](#level--アクター--プロパティ編集) の Note を参照。構造体・コンテナの書き込みにはさらに `PropertyStructuredEdit` が必要 |
 
 #### SoundCue 編集
@@ -472,6 +487,7 @@ ExternalTraceDirectory=D:/TraceDrop
 | Capability | 必要プラグイン | 有効になる操作 |
 |---|---|---|
 | `MetaSoundGraphEdit` 🧩 | `Metasound` | MetaSound グラフへのノード追加・削除・接続 |
+| `MetaSoundCustomTypeEdit` 🧩 | `Metasound` | このドメインが従来からノードを受け入れてきた 4 つの Namespace（`UE` / `Metasound` / `MetasoundStandardNodes` / `MetasoundEditor`）の外から来たノードクラス — プロジェクトやプラグインのモジュールが独自の Namespace で登録したクラス、**および MetaSound アセット自身がグラフクラスとして登録される際のクラス（参照先のサブグラフやプリセット対象はこれとして現れます）** — に対して、`MetaSoundGraphEdit` に**追加で**必要になります。そのクラスを名指しする `AddMetaSoundNode`、および対象ノードがそのクラスである `RemoveMetaSoundNode` / `ConnectMetaSoundPins` / `DisconnectMetaSoundPins` / `SetMetaSoundNodeProperty` をゲートします。⚠️ **サブグラフ・プリセットのノードは構成上必ずこれに該当するため、この Capability を持たないセッションではどちらかを使っているグラフを編集できません。サブグラフの再利用が常態ではない他のゲート対象ドメインより、この影響は大きく出ます。** `CompileMetaSound` はこの Capability を要求せず、各 mutation コマンドが変更後に行う暗黙の再登録も要求しません。したがって、そうしたノードを**含むだけ**のアセットは従来どおりコンパイルできます。必要かどうかはリクエストが名指ししたクラス（またはノードから読み取ったクラス）で決まりコマンドでは決まらないため、ハンドラーの宣言された `RequiredCapabilities` には現れません。このドメインに「危険な型」用の独立した Capability はありません — MetaSound ノードはレジストリエントリが記述する固定の信号処理を評価するだけで、リクエストが持ち込んだコードは実行しないためです。[コマンドリファレンス — UAIP.Editor.MetaSound](commands.md#uaipeditormetasound-) を参照 |
 | `DataflowGraphEdit` 🧩 | `Dataflow` | Dataflow グラフへのノード追加・削除・接続、ノードプロパティの取得・設定 |
 | `DataflowReferenceEdit` 🧩 | `Dataflow` | Dataflow ノードの、あらゆる種類の参照プロパティ（オブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパス。構造体・コンテナに内包されたものを含む）への書き込み。`DataflowGraphEdit` に**追加で**必要で、構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。ハード参照の参照先は既にロード済みでなければならず（書き込みが副作用でアセットをロードすることはない）、ソフト参照はアセットレジストリに対して検証される。グラフが指すアセットを差し替えられるため独立した権限としている |
 | `ClothAssetEdit` 🧩 | `ChaosClothAsset` | Chaos Cloth Asset の作成・変換、legacy Clothing Asset の作成、Skeletal Mesh セクションへのバインド/解除、Weight Map 頂点値の設定、Import ノードへのインポート元メッシュ参照設定（いずれも破壊的操作） |
@@ -486,6 +502,8 @@ ExternalTraceDirectory=D:/TraceDrop
 | `PCGSplineDraw` 🧩 | `PCG` | レベルビューポートを人間へ引き渡すスプライン描画の対話を開始 — ネイティブ `DrawPCGSpline` と `Toolset.Editor.PCG.DrawSpline` ブリッジ。`SafetyPolicy.AllowUserInteractionPrompt` も別途必要。この Capability は「何に触れてよいか」を、ポリシーフラグは「対話を開始すること自体が人間のビューポートと入力フォーカスを奪う」ことを表す |
 | `ConversationGraphEdit` 🧩 | `CommonConversation` | `UConversationDatabase` アセットの構造的編集 |
 | `EQSAssetEdit` 🧩 | `EnvironmentQueryEditor` | EQS クエリへの Generator・Test の追加・削除・プロパティ設定 |
+| `EQSCustomTypeEdit` 🧩 | `EnvironmentQueryEditor` | Generator クラス・Test クラス、またはプロパティを宣言しているクラスが `/Script/AIModule` の外から来た場合に、`EQSAssetEdit` に**追加で**必要になります — プロジェクトのモジュール、プラグインのモジュール（`SmartObjects` や `MassEQS` のようなエンジンプラグインを含む）、Blueprint 生成の Test クラスが該当します。3 か所で 1 つの名前を共有しているのは意図的です — プロジェクト製の型がどの面から届くかは、その許可を与える運用者が別々に決めたい事柄ではありません。コマンドではなくリクエストで名指しされた型（または対象が持つ型）から判定されるため、どのハンドラーの宣言 `RequiredCapabilities` にも現れません |
+| `EQSDelegatedGeneratorEdit` 🧩 | `EnvironmentQueryEditor` | 項目の生成が自身のコンパイル済みコードではない Generator 種別 — 内部に保持した複数の子 Generator インスタンスを走らせる `UEnvQueryGenerator_Composite` と、サブクラスがエディタで組まれたグラフを持つ `UEnvQueryGenerator_BlueprintBase` — と、そうした Generator が宣言するプロパティに対して、`EQSAssetEdit` に**追加で**必要になります。継承で判定し、クラスの出自とは独立に要求されます — `/Script/AIModule` 自身がこの 2 種を出荷しているため、クラスを信頼できることは何を実行するかについて何も語りません。⚠️ プロジェクト製の Composite 派生 Generator は**両方**に該当するため、これと `EQSCustomTypeEdit` が同時に必要です。片方だけを付与しても拒否され、もう一方が不足として名指しされます。Test 面に対になる「危険な型」用の Capability はありません — このドメインが受け入れる Test はどれも自身のコンパイル済みクラス以外の場所でコードを実行しないためです。[コマンドリファレンス — UAIP.Editor.EQS](commands.md#uaipeditoreqs-) を参照 |
 | `WorldConditionStructureEdit` 🧩 | `WorldConditions` | WorldCondition アセットへの条件追加・削除 |
 | `WorldConditionNodeEdit` 🧩 | `WorldConditions` | WorldCondition の Operator・式の深さ・プロパティの編集 |
 
