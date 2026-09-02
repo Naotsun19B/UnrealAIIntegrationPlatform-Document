@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1119 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1540 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1125 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1546 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -66,7 +66,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 17 | 7 | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
-| Editor Sequencer | `UAIP.Editor.Sequencer` | 123 | 61 | — |
+| Editor Sequencer | `UAIP.Editor.Sequencer` | 129 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
 | Editor PCG 🧩 | `UAIP.Editor.PCG` | 34 | 31 | — |
@@ -118,7 +118,7 @@ The property-writing commands listed below take the value in either of two forms
 
 Both are DefaultDenied — enable them in `Config/DefaultUAIP.ini`, see [Safety & Capabilities](safety.md). Writing a struct that contains a reference needs both, so the structured capability alone is not a way around the reference gate.
 
-A module that already governs reference writes through a capability of its own keeps using that name for the reference half: `SetAnimNotifyProperty` reads `AnimNotifyReferenceEdit`, `SetDataflowNodeProperty` reads `DataflowReferenceEdit`, and the Subsonic commands read `SubsonicEventEdit`. The struct / container half is always `PropertyStructuredEdit`. A refusal names the capability that command's own write path actually reads, so the name you are handed is always the one worth asking an operator for.
+A module that already governs reference writes through a capability of its own keeps using that name for the reference half: `SetAnimNotifyProperty` reads `AnimNotifyReferenceEdit`, `SetDataflowNodeProperty` reads `DataflowReferenceEdit`, the Subsonic commands read `SubsonicEventEdit`, `SetSlotProperties` reads `WidgetSlotReferenceEdit`, the four Enhanced Input trigger / modifier setters read `EnhancedInputReferenceEdit`, and `SetStateTreeParameter` reads `StateTreeParameterReferenceEdit`. The struct / container half is always `PropertyStructuredEdit`. The same pattern holds outside this list: `AddSetParameterEntry` and `AddSetParametersModule` read `NiagaraReferenceEdit` when the `DefaultValue` they are given belongs to a data interface or object parameter. A refusal names the capability that command's own write path actually reads, so the name you are handed is always the one worth asking an operator for.
 
 ### Parameters
 
@@ -205,9 +205,25 @@ The matching `Get*` command attaches a `WriteRequirements` object to the value i
 | `RequiredCapabilities` | the capability names that command's own write path looks up, so granting them actually unblocks the write |
 | `HeldCapabilities` / `MissingCapabilities` | the same names split by whether the session that issued the read holds them |
 | `IsWritable` / `RefusalReason` | whether the property's type and flags permit a write at all, whatever the session holds |
-| `WriteInputForm` | `TextOrJson` or `JsonOnly` — which input field the value has to be supplied in |
+| `WriteInputForm` | `TextOrJson`, `JsonOnly` or `None` — which input field the value has to be supplied in. `None` accompanies `IsWritable: false`: no input form is accepted and no capability changes that |
 
 A few commands decide writability on their own terms and do not attach this report. For those, attempt the write: the refusal names the capability that is missing. The guidance is what is absent, not the way forward.
+
+Eight further read commands now carry the report, in one of two shapes depending on how each already returns its values:
+
+| Command | Where the report sits |
+|---|---|
+| `GetSlotProperties` (`UAIP.Editor.UMG`) | a `PropertyWriteRequirements` map beside `Properties`, keyed by property name |
+| `GetInputActionInfo` / `GetMappingContextInfo` (`UAIP.Editor.EnhancedInput`) | a `PropertyWriteRequirements` map inside each trigger / modifier entry, beside its `Params` |
+| `GetStateTreeParameters` (`UAIP.Editor.StateTree`) | a `WriteRequirements` object nested in each parameter entry |
+| `GetWorldConditionInfo` (`UAIP.Editor.WorldConditions`) | a `WriteRequirements` object nested in each condition property entry |
+| `GetAnimNotifyClassSchema` (`UAIP.Editor.AnimSequence`) | a `WriteRequirements` object nested in each property entry |
+| `GetAnimNotifyProperty` (`UAIP.Editor.AnimSequence`) | a `WriteRequirements` object nested in each property entry — and directly in `Data`, beside `PropertyName` and `Value`, when a single property was requested |
+| `GetPoseSearchChannelClassSchema` (`UAIP.Editor.MotionMatching`) | a `WriteRequirements` object nested in each property entry |
+
+The value maps themselves (`Properties`, `Params`) did not change shape, so a caller that only reads values is unaffected. On the two Enhanced Input getters the report covers **every** editable property, including the references and containers the value map used to skip — those are precisely the ones a capability is needed for. `GetWorldConditionInfo` reports an empty `RequiredCapabilities` throughout: that path accepts no reference or container at all, so there is no capability to ask an operator for, and naming one would point at a permission that unlocks nothing. `GetAnimNotifyProperty` uses the same field names and the same nesting as `GetAnimNotifyClassSchema`, so the two are read the same way; the difference is that its verdict is resolved against the actual notify instance addressed by `NotifyGuid` — the object `SetAnimNotifyProperty` writes to — rather than against the class default.
+
+> ⚠️ **Breaking change**: `GetAnimNotifyClassSchema` and `GetPoseSearchChannelClassSchema` used to report this per property directly on the property entry, under their own names — `bIsWritable`, `NotWritableReason`, `WriteInputForm` and `RequiredCapabilities` — with no `HeldCapabilities` / `MissingCapabilities` at all. Both now attach the identical nested `WriteRequirements` object shown above instead, so a caller still reading the old flat names finds nothing there. Read `WriteRequirements.IsWritable`, `.RefusalReason`, `.WriteInputForm` and `.RequiredCapabilities`; `.HeldCapabilities` / `.MissingCapabilities` are new information, not a renamed field. Nothing about which properties are writable, or what a write needs, changed — only where the answer is reported. With this, every UAIP read command that reports what a write would take now uses the same shape.
 
 ### Things that catch people out
 
@@ -220,6 +236,17 @@ A few commands decide writability on their own terms and do not attach this repo
 
 ---
 
+## Capability-gated custom types
+
+Several domains only let a project- or plugin-defined type through once a capability is granted for it — see the domain's own note, for example [UAIP.Editor.Material](#uaipeditormaterial) and [UAIP.Editor.AnimBlueprint](#uaipeditoranimblueprint). What follows applies the same way in every one of them and is not repeated per domain.
+
+- **The check runs on every operation that touches the type, not only `Add*`.** Once a node of a gated type exists in a graph, the same capability is re-evaluated whenever that node is edited, connected, disconnected, compiled, or deleted — and whenever its effective type is changed (reparenting) or a reference to it is created or replaced. Holding the capability when the node was added does not carry forward to later calls: if the session subsequently loses it (a role change, a narrower `AllowedCapabilities`), those later operations are refused too, exactly as `Add*` would have refused them.
+- **⚠️ Breaking change — delete and disconnect used to be ungated.** Before this change, only each domain's `Add*` command checked the type being added; deleting a node or disconnecting its pins went through unconditionally, whatever type the node was. That is no longer the case: deleting or disconnecting a node of a gated type now needs the same capability `Add*` would have required to create it in the first place.
+- **A type that can no longer be added can still be cleaned up.** A node whose class fails to load, or whose class an engine upgrade dropped support for, cannot be re-added — that is a structural refusal no capability grant changes. By itself, that is not a reason the existing node can't be deleted or disconnected: as long as the session holds whatever capability that type would require, removing it still works.
+- **Compiling checks only the dangerous kind, not "custom" by itself.** In a domain that separates "project-/plugin-defined" from "dangerous" (Material does; see its own note for a domain where the distinction doesn't exist), compiling an asset only requires a capability for the dangerous kinds of type it contains — an ordinary project-defined type that isn't also a dangerous kind does not block compilation. Otherwise, a project containing any custom type at all would never compile without a capability grant, for every session, every time.
+
+---
+
 ## UAIP.Core
 
 System-level commands for discovery, health, and session management.
@@ -229,7 +256,7 @@ System-level commands for discovery, health, and session management.
 | 🆓 `HealthCheck` | Plugin connectivity check — returns `Status`, `UAIPVersion`, `EngineVersion`, `BuildConfig`, `ProjectFilePath` (absolute path of the open `.uproject`, used by the MCP Bridge to verify it is attaching to the right editor instance), `TransportTimeouts` (per-transport async command timeout in seconds, e.g. `{"HTTP": 120, "WS": 12}`), `QueueCongestion` (how busy the deferred-execution queue is, as one of `None` / `Low` / `High` — the exact number waiting is not returned, since it would let one session infer another session's activity) |
 | 🆓 `GetSystemInfo` | Returns UE version (Major/Minor/Patch/Changelist), project name, platform, build config, UAIP version |
 | 🆓 `QueryCapabilities` | Returns `Capabilities` (the session's effective set), `RegisteredCapabilityCount` / `UngrantedCapabilityCount` (always) and `OperationalConstraints` (9 policy flags). Pass `IncludeUnavailable: true` to also get `RegisteredCapabilities` — every capability the loaded modules declare, each with `Name` / `DefaultPolicy` / `IsGranted`, so one this session does not hold can still be found by name; the deny-by-default ones are the entries whose `DefaultPolicy` is `Denied` |
-| 🆓 `ListCommands` | Filtered command catalog (filters: `ProviderPrefix`, `KeywordFilter`, `IncludeUnavailable`, `Stability`) |
+| 🆓 `ListCommands` | Filtered command catalog (filters: `ProviderPrefix`, `KeywordFilter`, `IncludeUnavailable`, `Stability`; `ResultMode` — `Commands` (default) or `Providers` to list providers instead of commands; `Limit` — max results returned (1–1000); `IncludeDescription` — include each command's description text in the listing) |
 | 🆓 `DescribeCommand` | Full metadata for a single command (schema, required capabilities, availability) |
 | 🆓 `ListPlugins` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.Plugin.ListPlugins` instead. List installed plugins and their enabled state (JSON) |
 | 🆓 `EndSession` | End a session explicitly and release its server-side resources; its artifacts become GC candidates |
@@ -358,7 +385,7 @@ Project Settings and Editor Preferences management via `ISettingsModule`. Comman
 | 🆓 `ListSettingsSections` | List all sections in a settings category. No capability required |
 | 🆓 `GetSettingsSchema` | Return a JSON artifact with editable property names, types, descriptions, defaults, and edit conditions for a section (requires `EditorInspect`) |
 | 🆓 `GetSettingsValues` | Return a JSON artifact with current property values for a section. Secret fields (name matches a secret pattern, has secret metadata, or is a file path type) are masked with `***` (requires `EditorInspect`) |
-| `SetSettingsValues` | Merge a `Properties` map into the settings object via `ImportText`. Supports `DryRun` (validates without applying). Requires `ConfigSettingsEdit`. Blocked during PIE |
+| `SetSettingsValues` | Merge a `Properties` map into the settings object via `ImportText`. Supports `DryRun` (validates without applying). Requires `ConfigSettingsEdit`. Blocked during PIE. Values are engine text only, so a reference, a container or a struct outside the built-in value catalogue is refused **whatever capabilities the session holds** — write those through `SetProjectSetting`, which reaches the same settings object and takes `ValueJson`. A value that only parses part-way is now refused with `InvalidParams` instead of being applied as a fragment |
 | `SaveSettings` | Persist in-memory settings to the section's ini file via `ISettingsSection::Save()`. Requires `ConfigSettingsSave`. Blocked during PIE and when `bDisableSave` is set |
 | `ResetSettingsToDefaults` | Revert the settings object to class defaults and save. Requires `ConfigSettingsReset`. Blocked during PIE |
 
@@ -657,7 +684,7 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 
 | Command | Description |
 |---|---|
-| `AddBlueprintVariable` | Add a member variable to a Blueprint (type, default, tooltip) |
+| `AddBlueprintVariable` | Add a member variable to a Blueprint (type, default, tooltip). The default is now validated once the variable's type has resolved, and a refused default **removes the variable again** rather than leaving it behind with an empty value. The default is engine text only — a reference or container default is refused whatever the session holds; set those afterwards with `SetBlueprintDefault`, which takes `ValueJson` |
 | `DeleteBlueprintVariable` | Remove a member variable |
 | `SetBlueprintVariableDefault` | Update a Blueprint variable's CDO default value |
 | `AddGraphNode` | Add a node to a Blueprint graph (VariableGet/Set, FunctionCall, Event, ...) |
@@ -707,8 +734,8 @@ Widget Blueprint editing — tree, variables, animation, bindings.
 | `SetNamedSlotContent` | Set the content of a NamedSlot widget |
 | `GetNamedSlots` | List NamedSlots in a Widget Blueprint |
 | `ReparentWidgetBlueprint` | Change a Widget Blueprint's parent class |
-| `GetSlotProperties` | Get a widget's slot properties (JSON, CPF filter, max 64 keys) |
-| `SetSlotProperties` | Set a widget's slot properties (32 KiB limit, `/Game/` UObject refs only) |
+| `GetSlotProperties` | Get a widget's slot properties (JSON, CPF filter, max 64 keys), plus a `PropertyWriteRequirements` map saying what a write to each property would need and which input form it takes |
+| `SetSlotProperties` | Set a widget's slot properties (32 KiB limit, `/Game/` UObject refs only). A reference now requires `WidgetSlotReferenceEdit` and a struct or container `PropertyStructuredEdit`, and those values are supplied as a JSON document rather than engine bracket text — read the property first for its `WriteInputForm`. A refused write leaves no undo entry and does not mark the asset dirty |
 | `GetWidgets` | Get the full widget tree structure (JSON) |
 | `ListWidgetClasses` | List available widget classes (max 500) |
 | `CompileWidgetBlueprint` | Compile a Widget Blueprint and return errors / warnings |
@@ -735,15 +762,25 @@ Material graph editing and parameter management.
 |---|---|
 | `GetMaterialInfo` | Basic info (NodeCount, ShadingModel, BlendMode, bHasErrors) |
 | `ListMaterialNodes` | List of Material graph nodes (NodeId, ExpressionClass, position, bIsParameter) |
-| `AddMaterialNode` | Add a node to the Material graph (ExpressionClass-specified, 6-step allowlist) |
+| `AddMaterialNode` | Add a node to the Material graph (`ExpressionClass`-specified) — a project-defined or custom-HLSL class needs a capability, see the note below |
 | `DeleteMaterialNode` | Delete a node by NodeId (root deletion returns Conflict) |
 | `ConnectMaterialPins` | Connect two pins in a Material graph (cycle / type-mismatch detection) |
 | `DisconnectMaterialPins` | Disconnect a pin connection |
 | `CompileMaterial` | Compile the material and return errors / warnings |
 | `SetMaterialParameterValue` | Set a material parameter value |
 | `GetMaterialParameterValue` | Get a material parameter value |
-| `ListMaterialExpressionClasses` | List `UMaterialExpression` derived classes (max 500). Use the returned `ClassPath` as the `ExpressionClass` argument for `AddMaterialNode` |
+| `ListMaterialExpressionClasses` | List `UMaterialExpression` derived classes (max 500), each with `Admission` (`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`) plus `RequiredCapabilities` / `MissingCapabilities` from the same policy `AddMaterialNode` validates against. Use the returned `ClassPath` as the `ExpressionClass` argument. Reports `TotalCount`, `ReturnedCount`, `Truncated` — see the note below |
 | `RefreshMaterial` | Force-recompile a material (recompiles a saved asset immediately without arguments) |
+
+> **Note — project-defined and custom-HLSL expression classes are capability-gated**: an `ExpressionClass` from one of the engine's built-in modules (`Engine`, `RenderCore`, `MaterialEditor`, `Landscape`) is added the same way as before. A class outside those modules — a project- or plugin-defined `UMaterialExpression` subclass — now requires `MaterialCustomTypeEdit`. `UMaterialExpressionCustom`, `UMaterialExpressionCustomOutput` and their subclasses (arbitrary HLSL) require `MaterialCustomNodeEdit` regardless of which module they come from — this capability was already registered, but no command enforced it until now. A class that is both needs both capabilities together, and the refusal names whichever ones are missing. Neither is granted by default; see [Safety & Capabilities](safety.md#material-editing).
+>
+> These checks are not limited to `AddMaterialNode` — see [Capability-gated custom types](#capability-gated-custom-types) for how the same capabilities are re-checked when an existing node of one of these classes is edited, connected, disconnected, compiled, reparented, or deleted, and for the breaking change on delete / disconnect specifically.
+>
+> ⚠️ **Breaking change**: these classes used to be refused outright — `PolicyViolation` for one the type policy rejected, `InvalidParams` when the class could not be resolved at all. `AddMaterialNode` now answers `CapabilityNotAvailable` and names the missing capabilities once the class is loaded. There is no compatibility window for the old codes: they meant "no permission would have helped", so keeping them would describe a permission system that did not exist.
+>
+> `ExpressionClass` must already be loaded — `AddMaterialNode` no longer loads it as a side effect, and answers `NotFound` for a class it cannot resolve, whether or not it is one of the classes above.
+>
+> **Note — `ListMaterialExpressionClasses` now reports admission per class**: every entry carries `Admission`, one of four values — `Allowed` (usable by this session right now), `RequiresCapabilities` (usable once an operator grants the capabilities named in `MissingCapabilities`, itself a subset of `RequiredCapabilities`), `NotAddable` (refused for a structural reason no capability grant can fix — wrong base type, abstract, deprecated, or hidden from the class picker), or `CompatibilityUnknownUntilAuthorized` (the session already holds every required capability, but the engine's own compatibility check has not run — a listing must not execute a class's own code for a session it has not authorized, so the final answer only comes from actually adding the node). The response also reports `TotalCount`, `ReturnedCount` and `Truncated` — the 500-class cap this listing has always had was never reported before this. The set of classes returned is also wider than before: abstract, deprecated, `NewerVersionExists`, and class-picker-hidden classes used to be silently dropped from the response; they now appear with `Admission: NotAddable` instead of being omitted, so a class this command cannot place is described rather than hidden. This report is a snapshot, not an authorization: capabilities and roles can change between the listing and the mutation, so `AddMaterialNode` re-evaluates admission on its own request rather than trusting anything reported here.
 
 ---
 
@@ -868,7 +905,7 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 | `SetEmitterData` 🧩 | Set emitter data |
 | `AddRenderer` 🧩 | Add a renderer to an emitter |
 | `RemoveRenderer` 🧩 | Remove a renderer |
-| `SetRendererData` 🧩 | Set renderer data |
+| `SetRendererData` 🧩 | Set renderer data (requires `NiagaraStackEdit`). When the emitter has no renderer of the named class the command now answers `NotFound` — it no longer falls back to writing whichever renderer came first. A property the write path cannot handle fails the whole request with `PolicyViolation` instead of being ignored, a struct default that only parses part-way is refused with `InvalidParams` instead of being taken as the default, and a successful write raises `PostEditChangeProperty` so the editor reflects it immediately |
 | `AddModule` 🧩 | Add a module to an emitter module stack |
 | `RemoveModule` 🧩 | Remove a module |
 | `MoveModule` 🧩 | Move a module within the stack |
@@ -878,9 +915,19 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 | `AddUserVariables` 🧩 | Add user variables to a system |
 | `RemoveUserVariables` 🧩 | Remove user variables |
 | `CompileNiagaraSystem` 🧩 | Compile the Niagara system |
-| `AddSetParametersModule` 🧩 | Add a Set Parameters module to a stack and register initial parameter entries. The `DefaultValue` field is applied for common types (float, int, bool, struct). |
-| `AddSetParameterEntry` 🧩 | Add a parameter entry to an existing Set Parameters module. Requires `ScriptName` (e.g. `Spawn`, `Update`). The `DefaultValue` field is applied for common types (float, int, bool, struct). |
+| `AddSetParametersModule` 🧩 | Add a Set Parameters module to a stack and register initial parameter entries. The `DefaultValue` field is applied for common types (float, int, bool, struct) and, with `NiagaraReferenceEdit`, for a data interface or object parameter given as an object path — see the note below. |
+| `AddSetParameterEntry` 🧩 | Add a parameter entry to an existing Set Parameters module. Requires `ScriptName` (e.g. `Spawn`, `Update`). The `DefaultValue` field is applied for common types (float, int, bool, struct) and, with `NiagaraReferenceEdit`, for a data interface or object parameter given as an object path — see the note below. |
 | `RemoveSetParameterEntry` 🧩 | Remove a parameter entry from a Set Parameters module. Requires `ScriptName` (e.g. `Spawn`, `Update`). |
+
+> **⚠️ Behavior change — a reference-typed `DefaultValue` is written now instead of being dropped.** When the parameter's type is a data interface or an object reference, `AddSetParameterEntry` and `AddSetParametersModule` used to **silently ignore** `DefaultValue`: the request succeeded and the entry was created with no default. Pass the value as an object path and it is now stored in the dedicated data-interface / object slot of `FNiagaraVariant`, where the reference is retained properly rather than packed into the byte payload the other parameter types use. What can come back instead of a success:
+>
+> - `CapabilityNotAvailable` — the session does not hold `NiagaraReferenceEdit` (granted in addition to `NiagaraStackEdit`, which both commands require anyway). The refusal names it.
+> - `NotFound` — the object path names an asset nothing has loaded. A write never loads an asset as a side effect, so open the asset first; "does not exist" and "exists but is not loaded" are the same refusal.
+> - `InvalidParams` — the object resolved, but it is not of the parameter type's class.
+>
+> With the capability granted and the target loaded, the write succeeds and the reference is kept. **Leaving `DefaultValue` unset behaves exactly as before** — no extra capability, and the entry is created with no default.
+>
+> ⚠️ **Only data interface types are reachable in practice.** The parameter type name is checked against a type allowlist before the value is ever looked at, so an ordinary object type such as `UTexture2D` is refused at that stage and `NiagaraReferenceEdit` never comes into play for it. There is also no read command that returns a Set Parameters entry's default value, so a write cannot yet be confirmed by reading it back. Niagara *user* parameters (`AddUserVariables`) are a different store and take no default value at all.
 
 #### Blueprint wrappers (2)
 
@@ -892,6 +939,10 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 ### Toolset bridges (45) 🧩
 
 Mirror of native commands via the `NiagaraToolsets` plugin (UE 5.8+ Experimental). Provider: `Toolset.Editor.Niagara.*`. Groups: Info (2), Blueprint (2), System Schema (12), Topology (5), Data (5), Edit-1 (8), Edit-2 (8), Diagnostic (3).
+
+> **⚠️ Breaking — `Toolset.Editor.Niagara.SetRendererData` now requires `NiagaraStackEdit`**, the capability its native counterpart reads. It used to require `NiagaraEmitterEdit`, so an operator who had closed `NiagaraStackEdit` could still perform the same write through the bridge. **A session granted only `NiagaraEmitterEdit` loses access to this command** — add `NiagaraStackEdit` instead.
+>
+> **The bridge does not run UAIP's value checks.** A bridge write happens inside the engine's toolset, so the type gate, the part-way-parse check and the all-or-nothing batching the native command applies do not reach it. Use the native `SetRendererData` when you want those checks.
 
 ---
 
@@ -1197,7 +1248,7 @@ Anim Blueprint graph and StateMachine editing.
 |---|---|
 | `GetAnimBlueprintInfo` | AnimGraph node list and StateMachine structure (degraded mode during PIE) |
 | `GetAvailableAnimGraphNodeClasses` | List `UAnimGraphNode_Base` subclasses — feed `ClassPath` to `AddAnimGraphNode` |
-| `AddAnimGraphNode` | Add a `UAnimGraphNode_Base` derived node by NodeClass |
+| `AddAnimGraphNode` | Add a `UAnimGraphNode_Base` derived node by NodeClass — a project- or plugin-defined class needs a capability, see the note below |
 | `RemoveAnimGraphNode` | Remove a node by NodeId |
 | `ConnectAnimGraphPins` | Connect two pins (WouldCreateCycle DFS pre-detection) |
 | `DisconnectAnimGraphPins` | Disconnect a pin connection |
@@ -1206,6 +1257,14 @@ Anim Blueprint graph and StateMachine editing.
 | `AddAnimTransition` | Add a From→To Transition (idempotent on duplicates) |
 | `RemoveAnimTransition` | Remove a Transition by NodeId |
 | `CompileAnimBlueprint` | Compile and return CompileStatus + error log |
+
+> **Note — project- and plugin-defined AnimGraph node classes are capability-gated**: a `NodeClass` from one of the three modules this domain has always trusted (`AnimGraph`, `AnimGraphRuntime`, `Engine`) is added the same way as before. A class outside those modules — a project- or plugin-defined `UAnimGraphNode_Base` subclass — now requires `AnimBlueprintCustomTypeEdit`. Unlike Material, there is no companion "dangerous node" capability here: eight node kinds (`UAnimGraphNode_StateResult`, `TransitionResult`, `TransitionPoseEvaluator`, `Root`, `StateMachineBase`, `LinkedAnimGraph`, `LinkedAnimLayer`, `CustomProperty`) cannot be placed at the AnimGraph root **regardless of any capability held** — they are internal- or sub-graph-only node kinds the graph does not accept from that direction, not a danger a capability grant unlocks. Neither `AnimBlueprintCustomTypeEdit` nor any other capability changes this outcome; see [Safety & Capabilities](safety.md#blueprint--anim-blueprint-editing).
+>
+> This check is not limited to `AddAnimGraphNode` — see [Capability-gated custom types](#capability-gated-custom-types) for how `AnimBlueprintCustomTypeEdit` is re-checked when an existing node of a gated class is edited, connected, disconnected, compiled, or deleted, and for the breaking change on delete / disconnect specifically.
+>
+> ⚠️ **Breaking change**: a project- or plugin-defined `NodeClass` used to be refused outright with `PolicyViolation`. `AddAnimGraphNode` now answers `CapabilityNotAvailable` and names `AnimBlueprintCustomTypeEdit` once the class is loaded. There is no compatibility window for the old code: it meant "no permission would have helped", so keeping it would describe a permission system that did not exist. The eight internal/sub-graph-only kinds above are unaffected by this change and keep returning `PolicyViolation`.
+>
+> `NodeClass` must already be loaded — `AddAnimGraphNode` no longer loads it as a side effect, and answers `NotFound` for a class it cannot resolve.
 
 ---
 
@@ -1346,7 +1405,7 @@ Behavior Tree graph editing and Blackboard key management.
 | `AddBehaviorTreeDecoratorNode` | Attach a Decorator to a parent node |
 | `AddBehaviorTreeServiceNode` | Attach a Service to a parent Composite node |
 | `RemoveBehaviorTreeNode` | Remove a node by NodeId |
-| `SetBehaviorTreeNodeProperty` | Set a node property (FBlackboardKeySelector / generic ImportText_Direct) |
+| `SetBehaviorTreeNodeProperty` | Set a node property (FBlackboardKeySelector / generic ImportText_Direct). A key-selector write is now refused when the tree has no Blackboard asset assigned — the key name cannot be validated without one, and the write used to leave a name and a type that did not match. A refused write no longer marks the asset dirty or leaves an empty undo entry |
 | `ListBlackboardKeys` | List Blackboard asset keys (allowed during PIE) |
 | `AddBlackboardKey` | Add a key (KeyType allowlist, duplicate-name check) |
 | `RemoveBlackboardKey` | Remove an unreferenced key (returns Conflict + referencers if in use) |
@@ -1410,7 +1469,7 @@ EQS query editing. Requires `EnvironmentQueryEditor` plugin.
 
 LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 
-### Native (123)
+### Native (129)
 
 #### Structure (15)
 
@@ -1537,7 +1596,7 @@ LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 | `GetSubSequences` | List SubSequence track sections |
 | `AddSubSequenceTrack` | Add a SubSequence track |
 
-#### AnimMixer (36, optional `MovieSceneAnimMixer`)
+#### AnimMixer (42, optional `MovieSceneAnimMixer`)
 
 | Command | Description |
 |---|---|
@@ -1555,11 +1614,11 @@ LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 | `GetTransitionInfo` | Detailed info for the transition between two sections |
 | `GetTransitionName` | Display name of the transition between two sections |
 | `ChangeTransitionType` | Replace a transition with one of `NewTransitionClass` (create-then-delete in one transaction) |
-| `GetCompatibleDecorations` | Decoration classes compatible with a layer |
-| `GetDecorations` | Existing decorations on a layer |
-| `FindDecoration` | Find one decoration on a layer (`NotFound` if absent) |
-| `AddDecoration` | Add (or retrieve an existing) decoration on a layer |
-| `RemoveDecoration` | Remove a decoration from a layer |
+| `GetCompatibleDecorations` | Decoration classes compatible with a layer. Optional `Target` (`"Layer"` default or `"ChildTrack"`) selects the layer or its child track |
+| `GetDecorations` | Existing decorations on a layer. Optional `Target` (`"Layer"` default or `"ChildTrack"`) selects the layer or its child track |
+| `FindDecoration` | Find one decoration on a layer (`NotFound` if absent). Optional `Target` (`"Layer"` default or `"ChildTrack"`) selects the layer or its child track; `NotFound` is also returned when `Target` is `"ChildTrack"` but the layer has no child track |
+| `AddDecoration` | Add (or retrieve an existing) decoration on a layer. Optional `Target` (`"Layer"` default or `"ChildTrack"`) selects the resolution target; the compatibility check runs against whichever container `Target` resolves to |
+| `RemoveDecoration` | Remove a decoration from a layer. Optional `Target` (`"Layer"` default or `"ChildTrack"`) selects the layer or its child track; `NotFound` is also returned when `Target` is `"ChildTrack"` but the layer has no child track |
 | `GetLayerBlendWeight` | Get a layer's blend weight |
 | `SetLayerBlendWeight` | Set a layer's blend weight |
 | `IsLayerMuted` | Get a layer's mute state |
@@ -1577,6 +1636,12 @@ LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 | `AddMixerTransition` | Add a transition |
 | `RemoveMixerTransition` | Remove a transition |
 | `GetMixerSectionInfo` | Get AnimMixer section info |
+| `AddMixerChildTrack` | Add a ControlRig child track parented to the layer at `LayerIndex`, creating a ControlRig instance of `ControlRigPath` (must derive from `UControlRig`) and attaching its parameter section. `LayerIndex` may equal the current layer count to append a new row. Optional `IsLayered` (default false) configures the new ControlRig as additive. Fails with `Conflict` (no side effects) when the target layer already has a child track or animation sections |
+| `RemoveMixerChildTrack` | Remove the child track parented to the layer at `LayerIndex`, tearing down the layer reference, the child-track bookkeeping, its decorations, and the binding together. `NotFound` if the layer has no child track |
+| `GetMixerChildTracks` | List every child track across all layers of a binding's AnimMixer track. Each entry carries `LayerIndex`, `TrackName`, `TrackClass` |
+| `MoveMixerChildTrack` | Move the child track parented to `LayerIndex` to `NewLayerIndex`. Succeeds as a no-op when the two indices are equal. Fails with `Conflict` (no side effects) when the destination layer already has a child track or animation sections |
+| `SetMixerSectionBlendType` | Set the blend type of the animation section at `SectionIndex` on the child track parented to `LayerIndex`. `BlendType` is matched case-insensitively against Absolute / Additive / Relative / Override and must be supported by the target section |
+| `GetMixerSectionBlendType` | Get the current blend type and the set of supported blend types of the animation section at `SectionIndex` on the child track parented to `LayerIndex` |
 
 #### ControlRig tracks (12)
 
@@ -1584,9 +1649,9 @@ ControlRig authoring **inside a LevelSequence**. For editing a ControlRig asset 
 
 | Command | Description |
 |---|---|
-| `GetControlRigTracks` | All ControlRig parameter tracks in a LevelSequence |
+| `GetControlRigTracks` | All ControlRig parameter tracks in a LevelSequence. Each entry now carries `IsChildTrack`, with `LayerIndex` present only when it is `true` |
 | `GetControlRigSectionInfo` | Section properties — `IsInfinite`, `StartFrame`, `EndFrame`, `IsActive`, class name |
-| `FindOrCreateControlRigTrack` | Find or create a ControlRig parameter track for a binding; reports `TrackCreated` |
+| `FindOrCreateControlRigTrack` | Find or create a ControlRig parameter track for a binding; reports `TrackCreated`. Optional `IsLayered` (default false) configures a newly created ControlRig as additive; ignored when an existing track is found |
 | `BakeToControlRig` | Bake a binding's animation onto a ControlRig track (display-rate frames, `Tolerance` 0.0–1.0) |
 | `KeyControls` | Key the given controls at one display-rate frame (all visible controls when `ControlNames` is empty) |
 | `KeyControlsAtFrames` | Key the given controls at multiple display-rate frames |
@@ -1672,10 +1737,10 @@ StateTree editing.
 
 | Command | Description |
 |---|---|
-| `GetStateTreeParameters` | Root parameter descriptors (`Name`, `ParameterType`, current serialized value) |
+| `GetStateTreeParameters` | Root parameter descriptors (`Name`, `ParameterType`, current serialized value) plus a nested `WriteRequirements` object per parameter. `ParameterType` now names enum, struct, object, soft-object, class, soft-class and the remaining integer widths instead of reporting every non-scalar as `Unknown` |
 | `AddStateTreeParameter` | Add a root parameter (Bool / Byte / Int32 / Int64 / Float / Double / Name / String / Text) |
 | `RemoveStateTreeParameter` | Remove a root parameter by name |
-| `SetStateTreeParameter` | Set a root parameter value from a string-encoded value |
+| `SetStateTreeParameter` | Set a root parameter value. A reference requires `StateTreeParameterReferenceEdit` and a struct or container `PropertyStructuredEdit`, and those values are supplied as JSON rather than bracket text. Refusals are now `CapabilityNotAvailable` / `PolicyViolation` / `InvalidParams` / `NotFound` as appropriate instead of a blanket `NotFound`, a refused write does not mark the asset dirty, and a successful one is undoable |
 | `AddPropertyBinding` | Bind a source node property to a target node property |
 | `RemovePropertyBinding` | Remove a property binding from a target node |
 | `CompileStateTree` | Compile the StateTree (per-asset rate limit between successive calls) |
@@ -1735,13 +1800,13 @@ PCG graph editing. Requires `PCG` plugin.
 | `GetPCGGraphSchema` 🧩 | Return the graph's node / pin structure in schema form |
 | `GetPCGGraphDescription` 🧩 | Get the graph's Description string |
 | `SetPCGGraphDescription` 🧩 | Set the graph's Description (requires `PCGGraphEdit`) |
-| `SetPCGGraphParams` 🧩 | Add or update graph parameters (requires `PCGGraphEdit`) |
+| `SetPCGGraphParams` 🧩 | Add or update graph parameters (requires `PCGGraphEdit`). Values are range- and NaN-checked and a bad one is refused with `InvalidParams`; the batch is applied to a copy first, so a refusal leaves no partial write, no undo entry and no dirty flag |
 | `RemovePCGGraphParams` 🧩 | Remove graph parameters (requires `PCGGraphEdit`) |
 | `ListPCGGraphInstances` 🧩 | List UPCGComponents in the level |
 | `SpawnPCGGraphInstance` 🧩 | Spawn an APCGVolume into the world (requires `PCGVolumeSpawn`) |
 | `GetPCGGraphInstanceParams` 🧩 | Get per-instance override parameters |
-| `SetPCGGraphInstanceParams` 🧩 | Override instance parameters (requires `PCGGraphEdit`) |
-| `ResetPCGGraphInstanceParams` 🧩 | Reset instance parameters to graph defaults (requires `PCGGraphEdit`) |
+| `SetPCGGraphInstanceParams` 🧩 | Override instance parameters (requires `PCGGraphEdit`). Same range / NaN checking and same all-or-nothing application as `SetPCGGraphParams` |
+| `ResetPCGGraphInstanceParams` 🧩 | Reset instance parameters to graph defaults (requires `PCGGraphEdit`). A call with nothing to reset still succeeds, but no longer opens a transaction or marks the asset dirty |
 | `ListPCGAvailableSubgraphs` 🧩 | List subgraph candidates in the project |
 | `GetPCGNativeNodeSchema` 🧩 | JSON schema of native PCG node class EditAnywhere properties. Narrowed the same way as `GetCustomPCGNodeSchema`, and reports `HiddenCount` / `HiddenCapabilities` / `HiddenReasons` |
 | `AddPCGSubgraphNode` 🧩 | Add a subgraph reference node (requires `PCGGraphEdit`) |
@@ -1757,6 +1822,10 @@ PCG graph editing. Requires `PCG` plugin.
 
 Bridge commands via the `PCGToolset` (UE 5.8+). Provider: `Toolset.Editor.PCG.*`. Commands that require an active open PCG editor tab may return `ExecutionFailed` in non-interactive contexts (known PCGToolset constraint).
 
+> **⚠️ Breaking — `SetGraphInstanceParams` and `ResetGraphInstanceParams` now require `PCGGraphEdit`** instead of `PCGGraphExecute`, matching their native counterparts. Both rewrite the same parameter bag, so requiring the execute capability let an operator who had closed `PCGGraphEdit` change instance overrides through the bridge anyway. **A session granted only `PCGGraphExecute` loses access to these two commands** — add `PCGGraphEdit`.
+>
+> **The bridge does not run UAIP's value checks.** `SetGraphParams`, `SetGraphInstanceParams` and `ResetGraphInstanceParams` write inside `UPCGToolset`, so the type gate, the range / NaN checks, the part-way-parse check and the all-or-nothing batching the native commands apply do not reach them. Use `SetPCGGraphParams` / `SetPCGGraphInstanceParams` / `ResetPCGGraphInstanceParams` when you want those checks.
+
 | Command | Description |
 |---|---|
 | `Toolset.Editor.PCG.CreateGraph` | Create a PCG graph asset (requires `PCGGraphAssetCreate`) |
@@ -1770,8 +1839,8 @@ Bridge commands via the `PCGToolset` (UE 5.8+). Provider: `Toolset.Editor.PCG.*`
 | `Toolset.Editor.PCG.SpawnGraphInstance` | Spawn a PCG volume actor (requires `PCGVolumeSpawn`) |
 | `Toolset.Editor.PCG.ExecuteGraphInstance` | Execute a graph on a PCG volume (requires `PCGGraphExecute`; async, 300 s default) |
 | `Toolset.Editor.PCG.GetGraphInstanceParams` | Get per-instance parameter overrides |
-| `Toolset.Editor.PCG.SetGraphInstanceParams` | Set per-instance overrides (requires `PCGGraphExecute`) |
-| `Toolset.Editor.PCG.ResetGraphInstanceParams` | Reset per-instance overrides (requires `PCGGraphExecute`) |
+| `Toolset.Editor.PCG.SetGraphInstanceParams` | Set per-instance overrides (requires `PCGGraphEdit`) |
+| `Toolset.Editor.PCG.ResetGraphInstanceParams` | Reset per-instance overrides (requires `PCGGraphEdit`) |
 | `Toolset.Editor.PCG.ListNativeNodes` | List all registered native PCG node classes |
 | `Toolset.Editor.PCG.ListAvailableSubgraphs` | List PCG assets available as subgraphs |
 | `Toolset.Editor.PCG.GetNativeNodeSchema` | Get the parameter schema for a native node class |
@@ -1799,7 +1868,7 @@ WorldConditions editing. Requires `WorldConditions` plugin.
 
 | Command | Description |
 |---|---|
-| `GetWorldConditionInfo` 🧩 | Condition set structure (Operator / Depth / properties) |
+| `GetWorldConditionInfo` 🧩 | Condition set structure (Operator / Depth / properties), with a `WriteRequirements` object nested in each property entry. Its `RequiredCapabilities` is always empty — this path accepts no reference or container at all, so no capability unlocks one |
 | `AddWorldCondition` 🧩 | Add a condition (`InsertAtIndex=-1` appends) |
 | `RemoveWorldCondition` 🧩 | Remove a condition by index |
 | `SetWorldConditionProperty` 🧩 | Set a condition USTRUCT property (ImportText value string) |
@@ -1811,7 +1880,9 @@ WorldConditions editing. Requires `WorldConditions` plugin.
 | `DuplicateWorldCondition` 🧩 | Duplicate the condition at `SourceIndex` and insert the copy at `InsertIndex` |
 | `ReplaceWorldCondition` 🧩 | Replace a condition's type with `NewConditionClass` defaults, preserving depth / operator / invert |
 | `ClearWorldConditionQuery` 🧩 | Remove every condition, leaving an empty query |
-| `SetMultipleWorldConditionProperties` 🧩 | Apply 1–32 property edits in one transaction, reporting per-edit success |
+| `SetMultipleWorldConditionProperties` 🧩 | Apply 1–32 property edits in one transaction, all-or-nothing |
+
+> **⚠️ Breaking — `SetMultipleWorldConditionProperties` returns a different success payload.** The command is now all-or-nothing: every edit is staged and checked — domain gate, text import, part-way-parse detection, validation — and only when all of them pass is the transaction opened and the whole batch committed. A single failure fails the request with a top-level `ErrorCode` / `ErrorMessage` and writes nothing, so the old per-edit `Results[]` and `AllSucceeded` no longer describe anything. The success payload is now `AppliedEdits` (the `{ConditionIndex, SubPropertyName}` pairs actually committed) and `SkippedEdits` (the same shape, for names that matched no property — an unmatched name still does not fail the batch). Update any caller that reads `Results[]` or `AllSucceeded`.
 
 ### Toolset bridges — WorldConditions (2) 🧩
 
@@ -1944,7 +2015,7 @@ ControlRig hierarchy and RigVM graph editing.
 
 | Command | Description |
 |---|---|
-| `AddVariable` | Add a RigVM variable |
+| `AddVariable` | Add a RigVM variable. The default value is validated once the variable's type has resolved, and a refused default **removes the variable again**, matching `AddBlueprintVariable`. The default is engine text only — set a reference or container default afterwards with `SetBlueprintDefault`. A refused call does not mark the asset dirty |
 | `ListVariables` | List RigVM variables |
 | `GetVariable` | Get a RigVM variable's value |
 | `ChangeVariableType` | Change a RigVM variable's type |
@@ -1958,14 +2029,16 @@ Components (`FRigBaseComponent` substructs) attached to a hierarchy element. The
 |---|---|
 | `ListComponents` | List one element's components, or the whole hierarchy's when neither `ElementName` nor `ElementType` is given. Each entry carries the owning element, the type path, and `IsProcedural`; the response reports `TotalCount` / `ReturnedCount` / `Truncated` |
 | `GetComponent` | Type and content of one component. `ContentText` (the engine export form) is always present; `Content` (JSON) is an explicit `null` with a `ContentConversion` reason when the type cannot be expressed as JSON, so an unconvertible component is never mistaken for an empty one |
-| `ListAddableComponentTypes` | Every `FRigBaseComponent` substruct the running editor knows, whether or not the target hierarchy holds any components yet. Each entry carries an `Addable` flag from the same policy `AddComponent` validates against, and a `NotAddableReason` when it is false |
-| `CanAddComponent` | Whether a type could be attached to an element, without attaching it. `CanAdd` is false with a `FailureReason` naming either the policy step (the type itself is not allowed) or the engine's own refusal (the element will not host it) |
+| `ListAddableComponentTypes` | Every `FRigBaseComponent` substruct the running editor knows, whether or not the target hierarchy holds any components yet. Each entry carries `Admission` (`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`) plus `RequiredCapabilities` / `MissingCapabilities` from the same policy `AddComponent` validates against, and `TotalCount` / `ReturnedCount` / `Truncated` on the response — see the note below |
+| `CanAddComponent` | Whether a type could be attached to an element, without attaching it. Reports `Admission` plus `RequiredCapabilities` / `MissingCapabilities` the same way the listing above does, and — only for a type this session is already entitled to use — also asks the engine and reports its answer as `CanAdd` / `FailureReason`; see the note below |
 | `AddComponent` | Attach a new component, optionally with initial content — `Content` (JSON) **or** `ContentText` (export form), not both. Validated in full before anything is created, so a rejected request leaves nothing behind |
 | `RemoveComponent` | Remove a component. `ReferenceHandling` decides what happens to components that hold its key — `Reject` (default), `Detach`, or `Force`. Every reference found is reported under `References` with what happened to it |
 | `RenameComponent` | Rename a component to `NewName` and repoint the references to it |
 | `ReparentComponent` | Move a component to the element named by `NewParentName` plus `NewParentType`, and repoint the references to it. A destination element that does not exist is refused before anything changes |
 | `SetComponentContent` | Replace a component's content — `Content` **or** `ContentText`, exactly one required — then read the component back and report what was actually written |
 
+> **⚠️ Changed — `ListAddableComponentTypes` and `CanAddComponent` report `Admission`, not a plain `Addable` flag**: each entry carries `Admission` — one of `Allowed` (usable by this session right now), `RequiresCapabilities` (usable once an operator grants the capabilities named in `MissingCapabilities`, itself a subset of `RequiredCapabilities`), `NotAddable` (refused for a structural reason no capability grant fixes — wrong base type, `Deprecated`, or `Hidden`), or `CompatibilityUnknownUntilAuthorized` (the session already holds `ControlRigCustomTypeEdit` for this struct, but the engine's own compatibility check has not run for it — see [Capability-gated custom types](#capability-gated-custom-types)) — plus `RequiredCapabilities` / `MissingCapabilities`. `CanAddComponent` additionally asks the engine — `URigHierarchy::CanAddComponent` — but **only for a type whose `Admission` is `Allowed` or `CompatibilityUnknownUntilAuthorized`**: a type reported `NotAddable` or `RequiresCapabilities` is answered without touching the engine at all, so a session that does not hold the capability never runs that type's own code. The engine's answer never overwrites `Admission` — it lands in `CanAdd` / `FailureReason` instead, so the two can be read together (`Admission: CompatibilityUnknownUntilAuthorized` with `CanAdd: false` means the session is authorized but the engine still refuses the combination). ⚠️ **Breaking — the boolean `Addable` and the string `NotAddableReason` these two commands used to report are gone**; a caller that branched on either must switch to `Admission`. A `ComponentStructPath` that is malformed is now `InvalidParams` on `CanAddComponent` rather than a `CanAdd: false` response, matching `AddComponent`.
+>
 > **Note — the name you asked for is not always the name you get**: `AddComponent`, `RenameComponent` and `ReparentComponent` do not fail on a name collision. The engine assigns a free name instead, and the result reports the key the component actually carries (`RenameComponent` and `ReparentComponent` also set `NameChanged`). Use the reported key from then on. Renaming to the name a component already has, or reparenting to the element it already hangs off, succeeds and changes nothing.
 >
 > **Note — properties that are not written are listed, not reset**: object references, delegates and runtime-only state are never written from outside. `AddComponent`, `SetComponentContent` and the typed `Set*` commands of the two domains below report them under `FilteredProperties`, and each of them keeps the value it already had rather than falling back to a default.
@@ -1979,13 +2052,27 @@ Components (`FRigBaseComponent` substructs) attached to a hierarchy element. The
 | Command | Description |
 |---|---|
 | `CompileControlRig` | Compile the ControlRig (per-session 1 s rate limit) |
-| `GetAvailableRigVMUnitStructs` | List FRigUnit-derived UScriptStructs (max 1000), each with an `Addable` flag from the same policy `AddGraphNode` validates against and a `NotAddableReason` when it is false. Reports `SchemaVersion`, `TotalCount`, `ReturnedCount`, `Truncated` |
+| `GetAvailableRigVMUnitStructs` | List FRigUnit-derived UScriptStructs (max 1000), each with `Admission` (`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`) plus `RequiredCapabilities` / `MissingCapabilities` from the same policy `AddGraphNode` validates against. Reports `SchemaVersion` (3), `TotalCount`, `ReturnedCount`, `Truncated` |
 
-> **⚠️ Changed — `GetAvailableRigVMUnitStructs` now answers with `SchemaVersion: 2`**: each entry carries `Addable` and, when that is false, a machine-readable `NotAddableReason` (one of `InvalidFormat`, `InvalidPrefix`, `StructNotFound`, `ModuleNotAllowed`, `NotARigUnit`, `DeprecatedOrHidden`). The response also reports `SchemaVersion`, `TotalCount` (the full count before the entry cap), `ReturnedCount`, and `Truncated`. Every one of these is additive — `ClassPath` and `ClassDisplayName` are unchanged, so an existing reader keeps working. What changes is that the flag comes from the very policy `AddGraphNode` validates against, so a listed entry can no longer disagree with what `AddGraphNode` will accept, and that a response cut short by the entry cap now says so instead of looking complete.
+> **⚠️ Changed — `GetAvailableRigVMUnitStructs` now answers with `SchemaVersion: 3`**: each entry carries `Admission` — the same four values `ListAddableComponentTypes` and `CanAddComponent` report in the note above — plus `RequiredCapabilities` / `MissingCapabilities`, sourced from the same policy `AddGraphNode` validates against. This replaces the boolean `Addable` and the string `NotAddableReason` that `SchemaVersion: 2` used to report; a caller that branched on either must switch to `Admission`. `ClassPath` and `ClassDisplayName` are unchanged, so an existing reader that only used those keeps working. The response also reports `TotalCount` (the full count before the entry cap), `ReturnedCount`, and `Truncated`, listed in `ClassPath` order so a response cut short by the entry cap always cuts the same tail.
 >
 > **⚠️ Breaking — the module allowlist behind `AddGraphNode` is now an exact match**: a `StructPath`'s owning package used to be accepted whenever it merely **began with** `/Script/ControlRig`, `/Script/AnimationCore`, or `/Script/Engine`. It is now compared for equality against a list of seven modules — `/Script/ControlRig`, `/Script/ControlRigDynamics`, `/Script/ControlRigPhysics`, `/Script/ControlRigSpline`, `/Script/ControlRigModules`, `/Script/AnimationCore`, `/Script/Engine`. A package that only shared a prefix — `/Script/ControlRigDeveloper`, `/Script/ControlRigEditor`, `/Script/EngineMessages` and the like — was accepted before and is now rejected with `ModuleNotAllowed`. A call that relied on that stops working, and there is no opt-out: the list was never meant to reach those modules.
 >
 > **Note — the ControlRig sibling modules are on that list on purpose now**: `/Script/ControlRigDynamics`, `/Script/ControlRigPhysics`, `/Script/ControlRigSpline` and `/Script/ControlRigModules` used to be reachable only incidentally, as a side effect of the `/Script/ControlRig` prefix. They are named explicitly, so the roughly 73 physics rig units (`FRigUnit_SpawnPhysicsSolver`, `FRigUnit_AddPhysicsBody`, `FRigUnit_AddPhysicsJoint`, and so on) stay addable under the stricter rule rather than being caught by it. The node allowlist and the component allowlist cover the same set of modules, so a type you can create a component of is also a type you can place as a node.
+
+> **Note — project- and plugin-defined RigVM unit structs and rig hierarchy component structs are capability-gated**: a `StructPath` naming a struct from one of the seven modules this domain has always accepted is used the same way as before. A struct outside those modules — one a project or a plugin declares — now requires `ControlRigCustomTypeEdit`. This applies to both families of type this domain admits: `FRigUnit` descendants placed as graph nodes by `AddGraphNode`, and `FRigBaseComponent` descendants attached by `AddComponent`. Control types (`AddControl`, `SetControlSettings`) are not gated at all — the set of control types is fixed by the engine, so there is no control type of a project's own for a capability to guard.
+>
+> Unlike Material, there is no companion "dangerous type" capability here: a unit struct is a compiled function the VM calls with values from pins, and a component struct is data hanging off a hierarchy element — neither carries code the caller supplied. Structs marked `Deprecated` or `Hidden`, and structs that do not derive from the expected base at all, stay refused **regardless of any capability held**; those are types that cannot be used at all, not a danger a grant unlocks.
+>
+> This check is not limited to `AddGraphNode` and `AddComponent` — see [Capability-gated custom types](#capability-gated-custom-types) for the general rule, and the breaking change immediately below for what it means in this domain specifically.
+>
+> ⚠️ **Breaking change — operations on an existing node or component of a gated type now require the capability too.** Before this change only `AddGraphNode` and `AddComponent` consulted the type policy at all; every other route into the same rig went through unconditionally. A session that does not hold `ControlRigCustomTypeEdit` can no longer: delete a node whose unit struct is project- or plugin-defined (`RemoveGraphNode`), connect or disconnect its pins (`ConnectControlRigPins`, `DisconnectControlRigPins`), write or reset one of its pin defaults (`SetPinValue`, `ResetPinValue`), move it (`SetNodePosition`), duplicate it (`DuplicateNode`), or remove, rename, reparent or rewrite the content of a component whose struct is project- or plugin-defined (`RemoveComponent`, `RenameComponent`, `ReparentComponent`, `SetComponentContent`, and every typed `Set*` command of the Dynamics and Physics domains below).
+>
+> `CompileControlRig` is **not** affected: this domain has no dangerous kind of type, so compiling a rig that merely contains a project-defined unit struct or component struct requires nothing extra. The same holds for the graph-level commands that name no type of their own — `AddGraph`, `DeleteGraph`, `AddEventGraph`, `AddBackwardSolveGraph`, `AddInteractionGraph`, `AddEventNode`, `AddVariableNode`.
+>
+> ⚠️ **Breaking change — a struct that is not loaded is answered `NotFound`, not `InvalidParams`.** `AddGraphNode` and `AddComponent` no longer load the struct named by `StructPath` as a side effect; loading it would run its module's code in order to decide whether the caller was allowed to name it. A struct that is not already in memory is refused with `NotFound` and a sentence saying nothing is loaded on demand to answer the question. A `StructPath` that is malformed — empty, longer than 256 characters, or holding a character an object path is never built from — is still `InvalidParams`, because that is a statement about the parameter rather than about a type.
+>
+> The order two refusals arrive in also changed: the struct used to be judged before the asset was looked for, so a request that got both the struct and the asset path wrong was answered about the struct. It is judged with the asset in hand now — the same judgement has to be able to take in what the rig already holds — so such a request is answered about the asset instead. The shape of `StructPath` is still checked first, so an obvious typo still answers `InvalidParams` before anything is loaded.
 
 ### Toolset bridges (107) 🧩
 
@@ -2102,8 +2189,8 @@ Enhanced Input asset editing — Input Actions and Input Mapping Contexts.
 |---|---|
 | `ListInputActions` | List Enhanced Input Action assets in the project |
 | `ListMappingContexts` | List Input Mapping Context assets in the project |
-| `GetInputActionInfo` | Get an Input Action's details (ValueType, Triggers, Modifiers) |
-| `GetMappingContextInfo` | Get a Mapping Context's details (entries, keys, modifiers, triggers) |
+| `GetInputActionInfo` | Get an Input Action's details (ValueType, Triggers, Modifiers). Each trigger / modifier's `Params` now carries reference, container and struct values too — in the same form the setters accept — and gains a `PropertyWriteRequirements` map |
+| `GetMappingContextInfo` | Get a Mapping Context's details (entries, keys, modifiers, triggers), with the same structured `Params` values and `PropertyWriteRequirements` map |
 | `DeleteInputAction` | Delete an Input Action asset |
 | `DeleteMappingContext` | Delete an Input Mapping Context asset |
 | `AddInputMapping` | Add a key mapping to an Input Mapping Context |
@@ -2113,6 +2200,18 @@ Enhanced Input asset editing — Input Actions and Input Mapping Contexts.
 | `SetInputMappingTrigger` | Set / replace triggers on a mapping |
 | `SetInputActionModifier` | Set / replace modifiers on an Input Action |
 | `SetInputActionTrigger` | Set / replace triggers on an Input Action |
+
+> The four trigger / modifier setters — `SetInputMappingModifier`, `SetInputMappingTrigger`, `SetInputActionModifier`, `SetInputActionTrigger` — no longer refuse references and containers outright. A reference requires `EnhancedInputReferenceEdit` on top of `EnhancedInputEdit`, a struct or container requires `PropertyStructuredEdit`, and such values are supplied as JSON rather than engine bracket text — the two getters above report the required form per property. Unlike most property writers, a `Params` key naming no property still fails the whole request: these responses have nowhere to report a skipped key.
+
+> **Note — project- and plugin-defined Trigger and Modifier classes are capability-gated**: a `Class` from the `/Script/EnhancedInput` module is accepted the same way as before. A class from anywhere else — a project module, a plugin module, or a Blueprint subclass of `UInputTrigger` / `UInputModifier` — now requires `EnhancedInputCustomTypeEdit`. Unlike Material, there is no companion "dangerous type" capability here: a trigger evaluates key state and a modifier rescales an input value, and neither runs anything the caller supplied with the request. Two trigger kinds — `UInputTriggerChordAction` and `UInputTriggerChordBlocker`, plus anything derived from either — are refused **regardless of any capability held**: Enhanced Input builds and configures them as part of a chord rather than offering them to an author, and the engine's own class picker hides them for the same reason. `UInputTrigger` and `UInputModifier` themselves are abstract and equally unreachable. See [Safety & Capabilities](safety.md#gameplay-systems).
+>
+> **`Class` now accepts a full object path.** A name with no path separator is still looked up in `/Script/EnhancedInput` exactly as before (`Pressed` continues to resolve the way it always did, and `InputTriggerPressed` likewise). A class from anywhere else is named by its full object path — `/Script/MyGame.MyGameInputTrigger`, or `/Game/Input/BPT_Hold.BPT_Hold_C` for a Blueprint. Without this there was no spelling that reached such a class at all. The class must already be loaded: nothing is loaded in order to decide whether it was allowed to be, and a name that resolves to nothing answers `NotFound`.
+>
+> This check is not limited to the four setters — see [Capability-gated custom types](#capability-gated-custom-types) for the general rule. In this domain it additionally covers `RemoveInputMapping`, `DeleteInputAction` and `DeleteMappingContext`: removing a mapping entry, or deleting an asset, discards every Trigger and Modifier instance it holds, and a class this domain does not ship needs the same capability on the way out as on the way in. Nothing else changes about those three commands, and a target holding only Enhanced Input classes — including a chord trigger set up from the editor — is removed and deleted exactly as before, with no capability required.
+>
+> ⚠️ **Breaking change**: a Trigger or Modifier `Class` that failed the previous check was refused with `PolicyViolation` or `InvalidParams`. The four setters now answer `CapabilityNotAvailable` and name `EnhancedInputCustomTypeEdit` for a class that is merely from another module, `NotFound` for one that is not loaded, and `InvalidParams` for one that does not derive from `UInputTrigger` / `UInputModifier` at all. The two chord trigger kinds keep returning `PolicyViolation`. There is no compatibility window for the old codes: they meant "no permission would have helped", so keeping them would describe a permission system that did not exist.
+>
+> ⚠️ **Breaking change — a class of the wrong family is now refused.** The previous check never asked what a class derived from, so naming an Enhanced Input class that is neither a trigger nor a modifier — an `InputAction`, say — passed it and reached the call that instanced it into the list. That combination now answers `InvalidParams`. It never produced a usable asset.
 
 ---
 
@@ -2315,7 +2414,7 @@ Motion Matching editing for the Pose Search plugin — `UPoseSearchDatabase` ani
 | `SetPoseSearchSchemaChannelProperty` (requires `PoseSearchAssetEdit`) | Write into a top-level property of the channel at `ChannelPath` — `Value` in UE text-import syntax (max 4 KiB), or `ValueJson` as JSON with `Operation` / `ElementIndex` / `ElementKeyJson` for a single container element (see [Writing references, structs and containers](#writing-references-structs-and-containers)). A struct or container additionally requires `PropertyStructuredEdit`. A reference-bearing type is refused with `PolicyViolation` whatever the session holds, because writing a channel's sub-channel array directly would sidestep the class allowlist `AddPoseSearchSchemaChannel` enforces — add channels with that command instead. A post-write validation failure rolls the write back |
 | `AddDefaultPoseSearchSchemaChannels` (requires `PoseSearchAssetEdit`) | Add the same default trajectory + pose channel pair the editor's schema factory creates. Existing channels are kept, not replaced — calling it twice appends a duplicate pair |
 | `GetAvailablePoseSearchChannelClasses` | List every `UPoseSearchFeatureChannel` subclass `AddPoseSearchSchemaChannel` accepts as `ChannelClass`, with `bCanHostSubChannels` marking valid `ParentChannelPath` targets. Heavy — walks every loaded `UClass`; cache the result |
-| `GetPoseSearchChannelClassSchema` | List a channel class's Details-panel properties with `bIsWritable` / `NotWritableReason` for `SetPoseSearchSchemaChannelProperty`, `WriteInputForm` (`TextOrJson` / `JsonOnly` / `None`) and `RequiredCapabilities` naming what a structured write would need, and `DefaultValueText` as a working text-import example for each |
+| `GetPoseSearchChannelClassSchema` | List a channel class's Details-panel properties, each with a nested `WriteRequirements` object reporting `IsWritable` / `RefusalReason` for `SetPoseSearchSchemaChannelProperty`, `WriteInputForm` (`TextOrJson` / `JsonOnly` / `None`), and `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` naming what a structured write would need — see [Finding out what a write needs](#finding-out-what-a-write-needs) — and `DefaultValueText` as a working text-import example for each |
 | `AddSkeletonToPoseSearchSchema` (requires `PoseSearchAssetEdit`) | Add or replace the roled skeleton entry for `Role`, with an optional `MirrorDataTablePath`. Replacing an existing `Role` requires `bAllowOverwrite` |
 | `RemoveSkeletonFromPoseSearchSchema` (requires `PoseSearchAssetEdit`) | Remove the roled skeleton entry for `Role` from the `Skeletons` array |
 
@@ -2345,14 +2444,14 @@ Motion Matching editing for the Pose Search plugin — `UPoseSearchDatabase` ani
 
 Add, remove, and edit AnimNotify / AnimNotifyState entries and notify tracks on `UAnimSequence` / `UAnimMontage` / `UAnimComposite` assets. Built entirely on engine-shipped types — no optional plugin required.
 
-> **Note**: `NotifyGuid` is 32 hex digits with no hyphens (`FGuid::ToString(EGuidFormats::Digits)`) — the form `GetAnimNotifyInfo` reports and every other command in this domain expects back. `SetAnimNotifyProperty` requires `AnimNotifyEdit` for every write, additionally requires `AnimNotifyReferenceEdit` when the property being written is — or contains — a reference (`GetAnimNotifyClassSchema` reports this per property as `bIsObjectReference`), and additionally requires `PropertyStructuredEdit` when it is a struct outside the value catalogue, an array, a set, a map or an optional. `GetAnimNotifyClassSchema` names both per property under `RequiredCapabilities` and says which input field the value belongs in under `WriteInputForm`. `GetAnimNotifyProperty` is the read-only counterpart — same `NotifyGuid` / `PropertyName` addressing and the same text format as `SetAnimNotifyProperty`'s `Value` and `GetAnimNotifyClassSchema`'s `DefaultValueText`, so all three round-trip byte-for-byte, including a zero-valued property ("0" / "False" / "None" rather than an empty string). Every edit command in this domain is rejected while PIE or SIE is active.
+> **Note**: `NotifyGuid` is 32 hex digits with no hyphens (`FGuid::ToString(EGuidFormats::Digits)`) — the form `GetAnimNotifyInfo` reports and every other command in this domain expects back. `SetAnimNotifyProperty` requires `AnimNotifyEdit` for every write, additionally requires `AnimNotifyReferenceEdit` when the property being written is — or contains — a reference (`GetAnimNotifyClassSchema` reports this per property as `bIsObjectReference`), and additionally requires `PropertyStructuredEdit` when it is a struct outside the value catalogue, an array, a set, a map or an optional. `GetAnimNotifyClassSchema` names both per property under `WriteRequirements.RequiredCapabilities` and says which input field the value belongs in under `WriteRequirements.WriteInputForm`; `GetAnimNotifyProperty` reports the same thing in the same shape, resolved against the notify instance itself. `GetAnimNotifyProperty` is the read-only counterpart — same `NotifyGuid` / `PropertyName` addressing and the same text format as `SetAnimNotifyProperty`'s `Value` and `GetAnimNotifyClassSchema`'s `DefaultValueText`, so all three round-trip byte-for-byte, including a zero-valued property ("0" / "False" / "None" rather than an empty string). Every edit command in this domain is rejected while PIE or SIE is active.
 
 | Command | Description |
 |---|---|
 | `GetAnimNotifyInfo` | Every notify track (`TrackIndex` / `TrackName` / `TrackColor`) and every notify / notify state entry (guid, class, timing, montage-specific fields) on the asset, plus asset-level scalars (`AssetKind` / `PlayLength` / `NumTracks` / `NumNotifies` / `NumInvalidGuids`). For a `UAnimComposite` this only covers the asset's own `Notifies` array, not the notifies carried by its segments' `AnimSequence`s. Read-only, requires `EditorInspect` |
 | `GetAvailableAnimNotifyClasses` | List every `UAnimNotify` / `UAnimNotifyState` subclass `AddAnimNotify` / `AddAnimNotifyState` would accept as `ClassPath`, with `bIsNotifyState` / `bCanBePlaced` / `NotPlaceableReason`. Only currently loaded classes are visible. Heavy — walks every loaded `UClass`; cache the result. Read-only, requires `EditorInspect` |
-| `GetAnimNotifyClassSchema` | List the Details-panel properties of a `UAnimNotify` / `UAnimNotifyState` subclass, each with `bIsWritable` / `NotWritableReason` for `SetAnimNotifyProperty`, `WriteInputForm` (`TextOrJson` / `JsonOnly` / `None`), `RequiredCapabilities`, `bIsObjectReference`, and `DefaultValueText` as a working text-import example. Read-only, requires `EditorInspect` |
-| `GetAnimNotifyProperty` | Read one property (`PropertyName`) or, when it is omitted or empty, every property `GetAnimNotifyClassSchema` would enumerate for the notify instance identified by `NotifyGuid`. All-properties reads report `NumProperties` / `bTruncated` in place of `PropertyName` / `Value` and truncate on overflow; a single-property read instead fails with `InvalidParams` rather than being cut short. Secret-looking values are masked the same way `GetAnimNotifyClassSchema`'s `DefaultValueText` and `SetAnimNotifyProperty`'s `AppliedValue` are. Never mutates the asset. Read-only and Idempotent, requires `EditorInspect` |
+| `GetAnimNotifyClassSchema` | List the Details-panel properties of a `UAnimNotify` / `UAnimNotifyState` subclass, each with a nested `WriteRequirements` object reporting `IsWritable` / `RefusalReason` for `SetAnimNotifyProperty`, `WriteInputForm` (`TextOrJson` / `JsonOnly` / `None`), and `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` — see [Finding out what a write needs](#finding-out-what-a-write-needs) — plus `bIsObjectReference` and `DefaultValueText` as a working text-import example. Read-only, requires `EditorInspect` |
+| `GetAnimNotifyProperty` | Read one property (`PropertyName`) or, when it is omitted or empty, every property `GetAnimNotifyClassSchema` would enumerate for the notify instance identified by `NotifyGuid`. All-properties reads report `NumProperties` / `bTruncated` in place of `PropertyName` / `Value` and truncate on overflow; a single-property read instead fails with `InvalidParams` rather than being cut short. Secret-looking values are masked the same way `GetAnimNotifyClassSchema`'s `DefaultValueText` and `SetAnimNotifyProperty`'s `AppliedValue` are. Each property also carries a nested `WriteRequirements` object — same field names and same nesting as `GetAnimNotifyClassSchema`, resolved against the notify instance rather than the class default — reporting `IsWritable` / `RefusalReason`, `WriteInputForm` (`TextOrJson` / `JsonOnly` / `None`) and `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities`; on a single-property read it sits directly in `Data`. See [Finding out what a write needs](#finding-out-what-a-write-needs). Never mutates the asset. Read-only and Idempotent, requires `EditorInspect` |
 | `AddAnimNotifyTrack` (requires `AnimNotifyEdit`) | Ensure a notify track named `TrackName` exists, creating it (optional `TrackColor`, default white) when it does not. Idempotent-on-existence — an existing track's `TrackIndex` is returned as-is and `TrackColor` is ignored. Rejected while PIE/SIE is active |
 | `RemoveAnimNotifyTrack` (requires `AnimNotifyEdit`) | Remove the notify track named `TrackName`, deleting every notify placed on it and shifting later tracks' indices down by one; the response's `RemovedNotifyGuids` / `ReindexedNotifies` report the full blast radius. Fails with `NotFound` on an already-removed track. Rejected while PIE/SIE is active |
 | `AddAnimNotify` (requires `AnimNotifyEdit`) | Add a single point notify to `TrackName` at `StartTime`. Exactly one of `ClassPath` (a `UAnimNotify` subclass) / `NotifyName` (class-less, optionally registered on the Skeleton via `bRegisterOnSkeleton`) is required. Not idempotent — repeated calls create independent notifies with new `NotifyGuid`s. Rejected while PIE/SIE is active |
@@ -2819,10 +2918,12 @@ Runtime input injection and Enhanced Input state inspection. PIE required.
 | `RemoveMappingContext` | Remove an Input Mapping Context from the local player |
 | `SetInputMode` | Set the input mode (GameOnly / UIOnly / GameAndUI) |
 | `FlushInput` | Flush pressed-key state at the end of a test |
-| `DumpInputState` | Dump current Enhanced Input state (active contexts, mappings, action values) |
+| `DumpInputState` | Dump current input state (pressed keys, axis values, active mapping contexts with priority, and — with `IncludeActionStates=true` — per-action trigger state) |
 | `GetEnhancedInputActionValue` | Get the current value of an Enhanced Input Action |
 
 ---
+
+> **Note**: `DumpInputState` always reports `ActiveMappingContexts` (sorted by `Priority` descending, then `Path` ascending) and `EnhancedInputState` (`"Available"` / `"Unavailable"`, telling apart "queried and found none" from "could not query"). Pass `IncludeActionStates=true` to additionally get `ActionStates[]` — one entry per action reachable from the active mapping contexts, each carrying `Trigger` (one of the six `ETriggerEvent` values, including `"None"` for an action that was evaluated but is not currently firing), `ValueX`/`ValueY`/`ValueZ`, `SourceContexts[]` (which active context configured it) and `ConfiguredKeys[]` (deduplicated, sorted) — plus `ActionStatesTotalCount` and `ActionStatesTruncated` (capped at 256, sorted by `ActionPath`). Leaving `IncludeActionStates` at its default `false` keeps the call cheap; the flag is opt-in specifically because its cost scales with the number of mapped actions rather than the number of loaded mapping contexts.
 
 ## UAIP.Runtime.Niagara 🧩
 

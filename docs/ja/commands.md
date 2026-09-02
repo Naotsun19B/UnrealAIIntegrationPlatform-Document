@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1119 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1540 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1125 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1546 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -66,7 +66,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 17 | 7 | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
-| Editor Sequencer | `UAIP.Editor.Sequencer` | 123 | 61 | — |
+| Editor Sequencer | `UAIP.Editor.Sequencer` | 129 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
 | Editor PCG 🧩 | `UAIP.Editor.PCG` | 34 | 31 | — |
@@ -118,7 +118,7 @@ UAIP では 2 種類のコマンドを公開しています：
 
 どちらも DefaultDenied です — `Config/DefaultUAIP.ini` で有効化してください（[Safety & Capabilities](safety.md) 参照）。参照を内包する構造体の書き込みには**両方**が必要なので、構造側の Capability だけで参照のゲートを迂回することはできません。
 
-すでに独自の Capability で参照の書き込みを管理しているモジュールは、参照側についてはその名前を使い続けます — `SetAnimNotifyProperty` は `AnimNotifyReferenceEdit`、`SetDataflowNodeProperty` は `DataflowReferenceEdit`、Subsonic の各コマンドは `SubsonicEventEdit` を参照します。構造・コンテナ側は常に `PropertyStructuredEdit` です。拒否の返答は、そのコマンド自身の書き込み経路が実際に参照する Capability 名を返すため、案内された名前は常に運用者へ依頼する価値のある名前になっています。
+すでに独自の Capability で参照の書き込みを管理しているモジュールは、参照側についてはその名前を使い続けます — `SetAnimNotifyProperty` は `AnimNotifyReferenceEdit`、`SetDataflowNodeProperty` は `DataflowReferenceEdit`、Subsonic の各コマンドは `SubsonicEventEdit`、`SetSlotProperties` は `WidgetSlotReferenceEdit`、Enhanced Input の Trigger / Modifier setter 4 コマンドは `EnhancedInputReferenceEdit`、`SetStateTreeParameter` は `StateTreeParameterReferenceEdit` を参照します。構造・コンテナ側は常に `PropertyStructuredEdit` です。同じパターンはこの一覧の外でも成り立ちます — `AddSetParameterEntry` / `AddSetParametersModule` は、渡された `DefaultValue` がデータインターフェース / オブジェクト型パラメータのものである場合に `NiagaraReferenceEdit` を参照します。拒否の返答は、そのコマンド自身の書き込み経路が実際に参照する Capability 名を返すため、案内された名前は常に運用者へ依頼する価値のある名前になっています。
 
 ### パラメータ
 
@@ -205,9 +205,25 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | `RequiredCapabilities` | そのコマンド自身の書き込み経路が実際に照会する Capability 名。付与すれば実際に書けるようになる名前 |
 | `HeldCapabilities` / `MissingCapabilities` | 上記のうち、読み取りを発行したセッションが保有しているもの / していないもの |
 | `IsWritable` / `RefusalReason` | セッションが何を持っているかに関わらず、そのプロパティの型とフラグが書き込みを許すかどうか |
-| `WriteInputForm` | `TextOrJson` または `JsonOnly` — 値をどちらの入力欄で渡す必要があるか |
+| `WriteInputForm` | `TextOrJson` / `JsonOnly` / `None` — 値をどちらの入力欄で渡す必要があるか。`None` は `IsWritable: false` と対で返り、どの形式でも受け付けないこと（どの Capability を付与しても変わらないこと）を意味します |
 
 一部のコマンドは独自の判定で書き込み可否を決めており、この報告を添えません。その場合は書き込みを試してください — 拒否の返答に不足している Capability 名が載ります。無いのは事前の案内だけで、進めなくなるわけではありません。
+
+さらに 8 つの取得系コマンドがこの報告を返すようになりました。既存の値の返し方に合わせて 2 つの形のいずれかを取ります。
+
+| コマンド | 報告の位置 |
+|---|---|
+| `GetSlotProperties`（`UAIP.Editor.UMG`） | `Properties` と並ぶ `PropertyWriteRequirements` マップ（キーはプロパティ名） |
+| `GetInputActionInfo` / `GetMappingContextInfo`（`UAIP.Editor.EnhancedInput`） | 各 Trigger / Modifier エントリの中、`Params` と並ぶ `PropertyWriteRequirements` マップ |
+| `GetStateTreeParameters`（`UAIP.Editor.StateTree`） | 各パラメータエントリに入れ子の `WriteRequirements` オブジェクト |
+| `GetWorldConditionInfo`（`UAIP.Editor.WorldConditions`） | 各条件プロパティエントリに入れ子の `WriteRequirements` オブジェクト |
+| `GetAnimNotifyClassSchema`（`UAIP.Editor.AnimSequence`） | 各プロパティエントリに入れ子の `WriteRequirements` オブジェクト |
+| `GetAnimNotifyProperty`（`UAIP.Editor.AnimSequence`） | 各プロパティエントリに入れ子の `WriteRequirements` オブジェクト。単一プロパティを指定した場合は `Data` の `PropertyName` / `Value` と並べて直接返す |
+| `GetPoseSearchChannelClassSchema`（`UAIP.Editor.MotionMatching`） | 各プロパティエントリに入れ子の `WriteRequirements` オブジェクト |
+
+値マップ自体（`Properties` / `Params`）の形は変えていないため、値だけを読む呼び出し側に影響はありません。Enhanced Input の 2 つの取得系では、値マップが従来スキップしていた参照・コンテナも含め **編集可能な全プロパティ** を報告します — スキップされていた型こそが Capability を要求する型だからです。`GetWorldConditionInfo` の `RequiredCapabilities` は常に空配列です。この経路は参照もコンテナも一切受け付けないため、運用者へ依頼すべき Capability が存在せず、名前を挙げると「付与しても何も解禁されない権限」を案内することになるためです。`GetAnimNotifyProperty` は `GetAnimNotifyClassSchema` と同じキー名・同じ入れ子の形で返すため、読み方は両者で共通です。違いは判定の対象で、クラスのデフォルトではなく `NotifyGuid` で指定された実際の通知インスタンス（`SetAnimNotifyProperty` が実際に書き込む対象）に対して解決されます。
+
+> ⚠️ **破壊的変更**: `GetAnimNotifyClassSchema` と `GetPoseSearchChannelClassSchema` は従来、この報告をプロパティエントリの直下に、独自の名前 — `bIsWritable` / `NotWritableReason` / `WriteInputForm` / `RequiredCapabilities` — で返しており、`HeldCapabilities` / `MissingCapabilities` に相当するものは一切ありませんでした。両コマンドとも、上の表と同じ入れ子の `WriteRequirements` オブジェクトを返すようになったため、旧来のフラットな名前を読み続けている呼び出し側には何も見つかりません。`WriteRequirements.IsWritable` / `.RefusalReason` / `.WriteInputForm` / `.RequiredCapabilities` を読んでください。`.HeldCapabilities` / `.MissingCapabilities` は改名ではなく新しい情報です。どのプロパティが書けるか、書くのに何が要るかという判定自体は変わっておらず、変わったのは読む位置だけです。これにより、UAIP 全体で「書き込みに何が必要か」を返す取得系コマンドが、すべて同じ形になりました。
 
 ### つまずきやすいところ
 
@@ -220,6 +236,17 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ---
 
+## Capability でゲートされたカスタム型
+
+いくつかのドメインは、プロジェクトやプラグインが定義した型を Capability の付与があって初めて通します — 各ドメイン自身の Note を参照してください（例: [UAIP.Editor.Material](#uaipeditormaterial)、[UAIP.Editor.AnimBlueprint](#uaipeditoranimblueprint)）。以下はそれらすべてに共通する内容で、ドメインごとには繰り返しません。
+
+- **確認は `Add*` だけでなく、その型に触る操作すべてで行われます。** ゲートされた型のノードがグラフに存在するようになった後は、そのノードを編集・接続・切断・コンパイル・削除するとき、また実効型を変更する（Reparent）ときや参照を新規作成・差し替えるときにも、同じ Capability があらためて確認されます。追加時に Capability を持っていたことは以降の呼び出しには引き継がれません — セッションが後から Capability を失えば（role の変更、`AllowedCapabilities` の絞り込みなど）、それらの後続操作も `Add*` と同じように権限不足で断られます。
+- **⚠️ 破壊的変更 — 削除と切断は従来ゲートされていませんでした。** この変更以前は、各ドメインの `Add*` コマンドだけが追加する型を検査しており、ノードの削除やピンの切断はノードの型に関わらず無条件で通っていました。現在はそうではありません。ゲートされた型のノードを削除・切断するには、それを最初に作成するときに `Add*` が要求したのと同じ Capability が必要です。
+- **もう追加できない型でも、片付けることはできます。** クラスの読み込みに失敗する型や、エンジンの更新でサポートが打ち切られた型は再追加できません — これは Capability を付与しても解消しない構造的な拒否です。しかしそのこと自体は、既存のノードを削除・切断できない理由にはなりません。セッションがその型に要る Capability を保有している限り、削除・切断は引き続き通ります。
+- **コンパイルで確認されるのは「危険な種類」だけで、「自作」であること自体は対象にしません。** 「プロジェクト・プラグイン定義」と「危険」を分けて扱うドメイン（Material はそうです。この区別が無いドメインについては該当ドメイン自身の Note を参照してください）では、アセットのコンパイルはそのアセットに含まれる危険な種類の型についてだけ Capability を要求します。危険な種類ではない、ただの自作型はコンパイルを妨げません。そうでなければ、カスタム型を 1 つでも含むプロジェクトは、どのセッションでも毎回 Capability の付与なしには一切コンパイルできなくなってしまいます。
+
+---
+
 ## UAIP.Core
 
 検索・ヘルスチェック・セッション管理などのシステムレベルコマンド。
@@ -229,7 +256,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` に加え、`ProjectFilePath`（開いている `.uproject` の絶対パス。MCP Bridge が正しいエディタインスタンスへアタッチしているか検証するために使う）・`TransportTimeouts`（トランスポートごとの非同期コマンドタイムアウト秒数。例 `{"HTTP": 120, "WS": 12}`）・`QueueCongestion`（遅延実行キューの混雑度。`None` / `Low` / `High` の 3 段階。正確な待ち件数は他セッションの活動量を推測させるため返しません）を返す |
 | 🆓 `GetSystemInfo` | UE バージョン（Major/Minor/Patch/Changelist）・プロジェクト名・プラットフォーム・ビルド設定・UAIP バージョンを返す |
 | 🆓 `QueryCapabilities` | `Capabilities`（セッションの実効セット）・`RegisteredCapabilityCount` / `UngrantedCapabilityCount`（常に返る）・`OperationalConstraints`（9 つのポリシーフラグ）を返す。`IncludeUnavailable: true` を渡すと `RegisteredCapabilities`（ロード済みモジュールが宣言したすべての Capability。各要素が `Name` / `DefaultPolicy` / `IsGranted` を持つため、このセッションが保有していないものも名前で見つけられる。既定で拒否されるものは `DefaultPolicy` が `Denied` の要素）も返る |
-| 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`ProviderPrefix`・`KeywordFilter`・`IncludeUnavailable`・`Stability`） |
+| 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`ProviderPrefix`・`KeywordFilter`・`IncludeUnavailable`・`Stability`。`ResultMode` — `Commands`（既定）または `Providers` を指定するとコマンドではなく Provider の一覧を返す。`Limit` — 返却件数の上限（1〜1000）。`IncludeDescription` — 一覧に各コマンドの説明文を含める） |
 | 🆓 `DescribeCommand` | 単一コマンドの完全メタデータ（スキーマ・必要 Capability・可用性） |
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
 | 🆓 `EndSession` | セッションを明示的に終了しサーバー側リソースを解放する（成果物は GC 対象になる） |
@@ -358,7 +385,7 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `ListSettingsSections` | カテゴリ内の設定セクションを一覧表示。Capability 不要 |
 | 🆓 `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） |
 | 🆓 `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） |
-| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可 |
+| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可。値はエンジンのテキスト形式のみを受け取るため、参照・コンテナ・組み込みカタログ外の構造体は **どの Capability を付与しても拒否されます** — これらは同じ設定オブジェクトへ届き `ValueJson` を受け取る `SetProjectSetting` で書いてください。途中までしか解釈できない値は、断片が適用されるのではなく `InvalidParams` で拒否されるようになりました |
 | `SaveSettings` | `ISettingsSection::Save()` 経由で設定を ini ファイルに書き出す。`ConfigSettingsSave` 必要。PIE 中および `bDisableSave` 設定時は実行不可 |
 | `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 |
 
@@ -657,7 +684,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 
 | コマンド | 説明 |
 |---|---|
-| `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip） |
+| `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください |
 | `DeleteBlueprintVariable` | メンバー変数を削除 |
 | `SetBlueprintVariableDefault` | Blueprint 変数の CDO デフォルト値を更新 |
 | `AddGraphNode` | Blueprint グラフにノードを追加（VariableGet/Set・FunctionCall・Event 等） |
@@ -707,8 +734,8 @@ Widget Blueprint 編集 — ツリー・変数・アニメーション・バイ�
 | `SetNamedSlotContent` | NamedSlot ウィジェットの内容を設定 |
 | `GetNamedSlots` | Widget Blueprint の NamedSlot 一覧 |
 | `ReparentWidgetBlueprint` | Widget Blueprint の親クラスを変更 |
-| `GetSlotProperties` | ウィジェットのスロットプロパティを取得（CPF フィルタ・最大 64 キー） |
-| `SetSlotProperties` | ウィジェットのスロットプロパティを設定（32 KiB 制限・UObject 参照は `/Game/` 以下のみ） |
+| `GetSlotProperties` | ウィジェットのスロットプロパティを取得（CPF フィルタ・最大 64 キー）。あわせて `PropertyWriteRequirements` マップを返し、各プロパティへの書き込みに何が必要か・どの入力形式で渡すかを示します |
+| `SetSlotProperties` | ウィジェットのスロットプロパティを設定（32 KiB 制限・UObject 参照は `/Game/` 以下のみ）。参照には `WidgetSlotReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要になり、これらの値はエンジンの括弧表記ではなく **JSON ドキュメント** で渡します — 書く前に取得系の `WriteInputForm` を確認してください。拒否された書き込みは undo エントリを残さず、アセットを dirty にもしません |
 | `GetWidgets` | ウィジェットツリー構造を取得（JSON） |
 | `ListWidgetClasses` | 利用可能なウィジェットクラス一覧（最大 500 件） |
 | `CompileWidgetBlueprint` | Widget Blueprint をコンパイルしエラー / 警告を返す |
@@ -735,15 +762,25 @@ Material グラフ編集とパラメータ管理。
 |---|---|
 | `GetMaterialInfo` | 基本情報（NodeCount・ShadingModel・BlendMode・bHasErrors） |
 | `ListMaterialNodes` | Material グラフのノード一覧（NodeId・ExpressionClass・座標・bIsParameter） |
-| `AddMaterialNode` | Material グラフにノードを追加（ExpressionClass 指定・6 ステップ allowlist） |
+| `AddMaterialNode` | Material グラフにノードを追加（`ExpressionClass` 指定）— プロジェクト定義またはカスタム HLSL のクラスには Capability が必要、詳細は下記の Note を参照 |
 | `DeleteMaterialNode` | NodeId 指定でノードを削除（ルート削除は Conflict） |
 | `ConnectMaterialPins` | Material グラフの 2 ピンを接続（循環・型不一致検出） |
 | `DisconnectMaterialPins` | ピン接続を切断 |
 | `CompileMaterial` | マテリアルをコンパイルしエラー / 警告を返す |
 | `SetMaterialParameterValue` | マテリアルパラメータの値を設定 |
 | `GetMaterialParameterValue` | マテリアルパラメータの値を取得 |
-| `ListMaterialExpressionClasses` | `UMaterialExpression` 派生クラスの一覧（最大 500 件）。`AddMaterialNode` の `ExpressionClass` 引数に使用する |
+| `ListMaterialExpressionClasses` | `UMaterialExpression` 派生クラスの一覧（最大 500 件）。各エントリは `AddMaterialNode` が検証するのと同じポリシー由来の `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持つ。`ClassPath` を `AddMaterialNode` の `ExpressionClass` 引数に使用する。`TotalCount` / `ReturnedCount` / `Truncated` を返す — 詳細は下記の Note を参照 |
 | `RefreshMaterial` | マテリアルを強制再コンパイル（保存済みアセットをパス省略で即時再ビルド） |
+
+> **Note — プロジェクト定義・カスタム HLSL の ExpressionClass は Capability で制御されます**: エンジン組み込みモジュール（`Engine` / `RenderCore` / `MaterialEditor` / `Landscape`）由来の `ExpressionClass` は従来どおり追加できます。それ以外のモジュール由来のクラス — プロジェクトやプラグインが定義した `UMaterialExpression` 派生クラス — は `MaterialCustomTypeEdit` が必要になりました。`UMaterialExpressionCustom` / `UMaterialExpressionCustomOutput` とその派生クラス（任意の HLSL を含められる）は、どのモジュール由来かに関わらず `MaterialCustomNodeEdit` が必要です — この Capability は以前から登録されていましたが、これまでどのコマンドも要求していませんでした。両方に該当するクラスは両方の Capability が必要で、拒否には不足しているものがすべて挙がります。どちらも既定では付与されません。[Safety & Capabilities](safety.md#マテリアル編集) を参照。
+>
+> これらの確認は `AddMaterialNode` だけに限りません — 既存ノードの編集・接続・切断・コンパイル・Reparent・削除でも同じ Capability があらためて確認されます。削除・切断固有の破壊的変更を含め、詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
+>
+> ⚠️ **破壊的変更**: これらのクラスは従来、無条件で拒否されていました — 型 policy が拒否したクラスには `PolicyViolation`、クラスをまったく解決できない場合は `InvalidParams`。`AddMaterialNode` は現在、クラスが読み込まれていれば `CapabilityNotAvailable` を返し不足している Capability 名を挙げます。旧エラーコードとの移行期間は設けていません — 旧コードは「権限を与えても通らない」ことを意味していたため、残すと存在しない権限体系を案内することになるためです。
+>
+> `ExpressionClass` はあらかじめ読み込まれている必要があります。`AddMaterialNode` は副作用としてクラスを読み込まなくなり、解決できないクラスには（上記のいずれに該当するかに関わらず）`NotFound` を返します。
+>
+> **Note — `ListMaterialExpressionClasses` は各クラスの Admission を報告するようになりました**: 各エントリは `Admission` を持ち、4 つの値のいずれかになります — `Allowed`（現在のセッションで今すぐ追加できる）、`RequiresCapabilities`（`MissingCapabilities` に挙がる Capability を付与すれば追加できる。`MissingCapabilities` は `RequiredCapabilities` の部分集合）、`NotAddable`（基底型違い・abstract・deprecated・クラスピッカーから隠されている等、Capability をどれだけ付与しても解消しない構造的な理由で拒否される）、`CompatibilityUnknownUntilAuthorized`（セッションは必要な Capability をすべて保有しているが、エンジン側の互換性チェックはまだ実行されていない — 一覧は権限を与えられていないセッションのためにクラス自身のコードを実行してはならないため、最終的な可否は実際にノードを追加してみるまで分からない）。レスポンスは `TotalCount` / `ReturnedCount` / `Truncated` も返します — この一覧が従来から持っていた 500 件の上限は、これまで一度も報告されていませんでした。返されるクラスの集合も従来より広がりました — abstract・deprecated・`NewerVersionExists`・クラスピッカーから隠されているクラスは、従来はレスポンスから黙って除外されていましたが、現在は除外されず `Admission: NotAddable` を付けて列挙されます。この一覧は権威的な判定ではなくスナップショットです — 一覧取得後に Capability や role が変わり得るため、実際の可否は `AddMaterialNode` 側で毎回あらためて判定されます。
 
 ---
 
@@ -868,7 +905,7 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `SetEmitterData` 🧩 | エミッターのデータを設定 |
 | `AddRenderer` 🧩 | エミッターにレンダラーを追加 |
 | `RemoveRenderer` 🧩 | レンダラーを削除 |
-| `SetRendererData` 🧩 | レンダラーのデータを設定 |
+| `SetRendererData` 🧩 | レンダラーのデータを設定（`NiagaraStackEdit` 必須）。指定クラスのレンダラーがエミッタに無い場合は `NotFound` を返すようになりました — 最初に見つかった別のレンダラーへ書き込むフォールバックは廃止されています。書き込み経路が扱えないプロパティ名は黙って無視されず、リクエスト全体が `PolicyViolation` で失敗します。構造体の初期値が途中までしか解釈できない場合は「既定値として解釈した」成功ではなく `InvalidParams` で拒否されます。成功時は `PostEditChangeProperty` を呼ぶため、変更がエディタへ即座に反映されます |
 | `AddModule` 🧩 | エミッターのモジュールスタックにモジュールを追加 |
 | `RemoveModule` 🧩 | モジュールを削除 |
 | `MoveModule` 🧩 | スタック内でモジュールを移動 |
@@ -878,9 +915,19 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `AddUserVariables` 🧩 | システムにユーザー変数を追加 |
 | `RemoveUserVariables` 🧩 | ユーザー変数を削除 |
 | `CompileNiagaraSystem` 🧩 | Niagara システムをコンパイル |
-| `AddSetParametersModule` 🧩 | Set Parameters モジュールをスタックに追加し、初期パラメータエントリを登録する。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）で適用される。 |
-| `AddSetParameterEntry` 🧩 | 既存の Set Parameters モジュールにパラメータエントリを追加する。`ScriptName`（例：`Spawn` / `Update`）が必須。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）で適用される。 |
+| `AddSetParametersModule` 🧩 | Set Parameters モジュールをスタックに追加し、初期パラメータエントリを登録する。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）に加え、`NiagaraReferenceEdit` があればオブジェクトパスで渡したデータインターフェース / オブジェクト型パラメータにも適用される — 下の Note を参照。 |
+| `AddSetParameterEntry` 🧩 | 既存の Set Parameters モジュールにパラメータエントリを追加する。`ScriptName`（例：`Spawn` / `Update`）が必須。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）に加え、`NiagaraReferenceEdit` があればオブジェクトパスで渡したデータインターフェース / オブジェクト型パラメータにも適用される — 下の Note を参照。 |
 | `RemoveSetParameterEntry` 🧩 | Set Parameters モジュールからパラメータエントリを削除する。`ScriptName`（例：`Spawn` / `Update`）が必須。 |
+
+> **⚠️ 挙動の変更 — 参照型の `DefaultValue` が、捨てられずに書き込まれるようになりました。** パラメータの型がデータインターフェースまたはオブジェクト参照の場合、`AddSetParameterEntry` / `AddSetParametersModule` は従来 `DefaultValue` を**黙って無視**していました（リクエストは成功し、既定値の無いエントリが作られていました）。今後は値をオブジェクトパスとして渡すと、`FNiagaraVariant` のデータインターフェース / オブジェクト専用スロットへ保存されます。ここでは参照が正しく保持され、他のパラメータ型が使うバイト列へ詰め込まれることはありません。成功の代わりに返りうるもの:
+>
+> - `CapabilityNotAvailable` — セッションが `NiagaraReferenceEdit` を保有していない（両コマンドが元から要求する `NiagaraStackEdit` に**追加で**必要）。拒否の返答にこの名前が載ります。
+> - `NotFound` — オブジェクトパスが指すアセットをまだ何もロードしていない。書き込みが副作用でアセットをロードすることはないため、先にアセットを開いてください（「存在しない」と「存在するが未ロード」は同じ拒否として返ります）。
+> - `InvalidParams` — オブジェクトは解決できたが、パラメータ型のクラスではない。
+>
+> Capability を付与し、対象がロード済みであれば書き込みは成功し、参照が保持されます。**`DefaultValue` を指定しない場合の挙動は従来どおり**です — 追加の Capability は不要で、既定値の無いエントリが作られます。
+>
+> ⚠️ **実運用で到達できるのはデータインターフェース型だけです。** パラメータの型名は値を見るより前に型の許可リストと突き合わされるため、`UTexture2D` のような通常のオブジェクト型はその段階で拒否され、`NiagaraReferenceEdit` の出番はありません。また Set Parameters エントリの既定値を返す取得系コマンドは存在しないため、書き込んだ結果を読み戻して確認することは現状できません。Niagara の**ユーザー**パラメータ（`AddUserVariables`）は別のストアで、そもそも既定値を受け取りません。
 
 #### Blueprint ラッパー（2）
 
@@ -892,6 +939,10 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 ### Toolset ブリッジ（45）🧩
 
 `NiagaraToolsets` プラグイン（UE 5.8+ Experimental）経由でネイティブコマンドを委譲。プロバイダ：`Toolset.Editor.Niagara.*`。グループ：Info（2）/ Blueprint（2）/ System Schema（12）/ Topology（5）/ Data（5）/ Edit-1（8）/ Edit-2（8）/ Diagnostic（3）。
+
+> **⚠️ 破壊的変更 — `Toolset.Editor.Niagara.SetRendererData` が要求する Capability が `NiagaraStackEdit` になりました**（ネイティブ版と同じ名前）。従来は `NiagaraEmitterEdit` を要求していたため、運用者が `NiagaraStackEdit` を閉じてもブリッジ経由で同じ書き込みが通っていました。**`NiagaraEmitterEdit` だけを付与していたセッションはこのコマンドを使えなくなります** — `NiagaraStackEdit` を追加してください。
+>
+> **ブリッジ経由では UAIP の値検査が及びません。** ブリッジの書き込みはエンジンの toolset の内部で行われるため、ネイティブ版が適用する型ゲート・途中終了パースの検査・全件不可なら 1 件も書かない扱いは適用されません。検査が必要な場合はネイティブの `SetRendererData` を使ってください。
 
 ---
 
@@ -1197,7 +1248,7 @@ Anim Blueprint グラフと StateMachine 編集。
 |---|---|
 | `GetAnimBlueprintInfo` | AnimGraph ノード一覧と StateMachine 構造（PIE 中は degraded モード） |
 | `GetAvailableAnimGraphNodeClasses` | `UAnimGraphNode_Base` サブクラス一覧 — `ClassPath` を `AddAnimGraphNode` に渡す |
-| `AddAnimGraphNode` | `UAnimGraphNode_Base` 派生ノードを NodeClass 指定で追加 |
+| `AddAnimGraphNode` | `UAnimGraphNode_Base` 派生ノードを NodeClass 指定で追加 — プロジェクトやプラグインが定義したクラスには Capability が必要、詳細は下記の Note を参照 |
 | `RemoveAnimGraphNode` | NodeId 指定でノードを削除 |
 | `ConnectAnimGraphPins` | 2 ピンを接続（WouldCreateCycle DFS 事前検出） |
 | `DisconnectAnimGraphPins` | ピン接続を切断 |
@@ -1206,6 +1257,14 @@ Anim Blueprint グラフと StateMachine 編集。
 | `AddAnimTransition` | From→To Transition を追加（重複時 idempotent） |
 | `RemoveAnimTransition` | NodeId 指定で Transition を削除 |
 | `CompileAnimBlueprint` | コンパイルし CompileStatus + エラーログを返す |
+
+> **Note — プロジェクト定義・プラグイン定義の AnimGraph ノードクラスは Capability で制御されます**: このドメインが従来から信頼してきた 3 モジュール（`AnimGraph` / `AnimGraphRuntime` / `Engine`）由来の `NodeClass` は、従来どおり追加できます。それ以外のモジュール由来のクラス — プロジェクトやプラグインが定義した `UAnimGraphNode_Base` 派生クラス — は `AnimBlueprintCustomTypeEdit` が必要になりました。Material とは異なり、このドメインには対になる「危険なノード」用の Capability はありません — 8 種のノード（`UAnimGraphNode_StateResult` / `TransitionResult` / `TransitionPoseEvaluator` / `Root` / `StateMachineBase` / `LinkedAnimGraph` / `LinkedAnimLayer` / `CustomProperty`）は、**どの Capability を持っていても** AnimGraph のルートには置けません — これらは内部専用・サブグラフ専用のノード種別であり、グラフがその方向からの追加を受け付けないという話であって、権限で解禁できる危険性ではありません。`AnimBlueprintCustomTypeEdit` を含むいかなる Capability もこの結果を変えません。[Safety & Capabilities](safety.md#blueprintanimblueprint-編集) を参照。
+>
+> この確認は `AddAnimGraphNode` だけに限りません — ゲートされたクラスの既存ノードを編集・接続・切断・コンパイル・削除する場合も同じ `AnimBlueprintCustomTypeEdit` があらためて確認されます。削除・切断固有の破壊的変更を含め、詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
+>
+> ⚠️ **破壊的変更**: プロジェクト定義・プラグイン定義の `NodeClass` は従来、無条件で `PolicyViolation` として拒否されていました。`AddAnimGraphNode` は現在、クラスが読み込まれていれば `CapabilityNotAvailable` を返し `AnimBlueprintCustomTypeEdit` の名前を挙げます。旧エラーコードとの移行期間は設けていません — 旧コードは「権限を与えても通らない」ことを意味していたため、残すと存在しない権限体系を案内することになるためです。上記 8 種の内部専用・サブグラフ専用ノードはこの変更の対象外で、引き続き `PolicyViolation` を返します。
+>
+> `NodeClass` はあらかじめ読み込まれている必要があります。`AddAnimGraphNode` は副作用としてクラスを読み込まなくなり、解決できないクラスには `NotFound` を返します。
 
 ---
 
@@ -1346,7 +1405,7 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 | `AddBehaviorTreeDecoratorNode` | 親ノードに Decorator を附加 |
 | `AddBehaviorTreeServiceNode` | 親 Composite ノードに Service を附加 |
 | `RemoveBehaviorTreeNode` | NodeId 指定でノードを削除 |
-| `SetBehaviorTreeNodeProperty` | ノードプロパティを設定（FBlackboardKeySelector / 汎用 ImportText_Direct） |
+| `SetBehaviorTreeNodeProperty` | ノードプロパティを設定（FBlackboardKeySelector / 汎用 ImportText_Direct）。ツリーに Blackboard アセットが設定されていない場合、キーセレクタへの書き込みは拒否されるようになりました — Blackboard が無いとキー名の妥当性を確認できず、従来は名前と種類が食い違った状態が残ることがありました。拒否された書き込みはアセットを dirty にせず、空の undo エントリも残しません |
 | `ListBlackboardKeys` | Blackboard アセットのキー一覧（PIE 中も許可） |
 | `AddBlackboardKey` | キーを追加（KeyType allowlist・重複名チェック） |
 | `RemoveBlackboardKey` | 未参照のキーを削除（使用中は Conflict + 参照元を返す） |
@@ -1410,7 +1469,7 @@ EQS クエリ編集。`EnvironmentQueryEditor` プラグインが必要です。
 
 LevelSequence 編集 — トラック・セクション・キーフレーム・再生・バインド。
 
-### ネイティブ（123）
+### ネイティブ（129）
 
 #### 構造（15）
 
@@ -1537,7 +1596,7 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `GetSubSequences` | SubSequence トラックのセクション一覧 |
 | `AddSubSequenceTrack` | SubSequence トラックを追加 |
 
-#### AnimMixer（36、オプショナル `MovieSceneAnimMixer`）
+#### AnimMixer（42、オプショナル `MovieSceneAnimMixer`）
 
 | コマンド | 説明 |
 |---|---|
@@ -1555,11 +1614,11 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `GetTransitionInfo` | 2 つのセクション間の Transition の詳細情報 |
 | `GetTransitionName` | 2 つのセクション間の Transition の表示名 |
 | `ChangeTransitionType` | Transition を `NewTransitionClass` のものへ差し替え（単一トランザクション内で作成→削除の順） |
-| `GetCompatibleDecorations` | レイヤーに適用可能な Decoration クラス一覧 |
-| `GetDecorations` | レイヤー上の既存 Decoration 一覧 |
-| `FindDecoration` | レイヤー上の特定 Decoration を検索（無ければ `NotFound`） |
-| `AddDecoration` | レイヤーに Decoration を追加（既存があればそれを返す） |
-| `RemoveDecoration` | レイヤーから Decoration を削除 |
+| `GetCompatibleDecorations` | レイヤーに適用可能な Decoration クラス一覧。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる |
+| `GetDecorations` | レイヤー上の既存 Decoration 一覧。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる |
+| `FindDecoration` | レイヤー上の特定 Decoration を検索（無ければ `NotFound`）。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる。`Target` が `"ChildTrack"` で子トラックが無い場合も `NotFound` |
+| `AddDecoration` | レイヤーに Decoration を追加（既存があればそれを返す）。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）で解決先を選択でき、互換性判定は `Target` が解決した対象に対して行われる |
+| `RemoveDecoration` | レイヤーから Decoration を削除。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる。`Target` が `"ChildTrack"` で子トラックが無い場合も `NotFound` |
 | `GetLayerBlendWeight` | レイヤーのブレンドウェイトを取得 |
 | `SetLayerBlendWeight` | レイヤーのブレンドウェイトを設定 |
 | `IsLayerMuted` | レイヤーのミュート状態を取得 |
@@ -1577,6 +1636,12 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `AddMixerTransition` | Transition を追加 |
 | `RemoveMixerTransition` | Transition を削除 |
 | `GetMixerSectionInfo` | AnimMixer セクション情報を取得 |
+| `AddMixerChildTrack` | `LayerIndex` のレイヤーに紐づく子トラックとして ControlRig 子トラックを追加し、`ControlRigPath`（`UControlRig` 派生である必要がある）の ControlRig インスタンスを生成してパラメータセクションを紐づける。`LayerIndex` は現在のレイヤー数と同じ値を指定して末尾に新規行を追加できる。任意の `IsLayered`（既定 false）で新しい ControlRig を加算式に設定できる。対象レイヤーに既に子トラックまたはアニメーションセクションがある場合は副作用なしで `Conflict` |
+| `RemoveMixerChildTrack` | `LayerIndex` のレイヤーに紐づく子トラックを削除し、レイヤー参照・子トラック管理データ・Decoration・バインディングをまとめて片付ける。レイヤーに子トラックが無ければ `NotFound` |
+| `GetMixerChildTracks` | バインディングの AnimMixer トラックの全レイヤーにわたる子トラック一覧。各エントリは `LayerIndex`・`TrackName`・`TrackClass` を持つ |
+| `MoveMixerChildTrack` | `LayerIndex` に紐づく子トラックを `NewLayerIndex` へ移動する。両インデックスが等しい場合は副作用なしの no-op として成功する。移動先レイヤーに既に子トラックまたはアニメーションセクションがある場合は副作用なしで `Conflict` |
+| `SetMixerSectionBlendType` | `LayerIndex` に紐づく子トラックの `SectionIndex` のアニメーションセクションのブレンドタイプを設定する。`BlendType` は Absolute / Additive / Relative / Override のいずれかと大文字小文字を区別せず照合され、対象セクションがサポートしている必要がある |
+| `GetMixerSectionBlendType` | `LayerIndex` に紐づく子トラックの `SectionIndex` のアニメーションセクションの現在のブレンドタイプと、サポートされているブレンドタイプの一覧を取得する |
 
 #### ControlRig トラック（12）
 
@@ -1584,9 +1649,9 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 
 | コマンド | 説明 |
 |---|---|
-| `GetControlRigTracks` | LevelSequence 内の全 ControlRig パラメータトラック |
+| `GetControlRigTracks` | LevelSequence 内の全 ControlRig パラメータトラック。各エントリは `IsChildTrack` を持ち、`true` のときのみ `LayerIndex` も含まれる |
 | `GetControlRigSectionInfo` | セクションのプロパティ — `IsInfinite`・`StartFrame`・`EndFrame`・`IsActive`・クラス名 |
-| `FindOrCreateControlRigTrack` | バインディングの ControlRig パラメータトラックを取得または作成し `TrackCreated` を返す |
+| `FindOrCreateControlRigTrack` | バインディングの ControlRig パラメータトラックを取得または作成し `TrackCreated` を返す。任意の `IsLayered`（既定 false）で新規作成する ControlRig を加算式に設定できる。既存トラックが見つかった場合は無視される |
 | `BakeToControlRig` | バインディングのアニメーションを ControlRig トラックへベイク（表示レートフレーム・`Tolerance` は 0.0〜1.0） |
 | `KeyControls` | 指定コントロールを 1 つの表示レートフレームでキー（`ControlNames` 省略時は表示中の全コントロール） |
 | `KeyControlsAtFrames` | 指定コントロールを複数の表示レートフレームでキー |
@@ -1672,10 +1737,10 @@ StateTree 編集。
 
 | コマンド | 説明 |
 |---|---|
-| `GetStateTreeParameters` | ルートパラメータのディスクリプタ（`Name`・`ParameterType`・現在のシリアライズ値） |
+| `GetStateTreeParameters` | ルートパラメータのディスクリプタ（`Name`・`ParameterType`・現在のシリアライズ値）と、パラメータごとに入れ子の `WriteRequirements` オブジェクト。`ParameterType` は enum / struct / object / soft object / class / soft class と残りの整数幅を名前で返すようになりました（従来は非スカラーを一律 `Unknown` と報告していました） |
 | `AddStateTreeParameter` | ルートパラメータを追加（Bool / Byte / Int32 / Int64 / Float / Double / Name / String / Text） |
 | `RemoveStateTreeParameter` | 名前指定でルートパラメータを削除 |
-| `SetStateTreeParameter` | ルートパラメータ値を文字列エンコード値から設定 |
+| `SetStateTreeParameter` | ルートパラメータ値を設定。参照には `StateTreeParameterReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要で、これらの値は括弧表記ではなく JSON で渡します。拒否コードは一律 `NotFound` ではなく `CapabilityNotAvailable` / `PolicyViolation` / `InvalidParams` / `NotFound` に細分化され、拒否された書き込みはアセットを dirty にせず、成功した書き込みは undo できるようになりました |
 | `AddPropertyBinding` | ソースノードのプロパティをターゲットノードのプロパティへバインド |
 | `RemovePropertyBinding` | ターゲットノードのプロパティバインディングを削除 |
 | `CompileStateTree` | StateTree をコンパイル（連続呼び出しにはアセット単位のレートリミット） |
@@ -1735,13 +1800,13 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 | `GetPCGGraphSchema` 🧩 | グラフのノード / ピン構成をスキーマ形式で取得 |
 | `GetPCGGraphDescription` 🧩 | グラフの Description 文字列を取得 |
 | `SetPCGGraphDescription` 🧩 | グラフの Description を設定（`PCGGraphEdit` 必須） |
-| `SetPCGGraphParams` 🧩 | グラフパラメータを追加 / 更新（`PCGGraphEdit` 必須） |
+| `SetPCGGraphParams` 🧩 | グラフパラメータを追加 / 更新（`PCGGraphEdit` 必須）。値は範囲・NaN を検査し、不正な値は `InvalidParams` で拒否します。適用はいったん複製に対して行うため、拒否時に部分適用・undo エントリ・dirty マークが残りません |
 | `RemovePCGGraphParams` 🧩 | グラフパラメータを削除（`PCGGraphEdit` 必須） |
 | `ListPCGGraphInstances` 🧩 | レベル内の UPCGComponent 一覧を取得 |
 | `SpawnPCGGraphInstance` 🧩 | APCGVolume を World にスポーン（`PCGVolumeSpawn` 必須） |
 | `GetPCGGraphInstanceParams` 🧩 | インスタンスのオーバーライドパラメータを取得 |
-| `SetPCGGraphInstanceParams` 🧩 | インスタンスパラメータをオーバーライド（`PCGGraphEdit` 必須） |
-| `ResetPCGGraphInstanceParams` 🧩 | インスタンスパラメータをデフォルトにリセット（`PCGGraphEdit` 必須） |
+| `SetPCGGraphInstanceParams` 🧩 | インスタンスパラメータをオーバーライド（`PCGGraphEdit` 必須）。範囲 / NaN の検査と全件適用か全件不適用かの扱いは `SetPCGGraphParams` と同じ |
+| `ResetPCGGraphInstanceParams` 🧩 | インスタンスパラメータをデフォルトにリセット（`PCGGraphEdit` 必須）。リセットする対象が無い場合も従来どおり成功を返しますが、トランザクションを開かず dirty マークも付けなくなりました |
 | `ListPCGAvailableSubgraphs` 🧩 | プロジェクト内のサブグラフ候補を列挙 |
 | `GetPCGNativeNodeSchema` 🧩 | ネイティブ PCG ノードクラスの EditAnywhere プロパティを JSON スキーマで返す。`GetCustomPCGNodeSchema` と同じ絞り込みが働き、`HiddenCount` / `HiddenCapabilities` / `HiddenReasons` を返す |
 | `AddPCGSubgraphNode` 🧩 | サブグラフ参照ノードを追加（`PCGGraphEdit` 必須） |
@@ -1757,6 +1822,10 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 
 `PCGToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.PCG.*`。アクティブな PCG エディタタブが必要なコマンドは非インタラクティブコンテキストで `ExecutionFailed` を返す場合があります（PCGToolset の既知の制約）。
 
+> **⚠️ 破壊的変更 — `SetGraphInstanceParams` と `ResetGraphInstanceParams` が要求する Capability が `PCGGraphExecute` から `PCGGraphEdit` になりました**（ネイティブ版と同じ名前）。どちらも同じパラメータ bag を書き換える操作であり、実行系の Capability を要求していたため、運用者が `PCGGraphEdit` を閉じてもブリッジ経由でインスタンスのオーバーライドを変更できていました。**`PCGGraphExecute` だけを付与していたセッションはこの 2 コマンドを使えなくなります** — `PCGGraphEdit` を追加してください。
+>
+> **ブリッジ経由では UAIP の値検査が及びません。** `SetGraphParams` / `SetGraphInstanceParams` / `ResetGraphInstanceParams` の書き込みは `UPCGToolset` の内部で行われるため、ネイティブ版が適用する型ゲート・範囲 / NaN の検査・途中終了パースの検査・全件不可なら 1 件も書かない扱いは適用されません。検査が必要な場合はネイティブの `SetPCGGraphParams` / `SetPCGGraphInstanceParams` / `ResetPCGGraphInstanceParams` を使ってください。
+
 | コマンド | 説明 |
 |---|---|
 | `Toolset.Editor.PCG.CreateGraph` 🧩 | PCG グラフアセットを作成（`PCGGraphAssetCreate` 必須） |
@@ -1770,8 +1839,8 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 | `Toolset.Editor.PCG.SpawnGraphInstance` 🧩 | PCG ボリュームアクターをスポーン（`PCGVolumeSpawn` 必須） |
 | `Toolset.Editor.PCG.ExecuteGraphInstance` 🧩 | PCG ボリューム上でグラフを実行（`PCGGraphExecute` 必須；非同期・デフォルト 300 秒） |
 | `Toolset.Editor.PCG.GetGraphInstanceParams` 🧩 | インスタンスのパラメータオーバーライドを取得 |
-| `Toolset.Editor.PCG.SetGraphInstanceParams` 🧩 | インスタンスパラメータを上書き（`PCGGraphExecute` 必須） |
-| `Toolset.Editor.PCG.ResetGraphInstanceParams` 🧩 | インスタンスパラメータをリセット（`PCGGraphExecute` 必須） |
+| `Toolset.Editor.PCG.SetGraphInstanceParams` 🧩 | インスタンスパラメータを上書き（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.ResetGraphInstanceParams` 🧩 | インスタンスパラメータをリセット（`PCGGraphEdit` 必須） |
 | `Toolset.Editor.PCG.ListNativeNodes` 🧩 | 登録済みネイティブ PCG ノードクラスを一覧 |
 | `Toolset.Editor.PCG.ListAvailableSubgraphs` 🧩 | サブグラフとして利用可能な PCG アセットを一覧 |
 | `Toolset.Editor.PCG.GetNativeNodeSchema` 🧩 | ネイティブノードクラスのパラメータスキーマを取得 |
@@ -1799,7 +1868,7 @@ WorldConditions 編集。`WorldConditions` プラグインが必要です。
 
 | コマンド | 説明 |
 |---|---|
-| `GetWorldConditionInfo` 🧩 | 条件セット構造（Operator / Depth / プロパティ） |
+| `GetWorldConditionInfo` 🧩 | 条件セット構造（Operator / Depth / プロパティ）。各プロパティエントリに `WriteRequirements` オブジェクトが入れ子で付きます。`RequiredCapabilities` は常に空です — この経路は参照もコンテナも一切受け付けないため、付与して解禁できる Capability が存在しません |
 | `AddWorldCondition` 🧩 | 条件を追加（`InsertAtIndex=-1` で末尾追加） |
 | `RemoveWorldCondition` 🧩 | インデックス指定で条件を削除 |
 | `SetWorldConditionProperty` 🧩 | 条件 USTRUCT のプロパティを設定（ImportText 値文字列） |
@@ -1811,7 +1880,9 @@ WorldConditions 編集。`WorldConditions` プラグインが必要です。
 | `DuplicateWorldCondition` 🧩 | `SourceIndex` の条件を複製し `InsertIndex` に挿入 |
 | `ReplaceWorldCondition` 🧩 | 条件の型を `NewConditionClass` の既定値へ差し替え（Depth・Operator・bInvert は維持） |
 | `ClearWorldConditionQuery` 🧩 | 全条件を削除して空のクエリにする |
-| `SetMultipleWorldConditionProperties` 🧩 | 1〜32 件のプロパティ編集を単一トランザクションで適用し、編集ごとの成否を返す |
+| `SetMultipleWorldConditionProperties` 🧩 | 1〜32 件のプロパティ編集を単一トランザクションで適用（全件適用か全件不適用） |
+
+> **⚠️ 破壊的変更 — `SetMultipleWorldConditionProperties` の成功応答の形が変わりました。** このコマンドは全件適用か全件不適用のどちらかになりました。全編集をいったんステージングして検査し（ドメインゲート・テキストインポート・途中終了パースの検出・妥当性検証）、すべて通ったときにだけトランザクションを開いて一括コミットします。1 件でも失敗するとトップレベルの `ErrorCode` / `ErrorMessage` だけを返して何も書きません。したがって従来の編集ごとの `Results[]` と `AllSucceeded` は表すものが無くなりました。成功応答は `AppliedEdits`（実際にコミットされた `{ConditionIndex, SubPropertyName}` の配列）と `SkippedEdits`（プロパティ名が一致せず飛ばされた同形の配列。名前の不一致は従来どおりバッチを失敗させません）になります。`Results[]` / `AllSucceeded` を読んでいる呼び出し側は修正が必要です。
 
 ### Toolset ブリッジ — WorldConditions（2 件）🧩
 
@@ -1944,7 +2015,7 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 
 | コマンド | 説明 |
 |---|---|
-| `AddVariable` | RigVM 変数を追加 |
+| `AddVariable` | RigVM 変数を追加。デフォルト値は変数の型が確定してから検証され、拒否された場合は **変数の追加ごと取り消されます**（`AddBlueprintVariable` と同じ扱い）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトは追加後に `SetBlueprintDefault` で設定してください。拒否された呼び出しはアセットを dirty にしません |
 | `ListVariables` | RigVM 変数一覧 |
 | `GetVariable` | RigVM 変数の値 |
 | `ChangeVariableType` | RigVM 変数の型を変更 |
@@ -1958,14 +2029,16 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 |---|---|
 | `ListComponents` | 1 要素のコンポーネント一覧。`ElementName` と `ElementType` をどちらも省略するとヒエラルキー全体を列挙する。各エントリは所属要素・型パス・`IsProcedural` を持ち、レスポンスは `TotalCount` / `ReturnedCount` / `Truncated` を返す |
 | `GetComponent` | 1 コンポーネントの型と内容。`ContentText`（エンジンのエクスポート形式）は常に返る。`Content`（JSON）は JSON で表現できない型の場合に明示的な `null` と `ContentConversion` 理由になり、変換不能なコンポーネントが空のものと取り違えられることはない |
-| `ListAddableComponentTypes` | エディタが知る `FRigBaseComponent` 派生構造体をすべて列挙する（対象ヒエラルキーにコンポーネントが 1 つも無くても列挙できる）。各エントリは `AddComponent` が検証するのと同じポリシー由来の `Addable` フラグを持ち、false のときは `NotAddableReason` が付く |
-| `CanAddComponent` | ある型をある要素に取り付けられるかどうかを、実際に取り付けずに判定する。`CanAdd` が false のときは `FailureReason` に、ポリシー段階（型そのものが許可されていない）かエンジン自身の拒否（要素が受け付けない）かが示される |
+| `ListAddableComponentTypes` | エディタが知る `FRigBaseComponent` 派生構造体をすべて列挙する（対象ヒエラルキーにコンポーネントが 1 つも無くても列挙できる）。各エントリは `AddComponent` が検証するのと同じポリシー由来の `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持ち、レスポンスは `TotalCount` / `ReturnedCount` / `Truncated` を返す — 詳細は下記の Note を参照 |
+| `CanAddComponent` | ある型をある要素に取り付けられるかどうかを、実際に取り付けずに判定する。上記一覧と同じ `Admission` と `RequiredCapabilities` / `MissingCapabilities` を返し、**このセッションが既にその型を扱える場合に限り**エンジンにも問い合わせて `CanAdd` / `FailureReason` にその答えを返す — 詳細は下記の Note を参照 |
 | `AddComponent` | 新しいコンポーネントを取り付ける。初期内容は任意で、`Content`（JSON）**または** `ContentText`（エクスポート形式）のどちらか一方のみ。作成前に内容を完全に検証するため、拒否された要求はコンポーネントを残さない |
 | `RemoveComponent` | コンポーネントを削除する。そのキーを保持する他コンポーネントの扱いは `ReferenceHandling` が決める（`Reject`＝既定 / `Detach` / `Force`）。見つかった参照はすべて `References` に、どう扱われたかとともに返る |
 | `RenameComponent` | コンポーネントを `NewName` へ改名し、そのコンポーネントを指していた参照を張り替える |
 | `ReparentComponent` | `NewParentName` と `NewParentType` が指す要素へコンポーネントを付け替え、参照を張り替える。存在しない付け替え先は、何も変更する前に拒否される |
 | `SetComponentContent` | コンポーネントの内容を置き換える（`Content` **または** `ContentText` のどちらか一方が必須）。書き込み後に読み戻し、実際に書き込まれた内容を返す |
 
+> **⚠️ 変更 — `ListAddableComponentTypes` と `CanAddComponent` は単純な `Addable` フラグではなく `Admission` を返すようになりました**: 各エントリは `Admission` を持ち、4 つの値のいずれかになります — `Allowed`（現在のセッションで今すぐ使える）、`RequiresCapabilities`（`MissingCapabilities` に挙がる Capability を付与すれば使える。`MissingCapabilities` は `RequiredCapabilities` の部分集合）、`NotAddable`（基底型違い・`Deprecated`・`Hidden` など、Capability をどれだけ付与しても解消しない構造的な理由で拒否される）、`CompatibilityUnknownUntilAuthorized`（セッションはこの構造体に対する `ControlRigCustomTypeEdit` を既に保有しているが、エンジン側の互換性チェックはまだ実行されていない — 詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照）。あわせて `RequiredCapabilities` / `MissingCapabilities` を返します。`CanAddComponent` はさらにエンジン（`URigHierarchy::CanAddComponent`）にも問い合わせますが、**`Admission` が `Allowed` または `CompatibilityUnknownUntilAuthorized` の型に限られます** — `NotAddable` または `RequiresCapabilities` の型はエンジンに一切触れずに回答されるため、Capability を持たないセッションがその型自身のコードを走らせることはありません。エンジンの回答は `Admission` を上書きせず、`CanAdd` / `FailureReason` に入ります。両者は併せて読めます（`Admission: CompatibilityUnknownUntilAuthorized` かつ `CanAdd: false` は、セッションは認可されているがエンジンがこの組み合わせを拒否した、という意味になります）。⚠️ **破壊的変更 — この 2 コマンドが返していた bool の `Addable` と文字列の `NotAddableReason` は無くなりました**。どちらかで分岐していた呼び出し元は `Admission` に切り替える必要があります。形式不正な `ComponentStructPath` は、`CanAddComponent` では `CanAdd: false` のレスポンスではなく `InvalidParams` になりました（`AddComponent` と同じ扱いです）。
+>
 > **Note — 指定した名前がそのまま付くとは限りません**: `AddComponent`・`RenameComponent`・`ReparentComponent` は名前の衝突で失敗しません。エンジンが空いている名前を割り当て、結果には**実際に付いたキー**が返ります（`RenameComponent` / `ReparentComponent` は `NameChanged` も返します）。以降はその返されたキーを使ってください。今と同じ名前への改名、今ぶら下がっている要素への付け替えは、成功して何も変わりません。
 >
 > **Note — 書き込まれなかったプロパティは「一覧化」されるのであって「既定値に戻る」のではありません**: オブジェクト参照・デリゲート・実行時専用の状態は外部から書き込みません。`AddComponent`・`SetComponentContent`、および後述 2 ドメインの型付き `Set*` コマンドはそれらを `FilteredProperties` として返し、各項目は**いまの値のまま**残ります。
@@ -1979,13 +2052,27 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 | コマンド | 説明 |
 |---|---|
 | `CompileControlRig` | ControlRig をコンパイル（セッション単位 1 秒レートリミット） |
-| `GetAvailableRigVMUnitStructs` | FRigUnit 派生 UScriptStruct 一覧（上限 1000 件）。各エントリは `AddGraphNode` が検証するのと同じポリシー由来の `Addable` フラグを持ち、false のときは `NotAddableReason` が付く。`SchemaVersion` / `TotalCount` / `ReturnedCount` / `Truncated` を返す |
+| `GetAvailableRigVMUnitStructs` | FRigUnit 派生 UScriptStruct 一覧（上限 1000 件）。各エントリは `AddGraphNode` が検証するのと同じポリシー由来の `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持つ。`SchemaVersion`（3）/ `TotalCount` / `ReturnedCount` / `Truncated` を返す |
 
-> **⚠️ 変更 — `GetAvailableRigVMUnitStructs` の出力が `SchemaVersion: 2` になりました**: 各エントリが `Addable` を持ち、false のときは機械可読な `NotAddableReason`（`InvalidFormat` / `InvalidPrefix` / `StructNotFound` / `ModuleNotAllowed` / `NotARigUnit` / `DeprecatedOrHidden` のいずれか）が付きます。レスポンスは `SchemaVersion`・`TotalCount`（件数上限を適用する前の総数）・`ReturnedCount`・`Truncated` も返します。いずれも追加のみで、`ClassPath` と `ClassDisplayName` は変わらないため、既存の読み取りコードはそのまま動作します。変わったのは、このフラグが `AddGraphNode` の検証に使われるポリシーそのものから作られる点（一覧に出ているのに `AddGraphNode` が受け付けない、という食い違いが起きなくなりました）と、件数上限で打ち切られたレスポンスがそれを明示するようになった点です。
+> **⚠️ 変更 — `GetAvailableRigVMUnitStructs` の出力が `SchemaVersion: 3` になりました**: 各エントリは `Admission` を持ちます — 上記 Note の `ListAddableComponentTypes` / `CanAddComponent` と同じ 4 つの値です — あわせて `RequiredCapabilities` / `MissingCapabilities` も、`AddGraphNode` が検証するのと同じポリシー由来で返します。これは `SchemaVersion: 2` が返していた bool の `Addable` と文字列の `NotAddableReason` を置き換えるもので、どちらかで分岐していた呼び出し元は `Admission` に切り替える必要があります。`ClassPath` と `ClassDisplayName` は変わらないため、それらだけを使っていた既存の読み取りコードはそのまま動作します。レスポンスは `TotalCount`（件数上限を適用する前の総数）・`ReturnedCount`・`Truncated` も返し、`ClassPath` 昇順で列挙されるため、件数上限で打ち切られたレスポンスは毎回同じ末尾が切り落とされます。
 >
 > **⚠️ 破壊的変更 — `AddGraphNode` の背後にあるモジュール allowlist が完全一致になりました**: 従来は `StructPath` の所属パッケージが `/Script/ControlRig`・`/Script/AnimationCore`・`/Script/Engine` のいずれかで**始まってさえいれば**受理していました。今後は 7 モジュール（`/Script/ControlRig`、`/Script/ControlRigDynamics`、`/Script/ControlRigPhysics`、`/Script/ControlRigSpline`、`/Script/ControlRigModules`、`/Script/AnimationCore`、`/Script/Engine`）との**等価比較**になります。前方が一致していただけのパッケージ — `/Script/ControlRigDeveloper`、`/Script/ControlRigEditor`、`/Script/EngineMessages` など — は以前は受理されていましたが、今後は `ModuleNotAllowed` で拒否されます。前方一致の挙動に依存していた呼び出しは動かなくなります。回避手段はありません（この allowlist はもともとそれらのモジュールへ届くことを意図していません）。
 >
 > **Note — ControlRig 系の兄弟モジュールは、今回から意図して一覧に載っています**: `/Script/ControlRigDynamics`、`/Script/ControlRigPhysics`、`/Script/ControlRigSpline`、`/Script/ControlRigModules` は、従来は `/Script/ControlRig` の前方一致の副作用として偶然到達できていただけでした。今回これらを明示的に列挙したため、物理系の RigUnit 約 73 件（`FRigUnit_SpawnPhysicsSolver`、`FRigUnit_AddPhysicsBody`、`FRigUnit_AddPhysicsJoint` など）は、厳格化された規則に巻き込まれることなく引き続き追加できます。ノード用とコンポーネント用の allowlist は同じモジュール集合を対象としているため、コンポーネントとして作れる型はノードとしても置けます。
+
+> **Note — プロジェクト定義・プラグイン定義の RigVM unit 構造体と rig ヒエラルキー component 構造体は Capability で制御されます**: このドメインが従来から受け入れてきた 7 モジュール由来の構造体を `StructPath` に指定した場合は、従来どおり使えます。それ以外のモジュール由来の構造体 — プロジェクトやプラグインが宣言したもの — は `ControlRigCustomTypeEdit` が必要になりました。対象はこのドメインが受け入れる 2 系統の型の両方です: `AddGraphNode` がグラフノードとして配置する `FRigUnit` 派生と、`AddComponent` が要素に付ける `FRigBaseComponent` 派生です。control type（`AddControl` / `SetControlSettings`）はゲートされません — control type の集合はエンジンが固定しており、プロジェクト独自の control type というものが存在しないため、Capability で守る対象がありません。
+>
+> Material とは異なり、このドメインには対になる「危険な型」用の Capability はありません — unit 構造体は VM がピンの値を渡して呼ぶコンパイル済み関数であり、component 構造体はヒエラルキー要素にぶら下がるデータであって、いずれも呼び出し側が書いたコードを運びません。`Deprecated` や `Hidden` が付いた構造体、および期待される基底型を継承していない構造体は、**どの Capability を持っていても**引き続き拒否されます — これらは「そもそも使えない型」であって、権限で解禁できる危険性ではありません。
+>
+> この確認は `AddGraphNode` と `AddComponent` だけに限りません — 一般則は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を、このドメイン固有の内容は直下の破壊的変更を参照してください。
+>
+> ⚠️ **破壊的変更 — ゲートされた型の既存ノード・既存コンポーネントに対する操作も Capability を要求するようになりました。** この変更以前は、型 policy を参照していたのは `AddGraphNode` と `AddComponent` だけで、同じリグに到達する他のすべての経路は無条件に通っていました。`ControlRigCustomTypeEdit` を持たないセッションは今後、次の操作ができません: プロジェクト定義・プラグイン定義の unit 構造体を持つノードの削除（`RemoveGraphNode`）、そのピンの接続・切断（`ConnectControlRigPins` / `DisconnectControlRigPins`）、ピン既定値の書き込み・リセット（`SetPinValue` / `ResetPinValue`）、移動（`SetNodePosition`）、複製（`DuplicateNode`）、およびプロジェクト定義・プラグイン定義の構造体を持つコンポーネントの削除・改名・付け替え・内容の書き換え（`RemoveComponent` / `RenameComponent` / `ReparentComponent` / `SetComponentContent`、および下記 Dynamics / Physics ドメインの型別 `Set*` コマンドすべて）。
+>
+> `CompileControlRig` は**対象外**です。このドメインには危険な種類の型が存在しないため、プロジェクト定義の unit 構造体や component 構造体を含むだけのリグをコンパイルするのに追加の権限は要りません。自身では型を名指ししないグラフ操作コマンド — `AddGraph` / `DeleteGraph` / `AddEventGraph` / `AddBackwardSolveGraph` / `AddInteractionGraph` / `AddEventNode` / `AddVariableNode` — も同様です。
+>
+> ⚠️ **破壊的変更 — 読み込まれていない構造体は `InvalidParams` ではなく `NotFound` になりました。** `AddGraphNode` と `AddComponent` は、`StructPath` が指す構造体を副作用として読み込まなくなりました。読み込んでしまうと、その構造体を名指ししてよいかを判断するために、先にそのモジュールのコードを走らせることになるためです。まだメモリ上に無い構造体は `NotFound` として拒否され、「この問いに答えるために何も読み込まない」旨のメッセージが返ります。`StructPath` の形式が不正な場合 — 空、256 文字超、オブジェクトパスに現れない文字を含む — は引き続き `InvalidParams` です。これは型についての言明ではなく、パラメータについての言明だからです。
+>
+> 2 つの拒否が返る順序も変わりました。従来は構造体をアセット検索より前に判定していたため、構造体とアセットパスの両方が誤っているリクエストには構造体について回答していました。現在はアセットを手にした状態で判定します — 同じ判定がリグの既存内容も対象に取れなければならないためです — ので、そうしたリクエストにはアセットについて回答します。`StructPath` の形式検査は引き続き最初に行うため、明らかな綴り誤りは何も読み込む前に `InvalidParams` で返ります。
 
 ### Toolset ブリッジ（107）🧩
 
@@ -2102,8 +2189,8 @@ Enhanced Input アセット編集 — Input Action と Input Mapping Context。
 |---|---|
 | `ListInputActions` | プロジェクト内の Enhanced Input Action アセット一覧 |
 | `ListMappingContexts` | プロジェクト内の Input Mapping Context アセット一覧 |
-| `GetInputActionInfo` | Input Action の詳細（ValueType・Triggers・Modifiers） |
-| `GetMappingContextInfo` | Mapping Context の詳細（エントリ・キー・Modifier・Trigger） |
+| `GetInputActionInfo` | Input Action の詳細（ValueType・Triggers・Modifiers）。各 Trigger / Modifier の `Params` が参照・コンテナ・構造体の値も返すようになり（書き込み側が受け付けるのと同じ形式）、あわせて `PropertyWriteRequirements` マップが付きます |
+| `GetMappingContextInfo` | Mapping Context の詳細（エントリ・キー・Modifier・Trigger）。`Params` の構造化された値と `PropertyWriteRequirements` マップは `GetInputActionInfo` と同じ |
 | `DeleteInputAction` | Input Action アセットを削除 |
 | `DeleteMappingContext` | Input Mapping Context アセットを削除 |
 | `AddInputMapping` | Mapping Context にキーマッピングを追加 |
@@ -2113,6 +2200,18 @@ Enhanced Input アセット編集 — Input Action と Input Mapping Context。
 | `SetInputMappingTrigger` | マッピングの Trigger を設定/置換 |
 | `SetInputActionModifier` | Input Action の Modifier を設定/置換 |
 | `SetInputActionTrigger` | Input Action の Trigger を設定/置換 |
+
+> Trigger / Modifier を書き込む 4 コマンド（`SetInputMappingModifier` / `SetInputMappingTrigger` / `SetInputActionModifier` / `SetInputActionTrigger`）は、参照・コンテナを一律拒否しなくなりました。参照には `EnhancedInputEdit` に加えて `EnhancedInputReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要で、これらの値はエンジンの括弧表記ではなく JSON で渡します — 必要な形式は上記 2 つの取得系がプロパティごとに報告します。なお他の多くの書き込みコマンドと異なり、`Params` にプロパティ名と一致しないキーがあるとリクエスト全体が失敗します（これらの応答には「飛ばしたキー」を報告する場所が無いためです）。
+
+> **Note — プロジェクト・プラグイン定義の Trigger / Modifier クラスは Capability でゲートされます**: `/Script/EnhancedInput` モジュール由来の `Class` はこれまでどおり受け付けられます。それ以外に由来するクラス — プロジェクトモジュール、プラグインモジュール、`UInputTrigger` / `UInputModifier` の Blueprint 派生クラス — には `EnhancedInputCustomTypeEdit` が必要になりました。Material と違い、このドメインに対になる「危険な型」用の Capability はありません。Trigger はキー状態を評価し、Modifier は入力値を変換するだけで、どちらもリクエストが運んできたコードを実行しないためです。2 種の Trigger — `UInputTriggerChordAction` と `UInputTriggerChordBlocker`、およびそれらの派生 — は、**どの Capability を持っていても拒否されます**。Enhanced Input が chord の一部として自前で組み立てて設定する種別であり、作者が選ぶ対象ではないからです（エンジン自身のクラスピッカーも同じ理由でこれらを隠しています）。`UInputTrigger` / `UInputModifier` 自体は抽象クラスで、同様に到達できません。[安全性と Capability](safety.md#ゲームプレイシステム) を参照してください。
+>
+> **`Class` はフルオブジェクトパスも受け付けるようになりました。** パス区切りを含まない名前はこれまでどおり `/Script/EnhancedInput` の中で解決されます（`Pressed` も `InputTriggerPressed` も従来と同じように解決されます）。それ以外に由来するクラスはフルオブジェクトパスで指定します — `/Script/MyGame.MyGameInputTrigger`、Blueprint なら `/Game/Input/BPT_Hold.BPT_Hold_C` のように書きます。これが無い間は、そうしたクラスへ到達できる綴りがそもそも存在しませんでした。クラスは既にロード済みである必要があります。許可されるかどうかを判定するためにロードは行わず、何にも一致しない名前は `NotFound` になります。
+>
+> この確認は 4 つの書き込みコマンドに限りません — 一般規則は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。このドメインではさらに `RemoveInputMapping` / `DeleteInputAction` / `DeleteMappingContext` も対象です。マッピングエントリの削除やアセットの削除は、それが保持していた Trigger / Modifier インスタンスを丸ごと捨てるため、このドメインが同梱していないクラスは「入れるとき」と同じ Capability を「出すとき」にも要します。3 コマンドについてこれ以外の変更はなく、Enhanced Input のクラスしか保持していない対象 — エディタから普通に設定した chord トリガーを含みます — は従来どおり Capability 不要で削除できます。
+>
+> ⚠️ **破壊的変更**: 従来の判定に落ちた Trigger / Modifier の `Class` は `PolicyViolation` または `InvalidParams` で拒否されていました。4 つの書き込みコマンドは、単に別モジュール由来であるクラスには `CapabilityNotAvailable` を返して `EnhancedInputCustomTypeEdit` を挙げ、ロードされていないクラスには `NotFound`、`UInputTrigger` / `UInputModifier` の派生ですらないクラスには `InvalidParams` を返します。2 種の chord トリガーは引き続き `PolicyViolation` です。旧コードの互換期間は設けません — 旧コードは「権限があっても通らない」という意味であり、残すと存在しない権限体系を説明することになるためです。
+>
+> ⚠️ **破壊的変更 — 系統違いのクラスが拒否されるようになりました。** 従来の判定はクラスの基底型を一切見ていなかったため、Trigger でも Modifier でもない Enhanced Input のクラス（たとえば `InputAction`）を名指ししても素通りし、リストへ実体化する呼び出しまで到達していました。この組み合わせは `InvalidParams` になります。もともと使えるアセットにはなりませんでした。
 
 ---
 
@@ -2315,7 +2414,7 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 | `SetPoseSearchSchemaChannelProperty`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルのトップレベルプロパティへ書き込む — `Value`（UE テキストインポート形式、最大 4 KiB）または `ValueJson`（JSON）で値を渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。参照を内包する型はセッションの保有 Capability に関わらず `PolicyViolation` で拒否される — チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうため、チャンネルの追加は専用コマンドで行うこと。書き込み後の検証に失敗した場合は書き込みをロールバック |
 | `AddDefaultPoseSearchSchemaChannels`（要 `PoseSearchAssetEdit`） | エディタの Schema ファクトリが作成するのと同じ既定チャンネル（Trajectory + Pose）を追加。既存チャンネルは削除されず維持される — 2 回呼ぶと重複したペアが追加される |
 | `GetAvailablePoseSearchChannelClasses` | `AddPoseSearchSchemaChannel` が `ChannelClass` として受け付ける `UPoseSearchFeatureChannel` サブクラスを一覧表示。`bCanHostSubChannels` で有効な `ParentChannelPath` の対象を示す。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること |
-| `GetPoseSearchChannelClassSchema` | チャンネルクラスの Details パネル表示プロパティを一覧表示。各プロパティについて `SetPoseSearchSchemaChannelProperty` で書き込み可能かを `bIsWritable` / `NotWritableReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と、構造化形式での書き込みが要求する `RequiredCapabilities` を返す。`DefaultValueText` はそのまま使えるテキストインポート形式の例を提供 |
+| `GetPoseSearchChannelClassSchema` | チャンネルクラスの Details パネル表示プロパティを一覧表示。各プロパティは入れ子の `WriteRequirements` オブジェクトを持ち、`SetPoseSearchSchemaChannelProperty` で書き込み可能かを `IsWritable` / `RefusalReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と、構造化形式での書き込みが要求する `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。`DefaultValueText` はそのまま使えるテキストインポート形式の例を提供 |
 | `AddSkeletonToPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Role` のロール付きスケルトンエントリを追加または置き換え。任意で `MirrorDataTablePath` を指定可能。既存の `Role` を置き換えるには `bAllowOverwrite` が必要 |
 | `RemoveSkeletonFromPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Skeletons` 配列から `Role` のロール付きスケルトンエントリを削除 |
 
@@ -2345,14 +2444,14 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 
 `UAnimSequence` / `UAnimMontage` / `UAnimComposite` アセットの AnimNotify / AnimNotifyState エントリと通知トラックの追加・削除・編集。エンジン標準の型のみで構成されており、オプションプラグインは不要。
 
-> **Note**: `NotifyGuid` はハイフンなしの 32 桁 16 進数（`FGuid::ToString(EGuidFormats::Digits)`）— `GetAnimNotifyInfo` が報告し、本ドメインの他の全コマンドが受け取る形式と同じ。`SetAnimNotifyProperty` はすべての書き込みで `AnimNotifyEdit` を必要とし、書き込むプロパティが参照であるか、それを内包する場合は追加で `AnimNotifyReferenceEdit` が（`GetAnimNotifyClassSchema` がプロパティごとに `bIsObjectReference` として報告）、値カタログ外の構造体・配列・セット・マップ・オプショナルの場合はさらに `PropertyStructuredEdit` が必要。`GetAnimNotifyClassSchema` は両者をプロパティごとに `RequiredCapabilities` として、値をどちらの入力欄で渡すかを `WriteInputForm` として返す。`GetAnimNotifyProperty` は読み取り専用の対となるコマンドで、`NotifyGuid` / `PropertyName` によるアドレッシングも、`SetAnimNotifyProperty` の `Value` および `GetAnimNotifyClassSchema` の `DefaultValueText` と同じテキスト形式も共通であり、ゼロ値のプロパティ（空文字列ではなく "0" / "False" / "None"）も含めて 3 コマンド間でバイト単位に往復できる。本ドメインの編集系コマンドはすべて、PIE または SIE 実行中は拒否される。
+> **Note**: `NotifyGuid` はハイフンなしの 32 桁 16 進数（`FGuid::ToString(EGuidFormats::Digits)`）— `GetAnimNotifyInfo` が報告し、本ドメインの他の全コマンドが受け取る形式と同じ。`SetAnimNotifyProperty` はすべての書き込みで `AnimNotifyEdit` を必要とし、書き込むプロパティが参照であるか、それを内包する場合は追加で `AnimNotifyReferenceEdit` が（`GetAnimNotifyClassSchema` がプロパティごとに `bIsObjectReference` として報告）、値カタログ外の構造体・配列・セット・マップ・オプショナルの場合はさらに `PropertyStructuredEdit` が必要。`GetAnimNotifyClassSchema` は両者をプロパティごとに `WriteRequirements.RequiredCapabilities` として、値をどちらの入力欄で渡すかを `WriteRequirements.WriteInputForm` として返す。`GetAnimNotifyProperty` も同じ内容を同じ形で、通知インスタンス自体に対して判定して返す。`GetAnimNotifyProperty` は読み取り専用の対となるコマンドで、`NotifyGuid` / `PropertyName` によるアドレッシングも、`SetAnimNotifyProperty` の `Value` および `GetAnimNotifyClassSchema` の `DefaultValueText` と同じテキスト形式も共通であり、ゼロ値のプロパティ（空文字列ではなく "0" / "False" / "None"）も含めて 3 コマンド間でバイト単位に往復できる。本ドメインの編集系コマンドはすべて、PIE または SIE 実行中は拒否される。
 
 | コマンド | 説明 |
 |---|---|
 | `GetAnimNotifyInfo` | アセット上の全通知トラック（`TrackIndex` / `TrackName` / `TrackColor`）と全通知/通知ステートエントリ（guid・クラス・タイミング・Montage 固有フィールド）、およびアセットレベルのスカラー値（`AssetKind` / `PlayLength` / `NumTracks` / `NumNotifies` / `NumInvalidGuids`）を取得。`UAnimComposite` の場合、対象はアセット自身の `Notifies` 配列のみで、セグメントの `AnimSequence` が持つ通知は含まれない。読み取り専用、要 `EditorInspect` |
 | `GetAvailableAnimNotifyClasses` | `AddAnimNotify` / `AddAnimNotifyState` が `ClassPath` として受け付ける全 `UAnimNotify` / `UAnimNotifyState` サブクラスを一覧表示。`bIsNotifyState` / `bCanBePlaced` / `NotPlaceableReason` を付与。現在ロード済みのクラスのみが対象。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること。読み取り専用、要 `EditorInspect` |
-| `GetAnimNotifyClassSchema` | `UAnimNotify` / `UAnimNotifyState` サブクラスの Details パネル表示プロパティを一覧表示。各プロパティについて `SetAnimNotifyProperty` で書き込み可能かを `bIsWritable` / `NotWritableReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）・`RequiredCapabilities`・`bIsObjectReference` と、そのまま使えるテキストインポート形式の例 `DefaultValueText` を提供。読み取り専用、要 `EditorInspect` |
-| `GetAnimNotifyProperty` | `NotifyGuid` で識別される通知インスタンスについて、プロパティ 1 件（`PropertyName`）、または省略時・空文字時は `GetAnimNotifyClassSchema` が列挙する全プロパティを読み取る。全件読み取りは `PropertyName` / `Value` の代わりに `NumProperties` / `bTruncated` を報告し、上限超過時は切り詰める。単一プロパティ読み取りは切り詰めず、上限超過は `InvalidParams` で拒否する。秘密扱いの値は `GetAnimNotifyClassSchema` の `DefaultValueText` や `SetAnimNotifyProperty` の `AppliedValue` と同じ方式でマスクされる。アセットを変更しない。読み取り専用かつ冪等、要 `EditorInspect` |
+| `GetAnimNotifyClassSchema` | `UAnimNotify` / `UAnimNotifyState` サブクラスの Details パネル表示プロパティを一覧表示。各プロパティは入れ子の `WriteRequirements` オブジェクトを持ち、`SetAnimNotifyProperty` で書き込み可能かを `IsWritable` / `RefusalReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。加えて `bIsObjectReference` と、そのまま使えるテキストインポート形式の例 `DefaultValueText` を提供。読み取り専用、要 `EditorInspect` |
+| `GetAnimNotifyProperty` | `NotifyGuid` で識別される通知インスタンスについて、プロパティ 1 件（`PropertyName`）、または省略時・空文字時は `GetAnimNotifyClassSchema` が列挙する全プロパティを読み取る。全件読み取りは `PropertyName` / `Value` の代わりに `NumProperties` / `bTruncated` を報告し、上限超過時は切り詰める。単一プロパティ読み取りは切り詰めず、上限超過は `InvalidParams` で拒否する。秘密扱いの値は `GetAnimNotifyClassSchema` の `DefaultValueText` や `SetAnimNotifyProperty` の `AppliedValue` と同じ方式でマスクされる。各プロパティは入れ子の `WriteRequirements` オブジェクトも持ち（`GetAnimNotifyClassSchema` と同じキー名・同じ入れ子の形。判定はクラスのデフォルトではなく通知インスタンスに対して行われる）、`IsWritable` / `RefusalReason`、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）、`RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す。単一プロパティ読み取りでは `Data` に直接載る（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。アセットを変更しない。読み取り専用かつ冪等、要 `EditorInspect` |
 | `AddAnimNotifyTrack`（要 `AnimNotifyEdit`） | `TrackName` という名前の通知トラックが存在することを保証し、存在しない場合は作成する（任意の `TrackColor`、既定は白）。既存判定に対して冪等 — 既存トラックの `TrackIndex` はそのまま返され、`TrackColor` は無視される。PIE/SIE 実行中は拒否 |
 | `RemoveAnimNotifyTrack`（要 `AnimNotifyEdit`） | `TrackName` という名前の通知トラックを削除し、その上に置かれた全通知も削除する。以降のトラックのインデックスは 1 つずつ繰り上がる — 応答の `RemovedNotifyGuids` / `ReindexedNotifies` が影響範囲全体を報告する。すでに削除済みのトラックには `NotFound` で失敗。PIE/SIE 実行中は拒否 |
 | `AddAnimNotify`（要 `AnimNotifyEdit`） | `TrackName` の `StartTime` へ単発の点通知を追加する。`ClassPath`（`UAnimNotify` サブクラス）/ `NotifyName`（クラスなし、`bRegisterOnSkeleton` で Skeleton へ任意登録可能）のいずれか一方が必須。冪等ではない — 繰り返し呼ぶと新しい `NotifyGuid` を持つ独立した通知が作成される。PIE/SIE 実行中は拒否 |
@@ -2765,10 +2864,12 @@ Runtime での入力注入と Enhanced Input 状態検査。PIE 必須。
 | `RemoveMappingContext` | ローカルプレイヤーから Input Mapping Context を削除 |
 | `SetInputMode` | 入力モードを設定（GameOnly / UIOnly / GameAndUI） |
 | `FlushInput` | テスト終了時の押下中キー状態をフラッシュ |
-| `DumpInputState` | 現在の Enhanced Input 状態（有効 Context・Mapping・Action 値）をダンプ |
+| `DumpInputState` | 現在の入力状態（押下中キー・軸値・優先度付きの有効 Mapping Context、`IncludeActionStates=true` 指定時はアクション単位の Trigger 状態も含む）をダンプ |
 | `GetEnhancedInputActionValue` | Enhanced Input Action の現在値を取得 |
 
 ---
+
+> **Note**: `DumpInputState` は常に `ActiveMappingContexts`（`Priority` 降順・同値は `Path` 昇順でソート）と `EnhancedInputState`（`"Available"` / `"Unavailable"`。「取得できて 0 件」と「そもそも取得できない」を区別する）を返します。`IncludeActionStates=true` を渡すと、有効な Mapping Context から到達できるアクションごとに `ActionStates[]` が追加されます。各エントリは `Trigger`（`ETriggerEvent` の全 6 値のいずれか。発火していないアクションを表す `"None"` を含む）、`ValueX`/`ValueY`/`ValueZ`、`SourceContexts[]`（どの有効 Context がそのアクションを設定しているか）、`ConfiguredKeys[]`（重複排除・ソート済み）を持ち、`ActionStatesTotalCount` と `ActionStatesTruncated`（`ActionPath` 昇順で最大 256 件に打ち切り）も併せて返されます。`IncludeActionStates` を既定の `false` のままにすると呼び出しは軽量なままです — このパラメータが opt-in なのは、コストがロード済み Mapping Context 数ではなくマッピング済みアクション数に比例して増えるためです。
 
 ## UAIP.Runtime.Niagara 🧩
 

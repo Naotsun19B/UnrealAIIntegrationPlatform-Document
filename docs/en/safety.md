@@ -195,6 +195,7 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `BlueprintGraphEdit` | Add, delete, and connect nodes in Blueprint event graphs |
 | `BlueprintComponentEdit` | Add, remove, rename, reparent, duplicate, and edit properties of Blueprint SCS components |
 | `AnimBlueprintGraphEdit` | Add, delete, and connect nodes in AnimGraph; compile Anim Blueprints |
+| `AnimBlueprintCustomTypeEdit` | Required by `AddAnimGraphNode` when `NodeClass` is not from one of the three modules this domain trusts (`AnimGraph`, `AnimGraphRuntime`, `Engine`) — a project- or plugin-defined `UAnimGraphNode_Base` subclass. There is no separate "dangerous node" capability for this domain: eight node kinds are refused outright regardless of any capability held, see [Commands — UAIP.Editor.AnimBlueprint](commands.md#uaipeditoranimblueprint) |
 | `AnimStateMachineEdit` | Add and remove States and Transitions in Anim State Machines |
 
 #### Level / Actor / Property editing
@@ -212,7 +213,7 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 
 > **Note**: `PropertyReferenceEdit` and `PropertyStructuredEdit` are not confined to `UAIP.Editor.Property`. They gate reference / struct / container writes in **every** domain that writes properties — Blueprint SCS components, Sequencer sections, Sound and SoundCue assets, PCG and Conversation nodes, DataTable rows, World and project settings, and more. Writing a struct that contains a reference needs both, so the structured one alone is never a way around the reference gate.
 >
-> A module that already governs reference writes through a capability of its own keeps that name for the reference half — `AnimNotifyReferenceEdit` for `SetAnimNotifyProperty`, `DataflowReferenceEdit` for `SetDataflowNodeProperty`, `SubsonicEventEdit` for the Subsonic property setters — while the struct / container half is always `PropertyStructuredEdit`. `SetPoseSearchSchemaChannelProperty` is the exception that grants nothing for references: it refuses a reference-bearing type outright, because writing a channel's sub-channel array directly would sidestep the class allowlist `AddPoseSearchSchemaChannel` enforces.
+> A module that already governs reference writes through a capability of its own keeps that name for the reference half — `AnimNotifyReferenceEdit` for `SetAnimNotifyProperty`, `DataflowReferenceEdit` for `SetDataflowNodeProperty`, `SubsonicEventEdit` for the Subsonic property setters, `WidgetSlotReferenceEdit` for `SetSlotProperties`, `EnhancedInputReferenceEdit` for the Enhanced Input mapping mutators, `StateTreeParameterReferenceEdit` for `SetStateTreeParameter`, `NiagaraReferenceEdit` for a reference-typed parameter default on `AddSetParameterEntry` / `AddSetParametersModule` — while the struct / container half is always `PropertyStructuredEdit`. `SetPoseSearchSchemaChannelProperty` is the exception that grants nothing for references: it refuses a reference-bearing type outright, because writing a channel's sub-channel array directly would sidestep the class allowlist `AddPoseSearchSchemaChannel` enforces.
 >
 > Because both are decided from the property's type while the write runs, **neither appears in any command's declared `RequiredCapabilities`** and `uaip_describe_command` will not show them. They can still be found without attempting a write: `QueryCapabilities` lists both in its `RegisteredCapabilities` catalog — call it with `IncludeUnavailable: true` — with `DefaultPolicy: "Denied"` and `IsGranted: false` until an operator enables them (see [Finding out which capabilities exist](#finding-out-which-capabilities-exist)). To learn what a **particular** property would need, read it first — its `WriteRequirements` object names what a write would need and which of those the session already holds — or take the name out of the refusal. See [Commands — Writing references, structs and containers](commands.md#writing-references-structs-and-containers).
 
@@ -238,7 +239,10 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 |---|---|
 | `MaterialGraphEdit` | Add, delete, and connect nodes in Material graphs; compile materials |
 | `MaterialParameterEdit` | Modify Material parameter values and defaults |
-| `MaterialCustomNodeEdit` | Edit custom HLSL expression nodes in Material graphs |
+| `MaterialCustomNodeEdit` | Required by `AddMaterialNode` when `ExpressionClass` is `UMaterialExpressionCustom`, `UMaterialExpressionCustomOutput`, or a subclass of either (arbitrary HLSL), regardless of which module it comes from. Already registered before this change, but no command required it until now |
+| `MaterialCustomTypeEdit` | Required by `AddMaterialNode` when `ExpressionClass` is not one of the engine's built-in modules (`Engine`, `RenderCore`, `MaterialEditor`, `Landscape`) — a project- or plugin-defined `UMaterialExpression` subclass. A class that is both project-defined and custom-HLSL needs this and `MaterialCustomNodeEdit` together |
+
+> **Note**: `MaterialCustomNodeEdit`, `MaterialCustomTypeEdit`, `AnimBlueprintCustomTypeEdit` (above, under [Blueprint & Anim Blueprint editing](#blueprint--anim-blueprint-editing)), `ControlRigCustomTypeEdit` (below, under [ControlRig editing](#controlrig-editing)), and `EnhancedInputCustomTypeEdit` (below, under [Gameplay systems](#gameplay-systems)) are not only checked when a node of the gated type is added — the same capability is re-checked for every operation that touches an existing node of that type: editing, connecting, disconnecting, compiling, reparenting, and deleting it. ⚠️ Deleting and disconnecting such a node used to be ungated entirely before this change. A type that can no longer be added is still not, by itself, a reason an existing node of it can't be deleted or disconnected. See [Commands — Capability-gated custom types](commands.md#capability-gated-custom-types) for the full explanation.
 
 #### DataTable editing
 
@@ -306,6 +310,7 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `WidgetVariableEdit` | Add and remove widget variables |
 | `WidgetAnimationEdit` | Create Widget Animations and add animation tracks |
 | `WidgetBindingEdit` | Add and remove property bindings |
+| `WidgetSlotReferenceEdit` | Required when `SetSlotProperties` writes a slot property that is — or contains, at any depth — a reference of any kind (object / class / soft / weak / lazy / interface, delegate, field path). Decided from the type of the property being written, so it will not appear in `SetSlotProperties`'s declared `RequiredCapabilities` — see the note under [Level / Actor / Property editing](#level--actor--property-editing). Writing a struct or container additionally requires `PropertyStructuredEdit` |
 
 #### Sequencer editing
 
@@ -325,6 +330,7 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `ControlRigGraphEdit` | Add, delete, and connect nodes in RigVM graphs; compile ControlRigs |
 | `ControlRigBlueprintCreate` | Create ControlRigBlueprint assets via `CreateAsset` |
 | `ControlRigComponentEdit` | Add, remove, rename, reparent, and rewrite the content of components on hierarchy elements (`FRigBaseComponent` substructs) — the generic component commands under `UAIP.Editor.ControlRig`, and every write in `UAIP.Editor.ControlRig.Dynamics` and `UAIP.Editor.ControlRig.Physics`. One capability covers all of them deliberately: creating a component with initial content reaches the same import path as replacing the content of an existing one, so granting them separately would only offer a way around the other's checks |
+| `ControlRigCustomTypeEdit` | Required whenever a RigVM unit struct or a rig hierarchy component struct comes from outside the seven modules this domain accepts (`/Script/ControlRig`, `/Script/ControlRigDynamics`, `/Script/ControlRigPhysics`, `/Script/ControlRigSpline`, `/Script/ControlRigModules`, `/Script/AnimationCore`, `/Script/Engine`) — a struct a project or a plugin declares. It gates both `AddGraphNode` / `AddComponent` and every later operation on an existing node or component of such a struct. There is no separate "dangerous type" capability for this domain, and control types are not gated at all: structs marked `Deprecated` or `Hidden` are refused regardless of any capability held, see [Commands — UAIP.Editor.ControlRig](commands.md#uaipeditorcontrolrig) |
 
 #### AI systems
 
@@ -339,6 +345,7 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 |---|---|
 | `StateTreeStructureEdit` | Add / remove States; compile StateTree assets |
 | `StateTreeNodeEdit` | Add / remove Tasks and Transitions; edit node properties |
+| `StateTreeParameterReferenceEdit` | Required when `SetStateTreeParameter` writes a root parameter value that is — or contains — a reference of any kind. Decided from the parameter's `PropertyBag` value type at write time, so it will not appear in `SetStateTreeParameter`'s declared `RequiredCapabilities` — see the note under [Level / Actor / Property editing](#level--actor--property-editing). Writing a struct or container additionally requires `PropertyStructuredEdit` |
 
 #### SoundCue editing
 
@@ -376,6 +383,8 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `GameFeatureCreate` 🧩 | Create and scaffold GameFeature Plugin definitions (requires `GameFeatures` + `GameFeaturesEditor` plugins) |
 | `GameplayCueMutation` 🧩 | Add / remove GameplayCue tags, create GameplayCueNotify assets, execute Cues on actors (requires `GameplayAbilities` plugin) |
 | `EnhancedInputEdit` | Edit Input Action / Input Mapping Context assets — add / remove / modify mappings, modifiers, and triggers |
+| `EnhancedInputReferenceEdit` | Required in addition to `EnhancedInputEdit` when a Trigger or Modifier property being written is — or contains — a reference of any kind (object / class / soft / weak / lazy / interface, delegate, field path). Decided from the type of the property being written, so it will not appear in the mapping mutators' declared `RequiredCapabilities` — see the note under [Level / Actor / Property editing](#level--actor--property-editing). Writing a struct or container additionally requires `PropertyStructuredEdit` |
+| `EnhancedInputCustomTypeEdit` | Required in addition to `EnhancedInputEdit` when a Trigger or Modifier class comes from outside the `/Script/EnhancedInput` module — a project module, a plugin module, or a Blueprint subclass of `UInputTrigger` / `UInputModifier`. It gates `SetInputMappingTrigger` / `SetInputMappingModifier` / `SetInputActionTrigger` / `SetInputActionModifier` when such a class is named, and `RemoveInputMapping` / `DeleteInputAction` / `DeleteMappingContext` when the target holds an instance of one. Decided from the class named in the request (or found in the target) rather than from the command, so it does not appear in any handler's declared `RequiredCapabilities`. There is no separate "dangerous type" capability for this domain, and two trigger kinds — `UInputTriggerChordAction` and `UInputTriggerChordBlocker`, plus anything derived from either — are refused regardless of any capability held, see [Commands — UAIP.Editor.EnhancedInput](commands.md#uaipeditorenhancedinput) |
 
 #### Editor operations
 
@@ -495,8 +504,9 @@ These capabilities all require the `Niagara` plugin.
 | `NiagaraAssetCreate` 🧩 | Create Niagara System and Parameter Collection assets |
 | `NiagaraBlueprintCreate` 🧩 | Generate Blueprint wrapper classes from Niagara Systems and Components |
 | `NiagaraEmitterEdit` 🧩 | Add, remove, and configure emitters in Niagara Systems |
-| `NiagaraStackEdit` 🧩 | Add / remove modules and set stack input parameters on Niagara emitters |
+| `NiagaraStackEdit` 🧩 | Add / remove modules, set stack input parameters, and write renderer data (`SetRendererData`, native and bridge) on Niagara emitters |
 | `NiagaraStackAutoFix` 🧩 | Automatically resolve Niagara stack diagnostic issues |
+| `NiagaraReferenceEdit` 🧩 | Required in addition to `NiagaraStackEdit` when `AddSetParameterEntry` or `AddSetParametersModule` supplies a `DefaultValue` for a parameter whose type is a data interface or an object reference. The value is given as an object path and is stored in the dedicated data-interface / object slot of `FNiagaraVariant`, so the reference is retained properly — it is not packed into the byte payload the other parameter types use. Decided from the parameter's type while the write runs, so it will not appear in either command's declared `RequiredCapabilities` — see the note under [Level / Actor / Property editing](#level--actor--property-editing). Leaving `DefaultValue` unset needs nothing extra. ⚠️ In practice only **data interface** types are reachable: an ordinary object type such as `UTexture2D` is refused at the parameter type-name stage by the type allowlist, before this capability is ever consulted |
 
 #### World Partition editing
 
