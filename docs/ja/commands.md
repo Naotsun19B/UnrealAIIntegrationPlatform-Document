@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1158 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1579 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1161 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1582 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -63,7 +63,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor AnimBlueprint UAF 🧩 | `UAIP.Editor.AnimBlueprint.UAF` | 1 | — | — |
 | Editor UAF 🧩 | `UAIP.Editor.UAF` | 19 | — | — |
 | Editor UAF AnimGraph 🧩 | `UAIP.Editor.UAF.AnimGraph` | 1 | — | — |
-| Editor SoundCue | `UAIP.Editor.SoundCue` | 7 | — | — |
+| Editor SoundCue | `UAIP.Editor.SoundCue` | 8 | — | — |
 | Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 17 | 7 | — |
@@ -78,7 +78,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor ControlRig | `UAIP.Editor.ControlRig` | 68 | 107 | — |
 | Editor ControlRig Dynamics 🧩 | `UAIP.Editor.ControlRig.Dynamics` | 17 | — | — |
 | Editor ControlRig Physics 🧩 | `UAIP.Editor.ControlRig.Physics` | 8 | — | — |
-| Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 13 | — | — |
+| Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 15 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 8 | 14 | — |
 | Editor Python Extension 🧩 | `UAIP.Editor.Python` | 2 | — | — |
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
@@ -237,17 +237,19 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 - **ユーザー製 PCG ノードでは、Capability を持たないセッションに見える型が絞られます。** `GetCustomPCGNodeSchema` / `GetCustomBlueprintPCGNodeSchema` / `GetPCGNativeNodeSchema` はそうしたセッションに対して curated な型だけを列挙し、対応する setter の拒否文も意図的に型名を明かしません。ただし応答は「何かが除かれたこと」自体は伝えます — `HiddenCount`、`HiddenCapabilities`（どの権限があれば見えるか）、そして `MissingCapability` / `Unwritable` の 2 キーを常に持ち合計が `HiddenCount` と一致する `HiddenReasons` オブジェクトが返ります。案内された Capability を付与すれば隠れていた項目が現れ、`HiddenCount` は 0 に戻ります。なお**プロパティ名**は元から隠していません — 綴りを間違えれば「そのプロパティは無い」と返るため、打ち間違いと権限不足は引き続き区別できます。
 - **パスの途中のセグメントも検査されます。** `Struct` 自体が読み取り専用・非推奨・Details パネルに現れない場合、`Struct.Inner` は拒否されます — 内側のメンバーを名指しして読み取り専用の階層を通り抜けることはできません。コンテナのインデックスを挟む場合（`Array[0].Inner`）にも同じ検査が働き、判定対象はコンテナ本体になります。
 - **アセットパスを保持する値は 1 つのまとまりとして書き込みます。** `FSoftObjectPath` / `FSoftClassPath` / `FTopLevelAssetPath` はメンバー単位では指定できません — 内側を書き換えられると参照のゲートを素通りできてしまうためです。
+- **参照へ書き込むクラス自体が、`PropertyReferenceEdit` に加えてドメイン自身の Capability を要求することがあります。** 従来は `PropertyEdit` + `PropertyReferenceEdit` を持っていれば、`SetAssetProperty` など同型のコマンドで、既にロード済みのどのクラスでもハード参照や instanced subobject プロパティへ書き込めました — そのクラスが何であるかは一切問われませんでした。呼び出し側が名指ししたクラスから instanced subobject を構築する経路も同じ確認を通ります。この 2 つの Capability しか持たないセッションはどちらにしても影響を受けません — そもそも参照書き込みへ到達できたことが一度もないためです。現時点では `UAIP.Editor.Material` にこの確認が配線されています。`UMaterialExpression` 派生クラスを参照または instanced subobject プロパティへ書き込むには、`AddMaterialNode` が要求するのと同じく `MaterialCustomTypeEdit` / `MaterialCustomNodeEdit` が追加で必要になります — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。他のドメインはまだこの確認を登録していないため、汎用プロパティコマンド経由でそのドメイン自身がゲートしている型を書き込んでも、現時点では捕捉されません。
 
 ---
 
 ## Capability でゲートされたカスタム型
 
-いくつかのドメインは、プロジェクトやプラグインが定義した型を Capability の付与があって初めて通します — 各ドメイン自身の Note を参照してください（例: [UAIP.Editor.Material](#uaipeditormaterial)、[UAIP.Editor.AnimBlueprint](#uaipeditoranimblueprint)、[UAIP.Editor.UAF](#uaipeditoruaf-)、[UAIP.Editor.BehaviorTree](#uaipeditorbehaviortree)、[UAIP.Editor.MetaSound](#uaipeditormetasound-)、[UAIP.Editor.EQS](#uaipeditoreqs-)、[UAIP.Editor.StateTree](#uaipeditorstatetree)）。以下はそれらすべてに共通する内容で、ドメインごとには繰り返しません。
+いくつかのドメインは、プロジェクトやプラグインが定義した型を Capability の付与があって初めて通します — 各ドメイン自身の Note を参照してください（例: [UAIP.Editor.Material](#uaipeditormaterial)、[UAIP.Editor.AnimBlueprint](#uaipeditoranimblueprint)、[UAIP.Editor.ControlRig](#uaipeditorcontrolrig)、[UAIP.Editor.EnhancedInput](#uaipeditorenhancedinput)、[UAIP.Editor.UAF](#uaipeditoruaf-)、[UAIP.Editor.BehaviorTree](#uaipeditorbehaviortree)、[UAIP.Editor.MetaSound](#uaipeditormetasound-)、[UAIP.Editor.EQS](#uaipeditoreqs-)、[UAIP.Editor.StateTree](#uaipeditorstatetree)、[UAIP.Editor.WorldConditions](#uaipeditorworldconditions-)、[UAIP.Editor.Sequencer](#uaipeditorsequencer)、[UAIP.Editor.SoundCue](#uaipeditorsoundcue)、[UAIP.Editor.MotionMatching](#uaipeditormotionmatching-)、[UAIP.Editor.Conversation](#uaipeditorconversation-)）。以下はそれらすべてに共通する内容で、ドメインごとには繰り返しません。
 
 - **確認は `Add*` だけでなく、その型に触る操作すべてで行われます。** ゲートされた型のノードがグラフに存在するようになった後は、そのノードを編集・接続・切断・コンパイル・削除するとき、また実効型を変更する（Reparent）ときや参照を新規作成・差し替えるときにも、同じ Capability があらためて確認されます。追加時に Capability を持っていたことは以降の呼び出しには引き継がれません — セッションが後から Capability を失えば（role の変更、`AllowedCapabilities` の絞り込みなど）、それらの後続操作も `Add*` と同じように権限不足で断られます。
 - **⚠️ 破壊的変更 — 削除と切断は従来ゲートされていませんでした。** この変更以前は、各ドメインの `Add*` コマンドだけが追加する型を検査しており、ノードの削除やピンの切断はノードの型に関わらず無条件で通っていました。現在はそうではありません。ゲートされた型のノードを削除・切断するには、それを最初に作成するときに `Add*` が要求したのと同じ Capability が必要です。
 - **もう追加できない型でも、片付けることはできます。** クラスの読み込みに失敗する型や、エンジンの更新でサポートが打ち切られた型は再追加できません — これは Capability を付与しても解消しない構造的な拒否です。しかしそのこと自体は、既存のノードを削除・切断できない理由にはなりません。セッションがその型に要る Capability を保有している限り、削除・切断は引き続き通ります。
 - **コンパイルで確認されるのは「危険な種類」だけで、「自作」であること自体は対象にしません。** 「プロジェクト・プラグイン定義」と「危険」を分けて扱うドメイン（Material はそうです。この区別が無いドメインについては該当ドメイン自身の Note を参照してください）では、アセットのコンパイルはそのアセットに含まれる危険な種類の型についてだけ Capability を要求します。危険な種類ではない、ただの自作型はコンパイルを妨げません。そうでなければ、カスタム型を 1 つでも含むプロジェクトは、どのセッションでも毎回 Capability の付与なしには一切コンパイルできなくなってしまいます。
+- **アセット作成経路の Capability 不足も、他の経路と同じく `CapabilityNotAvailable` で返ります。** `CreateAsset` の `FactoryParams` で名指しされた型（現時点では StateTree の `SchemaClass` と ControlRig の `ParentClass`）は、他と同じ admission ポリシーを通り、Capability 不足は `CapabilityNotAvailable` として返り、不足している Capability 名がメッセージ本文にすべて列挙されます（`Required capability is not available: <names>`）— `Add*` 自身の拒否とまったく同じです。同じフィールドに対する構造的な拒否（クラスが解決できない・基底型違い・abstract・deprecated）は、権限の欠落ではなくパラメータ自体についての判定であるため、引き続き `InvalidParams` です。⚠️ 本ページの過去の記述を訂正します: `ICreateAssetInterceptor` の割り込み地点はもともと成否の真偽値とメッセージだけを返す契約で、エラー分類を持ち回す手段がありませんでした — その結果、原因を問わず Capability 不足を含むこの経路の拒否はすべて `InvalidParams` になっていました。現在は分類を持ち回せるようになり、他の Capability でゲートされたドメインと同じエラーコードで分岐できます。
 
 ---
 
@@ -292,6 +294,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `SaveAllPackages` | 変更済みパッケージをすべて保存（任意でマップを含む） |
 | 🆓 `Undo` | 直前の Editor 操作を取り消す |
 | 🆓 `Redo` | 取り消した操作をやり直す |
+| 🆓 `GetUndoHistory` | 取り消し履歴を読む（何も実行しない）。戻せる件数・やり直せる件数と操作名を返す |
 | 🆓 `GetLastCrashReport` | 最新のクラッシュレポートを取得 |
 | `WaitForShaderCompilation` | シェーダーコンパイル完了まで待機 |
 | `RecompileGlobalShaders` | 全グローバルシェーダーを強制再コンパイルし完了を待つ |
@@ -584,6 +587,8 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 > `SaveAsset` が対象にするのは**ロード済みかつ未保存の変更を持つパッケージだけ**。未ロードのアセットは未保存の変更を持ちようがないため、ロードして書き戻すことはせず `Skipped`（`Reason: "NotLoaded"`）として返る。すでに保存済みのものも `Skipped`（`NotDirty`）になる。どちらもエラーではない。`/Engine/` と `/Script/` 配下はプロジェクト外へ影響するため `Failed`（`WriteForbidden`）として拒否されるが、呼び出し全体は失敗せず、他のアセットの保存はそのまま行われる。SafetyPolicy が `DisableSave=True` の場合のみ呼び出し全体が `PolicyViolation` になる。
 >
 > **`ApplyValidationFix` との関係**: バリデータが提供する修正が `FAutoSavingFixer` で包まれていても、UAIP 経由の適用では**ディスクへ書き込まれない**。エンジンの自動保存が人間の確認を求めるモーダルダイアログ経由であり、応答する人がいない非対話実行では成立しないため。この場合 `ApplyValidationFix` は `Applied: true` と `AssetSaved: false` を返すので、**`AssetSaved` が `false` なら `SaveAsset` で明示的に保存する**こと。
+
+> **Note — `FactoryParams` で名指しするクラス自体が Capability を要求することがあります。** 一部のドメインは、ここで名指しされたクラスを、そのドメインの編集コマンドと同じポリシーで審査します — 現時点では StateTree の `FactoryParams.SchemaClass` と ControlRig の `FactoryParams.ParentClass` が該当します。どちらもオンデマンドには読み込まれなくなりました。すでにメモリ上にないクラスは、呼び出し側がその名前を指定できるかを判定するためだけに読み込まれることなく、未解決として拒否されます。名指しされたクラスが要求する Capability をセッションが持っていない場合、`CreateAsset` は **`CapabilityNotAvailable`** を返し、不足している Capability 名はメッセージ本文に入ります — 他の経路と同じ扱いです。詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
 
 ### Toolset ブリッジ — Assets（6 件）🧩
 
@@ -1352,12 +1357,15 @@ SoundCue グラフ編集。
 | コマンド | 説明 |
 |---|---|
 | `GetSoundCueInfo` | SoundCue グラフのノード一覧と接続トポロジー（JSON） |
-| `AddSoundCueNode` | SoundNodeClass 指定でノードを追加（6 ステップ allowlist） |
-| `RemoveSoundCueNode` | NodeId 指定でノードを削除（ルート削除は Conflict） |
-| `ConnectSoundCuePins` | 2 ピンを接続（循環検出・動的入力ピン自動追加） |
-| `DisconnectSoundCuePins` | ピン接続を切断（PinIndex=-1 で全切断） |
-| `SetSoundCueNodeProperty` | SoundCue ノードのプロパティを設定。オブジェクト / クラス / デリゲート参照・構造体・コンテナは恒久的に拒否されなくなり、`ValueJson` で渡して `PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
-| `CompileSoundCue` | SoundNode ツリーをグラフから再構築 |
+| `GetAvailableSoundCueNodeClasses` | このエディタがロード済みの `USoundNode` 派生クラスを、このセッションが今追加できるかどうかにかかわらず全件返す — 結果の `NodeClass` を `AddSoundCueNode` の `SoundNodeClass` として渡せる。各エントリは `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持ち、`AddSoundCueNode` が検証するのと同じポリシーで判定される — `/Script/Engine` の外から来るクラスも一覧から外されず `SoundCueCustomTypeEdit` を挙げて掲載される。`NodeClass` 順にソートされ、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200）を報告する。`SchemaVersion` は `1`。`EditorInspect` が必要 |
+| `AddSoundCueNode` | SoundNodeClass 指定でノードを追加。`SoundNodeClass` が `/Script/Engine` の外から来る場合、`SoundCueGraphEdit` に加えて `SoundCueCustomTypeEdit` が必要 — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照。⚠️ **変更** — `SoundNodeClass` はこのエディタが既にロード済みのクラスに対してのみ解決され、強制ロードはしなくなった。未解決のパスは以前は `InvalidParams` だったが、現在は `NotFound` |
+| `RemoveSoundCueNode` | NodeId 指定でノードを削除（ルート削除は Conflict）。削除するノードのクラスが `/Script/Engine` の外から来る場合は `SoundCueCustomTypeEdit` が必要 |
+| `ConnectSoundCuePins` | 2 ピンを接続（循環検出・動的入力ピン自動追加）。どちらかの端点のクラスが `/Script/Engine` の外から来る場合は `SoundCueCustomTypeEdit` が必要。ルート出力ノードは自身の SoundNode クラスを持たないため、この確認には一切関与しない |
+| `DisconnectSoundCuePins` | ピン接続を切断（PinIndex=-1 で全切断）。対象ノードのクラスが `/Script/Engine` の外から来る場合は `SoundCueCustomTypeEdit` が必要 |
+| `SetSoundCueNodeProperty` | SoundCue ノードのプロパティを設定。オブジェクト / クラス / デリゲート参照・構造体・コンテナは恒久的に拒否されなくなり、`ValueJson` で渡して `PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。対象ノードのクラスが `/Script/Engine` の外から来る場合は追加で `SoundCueCustomTypeEdit` が必要 |
+| `CompileSoundCue` | SoundNode ツリーをグラフから再構築。`SoundCueCustomTypeEdit` は一切要求しない — このコマンド自体はノードクラスを一切名指しせず、cue が既に保持しているクラス群は権限を要求しない別の判定で確認されるため、プロジェクト製のノードを含む cue でも権限なしでコンパイルし続けられる |
+
+> ⚠️ **破壊的変更 — 削除・接続・切断・プロパティ編集は以前ゲートされていませんでした。** この Capability が導入される前は `AddSoundCueNode` だけが追加するノードクラスを確認しており、残り 4 つの mutation コマンドは対象ノードのクラスにかかわらず無条件で実行されていました。一般則については [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
 
 ---
 
@@ -1610,13 +1618,13 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 
 | コマンド | 説明 |
 |---|---|
-| `AddTrack` | LevelSequence にトラックを追加（TrackClass 指定） |
-| `RemoveTrack` | TrackClass / BindingGuid 指定でトラックを削除 |
-| `AddSection` | トラックにセクションを追加（StartFrame / EndFrame は DisplayRate 基準） |
-| `RemoveSection` | SectionIndex 指定でセクションを削除 |
+| `AddTrack` | LevelSequence にトラックを追加（TrackClass 指定）。`TrackClass` がこのドメインがトラックを供給する 4 モジュールの外から来る場合、`SequencerStructureEdit` に加えて `SequencerCustomTypeEdit` が必要 — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照 |
+| `RemoveTrack` | TrackClass / BindingGuid 指定でトラックを削除。削除するトラックのクラスが信頼済み 4 モジュールの外から来る場合は `SequencerCustomTypeEdit` が必要。**ただし** `UMovieSceneSubTrack` / `UMovieSceneCinematicShotTrack` / `UMovieSceneEventTrack` の 3 クラスは例外 — これらは `AddTrack` から追加することは一切できないが、信頼済みモジュール由来である限り、既にシーケンスに置かれているものを削除するのに Capability は一切不要 |
+| `AddSection` | トラックにセクションを追加（StartFrame / EndFrame は DisplayRate 基準）。所属トラックのクラスが信頼できないものである場合は `SequencerCustomTypeEdit` が必要 |
+| `RemoveSection` | SectionIndex 指定でセクションを削除。所属トラックのクラスが信頼できないものである場合は `SequencerCustomTypeEdit` が必要 |
 | `SetPlaybackRange` | 再生範囲を設定 |
 | `FlushSequencerChanges` | 蓄積した変更通知を一括 Flush |
-| `GetAvailableSequencerTrackClasses` | 利用可能なトラッククラス一覧 |
+| `GetAvailableSequencerTrackClasses` | このエディタが読み込み済みの `UMovieSceneTrack` サブクラスをすべて一覧表示（現在のセッションが追加できるかどうかに関わらず）。`SchemaVersion` は `2`。各エントリは `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持ち、応答には `TotalCount` / `ReturnedCount` / `Truncated` が付く。⚠️ **変更点** — 従来この一覧は `Deprecated`・`NewerVersionExists`・`HideDropDown` のクラスを黙って除外していたが、現在は `AddTrack` 自身が同じクラスに対して下す判定と一致する `Admission` を伴って一覧に含める |
 | `SetSectionRange` | セクションのフレーム範囲を変更 |
 | `DuplicateSection` | セクションを複製 |
 | `MoveSection` | セクションを指定フレーム数オフセットで移動 |
@@ -1630,13 +1638,15 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 
 | コマンド | 説明 |
 |---|---|
-| `AddKeyframe` | チャンネルにキーフレームを追加 |
-| `RemoveKeyframe` | FrameNumber 指定でキーフレームを削除 |
-| `SetKeyframeValue` | キーフレームの値を更新 |
+| `AddKeyframe` | チャンネルにキーフレームを追加。所属トラックのクラスが信頼できないものである場合は `SequencerCustomTypeEdit` が必要 |
+| `RemoveKeyframe` | FrameNumber 指定でキーフレームを削除。所属トラックのクラスが信頼できないものである場合は `SequencerCustomTypeEdit` が必要 |
+| `SetKeyframeValue` | キーフレームの値を更新。所属トラックのクラスが信頼できないものである場合は `SequencerCustomTypeEdit` が必要 |
 | `SetKeyframeInterpolation` | キーフレームの補間モードを変更 |
 | `SetKeyframeTangents` | キーフレームの接線を設定 |
 | `OffsetKeyframes` | チャンネルの全キーフレームを時間オフセットで一括移動 |
 | `GetKeyframeTangents` | キーフレームの接線を取得（arrive / leave） |
+
+> これらの確認は `AddTrack` だけに限りません — 既存トラックのセクションやキーフレームの編集・削除でも同じ Capability があらためて確認されます。削除固有の破壊的変更を含め、詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。⚠️ **内部専用の 3 トラッククラスだけは例外**: `UMovieSceneSubTrack`・`UMovieSceneCinematicShotTrack`（それぞれ専用コマンドからのみ到達可能）・`UMovieSceneEventTrack`（このドメインには追加するコマンドが一切ない）は、どの Capability を保有していても `AddTrack` からは追加できませんが、`RemoveTrack` は信頼済みモジュール由来である限り、既にシーケンスにあるものを削除するのに Capability を一切要求しません — 削除は内容を持ち込まないため、汎用の追加経路を塞ぐ制限が撤去には引き継がれません。
 
 #### バインド（4）
 
@@ -1749,11 +1759,11 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `GetTransitionInfo` | 2 つのセクション間の Transition の詳細情報 |
 | `GetTransitionName` | 2 つのセクション間の Transition の表示名 |
 | `ChangeTransitionType` | Transition を `NewTransitionClass` のものへ差し替え（単一トランザクション内で作成→削除の順） |
-| `GetCompatibleDecorations` | レイヤーに適用可能な Decoration クラス一覧。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる |
-| `GetDecorations` | レイヤー上の既存 Decoration 一覧。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる |
-| `FindDecoration` | レイヤー上の特定 Decoration を検索（無ければ `NotFound`）。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる。`Target` が `"ChildTrack"` で子トラックが無い場合も `NotFound` |
-| `AddDecoration` | レイヤーに Decoration を追加（既存があればそれを返す）。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）で解決先を選択でき、互換性判定は `Target` が解決した対象に対して行われる |
-| `RemoveDecoration` | レイヤーから Decoration を削除。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる。`Target` が `"ChildTrack"` で子トラックが無い場合も `NotFound` |
+| `GetCompatibleDecorations` | レイヤーに適用可能な Decoration クラス一覧。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる。⚠️ **変更点** — `CompatibleDecorations` の配列要素は単純なクラスパス文字列ではなく、`DecorationClass` と `Admission` / `RequiredCapabilities` / `MissingCapabilities` を持つオブジェクトになった |
+| `GetDecorations` | レイヤー上の既存 Decoration 一覧。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる。⚠️ **変更点** — `Decorations` の配列要素は単純なクラスパス文字列ではなく、`DecorationClass` と `Admission` / `RequiredCapabilities` / `MissingCapabilities` を持つオブジェクトになった |
+| `FindDecoration` | レイヤー上の特定 Decoration を検索（無ければ `NotFound`）。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる。`Target` が `"ChildTrack"` で子トラックが無い場合も `NotFound`。解決できない `DecorationClass` を強制ロードすることはない |
+| `AddDecoration` | レイヤーに Decoration を追加（既存があればそれを返す）。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）で解決先を選択でき、互換性判定は `Target` が解決した対象に対して行われる。`DecorationClass` がこのドメインが Decoration を出荷する 5 モジュールの外から来る場合、`SequencerStructureEdit` に加えて `SequencerCustomTypeEdit` が必要 — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照。⚠️ **変更点** — `DecorationClass` はこのエディタが既に読み込み済みのものだけを対象に解決され、強制ロードされなくなった。解決できないパスは、従来のオンデマンドロードに代わり `NotFound` になる |
+| `RemoveDecoration` | レイヤーから Decoration を削除。任意の `Target`（既定 `"Layer"` または `"ChildTrack"`）でレイヤーか子トラックかを選択できる。`Target` が `"ChildTrack"` で子トラックが無い場合も `NotFound`。削除する Decoration のクラスが信頼できないものである場合は `SequencerCustomTypeEdit` が必要 |
 | `GetLayerBlendWeight` | レイヤーのブレンドウェイトを取得 |
 | `SetLayerBlendWeight` | レイヤーのブレンドウェイトを設定 |
 | `IsLayerMuted` | レイヤーのミュート状態を取得 |
@@ -1803,6 +1813,8 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 
 > Sequencer モジュール実装のもう 1 つのブリッジプロバイダ `Toolset.Editor.SequencerControlRig.*`（63 件）は、コマンドの対象が ControlRig のコントロールであるため [`UAIP.Editor.ControlRig`](#uaipeditorcontrolrig) 側に掲載しています。
 
+> Decoration の変更系 2 コマンド（`AddDecoration` / `RemoveDecoration`）は、native 版とまったく同じ形で `SequencerCustomTypeEdit` によりゲートされています — native 側だけを塞いでも、同じクラスが bridge 経由でそのまま到達できてしまうためです。Decoration の一覧系 2 コマンド（`GetCompatibleDecorations` / `GetDecorations`）は、外部 Toolset レジストリの応答をそのまま通す passthrough 実装のため、native の一覧コマンドが返すようになった `Admission` / `RequiredCapabilities` / `MissingCapabilities` を持ちません。この情報が必要な場合は native コマンドを使用してください。
+
 ---
 
 ## UAIP.Editor.StateTree
@@ -1835,7 +1847,7 @@ StateTree 編集。
 | `GetAvailableTaskClasses` | `FStateTreeTaskBase` フィールド一覧（ネイティブ struct + Blueprint）— `ClassPath` を `AddStateTask` / `AddGlobalTask` に渡す。各エントリは追加コマンドと同じ policy から得た `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を併記するようになりました — ネイティブ struct 階層を含みます（従来のフィルタはこの階層を一切参照していませんでした）。`ClassPath` 昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200 件。struct 階層と class 階層を合算したうえで 1 回だけ適用）を報告します。`SchemaVersion` は `2` になりました — 下の Note を参照してください |
 | `GetAvailableConditionClasses` | `FStateTreeConditionBase` フィールド一覧（ネイティブ struct + Blueprint）— `ClassPath` を `AddStateEnterCondition` に渡す。上と同じ Admission・件数フィールドを報告します |
 | `GetAvailableEvaluatorClasses` | `FStateTreeEvaluatorBase` フィールド一覧（ネイティブ struct + Blueprint）— `ClassPath` を `AddEvaluator` に渡す。上と同じ Admission・件数フィールドを報告します |
-| `GetAvailableStateTreeSchemaClasses` | `UStateTreeSchema` サブクラス — `ClassPath` を `CreateAsset` の `FactoryParams.SchemaClass` に渡す。下記の Capability ゲートの対象外です — Schema クラスは Task・Evaluator・Enter Condition のいずれのフィールドでもないため、ノードクラスポリシーが関与しません |
+| `GetAvailableStateTreeSchemaClasses` | `UStateTreeSchema` サブクラス — `ClassPath` を `CreateAsset` の `FactoryParams.SchemaClass` に渡す。各エントリは `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持ちます。判定元は `CreateAsset` が名指しされた Schema クラスを審査するのと同じポリシーで、このドメインが提供していない Schema クラスも、一覧から除外されるのではなく「何が要るか」を添えて列挙されます。エディタの Schema ピッカーが隠すクラスも `NotAddable` として列挙されます。`ClassPath` 順で、`TotalCount` / `ReturnedCount` / `Truncated` を報告します。`SchemaVersion` は `2` になりました — 下記の Note を参照 |
 | `GetStateTreeSchema` | アセットの Schema クラスパスとルートパラメータのディスクリプタ |
 
 #### State 構造編集（4）
@@ -1872,7 +1884,7 @@ StateTree 編集。
 | `RemoveEvaluator` | EvaluatorId 指定で Evaluator を削除 — 削除される Evaluator 自身のクラスが要求する Capability が同じく必要です |
 | `SetEvaluatorProperty` | Evaluator ノードのプロパティを設定 — Evaluator 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
 
-> **Note — プロジェクト製の Task・Evaluator・Enter Condition クラスは Capability でゲートされ、無条件に拒否されることはありません**: `/Script/StateTreeModule`・`/Script/AIModule`・`/Script/GameplayStateTreeModule` 以外から来たクラスまたは struct — プロジェクトのモジュール、プラグインのモジュール、Blueprint 生成クラス — には `StateTreeCustomTypeEdit` が必要です。既定では付与されません。[安全性と Capability](safety.md#ai-システム) を参照してください。MetaSound や Enhanced Input と同様、Material とは異なり、このドメインに「危険な型」用の別 Capability はありません。Task・Evaluator・Enter Condition フィールドはツリーが自身のインスタンスデータの値で呼び出すコンパイル済み関数であり、ノードプロパティは単なるデータメンバです — どちらも呼び出し元が持ち込んだコードを運びません。
+> **Note — プロジェクト製の Task・Evaluator・Enter Condition クラスは Capability でゲートされ、無条件に拒否されることはありません**: `/Script/StateTreeModule`・`/Script/AIModule`・`/Script/GameplayStateTreeModule` 以外から来たクラスまたは struct — プロジェクトのモジュール、プラグインのモジュール、Blueprint 生成クラス — には `StateTreeCustomTypeEdit` が必要です。既定では付与されません。[安全性と Capability](safety.md#statetree-編集) を参照してください。MetaSound や Enhanced Input と同様、Material とは異なり、このドメインに「危険な型」用の別 Capability はありません。Task・Evaluator・Enter Condition フィールドはツリーが自身のインスタンスデータの値で呼び出すコンパイル済み関数であり、ノードプロパティは単なるデータメンバです — どちらも呼び出し元が持ち込んだコードを運びません。
 >
 > **プロパティの書き込みは 2 つのクラスを独立して確認します。** `SetStateNodeProperty` / `SetGlobalTaskProperty` / `SetEvaluatorProperty` / `SetEnterConditionProperty` はいずれも、ノード自身のクラスと、書き込まれるプロパティを宣言している struct/class を別々の問いとして admit します。どちらか一方でもセッションが持たない Capability を要求すれば書き込み全体が拒否され、拒否メッセージは両方の不足 Capability を一度に名指しします。
 >
@@ -1883,6 +1895,8 @@ StateTree 編集。
 > ⚠️ **破壊的変更**: こうしたクラスは従来 `PolicyViolation` で拒否されていました。`AddStateTask` / `AddGlobalTask` / `AddEvaluator` / `AddStateEnterCondition` と 4 つの `Set*Property` コマンドは `CapabilityNotAvailable` を返し、不足している Capability をすべて一度に名指しします。現在ロードされている中に該当が無いクラスパスは `NotFound`、abstract・deprecated・新版あり・そもそも StateTree ノードでないクラスは `InvalidParams` になります。**`RemoveStateTask` / `RemoveGlobalTask` / `RemoveEvaluator` / `RemoveStateEnterCondition` は、今回初めて Capability を確認するようになりました** — 従来はこの 4 つのいずれも policy を一切参照しておらず、削除はクラスにかかわらず拒否されることがありませんでした。クラスパスの解決のためのロードは行いません — クラス解決は従来から `FindObject` のみを使っており、ロードへのフォールバックはありません。
 >
 > **Note — 3 つのクラス一覧は、ネイティブ struct 階層をもう隠しません。何が要るかも一緒に述べます**: `GetAvailableTaskClasses`・`GetAvailableConditionClasses`・`GetAvailableEvaluatorClasses` は、従来ネイティブな `FStateTree*Base` struct 階層を一切 policy に通さず、Blueprint のクラス階層についても `GetAvailableTaskClasses` でしか通していませんでした — その結果、プロジェクト製の struct ベース Task はエンジン同梱のものとまったく同じ自由さで一覧に載り、Blueprint ベースの Condition や Evaluator も出自を問わず一覧に載っていました。現在は 3 つとも両方の階層を追加コマンドと同じ policy から答え、エントリごとに `Admission` を報告し、そもそも配置できないクラスも落とさず `NotAddable` として載せます。2 つの階層は 1 つの整列・打ち切り済み集合へ統合されました — 従来は階層ごとに独立して上限を適用していたため、応答が理論上、明示された上限の最大 2 倍まで膨らみうるバグがありました。一覧はスナップショットであって認可ではありません — 一覧取得から mutation までの間に Capability や role は変わりうるため、各コマンドは自身のリクエストで判定をやり直します。
+>
+> **⚠️ アセット作成時に名指しする Schema クラスもゲート対象になりました。エンジン同梱のものも含みます。** `CreateAsset` の `FactoryParams.SchemaClass` は従来、「解決できること」と「`UStateTreeSchema` の子孫であること」の 2 条件だけで受け入れられており、出自は一切見ていませんでした。現在は上記のノードクラスと同じ出自判定を通り、`/Script/StateTreeModule`・`/Script/AIModule`・`/Script/GameplayStateTreeModule` 以外の Schema クラスには `StateTreeCustomTypeEdit` が必要です。これはプロジェクト製のクラスに限った話ではありません。`/Script/MassAIBehavior`・`/Script/GameplayCameras`・`/Script/GameplayInteractionsModule`・`/Script/AvalancheTransition`・`/Script/UAFStateTree` はいずれもエンジン同梱ですが、上記 3 モジュールの外にあるため、これらの Schema を使うには Capability が必要になります。`/Script/GameplayStateTreeModule` の Schema は従来どおり何も要求しません。また、abstract・deprecated・新しい版に置き換えられたクラス、およびエディタの Schema ドロップダウンから隠されているクラスは、どの Capability を持っていても拒否されます — 従来は abstract のみ拒否で、deprecated は警告ログを出すだけでした。クラスのオンデマンド読み込みもやめました。すでにメモリ上にないクラスは、判定のためだけに読み込まれることなく拒否されます。Schema クラスに対する `StateTreeCustomTypeEdit` 不足は、他の経路と同じく Capability 名を挙げて `CapabilityNotAvailable` で返ります — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。構造的な拒否（abstract・deprecated・新版あり・非表示・未ロード）は `InvalidParams` のままです。
 
 #### パラメータ・バインディング・コンパイル（7）
 
@@ -2019,21 +2033,35 @@ WorldConditions 編集。`WorldConditions` プラグインが必要です。
 
 | コマンド | 説明 |
 |---|---|
-| `GetWorldConditionInfo` 🧩 | 条件セット構造（Operator / Depth / プロパティ）。各プロパティエントリに `WriteRequirements` オブジェクトが入れ子で付きます。`RequiredCapabilities` は常に空です — この経路は参照もコンテナも一切受け付けないため、付与して解禁できる Capability が存在しません |
-| `AddWorldCondition` 🧩 | 条件を追加（`InsertAtIndex=-1` で末尾追加） |
-| `RemoveWorldCondition` 🧩 | インデックス指定で条件を削除 |
-| `SetWorldConditionProperty` 🧩 | 条件 USTRUCT のプロパティを設定（ImportText 値文字列） |
-| `SetWorldConditionOperator` 🧩 | Operator（And / Or）と bInvert を設定（Index 0 は Copy 固定） |
-| `SetWorldConditionExpressionDepth` 🧩 | ExpressionDepth（0–4）を設定 |
-| `ListWorldConditionClasses` 🧩 | クラスポリシーで許可された `FWorldConditionBase` 派生クラス一覧 — 有効な `ConditionClass` 値の探索に使う |
+| `GetWorldConditionInfo` 🧩 | 条件セット構造（Operator / Depth / プロパティ）。各プロパティエントリに `WriteRequirements` オブジェクトが入れ子で付きます。`RequiredCapabilities` は常に空です — この経路は参照もコンテナも一切受け付けないため、付与して解禁できる Capability が存在しません。各条件も自身の型について `Admission` / `RequiredCapabilities` / `MissingCapabilities` を報告するようになりました。下の Note を参照してください |
+| `AddWorldCondition` 🧩 | 条件を追加（`InsertAtIndex=-1` で末尾追加）— このドメインが出荷していないモジュール由来の型には Capability が要ります。下の Note を参照してください |
+| `RemoveWorldCondition` 🧩 | インデックス指定で条件を削除 — 削除される条件の型が要求する Capability が同じく必要です |
+| `SetWorldConditionProperty` 🧩 | 条件 USTRUCT のプロパティを設定（ImportText 値文字列）— 書き込み対象の条件の型と、そのプロパティを宣言している型の**両方**が要求する Capability が必要です |
+| `SetWorldConditionOperator` 🧩 | Operator（And / Or）と bInvert を設定（Index 0 は Copy 固定）— その条件自身の型が要求する Capability が同じく必要です |
+| `SetWorldConditionExpressionDepth` 🧩 | ExpressionDepth（0–4）を設定 — 確認内容は上と同じ |
+| `ListWorldConditionClasses` 🧩 | `FWorldConditionBase` 派生クラス一覧 — 有効な `ConditionClass` 値の探索に使う。各エントリは `AddWorldCondition` と同じ policy から得た `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を併記するようになりました。このドメインが出荷しているモジュールでの絞り込みは廃止しています。フルパス（`/Script/<Module>.<Class>`）昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200 件）を報告します |
 | `ValidateWorldConditionQuery` 🧩 | クエリに対して `Initialize()` + `IsValid()` を実行し `{IsValid, Errors}` を返す（PIE 中も可） |
-| `MoveWorldCondition` 🧩 | 条件を `SourceIndex` から `TargetIndex` へ移動（インデックス 0 は固定） |
-| `DuplicateWorldCondition` 🧩 | `SourceIndex` の条件を複製し `InsertIndex` に挿入 |
-| `ReplaceWorldCondition` 🧩 | 条件の型を `NewConditionClass` の既定値へ差し替え（Depth・Operator・bInvert は維持） |
-| `ClearWorldConditionQuery` 🧩 | 全条件を削除して空のクエリにする |
-| `SetMultipleWorldConditionProperties` 🧩 | 1〜32 件のプロパティ編集を単一トランザクションで適用（全件適用か全件不適用） |
+| `MoveWorldCondition` 🧩 | 条件を `SourceIndex` から `TargetIndex` へ移動（インデックス 0 は固定）— 移動される条件の型が要求する Capability が同じく必要です |
+| `DuplicateWorldCondition` 🧩 | `SourceIndex` の条件を複製し `InsertIndex` に挿入 — 確認内容は `AddWorldCondition` と同じ |
+| `ReplaceWorldCondition` 🧩 | 条件の型を `NewConditionClass` の既定値へ差し替え（Depth・Operator・bInvert は維持）— 確認内容は `AddWorldCondition` と同じ |
+| `ClearWorldConditionQuery` 🧩 | 全条件を削除して空のクエリにする — 削除される全条件が要求する Capability が必要です |
+| `SetMultipleWorldConditionProperties` 🧩 | 1〜32 件のプロパティ編集を単一トランザクションで適用（全件適用か全件不適用）— 編集ごとに `SetWorldConditionProperty` と同じ確認を行います |
 
 > **⚠️ 破壊的変更 — `SetMultipleWorldConditionProperties` の成功応答の形が変わりました。** このコマンドは全件適用か全件不適用のどちらかになりました。全編集をいったんステージングして検査し（ドメインゲート・テキストインポート・途中終了パースの検出・妥当性検証）、すべて通ったときにだけトランザクションを開いて一括コミットします。1 件でも失敗するとトップレベルの `ErrorCode` / `ErrorMessage` だけを返して何も書きません。したがって従来の編集ごとの `Results[]` と `AllSucceeded` は表すものが無くなりました。成功応答は `AppliedEdits`（実際にコミットされた `{ConditionIndex, SubPropertyName}` の配列）と `SkippedEdits`（プロパティ名が一致せず飛ばされた同形の配列。名前の不一致は従来どおりバッチを失敗させません）になります。`Results[]` / `AllSucceeded` を読んでいる呼び出し側は修正が必要です。
+>
+> **Note — このドメインは条件の型を 1 か所で受理しており、Capability は 1 つ（`WorldConditionsCustomTypeEdit`）だけです。** 配置・差し替え・操作される条件の型と、書き込まれるプロパティを宣言している型は同じ扱いを受け、1 つの名前を共有します — プロジェクト製の条件は自分のプロパティを自分で宣言するため、プロパティ面に別の許可を求める理由がありません。型が `/Script/WorldConditions` の外から来た場合に必要です。プロジェクトのモジュール、プラグインのモジュール（`SmartObjects` のようなエンジンプラグインを含む）、Blueprint 生成の型はいずれも外側になります。既定では付与されません。[安全性と Capability](safety.md#オプショングラフエディタ) を参照してください。
+>
+> **既にアセットに置かれているプロパティへの書き込みにも Capability が要るようになりました — これは移行ではなく新設です。** この Capability が存在する前は、`SetWorldConditionProperty` / `SetMultipleWorldConditionProperties` は書き込みフラグと値種別だけを確認しており、プロジェクト製の条件が持つプロパティは宣言型に対する Capability 確認なしに書き込めていました。宣言型が `/Script/WorldConditions` 自身でない場合、これらは今後 `WorldConditionsCustomTypeEdit` も要求します。
+>
+> **追加だけでなく、削除・移動・複製もゲートされます。** `RemoveWorldCondition` / `ClearWorldConditionQuery` / `MoveWorldCondition` / `DuplicateWorldCondition` / `SetWorldConditionOperator` / `SetWorldConditionExpressionDepth` は従来、対象条件の型にかかわらずアセットへ到達していました。現在は操作対象の条件について同じ Capability をあらためて確認します。配置面では拒否される型（例えばインスタンス化できない型）であっても、既に置かれているものの削除・移動は Capability さえ保有していれば引き続き可能です — 完全に拒否されたままなのは、そもそもインスタンス化できない型を新たに配置しようとする経路だけです。
+>
+> **エンジン側の確認も行われますが、Capability を要求した型についてのみ、かつセッションがそれを保有した後にだけ行われます。** `AddWorldCondition` と `DuplicateWorldCondition` は Capability 確認を通過した後、クエリ定義自身のスキーマ（`UWorldConditionSchema::IsStructAllowed`）にも確認します — スキーマがその型を拒否すれば、Capability を保有していても `PolicyViolation` で拒否されます。`ReplaceWorldCondition` はこの段階に到達しません — アセット（とそのスキーマ）を解決する前に `NewConditionClass` を検証するため、そこで受理された型は Capability の確認だけで判定されます。スキーマを持たないクエリ定義はどちらの経路でも影響を受けません。
+>
+> ⚠️ **破壊的変更**: このドメイン自身のモジュール外の型は従来、無条件に `PolicyViolation` で拒否されていました。`AddWorldCondition` / `ReplaceWorldCondition` / `SetWorldConditionProperty` / `SetMultipleWorldConditionProperties` は `CapabilityNotAvailable` を返して不足している Capability を名指しするようになり、実際にその Capability を付与すれば成功するようになりました（旧実装はこれができませんでした）。現在ロードされている中に該当が無いクラスパスは `NotFound` です — このドメインはもともと未解決クラスをロードへフォールバックしていなかったため、この点に変化はありません。
+>
+> **Note — `ListWorldConditionClasses` はゲートされた型を隠さなくなりました。** 従来は基底型とモジュール所属だけでクラスを絞り込んでおり、`/Script/WorldConditions` 以外の型をすべてレスポンスから黙って除外していました。現在は `AddWorldCondition` と同じ policy から答え、エントリごとに `Admission` を報告します — 除外されるのは `FWorldConditionBase` の派生ではない型、または名前解決に失敗した型だけです。一覧はスナップショットであって認可ではありません — 一覧取得から mutation までの間に Capability や role は変わりうるため、各コマンドは自身のリクエストで判定をやり直します。
+>
+> **`GetWorldConditionInfo` はもともとクラス名を伏せ字にしておらず、現在も同様です** — このコマンドが行う唯一の伏せ字化は `FWorldConditionContextDataRef` プロパティの値に対するもので、条件がどの型のインスタンスかとは無関係です。現在は各条件について、`SetWorldConditionProperty` / `RemoveWorldCondition` が問うのと同じ問いに対する `Admission` / `RequiredCapabilities` / `MissingCapabilities` も追加で報告します。
 
 ### Toolset ブリッジ — WorldConditions（2 件）🧩
 
@@ -2052,13 +2080,19 @@ ConversationDB グラフ編集。`CommonConversation` プラグインが必要�
 
 | コマンド | 説明 |
 |---|---|
-| `ListConversationNodeTypes` 🧩 | 位置別の許可ノードクラス一覧（最大 256 件） |
-| `AddConversationNode` 🧩 | トップレベルノードを追加（`UConversationNodeWithLinks` 派生） |
-| `AddConversationSubNode` 🧩 | 親 Task ノードに SubNode を附加 |
-| `RemoveConversationNode` 🧩 | NodeGuid 指定でノードを削除 |
-| `ConnectConversationNodes` 🧩 | ノード間の遷移エッジを追加 |
-| `DisconnectConversationNodes` 🧩 | 遷移エッジを削除 |
-| `SetConversationNodeProperty` 🧩 | プロパティを設定（FText は BIDI strip・PUA reject・4096 文字上限）。値は JSON ドキュメント。参照・構造体・コンテナは恒久的に拒否されなくなり、`PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
+| `ListConversationNodeTypes` 🧩 | 位置別（`TopLevel` / `SubNode`、省略時は両方）のノードクラス一覧。各エントリは `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と、下記の mutation コマンドが検証するのと同じ policy に基づく `RequiredCapabilities` / `MissingCapabilities` を持つ。`/Script/CommonConversationRuntime` 以外へのフィルタは廃止 — プロジェクト・プラグイン製や Blueprint 製のクラスも `Admission: RequiresCapabilities` として一覧から省略されずに説明される。`ClassPath` 昇順。`TotalCount` / `ReturnedCount` / `Truncated` を返す（位置ごと最大 256 件）— 下記 Note を参照 |
+| `AddConversationNode` 🧩 | トップレベルノードを追加（`UConversationNodeWithLinks` 派生）。`NodeClass` が `/Script/CommonConversationRuntime` の外から来る場合、`ConversationGraphEdit` に加えて `ConversationCustomTypeEdit` が必要 — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照 |
+| `AddConversationSubNode` 🧩 | 親 Task ノードに SubNode を附加。`NodeClass` が `/Script/CommonConversationRuntime` の外から来る場合、追加で `ConversationCustomTypeEdit` が必要 |
+| `RemoveConversationNode` 🧩 | NodeGuid 指定でノードを削除。削除するノードのクラスが `/Script/CommonConversationRuntime` の外から来る場合 `ConversationCustomTypeEdit` が必要 — トップレベルノードの削除は、一緒に削除される全 SubNode についても同じ確認を行う |
+| `ConnectConversationNodes` 🧩 | ノード間の遷移エッジを追加。両端いずれかのクラスが `/Script/CommonConversationRuntime` の外から来る場合 `ConversationCustomTypeEdit` が必要 |
+| `DisconnectConversationNodes` 🧩 | 遷移エッジを削除。両端いずれかのクラスが `/Script/CommonConversationRuntime` の外から来る場合 `ConversationCustomTypeEdit` が必要 |
+| `SetConversationNodeProperty` 🧩 | プロパティを設定（FText は BIDI strip・PUA reject・4096 文字上限）。値は JSON ドキュメント。参照・構造体・コンテナは恒久的に拒否されなくなり、`PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。対象ノードのクラスが `/Script/CommonConversationRuntime` の外から来る場合、追加で `ConversationCustomTypeEdit` が必要 |
+
+> ⚠️ **破壊的変更 — 削除・接続・切断・プロパティ編集は以前ゲートされていませんでした。** この Capability が導入される前は `AddConversationNode` / `AddConversationSubNode` だけが追加するノードクラスを確認しており、残り 4 つの mutation コマンドは対象ノードのクラスにかかわらず無条件で実行されていました。一般則については [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。すべての mutation はデータベースのコンパイル済みバンクも再構築しますが、これはデータベースが既に保持している全ノードクラスに対しても同じ確認を行います — プロジェクト製のノードを既に含むデータベースは、コンパイルも既存ノードの削除も、Capability の付与なしに引き続き行えます。既存インスタンスへの操作はリクエストが持ち込んだコードを一切実行しないためです。
+
+> **Blueprint で作った Task ノードや SubNode は恒久的な拒否ではなくなりました。** この Capability が導入される前は、標準グラフエディタの「Add Node」メニューがネイティブクラスと並べて提示する `UConversationTaskNode` / `UConversationRequirementNode` / `UConversationSideEffectNode` / `UConversationChoiceNode` の Blueprint 派生サブクラスであっても、`AddConversationNode` / `AddConversationSubNode` は常に拒否しており、付与によって解禁する手段がありませんでした。現在はプロジェクト・プラグイン製クラスと同じ扱いで判定され、セッションが `ConversationCustomTypeEdit` を保有していれば追加できます。
+
+> ⚠️ **変更 — `ListConversationNodeTypes` は `NodeTypesTruncated` を返さなくなりました。** 上限を超えたかどうかは、キャップ付きの UAIP 一覧が共通して返す `Truncated` フィールド（`TotalCount` / `ReturnedCount` と併記）で報告されます。従来の `NodeTypesTruncated` を読んでいた呼び出し元は、その値が存在しなくなります。
 
 ### Toolset ブリッジ — Conversation（5 件）🧩
 
@@ -2224,6 +2258,8 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 > ⚠️ **破壊的変更 — 読み込まれていない構造体は `InvalidParams` ではなく `NotFound` になりました。** `AddGraphNode` と `AddComponent` は、`StructPath` が指す構造体を副作用として読み込まなくなりました。読み込んでしまうと、その構造体を名指ししてよいかを判断するために、先にそのモジュールのコードを走らせることになるためです。まだメモリ上に無い構造体は `NotFound` として拒否され、「この問いに答えるために何も読み込まない」旨のメッセージが返ります。`StructPath` の形式が不正な場合 — 空、256 文字超、オブジェクトパスに現れない文字を含む — は引き続き `InvalidParams` です。これは型についての言明ではなく、パラメータについての言明だからです。
 >
 > 2 つの拒否が返る順序も変わりました。従来は構造体をアセット検索より前に判定していたため、構造体とアセットパスの両方が誤っているリクエストには構造体について回答していました。現在はアセットを手にした状態で判定します — 同じ判定がリグの既存内容も対象に取れなければならないためです — ので、そうしたリクエストにはアセットについて回答します。`StructPath` の形式検査は引き続き最初に行うため、明らかな綴り誤りは何も読み込む前に `InvalidParams` で返ります。
+>
+> **⚠️ アセット作成時に名指しする親クラスもゲート対象になりました。** `CreateAsset` の `FactoryParams.ParentClass`（新規 Control Rig アセットの基になる `UControlRig` サブクラス）は従来、ファクトリ自身の条件だけで受け入れられていました — 解決できること、`UControlRig` 派生であること、（Blueprint ベースのファクトリの場合）Blueprint の親クラスに使えること。現在は上記の unit 構造体・component 構造体と同じ出自判定を通り、上記 7 モジュールの外のクラスには `ControlRigCustomTypeEdit` が必要です。**エンジン同梱の親クラスはすべて従来どおり権限不要です**。いずれもその 7 モジュール内にあるためです。Capability が要るのはプロジェクト側のクラス — プロジェクトやサードパーティプラグインが宣言するネイティブの `UControlRig` 派生クラスと、プロジェクト内の Control Rig ブループリントの生成クラス（`/Game/….CR_Foo_C`）です。`ParentClass` を省略した場合は従来どおり素の `UControlRig` が作られ、何も要求されません。クラスのオンデマンド読み込みもやめました。すでにメモリ上にないクラスは、判定のためだけに読み込まれることなく拒否されます。親クラスに対する `ControlRigCustomTypeEdit` 不足は、他の経路と同じく Capability 名を挙げて `CapabilityNotAvailable` で返ります — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。構造的な拒否（未解決・基底型違い）は `InvalidParams` のままです。なお、コマンド全体を守る `ControlRigBlueprintCreate` の確認は、プロセス全体ではなく呼び出し元セッションに対して行われるようになりました。この Capability を拒む role に紐づいたセッションは、従来通っていたところで拒否されます（この拒否は従来どおり `PolicyViolation`）。
 
 ### Toolset ブリッジ（107）🧩
 
@@ -2358,6 +2394,8 @@ Enhanced Input アセット編集 — Input Action と Input Mapping Context。
 | `SetInputMappingTrigger` | マッピングの Trigger を設定/置換 |
 | `SetInputActionModifier` | Input Action の Modifier を設定/置換 |
 | `SetInputActionTrigger` | Input Action の Trigger を設定/置換 |
+| `GetAvailableInputTriggerClasses` | このエディタがロード済みの `UInputTrigger` 派生クラスを、このセッションが今名指しできるかどうかにかかわらず全件返す — 結果の `ClassPath` を `SetInputActionTrigger` / `SetInputMappingTrigger` の `Triggers` エントリの `Class` として渡せる。各エントリは `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持ち、両セッターが検証するのと同じポリシーで判定される — `/Script/EnhancedInput` の外から来るクラスも一覧から外されず `EnhancedInputCustomTypeEdit` を挙げて掲載され、`UInputTriggerChordAction` / `UInputTriggerChordBlocker` はどの Capability でも開かないため `NotAddable` として掲載される。`ClassPath` 順にソートされ、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200）を報告する。`EditorInspect` が必要 |
+| `GetAvailableInputModifierClasses` | このエディタがロード済みの `UInputModifier` 派生クラスを、このセッションが今名指しできるかどうかにかかわらず全件返す — 結果の `ClassPath` を `SetInputActionModifier` / `SetInputMappingModifier` の `Modifiers` エントリの `Class` として渡せる。`GetAvailableInputTriggerClasses` と同じ `Admission` / `RequiredCapabilities` / `MissingCapabilities` を、両セッターが検証するのと同じポリシーで報告する — `/Script/EnhancedInput` の外から来るクラスも一覧から外されず `EnhancedInputCustomTypeEdit` を挙げて掲載される。`ClassPath` 順にソートされ、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200）を報告する。`EditorInspect` が必要 |
 
 > Trigger / Modifier を書き込む 4 コマンド（`SetInputMappingModifier` / `SetInputMappingTrigger` / `SetInputActionModifier` / `SetInputActionTrigger`）は、参照・コンテナを一律拒否しなくなりました。参照には `EnhancedInputEdit` に加えて `EnhancedInputReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要で、これらの値はエンジンの括弧表記ではなく JSON で渡します — 必要な形式は上記 2 つの取得系がプロパティごとに報告します。なお他の多くの書き込みコマンドと異なり、`Params` にプロパティ名と一致しないキーがあるとリクエスト全体が失敗します（これらの応答には「飛ばしたキー」を報告する場所が無いためです）。
 
@@ -2564,19 +2602,31 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 
 | コマンド | 説明 |
 |---|---|
-| `GetPoseSearchSchemaInfo` | `UPoseSearchSchema` の構造情報を取得 — SampleRate、DataPreprocessor、SchemaCardinality、ロール付き `Skeletons` 配列、`Finalize()` 展開後の `Channels` 配列、そして編集系コマンドが実際に対象とする finalize 前の `RawChannels` ツリー（`ChannelPath` / `ClassPath`） |
+| `GetPoseSearchSchemaInfo` | `UPoseSearchSchema` の構造情報を取得 — SampleRate、DataPreprocessor、SchemaCardinality、ロール付き `Skeletons` 配列、`Finalize()` 展開後の `Channels` 配列、そして編集系コマンドが実際に対象とする finalize 前の `RawChannels` ツリー（`ChannelPath` / `ClassPath`）。各 `RawChannels[]` エントリ（ネストしたものも含む）は `Admission` / `RequiredCapabilities` / `MissingCapabilities` も返すようになった — そのチャンネルのプロパティを編集する場合の基準で判定される。詳細は下の Note を参照 |
 | `SetPoseSearchSchemaDataPreprocessor`（要 `PoseSearchAssetEdit`） | `DataPreprocessor` を変更（`None` / `Normalize` / `NormalizeOnlyByDeviation` / `NormalizeWithCommonSchema`）。応答にはこの Schema を参照していると見つかった全データベース（ベストエフォート）を列挙 |
-| `AddPoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `ChannelClass` のチャンネルを作成し、チャンネルツリーへ挿入。任意で `ParentChannelPath` の下へネストし、`InsertAt` で挿入位置を指定可能。冪等ではない — 同じクラスで 2 回呼ぶとチャンネルが 2 つできる |
-| `RemovePoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルを、ネストされた子孫チャンネルもろとも削除。任意の `ExpectedChannelClass` で、古いパスによる誤削除を防止できる |
-| `MovePoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `SourceChannelPath` のチャンネルを、その親の中で `TargetIndex` へ並べ替え。別の親への移動は非対応 — 削除して追加し直すこと |
-| `SetPoseSearchSchemaChannelProperty`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルのトップレベルプロパティへ書き込む — `Value`（UE テキストインポート形式、最大 4 KiB）または `ValueJson`（JSON）で値を渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。参照を内包する型はセッションの保有 Capability に関わらず `PolicyViolation` で拒否される — チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうため、チャンネルの追加は専用コマンドで行うこと。書き込み後の検証に失敗した場合は書き込みをロールバック |
-| `AddDefaultPoseSearchSchemaChannels`（要 `PoseSearchAssetEdit`） | エディタの Schema ファクトリが作成するのと同じ既定チャンネル（Trajectory + Pose）を追加。既存チャンネルは削除されず維持される — 2 回呼ぶと重複したペアが追加される |
-| `GetAvailablePoseSearchChannelClasses` | `AddPoseSearchSchemaChannel` が `ChannelClass` として受け付ける `UPoseSearchFeatureChannel` サブクラスを一覧表示。`bCanHostSubChannels` で有効な `ParentChannelPath` の対象を示す。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること |
+| `AddPoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `ChannelClass` のチャンネルを作成し、チャンネルツリーへ挿入。任意で `ParentChannelPath` の下へネストし、`InsertAt` で挿入位置を指定可能。冪等ではない — 同じクラスで 2 回呼ぶとチャンネルが 2 つできる。`/Script/PoseSearch` 以外のモジュール由来のクラスにはさらに `MotionMatchingCustomTypeEdit` が必要 — 詳細は下の Note を参照 |
+| `RemovePoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルを、ネストされた子孫チャンネルもろとも削除。任意の `ExpectedChannelClass` で、古いパスによる誤削除を防止できる。削除対象のチャンネル、またはネストする子孫のいずれかのクラスがこのドメインの出荷対象外の場合は `MotionMatchingCustomTypeEdit` が必要 |
+| `MovePoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `SourceChannelPath` のチャンネルを、その親の中で `TargetIndex` へ並べ替え。別の親への移動は非対応 — 削除して追加し直すこと。移動対象のチャンネル自身のクラスがこのドメインの出荷対象外の場合は `MotionMatchingCustomTypeEdit` が必要 — ネストする子孫は並べ替えで動かないため再確認しない。`TargetIndex` が現在位置と同じ（no-op になる）場合も確認は行われるため、権限のないセッションがこの確認を回避してゲート済みチャンネルの位置を探ることはできない |
+| `SetPoseSearchSchemaChannelProperty`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルのトップレベルプロパティへ書き込む — `Value`（UE テキストインポート形式、最大 4 KiB）または `ValueJson`（JSON）で値を渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。参照を内包する型はセッションの保有 Capability に関わらず `PolicyViolation` で拒否される — チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうため、チャンネルの追加は専用コマンドで行うこと。書き込み後の検証に失敗した場合は書き込みをロールバック。チャンネル自身のクラス、または書き込み対象プロパティを宣言しているクラスのいずれかがこのドメインの出荷対象外の場合は `MotionMatchingCustomTypeEdit` が必要 — なぜこれが新規の制限なのかは下の Note を参照 |
+| `AddDefaultPoseSearchSchemaChannels`（要 `PoseSearchAssetEdit`） | エディタの Schema ファクトリが作成するのと同じ既定チャンネル（Trajectory + Pose）を追加。既存チャンネルは削除されず維持される — 2 回呼ぶと重複したペアが追加される。追加されるのは常にエンジン自身の 2 チャンネルで呼び出し元が指定できるクラスは無いため、`MotionMatchingCustomTypeEdit` は一切要求しない |
+| `GetAvailablePoseSearchChannelClasses` | 構造的なチェックだけでチャンネルとして認められる `UPoseSearchFeatureChannel` サブクラスをすべて一覧表示する — `AddPoseSearchSchemaChannel` が `ChannelClass` を解決する集合と同じ — このセッションが今すぐ配置できるかどうかを問わない。各エントリは `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities`、そして有効な `ParentChannelPath` の対象を示す `bCanHostSubChannels` を返す。エントリはフルクラスパス（`/Script/<Module>.<Class>`）順に整列され、アーティファクトは `TotalCount`、`ReturnedCount`、`Truncated`（上限 500）を報告する。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること |
 | `GetPoseSearchChannelClassSchema` | チャンネルクラスの Details パネル表示プロパティを一覧表示。各プロパティは入れ子の `WriteRequirements` オブジェクトを持ち、`SetPoseSearchSchemaChannelProperty` で書き込み可能かを `IsWritable` / `RefusalReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と、構造化形式での書き込みが要求する `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。`DefaultValueText` はそのまま使えるテキストインポート形式の例を提供 |
 | `AddSkeletonToPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Role` のロール付きスケルトンエントリを追加または置き換え。任意で `MirrorDataTablePath` を指定可能。既存の `Role` を置き換えるには `bAllowOverwrite` が必要 |
 | `RemoveSkeletonFromPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Skeletons` 配列から `Role` のロール付きスケルトンエントリを削除 |
 
 > **Note**: `AddPoseSearchSchemaChannel` の `ChannelClass`、および各編集コマンドの `ExpectedChannelClass` には**完全修飾クラスパス**（例: `/Script/PoseSearch.PoseSearchFeatureChannel_Position`）を渡すこと — `GetPoseSearchSchemaInfo` の `RawChannels[].ClassPath` または `GetAvailablePoseSearchChannelClasses` の `ClassPath` を使い、同じエントリの短い `ChannelClass` フィールドは使わないこと。`ChannelPath` は `RawChannels[]` に対する `/` 区切りのインデックスパス（例: `"0"`、`"2/0"`）であり、`Finalize()` 展開後の `Channels[]` に対するものでは**ない**。編集のたびに後続の兄弟チャンネルの `ChannelPath` がずれうるため、呼び出し前に取得したパスを使い回さず、都度 `RawChannels` を読み直すこと。
+>
+> **Note — このドメインはチャンネルクラスを 1 箇所、1 つの Capability（`MotionMatchingCustomTypeEdit`）だけでゲートします。** チャンネルクラスの配置・削除・操作と、書き込み対象のチャンネルプロパティを宣言するクラスは同じ基準で判定され、名前も共有する — プロジェクト自身のチャンネルは自分自身のプロパティを宣言するため、プロパティ面に別の Capability を要求する理由がない。`/Script/PoseSearch` 以外のクラス（プロジェクトモジュール、プラグインモジュール、Blueprint 生成クラス）で必要になる。Blueprint 生成のチャンネルクラスはこの Capability を保有していても常に拒否される — このドメインが解禁できる種類のカスタム型ではない。このドメインには「危険な型」用の対になる Capability は存在しない — チャンネルクラスの `Finalize` / `BuildQuery` / `IndexAsset` はそのクラスの作者が書いたコードであり、リクエストが持ち込むものではない。既定では付与されない。[Safety & Capabilities](safety.md#motion-matching--pose-search-編集) を参照。
+>
+> **Schema に既に置かれているプロパティへの書き込みにも、この Capability が新たに必要になりました — これは既存の制限の維持ではなく、新規の制限です。** この変更以前、`SetPoseSearchSchemaChannelProperty` はプロパティの書き込みフラグと値種別だけを確認しており、プロジェクト定義チャンネルの自身のプロパティは Capability なしで書き込めていた。宣言クラスが `/Script/PoseSearch` 自身でない場合、今後は `MotionMatchingCustomTypeEdit` も必要になる。
+>
+> **チャンネルの削除・移動も追加と同様にゲートされ、インデックスビルドの開始もゲートされます。** `RemovePoseSearchSchemaChannel` と `MovePoseSearchSchemaChannel` は従来、チャンネルのクラスに関わらずアセットへ到達できていたが、今後は同じ Capability があらためて確認される。削除はそれが持ち去るネストしたサブツリー全体について判定される（すべての子孫が一緒に消えるため）。移動は移動対象のチャンネル自身のクラスだけを判定する（並べ替えではネストしたものは一切動かないため）。`StartPoseSearchDatabaseIndexBuild` も同じ理由でゲートされる — エンジン自身のビルドパイプラインは対象 Schema が保持する全チャンネルクラスのコードを実行するため、ビルドの開始はそれらのクラスを追加するのと同じ基準で判定される。Schema が保持する全クラスが確認対象であり、追加時に呼び出し元が指定したクラスだけではない。
+>
+> ⚠️ **破壊的変更**: このドメインの出荷対象外のチャンネルクラスは、従来は無条件で `PolicyViolation` として拒否されており、`RemovePoseSearchSchemaChannel` / `MovePoseSearchSchemaChannel` / `SetPoseSearchSchemaChannelProperty` は出自を理由にした拒否を一切行っていなかった。今後は `AddPoseSearchSchemaChannel` / `RemovePoseSearchSchemaChannel` / `MovePoseSearchSchemaChannel` / `SetPoseSearchSchemaChannelProperty` / `StartPoseSearchDatabaseIndexBuild` が `CapabilityNotAvailable` を返し不足している Capability 名を明示するようになった — そして Capability を付与すれば実際に成功するようになった（従来の `AddPoseSearchSchemaChannel` の実装ではそうならなかった）。現在ロードされていないクラスパスは引き続き `NotFound` になる — このドメインは未解決のクラスを副作用として読み込むことは一切ない。
+>
+> ⚠️ **破壊的変更 — `GetAvailablePoseSearchChannelClasses` の応答形状が変わりました。** `NumClasses` フィールド（アーティファクト・`CommandResponse.Result` の両方）が廃止され、`CommandResponse.Result` 自体も設定されなくなった。代わりにアーティファクト上の `TotalCount` / `ReturnedCount` / `Truncated` を読むこと。一覧はまた、`MotionMatchingCustomTypeEdit` でゲートされたクラスを黙って除外しなくなった — `AddPoseSearchSchemaChannel` が答えるのと同じ基準で `Admission: RequiresCapabilities` として一覧に載り、必要な Capability が名指しされる。フルクラスパスによる整列後に新設された 500 件の上限が適用される（従来は上限なし）。
+>
+> **`GetPoseSearchSchemaInfo` の `RawChannels[]` エントリは、ネストしたものも含めて `Admission` / `RequiredCapabilities` / `MissingCapabilities` を新たに返すようになりました** — 各チャンネル自身のクラスについて、`SetPoseSearchSchemaChannelProperty` / `RemovePoseSearchSchemaChannel` が問うのと同じ質問。追加のみで、既存フィールドはすべて変更されていません。
 
 ### NormalizationSet（4 コマンド）
 

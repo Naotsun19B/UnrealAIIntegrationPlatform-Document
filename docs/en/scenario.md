@@ -274,6 +274,31 @@ Whichever approach you take, confirm the traces are gone (PIE stopped, temp asse
 
 ---
 
+## Scenarios and undo
+
+Each editing command inside a scenario is now pushed onto the undo history as its own independent entry whenever it succeeds and actually records a change.
+
+### Before and after
+
+- **Before**: Running several editing commands inside one scenario left only a single undo history entry — named after the first editing command that succeeded. Undoing that one entry rolled back every edit in the scenario at once, regardless of the name shown.
+- **Now**: Editing commands inside a scenario are pushed one at a time. The number of entries equals the **number of commands that actually recorded a change** — not the number of scenario steps. Read-only steps never push an entry.
+
+This means the name `Undo` returns in its response now matches the range that actually gets rolled back. You can undo just the last command, or pass a `StepCount` to roll back a scenario's edits in one call. See the [command reference](commands.md) for `Undo` / `Redo`.
+
+### `StepCount` limit
+
+The `StepCount` parameter on `Undo` / `Redo` now allows up to **100** — matching the scenario's max steps in [Hard limits](#hard-limits). The two limits are kept in sync so that even a long, per-step-granular scenario can be rolled back with a single `Undo` call.
+
+Matching the limits does not guarantee a single call always rolls back the whole scenario — that still requires no other edit to have happened after the scenario, each editing step to have pushed exactly one entry, and all of those entries to still be present in the history.
+
+### Caveats
+
+- Undo acts on the editor's single, shared history and **does not distinguish who made the edit**. Edits from another concurrent session, or made by hand by a human operator, sit in the same history and can get rolled back too if you request a large `StepCount`.
+- **`GetUndoHistory` shows you what would be undone before you undo it.** It executes nothing and returns how many steps can be undone or redone, together with their names. It needs only `EditorInspect` — not the `EditorUndoRedo` capability undo itself requires (denied by default) — so the history stays readable even where undo is not permitted.
+- Check the target with it before passing a large `StepCount`. Calling `Undo` in small increments and reading the names it returns still works too.
+
+---
+
 ## Common failures
 
 | Symptom | Cause | Fix |
