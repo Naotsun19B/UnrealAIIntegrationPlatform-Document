@@ -962,7 +962,11 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 >
 > With the capability granted and the target loaded, the write succeeds and the reference is kept. **Leaving `DefaultValue` unset behaves exactly as before** — no extra capability, and the entry is created with no default.
 >
-> ⚠️ **Only data interface types are reachable in practice.** The parameter type name is checked against a type allowlist before the value is ever looked at, so an ordinary object type such as `UTexture2D` is refused at that stage and `NiagaraReferenceEdit` never comes into play for it. There is also no read command that returns a Set Parameters entry's default value, so a write cannot yet be confirmed by reading it back. Niagara *user* parameters (`AddUserVariables`) are a different store and take no default value at all.
+> ⚠️ **Only data interface types are reachable in practice.** The parameter type name is checked against a type allowlist before the value is ever looked at, so an ordinary object type such as `UTexture2D` is refused at that stage with `InvalidParams` naming the type, and `NiagaraReferenceEdit` never comes into play for it. Niagara *user* parameters (`AddUserVariables`) are a different store and take no default value at all.
+>
+> **⚠️ Behavior change — an unresolvable parameter type is refused instead of quietly becoming a float.** Both commands used to answer a type they could not resolve by creating the entry as a `float` and reporting success, so the only way to notice was to read the entry back and find a type you never asked for. They now return `InvalidParams` with the rejected type named. `AddSetParametersModule` refuses before the module is created, so a request whose second parameter is unresolvable no longer leaves a module holding only the entries that happened to resolve. The `ParsedAsDefault` / `ParsedAsDefaultArray` flags no longer fold in "the type did not resolve" — they report only that a value fell back to its type's default.
+>
+> A written default value **can** now be read back: `GetStackInputData` returns each input's current value, so a write to a Set Parameters entry can be confirmed.
 
 #### Blueprint wrappers (2)
 
