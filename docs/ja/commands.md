@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1161 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1582 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1162 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1583 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -66,7 +66,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 8 | — | — |
 | Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
-| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 17 | 7 | — |
+| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 18 | 7 | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
 | Editor Sequencer | `UAIP.Editor.Sequencer` | 129 | 61 | — |
@@ -213,7 +213,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 一部のコマンドは独自の判定で書き込み可否を決めており、この報告を添えません。その場合は書き込みを試してください — 拒否の返答に不足している Capability 名が載ります。無いのは事前の案内だけで、進めなくなるわけではありません。
 
-さらに 8 つの取得系コマンドがこの報告を返すようになりました。既存の値の返し方に合わせて 2 つの形のいずれかを取ります。
+さらに 10 個の取得系コマンドがこの報告を返すようになりました。既存の値の返し方に合わせて 2 つの形のいずれかを取ります。
 
 | コマンド | 報告の位置 |
 |---|---|
@@ -224,8 +224,10 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | `GetAnimNotifyClassSchema`（`UAIP.Editor.AnimSequence`） | 各プロパティエントリに入れ子の `WriteRequirements` オブジェクト |
 | `GetAnimNotifyProperty`（`UAIP.Editor.AnimSequence`） | 各プロパティエントリに入れ子の `WriteRequirements` オブジェクト。単一プロパティを指定した場合は `Data` の `PropertyName` / `Value` と並べて直接返す |
 | `GetPoseSearchChannelClassSchema`（`UAIP.Editor.MotionMatching`） | 各プロパティエントリに入れ子の `WriteRequirements` オブジェクト |
+| `GetBehaviorTreeNodeProperties`（`UAIP.Editor.BehaviorTree`） | 各プロパティエントリに入れ子の `WriteRequirements` オブジェクト |
+| `GetStackInputData`（`UAIP.Editor.Niagara`） | 各スタック入力エントリに入れ子の `WriteRequirements` オブジェクト |
 
-値マップ自体（`Properties` / `Params`）の形は変えていないため、値だけを読む呼び出し側に影響はありません。Enhanced Input の 2 つの取得系では、値マップが従来スキップしていた参照・コンテナも含め **編集可能な全プロパティ** を報告します — スキップされていた型こそが Capability を要求する型だからです。`GetWorldConditionInfo` の `RequiredCapabilities` は常に空配列です。この経路は参照もコンテナも一切受け付けないため、運用者へ依頼すべき Capability が存在せず、名前を挙げると「付与しても何も解禁されない権限」を案内することになるためです。`GetAnimNotifyProperty` は `GetAnimNotifyClassSchema` と同じキー名・同じ入れ子の形で返すため、読み方は両者で共通です。違いは判定の対象で、クラスのデフォルトではなく `NotifyGuid` で指定された実際の通知インスタンス（`SetAnimNotifyProperty` が実際に書き込む対象）に対して解決されます。
+値マップ自体（`Properties` / `Params`）の形は変えていないため、値だけを読む呼び出し側に影響はありません。Enhanced Input の 2 つの取得系では、値マップが従来スキップしていた参照・コンテナも含め **編集可能な全プロパティ** を報告します — スキップされていた型こそが Capability を要求する型だからです。`GetWorldConditionInfo` の `RequiredCapabilities` は常に空配列です。この経路は参照もコンテナも一切受け付けないため、運用者へ依頼すべき Capability が存在せず、名前を挙げると「付与しても何も解禁されない権限」を案内することになるためです。`GetAnimNotifyProperty` は `GetAnimNotifyClassSchema` と同じキー名・同じ入れ子の形で返すため、読み方は両者で共通です。違いは判定の対象で、クラスのデフォルトではなく `NotifyGuid` で指定された実際の通知インスタンス（`SetAnimNotifyProperty` が実際に書き込む対象）に対して解決されます。`GetBehaviorTreeNodeProperties` は `FBlackboardKeySelector` プロパティを、構造体自身のフィールドではなくベアなキー名のプレーンテキストとして報告・受理します — このプロパティは共有の書き込みモデルに一切乗らないため、`WriteRequirements` は `SetBehaviorTreeNodeProperty` の書き込み経路が実際に照会する唯一の Capability である `BehaviorTreeNodeReferenceEdit` だけを名指しします。`GetStackInputData` の `WriteRequirements` は `AddSetParameterEntry` で既定値を変更するのに何が要るかを述べます。プレーンなオブジェクト参照を既に保持している入力は、依然として `ValueMode: "Unknown"` と空の `Value` を返します — `AddSetParameterEntry` 自身の型許可リストにその種類のエントリを作る経路がそもそも存在しないためです。これは書き込める範囲の欠落であって、このコマンドの読み取り側の欠落ではありません。
 
 > ⚠️ **破壊的変更**: `GetAnimNotifyClassSchema` と `GetPoseSearchChannelClassSchema` は従来、この報告をプロパティエントリの直下に、独自の名前 — `bIsWritable` / `NotWritableReason` / `WriteInputForm` / `RequiredCapabilities` — で返しており、`HeldCapabilities` / `MissingCapabilities` に相当するものは一切ありませんでした。両コマンドとも、上の表と同じ入れ子の `WriteRequirements` オブジェクトを返すようになったため、旧来のフラットな名前を読み続けている呼び出し側には何も見つかりません。`WriteRequirements.IsWritable` / `.RefusalReason` / `.WriteInputForm` / `.RequiredCapabilities` を読んでください。`.HeldCapabilities` / `.MissingCapabilities` は改名ではなく新しい情報です。どのプロパティが書けるか、書くのに何が要るかという判定自体は変わっておらず、変わったのは読む位置だけです。これにより、UAIP 全体で「書き込みに何が必要か」を返す取得系コマンドが、すべて同じ形になりました。
 
@@ -305,6 +307,8 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 > **`FocusEditorTab` の `GraphName` — 応答の契約。** `GraphName` を非空の文字列で指定した呼び出しに限り、`Result` に 4 つのフィールドが載る: `WindowFocusRequested`（bool — エディタウィンドウを前面化する**要求を行った**ことの記録。OS が実際に最前面へ持って行ったことまでは保証しない）、`GraphNameRequested`（bool）、`GraphNameApplied`（bool）、`Reason`（`Applied` / `BlueprintEditorInterfaceUnavailable` / `OpenFailed` の 3 値だけを取る閉じた列挙）。成否判定には `Success` だけでなく `GraphNameApplied` と `Reason` を読むこと — `BlueprintEditorInterfaceUnavailable` の場合も `Success: true` が返る。これは開いているエディタに Blueprint グラフのナビゲーション手段がそもそも存在しない（例: `RigVM.UseNewEditor` を有効にした ControlRig エディタ）という構造的な状態であり、同じ指定で呼び直しても変わらないため。`GraphName` を省略または空文字列にした呼び出しでは、この 4 フィールドはいずれも設定されない — 呼び出し側は「`Result` が無い」場合と「`Result.GraphNameRequested` が `false`」の場合の両方を扱う必要がある。グラフ移動が適用されると、エディタの現在の UI 選択状態がクリアされ、Widget Blueprint を Designer モードで開いている場合は先に Graph モードへ切り替わる（グラフを表示するために必要）。この 2 つはいずれもグラフを開く処理より前に起きるため、その後グラフを開く処理自体が `OpenFailed` で失敗した場合でも、既に起きていることがある。
 >
 > ⚠️ **破壊的変更** — `GraphName` のエラーコードのうち 2 件が、`ExecutionFailed` から再試行対象外のコードへ変わった。シナリオの `RetryCount` は `ExecutionFailed` だけを再試行対象にしており、この 2 件はいずれも同じ指定で再試行しても成功しようがないため: アセットに存在しないグラフ名を指定した場合は `NotFound`（従来は `ExecutionFailed`）、Blueprint 系ではないアセットに `GraphName` を指定した場合は `InvalidParams`（従来は `ExecutionFailed`）を返す。`OpenFailed`（ナビゲーション手段は取得できたが実際にグラフを開く処理自体が失敗した場合）は変更なく `ExecutionFailed` のままで、こちらは再試行に意味がある。
+>
+> **`GraphName` が同一アセット内の複数のグラフに一致する場合、いずれか 1 つが開かれるが、どれが選ばれるかはこの契約の対象外**であり、特定の 1 つが選ばれ続けることを前提にした使い方はしないこと。呼び出し側がどちらを意図していたかを読み取る仕組みではなく、返り値も変わらない — `GraphNameApplied` と `Reason` はグラフを開けたかどうかを表すだけで、どのグラフを開いたかは表さない。実際に名前が重なる状況はまれ: 同じ階層に並ぶグラフ（関数・マクロ・イベントグラフ・インターフェース実装のグラフ）同士は、そもそも同じ名前で共存させる手段がエディタに無い。名前が重なりうるのは**折りたたんだグラフ**が絡む場合だけで、折りたたんだグラフの中にあるグラフが外側のグラフと名前が重なることがある。
 
 ### Toolset ブリッジ — LiveCoding（1 件）🧩
 
@@ -700,13 +704,31 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください |
 | `DeleteBlueprintVariable` | メンバー変数を削除 |
 | `SetBlueprintVariableDefault` | Blueprint 変数の CDO デフォルト値を更新 |
-| `AddGraphNode` | Blueprint グラフにノードを追加（VariableGet/Set・FunctionCall・Event 等） |
+| `AddGraphNode` | Blueprint アセットの**あらゆるグラフ**にノードを追加（VariableGet/Set・FunctionCall・Event 等）— イベントグラフと関数グラフに限らない。対象は `GraphName` または `GraphGuid` で選ぶ。グラフの選び方・複数一致時の扱い・2 段階の受け入れ判定は表の下の注記を参照 |
 | `DeleteGraphNode` | グラフノードを GUID 指定で削除（EntryNode・Tunnel は削除不可） |
 | `ConnectBlueprintPins` | Blueprint グラフの 2 ピンを接続 |
 | `DisconnectBlueprintPins` | ピン接続を切断 |
 | `ListBlueprintPins` | Blueprint グラフノードのピン一覧 |
 | `SetPinDefaultValue` | Blueprint グラフノードのピンにデフォルト値を設定（DefaultValue / DefaultObject / DefaultTextValue を型に応じて自動選択） |
 | `GetPinDefaultValue` | Blueprint グラフノードのピンのデフォルト値を取得 |
+
+> **`AddGraphNode` は、イベントグラフと関数グラフだけでなくアセット内のすべてのグラフを見るようになった。** マクロ・インターフェース実装のグラフ・折りたたんだグラフの中にあるグラフも `GraphName` で指せるようになった — この変更より前は、グラフが実在していても `NotFound`（この変更より前は `ExecutionFailed`）で終わっていた。
+>
+> ⚠️ **破壊的変更 — `GraphName` の一致判定が大文字・小文字を区別しなくなった。** 従来は大文字・小文字まで一致しないと見つからなかったが、一致するようになった。アセット内に大文字・小文字だけが違う同名のグラフが 2 つある場合、**従来は正確な大文字・小文字で一致する片方だけが選ばれて成功していた呼び出しが、両方に当たるようになり、複数一致として断られる**（下記参照）ようになる。
+>
+> **`GraphGuid`（Optional String）は、名前の代わりに `UEdGraph::GraphGuid` でグラフを 1 つ選ぶパラメータで、`GraphName` と排他** — 両方指定すると `InvalidParams`。直前の呼び出しが同じ `GraphName` を複数一致として断っていない限り、指定する必要はない。
+>
+> **`GraphName` が複数のグラフに一致した場合、何も追加しない。** コマンドは `InvalidParams` を返し、`Result.MatchedGraphGuids` に候補となる各グラフの `GraphGuid`（文字列）が入る。そのいずれかをそのまま `GraphGuid` として渡し直せば、1 つに絞って対象にできる（加工は不要）。空の `GraphName` と文字列 `"EventGraph"` は影響を受けず、どちらも引き続きイベントグラフを直接選び、この複数一致判定には入らない。
+>
+> **ノードをその場所に置けるかどうかは 2 段階でチェックされ、これを行うのは `AddGraphNode` だけ**（この表の他のコマンドは、新しく置く場所を決めるのではなく既存のノード・ピンに対して操作するため、このチェックは行わない）:
+> - *そもそもそのグラフが編集を受け付けるか？* イベントディスパッチャ自身の定義グラフ、インターフェースアセット自身が持つグラフ（インターフェースを実装した側の Blueprint にあるグラフは編集できる）、数式グラフ、エディタが内部的に生成したグラフは、いずれも `NotAllowed` で断る。
+> - *この種類のノードがこの種類のグラフに置けるか？* ステートマシンの全体図（ステートと遷移が並ぶ画面）とブレンドスペースのグラフは、その組み合わせを `InvalidParams` で断る — グラフ自体は編集を受け付けるが、このノード種別は受け付けない。ここでの判定はエディタ自身のグラフスキーマがその組み合わせを受け入れるかどうかであり、置いた結果が実行時に意味を持つかどうかは判定しない（例: ステートの中身のポーズ評価グラフに一般的なノードを置くことはこの判定を通過するが、そこでは何も機能しない場合がある）。
+>
+> **存在しないグラフ名を指定した場合、`NotFound` を返すようになった**（従来は `ExecutionFailed`）— 同じ要求を繰り返しても成功しようがないため、シナリオの `RetryCount` がこれ以上無駄な再試行に使われることがなくなった。
+
+> ⚠️ **破壊的変更 — `ConnectBlueprintPins` / `DisconnectBlueprintPins` / `DeleteGraphNode` / `GetPinDefaultValue` / `ListBlueprintPins` / `SetPinDefaultValue` は、指定したノードやピンが存在しないとき `NotFound` を返すようになった**（従来は `ExecutionFailed`）。シナリオの `RetryCount` は `ExecutionFailed` だけを再試行対象にしており、この変更より前は存在しない `NodeId` や `PinName` を指定した要求も再試行の対象になっていた（同じ要求を繰り返しても成功しようがないにもかかわらず）。
+>
+> `GetPinDefaultValue` にはさらに、この変更で修正した欠陥がある。`PinName` が対象ノードのどのピンにも一致しない場合の分岐がそもそも無く、見つからなかったピンをそのまま読みに行く未検査のアクセス（未定義動作になりうる）になっていた。現在は、ノードのどのピンにも一致しない `PinName` に対して、この表の他のコマンドと同じく `NotFound` を返す。
 
 ### コンポーネント — SCS（8）
 
@@ -871,7 +893,7 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `GetSystemData` 🧩 | システムのデータ構造 |
 | `GetEmitterData` 🧩 | エミッターのデータ構造 |
 | `GetRendererData` 🧩 | レンダラーのデータ構造 |
-| `GetStackInputData` 🧩 | モジュールスタック入力値 |
+| `GetStackInputData` 🧩 | モジュールスタック入力値 — 名前・型・値モード（Local/Linked/Dynamic/DataInterface/Expression）・`AddSetParameterEntry` がそのまま書き戻せる形の現在値・入れ子の `WriteRequirements` オブジェクトを返す |
 | `UEnum_Info` 🧩 | UEnum 情報 |
 | `GetAvailableNiagaraRendererClasses` 🧩 | `UNiagaraRendererProperties` 派生クラスの一覧（上限 200 件）。返された `ClassPath` を `AddRenderer` の `RendererClass` 引数として使用する。 |
 
@@ -1282,8 +1304,12 @@ Anim Blueprint グラフと StateMachine 編集。
 | `AddAnimLayerGraph` | ルート AnimBlueprint 上に自己完結型の Anim Layer グラフを新規作成。派生 AnimBlueprint 上では拒否される |
 | `RemoveAnimLayerGraph` | 自己完結型の Anim Layer グラフを削除。`RemoveReferencingNodes` が true の場合、参照している `LinkedAnimLayer` ノードも合わせて削除 |
 | `ImplementAnimLayerInterface` | `UAnimLayerInterface` 派生インターフェースを実装し、宣言された anim-layer 関数ごとに 1 つずつレイヤーグラフを生成。`AnimBlueprintReferenceEdit` が必要（実装インターフェース一覧へクラス参照を書き込むため） |
-| `AddLinkedAnimLayerNode` | 自己完結型レイヤー、または（`InterfacePath` 指定時は）実装済みインターフェースのレイヤー関数を指す `LinkedAnimLayer` ノードを配置。後者はさらに `AnimBlueprintReferenceEdit` が必要 |
+| `AddLinkedAnimLayerNode` | 自己完結型レイヤー、または（`InterfacePath` 指定時は）実装済みインターフェースのレイヤー関数を指す `LinkedAnimLayer` ノードを配置。後者はさらに `AnimBlueprintReferenceEdit` が必要。ノードを配置するグラフは `TargetGraph`（名前）または `GraphGuid` で選ぶ。詳細は表の下の Note を参照 |
 
+> **Note — `AddLinkedAnimLayerNode` の `TargetGraph` / `GraphGuid`（ノードを配置するグラフ）**: `TargetGraph`（Optional String。未指定は最初の AnimGraph）と `GraphGuid`（Optional String。`UEdGraph::GraphGuid`）は排他 — 両方指定すると `InvalidParams`。`TargetGraph` はまず AnimBlueprint 自身の AnimGraph（ルートグラフとその自己完結型レイヤー）の中で探し、そこで一致が無かった場合に限り、実装済みインターフェースのレイヤーグラフへフォールバックする — そのため自己完結型レイヤーが同名のインターフェースレイヤーに負けることはなく、このフォールバック自体が自己側の候補との間で複数一致になることもない（自己側を先に網羅的に確認するため）。実際に一致が生じた側の集合内で複数のグラフに一致した場合は `InvalidParams` を返し、`Result.MatchedGraphGuids` に各候補の `GraphGuid` が入る — いずれかを `GraphGuid` として渡し直せば絞り込める。どちらの集合にも存在しない名前を指定した場合は `NotFound`。
+>
+> **Note — `LayerName` / `InterfacePath`（ノードが指すレイヤー）は `TargetGraph` とは別系統の解決**: `InterfacePath` を指定しない場合は AnimBlueprint 自身の自己完結型レイヤーの中だけを `LayerName` で探し、指定した場合はそのインターフェース自身のレイヤー関数の中だけを探す — 両方を探すことはないため、この解決には自己実装とインターフェース実装の優先順位という概念自体が存在しない。その一方の集合の中で `LayerName` が複数のグラフに一致した場合（自己完結型レイヤー同士、または 1 つのインターフェースが持つレイヤー関数同士は名前が一意であることを前提としている）も同じく `InvalidParams` + `Result.MatchedGraphGuids` を返す — これはエンジンが通常許さないはずの名前衝突に対する防御的なチェックであり、日常的に起きる想定ではない。
+>
 > **Note — プロジェクト定義・プラグイン定義の AnimGraph ノードクラスは Capability で制御されます**: このドメインが従来から信頼してきた 3 モジュール（`AnimGraph` / `AnimGraphRuntime` / `Engine`）由来の `NodeClass` は、従来どおり追加できます。それ以外のモジュール由来のクラス — プロジェクトやプラグインが定義した `UAnimGraphNode_Base` 派生クラス — は `AnimBlueprintCustomTypeEdit` が必要になりました。Material とは異なり、このドメインには対になる「危険なノード」用の Capability はありません — 8 種のノード（`UAnimGraphNode_StateResult` / `TransitionResult` / `TransitionPoseEvaluator` / `Root` / `StateMachineBase` / `LinkedAnimGraph` / `LinkedAnimLayer` / `CustomProperty`）は、**どの Capability を持っていても** AnimGraph のルートには置けません — これらは内部専用・サブグラフ専用のノード種別であり、グラフがその方向からの追加を受け付けないという話であって、権限で解禁できる危険性ではありません。`AnimBlueprintCustomTypeEdit` を含むいかなる Capability もこの結果を変えません。[Safety & Capabilities](safety.md#blueprintanimblueprint-編集) を参照。
 >
 > この確認は `AddAnimGraphNode` だけに限りません — ゲートされたクラスの既存ノードを編集・接続・切断・コンパイル・削除する場合も同じ `AnimBlueprintCustomTypeEdit` があらためて確認されます。削除・切断固有の破壊的変更を含め、詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
@@ -1302,7 +1328,9 @@ Unified Animation Framework のグラフを AnimBlueprint に埋め込む唯一�
 
 | コマンド | 説明 |
 |---|---|
-| `AddUAFGraphNodeToAnimBlueprint` | `UAnimGraphNode_AnimNextGraph` ノードを `TargetGraph`（既定は最初の AnimGraph）に配置し、`UAFGraphPath` で指定した `UUAFAnimGraph` アセットを指す。`UAFGraphPath` はこのエディタに既にロード済みのものだけを解決対象とし、強制ロードは行わない。解決するのは必要な Capability がすべて確認できた後。`AnimBlueprintGraphEdit` / `AnimBlueprintReferenceEdit` / `AnimBlueprintCustomTypeEdit`（ノードクラスがこのドメインの同梱外モジュール由来のため）が必要。Play-in-Editor 中は不可 |
+| `AddUAFGraphNodeToAnimBlueprint` | `UAnimGraphNode_AnimNextGraph` ノードを `TargetGraph`（既定は最初の AnimGraph）、または排他の `GraphGuid` で指定したグラフに配置し、`UAFGraphPath` で指定した `UUAFAnimGraph` アセットを指す。`UAFGraphPath` はこのエディタに既にロード済みのものだけを解決対象とし、強制ロードは行わない。解決するのは必要な Capability がすべて確認できた後。`AnimBlueprintGraphEdit` / `AnimBlueprintReferenceEdit` / `AnimBlueprintCustomTypeEdit`（ノードクラスがこのドメインの同梱外モジュール由来のため）が必要。Play-in-Editor 中は不可 |
+
+> **Note — `TargetGraph` / `GraphGuid` の複数一致**: `TargetGraph` は AnimBlueprint 自身の AnimGraph（ルートグラフと自己完結型レイヤー）の中だけを探す — `AddLinkedAnimLayerNode` と異なり、実装済みインターフェースのレイヤーグラフへはフォールバックしない。AnimBlueprint 自身が持つグラフのうち複数に名前が一致した場合は `InvalidParams` を返し、`Result.MatchedGraphGuids` に各候補の `GraphGuid` が入る。いずれかを `GraphGuid` として渡し直せば絞り込める。存在しないグラフ名を指定した場合は `NotFound`。
 
 ---
 
@@ -1490,6 +1518,7 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 | `AddBehaviorTreeDecoratorNode` | 親ノードに Decorator を附加 — 確認内容は上と同じ |
 | `AddBehaviorTreeServiceNode` | 親 Composite ノードに Service を附加 — 確認内容は上と同じ |
 | `RemoveBehaviorTreeNode` | NodeId 指定でノードを削除 — そのノードのクラスが要求する Capability が同じく必要です |
+| `GetBehaviorTreeNodeProperties` | ノードの `NodeInstance` が宣言する全プロパティ — `PropertyName`・`PropertyType`（C++ の型名）・`SetBehaviorTreeNodeProperty` がそのまま書き戻せる形の `PropertyValue`・入れ子の `WriteRequirements` オブジェクトを返す。`FBlackboardKeySelector` プロパティはベアなキー名として報告され、書き込みコマンド側の特別扱いと一致する。読み取り専用、PIE 中も許可（縮退モード）。要 `EditorInspect` |
 | `SetBehaviorTreeNodeProperty` | ノードプロパティを設定（FBlackboardKeySelector / 汎用 ImportText_Direct）。書き込み対象ノードのクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です。ツリーに Blackboard アセットが設定されていない場合、キーセレクタへの書き込みは拒否されるようになりました — Blackboard が無いとキー名の妥当性を確認できず、従来は名前と種類が食い違った状態が残ることがありました。拒否された書き込みはアセットを dirty にせず、空の undo エントリも残しません |
 | `ListBlackboardKeys` | Blackboard アセットのキー一覧（PIE 中も許可） |
 | `AddBlackboardKey` | キーを追加（重複名チェック）。`/Script/AIModule` 以外のキー型と、書き込み側が指す先を選べる 2 種のキー型には、それぞれ Capability が要ります — 下の Note を参照してください |
@@ -2195,6 +2224,10 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 | `GetConnectedPins` | ピンの接続情報 |
 | `ConnectControlRigPins` | RigVM グラフのピンを接続 |
 | `DisconnectControlRigPins` | ピン接続を切断 |
+
+> **修正 — グラフが見つからない場合とアセットが読めない場合が、別のエラーコードで返るようになった。** `GraphName` でモデルを解決する以下のコマンド（`GetGraph` / `AddGraph` / `DeleteGraph` / `AddGraphNode` / `AddEventNode` / `AddVariableNode` / `FindNodes` / `GetConnectedPins` / `GetNodeInfo` / `GetNodePosition` / `GetPinValue` / `ListNodes` / `ListPins` / `SetNodePosition` / `SetPinValue` / `ResetPinValue` / `DuplicateNode`）は従来、`GraphName` がどのモデルにも一致しない場合と、対象アセット自身の ControlRigBlueprint 参照そのものが無効な場合の両方で、同じ `ExecutionFailed`「Graph is null.」を返していた — コード上には「見つかりません」用の専用応答が用意されていたが、内部では両方の状況が同じ結果として報告されていたため、実際には一度も返っていなかった。現在はこの 2 つを区別する: アセット自体は正しく読み込めているのに `GraphName` がどのモデルにも一致しない場合は `NotFound`、アセット自身の ControlRigBlueprint が読めない場合は引き続き `ExecutionFailed` を返す。呼び出し側は「別の `GraphName` を試す価値があるか」と「アセット自体が読み込めるまで再試行しても無駄か」を区別できるようになった。
+>
+> ⚠️ **破壊的変更 — `GraphName` の部分一致は日常的に起こりうるものであり、アセットを変更するコマンドは複数一致時にいずれか 1 つを選ぶのではなく断るようになった。** `GraphName` は先頭一致（プレフィックス）を受け付ける — 短い名前を渡すと、それで始まる完全なモデル名を持つグラフに一致する。これは意図して用意された省略記法であり、まれな例外ではない。この方式で複数のモデルに一致した場合、従来はどのコマンドでも黙っていずれか 1 つが選ばれていた。読み取り専用の 8 コマンド — `FindNodes` / `GetConnectedPins` / `GetGraph` / `GetNodeInfo` / `GetNodePosition` / `GetPinValue` / `ListNodes` / `ListPins` — は引き続きこの挙動のままで、複数一致でもいずれか 1 つを選んで実行する（誤ったグラフを読んでも修正すべき副作用が無いため）。一方、アセットを変更する 7 コマンド — `AddEventNode` / `AddVariableNode` / `DeleteGraph` / `DuplicateNode` / `ResetPinValue` / `SetNodePosition` / `SetPinValue` — は、`GraphName` が複数のモデルに一致した場合、**何も変更せず** `InvalidParams` を返し、`Result.MatchedFullGraphNames` に各候補の完全なモデル名を一覧で返すようになった。返された完全な名前のいずれかを `GraphName` として渡し直せば、1 つのグラフに絞り込める — この解決のために新しいパラメータは追加されていない（Blueprint / AnimBlueprint が使う `GraphGuid` / `MatchedGraphGuids` の仕組みとは異なり、ControlRig にはもともと省略記法から導ける曖昧さのない完全な名前があるため）。
 
 #### 変数（5）
 

@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1161 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1582 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1162 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1583 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -66,7 +66,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Editor SoundCue | `UAIP.Editor.SoundCue` | 8 | — | — |
 | Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
-| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 17 | 7 | — |
+| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 18 | 7 | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
 | Editor Sequencer | `UAIP.Editor.Sequencer` | 129 | 61 | — |
@@ -213,7 +213,7 @@ The matching `Get*` command attaches a `WriteRequirements` object to the value i
 
 A few commands decide writability on their own terms and do not attach this report. For those, attempt the write: the refusal names the capability that is missing. The guidance is what is absent, not the way forward.
 
-Eight further read commands now carry the report, in one of two shapes depending on how each already returns its values:
+Ten further read commands now carry the report, in one of two shapes depending on how each already returns its values:
 
 | Command | Where the report sits |
 |---|---|
@@ -224,8 +224,10 @@ Eight further read commands now carry the report, in one of two shapes depending
 | `GetAnimNotifyClassSchema` (`UAIP.Editor.AnimSequence`) | a `WriteRequirements` object nested in each property entry |
 | `GetAnimNotifyProperty` (`UAIP.Editor.AnimSequence`) | a `WriteRequirements` object nested in each property entry — and directly in `Data`, beside `PropertyName` and `Value`, when a single property was requested |
 | `GetPoseSearchChannelClassSchema` (`UAIP.Editor.MotionMatching`) | a `WriteRequirements` object nested in each property entry |
+| `GetBehaviorTreeNodeProperties` (`UAIP.Editor.BehaviorTree`) | a `WriteRequirements` object nested in each property entry |
+| `GetStackInputData` (`UAIP.Editor.Niagara`) | a `WriteRequirements` object nested in each stack input entry |
 
-The value maps themselves (`Properties`, `Params`) did not change shape, so a caller that only reads values is unaffected. On the two Enhanced Input getters the report covers **every** editable property, including the references and containers the value map used to skip — those are precisely the ones a capability is needed for. `GetWorldConditionInfo` reports an empty `RequiredCapabilities` throughout: that path accepts no reference or container at all, so there is no capability to ask an operator for, and naming one would point at a permission that unlocks nothing. `GetAnimNotifyProperty` uses the same field names and the same nesting as `GetAnimNotifyClassSchema`, so the two are read the same way; the difference is that its verdict is resolved against the actual notify instance addressed by `NotifyGuid` — the object `SetAnimNotifyProperty` writes to — rather than against the class default.
+The value maps themselves (`Properties`, `Params`) did not change shape, so a caller that only reads values is unaffected. On the two Enhanced Input getters the report covers **every** editable property, including the references and containers the value map used to skip — those are precisely the ones a capability is needed for. `GetWorldConditionInfo` reports an empty `RequiredCapabilities` throughout: that path accepts no reference or container at all, so there is no capability to ask an operator for, and naming one would point at a permission that unlocks nothing. `GetAnimNotifyProperty` uses the same field names and the same nesting as `GetAnimNotifyClassSchema`, so the two are read the same way; the difference is that its verdict is resolved against the actual notify instance addressed by `NotifyGuid` — the object `SetAnimNotifyProperty` writes to — rather than against the class default. `GetBehaviorTreeNodeProperties` reports and accepts a `FBlackboardKeySelector` property as the bare key name in plain text rather than the struct's own fields — that property never reaches the shared write model, so its `WriteRequirements` names only `BehaviorTreeNodeReferenceEdit`, the one capability `SetBehaviorTreeNodeProperty`'s own write path actually checks for it. `GetStackInputData`'s `WriteRequirements` describes what `AddSetParameterEntry` would need to replace an input's default value; an input already holding a plain object reference still reports `ValueMode: "Unknown"` and an empty `Value`, because `AddSetParameterEntry`'s own type allow-list has no route to create that kind of entry in the first place — the gap is in what can be written, not in what this command can read.
 
 > ⚠️ **Breaking change**: `GetAnimNotifyClassSchema` and `GetPoseSearchChannelClassSchema` used to report this per property directly on the property entry, under their own names — `bIsWritable`, `NotWritableReason`, `WriteInputForm` and `RequiredCapabilities` — with no `HeldCapabilities` / `MissingCapabilities` at all. Both now attach the identical nested `WriteRequirements` object shown above instead, so a caller still reading the old flat names finds nothing there. Read `WriteRequirements.IsWritable`, `.RefusalReason`, `.WriteInputForm` and `.RequiredCapabilities`; `.HeldCapabilities` / `.MissingCapabilities` are new information, not a renamed field. Nothing about which properties are writable, or what a write needs, changed — only where the answer is reported. With this, every UAIP read command that reports what a write would take now uses the same shape.
 
@@ -305,6 +307,8 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 > **`FocusEditorTab`'s `GraphName` — response contract.** When `GraphName` is a non-empty string, `Result` carries four fields: `WindowFocusRequested` (bool — records that bringing the editor window to front was *requested*; it does not guarantee the OS actually put it in the foreground), `GraphNameRequested` (bool), `GraphNameApplied` (bool), and `Reason` — a closed set of three strings, `Applied` / `BlueprintEditorInterfaceUnavailable` / `OpenFailed`. Read `GraphNameApplied` and `Reason` rather than `Success` alone: a `BlueprintEditorInterfaceUnavailable` reason still reports `Success: true`, because the open editor genuinely has no Blueprint graph-navigation entry point (for example a ControlRig editor with `RigVM.UseNewEditor` enabled) and retrying the same input cannot change that. None of these four fields are set when `GraphName` is omitted or empty — callers must handle both "`Result` absent" and "`Result.GraphNameRequested` is `false`". Applying a graph move clears the editor's current UI selection, and for a Widget Blueprint opened in Designer mode, switches it to Graph mode first (needed to display the graph at all); both happen before the graph itself is opened, so they can already have taken effect even when the open subsequently fails with `OpenFailed`.
 >
 > ⚠️ **Breaking change** — two of `GraphName`'s error codes changed from `ExecutionFailed` to a non-retryable code, because a scenario's `RetryCount` only retries `ExecutionFailed` and retrying either of these can never succeed on the same input: naming a graph that does not exist in the asset now answers `NotFound` (previously `ExecutionFailed`); naming `GraphName` on an asset that is not Blueprint-derived now answers `InvalidParams` (previously `ExecutionFailed`). `OpenFailed` — a genuine failure to open the graph after its navigation entry point was found — is unchanged and remains `ExecutionFailed`, since that one is still worth retrying.
+>
+> **When `GraphName` matches more than one graph in the asset, one of them is opened and which one is chosen is not defined by this contract** — do not build any behavior around a particular one being picked, since nothing here is guaranteed to keep picking it on a later call. This does not read a caller's mind about which one was intended, and it does not change what is returned: `GraphNameApplied` and `Reason` describe whether opening succeeded, not which graph was opened. In practice a name collision is rare: sibling graphs at the same nesting level (functions, macros, the event graph, an interface's implementation graphs) can never carry the same name — the editor offers no way to create that. A name can only be shared when a collapsed graph is involved: a graph nested inside a collapsed graph can end up sharing a name with a graph outside it.
 
 ### Toolset bridges — LiveCoding (1) 🧩
 
@@ -700,13 +704,31 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 | `AddBlueprintVariable` | Add a member variable to a Blueprint (type, default, tooltip). The default is now validated once the variable's type has resolved, and a refused default **removes the variable again** rather than leaving it behind with an empty value. The default is engine text only — a reference or container default is refused whatever the session holds; set those afterwards with `SetBlueprintDefault`, which takes `ValueJson` |
 | `DeleteBlueprintVariable` | Remove a member variable |
 | `SetBlueprintVariableDefault` | Update a Blueprint variable's CDO default value |
-| `AddGraphNode` | Add a node to a Blueprint graph (VariableGet/Set, FunctionCall, Event, ...) |
+| `AddGraphNode` | Add a node to any graph in a Blueprint asset (VariableGet/Set, FunctionCall, Event, ...) — not just the event graph and function graphs. `GraphName` or `GraphGuid` selects the target; see the note below the table for graph selection, ambiguity, and the two-stage acceptance check |
 | `DeleteGraphNode` | Delete a graph node by GUID (EntryNode / Tunnel cannot be deleted) |
 | `ConnectBlueprintPins` | Connect two pins in a Blueprint graph |
 | `DisconnectBlueprintPins` | Disconnect a pin connection |
 | `ListBlueprintPins` | List pins of a Blueprint graph node |
 | `SetPinDefaultValue` | Set a default value on a Blueprint graph node pin (auto-selects DefaultValue / DefaultObject / DefaultTextValue based on pin type) |
 | `GetPinDefaultValue` | Get the current default value of a Blueprint graph node pin |
+
+> **`AddGraphNode` now looks at every graph in the asset, not just the event graph and function graphs.** Macros, interface-implementation graphs, and graphs nested inside a collapsed graph are now reachable by `GraphName` — previously naming one of those answered `NotFound` (before this change, `ExecutionFailed`) even though the graph existed.
+>
+> ⚠️ **Breaking change — `GraphName` matching is now case-insensitive.** It used to require an exact-case match; a name differing only in case now matches. If the asset holds two graphs whose names differ only in case, a call that used to succeed by matching the one graph with the exact case now hits both and is rejected as ambiguous (see below) instead of succeeding.
+>
+> **`GraphGuid` (optional string) selects a graph by `UEdGraph::GraphGuid` instead of by name, and is mutually exclusive with `GraphName`** — supplying both is `InvalidParams`. Omit it unless a prior call already rejected the same `GraphName` as ambiguous.
+>
+> **When `GraphName` matches more than one graph, nothing is added.** The command answers `InvalidParams` and `Result.MatchedGraphGuids` carries every candidate's `GraphGuid` as a string. Pass one of those values back as `GraphGuid` to target exactly one of them — no other formatting is needed. Empty `GraphName` and the literal `"EventGraph"` are unaffected: both still select the event graph directly and never enter this ambiguity check.
+>
+> **Two separate checks decide whether the node can go where `GraphName` / `GraphGuid` points, and only `AddGraphNode` runs them** — the other commands in this table do not, because they act on a node or pin that already exists rather than deciding where a new one may go:
+> - *Does the graph accept edits at all?* An event dispatcher's own definition graph, a graph belonging to the interface asset itself (as opposed to a Blueprint that implements the interface — that one is editable), a math-expression graph, and graphs the editor generates internally all refuse with `NotAllowed`.
+> - *Does this kind of node belong in this kind of graph?* A state machine's top-level graph (the one showing states and transitions) and a Blend Space graph refuse the combination with `InvalidParams` — the graph accepts editing in general, but not this node type. Passing the schema check here means the editor's own graph schema accepts the combination; it says nothing about whether the resulting graph makes sense at runtime (e.g. a generic node placed inside a state's pose-evaluation graph passes this check but may not do anything useful there).
+>
+> **Naming a graph that does not exist now answers `NotFound`** (previously `ExecutionFailed`) — repeating the same request cannot succeed, so a scenario's `RetryCount` no longer wastes a retry on it.
+
+> ⚠️ **Breaking change — `ConnectBlueprintPins`, `DisconnectBlueprintPins`, `DeleteGraphNode`, `GetPinDefaultValue`, `ListBlueprintPins`, and `SetPinDefaultValue` now answer `NotFound` when the node or pin they were asked for does not exist** (previously `ExecutionFailed`). A scenario's `RetryCount` only retries `ExecutionFailed`, so before this change a request naming a nonexistent `NodeId` or `PinName` was retried anyway, even though repeating it can never succeed.
+>
+> `GetPinDefaultValue` additionally had a defect fixed here: when `PinName` named no pin on the target node, the handler had no branch for that case at all and fell through to reading a pin that was never found, an unchecked access with undefined behavior. It now reports `NotFound` for a `PinName` that does not match any pin on the node, the same as the other commands in this list.
 
 ### Components — SCS (8)
 
@@ -871,7 +893,7 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 | `GetSystemData` 🧩 | System data structure |
 | `GetEmitterData` 🧩 | Emitter data structure |
 | `GetRendererData` 🧩 | Renderer data structure |
-| `GetStackInputData` 🧩 | Module stack input value |
+| `GetStackInputData` 🧩 | Module stack input value — name, type, value mode (Local/Linked/Dynamic/DataInterface/Expression), the current value in the form `AddSetParameterEntry` accepts back, and a nested `WriteRequirements` object |
 | `UEnum_Info` 🧩 | UEnum information |
 | `GetAvailableNiagaraRendererClasses` 🧩 | List of `UNiagaraRendererProperties`-derived classes (max 200). Use the returned `ClassPath` as the `RendererClass` argument of `AddRenderer`. |
 
@@ -1282,8 +1304,12 @@ Anim Blueprint graph and StateMachine editing.
 | `AddAnimLayerGraph` | Create a new self-contained Anim Layer graph on a root AnimBlueprint; refused on a derived AnimBlueprint |
 | `RemoveAnimLayerGraph` | Remove a self-contained Anim Layer graph, and every `LinkedAnimLayer` node still referencing it when `RemoveReferencingNodes` is true |
 | `ImplementAnimLayerInterface` | Implement a `UAnimLayerInterface`-derived interface, generating one layer graph per anim-layer function it declares. Requires `AnimBlueprintReferenceEdit` (writes a class reference into the implemented interface list) |
-| `AddLinkedAnimLayerNode` | Place a `LinkedAnimLayer` node pointing at a self-contained layer, or (with `InterfacePath` set) at one of an already-implemented interface's layer functions — the latter additionally requires `AnimBlueprintReferenceEdit` |
+| `AddLinkedAnimLayerNode` | Place a `LinkedAnimLayer` node pointing at a self-contained layer, or (with `InterfacePath` set) at one of an already-implemented interface's layer functions — the latter additionally requires `AnimBlueprintReferenceEdit`. `TargetGraph` (name) or `GraphGuid` selects which graph the node lands in; see the note below the table |
 
+> **Note — `AddLinkedAnimLayerNode`'s `TargetGraph` / `GraphGuid` (which graph the node lands in)**: `TargetGraph` (optional string; unset defaults to the first AnimGraph) and `GraphGuid` (optional string, `UEdGraph::GraphGuid`) are mutually exclusive — supplying both is `InvalidParams`. `TargetGraph` is looked up first among the AnimBlueprint's own AnimGraphs (the root graph plus its self-contained layers); only when nothing matches there does the lookup fall back to the layer graphs of already-implemented interfaces — so a self-contained layer never loses to an interface layer of the same name, and this fallback itself cannot report ambiguity against the self set (self graphs are checked exhaustively first). A name matching more than one graph within whichever set actually produced the match answers `InvalidParams` with `Result.MatchedGraphGuids` carrying every candidate's `GraphGuid`; pass one of those back as `GraphGuid` to disambiguate. Naming a graph that exists nowhere answers `NotFound`.
+>
+> **Note — `LayerName` / `InterfacePath` (which layer the node points at) is a separate resolution from `TargetGraph`**: `InterfacePath` unset searches only the AnimBlueprint's own self-contained layers for `LayerName`; `InterfacePath` set searches only that interface's own layer functions — never both, so this resolution has no self-vs-interface priority to apply. A `LayerName` matching more than one graph within that one set (self-contained layers are expected to be uniquely named, as are one interface's own layer functions) is `InvalidParams` with `Result.MatchedGraphGuids`, same as above; this is a defensive check for a name collision the engine is not expected to allow, not a routine occurrence.
+>
 > **Note — project- and plugin-defined AnimGraph node classes are capability-gated**: a `NodeClass` from one of the three modules this domain has always trusted (`AnimGraph`, `AnimGraphRuntime`, `Engine`) is added the same way as before. A class outside those modules — a project- or plugin-defined `UAnimGraphNode_Base` subclass — now requires `AnimBlueprintCustomTypeEdit`. Unlike Material, there is no companion "dangerous node" capability here: eight node kinds (`UAnimGraphNode_StateResult`, `TransitionResult`, `TransitionPoseEvaluator`, `Root`, `StateMachineBase`, `LinkedAnimGraph`, `LinkedAnimLayer`, `CustomProperty`) cannot be placed at the AnimGraph root **regardless of any capability held** — they are internal- or sub-graph-only node kinds the graph does not accept from that direction, not a danger a capability grant unlocks. Neither `AnimBlueprintCustomTypeEdit` nor any other capability changes this outcome; see [Safety & Capabilities](safety.md#blueprint--anim-blueprint-editing).
 >
 > This check is not limited to `AddAnimGraphNode` — see [Capability-gated custom types](#capability-gated-custom-types) for how `AnimBlueprintCustomTypeEdit` is re-checked when an existing node of a gated class is edited, connected, disconnected, compiled, or deleted, and for the breaking change on delete / disconnect specifically.
@@ -1302,7 +1328,9 @@ The one command that embeds a Unified Animation Framework graph into an AnimBlue
 
 | Command | Description |
 |---|---|
-| `AddUAFGraphNodeToAnimBlueprint` | Place a `UAnimGraphNode_AnimNextGraph` node into `TargetGraph` (defaulting to the first AnimGraph) pointing at a `UUAFAnimGraph` asset given by `UAFGraphPath`. `UAFGraphPath` must already be loaded in this editor — it is never force-loaded, and only resolved after every required capability is confirmed. Requires `AnimBlueprintGraphEdit`, `AnimBlueprintReferenceEdit`, and `AnimBlueprintCustomTypeEdit` (the node class comes from a module this domain does not ship). Not allowed during Play-in-Editor |
+| `AddUAFGraphNodeToAnimBlueprint` | Place a `UAnimGraphNode_AnimNextGraph` node into `TargetGraph` (defaulting to the first AnimGraph), or the graph named by `GraphGuid` instead — the two are mutually exclusive — pointing at a `UUAFAnimGraph` asset given by `UAFGraphPath`. `UAFGraphPath` must already be loaded in this editor — it is never force-loaded, and only resolved after every required capability is confirmed. Requires `AnimBlueprintGraphEdit`, `AnimBlueprintReferenceEdit`, and `AnimBlueprintCustomTypeEdit` (the node class comes from a module this domain does not ship). Not allowed during Play-in-Editor |
+
+> **Note — `TargetGraph` / `GraphGuid` ambiguity**: `TargetGraph` is looked up only among the AnimBlueprint's own AnimGraphs (the root AnimGraph and its self-contained layers) — unlike `AddLinkedAnimLayerNode`, it never falls back to an implemented interface's layer graphs. A name matching more than one of the AnimBlueprint's own graphs answers `InvalidParams` with `Result.MatchedGraphGuids` carrying every candidate's `GraphGuid`; pass one of those back as `GraphGuid` to disambiguate. Naming a graph that does not exist answers `NotFound`.
 
 ---
 
@@ -1490,6 +1518,7 @@ Behavior Tree graph editing and Blackboard key management.
 | `AddBehaviorTreeDecoratorNode` | Attach a Decorator to a parent node — same checks as above |
 | `AddBehaviorTreeServiceNode` | Attach a Service to a parent Composite node — same checks as above |
 | `RemoveBehaviorTreeNode` | Remove a node by NodeId — needs the same capabilities the node's own class asks for |
+| `GetBehaviorTreeNodeProperties` | Every property a node's `NodeInstance` declares — `PropertyName`, `PropertyType` (the C++ type name), `PropertyValue` in the exact form `SetBehaviorTreeNodeProperty` accepts back for it, and a nested `WriteRequirements` object. A `FBlackboardKeySelector` property is reported as the bare key name, matching the write command's special-cased handling of it. Read-only; permitted during PIE (degraded mode). Requires `EditorInspect` |
 | `SetBehaviorTreeNodeProperty` | Set a node property (FBlackboardKeySelector / generic ImportText_Direct). Needs the capabilities asked for by the class of the node being written **and** by the class that declares the property. A key-selector write is now refused when the tree has no Blackboard asset assigned — the key name cannot be validated without one, and the write used to leave a name and a type that did not match. A refused write no longer marks the asset dirty or leaves an empty undo entry |
 | `ListBlackboardKeys` | List Blackboard asset keys (allowed during PIE) |
 | `AddBlackboardKey` | Add a key (duplicate-name check). A key type outside `/Script/AIModule`, and the two key kinds that hold a reference the writer chooses, each need a capability — see the note below |
@@ -2192,6 +2221,10 @@ ControlRig hierarchy and RigVM graph editing.
 | `GetConnectedPins` | Get a pin's connection info |
 | `ConnectControlRigPins` | Connect two pins in the RigVM graph |
 | `DisconnectControlRigPins` | Disconnect a pin connection |
+
+> **Fixed — a missing graph and an unreadable asset now answer different error codes.** Every command below that resolves a model by `GraphName` (`GetGraph`, `AddGraph`, `DeleteGraph`, `AddGraphNode`, `AddEventNode`, `AddVariableNode`, `FindNodes`, `GetConnectedPins`, `GetNodeInfo`, `GetNodePosition`, `GetPinValue`, `ListNodes`, `ListPins`, `SetNodePosition`, `SetPinValue`, `ResetPinValue`, `DuplicateNode`) used to answer `ExecutionFailed` with "Graph is null." both when `GraphName` matched no model and when the asset's own ControlRigBlueprint reference was itself invalid — the dedicated "not found" response existed in the code but was never actually reached, because both situations were reported the same way internally. The two are now told apart: `GraphName` matching no model in an otherwise valid asset answers `NotFound`; the asset's own ControlRigBlueprint being unreadable still answers `ExecutionFailed`. A caller can now tell "a different `GraphName` might work" apart from "retrying is pointless until the asset itself loads."
+>
+> ⚠️ **Breaking change — `GraphName`'s short-form match is common, and the commands that write to the asset now refuse an ambiguous one instead of picking a graph.** `GraphName` accepts a prefix — a caller may pass a short name and the command matches whichever full RigVM model name starts with it, an intentional abbreviation rather than an edge case. Matching more than one model this way used to resolve silently to one of them everywhere. It still does for the eight read-only commands above and in the sections below — `FindNodes`, `GetConnectedPins`, `GetGraph`, `GetNodeInfo`, `GetNodePosition`, `GetPinValue`, `ListNodes`, `ListPins` — since inspecting the wrong graph has no side effect to correct. The seven commands that write to the asset no longer do: `AddEventNode`, `AddVariableNode`, `DeleteGraph`, `DuplicateNode`, `ResetPinValue`, `SetNodePosition`, `SetPinValue` now answer `InvalidParams` without changing anything when `GraphName` matches more than one model, and report every candidate's full model name under `Result.MatchedFullGraphNames`. Re-issue the call with one of those full names as `GraphName` to resolve to exactly one graph — no new parameter was added for this, unlike the `GraphGuid` / `MatchedGraphGuids` contract Blueprint and AnimBlueprint use, because ControlRig's own short-form lookup already gives an unambiguous full name to fall back to.
 
 #### Variables (5)
 
