@@ -206,6 +206,8 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `EditorActorEdit` | Level Editor でのアクターの生成・削除・トランスフォーム変更 |
 | `EditorLevelLoad` | エディタビューポートでのレベルオープン・新規作成 |
 | `EditorViewportControl` | Level Editor ビューポートカメラの操作 — `FocusOnActors`、`GetCameraTransform`、`SetCameraTransform` |
+| `ActorComponentEdit` | **レベルに配置済みのアクター**に対するコンポーネントの追加・削除・付け替え — `AddActorComponent`、`DeleteActorComponent`、`ReparentActorComponent`。`EditorActorEdit` と分けてあるのは、変えるものが違うため — あちらはアクターそのものを動かし・消すもので、こちらはアクターが何でできているかを変えるもの。コンポーネントの一覧取得（`ListActorComponents`）には `EditorInspect` だけで足りる |
+| `ComponentCustomTypeEdit` | そのクラスのコンポーネントの**インスタンス数が増える**操作で、かつそのクラスが `/Script/Engine` と `/Script/LiveLinkComponents` のいずれでも宣言されていない場合に、コマンド自身の Capability に**加えて**必要になる（プロジェクトの C++ が定義したコンポーネント、他プラグイン（Niagara などエンジン同梱プラグインを含む）が定義したもの、Blueprint 由来のコンポーネントクラスが該当）。該当する 3 コマンドが共有する — `AddActorComponent`（インスタンス側。`ActorComponentEdit` と併用）と `AddBlueprintComponent` / `DuplicateBlueprintComponent`（Blueprint / SCS 側。`BlueprintComponentEdit` と併用）。1 つの名前に統一しているのは、片方の経路にだけ付与しても、もう一方から同じクラスへ到達できてしまわないようにするため。⚠️ **Blueprint 側の 2 コマンドにとっては挙動の変更です** — 下の Note を参照。コンポーネントの削除・リネーム・付け替え・プロパティ書き込みは対象**外**（いずれもインスタンス数を増やさないため） |
 | `PropertyEdit` | 詳細パネル経由でのアクター / アセットプロパティの読み書き（`GetActorProperty`、`SetActorProperty`、`GetAssetProperty`、`SetAssetProperty` など） |
 | `PropertyReferenceEdit` | 値がオブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパスであるか、それらを（どの深さであれ）内包するプロパティの書き込み。参照を空にする操作にも必要 — 依存関係を付けることと外すことは同じ種類の変更であるため |
 | `PropertyStructuredEdit` | 組み込みの値カタログ外の構造体・配列・セット・マップ・オプショナル・固定長配列の書き込みと、値全体を置き換える代わりにコンテナの要素 1 つを操作すること |
@@ -216,6 +218,8 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `WorldConditionPropertyReferenceEdit` | 参照へ到達しうる型を持つ World Condition のプロパティの書き込み |
 | `ProjectConfigEdit` | プロジェクト設定の読み書き（`GetProjectSetting`、`SetProjectSetting`） |
 | `EditorUndoRedo` | エディタ操作の Undo / Redo |
+
+> ⚠️ **破壊的変更 — `ComponentCustomTypeEdit` が `AddBlueprintComponent` と `DuplicateBlueprintComponent` にも適用されるようになりました。** これまでこの種の判定は他ドメインのクラス許可リストだけのもので、Blueprint 上でのコンポーネントクラスの追加・複製はクラスに関わらず `BlueprintComponentEdit` だけで通っていました。これまで `BlueprintComponentEdit` だけでプロジェクト定義のコンポーネントを追加・複製できていたセッションは、`ComponentCustomTypeEdit` を名指しした `CapabilityNotAvailable` で拒否されるようになります。`+AllowedCapabilities=ComponentCustomTypeEdit` を追加すると従来どおりに戻ります。両方の経路を同時に対象にしたのは、新設のインスタンス側コマンドだけをゲートしても Blueprint 側が迂回路として残ってしまうためです。この要件はコマンド実行中にクラスから決まるため、3 コマンドいずれの `RequiredCapabilities` にも現れません。`ListActorComponents` がクラスごとに「追加に何が要るか」を返し（`Admission` / `RequiredCapabilities` / `MissingCapabilities`）、`QueryCapabilities` を `IncludeUnavailable: true` で呼べばカタログにこの名前が載ります。[コマンドリファレンス — コンポーネント — SCS](commands.md#コンポーネント--scs8) を参照。
 
 > **Note**: `PropertyReferenceEdit` と `PropertyStructuredEdit` は `UAIP.Editor.Property` 限定ではありません。Blueprint SCS コンポーネント、Sequencer セクション、Sound / SoundCue アセット、PCG / 会話ノード、DataTable 行、World / プロジェクト設定など、**プロパティを書き込むすべてのドメイン**で参照・構造体・コンテナの書き込みを制御します。参照を内包する構造体の書き込みには両方が必要なので、構造側だけで参照のゲートを迂回することはできません。
 >
@@ -608,6 +612,29 @@ ExternalTraceDirectory=D:/TraceDrop
 |---|---|
 | `AssetValidation` 🧩 | プロジェクトが登録したバリデータをアセットに対して実行 — `ValidateAssets`（同期、最大 8 件）と `StartValidationJob`（フォルダまたはリストを段階実行）。検証はプロジェクトが提供する任意の C++ / Blueprint / Python コードを実行し、エンジンはそれらに副作用を禁じていないこと、およびアセットのロードとシェーダーコンパイルを伴うことから、既定では拒否されます。両コマンドは無関係のセッションが Sandbox を開いているだけで止まらないよう read-only を宣言しますが、`ReadOnly` ポリシーは自前で評価し、有効なら拒否します |
 | `AssetValidationFix` 🧩 | バリデータが提供した修正を 1 件適用 — `ApplyValidationFix`。実アセットを書き換え、fixer 経由でディスクへ保存されうるため、既定では拒否されます。`DisableSave` が有効な間は修正の種類を問わず一律に拒否され、UAIP が書き込まないルート配下のアセットも拒否されます — 検証はエンジンコンテンツを読めますが、修正はそこまで届きません |
+
+#### LiveLink
+
+LiveLink の状態を読むことは DefaultAllow です — `UAIP.Runtime.LiveLink` の観測系コマンドは `RuntimeInspect`、エディタ側の read-only な 2 コマンドは `EditorInspect` を要求します。以下はすべて既定で拒否され、コマンド数ではなく**失敗したときに何を失うか**で分けてあります。無効化した Subject は有効化し直せますが、削除した Source は同じ識別子で作り直せず、適用したプリセットはそもそも元に戻せません。
+
+`UAIP.Runtime.LiveLink` が所有する 5 つには 🧩 が付きません — このモジュールにプラグイン要件は無く、コマンドは常に登録されます。`UAIP.Editor.LiveLink` が所有する 7 つは、`LiveLink` と `Takes` の両プラグインを有効にしてビルドした場合にのみ登録されます。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `LiveLinkClientControl` | クライアントが評価する Subject の構成を変更 — `SetLiveLinkSubjectEnabled`、`AddLiveLinkVirtualSubject`、`RemoveLiveLinkVirtualSubject`。`LiveLinkSourceDelete` と分けてあるのは、これらがいずれも同種の呼び出しで元に戻せるため |
+| `LiveLinkSourceDelete` | クライアントから Source を削除 — `RemoveLiveLinkSource`。独立した名前にしているのは、**削除した Source を同じ Guid で作り直せない**ため。この一群で唯一の不可逆な操作であり、可逆な変更と不可逆な変更を 1 つの付与でまとめて許可しない設計にしてある |
+| `LiveLinkSyntheticSource` | 実機なしで LiveLink を動かすための、UAIP 所有の最小 Source の作成・削除 — `CreateLiveLinkSyntheticSource`、`RemoveLiveLinkSyntheticSource`。UAIP 自身が所有するものであっても Source の登録はクライアント構成の変更であるため、既定では拒否されます |
+| `LiveLinkFrameInjection` | このセッションが作成した合成 Source へのフレーム流し込み — `PushLiveLinkSyntheticFrame`。`LiveLinkSyntheticSource` と意図的に分けてあります — Source を作ることとデータを流し込むことは別の権限であり、Source の作成・削除は許さずにテストデータの流し込みだけを許可できるようにするため |
+| `LiveLinkSourceInspectSensitive` | Source や探索で見つかった提供元が自由に決められる、ホストアドレスや資格情報を含みうるフィールドの読み取り — `ListLiveLinkSources` の `IncludeSensitiveDetails: true`（`ConnectionString` / `StatusText` / `MachineName`）と、`DiscoverLiveLinkMessageBusProviders` の同フラグ（`MachineName`）。保有していない場合はそのフィールドが省略されるだけで、応答の他の部分は変わりません。**静的な宣言ではなくパラメータ値から決まる**ため、どちらのコマンドの `RequiredCapabilities` にも現れません。両コマンドとも、要求の有無にかかわらず全応答で名前を `SensitiveDetailsRequiredCapability` として返します |
+| `LiveLinkNetworkDiscovery` 🧩 | MessageBus の探索 ping をブロードキャストして応答を読む — `DiscoverLiveLinkMessageBusProviders`。ネットワークにトラフィックを出し、プロセス全体で 1 つしかない探索スロットを最大 30 秒占有するため、既定では拒否されます。`LiveLinkSourceConnect` と分けてあるのは、ネットワーク上に何があるかを見ることは許しつつ、そのいずれかを接続することは許さない、という運用ができるようにするため |
+| `LiveLinkSourceConnect` 🧩 | 探索で見つかった提供元を新しい Source としてクライアントへ接続 — `ConnectLiveLinkMessageBusSource`。接続した Source は本物のクライアント構成であり、セッション終了時に**片付けられません** |
+| `LiveLinkPresetApply` 🧩 | プリセットでクライアントの構成全体を置き換える — `ApplyLiveLinkPreset` — に加え、`AddLiveLinkPresetToClient` の `RecreateExisting` フラグにも必要。⚠️ **このドメインで最も破壊的な操作**です。既存の Source をすべて取り除いてからプリセットを作り直すため、途中で失敗すると元の構成ではなく一部だけ取り除かれた構成が残ります。エンジンは元の構成を保持していません |
+| `LiveLinkPresetAdd` 🧩 | プリセットの Source と Subject を現在の構成へ追加 — `AddLiveLinkPresetToClient`。構成を増やすだけであるため `LiveLinkPresetApply` より弱い権限で、置き換えは許さず追加だけを許可できます |
+| `LiveLinkPresetSave` 🧩 | 現在の構成をプリセットアセットとして書き出す — `SaveLiveLinkPreset`。DefaultAllow の `AssetCreate` で代用**しない**のは意図的です — プリセットはクライアントが保持する全 Source の接続設定を記録するため、その生成は継承で得るものではなく、意図して許可する開示操作として扱います |
+| `LiveLinkComponentEdit` 🧩 | 配置済みアクターの LiveLink コントローラーコンポーネントへの Subject 割り当て — `SetLiveLinkComponentSubject`。`ActorComponentEdit` と分けてあるのは、これがコンポーネントの設定だけを変えるため — Subject の割り当てを保守するセッションが、アクターの持つコンポーネント自体を変更できる必要はありません |
+| `LiveLinkRecording` 🧩 | LiveLink Subject の Take Recorder 録画の開始・停止・中止 — `StartLiveLinkRecording`、`StopLiveLinkRecording`、`CancelLiveLinkRecording`。開始すると実行中はこのドメインの変更状態を占有し、停止・中止は実際の録画とそれが生成する LevelSequence に作用します。`GetLiveLinkRecordingStatus` は read-only でそうしたリスクが無いため、代わりに `EditorInspect` を使います |
+
+> **停止と中止が作用するのは UAIP が始めた録画だけです。** Take Recorder パネルや他プラグインが始めた録画は `GetLiveLinkRecordingStatus` で観測できますが、どの Capability を持っていてもこれらのコマンドで停止・中止されることはありません。
 
 ---
 

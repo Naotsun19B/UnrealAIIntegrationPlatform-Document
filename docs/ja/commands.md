@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1162 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1583 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1189 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1610 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -45,7 +45,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
 | Editor Assets | `UAIP.Editor.Assets` | 51 | 6 | 一部（29/51） |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
-| Editor Level | `UAIP.Editor.Level` | 16 | 8 | 一部（7/16） |
+| Editor Level | `UAIP.Editor.Level` | 20 | 8 | 一部（8/20） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
@@ -91,6 +91,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Subsonic 🧩 | `UAIP.Editor.Subsonic` | 22 | — | — |
 | Editor GroomAsset 🧩 | `UAIP.Editor.GroomAsset` | 35 | — | — |
 | Editor Validation 🧩 | `UAIP.Editor.Validation` | 7 | — | — |
+| Editor LiveLink 🧩 | `UAIP.Editor.LiveLink` | 11 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
@@ -99,6 +100,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 17 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
+| Runtime LiveLink | `UAIP.Runtime.LiveLink` | 12 | — | — |
 | Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | 一部（2/3） |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | 一部（2/4） |
@@ -246,6 +248,8 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 ## Capability でゲートされたカスタム型
 
 いくつかのドメインは、プロジェクトやプラグインが定義した型を Capability の付与があって初めて通します — 各ドメイン自身の Note を参照してください（例: [UAIP.Editor.Material](#uaipeditormaterial)、[UAIP.Editor.AnimBlueprint](#uaipeditoranimblueprint)、[UAIP.Editor.ControlRig](#uaipeditorcontrolrig)、[UAIP.Editor.EnhancedInput](#uaipeditorenhancedinput)、[UAIP.Editor.UAF](#uaipeditoruaf-)、[UAIP.Editor.BehaviorTree](#uaipeditorbehaviortree)、[UAIP.Editor.MetaSound](#uaipeditormetasound-)、[UAIP.Editor.EQS](#uaipeditoreqs-)、[UAIP.Editor.StateTree](#uaipeditorstatetree)、[UAIP.Editor.WorldConditions](#uaipeditorworldconditions-)、[UAIP.Editor.Sequencer](#uaipeditorsequencer)、[UAIP.Editor.SoundCue](#uaipeditorsoundcue)、[UAIP.Editor.MotionMatching](#uaipeditormotionmatching-)、[UAIP.Editor.Conversation](#uaipeditorconversation-)）。以下はそれらすべてに共通する内容で、ドメインごとには繰り返しません。
+
+コンポーネントクラスも同じ考え方でゲートされますが、規則は独自のものです（詳細は [UAIP.Editor.Blueprint — コンポーネント — SCS](#コンポーネント--scs8)）。Capability 名は `ComponentCustomTypeEdit` で、そのクラスのコンポーネントの**数が増える**操作すべて（`AddActorComponent` / `AddBlueprintComponent` / `DuplicateBlueprintComponent`）が共有します。上記ドメインと違い、コンポーネントの削除・リネーム・付け替えはこの Capability の対象では**ありません**。
 
 - **確認は `Add*` だけでなく、その型に触る操作すべてで行われます。** ゲートされた型のノードがグラフに存在するようになった後は、そのノードを編集・接続・切断・コンパイル・削除するとき、また実効型を変更する（Reparent）ときや参照を新規作成・差し替えるときにも、同じ Capability があらためて確認されます。追加時に Capability を持っていたことは以降の呼び出しには引き継がれません — セッションが後から Capability を失えば（role の変更、`AllowedCapabilities` の絞り込みなど）、それらの後続操作も `Add*` と同じように権限不足で断られます。
 - **⚠️ 破壊的変更 — 削除と切断は従来ゲートされていませんでした。** この変更以前は、各ドメインの `Add*` コマンドだけが追加する型を検査しており、ノードの削除やピンの切断はノードの型に関わらず無条件で通っていました。現在はそうではありません。ゲートされた型のノードを削除・切断するには、それを最初に作成するときに `Add*` が要求したのと同じ Capability が必要です。
@@ -654,6 +658,12 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 | 🆓 `GetVisibleActors` | アクティブなエディタビューポートに現在表示されているアクターを返す（視錐体カリング） |
 | 🆓 `ProjectWorldToScreen` | ワールド空間の位置をスクリーン座標に投影 |
 | 🆓 `ProjectScreenToWorld` | スクリーン座標からワールドにレイをキャスト（ECC_Visibility ライントレース） |
+| 🆓 `ListActorComponents` | レベルに配置済みのアクターが持つコンポーネントを列挙。各エントリは以下の 3 コマンドが受け取る `ComponentId` に加え、`ComponentClassPath`・`Origin`（`Instance` / `SimpleConstructionScript` / `UserConstructionScript` / `Native`）・`IsEditableInstance`・`IsSceneComponent`・`IsRootComponent`・`AttachParentComponentName`・`AttachSocketName` を返す。さらに各エントリは、そのクラスのコンポーネントを**追加**するのに何が要るかを `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）・`RequiredCapabilities`・`MissingCapabilities` として返す — `ComponentCustomTypeEdit` が要るかどうかを書き込みを試す前に確認できるのはこれによる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要 |
+| `AddActorComponent` | レベルに配置済みのアクターにコンポーネントを追加（Details パネルの *Add Component* ボタン相当）。1 つの Undo ステップとして記録され、新しい `ComponentId` を返す。`ComponentName` は省略するとエンジンが命名する。`AttachParentComponentName` / `AttachSocketName` は `USceneComponent` 派生にのみ適用され、アクターにルートが無い場合は新しいコンポーネントがルートになる。クラスは既にロード済みのものからのみ解決し、要求に応じたロードは行わない（未ロードのクラスは `NotFound`）。`ActorComponentEdit` が必要で、`/Script/Engine` と `/Script/LiveLinkComponents` 以外のクラスにはさらに `ComponentCustomTypeEdit` が必要 — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照。PIE 中は拒否 |
+| `DeleteActorComponent` | レベルに配置済みのアクターからインスタンスコンポーネントを削除。1 つの Undo ステップとして記録される。削除できるのは `Origin: Instance` のみ — SCS のものは Blueprint コンポーネントコマンドの担当、コンストラクションスクリプト由来のものはスクリプトが作り直し、Native のものはそのクラスの全インスタンスに存在するため、いずれも「どの経路が担当か」を示して拒否する。アクターの `DefaultSceneRoot` も拒否対象。削除したシーンコンポーネントの子は、ワールドトランスフォームを保ったままその親へ付け替えられる。`ExpectedComponentClass` は必須（一覧が返した `ComponentClassPath` をそのまま渡す）で、古くなった識別子は追従せず `NotFound` で拒否する。`ActorComponentEdit` が必要。PIE 中は拒否 |
+| `ReparentActorComponent` | レベルに配置済みのアクターのシーンコンポーネントを、同じアクターの別のコンポーネントの下へ、ワールドトランスフォームを保ったまま付け替える。1 つの Undo ステップとして記録される。両方が同一アクター上の `USceneComponent` 派生で、動かす側は `Origin: Instance` である必要がある。「どこにも付いていない」状態は表現できず、切り離しはアクターのルートを `NewParentComponentName` に指定して表す。ルート自身は動かせない。循環になる付け替えと、新しい親に存在しないソケットは、書き込み前に拒否される。`ExpectedComponentClass` は上と同様に必須。`ActorComponentEdit` が必要。PIE 中は拒否 |
+
+> **Note — インスタンス側専用です。** この 4 コマンドが対象とするのは、**レベルに配置済みのアクター**が持つコンポーネントです。アクターの Blueprint 側に宣言されたコンポーネントは [UAIP.Editor.Blueprint — コンポーネント — SCS](#コンポーネント--scs8) を使ってください。インスタンス側にリネームと複製に相当する操作はありません（望む名前を指定して追加し直してください）。
 
 ### Toolset ブリッジ — Level（8 件）🧩
 
@@ -735,13 +745,21 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | コマンド | 説明 |
 |---|---|
 | `ListBlueprintComponents` | Blueprint から見える全コンポーネント一覧（SCS・Inherited・Native） |
-| `AddBlueprintComponent` | Blueprint に新規 SCS コンポーネントノードを追加 |
+| `AddBlueprintComponent` | Blueprint に新規 SCS コンポーネントノードを追加。⚠️ プロジェクト・プラグイン定義のコンポーネントクラスには `ComponentCustomTypeEdit` が追加で必要になりました — 下の Note を参照 |
 | `DeleteBlueprintComponent` | SCS コンポーネントを削除 |
 | `RenameBlueprintComponent` | SCS コンポーネントをリネーム |
 | `ReparentBlueprintComponent` | SCS コンポーネントの親を変更 |
-| `DuplicateBlueprintComponent` | SCS コンポーネントを複製 |
+| `DuplicateBlueprintComponent` | SCS コンポーネントを複製。⚠️ プロジェクト・プラグイン定義のコンポーネントクラスには `ComponentCustomTypeEdit` が追加で必要になりました — 下の Note を参照 |
 | `GetBlueprintComponentProperty` | SCS コンポーネントのプロパティ値を取得 |
 | `SetBlueprintComponentProperty` | SCS コンポーネントのプロパティを設定。値はエンジンテキストなら `Value`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
+
+> ⚠️ **破壊的変更 — `AddBlueprintComponent` と `DuplicateBlueprintComponent` がコンポーネントクラスをゲートするようになりました。**
+>
+> **そのクラスのコンポーネントの数が増える**操作は、すべて同じ Capability 名で同じ判定を通るようになりました — 新設のインスタンス側 `AddActorComponent` と、この 2 つの Blueprint / SCS コマンドです。`/Script/Engine` と `/Script/LiveLinkComponents` が宣言するコンポーネントクラスは従来どおり `BlueprintComponentEdit` だけで通ります。**それ以外のクラス — プロジェクトの C++ が宣言したもの、他プラグイン（Niagara などエンジン同梱プラグインを含む）が宣言したもの、Blueprint 由来のコンポーネントクラス — には `ComponentCustomTypeEdit` が追加で必要**になり、セッションが保有していない場合は Capability 名を明示した `CapabilityNotAvailable` で拒否されます。
+>
+> **アップグレード時の影響**: これまで `BlueprintComponentEdit` だけでプロジェクト定義のコンポーネントを追加・複製できていたセッションは、拒否されるようになります。`Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に `+AllowedCapabilities=ComponentCustomTypeEdit` を追加すると従来どおりに戻ります — [Safety & Capabilities](safety.md#level--アクター--プロパティ編集) を参照。
+>
+> **両方の経路を対象にした理由**: 片方だけをゲートしても、もう一方から同じクラスに到達できてしまうためです。**削除・リネーム・付け替え・プロパティ書き込みは対象外**です — いずれもそのクラスのインスタンス数を増やさないためです。この要件はコマンド実行中にクラスから決まるため、どちらのコマンドの `RequiredCapabilities` にも現れません。`ListActorComponents` がクラスごとに「追加に何が要るか」を返し、拒否時のメッセージも常に不足している名前を示します。
 
 ### コンパイル（2）
 
@@ -883,7 +901,7 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 
 | コマンド | 説明 |
 |---|---|
-| `GetSystemTopology` 🧩 | Niagara システムのエミッター構造。**UE 5.8 制約:** `data` と `dynamic_input_children` はレスポンスに含まれず、`is_dynamic` フラグのみ出力される。解決済みの値が必要な場合は `GetStackInputData` を使用すること。 |
+| `GetSystemTopology` 🧩 | Niagara システムのエミッター構造 — 各エミッターの `Spawn` / `Update` / `Event` モジュール一覧で、各エントリは `ModuleName` に加えて `ModuleId` も返すようになった（そのまま `GetStackInputData` へ渡せる）。ここのモジュールエントリに `Inputs` 配列は含まれない — モジュールの入力を調べるには `GetModuleTopology` や `GetStackInputTopology` を使うこと。⚠️ `Spawn`/`Update` は*エミッター単位*の Spawn/Update スタック、`Event` はイベントハンドラースタックであり、システムの Particle Spawn / Particle Update モジュールはここには一切含まれない。粒子単位まで必要な場合は `GetEmitterTopology` を使うこと。 |
 | `GetSystemCompileState` 🧩 | システムのコンパイル状態 |
 | `GetAssetDiscoveryInfo` 🧩 | Niagara アセット探索情報 |
 | `GetScriptAssets` 🧩 | Niagara スクリプトアセット一覧 |
@@ -893,7 +911,7 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `GetSystemData` 🧩 | システムのデータ構造 |
 | `GetEmitterData` 🧩 | エミッターのデータ構造 |
 | `GetRendererData` 🧩 | レンダラーのデータ構造 |
-| `GetStackInputData` 🧩 | モジュールスタック入力値 — 名前・型・値モード（Local/Linked/Dynamic/DataInterface/Expression）・`AddSetParameterEntry` がそのまま書き戻せる形の現在値・入れ子の `WriteRequirements` オブジェクトを返す |
+| `GetStackInputData` 🧩 | モジュールスタック入力値 — 名前・型・値モード（Local/Linked/Dynamic/DataInterface/Expression）・`AddSetParameterEntry` がそのまま書き戻せる形の現在値・入れ子の `WriteRequirements` オブジェクトを返す。必須パラメータ `ModuleId` は `GetSystemTopology` / `GetEmitterTopology` / `GetScriptStackTopology` / `GetModuleTopology` のいずれか、または `AddModule` 自身のレスポンスから得られる（4つの取得系と書き込み系すべてが同じ小文字ハイフン区切り形式で返す）。UAIP でモジュールを追加したことのないアセットでも、既存モジュールを読み取ることができる。 |
 | `UEnum_Info` 🧩 | UEnum 情報 |
 | `GetAvailableNiagaraRendererClasses` 🧩 | `UNiagaraRendererProperties` 派生クラスの一覧（上限 200 件）。返された `ClassPath` を `AddRenderer` の `RendererClass` 引数として使用する。 |
 
@@ -913,13 +931,47 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 
 | コマンド | 説明 |
 |---|---|
-| `GetEmitterTopology` 🧩 | エミッタの全スクリプトスタックとモジュールを含むモジュールスタックトポロジ |
-| `GetScriptStackTopology` 🧩 | 単一スクリプトスタックのモジュールトポロジ |
-| `GetModuleTopology` 🧩 | 単一モジュールの入力トポロジ |
-| `GetStackInputTopology` 🧩 | 単一入力の完全なトポロジ — 型・値モード・現在値・再帰的な dynamic input の子 |
+| `GetEmitterTopology` 🧩 | エミッタの全スクリプトスタックとモジュールを含むモジュールスタックトポロジ。各モジュールエントリが `ModuleId` を持つ |
+| `GetScriptStackTopology` 🧩 | 単一スクリプトスタックのモジュールトポロジ。各モジュールエントリが `ModuleId` を持つ |
+| `GetModuleTopology` 🧩 | 単一モジュールの入力トポロジ。そのモジュール自身の `ModuleId` を含む |
+| `GetStackInputTopology` 🧩 | 単一入力のトポロジ — 名前・型・`IsVisible`/`IsEditable`/`IsDynamic`。解決済みの値は含まれず、`DynamicInputChildren` はどのエンジンバージョンでも辿った結果ではなく常に空配列で返る — dynamic input 自身の入出力を読むには `GetDynamicInputSchema` を、現在値が必要な場合は `GetStackInputData` を使うこと。同じ `Name`/`Type`/`IsVisible`/`IsEditable`/`IsDynamic`/`DynamicInputChildren` の形、および同じく常に空配列になる `DynamicInputChildren` は、`GetModuleTopology`・`GetEmitterTopology`・`GetScriptStackTopology` が返す各モジュールの `Inputs[]` エントリでも共通して使われる |
 | `GetDynamicInputSchema` 🧩 | スタック上の dynamic input スクリプトインスタンスの入出力一覧 |
 | `GetDynamicInputSchemaFromAsset` 🧩 | NiagaraSystem を介さず `UNiagaraScript` dynamic input アセットの入出力を取得 |
 | `GetAvailableDynamicInputs` 🧩 | 指定モジュール入力に適用できる dynamic input スクリプト一覧 |
+
+> **⚠️ Note — `GetStackInputSchema`・`GetModuleSchema`・`GetDynamicInputSchema` の UE 5.8 未満向けフォールバックも通常モジュールに対応し、そのフォールバックのキー名が UE 5.8+ と揃いました**: この3コマンドはこれまで UE 5.7 では「Set Parameters」モジュール（Assignment ノード）にしか成功しませんでした — `GetStackInputSchema` と `GetDynamicInputSchema` はそれ以外を対象にすると呼び出し全体が `ExecutionFailed` で失敗し、`GetModuleSchema` は失敗せず `Inputs` が空配列のまま成功していました。現在は3コマンドとも、通常の関数呼び出しモジュールをグラフから直接読み取れます（ビューモデルは使いません）。`GetModuleSchema` は対象モジュールにスクリプト・グラフが無い場合、空配列で成功する代わりに失敗するようになりました。`GetDynamicInputSchema` は、対象の入力が実際に dynamic input で駆動されていない場合は引き続き失敗します — これは記述すべき dynamic input が無いという正当な失敗であり、不具合ではありません。これとは別に、このフォールバックが返す入力エントリの JSON キー名が `InputName`/`InputType` から `Name`/`Type` に変わりました — `GetStackInputSchema` 自身のエントリ、および `GetModuleSchema`・`GetDynamicInputSchema` が返す `Inputs` 配列の各要素の両方です。これにより3コマンドとも、UE 5.8+ が元から使っているキー名と一致するようになりました。`GetDynamicInputSchema` 自身の Set Parameters 経路も、自身の通常モジュール経路と同じ封筒に揃え、独自形式の `{InputName, InputType, Inputs: [], Outputs: []}` から `{ModuleAssetPath, Inputs: [{Name, Type}], Outputs: []}` に変わりました。**`GetStackInputData` はこの変更の対象外**で、どのエンジンバージョンでも引き続き `InputName`/`InputType` を返します。
+>
+> **⚠️ Note — `GetStackInputTopology` の UE 5.8 未満向けフォールバックが、Set Parameters 以外の通常モジュールにも対応しました**: レスポンスの形（`Name`/`Type`/`IsVisible`/`IsEditable`/`IsDynamic`/`DynamicInputChildren`）は、両分岐が統一されて以来 UE 5.8+ とすでに揃っています。今回変わったのは対応できるモジュールの範囲です。これまでは「Set Parameters」モジュール（Assignment ノード）に対してしか成功せず、それ以外を対象にすると呼び出し全体が `ExecutionFailed` で失敗していました。現在は通常の関数呼び出しモジュールに対しても成功し、その入力をグラフから直接読み取ります（ビューモデルは使いません）。このフォールバックが複数要素の `InputNameStack` をどう辿るかはこの後変わりました — 詳細は後述のノートを参照。static switch 入力は、どちらのモジュール種別でもこの分岐からは指定できません。
+>
+> `IsVisible`/`IsEditable`/`IsDynamic` がどこまで実測かは、一致したモジュールの種類によって変わります。
+> - **Set Parameters** モジュールに一致した場合は従来と変わりません: `IsVisible` と `IsEditable` は引き続き常に `true` です — モジュールから実測した値ではなく（Assignment Target 自体には可視性・編集可能性を示すメタデータがありません）、この結果に到達する時点で対象の存在意義自体が「Assignment Target を編集可能にすること」であるために `true` としています。`IsDynamic` は引き続き判定材料が無いための保守的な既定値として常に `false` を返します — この経路には対象が実際に dynamic input を持つかどうかを検出する手段がありません。
+> - **通常モジュール**に一致した場合、`IsDynamic` は実測になりました — 入力の override ピンの接続先が Dynamic Input スクリプトの関数呼び出しノードであるときだけ `true` を返します。これは UE 5.8+ が値モード `Dynamic` と呼ぶ条件と同じです。`IsVisible` も実測ですが、モジュールが現在隠している入力集合から算出しており、`VisibleCondition` 式そのものは評価しません。そのため、条件が false なだけで隠れている入力は visible と報告されます。`IsEditable` はこの実測された可視性をそのまま使うため、実測は半分だけです — `EditCondition` 式（評価には兄弟入力の現在値が必要でグラフだけからは解決できません）は評価しないため、条件が false なだけで編集不可になっている入力は editable と報告されます。
+>
+> **⚠️ Breaking change — `GetStackInputTopology`・`GetStackInputSchema`・`GetDynamicInputSchema` の UE 5.8 未満向けフォールバックが、`InputNameStack` の先頭要素だけでなく全要素を辿るようになりました**: この3コマンドはこれまで `InputNameStack[0]` しか見ず、それより後の要素を黙って無視していました — ネストした dynamic input 自身の入力（例: `[TopLevelInput, NestedInput]`）を狙った呼び出しは、`TopLevelInput` 自身のデータを、通常の成功として受け取っていました。ネストした要素が一度も読まれていないことを示すものは何もありませんでした。**つまり、従来のネストしたスタックへの回答は単に不完全だったのではなく、成功を報告しながら誤った入力を記述していました。** 現在はこのフォールバックも、UE 5.8+ がすでに行っているのと同じ方法でスタック全体を辿ります — `InputNameStack[0]` はモジュール自身の入力に対して解決し、それ以降の各要素は、直前の要素を現在駆動している Dynamic Input スクリプトインスタンス上の入力に対して解決します。途中の要素が実際には dynamic input で駆動されていない場合や、名前が解決できない場合は、指定と異なる入力を黙って答える代わりに呼び出し全体が失敗するようになりました。`GetDynamicInputSchema` は、`InputNameStack[0]` を駆動しているものではなく、**解決された葉**を駆動している dynamic input インスタンスを記述するようになりました。**Set Parameters**（Assignment ノード）モジュールに対しては特に、2要素以上のスタックは今回から明確に拒否されます — Assignment Target には辿り込める dynamic input が存在しないため、従来は要素数にかかわらず Assignment Target 自身のデータを黙って返していました。**UE 5.8+ は影響を受けません** — 元からスタック全体を辿っていたためです。単一要素の `InputNameStack`（通常のケース）は、どのエンジンバージョンでも従来どおり解決されます。
+>
+> **⚠️ Breaking change — `GetModuleTopology` の UE 5.8 未満向けフォールバックが返す形が変わり、`ScriptName` を実際に見るようになり、システムレベルのスクリプトも対象にできるようになりました**: これまでのフォールバックはシステムビューモデルでエミッターのスタック全体を走査し、`{ModuleName, ModuleAssetPath, Inputs: [{InputName, InputType}], Outputs: []}` を返していました。`ScriptName` 引数は一切参照されておらず、モジュールは `ScriptName` が指す特定のスタックではなく、エミッターの全スタックのどこかにあれば一致していました。`EmitterName` が空の場合はどのスタックにも一致せず、システムレベルのモジュールはこの分岐からは一切読めませんでした。現在のフォールバックは、UE 5.8+ がすでに行っているのと同じ crash-safe な方法で対象スクリプトのグラフを直接読み取り、`ScriptName` を実際に参照します。`EmitterName` が空の場合は、`GetEmitterTopology` や `GetScriptStackTopology` がすでに受け付けていたのと同様に、システム自身の Spawn/Update スクリプトを解決するようになりました。レスポンスの形もこれに合わせて変わりました — `ModuleAssetPath` は `ModuleScript` に改名。`Outputs` は無くなりました（モジュールのトポロジはどちらのエンジンバージョンでも出力に相当する概念を持たず、旧フォールバックの `Outputs` もそもそも常に空配列だったため、実質的に失われるものはありません）。`Enabled` と `IsSetParametersModule` が新規追加。各 `Inputs[]` エントリは `InputName`/`InputType` だけの形から、`Name`/`Type`/`IsVisible`/`IsEditable`/`IsDynamic`/`DynamicInputChildren`（上記 `GetStackInputTopology` の行、および `DynamicInputChildren` の制約を参照）へ変わりました。モジュール名の照合も、これまでの大文字小文字を無視する方式から、大文字小文字を区別する方式に変わりました。`Enabled` はモジュール自身のファンクションコールノードから読み取っています — サブノードだけを本体ノードと切り離して無効化した異常な状態では、UE 5.8+ のスタックビューが示す `Enabled` と食い違う場合があります。
+>
+> **⚠️ Breaking change — `GetEmitterTopology` の UE 5.8 未満向けフォールバックから `IsEnabled` が無くなり、各スクリプトスタックが UE 5.8+ が元から使っている `{ScriptName, Modules}` の形にラップされ、各 `Modules[]` エントリに5つのフィールドが増えました**: これまでのフォールバックは `{EmitterName, IsEnabled, EmitterSpawn: [{ModuleName}], EmitterUpdate: [...], ParticleSpawn: [...], ParticleUpdate: [...], Renderers: [{RendererClass}]}` を返していました — `EmitterSpawn`/`EmitterUpdate`/`ParticleSpawn`/`ParticleUpdate` はモジュールの生の配列で、各モジュールは `ModuleName` だけを持っていました。`IsEnabled` は無くなりました。UE 5.8+ 自身のエミッタートポロジもこのフィールドを一度も持ったことがなく、片方のエンジンバージョンにしか存在しないフィールドは、無い方がまだましだからです。エミッターの有効/無効はどのエンジンバージョンでも引き続き読み取れます — `GetSystemTopology` の各エミッターエントリ、または `GetEmitterData` から取得できます。4つのスクリプトスタックはそれぞれ、UE 5.8+ が元から返している `{ScriptName, Modules}` というオブジェクトの形にラップされるようになりました — `EmitterSpawn` などを生の配列として走査していた呼び出し側は、`Modules` フィールドを読むように切り替える必要があります。各 `Modules[]` エントリは `ModuleName` 単独のフィールドから、`GetModuleTopology` と `GetScriptStackTopology`（上記・下記参照）のモジュールエントリと同じ6フィールド — `ModuleName`、`ModuleId`、`Enabled`、`IsSetParametersModule`、`ModuleScript`、`Inputs` — へと増えました。各 `Renderers[]` エントリにも、既存の `RendererClass` に加えて `RendererIndex` が増えました。これは UE 5.8+ と同じで、報告されたインデックスをそのまま `RemoveRenderer` に渡せます。このフォールバックでは `RendererClass` 自体の値も変わり、完全なクラスパス（例: `/Script/Niagara.NiagaraSpriteRendererProperties`）から、UE 5.8+ が元から返している素のクラス名（例: `NiagaraSpriteRendererProperties`）になりました — この同じ素のクラス名を `GetRendererSchema` も直接受け付けるようになっています（後述）。
+>
+> **Note — `GetScriptStackTopology` の UE 5.8 未満向けフォールバックは各 `Modules[]` エントリにフィールドが増えるだけで、何かが無くなることはありません**: 各エントリはこれまで `ModuleName` だけを持っていました。現在は `GetModuleTopology` や `GetEmitterTopology` のモジュールエントリと同じ6フィールド — `ModuleName`、`ModuleId`、`Enabled`、`IsSetParametersModule`、`ModuleScript`、`Inputs`（上記 `GetStackInputTopology` と同じ形）を持ちます。ただし `ModuleName` の意味はこれまでと変わらず、周囲を包む `{ScriptName, Modules}` という封筒の形も変わっていないため、各エントリの `ModuleName` だけを読んでいたコードはそのまま動作し続けます。
+>
+> **⚠️ Breaking change — `GetScriptStackTopology` の UE 5.8 未満向けフォールバックが、呼び出し側が渡した綴りではなく正規の `ScriptName` を返すようになりました**: レスポンスの `ScriptName` フィールドは、これまで `ScriptName` 引数として渡された文字列を、綴りや大文字小文字を問わずそのまま反射していました — `"particlespawn"` や `"whatever"` を渡した呼び出しでもその文字列がそのまま返り、本物の答えと見分けが付きませんでした。現在は、同じ旧エンジン向けフォールバック上で `GetEmitterTopology` のスクリプトスタックエントリが元から報告していたのと同じ正規名（`EmitterSpawnScript`、`ParticleUpdateScript`、`SystemSpawnScript` など）を返します — この2コマンドは同じエンジンセッション上の同じスタックに対して異なる答えを返していましたが、その食い違いは無くなりました。**UE 5.8+ は影響を受けません** — 元から正規名を返していたためです。
+>
+> **Note — UE 5.8+ では `Modules[]` エントリの `ModuleId` はベストエフォートで欠けることがあり、UE 5.7 以前では常に存在します**: `GetEmitterTopology`・`GetScriptStackTopology`・`GetModuleTopology` はいずれも UE 5.8+ では同じ方法で `ModuleId` を得ています。`UNiagaraExternalEditUtilities` のトポロジ構造体はモジュールを表示名でしか識別せず、guid フィールドを一切持たないため、`ModuleId` はスクリプトのグラフを辿り、各エントリの `ModuleName` を `UNiagaraNodeFunctionCall` ノードと大文字小文字を区別して照合することで、後から補うしかありません。一致するノードが見つからない場合、そのエントリには空文字列ではなく `ModuleId` キー自体が付きません — 一致した他のエントリよりフィールドが1つ少なくなります。UE 5.7 以前のフォールバックは、エントリの他のフィールドを組み立てるために同じグラフを辿っている最中にノードの guid をそのまま読み取るため、`ModuleId` は常に存在します。`Modules[].ModuleId` を無条件に読むコードは、UE 5.8+ ではこの欠落が起こりうることを踏まえておくこと。
+>
+> **⚠️ Breaking change（UE 5.8+ のみ）— enum 型の入力の `Type` フィールドが、`NiagaraInt32` の代わりに enum 自身の名前を返すようになりました。** `Type` フィールドはすべて1つの直列化関数を通っており、これまでは `FNiagaraTypeDefinition::GetStruct()` を `GetEnum()` より先に判定していました。Niagara は enum の値を `int32` の構造体に格納しているため `GetStruct()` は enum 型に対しても null を返さず、enum 型の入力はすべて `"NiagaraInt32"` と報告され、enum としての正体が失われていました。これは新機能ではなく不具合の修正です — 判定順序が `GetEnum()` を先に試すように変わったため、enum 型の入力は自身の enum 名（例: `"ENiagaraCoordinateSpace"`）を返すようになりました。struct 型の入力（`"NiagaraFloat"`、あるいは本物の整数入力の `"NiagaraInt32"`）や class 型の入力は影響を受けません。この変更は UE 5.8+ で `Type` フィールドが現れるすべての箇所に及びます — `GetModuleTopology`・`GetEmitterTopology`・`GetScriptStackTopology` の各入力エントリ、`GetStackInputTopology`、`GetStackInputSchema`、`GetModuleSchema`、`GetDynamicInputSchema`、`GetDynamicInputSchemaFromAsset`、および（`GetDynamicInputSchemaFromAsset` に委譲する）`GetModuleSchemaFromAsset` です。**UE 5.7 以前は影響を受けません** — 旧エンジンのフォールバックは元から `FNiagaraTypeDefinition::GetName()` で enum 自身の名前を読んでいたため、今回の変更は UE 5.8+ を UE 5.7 以前が元から返していた値へ揃えたものです。
+>
+> **Note — `GetRendererSchema` の `RendererClassPath` が、どのエンジンバージョンでも素のクラス名も受け付けるようになりました。** これまでこのパラメータは完全なクラスパス（例: `/Script/Niagara.NiagaraSpriteRendererProperties`）のみを解決していました。現在は `GetEmitterTopology` の `Renderers[].RendererClass`（前述）や `GetRendererData` が既に報告している素のクラス名（例: `NiagaraSpriteRendererProperties`）も解決します。パラメータ名 `RendererClassPath` は変わっておらず、従来のパス形式もそのまま通ります。素のクラス名が複数のレンダラークラスに一致する場合は、推測せず拒否されます。`AddRenderer` と `SetRendererData` も自身の `RendererClassPath` 引数で同じ2形式を受け付けます。
+>
+> **Note — `GetDataInterfaceSchema` の `DataInterfaceClassPath` が、どのエンジンバージョンでも素のクラス名も受け付けるようになりました。** これまでこのパラメータは完全なクラスパスのみを解決していました。現在はこのコマンド自身の `TypeName` フィールドや、トポロジ・スキーマ読み取りのどこかにあるデータインターフェース型の `Type` フィールドが既に報告している素のクラス名（例: `NiagaraDataInterfaceCurve`）も解決します。これにより、それらのフィールドから読み取った型名をそのままこのコマンドへ渡せるようになります。パラメータ名 `DataInterfaceClassPath` は変わっておらず、従来のパス形式もそのまま通ります。
+>
+> **Note — `GetModuleSchema` と `GetDynamicInputSchema` の UE 5.8 未満向けフォールバックが、UE 5.8+ が元から持つ `Inputs[]` の同じ4キーを返すようになりました。** 各 `Inputs[]` エントリはこれまで `Name`/`Type` だけを持っていましたが、現在は UE 5.8+ と同じ形に合わせて `Category` と `SupportsExpressions` も持ちます。ただしこのフォールバックでは、新しい2つのフィールドはどちらも実測ではありません — `Category` は常に空文字列、`SupportsExpressions` は常に `false` です。どちらも通常はスタックのビューモデルから読むものであり、このフォールバックが使うグラフだけの経路には対応するものがないためです。`Name` と `Type` は影響を受けず、`Outputs[]` はこれまでどおりこのフォールバックでは常に空のままです。
+>
+> **⚠️ Breaking change — `GetDynamicInputSchemaFromAsset` の UE 5.8 未満向けフォールバックが、常に空配列を返すのをやめ、アセットが実際に宣言している入力を返すようになりました。** これまでこのフォールバックは、アセットが何を宣言していようと `{ModuleAssetPath, Inputs: [], Outputs: []}` を常に返し、常に成功を報告していました — 呼び出し側から見れば「このアセットは入力を宣言していない」としか読めませんでしたが、実際は何も読んでいませんでした。現在は UE 5.8+ が元からアセットのグラフから読んでいるのと同じ `Module.` 名前空間の宣言（各エントリ `Name`/`Type`/`Category`/`SupportsExpressions`、静的スイッチは除外）を読むため、アセットが何か宣言していれば成功時の `Inputs` はそれで埋まります。**従来は常に成功していた呼び出しが失敗しうるようになりました**: アセットに読み取れるグラフが無い場合、以前の「空だが成功」の代わりに `ExecutionFailed` を返します。`Outputs` はこれまでどおりこのフォールバックでは空配列のままです。単体アセットはスタック内の呼び出し元を経由せず直接読むため、報告される集合は同じスクリプトをスタック内から読んだときの**上位集合**になります — ある呼び出し元では到達しない静的スイッチの分岐にある入力も列挙され、スタック側の hidden 絞り込みもここには効きません。`GetModuleSchemaFromAsset` はこの読み取りへ委譲しているため、まったく同じように変わります。**UE 5.8+ は影響を受けません** — こちらの分岐は元々グラフの無いアセットで失敗しうる作りであり、その挙動は変わっていません。
+>
+> **⚠️ Breaking change — `GetAvailableDynamicInputs` の UE 5.8 未満向けフォールバックが、常に空リストを返すのをやめ、失敗を返すようになりました。** あるスタック入力がどの dynamic input スクリプトを受け付けるかは、スタック UI が同じ入力候補を提示するときに使うのと同じエンジン API が決めており、旧エンジンにはグラフレベルで代替できる情報がありません。このフォールバックはこれまで、あらゆる呼び出しに対して `{DynamicInputs: []}` を返し成功を報告していました — これは「この入力に合う dynamic input が無い」と読めてしまい、そもそも調べていないことと区別できませんでした。現在は `ExecutionFailed` を返し、`ErrorMessage` には「Unreal Engine 5.8 で導入されたエンジン API が必要であり、それを理由に空の結果ではなく失敗として報告している」旨が入るため、本物の「一致なし」という答えと取り違えることがなくなります。**UE 5.8+ は影響を受けません** — こちらの分岐は元々（未解決のシステム・エミッター・スクリプト・モジュールで）失敗しうる作りであり、その挙動は変わっていません。
+>
+> **⚠️ Breaking change — `GetEmitterSchema`・`GetSystemSchema`・`GetRendererSchema`・`GetDataInterfaceSchema` の UE 5.8 未満向けフォールバックが、常に空の `PropertySchema` を返すのをやめて失敗を返すようになりました**: この4コマンドはこれまであらゆる呼び出しで成功を報告しており、`PropertySchema` は常に空文字列に固定されていました — これは「このクラスに編集可能なプロパティが無い」と読めてしまい、JSON Schema が実際には一度も組み立てられていないことと見分けが付きませんでした。`PropertySchema` は UE 5.8 で新設されたエンジン API から組み立てるものであり、それより前のエンジンバージョンには生成元となる同等の API がありません。現在は4コマンドとも `ExecutionFailed` を返し、`ErrorMessage` には「Unreal Engine 5.8 で導入されたエンジン API が必要であり、それを理由に空の結果ではなく失敗として報告している」旨が入ります — これは後述する `GetStackIssues` と `ApplyStackIssueFix` が使っているのと同じ文面で、理由も同じです。`GetRendererSchema` と `GetDataInterfaceSchema` は、`RendererClassPath` / `DataInterfaceClassPath` 引数を解決する前の時点で拒否されるため、これまで空の `PropertySchema` に添えていた `RendererClass` / `TypeName` フィールドも、失敗レスポンスからは無くなります — クラスが解決できない場合は、この拒否より手前で別途 `NotFound` として報告されます。**UE 5.8+ は影響を受けません** — こちらの分岐は元々（未解決のシステムやクラスで）失敗しうる作りであり、その挙動は変わっていません。実際のプロパティ値を見るには、どのエンジンバージョンでも従来どおり `GetRendererData` / `GetEmitterData` / `GetSystemData` を読むこと。
 
 #### スタック Issue（2）
 
@@ -927,6 +979,8 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 |---|---|
 | `GetStackIssues` 🧩 | システム全体のスタック Issue（エラー / 警告 / 情報、dismiss 済みを含む）と `IssueId`・`FixId` |
 | `ApplyStackIssueFix` 🧩 | `IssueId` + `FixId` を指定して Fix 形式の自動修正を適用（Link 形式は拒否・`NiagaraStackAutoFix` 必要） |
+
+> **⚠️ Breaking change — `GetStackIssues` の UE 5.8 未満向けフォールバックが、常に「issue なし」を返すのをやめて失敗を返すようになり、`ApplyStackIssueFix` の UE 5.8 未満向けフォールバックも、常に `Applied: false` を返すのをやめて失敗を返すようになりました。** どちらもこれまであらゆる呼び出しで成功を報告していました — `GetStackIssues` は空の `Issues` 配列、`ApplyStackIssueFix` は `{Applied: false}` — これはそれぞれ「issue が存在しない」「この fix は適用できなかった」と読めてしまい、そもそもチェックが実行されていないことと区別できませんでした。どちらも現在は `ExecutionFailed` を返し、`ErrorMessage` には「Unreal Engine 5.8 で導入されたエンジン API が必要であり、それを理由に空の結果ではなく失敗として報告している」旨が入ります — 両者は対で読まれることを意図しているため、文面も同一です。**`ApplyStackIssueFix` は、本物の「この Fix は適用できなかった」という結果については、これまでどおり `{Success: true, Applied: false}` を返します**（UE 5.8+ を含め、こちらは変わっていません）。新しいのはエンジンバージョンによる拒否だけであり、正当に適用対象が無かったケースはこれまでどおり成功のまま `Applied: false` として報告され、`ExecutionFailed` にはなりません。**両コマンドとも UE 5.8+ は影響を受けません**。`ApplyStackIssueFix` の通常の「適用できなかった」という結果も、元からこの形で報告されており、そのまま変わっていません。
 
 #### 編集（21）
 
@@ -967,6 +1021,8 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 > **⚠️ 挙動変更 — 解決できない型は、float に置き換えられず拒否されます。** 両コマンドは以前、解決できない型を指定されるとエントリを `float` として作ったうえで成功を返していました。気付く手段は読み戻して要求と違う型を見つけることだけでした。現在は拒否した型名を添えて `InvalidParams` を返します。`AddSetParametersModule` はモジュールを作る前に拒否するため、2 件目のパラメータが解決できない要求で「解決できた分だけを持つモジュール」が残ることはありません。`ParsedAsDefault` / `ParsedAsDefaultArray` は「型が解決できなかった」という意味を含まなくなり、値が型の既定へ落ちたことだけを表します。
 >
 > 書き込んだ既定値は**読み戻せます**。`GetStackInputData` が各入力の現在値を返すため、Set Parameters エントリへの書き込みは確認できます。
+>
+> **Note — `AddSetParameterEntry` と `AddSetParametersModule` の `TypePath` が、どのエンジンバージョンでも読み取りが返すベア型名も受け付けるようになりました。** これまで `TypePath` は短縮形（`float`、`Vector3f`）か完全なオブジェクトパス（`/Script/Niagara.NiagaraFloat`）しか解決していませんでした。現在は読み取り系の `Type` フィールドが元から報告しているベア型名 — `NiagaraFloat`、`ENiagaraCoordinateSpace`、`NiagaraDataInterfaceCurve`、`Quat4f` など — も解決します。これにより、`GetModuleTopology`・`GetEmitterTopology`・`GetScriptStackTopology`・`GetStackInputTopology`・`GetStackInputSchema`・`GetModuleSchema`・`GetDynamicInputSchema`・`GetDynamicInputSchemaFromAsset`・`GetModuleSchemaFromAsset` のいずれかで読み取った型名を、そのまま `TypePath` へ渡せます（これまで存在しなかった往復が成立するようになりました）。**`TypePath` が受け付ける型の集合は変わっていません** — ベア名も、登録済みの Niagara 型一覧を経由したうえで、他の2つの綴りと同じ許可リストを通ります。到達できるようになった型は1つもなく、綴りが広がっただけです。従来の2つの綴りはこれまでどおり解決でき、解決できない名前は引き続き拒否した型名を添えて `InvalidParams` を返します。
 
 #### Blueprint ラッパー（2）
 
@@ -2966,6 +3022,49 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 
 ---
 
+## UAIP.Editor.LiveLink 🧩
+
+エディタ側の LiveLink 作業 — プリセットアセット、配置済みアクターの LiveLink コントローラーコンポーネントへの Subject 割り当て、MessageBus の探索と接続、Take Recorder による録画。**`LiveLink` と `Takes` の両プラグインが必要**で、どちらかを無効にしたままビルドするとプロバイダごとコンパイルされず、これらのコマンドは `CommandNotFound` になります。両方を有効にしてビルドした後で LiveLink を無効にして起動した場合は、一覧に現れたうえで `Available: false` として表示されます（実行して初めて失敗するのではありません）。
+
+LiveLink の観測系は [UAIP.Runtime.LiveLink](#uaipruntimelivelink) にあり、そちらにプラグイン要件はありません。
+
+LiveLink の構成変更は同時に 1 つしか走りません。プリセット適用中と録画中は、このセクションと `UAIP.Runtime.LiveLink` の変更系コマンドが拒否されます。**読み取りは決して拒否されない**ため、`GetLiveLinkPresetInfo` と `GetLiveLinkRecordingStatus` は常時応答します。待てば解消する拒否は `TooManyRequests`、進行中の操作を先に終わらせる必要がある拒否は `NotAllowed` で返ります。
+
+### プリセット（4）
+
+| コマンド | 説明 |
+|---|---|
+| `GetLiveLinkPresetInfo` | `ULiveLinkPreset` アセットが保持する Source と Subject を、実行中のクライアントに触れずに返す。`ApplyLiveLinkPreset` の前に取るスナップショット。保存された設定オブジェクトはクラスパスだけを返し、接続文字列を含むその値は一切返さない。read-only（`EditorInspect`）で、PIE 中も、プリセット適用中・録画中も許可される |
+| `ApplyLiveLinkPreset` | ⚠️ **破壊的。** クライアントの構成全体をプリセットの内容で置き換える。**既存の Source をすべて取り除いてから作り直すため、途中で失敗すると一部だけ取り除かれた構成が残る** — 元の構成には戻らない。エンジンが元の構成を保持していないため UAIP からも復元できない。非同期で、エンジン側の適用が終わった時点で応答する。他のプリセット適用が進行中なら `TooManyRequests`（待てば通る）、録画中なら `NotAllowed`（先に停止が必要）で、いずれの拒否でもクライアントには手を触れない。`LiveLinkPresetApply` が必要 |
+| `AddLiveLinkPresetToClient` | プリセットの Source と Subject を現在の構成へ同期的に追加する。既定では追加のみで非破壊。`RecreateExisting` を指定すると、プリセットに載っている Source と Subject を一度消してから作り直すため破壊的になり、`LiveLinkPresetApply` が追加で必要になる（Capability 名は全応答の `RecreateExistingRequiredCapability` に含まれる）。`LiveLinkPresetAdd` が必要 |
+| `SaveLiveLinkPreset` | クライアントの現在の構成を `PresetPath` のプリセットアセットへ書き出す。新規作成と既存プリセットの上書きの両方に対応し、どちらだったかを応答が返す。**LiveLink プリセット以外のアセットが既にあるパスは、上書きせず拒否する。** プロジェクトコンテンツのパスのみ受け付ける。PIE / SIE 中は拒否。`LiveLinkPresetSave` が必要 |
+
+### コンポーネントへの割り当て（1）
+
+| コマンド | 説明 |
+|---|---|
+| `SetLiveLinkComponentSubject` | 配置済みアクターの LiveLink コントローラーコンポーネントに Subject を割り当て、あわせて制御対象のコンポーネントを指定する。`ComponentId` と `ExpectedComponentClass` は `ListActorComponents` / `AddActorComponent`（[UAIP.Editor.Level](#uaipeditorlevel)）から得る。期待クラスを再確認するため、古くなった識別子は追従せず拒否される。`SubjectName` は現在有効な Subject に対して解決し、同名が複数ある場合は `Candidates` を列挙して `InvalidParams` で拒否する（解決結果は応答に含まれる）。そのアクター上のコンポーネントのみ受け付ける — Blueprint 側のものは Blueprint コンポーネントコマンドの担当。PIE / SIE 中は拒否。Undo 可能。`LiveLinkComponentEdit` が必要 |
+
+### MessageBus の探索と接続（2）
+
+| コマンド | 説明 |
+|---|---|
+| `DiscoverLiveLinkMessageBusProviders` | 探索 ping をブロードキャストし、`DurationSeconds`（[1, 30] に切り詰め。適用値は `EffectiveDurationSeconds` として返る）以内に応答した提供元を返す。各応答は不透明な `Token` と `ProviderName` として返り、**ネットワークアドレスそのものは返さない**。Token はその探索を行ったセッションでのみ、かつ短い TTL の間だけ解決でき、他のセッションからは見えも使えもしない。`IncludeSensitiveDetails: true` は各提供元の `MachineName` を追加し、`LiveLinkNetworkDiscovery` に**加えて** `LiveLinkSourceInspectSensitive` が必要（要求の有無にかかわらず Capability 名は `SensitiveDetailsRequiredCapability` として返る）。探索は同時に 1 つまで（`TooManyRequests`）。非同期。`LiveLinkNetworkDiscovery` が必要 |
+| `ConnectLiveLinkMessageBusSource` | 探索で見つかった提供元を、探索が返した `Token` で指定してクライアントへ新しい Source として接続する。Token の所有者・TTL・提供元の有効性は構築前に再検証され、どれで失敗しても `InvalidParams` として返る。返すのは新しい `SourceGuid` と `ProviderName` のみで、**Subject が現れたかどうかは待たないし報告もしない** — 正常な接続でもしばらく Subject が 0 件のことがあるため。それは `ListLiveLinkSources` / `ListLiveLinkSubjects` で確認する。`LiveLinkSourceConnect` が必要 |
+
+### 録画（4）
+
+| コマンド | 説明 |
+|---|---|
+| `StartLiveLinkRecording` | `UTakeRecorderSubsystem` 経由で 1 つ以上の LiveLink Subject を新しい LevelSequence へ録画する。**Sequencer は開かず、モーダルダイアログも出さない。** `SubjectNames` の各要素は現在有効な Subject に解決し、一致 0 件なら `NotFound`、複数一致なら候補を `ResolvedSubjects` に列挙して `InvalidParams`。プリセット適用中・別の録画中は `NotAllowed` / `TooManyRequests`、UAIP の管理外で Take Recorder の録画が既に走っている場合は `ExecutionFailed` で、いずれも副作用は残さない。**保存先は `UTakeRecorderProjectSettings` に従い、任意の保存パスは受け付けない。** PIE 中も許可。`LiveLinkRecording` が必要 |
+| `StopLiveLinkRecording` | UAIP 自身が始めた録画を停止し、生成された LevelSequence のパッケージパスを返す。UAIP が所有する録画が進行中でない場合は `NotAllowed`（何も録画していない場合と、進行中の録画が UAIP 外——Take Recorder パネルや他プラグイン——で始まった場合の両方）。PIE 中も許可。`LiveLinkRecording` が必要 |
+| `CancelLiveLinkRecording` | UAIP 自身が始めた録画を中止し、そこまでの内容を LevelSequence として確定させずに**破棄する**。`NotAllowed` の条件は `StopLiveLinkRecording` と同じ。PIE 中も許可。`LiveLinkRecording` が必要 |
+| `GetLiveLinkRecordingStatus` | `IsRecording`（誰が始めたかに関わらず Take Recorder の録画が進行中か）と `StartedByUAIP` を返す。`StartedByUAIP` が true のときに限り `ResolvedSubjects`・`ElapsedSeconds`・`TargetSequencePath` も返る — 外部で始まった録画の開始時刻や対象を観測する手段が無いため、推測せずフィールドごと省略する。read-only（`EditorInspect`） |
+
+> **UAIP が始めた録画を人間が止めた場合も検知します。** UAIP が始めた録画を Take Recorder パネルから停止した場合や自然に終わった場合、UAIP はそれを検知して「録画中」の扱いを解除します。止め方が違うせいで他の操作がブロックされ続けることはありません。逆方向も同様に守られます — UAIP が始めていない録画が、これらのコマンドで停止・中止されることはありません。
+
+---
+
 ## UAIP.Runtime.PIE
 
 PIE セッションのライフサイクル。実行中ワールドの操作は [`UAIP.Runtime.World`](#uaipruntimeworld) にあります。
@@ -3132,6 +3231,47 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 ### Toolset ブリッジ（4）🧩
 
 プロバイダ：`Toolset.Runtime.Niagara.*`。UE 5.8+ と `NiagaraToolsets` が必要。ネイティブコマンドをミラー。
+
+---
+
+## UAIP.Runtime.LiveLink
+
+LiveLink の Source / Subject 観測、クライアント状態の制御、UAIP 所有の合成 Source。エディタでも Runtime でも動作し、PIE は不要です。
+
+**プラグイン要件は無く、🧩 も付きません。** これらのコマンドが使うクライアントインターフェースは、オプションの `LiveLink` プラグインではなくエンジン常設の `LiveLinkInterface` モジュールに含まれるため、コマンドは**常に登録されます**。LiveLink クライアントが存在しない場合（`LiveLink` プラグイン無効時）は、一覧から消えるのではなく `uaip_list_commands` / `uaip_describe_command` で `Available: false` として現れ、`ListLiveLinkSources` が `LiveLinkAvailable` を返すため、**1 回の呼び出しでこの環境で LiveLink が使えるかを判定できます**。プリセット・接続・録画は [UAIP.Editor.LiveLink](#uaipeditorlivelink-) にあり、そちらにはプラグイン要件があります。
+
+**Subject の指定方法。** 別々の Source が同名の Subject を出すことがあります。読み取りは `SubjectName` だけを受け付けて解決しますが、複数一致した場合は候補を `Candidates` に列挙して `InvalidParams` で拒否します — 勝手にどれかを選ぶことはありません。変更系は代わりに `SubjectKey`（`SourceGuid` + `SubjectName`）を取ります。エンジン側が名前しか扱えない 3 箇所（仮想 Subject の構成メンバー、`StartLiveLinkRecording` の対象、`SetLiveLinkComponentSubject`）は、現在**有効な** Subject に対して解決し、曖昧なら拒否し、何に解決したかを応答に記録します。
+
+**排他制御。** 以下の変更系コマンドは、プリセット適用中と録画中は拒否されます（[UAIP.Editor.LiveLink](#uaipeditorlivelink-) 参照）。`PushLiveLinkSyntheticFrame` は意図的な例外で、この理由で拒否されることはありません。読み取りも同様に拒否されません。
+
+### 観測（5）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `ListLiveLinkSources` | クライアントに登録されている全 Source（実 Source と仮想 Subject の入れ物の両方）— `Guid`・可読な `Type`・`IsStillValid`・`IsVirtual`・`FactoryClassPath`。`LiveLinkAvailable` はクライアント実装が登録されているかどうかを返すため、まずこのコマンドから始めるとよい。⚠️ `IncludeSensitiveDetails: true` は `ConnectionString` / `StatusText` / `MachineName` を追加する — これらは Source 実装が自由に決められるフィールドで、ホストアドレスや資格情報を含みうるため `LiveLinkSourceInspectSensitive` が必要。要求の有無にかかわらず、全応答が Capability 名を `SensitiveDetailsRequiredCapability` として返す |
+| `ListLiveLinkSubjects` | クライアントが把握している全 Subject を `IncludeDisabled` / `IncludeVirtual` で絞って返す。各エントリは `SubjectKey`・`RoleClassPath`・`EnabledConfigured`（永続的な設定値）・`IsSubjectValid` を持つ。`State` は `EnabledConfigured` が true のときだけ含まれる — エンジンの状態取得は名前をキーにしており、同名のうち現在有効なものについて答えるため、無効な行に載せると別の Subject を説明することになるため |
+| `GetLiveLinkSubjectFrame` | Subject の現在の static data と frame data を指定 Role で評価し、Role の構造に沿った JSON として返す（`SubjectKey`・`RoleClassPath`・`StaticData`・`FrameData`・`CapturedAt`）。`SourceGuid` を指定するとその Source に対して評価し、省略すると名前で評価する（同名のうち現在有効なものについて答える）。`Role` は既定で Subject 自身の Role。エンジン標準の Role はフィールド単位で構造化して返り、プロジェクト・プラグイン定義の Role は全 Role 共通の項目（カーブ値・時刻・タイムコード）だけにフォールバックする — どちらかは `ListLiveLinkRoles` で分かる |
+| `GetLiveLinkSubjectStatus` | Subject の接続状態 — `State`（解決した Subject が同名のうち有効なものである場合のみ。理由は上記と同じ）・`IsSubjectTimeSynchronized`・`SceneTime`（フレームが届いていれば直近フレームのもの）・`FrameArrivalTimes`・`CapturedAt`。⚠️ **フレームレートは一切算出しない。** `FrameArrivalTimes` はエンジンが公開する生の到着時刻の並びをそのまま返したもので（エンジン自身がデバッグ用途と明記しており、フレームレートを返す API も無い）、そこから何を読み取るかは利用者に委ねられる |
+| `ListLiveLinkRoles` | 登録済みの全 `ULiveLinkRole` サブクラス — `RoleClassPath`・`DisplayName`・`StaticDataStructPath`・`FrameDataStructPath`・`IsFullySupported`（その Role のフレームをフィールド単位で読めるか、共通項目だけか）。あわせて**具象**の `ULiveLinkVirtualSubject` サブクラスを `VirtualSubjectClasses` として列挙する。`AddLiveLinkVirtualSubject` はこのいずれかを要求する（抽象基底はインスタンス化できないため） |
+
+### クライアント状態（4）
+
+| コマンド | 説明 |
+|---|---|
+| `SetLiveLinkSubjectEnabled` | `SubjectKey` で指定した Subject の Enabled フラグを設定する。**同じ名前の Subject のうち有効にできるのは 1 つだけ**のため、有効化すると同名の別の Subject が暗黙的に無効化されることがある。そのキーは `ImplicitlyDisabledSubjectKey` として返る（該当なしなら `null`）。`EnabledConfigured` は即座に反映されるが、クライアントが実際に評価する `EnabledThisFrame` は次のティックまで変わらない — この 2 つを別々に返すのはそのため。`LiveLinkClientControl` が必要 |
+| `RemoveLiveLinkSource` | ⚠️ **取り消せません。** `Guid` で Source を削除し、その Source が持つ Subject もすべて道連れにする。削除した Source を同じ `Guid` で作り直すことはできない。UAIP が作った Source の場合は台帳のエントリも削除する（`WasSyntheticSource`）。登録されていない `SourceGuid` は `NotFound`。`LiveLinkSourceDelete` が必要 — この一群で唯一の不可逆な操作であるため、意図的に `LiveLinkClientControl` と分けてある |
+| `AddLiveLinkVirtualSubject` | 既存の Subject を 1 つ以上組み合わせた仮想 Subject を、UAIP 共有の仮想 Subject 入れ物 Source へ追加する。`VirtualSubjectClass` は具象の `ULiveLinkVirtualSubject` サブクラスのクラスパス（`ListLiveLinkRoles` が列挙する）。`MemberSubjectNames` の各要素は同名のうち現在有効な Subject に解決し、一致 0 件なら `NotFound`、複数一致なら候補を列挙して `InvalidParams`。解決したキーは `Members` として返る。メンバーは 64 件まで、名前は 256 文字まで。**仮想 Subject は本物のクライアント構成であり、作成したセッションが終わっても残ります** — 不要になったら明示的に削除すること。`LiveLinkClientControl` が必要 |
+| `RemoveLiveLinkVirtualSubject` | `SubjectKey` で仮想 Subject を削除する。冪等で、仮想 Subject を指していないキーは `WasPresent: false` で成功する。入れ物 Source に仮想 Subject が 1 つも残らなくなった場合は Source 自体も削除する（`WasContainerSourceRemoved`）— ただし**それが最後の仮想 Source になる場合は残す**（エディタの LiveLink 画面が仮想 Source の存在を前提にしているため）。`SubjectKey` が実 Subject を指す場合は `InvalidParams`（そちらは `RemoveLiveLinkSource` を使う）。`LiveLinkClientControl` が必要 |
+
+### 合成 Source（3）
+
+合成 Source は UAIP 自身が登録する最小限の Source です。これにより、**実機のキャプチャ機材も LiveLink Hub もネットワークも無しに**、プロセス内だけで Subject を成立させて LiveLink 経路全体を検証できます。合成 Source は作成したセッションが所有し、セッション終了時に片付けられます（このドメインで自動的に片付けられるのはこれだけです）。
+
+| コマンド | 説明 |
+|---|---|
+| `CreateLiveLinkSyntheticSource` | UAIP 所有の Source をクライアントへ登録し、その `SourceGuid` を返す。Source は要求したセッションの所有として記録され、**そのセッションだけがフレームを流し込み、削除できる**。セッションが保持できる合成 Source の上限に達すると `TooManyRequests`。`LiveLinkSyntheticSource` が必要 |
+| `PushLiveLinkSyntheticFrame` | このセッションが作成した合成 Source へ、1 つの Role の `StaticData` と `FrameData` を流し込む（名前付き Subject は初回に作られる）。⚠️ **どちらの流し込みもキューに積むだけ**で、クライアントは自身の次のティックでキューを処理する。そのため成功したほぼ全ての呼び出しで `IsSubjectValidImmediately` は `false` になる。この Subject のフレームを評価する前に、クライアントのティックを最低 1 回待つこと（`WaitForCondition` など）。`SourceGuid` がこのセッションの作成でない場合は `NotAllowed`。存在しない Source への流し込みはエンジンが黙って捨てるため、応答では Subject が実際に成立したかを確認して返す。セッション単位の Subject 数と流し込み頻度（`TooManyRequests`）、ペイロード単位の配列長・名前長・非有限値（`NaN` / `Inf`）（`InvalidParams`）で制限される。プリセット適用中・録画中も拒否されない。`LiveLinkFrameInjection` が必要 — Source を作ることとデータを流し込むことは別の権限であるため、意図的に `LiveLinkSyntheticSource` と分けてある |
+| `RemoveLiveLinkSyntheticSource` | このセッションが作成した合成 Source を削除する。冪等で、登録されたことのない `SourceGuid` も既に削除済みのものも `Removed: false` で成功する。別セッションのものは `NotAllowed`。`LiveLinkSyntheticSource` が必要 |
 
 ---
 
