@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1189 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1610 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1191 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1612 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -104,7 +104,7 @@ The domain summary below lists counts only. To enumerate the actual Toolset brid
 | Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 17 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
-| Runtime LiveLink | `UAIP.Runtime.LiveLink` | 12 | — | — |
+| Runtime LiveLink | `UAIP.Runtime.LiveLink` | 14 | — | — |
 | Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | partial (3/11) |
 | Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
 
@@ -3295,7 +3295,7 @@ LiveLink Source / Subject observation, client-state control, and UAIP-owned synt
 
 **Mutual exclusion.** The mutating commands below are refused while a preset apply or a recording is in flight (see [UAIP.Editor.LiveLink](#uaipeditorlivelink-)). `PushLiveLinkSyntheticFrame` is the deliberate exception and is never refused for that reason; reads never are either.
 
-### Observation (5) — requires `RuntimeInspect`
+### Observation (6) — requires `RuntimeInspect`
 
 | Command | Description |
 |---|---|
@@ -3303,9 +3303,10 @@ LiveLink Source / Subject observation, client-state control, and UAIP-owned synt
 | `ListLiveLinkSubjects` | Every Subject the client knows about, filtered by `IncludeDisabled` / `IncludeVirtual`. Each entry carries `SubjectKey`, `RoleClassPath`, `EnabledConfigured` (the persistent configured flag) and `IsSubjectValid`. `State` is included only when `EnabledConfigured` is true, because the engine's own state query is keyed by name and answers for whichever same-named Subject is enabled — reporting it for a disabled row would describe a different Subject |
 | `GetLiveLinkSubjectFrame` | Evaluate a Subject's current static and frame data for a role and return both as role-structured JSON (`SubjectKey`, `RoleClassPath`, `StaticData`, `FrameData`, `CapturedAt`). Narrow by `SourceGuid` to evaluate against that exact Source; omit it to evaluate by name, which answers for whichever same-named Subject is enabled. `Role` defaults to the Subject's own. Engine-shipped roles are decoded field by field; a project- or plugin-defined role falls back to the fields common to every role (curve values, times, timecode) — `ListLiveLinkRoles` says which is which |
 | `GetLiveLinkSubjectStatus` | A Subject's connection status: `State` (only when the resolved Subject is the enabled one sharing its name, for the reason above), `IsSubjectTimeSynchronized`, `SceneTime` (the most recent frame's, when any frame has arrived), `FrameArrivalTimes` and `CapturedAt`. ⚠️ **No frame rate is computed.** `FrameArrivalTimes` is the raw arrival history exactly as the engine exposes it — the engine documents it as debugging-only and offers no frame-rate query — so any rate is yours to derive |
+| `GetLiveLinkSubjectSettings` | A Subject's `ULiveLinkSubjectSettings`-level configuration, currently just `InterpolationProcessorClassPath` — the class path of the `ULiveLinkFrameInterpolationProcessor` configured on the Subject, or `null` when none is set. Resolves a bare `SubjectName` the same way as `GetLiveLinkSubjectStatus` (optionally narrowed by `SourceGuid`; `InvalidParams` listing `Candidates` when the name is ambiguous, never silently resolved to one of them). **`null` is also the answer for a Subject that has no settings object to configure in the first place** — a virtual Subject, for instance — so it does not by itself distinguish "configurable but unset" from "not configurable at all"; attempting `SetLiveLinkSubjectInterpolationProcessor` against the same Subject is what tells the two apart (it answers `NotAllowed` for the latter) |
 | `ListLiveLinkRoles` | Every registered `ULiveLinkRole` subclass — `RoleClassPath`, `DisplayName`, `StaticDataStructPath`, `FrameDataStructPath`, and `IsFullySupported` (whether frames of that role are decoded field by field or only through the common base fields). Also lists every **concrete** `ULiveLinkVirtualSubject` subclass under `VirtualSubjectClasses`; `AddLiveLinkVirtualSubject` requires one of these, since the abstract base cannot be instantiated |
 
-### Client state (4)
+### Client state (5)
 
 | Command | Description |
 |---|---|
@@ -3313,6 +3314,7 @@ LiveLink Source / Subject observation, client-state control, and UAIP-owned synt
 | `RemoveLiveLinkSource` | ⚠️ **Cannot be undone.** Remove a Source by `Guid`, taking every Subject it owns with it; a removed Source cannot be recreated under the same `Guid`. When the Source is one UAIP created, its ledger entry is dropped too (`WasSyntheticSource`). `NotFound` for a `SourceGuid` that names no registered Source. Requires `LiveLinkSourceDelete` — held apart from `LiveLinkClientControl` precisely because it is the one irreversible mutation in this group |
 | `AddLiveLinkVirtualSubject` | Add a virtual Subject — a combination of one or more existing Subjects — to the shared UAIP virtual-subject container Source. `VirtualSubjectClass` must be a concrete `ULiveLinkVirtualSubject` subclass path (`ListLiveLinkRoles` lists them). Each `MemberSubjectNames` entry resolves against whichever same-named Subject is enabled, `NotFound` when none matches and `InvalidParams` listing candidates when more than one does; the resolved keys come back under `Members`. Up to 64 members, names up to 256 characters. **Virtual Subjects are real client configuration and survive the session that made them** — remove them explicitly. Requires `LiveLinkClientControl` |
 | `RemoveLiveLinkVirtualSubject` | Remove a virtual Subject by `SubjectKey`. Idempotent: a key that names no virtual Subject succeeds with `WasPresent: false`. When the container Source is left holding none, the Source is removed too (`WasContainerSourceRemoved`) — **unless that would leave the client with no virtual Source at all**, which the editor's LiveLink panel assumes exists. `InvalidParams` when `SubjectKey` names a real Subject; use `RemoveLiveLinkSource` for those. Requires `LiveLinkClientControl` |
+| `SetLiveLinkSubjectInterpolationProcessor` | Set or clear the `ULiveLinkFrameInterpolationProcessor` configured on a Subject's settings, addressed by the full `SubjectKey` (`SourceGuid` + `SubjectName` — no bare-name resolution here). **Omitting `InterpolationProcessorClassPath` clears interpolation; an empty string is refused with `InvalidParams` rather than treated the same as omission**, so a class path built from an empty variable cannot silently clear the setting instead of failing loudly. When a path is given, the class is resolved with `FindObject` only (never loaded) and must be a concrete, non-abstract subclass of `ULiveLinkFrameInterpolationProcessor`, up to 512 characters — anything else is `InvalidParams`. `NotFound` when `SubjectKey` names no registered Subject; `NotAllowed` when the resolved Subject has no settings object to configure (see `GetLiveLinkSubjectSettings` above). Refused, with no change made, while a preset apply or a recording is in flight. Requires `LiveLinkClientControl` |
 
 ### Synthetic Sources (3)
 

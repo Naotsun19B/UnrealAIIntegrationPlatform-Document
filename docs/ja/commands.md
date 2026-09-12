@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1189 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1610 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1191 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1612 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -100,7 +100,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 17 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
-| Runtime LiveLink | `UAIP.Runtime.LiveLink` | 12 | — | — |
+| Runtime LiveLink | `UAIP.Runtime.LiveLink` | 14 | — | — |
 | Runtime Engine Log | `UAIP.Runtime.Engine.Log` | 3 | — | 一部（2/3） |
 | Runtime Engine Plugin | `UAIP.Runtime.Engine.Plugin` | 5 | — | ✅ |
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | 一部（2/4） |
@@ -3244,7 +3244,7 @@ LiveLink の Source / Subject 観測、クライアント状態の制御、UAIP 
 
 **排他制御。** 以下の変更系コマンドは、プリセット適用中と録画中は拒否されます（[UAIP.Editor.LiveLink](#uaipeditorlivelink-) 参照）。`PushLiveLinkSyntheticFrame` は意図的な例外で、この理由で拒否されることはありません。読み取りも同様に拒否されません。
 
-### 観測（5）— `RuntimeInspect` が必要
+### 観測（6）— `RuntimeInspect` が必要
 
 | コマンド | 説明 |
 |---|---|
@@ -3252,9 +3252,10 @@ LiveLink の Source / Subject 観測、クライアント状態の制御、UAIP 
 | `ListLiveLinkSubjects` | クライアントが把握している全 Subject を `IncludeDisabled` / `IncludeVirtual` で絞って返す。各エントリは `SubjectKey`・`RoleClassPath`・`EnabledConfigured`（永続的な設定値）・`IsSubjectValid` を持つ。`State` は `EnabledConfigured` が true のときだけ含まれる — エンジンの状態取得は名前をキーにしており、同名のうち現在有効なものについて答えるため、無効な行に載せると別の Subject を説明することになるため |
 | `GetLiveLinkSubjectFrame` | Subject の現在の static data と frame data を指定 Role で評価し、Role の構造に沿った JSON として返す（`SubjectKey`・`RoleClassPath`・`StaticData`・`FrameData`・`CapturedAt`）。`SourceGuid` を指定するとその Source に対して評価し、省略すると名前で評価する（同名のうち現在有効なものについて答える）。`Role` は既定で Subject 自身の Role。エンジン標準の Role はフィールド単位で構造化して返り、プロジェクト・プラグイン定義の Role は全 Role 共通の項目（カーブ値・時刻・タイムコード）だけにフォールバックする — どちらかは `ListLiveLinkRoles` で分かる |
 | `GetLiveLinkSubjectStatus` | Subject の接続状態 — `State`（解決した Subject が同名のうち有効なものである場合のみ。理由は上記と同じ）・`IsSubjectTimeSynchronized`・`SceneTime`（フレームが届いていれば直近フレームのもの）・`FrameArrivalTimes`・`CapturedAt`。⚠️ **フレームレートは一切算出しない。** `FrameArrivalTimes` はエンジンが公開する生の到着時刻の並びをそのまま返したもので（エンジン自身がデバッグ用途と明記しており、フレームレートを返す API も無い）、そこから何を読み取るかは利用者に委ねられる |
+| `GetLiveLinkSubjectSettings` | Subject の `ULiveLinkSubjectSettings` レベルの設定を返す。現時点では `InterpolationProcessorClassPath` のみで、Subject に設定されている `ULiveLinkFrameInterpolationProcessor` のクラスパス、未設定なら `null`。`SubjectName` の裸名解決は `GetLiveLinkSubjectStatus` と同じ（`SourceGuid` で絞り込み可能。曖昧なら `Candidates` を列挙して `InvalidParams` — 勝手にどれかを選ぶことはない）。**そもそも設定オブジェクトを持たない対象（仮想 Subject 等）でも `null` を返す**ため、`null` だけでは「設定できるが未設定」と「そもそも設定を持てない」を区別できない。区別が必要なら、同じ Subject に対して `SetLiveLinkSubjectInterpolationProcessor` を試みればよい（後者は `NotAllowed` になる） |
 | `ListLiveLinkRoles` | 登録済みの全 `ULiveLinkRole` サブクラス — `RoleClassPath`・`DisplayName`・`StaticDataStructPath`・`FrameDataStructPath`・`IsFullySupported`（その Role のフレームをフィールド単位で読めるか、共通項目だけか）。あわせて**具象**の `ULiveLinkVirtualSubject` サブクラスを `VirtualSubjectClasses` として列挙する。`AddLiveLinkVirtualSubject` はこのいずれかを要求する（抽象基底はインスタンス化できないため） |
 
-### クライアント状態（4）
+### クライアント状態（5）
 
 | コマンド | 説明 |
 |---|---|
@@ -3262,6 +3263,7 @@ LiveLink の Source / Subject 観測、クライアント状態の制御、UAIP 
 | `RemoveLiveLinkSource` | ⚠️ **取り消せません。** `Guid` で Source を削除し、その Source が持つ Subject もすべて道連れにする。削除した Source を同じ `Guid` で作り直すことはできない。UAIP が作った Source の場合は台帳のエントリも削除する（`WasSyntheticSource`）。登録されていない `SourceGuid` は `NotFound`。`LiveLinkSourceDelete` が必要 — この一群で唯一の不可逆な操作であるため、意図的に `LiveLinkClientControl` と分けてある |
 | `AddLiveLinkVirtualSubject` | 既存の Subject を 1 つ以上組み合わせた仮想 Subject を、UAIP 共有の仮想 Subject 入れ物 Source へ追加する。`VirtualSubjectClass` は具象の `ULiveLinkVirtualSubject` サブクラスのクラスパス（`ListLiveLinkRoles` が列挙する）。`MemberSubjectNames` の各要素は同名のうち現在有効な Subject に解決し、一致 0 件なら `NotFound`、複数一致なら候補を列挙して `InvalidParams`。解決したキーは `Members` として返る。メンバーは 64 件まで、名前は 256 文字まで。**仮想 Subject は本物のクライアント構成であり、作成したセッションが終わっても残ります** — 不要になったら明示的に削除すること。`LiveLinkClientControl` が必要 |
 | `RemoveLiveLinkVirtualSubject` | `SubjectKey` で仮想 Subject を削除する。冪等で、仮想 Subject を指していないキーは `WasPresent: false` で成功する。入れ物 Source に仮想 Subject が 1 つも残らなくなった場合は Source 自体も削除する（`WasContainerSourceRemoved`）— ただし**それが最後の仮想 Source になる場合は残す**（エディタの LiveLink 画面が仮想 Source の存在を前提にしているため）。`SubjectKey` が実 Subject を指す場合は `InvalidParams`（そちらは `RemoveLiveLinkSource` を使う）。`LiveLinkClientControl` が必要 |
+| `SetLiveLinkSubjectInterpolationProcessor` | Subject の設定オブジェクトに構成されている `ULiveLinkFrameInterpolationProcessor` を設定・解除する。対象は完全な `SubjectKey`（`SourceGuid` + `SubjectName`）で指定し、ここに裸名解決は無い。**`InterpolationProcessorClassPath` を省略すると補間を解除するが、空文字列は省略と同義に扱わず `InvalidParams` で拒否する** — クラスパスを組み立てたつもりが空だったという取り違えが、黙って補間を解除する操作になるのを防ぐため。指定する場合、クラスは `FindObject` のみで解決し（ロードはしない）、`ULiveLinkFrameInterpolationProcessor` の具象（非 Abstract）のサブクラスである必要がある（最大 512 文字）。それ以外はすべて `InvalidParams`。`SubjectKey` が登録済みの Subject を指していなければ `NotFound`、解決した Subject が設定オブジェクトを持たない場合（`GetLiveLinkSubjectSettings` の説明を参照）は `NotAllowed`。プリセット適用中または録画中は、**補間の設定を一切変えずに**拒否される。`LiveLinkClientControl` が必要 |
 
 ### 合成 Source（3）
 
