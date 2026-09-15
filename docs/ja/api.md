@@ -176,15 +176,22 @@ stdin-stream モードでも同じマーカーがリクエスト毎に出ます�
 | `CommandNotFound` | 404 | `CommandName` 未登録 | `UAIP.Core.ListCommands` で確認。オプションプラグインコマンドはプラグインロードが必要 |
 | `InvalidParams` | 400 | 必須欠落 / 型不一致 / `AdditionalProperties:false` での未知フィールド。シナリオでは `${...}` テンプレート参照が解決できなかった場合も含む | `UAIP.Core.DescribeCommand` でスキーマ再取得。テンプレートの失敗は `RetryCount` によるリトライ対象**外**です — [シナリオ API](scenario.md#テンプレート解決の失敗) を参照 |
 | `CapabilityNotAvailable` | 403 | セッションに必要 Capability 不足 | `ErrorMessage` に不足 Capability 名。`Config/DefaultUAIP.ini` で有効化して再起動、または `UAIP.Core.ReloadCapabilities` |
-| `PolicyViolation` | 403 | SafetyPolicy ゲートまたはルート opt-in 不足 | `ErrorMessage` で「SafetyPolicy 拒否」と「環境で未有効」を区別 |
-| `NotFound` | 404 | パラメータ参照のアセット / アクター / オブジェクトが存在しない | `Search*` / `List*` コマンドでパス / GUID 確認 |
-| `NotAllowed` | 409 | 禁止パス（例：`/Engine/`）または禁止タイミング（PIE 中の Editor 編集） | 別パスを選ぶか PIE 停止まで待つ |
+| `AbilityUnavailable` | 501 | 必要な Optional モジュール／プラグイン（例：Sequencer、LevelSequenceEditor）が読み込まれていない | `ErrorMessage` に有効化すべき対象名。モジュール／プラグインを有効化して再実行 |
+| `UnsupportedOperation` | 501 | 要求された操作の実装が、このプラットフォーム／ビルド構成に**構造的に**存在しない。バージョンに依存しない恒久的な非対応（例：ControlRig の ModularRig 編集） | 設定変更では解決しない。このドメインでは別の手段を使う |
+| `PolicyViolation` | 403 | このコードは 2 つの異なる原因を表す。(a) SafetyPolicy による拒否またはルート opt-in 不足、(b) このコマンドの `IsAvailable()` がこの環境では `false`（エンジンバージョン不足、対象を除外するビルド構成、対応していない実行モード、またはエンジン API がそもそもプラグインへ export されていない） | (a) の場合：`ErrorMessage` は「SafetyPolicy による拒否」と「環境で未有効」を区別する。`Config/DefaultUAIP.ini` または起動フラグを調整する。(b) の場合：`UAIP.Core.DescribeCommand` を呼び、設定で直ると決めつける前に `UnavailableReason` / `UnavailableDetail` を読む。`EngineApiNotExported` はエンジンを上げても解決しないことを意味する — Toolset ブリッジ側の代替コマンドを探す |
+| `PreconditionFailed` | 503 | ハンドラが走る**前**の前提が成立していない（エディタがまだ使えない、ゲームワールドが無い、サブシステムが未登録など） | 待ってから再試行する。`PolicyViolation` と異なり一時的なランタイム状態であって設定の問題ではない。シナリオでは `RetryCount` により自動で再試行される |
+| `NotFound` | 404 | パラメータ参照のアセット / アクター / オブジェクトが存在しない。**存在するリソースの中の要素**（グラフ上に無いノードやピンなど）が見つからない場合も含む | `Search*` / `List*` コマンドでパス / GUID 確認 |
+| `NotAllowed` | 409 | 禁止パス（例：`/Engine/`）、禁止タイミング（PIE 中の Editor 編集）、または現在の状態がこの操作そのものを禁じている（モーダル表示中、対象が他者の所有下にある等） | 別パスを選ぶ、PIE 停止まで待つ、または再試行前に状態を変える |
+| `Conflict` | 409 | 呼び出し側が前提としていた状態が、コマンドの現在の状態と食い違っている（例：最後に読んでから構造フィンガープリントが変わった） | 最新の状態を読み直し、その前提で再試行する。機械的な再試行では解決しない — タイミングではなく状態そのものが原因のため |
 | `ExecutionFailed` | 500 | ハンドラ内の Runtime 失敗 | `ErrorMessage` に詳細。シナリオでは `RetryCount` 活用 |
 | `Timeout` | 408 | ステップ単位 / シナリオ単位の壁時計上限超過 | `TimeoutSeconds` を増やすかシナリオ分割 |
 | `TooManyRequests` | 429 | 並行性制限ヒット — 単一コマンド枠、シナリオの同時実行（1 件まで）、シナリオ実行中の単発コマンド（逆方向も含む）、有効化時の受動的待機プールのいずれか — [設定リファレンス → `[UAIP.Transport]` 受動的待機の同時実行](config.md#uaiptransport--受動的待機の同時実行既定オフ) と [シナリオ実行 → 単発コマンドとの排他](scenario.md#単発コマンドとの排他) を参照 | 進行中リクエスト終了待ち。HTTP レスポンスには `Retry-After: 1` が付く |
 | `InternalError` | 500 | プロセス障害レベル（ハンドラ例外、ディスパッチャ不変条件違反） | `RestartEditor`、継続なら `Saved/Crashes/` 添付で Issue 起票 |
 
 HTTP ステータスは参考値 — 分岐は常に `ErrorCode` で。WebSocket と CLI は HTTP ステータスを持ちません。
+`NotAllowed` と `Conflict` はどちらも 409 になるため、HTTP ステータスだけでは区別できません。これも
+ステータスではなく `ErrorCode` で分岐すべき理由の一つです。`PreconditionFailed` の 503 はサーバ自体が
+落ちていることを意味しません。回復時刻を約束できないため `Retry-After` ヘッダーは付与されません。
 
 ---
 
@@ -354,6 +361,44 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
 
 `OperationalConstraints` を先読みゲートとして利用：`IsReadOnly:true` なら変更系コマンドを試行しない。
 
+### 6.5 コマンド可用性フィールド
+
+`UAIP.Core.DescribeCommand` は、指定した 1 コマンドが今呼び出せるかどうか（`Available: true`/`false`）を返します。呼び出せない場合、レスポンスには `UnavailableReason` と `UnavailableDetail` という 2 つの別フィールドも含まれます。それぞれ別の問いに答えるフィールドです。
+
+```json
+{
+  "Name": "UAIP.Editor.Sequencer.KeyControlsAtFrames",
+  "Available": false,
+  "UnavailableReason": "HandlerUnavailable",
+  "UnavailableDetail": "EngineVersion",
+  "UnavailableDetailMessage": "KeyControlsAtFrames is not available in UE 5.7."
+}
+```
+
+`UnavailableReason` は**そもそもなぜこのコマンドが discovery から除外されたか**に答えます。これは `UAIP.Core.ListCommands` の `HiddenReasons` オブジェクトが既に数えている 5 値と同じです（[コマンドリファレンス](commands.md#uaipcore) 参照）。
+
+| `UnavailableReason` | 意味 |
+|---|---|
+| `DeniedCommand` | `SafetyPolicy::DeniedCommands` に列挙されている |
+| `MissingCapability` | 必要な Capability の少なくとも 1 つがプロセス全体の Capability セットに無い |
+| `RoleRestricted` | セッションの role が、プロセスとしては保有している必要 Capability の少なくとも 1 つを拒否している |
+| `ReadOnlyPolicy` | `SafetyPolicy::bReadOnly` が設定されており、このコマンドは状態を変更する |
+| `HandlerUnavailable` | ハンドラ自身が `IsAvailable() == false` を返している |
+
+`UnavailableDetail` は、`HandlerUnavailable` のときだけ意味のある答えを持つ、より狭い第 2 の問い——「『ハンドラが利用不可』のうち、どの種類か」——に答えます。他の 4 つの理由はその名前自体で説明が完結しているため、`UnavailableDetail` はそれらすべてで `Unspecified` を返します。より詳細な detail を報告する実装になっていない `HandlerUnavailable` ハンドラでも同様に `Unspecified` です。
+
+| `UnavailableDetail` | 意味 | 解消する方法 |
+|---|---|---|
+| `Unspecified` | `HandlerUnavailable` 自体を超える、ハンドラ側から報告された detail が無い | — |
+| `EngineVersion` | 現在動作しているものとは異なるエンジンバージョンを要求している（特定リリースで追加された、または削除された API） | エンジンバージョンを上げる／下げる |
+| `BuildConfiguration` | このプロセスがビルドされていないビルド構成を要求している（例：Developer Tools、Editor ターゲット） | 必要な構成で再ビルドする |
+| `ExecutionEnvironment` | この実行環境が提供していないインフラを要求している（例：レンダーハードウェアインタフェース、対話的セッション） | 別の実行環境で実行する |
+| `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | **エンジン側では何をしても解決しない** — 代わりに Toolset bridge の代替手段を探す |
+
+`UnavailableDetail` が `Unspecified` 以外のとき、レスポンスには通常 `UnavailableDetailMessage` も含まれます。これはハンドラ自身による自由記述の補足説明です（上記例では `"KeyControlsAtFrames is not available in UE 5.7."`）。ハンドラに追加で伝えることが無い場合、このフィールドは空文字列ではなく**省略**されます。
+
+**`UAIP.Core.ListCommands` は `UnavailableDetail` を返しません。** その `HiddenReasons` オブジェクトは `UnavailableReason` と同じ 5 キーのままで、理由ごとの detail 内訳を持つようには拡張されていません。特定の 1 コマンドについて `HandlerUnavailable` の detail が必要な呼び出し側は、そのコマンド名を指定して `DescribeCommand` を 1 件ずつ呼び出します。このフィールドに一括取得の手段はありません。
+
 ---
 
 ## 7. シナリオ API
@@ -386,7 +431,7 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
 | `CommandName` | string | — | `uaip_execute` と同じ |
 | `Params` | object | `{}` | テンプレート解決後 |
 | `AbortOnFailure` | bool | `true` | **このステップが失敗したとき** に評価される。`true` なら以降のステップをすべてスキップ、`false` ならシナリオを継続。**前のステップ** が失敗した際にこのステップへ到達するかどうかは制御しない — [シナリオ実行](scenario.md#失敗時の挙動とクリーンアップ) を参照 |
-| `RetryCount` | int | `0` | `ExecutionFailed` のみリトライ — `CapabilityNotAvailable` / `PolicyViolation` はしない |
+| `RetryCount` | int | `0` | `ExecutionFailed` / `PreconditionFailed` のみリトライ — `CapabilityNotAvailable` / `PolicyViolation` はしない |
 | `TimeoutSeconds` | int | `60` | ステップ単位の壁時計上限 |
 
 ### 7.2 テンプレート式

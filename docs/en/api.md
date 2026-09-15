@@ -176,15 +176,22 @@ In stdin-stream mode the same markers appear per request.
 | `CommandNotFound` | 404 | `CommandName` not registered | Verify with `UAIP.Core.ListCommands`; optional-plugin commands need the plugin loaded |
 | `InvalidParams` | 400 | Missing required / wrong type / unknown field (with `AdditionalProperties:false`); in a scenario, also an unresolvable `${...}` template reference | Re-fetch the schema via `UAIP.Core.DescribeCommand`. Template failures are **not** retried by `RetryCount` — see [Scenario Execution](scenario.md#template-resolution-failures) |
 | `CapabilityNotAvailable` | 403 | Session lacks a required Capability | `ErrorMessage` names the missing capability; enable it via `Config/DefaultUAIP.ini` and restart or call `UAIP.Core.ReloadCapabilities` |
-| `PolicyViolation` | 403 | SafetyPolicy gate or missing route opt-in | `ErrorMessage` distinguishes "denied by SafetyPolicy" vs "not enabled in this environment" |
-| `NotFound` | 404 | Asset / actor / object referenced by params doesn't exist | Verify path / GUID with a `Search*` or `List*` command |
-| `NotAllowed` | 409 | Forbidden path (e.g. `/Engine/`) or forbidden timing (editor edit during PIE) | Choose a different path or wait for PIE to stop |
+| `AbilityUnavailable` | 501 | A required optional module or plugin (e.g. Sequencer, LevelSequenceEditor) is not loaded | `ErrorMessage` names what to enable; enable the module/plugin and retry |
+| `UnsupportedOperation` | 501 | The requested operation has no implementation on this platform or build configuration at all — this is structural and not version-dependent (e.g. ControlRig's ModularRig editing) | No configuration change fixes this; use a different approach for this domain |
+| `PolicyViolation` | 403 | Two distinct causes share this code: (a) blocked by SafetyPolicy or a missing route opt-in, or (b) the command's `IsAvailable()` is `false` in this environment (engine version too old, a build configuration that excludes it, an unsupported execution mode, or an engine API that was never exported to the plugin) | For (a): read `ErrorMessage` — it distinguishes "denied by SafetyPolicy" from "not enabled in this environment" — and adjust `Config/DefaultUAIP.ini` or the launch flags. For (b): call `UAIP.Core.DescribeCommand` and read `UnavailableReason` / `UnavailableDetail` before assuming a setting will fix it — an `EngineApiNotExported` detail means no engine upgrade helps either; look for a Toolset bridge alternative instead |
+| `PreconditionFailed` | 503 | A precondition the handler needs was not met before it could run (e.g. the editor is not fully available yet, no game world exists, or a subsystem is not registered) | Wait and retry — this is a transient runtime state, not a policy decision like `PolicyViolation`. Scenarios retry it automatically via `RetryCount` |
+| `NotFound` | 404 | Asset / actor / object referenced by params doesn't exist — this also covers an element that lives inside a resource that does exist (e.g. a node or pin that is not on the graph) | Verify path / GUID with a `Search*` or `List*` command |
+| `NotAllowed` | 409 | Forbidden path (e.g. `/Engine/`), forbidden timing (editor edit during PIE), or the current state otherwise forbids this specific operation (a modal dialog is open, the target is owned elsewhere) | Choose a different path, wait for PIE to stop, or otherwise change the state before retrying |
+| `Conflict` | 409 | The caller's assumed state no longer matches the command's current state (e.g. a structural fingerprint changed since it was last read) | Re-read the current state and retry with the refreshed assumption — retrying blindly does not help, since the state, not the timing, is the problem |
 | `ExecutionFailed` | 500 | Runtime failure inside the handler | `ErrorMessage` carries detail; inside a scenario use `RetryCount` |
 | `Timeout` | 408 | Per-step or per-scenario wall-clock cap exceeded | Increase `TimeoutSeconds` or split the scenario |
 | `TooManyRequests` | 429 | Concurrency limit hit — the single command slot, a scenario already running (1 at a time), a single command while a scenario is running (or vice versa), or the passive-wait pool if enabled — see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default) and [Scenario Execution → Exclusivity with single commands](scenario.md#exclusivity-with-single-commands) | Wait for the in-flight request to finish; the HTTP response includes `Retry-After: 1` |
 | `InternalError` | 500 | Process-fault level (handler threw, dispatcher invariant broken) | `RestartEditor`; if it persists, capture `Saved/Crashes/` and file an issue |
 
 HTTP status codes are advisory — always rely on `ErrorCode` for branching. WebSocket and CLI don't carry HTTP statuses.
+`NotAllowed` and `Conflict` both map to 409, so the HTTP status alone cannot tell them apart — this is one more reason
+to branch on `ErrorCode`, not the status. `PreconditionFailed`'s 503 does not mean the server itself is down; no
+`Retry-After` header is attached, since there is no way to promise when the precondition will clear.
 
 ---
 
@@ -354,6 +361,44 @@ There is no separate list of the deny-by-default capabilities, because it is der
 
 Use `OperationalConstraints` as a forward-looking gate: if `IsReadOnly:true`, don't attempt mutating commands.
 
+### 6.5 Command availability fields
+
+`UAIP.Core.DescribeCommand` reports whether one specific command can be called right now (`Available: true`/`false`). When it cannot, the response also carries `UnavailableReason` and `UnavailableDetail` — two separate fields answering two separate questions.
+
+```json
+{
+  "Name": "UAIP.Editor.Sequencer.KeyControlsAtFrames",
+  "Available": false,
+  "UnavailableReason": "HandlerUnavailable",
+  "UnavailableDetail": "EngineVersion",
+  "UnavailableDetailMessage": "KeyControlsAtFrames is not available in UE 5.7."
+}
+```
+
+`UnavailableReason` answers **why the command was excluded from discovery at all** — the same five values `UAIP.Core.ListCommands`'s `HiddenReasons` object already counts by (see [Commands Reference](commands.md#uaipcore)):
+
+| `UnavailableReason` | Meaning |
+|---|---|
+| `DeniedCommand` | Listed in `SafetyPolicy::DeniedCommands` |
+| `MissingCapability` | At least one required capability is absent from the process-wide capability set |
+| `RoleRestricted` | The session's role denies at least one required capability the process otherwise holds |
+| `ReadOnlyPolicy` | `SafetyPolicy::bReadOnly` is set and the command mutates state |
+| `HandlerUnavailable` | The handler itself reports `IsAvailable() == false` |
+
+`UnavailableDetail` answers a narrower, second question that only `HandlerUnavailable` has an interesting answer to: **which kind of "the handler is unavailable" is this?** The other four reasons are already fully explained by their own name, so `UnavailableDetail` reports `Unspecified` for all of them — and also for a `HandlerUnavailable` handler that has not opted into reporting a more specific detail:
+
+| `UnavailableDetail` | Meaning | What resolves it |
+|---|---|---|
+| `Unspecified` | No handler-reported detail beyond `HandlerUnavailable` itself | — |
+| `EngineVersion` | Requires an engine version other than the one currently running (an API introduced, or removed, at a specific release) | Raising or lowering the engine version |
+| `BuildConfiguration` | Requires a build configuration this process was not built with (e.g. Developer Tools, an Editor target) | Rebuilding with the required configuration |
+| `ExecutionEnvironment` | Requires infrastructure this execution environment does not provide (e.g. a render hardware interface, an interactive session) | Running under a different execution environment |
+| `EngineApiNotExported` | Depends on an engine-side API that is never exported to a plugin in any supported engine version | **Nothing engine-side** — look for a Toolset bridge alternative instead |
+
+When `UnavailableDetail` is anything other than `Unspecified`, the response usually also carries `UnavailableDetailMessage` — the handler's own free-text elaboration (`"KeyControlsAtFrames is not available in UE 5.7."` above). The field is omitted, not sent empty, when the handler has nothing further to add.
+
+**`UAIP.Core.ListCommands` does not carry `UnavailableDetail`.** Its `HiddenReasons` object stays at the same five keys `UnavailableReason` uses — it never gained a matching per-reason detail breakdown. A caller that needs the `HandlerUnavailable` detail for one specific command calls `DescribeCommand` on that command's name, one command at a time; there is no bulk form of this field.
+
 ---
 
 ## 7. Scenario API
@@ -386,7 +431,7 @@ Scenarios run an ordered list of commands as one request. See [Scenario Executio
 | `CommandName` | string | — | Same as `uaip_execute` |
 | `Params` | object | `{}` | After template resolution |
 | `AbortOnFailure` | bool | `true` | Evaluated on **this** step when it fails: `true` skips every later step, `false` lets the scenario continue. It does not control whether this step is reached after an *earlier* step failed — see [Scenario Execution](scenario.md#failure-handling-and-cleanup) |
-| `RetryCount` | int | `0` | Retry on `ExecutionFailed` only — never on `CapabilityNotAvailable` / `PolicyViolation` |
+| `RetryCount` | int | `0` | Retry on `ExecutionFailed` / `PreconditionFailed` only — never on `CapabilityNotAvailable` / `PolicyViolation` |
 | `TimeoutSeconds` | int | `60` | Per-step wall-clock cap |
 
 ### 7.2 Template expressions

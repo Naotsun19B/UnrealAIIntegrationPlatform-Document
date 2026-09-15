@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1191 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1612 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1193 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1614 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -45,9 +45,9 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
 | Editor Assets | `UAIP.Editor.Assets` | 51 | 6 | 一部（29/51） |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
-| Editor Level | `UAIP.Editor.Level` | 20 | 8 | 一部（8/20） |
+| Editor Level | `UAIP.Editor.Level` | 22 | 8 | 一部（8/22） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 21 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
@@ -185,6 +185,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | `SetProjectSetting` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
 | `SetDataTableRow` | `UAIP.Editor.Property` | `Value` | ✅ | `PropertyReferenceEdit` |
 | `SetBlueprintComponentProperty` | `UAIP.Editor.Blueprint` | `Value` | ✅ | `PropertyReferenceEdit` |
+| `SetActorComponentProperty` | `UAIP.Editor.Level` | `Value` | ✅ | `PropertyReferenceEdit` |
 | `SetSectionProperty` | `UAIP.Editor.Sequencer` | `PropertyValue` | ✅ | `PropertyReferenceEdit` |
 | `SetSoundClassSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
 | `SetSoundAttenuationSettings` | `UAIP.Editor.SoundSettings` | `Value` | ✅ | `PropertyReferenceEdit` |
@@ -596,7 +597,7 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 >
 > **`ApplyValidationFix` との関係**: バリデータが提供する修正が `FAutoSavingFixer` で包まれていても、UAIP 経由の適用では**ディスクへ書き込まれない**。エンジンの自動保存が人間の確認を求めるモーダルダイアログ経由であり、応答する人がいない非対話実行では成立しないため。この場合 `ApplyValidationFix` は `Applied: true` と `AssetSaved: false` を返すので、**`AssetSaved` が `false` なら `SaveAsset` で明示的に保存する**こと。
 
-> **Note — `FactoryParams` で名指しするクラス自体が Capability を要求することがあります。** 一部のドメインは、ここで名指しされたクラスを、そのドメインの編集コマンドと同じポリシーで審査します — 現時点では StateTree の `FactoryParams.SchemaClass` と ControlRig の `FactoryParams.ParentClass` が該当します。どちらもオンデマンドには読み込まれなくなりました。すでにメモリ上にないクラスは、呼び出し側がその名前を指定できるかを判定するためだけに読み込まれることなく、未解決として拒否されます。名指しされたクラスが要求する Capability をセッションが持っていない場合、`CreateAsset` は **`CapabilityNotAvailable`** を返し、不足している Capability 名はメッセージ本文に入ります — 他の経路と同じ扱いです。詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
+> **Note — `FactoryParams` で名指しするクラス自体が Capability を要求することがあります。** 一部のドメインは、ここで名指しされたクラスを、そのドメインの編集コマンドと同じポリシーで審査します — 現時点では StateTree の `FactoryParams.SchemaClass` と ControlRig の `FactoryParams.ParentClass` が該当します。Blueprint 自身の `FactoryParams.ParentClass`（省略可能、既定は `AActor`）と Anim Blueprint の `FactoryParams.TargetSkeleton`（必須）は**この対象ではなく**、`AssetCreate` 以外の Capability を要求しません。どちらもオンデマンドには読み込まれなくなりました。すでにメモリ上にないクラスは、呼び出し側がその名前を指定できるかを判定するためだけに読み込まれることなく、未解決として拒否されます。名指しされたクラスが要求する Capability をセッションが持っていない場合、`CreateAsset` は **`CapabilityNotAvailable`** を返し、不足している Capability 名はメッセージ本文に入ります — 他の経路と同じ扱いです。詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
 
 ### Toolset ブリッジ — Assets（6 件）🧩
 
@@ -662,8 +663,10 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 | `AddActorComponent` | レベルに配置済みのアクターにコンポーネントを追加（Details パネルの *Add Component* ボタン相当）。1 つの Undo ステップとして記録され、新しい `ComponentId` を返す。`ComponentName` は省略するとエンジンが命名する。`AttachParentComponentName` / `AttachSocketName` は `USceneComponent` 派生にのみ適用され、アクターにルートが無い場合は新しいコンポーネントがルートになる。クラスは既にロード済みのものからのみ解決し、要求に応じたロードは行わない（未ロードのクラスは `NotFound`）。`ActorComponentEdit` が必要で、`/Script/Engine` と `/Script/LiveLinkComponents` 以外のクラスにはさらに `ComponentCustomTypeEdit` が必要 — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照。PIE 中は拒否 |
 | `DeleteActorComponent` | レベルに配置済みのアクターからインスタンスコンポーネントを削除。1 つの Undo ステップとして記録される。削除できるのは `Origin: Instance` のみ — SCS のものは Blueprint コンポーネントコマンドの担当、コンストラクションスクリプト由来のものはスクリプトが作り直し、Native のものはそのクラスの全インスタンスに存在するため、いずれも「どの経路が担当か」を示して拒否する。アクターの `DefaultSceneRoot` も拒否対象。削除したシーンコンポーネントの子は、ワールドトランスフォームを保ったままその親へ付け替えられる。`ExpectedComponentClass` は必須（一覧が返した `ComponentClassPath` をそのまま渡す）で、古くなった識別子は追従せず `NotFound` で拒否する。`ActorComponentEdit` が必要。PIE 中は拒否 |
 | `ReparentActorComponent` | レベルに配置済みのアクターのシーンコンポーネントを、同じアクターの別のコンポーネントの下へ、ワールドトランスフォームを保ったまま付け替える。1 つの Undo ステップとして記録される。両方が同一アクター上の `USceneComponent` 派生で、動かす側は `Origin: Instance` である必要がある。「どこにも付いていない」状態は表現できず、切り離しはアクターのルートを `NewParentComponentName` に指定して表す。ルート自身は動かせない。循環になる付け替えと、新しい親に存在しないソケットは、書き込み前に拒否される。`ExpectedComponentClass` は上と同様に必須。`ActorComponentEdit` が必要。PIE 中は拒否 |
+| `GetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントのプロパティ値を、`ListActorComponents` / `AddActorComponent` が返す `ComponentId` で指定して読み取る — `GetActorProperty` は、アクターがコンポーネントを保持するオブジェクト参照を辿るパスを拒否するため、これが唯一の到達手段になる。`Value`・`PropertyType`・`Origin`、および `WriteRequirements`（そのプロパティへの書き込みが `ActorComponentEdit` に加えて何を要求するか、このセッションが既に持っているものと不足しているものに分けたもの、書き込みがそもそも可能かどうか、`SetActorComponentProperty` の 2 つの値パラメータのどちらで渡す必要があるか）を返す。`ExpectedComponentClass` は必須で、古くなった `ComponentId` は追従せず拒否する。どの `Origin` のコンポーネントも読み取れる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要 |
+| `SetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントへプロパティ値を書き込む。指定方法は `GetActorComponentProperty` と同じで、1 つの Undo ステップとして記録される。値は UE インポートテキストとして `Value`、または JSON として `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` で値全体の置換ではなくコンテナの要素 1 つだけを操作できる — これらのパラメータと、参照・複合値の書き込みに追加で必要な Capability（先に `GetActorComponentProperty` を呼べば分かる）については [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。`ExpectedComponentClass` は上と同様に必須。コンポーネントの `Origin` が `UserConstructionScript` の場合は拒否される — そのスクリプトが次回実行されると書き込みが失われるため。`ActorComponentEdit` が必要。PIE 中は拒否 |
 
-> **Note — インスタンス側専用です。** この 4 コマンドが対象とするのは、**レベルに配置済みのアクター**が持つコンポーネントです。アクターの Blueprint 側に宣言されたコンポーネントは [UAIP.Editor.Blueprint — コンポーネント — SCS](#コンポーネント--scs8) を使ってください。インスタンス側にリネームと複製に相当する操作はありません（望む名前を指定して追加し直してください）。
+> **Note — インスタンス側専用です。** この 6 コマンドが対象とするのは、**レベルに配置済みのアクター**が持つコンポーネントです（`GetActorComponentProperty` は、コンストラクションスクリプトが所有するものを含め、どの `Origin` のコンポーネントも読み取れる — 書き込みだけが拒否される）。アクターの Blueprint 側に宣言されたコンポーネントは [UAIP.Editor.Blueprint — コンポーネント — SCS](#コンポーネント--scs8) を使ってください。インスタンス側にリネームと複製に相当する操作はありません（望む名前を指定して追加し直してください）。
 
 ### Toolset ブリッジ — Level（8 件）🧩
 
@@ -706,6 +709,11 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 ## UAIP.Editor.Blueprint
 
 Blueprint 変数・イベントグラフノード・SCS コンポーネントの編集。
+
+### アセット作成（1）
+
+| コマンド | 説明 |
+|---|---|
 
 ### 変数とグラフ（10）
 
@@ -919,10 +927,10 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 
 | コマンド | 説明 |
 |---|---|
-| `GetSystemSchema` 🧩 | `UNiagaraSystem` の編集可能なトップレベルプロパティの JSON Schema（システム間で不変・キャッシュ可） |
-| `GetEmitterSchema` 🧩 | エミッタの編集可能なトップレベルプロパティの JSON Schema（キャッシュ可） |
-| `GetRendererSchema` 🧩 | `RendererClassPath` で指定した `UNiagaraRendererProperties` クラスの JSON Schema |
-| `GetDataInterfaceSchema` 🧩 | `DataInterfaceClassPath` で指定した `UNiagaraDataInterface` クラスの JSON Schema |
+| `GetSystemSchema` 🧩 | `UNiagaraSystem` の編集可能なトップレベルプロパティの JSON Schema（システム間で不変・キャッシュ可）。UE 5.8+ 専用。UE 5.7 では `Available: false` |
+| `GetEmitterSchema` 🧩 | エミッタの編集可能なトップレベルプロパティの JSON Schema（キャッシュ可）。UE 5.8+ 専用。UE 5.7 では `Available: false` |
+| `GetRendererSchema` 🧩 | `RendererClassPath` で指定した `UNiagaraRendererProperties` クラスの JSON Schema。UE 5.8+ 専用。UE 5.7 では `Available: false` |
+| `GetDataInterfaceSchema` 🧩 | `DataInterfaceClassPath` で指定した `UNiagaraDataInterface` クラスの JSON Schema。UE 5.8+ 専用。UE 5.7 では `Available: false` |
 | `GetStackInputSchema` 🧩 | 単一モジュール入力の型・カテゴリ・`SupportsExpressions` |
 | `GetModuleSchema` 🧩 | スタック上のモジュールインスタンスの入出力一覧 |
 | `GetModuleSchemaFromAsset` 🧩 | NiagaraSystem を介さず `UNiagaraScript` モジュールアセットの入出力を取得 |
@@ -937,7 +945,7 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `GetStackInputTopology` 🧩 | 単一入力のトポロジ — 名前・型・`IsVisible`/`IsEditable`/`IsDynamic`。解決済みの値は含まれず、`DynamicInputChildren` はどのエンジンバージョンでも辿った結果ではなく常に空配列で返る — dynamic input 自身の入出力を読むには `GetDynamicInputSchema` を、現在値が必要な場合は `GetStackInputData` を使うこと。同じ `Name`/`Type`/`IsVisible`/`IsEditable`/`IsDynamic`/`DynamicInputChildren` の形、および同じく常に空配列になる `DynamicInputChildren` は、`GetModuleTopology`・`GetEmitterTopology`・`GetScriptStackTopology` が返す各モジュールの `Inputs[]` エントリでも共通して使われる |
 | `GetDynamicInputSchema` 🧩 | スタック上の dynamic input スクリプトインスタンスの入出力一覧 |
 | `GetDynamicInputSchemaFromAsset` 🧩 | NiagaraSystem を介さず `UNiagaraScript` dynamic input アセットの入出力を取得 |
-| `GetAvailableDynamicInputs` 🧩 | 指定モジュール入力に適用できる dynamic input スクリプト一覧 |
+| `GetAvailableDynamicInputs` 🧩 | 指定モジュール入力に適用できる dynamic input スクリプト一覧。UE 5.8+ 専用。UE 5.7 では `Available: false` |
 
 > **⚠️ Note — `GetStackInputSchema`・`GetModuleSchema`・`GetDynamicInputSchema` の UE 5.8 未満向けフォールバックも通常モジュールに対応し、そのフォールバックのキー名が UE 5.8+ と揃いました**: この3コマンドはこれまで UE 5.7 では「Set Parameters」モジュール（Assignment ノード）にしか成功しませんでした — `GetStackInputSchema` と `GetDynamicInputSchema` はそれ以外を対象にすると呼び出し全体が `ExecutionFailed` で失敗し、`GetModuleSchema` は失敗せず `Inputs` が空配列のまま成功していました。現在は3コマンドとも、通常の関数呼び出しモジュールをグラフから直接読み取れます（ビューモデルは使いません）。`GetModuleSchema` は対象モジュールにスクリプト・グラフが無い場合、空配列で成功する代わりに失敗するようになりました。`GetDynamicInputSchema` は、対象の入力が実際に dynamic input で駆動されていない場合は引き続き失敗します — これは記述すべき dynamic input が無いという正当な失敗であり、不具合ではありません。これとは別に、このフォールバックが返す入力エントリの JSON キー名が `InputName`/`InputType` から `Name`/`Type` に変わりました — `GetStackInputSchema` 自身のエントリ、および `GetModuleSchema`・`GetDynamicInputSchema` が返す `Inputs` 配列の各要素の両方です。これにより3コマンドとも、UE 5.8+ が元から使っているキー名と一致するようになりました。`GetDynamicInputSchema` 自身の Set Parameters 経路も、自身の通常モジュール経路と同じ封筒に揃え、独自形式の `{InputName, InputType, Inputs: [], Outputs: []}` から `{ModuleAssetPath, Inputs: [{Name, Type}], Outputs: []}` に変わりました。**`GetStackInputData` はこの変更の対象外**で、どのエンジンバージョンでも引き続き `InputName`/`InputType` を返します。
 >
@@ -969,18 +977,24 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 >
 > **⚠️ Breaking change — `GetDynamicInputSchemaFromAsset` の UE 5.8 未満向けフォールバックが、常に空配列を返すのをやめ、アセットが実際に宣言している入力を返すようになりました。** これまでこのフォールバックは、アセットが何を宣言していようと `{ModuleAssetPath, Inputs: [], Outputs: []}` を常に返し、常に成功を報告していました — 呼び出し側から見れば「このアセットは入力を宣言していない」としか読めませんでしたが、実際は何も読んでいませんでした。現在は UE 5.8+ が元からアセットのグラフから読んでいるのと同じ `Module.` 名前空間の宣言（各エントリ `Name`/`Type`/`Category`/`SupportsExpressions`、静的スイッチは除外）を読むため、アセットが何か宣言していれば成功時の `Inputs` はそれで埋まります。**従来は常に成功していた呼び出しが失敗しうるようになりました**: アセットに読み取れるグラフが無い場合、以前の「空だが成功」の代わりに `ExecutionFailed` を返します。`Outputs` はこれまでどおりこのフォールバックでは空配列のままです。単体アセットはスタック内の呼び出し元を経由せず直接読むため、報告される集合は同じスクリプトをスタック内から読んだときの**上位集合**になります — ある呼び出し元では到達しない静的スイッチの分岐にある入力も列挙され、スタック側の hidden 絞り込みもここには効きません。`GetModuleSchemaFromAsset` はこの読み取りへ委譲しているため、まったく同じように変わります。**UE 5.8+ は影響を受けません** — こちらの分岐は元々グラフの無いアセットで失敗しうる作りであり、その挙動は変わっていません。
 >
-> **⚠️ Breaking change — `GetAvailableDynamicInputs` の UE 5.8 未満向けフォールバックが、常に空リストを返すのをやめ、失敗を返すようになりました。** あるスタック入力がどの dynamic input スクリプトを受け付けるかは、スタック UI が同じ入力候補を提示するときに使うのと同じエンジン API が決めており、旧エンジンにはグラフレベルで代替できる情報がありません。このフォールバックはこれまで、あらゆる呼び出しに対して `{DynamicInputs: []}` を返し成功を報告していました — これは「この入力に合う dynamic input が無い」と読めてしまい、そもそも調べていないことと区別できませんでした。現在は `ExecutionFailed` を返し、`ErrorMessage` には「Unreal Engine 5.8 で導入されたエンジン API が必要であり、それを理由に空の結果ではなく失敗として報告している」旨が入るため、本物の「一致なし」という答えと取り違えることがなくなります。**UE 5.8+ は影響を受けません** — こちらの分岐は元々（未解決のシステム・エミッター・スクリプト・モジュールで）失敗しうる作りであり、その挙動は変わっていません。
+> **⚠️ Breaking change — `GetAvailableDynamicInputs` は UE 5.7 では一切使えなくなりました。これまで `ExecutionFailed` で失敗していましたが、現在は `uaip_list_commands` の既定一覧にも出てきません。** あるスタック入力がどの dynamic input スクリプトを受け付けるかは、スタック UI が同じ入力候補を提示するときに使うのと同じエンジン API が決めており、UE 5.7 にはグラフレベルで代替できる情報がありません。このコマンドはこれまでどのエンジンバージョンでも `Available: true` を報告してハンドラまで到達させており、旧エンジン向けフォールバックは当初 `{DynamicInputs: []}` を返して成功を報告していました（「この入力に合う dynamic input が無い」と読めてしまい、そもそも調べていないことと区別できませんでした）。その後 `ExecutionFailed` へ変更され、`ErrorMessage` に UE 5.8 のエンジン API が必要な旨の説明が入るようになりました。**拒否のタイミングが再び移動し、今度は実行時ではなく照会時になりました。** `UAIP.Core.DescribeCommand` と `uaip_list_commands` は、UE 5.7 では最初から `Available: false` を報告し、`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "EngineVersion"` が付きます。UE 5.7 で名前指定して呼び出すと依然として失敗しますが、今度は `ExecutionFailed` ではなく `PolicyViolation` になり、`ErrorMessage` には同じ説明が入ります。**UE 5.8+ は影響を受けません** — こちらの分岐は元々（未解決のシステム・エミッター・スクリプト・モジュールで）失敗しうる作りであり、その挙動は変わっていません。
 >
-> **⚠️ Breaking change — `GetEmitterSchema`・`GetSystemSchema`・`GetRendererSchema`・`GetDataInterfaceSchema` の UE 5.8 未満向けフォールバックが、常に空の `PropertySchema` を返すのをやめて失敗を返すようになりました**: この4コマンドはこれまであらゆる呼び出しで成功を報告しており、`PropertySchema` は常に空文字列に固定されていました — これは「このクラスに編集可能なプロパティが無い」と読めてしまい、JSON Schema が実際には一度も組み立てられていないことと見分けが付きませんでした。`PropertySchema` は UE 5.8 で新設されたエンジン API から組み立てるものであり、それより前のエンジンバージョンには生成元となる同等の API がありません。現在は4コマンドとも `ExecutionFailed` を返し、`ErrorMessage` には「Unreal Engine 5.8 で導入されたエンジン API が必要であり、それを理由に空の結果ではなく失敗として報告している」旨が入ります — これは後述する `GetStackIssues` と `ApplyStackIssueFix` が使っているのと同じ文面で、理由も同じです。`GetRendererSchema` と `GetDataInterfaceSchema` は、`RendererClassPath` / `DataInterfaceClassPath` 引数を解決する前の時点で拒否されるため、これまで空の `PropertySchema` に添えていた `RendererClass` / `TypeName` フィールドも、失敗レスポンスからは無くなります — クラスが解決できない場合は、この拒否より手前で別途 `NotFound` として報告されます。**UE 5.8+ は影響を受けません** — こちらの分岐は元々（未解決のシステムやクラスで）失敗しうる作りであり、その挙動は変わっていません。実際のプロパティ値を見るには、どのエンジンバージョンでも従来どおり `GetRendererData` / `GetEmitterData` / `GetSystemData` を読むこと。
+> **⚠️ Breaking change — `GetEmitterSchema`・`GetSystemSchema`・`GetRendererSchema`・`GetDataInterfaceSchema` は UE 5.7 では一切使えなくなりました。これまで `ExecutionFailed` で失敗していましたが、現在は `uaip_list_commands` の既定一覧にも出てきません。** `PropertySchema` は UE 5.8 で新設されたエンジン API から組み立てるものであり、UE 5.7 には生成元となる同等の API がありません。この4コマンドはこれまでどのエンジンバージョンでも `Available: true` を報告してハンドラまで到達させており、当初は成功を報告して `PropertySchema` を常に空文字列に固定していた版もあれば、その後 `ExecutionFailed` へ変更され `ErrorMessage` に説明が入るようになった版もありました。**拒否のタイミングが再び移動し、今度は実行時ではなく照会時になりました。** `UAIP.Core.DescribeCommand` と `uaip_list_commands` は、UE 5.7 では4コマンドとも最初から `Available: false` を報告し、`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "EngineVersion"` が付きます。UE 5.7 で4コマンドのいずれかを名前指定して呼び出すと依然として失敗しますが、今度は `ExecutionFailed` ではなく `PolicyViolation` になり、`ErrorMessage` には同じ説明が入ります。**UE 5.8+ は影響を受けません** — こちらの分岐は元々（未解決のシステムやクラスで）失敗しうる作りであり、その挙動は変わっていません。実際のプロパティ値を見るには、どのエンジンバージョンでも従来どおり `GetRendererData` / `GetEmitterData` / `GetSystemData` を読むこと。
+>
+> **Note — 失敗した `GetDynamicInputSchema` は、失敗理由を6種類の `FailureReason` のいずれかに分類し、エンジンの文面を転送するのではなく自身の文章を組み立てます。** `ErrorCode` はどの場合も `ExecutionFailed` のままです — 6種類を見分けるのは `Result.FailureReason` だけです: `NestedStackOnAssignmentModule`（対象が Set Parameters モジュールであり、`InputNameStack` は単一要素しか受け付けないのに複数要素が渡された）、`AssignmentTargetNotFound`（Set Parameters モジュールにその名前の Assignment Target が無い）、`InputNotFound`（そのモジュール・dynamic input スクリプトのどちらを見ても名前が入力に解決しない）、`NoOverridePin`（入力は存在するが上書きが一切設定されておらず、自身の既定値のまま）、`OverrideIsNotDynamicInput`（入力の上書きは存在するが、それ自体は dynamic input ではない別のスクリプトを指している）、`InputIsNotDynamic`（入力は存在するが Dynamic モードになっていない）。失敗がこの6種類のどれにも当てはまらない場合（例えばシステム・スクリプト・モジュール自体が解決できなかった場合）、`FailureReason` は応答に含まれません。**UE 5.8+ では、`NoOverridePin` と `OverrideIsNotDynamicInput` を、純粋に Dynamic でない入力と見分けられません** — エンジン自身の公開トポロジ API は、この3つをすべて `InputIsNotDynamic` として報告します。UE 5.7 はグラフを直接読むため、6種類すべてを区別できます。この集約が発生する場合、応答には `FailureReason: "InputIsNotDynamic"` に加えて `Result.AmbiguousFailureReasons: ["NoOverridePin", "OverrideIsNotDynamicInput"]` も含まれ、呼び出し側は「厳密にこれだと判定された」のか「どちらか見分けられなかった」のかを区別できます — このフィールドは、実行中のエンジンバージョンが両者を区別できる場合には現れません。`ErrorMessage` は常に UAIP 自身が組み立てた文面であり、エンジンの文字列がそのまま転送されることはありません。
+>
+> **Note — `GetStackInputSchema`・`GetStackInputTopology`・`GetDynamicInputSchema`・`GetAvailableDynamicInputs` は、`InputNameStack` パラメータが受け付ける書き方を広げるようになりました。ただし到達できる入力の集合は広がりません。** `GetStackIssues` の `Location.InputNameStack`（後述）には、それ自体は Dynamic モードの入力ではない conditional / static-switch 構造の先頭部分が含まれることがあります — この構造は、この4コマンド自身が持つフラットな単一要素検索がそもそも直接到達できるものです。これまでは、このスタックをそのままこの4コマンドのいずれかへ渡すと、指している葉が短いスタックでも到達可能であるにもかかわらず、その先頭要素で失敗することがありました。この4コマンドは現在、まず渡されたスタックをそのまま試し、それで解決しない場合は、それ自体が Dynamic モードと報告されない最初の要素までの先頭部分を取り除いたうえで、残りを単一要素検索として解決します — ただし、その短縮形が対象モジュール配下でちょうど1つの入力にのみ一致する場合に限ります。**到達できる入力の集合は変わりません。変わるのは、同じ入力を指すのに必要な要素数だけです。** 短縮した先頭名がそのモジュール配下で複数の入力に一致する場合（異なる親の配下に同じ名前が存在する場合）は、推測で1つを選ばずに拒否されます。また、どの書き方で渡しても解決しない名前は、引き続き拒否されます。これにより、`GetStackIssues` の `Location.InputNameStack` を、呼び出し側が短いパスを手で組み立て直すことなく、そのままこの4コマンドのいずれかへ渡せるようになります。
 
 #### スタック Issue（2）
 
 | コマンド | 説明 |
 |---|---|
-| `GetStackIssues` 🧩 | システム全体のスタック Issue（エラー / 警告 / 情報、dismiss 済みを含む）と `IssueId`・`FixId` |
-| `ApplyStackIssueFix` 🧩 | `IssueId` + `FixId` を指定して Fix 形式の自動修正を適用（Link 形式は拒否・`NiagaraStackAutoFix` 必要） |
+| `GetStackIssues` 🧩 | システム全体のスタック Issue（エラー / 警告 / 情報、dismiss 済みを含む）と `IssueId`・`FixId`。UE 5.8+ 専用。UE 5.7 では `Available: false` |
+| `ApplyStackIssueFix` 🧩 | `IssueId` + `FixId` を指定して Fix 形式の自動修正を適用（Link 形式は拒否・`NiagaraStackAutoFix` 必要）。UE 5.8+ 専用。UE 5.7 では `Available: false` |
 
-> **⚠️ Breaking change — `GetStackIssues` の UE 5.8 未満向けフォールバックが、常に「issue なし」を返すのをやめて失敗を返すようになり、`ApplyStackIssueFix` の UE 5.8 未満向けフォールバックも、常に `Applied: false` を返すのをやめて失敗を返すようになりました。** どちらもこれまであらゆる呼び出しで成功を報告していました — `GetStackIssues` は空の `Issues` 配列、`ApplyStackIssueFix` は `{Applied: false}` — これはそれぞれ「issue が存在しない」「この fix は適用できなかった」と読めてしまい、そもそもチェックが実行されていないことと区別できませんでした。どちらも現在は `ExecutionFailed` を返し、`ErrorMessage` には「Unreal Engine 5.8 で導入されたエンジン API が必要であり、それを理由に空の結果ではなく失敗として報告している」旨が入ります — 両者は対で読まれることを意図しているため、文面も同一です。**`ApplyStackIssueFix` は、本物の「この Fix は適用できなかった」という結果については、これまでどおり `{Success: true, Applied: false}` を返します**（UE 5.8+ を含め、こちらは変わっていません）。新しいのはエンジンバージョンによる拒否だけであり、正当に適用対象が無かったケースはこれまでどおり成功のまま `Applied: false` として報告され、`ExecutionFailed` にはなりません。**両コマンドとも UE 5.8+ は影響を受けません**。`ApplyStackIssueFix` の通常の「適用できなかった」という結果も、元からこの形で報告されており、そのまま変わっていません。
+> **Note — `GetStackIssues` が返す各 issue の `Location` オブジェクトは、該当する方に応じて `InputNameStack` か `RendererIndex` のどちらかを持ち、issue がモジュールやシステム全体を指す場合はどちらも持ちません。** `Location` は常に `EmitterName`・`ScriptName`・`ModuleName` を持ちます。issue が特定のスタック入力を指す場合、`Location` はさらに `InputNameStack` を持ちます — これは `GetStackInputSchema`・`GetStackInputTopology`・`GetDynamicInputSchema`・`SetStackInputData` が自身の `InputNameStack` パラメータとして受け付けるのと同じ、モジュールレベルから末端の入力までの順序付き名前配列です。issue がレンダラーを指す場合は、代わりに `RendererIndex` を持ちます。この2フィールドは互いに排他的で、該当しない場合に空配列や `-1` で埋められることもありません — フィールドの**値**ではなく**存在そのもの**が「該当するかどうか」を表します。`GetStackIssues` が返した `InputNameStack` を、パスを組み立て直すことなくそのまま上記4コマンドのいずれかへ渡せば、issue が指す入力をそのまま調べたり修正したりできます。`GetStackIssues` 自体が UE 5.8+ 専用（前述）なので、`Location` とこの往復も UE 5.8+ でのみ成立します。
+>
+> **⚠️ Breaking change — `GetStackIssues` と `ApplyStackIssueFix` は UE 5.7 では一切使えなくなりました。これまで `ExecutionFailed` で失敗していましたが、現在は `uaip_list_commands` の既定一覧にも出てきません。** どちらもこれまでどのエンジンバージョンでも `Available: true` を報告してハンドラまで到達させており、当初のフォールバックは無条件に成功を報告していました（`GetStackIssues` は空の `Issues` 配列、`ApplyStackIssueFix` は `{Applied: false}`）。その後 `ExecutionFailed` へ変更され、`ErrorMessage` に説明が入るようになりました — いずれの版でも「issue が存在しない」「この fix は適用できなかった」と読めてしまい、そもそもチェックが実行されていないことと区別できない、という問題がありました。**拒否のタイミングが再び移動し、今度は実行時ではなく照会時になりました。** `UAIP.Core.DescribeCommand` と `uaip_list_commands` は、UE 5.7 ではどちらも最初から `Available: false` を報告し、`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "EngineVersion"` が付きます。UE 5.7 でどちらかを名前指定して呼び出すと依然として失敗しますが、今度は `ExecutionFailed` ではなく `PolicyViolation` になり、`ErrorMessage` には同じ説明が入ります。**UE 5.7 では「エンジンバージョンによる拒否」と「この Fix は正当に適用できなかった」を区別していた仕組みそのものが無くなります** — `ApplyStackIssueFix` へ UE 5.7 から到達する経路自体が消えるためです。**両コマンドとも UE 5.8+ は影響を受けません**。`ApplyStackIssueFix` の通常の `{Success: true, Applied: false}` という結果も、元からこの形で報告されており、そのまま変わっていません。
 
 #### 編集（21）
 
@@ -988,7 +1002,7 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 |---|---|
 | `AddEmitter` 🧩 | Niagara システムにエミッターを追加 |
 | `RemoveEmitter` 🧩 | エミッターを削除 |
-| `DuplicateEmitter` 🧩 | エミッターを複製 |
+| `DuplicateEmitter` 🧩 | エミッターを複製。このネイティブコマンドではどのエンジンバージョンでも使えません — 代わりに `Toolset.Editor.Niagara.DuplicateEmitter` を使ってください（後述の注記を参照） |
 | `SetEmitterEnabled` 🧩 | エミッターの有効/無効を切り替え |
 | `SetEmitterName` 🧩 | エミッターの名前を変更 |
 | `SetEmitterData` 🧩 | エミッターのデータを設定 |
@@ -997,7 +1011,7 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `SetRendererData` 🧩 | レンダラーのデータを設定（`NiagaraStackEdit` 必須）。指定クラスのレンダラーがエミッタに無い場合は `NotFound` を返すようになりました — 最初に見つかった別のレンダラーへ書き込むフォールバックは廃止されています。書き込み経路が扱えないプロパティ名は黙って無視されず、リクエスト全体が `PolicyViolation` で失敗します。構造体の初期値が途中までしか解釈できない場合は「既定値として解釈した」成功ではなく `InvalidParams` で拒否されます。成功時は `PostEditChangeProperty` を呼ぶため、変更がエディタへ即座に反映されます |
 | `AddModule` 🧩 | エミッターのモジュールスタックにモジュールを追加 |
 | `RemoveModule` 🧩 | モジュールを削除 |
-| `MoveModule` 🧩 | スタック内でモジュールを移動 |
+| `MoveModule` 🧩 | スタック内でモジュールを移動。このネイティブコマンドではどのエンジンバージョンでも使えません — 代わりに `Toolset.Editor.Niagara.MoveModule` を使ってください（後述の注記を参照） |
 | `SetModuleEnabled` 🧩 | モジュールの有効/無効を切り替え |
 | `SetStackInputData` 🧩 | モジュールスタック入力値を設定 |
 | `SetSystemData` 🧩 | システムのデータを設定 |
@@ -1008,6 +1022,8 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `AddSetParameterEntry` 🧩 | 既存の Set Parameters モジュールにパラメータエントリを追加する。`ScriptName`（例：`Spawn` / `Update`）が必須。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）に加え、`NiagaraReferenceEdit` があればオブジェクトパスで渡したデータインターフェース / オブジェクト型パラメータにも適用される — 下の Note を参照。 |
 | `RemoveSetParameterEntry` 🧩 | Set Parameters モジュールからパラメータエントリを削除する。`ScriptName`（例：`Spawn` / `Update`）が必須。 |
 
+> **⚠️ Breaking change — `DuplicateEmitter` と `MoveModule` は、これらのネイティブコマンド経由ではどのエンジンバージョンでも呼び出せません。** 内部で呼んでいるエンジン側 API（`FNiagaraSystemViewModel::DuplicateEmitters` と `FNiagaraStackGraphUtilities::MoveModule`）がエンジンモジュールの外へ export されていないため、そもそも実行に到達できませんでした — これまでは何を渡しても実行時に `NotAllowed` で失敗していました。現在は `UAIP.Core.DescribeCommand` と `uaip_list_commands` が、どのエンジンバージョンでも両方とも `Available: false` を報告し、`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "EngineApiNotExported"` が付きます。**エンジンを上げても解決しません** — export の欠落はどのバージョンでも同じだからです。名前指定で呼び出すと依然として失敗しますが、今度は `PolicyViolation` になり、`ErrorMessage` には同じ説明が入ります。**代わりに Toolset ブリッジ側の同等コマンドを使ってください**: `Toolset.Editor.Niagara.DuplicateEmitter` と `Toolset.Editor.Niagara.MoveModule`（UE 5.8+、Experimental）は、エンジン自身の toolset 経由で同じ操作に到達でき、この API の実体へアクセスできます。
+>
 > **⚠️ 挙動の変更 — 参照型の `DefaultValue` が、捨てられずに書き込まれるようになりました。** パラメータの型がデータインターフェースまたはオブジェクト参照の場合、`AddSetParameterEntry` / `AddSetParametersModule` は従来 `DefaultValue` を**黙って無視**していました（リクエストは成功し、既定値の無いエントリが作られていました）。今後は値をオブジェクトパスとして渡すと、`FNiagaraVariant` のデータインターフェース / オブジェクト専用スロットへ保存されます。ここでは参照が正しく保持され、他のパラメータ型が使うバイト列へ詰め込まれることはありません。成功の代わりに返りうるもの:
 >
 > - `CapabilityNotAvailable` — セッションが `NiagaraReferenceEdit` を保有していない（両コマンドが元から要求する `NiagaraStackEdit` に**追加で**必要）。拒否の返答にこの名前が載ります。
@@ -1357,7 +1373,7 @@ Anim Blueprint グラフと StateMachine 編集。
 | `AddAnimTransition` | From→To Transition を追加（重複時 idempotent） |
 | `RemoveAnimTransition` | NodeId 指定で Transition を削除 |
 | `CompileAnimBlueprint` | コンパイルし CompileStatus + エラーログを返す |
-| `SetAnimGraphNodeProperty` | AnimGraph ノードの `EditAnywhere` プロパティをドット記法の `PropertyPath` で書き込み。参照は `ValueJson` + `AnimBlueprintReferenceEdit`、構造体・コンテナは `PropertyStructuredEdit` 経由 — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
+| `SetAnimGraphNodeProperty` | AnimGraph ノードの `EditAnywhere` プロパティをドット記法の `PropertyPath` で書き込み。参照は `ValueJson` + `AnimBlueprintReferenceEdit`、構造体・コンテナは `PropertyStructuredEdit` 経由 — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。プロパティがピンとして公開されていて何も接続されていない場合、書き込みに合わせてピンの既定値も更新されるため、次のコンパイルで値が捨てられない。接続済みのピンには触れない |
 | `GetAnimGraphNodeDetails` | AnimGraph ノード 1 個分のピン・プロパティ詳細（読み取り専用。秘匿値は `IsSecret: true` のみ報告され `Value` は省略される） |
 | `AddAnimGraphNodePosePin` | 動的な Pose 入力ピンを 1 つ追加（現状は `UAnimGraphNode_LayeredBoneBlend` のみ対応）。非冪等 |
 | `RemoveAnimGraphNodePosePin` | `PinIndex` 指定で動的な Pose 入力ピンを 1 つ削除。削除すると残りのピン番号が繰り上がる |
@@ -1888,7 +1904,7 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `FindOrCreateControlRigTrack` | バインディングの ControlRig パラメータトラックを取得または作成し `TrackCreated` を返す。任意の `IsLayered`（既定 false）で新規作成する ControlRig を加算式に設定できる。既存トラックが見つかった場合は無視される |
 | `BakeToControlRig` | バインディングのアニメーションを ControlRig トラックへベイク（表示レートフレーム・`Tolerance` は 0.0〜1.0） |
 | `KeyControls` | 指定コントロールを 1 つの表示レートフレームでキー（`ControlNames` 省略時は表示中の全コントロール） |
-| `KeyControlsAtFrames` | 指定コントロールを複数の表示レートフレームでキー |
+| `KeyControlsAtFrames` | 指定コントロールを複数の表示レートフレームでキー。UE 5.8+ 専用。UE 5.7 では `Available: false`（`UnavailableDetail: "EngineVersion"`） |
 | `GetControlsMask` | ControlRig セクションのコントロール別表示マスク |
 | `SetControlsMask` | 指定コントロールの表示状態を設定（未指定のコントロールは現状維持） |
 | `ShowAllControls` | セクション内の全コントロールを表示 |

@@ -206,7 +206,7 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `EditorActorEdit` | Spawn, delete, and set transforms of actors in the Level Editor |
 | `EditorLevelLoad` | Open and create levels in the editor viewport |
 | `EditorViewportControl` | Control the level editor viewport camera — `FocusOnActors`, `GetCameraTransform`, `SetCameraTransform` |
-| `ActorComponentEdit` | Add, remove and re-attach a component on an actor **placed in the level** — `AddActorComponent`, `DeleteActorComponent`, `ReparentActorComponent`. Held apart from `EditorActorEdit` because the two change different things: that one moves and removes whole actors, this one changes what an actor is made of. Listing components (`ListActorComponents`) needs only `EditorInspect` |
+| `ActorComponentEdit` | Add, remove and re-attach a component on an actor **placed in the level**, and write a property on one — `AddActorComponent`, `DeleteActorComponent`, `ReparentActorComponent`, `SetActorComponentProperty`. Held apart from `EditorActorEdit` because the two change different things: that one moves and removes whole actors, this one changes what an actor is made of and how it is configured. Reading a component's properties (`GetActorComponentProperty`) and listing components (`ListActorComponents`) need only `EditorInspect`. A write whose value is a reference or a composite needs `PropertyReferenceEdit` / `PropertyStructuredEdit` in addition — call `GetActorComponentProperty` first to find out which |
 | `ComponentCustomTypeEdit` | Required **in addition** to the command's own capability whenever a command increases how many instances of a component class exist and that class is not declared by `/Script/Engine` or `/Script/LiveLinkComponents` — i.e. a project's own C++ component, another plugin's (engine plugins such as Niagara included), or a Blueprint-generated component class. Shared by all three such commands: `AddActorComponent` (instance side, with `ActorComponentEdit`) and `AddBlueprintComponent` / `DuplicateBlueprintComponent` (Blueprint / SCS side, with `BlueprintComponentEdit`). One name across all three so that granting it for one route cannot be used to reach the same class through another. ⚠️ **This is a change in behaviour for the two Blueprint commands** — see the note below. Deleting, renaming, reparenting a component and writing its properties are **not** gated by it, since none of them increases the number of instances |
 | `PropertyEdit` | Read and write actor / asset properties via the Details panel (`GetActorProperty`, `SetActorProperty`, `GetAssetProperty`, `SetAssetProperty`, etc.) |
 | `PropertyReferenceEdit` | Write a property whose value is — or contains, at any depth — an object / class / soft / weak / lazy / interface reference, a delegate or a field path. Clearing a reference needs it too, since attaching and detaching a dependency are the same kind of change |
@@ -655,6 +655,16 @@ After editing, either restart the editor or (if `AllowCapabilityReload=True` is 
 ```
 uaip_execute(CommandName="UAIP.Core.ReloadCapabilities")
 ```
+
+Any registered capability can be named here, including one that no command declares in its
+`RequiredCapabilities` because the write path asks for it only when the value in hand needs it —
+`PropertyDefaultsOnlyEdit` and `PropertyStructuredEdit` are the two of those. Deleting a line takes the
+capability away again on the next reload, so the add–use–delete cycle works for every name.
+
+`ReloadCapabilities` reports three arrays: `AddedCapabilities` and `RemovedCapabilities` for what the
+reload actually changed, and **`UnknownCapabilities`** for names the ini states that are not registered
+capabilities at all. A misspelled name lands in the third array rather than silently doing nothing, which
+is what tells a typo apart from a name that was already in the state the ini asks for.
 
 ---
 

@@ -141,7 +141,7 @@ Templates are resolved once before the step runs. They are **not** re-evaluated 
 
 ### Template resolution failures
 
-A malformed reference — unknown sub-identifier, empty pointer, invalid `~` escape, a pointer that doesn't match anything in the step's data, an oversized value, an object/array embedded in a mixed string, and so on — fails the step with `ErrorCode: InvalidParams`. This is **not retried**: `RetryCount` only applies to `ExecutionFailed`.
+A malformed reference — unknown sub-identifier, empty pointer, invalid `~` escape, a pointer that doesn't match anything in the step's data, an oversized value, an object/array embedded in a mixed string, and so on — fails the step with `ErrorCode: InvalidParams`. This is **not retried**: `RetryCount` only applies to `ExecutionFailed` and `PreconditionFailed`.
 
 ### Template size limits
 

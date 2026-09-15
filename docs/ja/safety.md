@@ -206,7 +206,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `EditorActorEdit` | Level Editor でのアクターの生成・削除・トランスフォーム変更 |
 | `EditorLevelLoad` | エディタビューポートでのレベルオープン・新規作成 |
 | `EditorViewportControl` | Level Editor ビューポートカメラの操作 — `FocusOnActors`、`GetCameraTransform`、`SetCameraTransform` |
-| `ActorComponentEdit` | **レベルに配置済みのアクター**に対するコンポーネントの追加・削除・付け替え — `AddActorComponent`、`DeleteActorComponent`、`ReparentActorComponent`。`EditorActorEdit` と分けてあるのは、変えるものが違うため — あちらはアクターそのものを動かし・消すもので、こちらはアクターが何でできているかを変えるもの。コンポーネントの一覧取得（`ListActorComponents`）には `EditorInspect` だけで足りる |
+| `ActorComponentEdit` | **レベルに配置済みのアクター**に対するコンポーネントの追加・削除・付け替えと、そのプロパティの書き込み — `AddActorComponent`、`DeleteActorComponent`、`ReparentActorComponent`、`SetActorComponentProperty`。`EditorActorEdit` と分けてあるのは、変えるものが違うため — あちらはアクターそのものを動かし・消すもので、こちらはアクターが何でできていて、どう設定されているかを変えるもの。コンポーネントのプロパティの読み取り（`GetActorComponentProperty`）と一覧取得（`ListActorComponents`）には `EditorInspect` だけで足りる。値が参照や複合型である書き込みには、加えて `PropertyReferenceEdit` / `PropertyStructuredEdit` が必要 — どちらが要るかは先に `GetActorComponentProperty` を呼べば分かる |
 | `ComponentCustomTypeEdit` | そのクラスのコンポーネントの**インスタンス数が増える**操作で、かつそのクラスが `/Script/Engine` と `/Script/LiveLinkComponents` のいずれでも宣言されていない場合に、コマンド自身の Capability に**加えて**必要になる（プロジェクトの C++ が定義したコンポーネント、他プラグイン（Niagara などエンジン同梱プラグインを含む）が定義したもの、Blueprint 由来のコンポーネントクラスが該当）。該当する 3 コマンドが共有する — `AddActorComponent`（インスタンス側。`ActorComponentEdit` と併用）と `AddBlueprintComponent` / `DuplicateBlueprintComponent`（Blueprint / SCS 側。`BlueprintComponentEdit` と併用）。1 つの名前に統一しているのは、片方の経路にだけ付与しても、もう一方から同じクラスへ到達できてしまわないようにするため。⚠️ **Blueprint 側の 2 コマンドにとっては挙動の変更です** — 下の Note を参照。コンポーネントの削除・リネーム・付け替え・プロパティ書き込みは対象**外**（いずれもインスタンス数を増やさないため） |
 | `PropertyEdit` | 詳細パネル経由でのアクター / アセットプロパティの読み書き（`GetActorProperty`、`SetActorProperty`、`GetAssetProperty`、`SetAssetProperty` など） |
 | `PropertyReferenceEdit` | 値がオブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパスであるか、それらを（どの深さであれ）内包するプロパティの書き込み。参照を空にする操作にも必要 — 依存関係を付けることと外すことは同じ種類の変更であるため |
@@ -655,6 +655,16 @@ ini を編集した後、Editor を再起動するか（`AllowCapabilityReload=T
 ```
 uaip_execute(CommandName="UAIP.Core.ReloadCapabilities")
 ```
+
+ここには登録済みの Capability であれば何でも書けます。書き込み時に値の形を見て初めて要求されるため、
+どのコマンドの `RequiredCapabilities` にも現れない Capability も含みます（`PropertyDefaultsOnlyEdit` と
+`PropertyStructuredEdit` の 2 つが該当）。行を削除すれば次の再読み込みで Capability は外れるため、
+「追加して・使って・削除する」という流れはどの名前でも同じように機能します。
+
+`ReloadCapabilities` は 3 つの配列を返します。実際に変化した分の `AddedCapabilities` と
+`RemovedCapabilities`、そして ini に書かれていて **Capability として登録されていない**名前を返す
+**`UnknownCapabilities`** です。綴りを間違えた名前は 3 番目に現れるため、黙って無視されることはなく、
+「すでに ini が求める状態だった」場合と取り違えずに済みます。
 
 ---
 
