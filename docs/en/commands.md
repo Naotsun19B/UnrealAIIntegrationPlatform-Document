@@ -756,7 +756,7 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 | `AddBlueprintComponent` | Add a new SCS component node to a Blueprint. ⚠️ Now additionally requires `ComponentCustomTypeEdit` for a project- or plugin-defined component class — see the note below |
 | `DeleteBlueprintComponent` | Delete an SCS component from a Blueprint |
 | `RenameBlueprintComponent` | Rename an SCS component |
-| `ReparentBlueprintComponent` | Change an SCS component's parent |
+| `ReparentBlueprintComponent` | Change an SCS component's parent. Naming a parent requires the component and the parent to each be a `USceneComponent` subclass; moving to the root level (an empty `NewParentVariableName`) works for any component class |
 | `DuplicateBlueprintComponent` | Duplicate an SCS component. ⚠️ Now additionally requires `ComponentCustomTypeEdit` for a project- or plugin-defined component class — see the note below |
 | `GetBlueprintComponentProperty` | Get a property value from an SCS component |
 | `SetBlueprintComponentProperty` | Set a property on an SCS component. The value goes in `Value` as engine text or in `ValueJson` as JSON, and `Operation` / `ElementIndex` / `ElementKeyJson` address a single container element — see [Writing references, structs and containers](#writing-references-structs-and-containers) |

@@ -756,7 +756,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `AddBlueprintComponent` | Blueprint に新規 SCS コンポーネントノードを追加。⚠️ プロジェクト・プラグイン定義のコンポーネントクラスには `ComponentCustomTypeEdit` が追加で必要になりました — 下の Note を参照 |
 | `DeleteBlueprintComponent` | SCS コンポーネントを削除 |
 | `RenameBlueprintComponent` | SCS コンポーネントをリネーム |
-| `ReparentBlueprintComponent` | SCS コンポーネントの親を変更 |
+| `ReparentBlueprintComponent` | SCS コンポーネントの親を変更。親を指定する場合はコンポーネントと親の双方が `USceneComponent` のサブクラスである必要がある。ルートレベルへの移動（`NewParentVariableName` が空）はどのコンポーネントクラスでも可能 |
 | `DuplicateBlueprintComponent` | SCS コンポーネントを複製。⚠️ プロジェクト・プラグイン定義のコンポーネントクラスには `ComponentCustomTypeEdit` が追加で必要になりました — 下の Note を参照 |
 | `GetBlueprintComponentProperty` | SCS コンポーネントのプロパティ値を取得 |
 | `SetBlueprintComponentProperty` | SCS コンポーネントのプロパティを設定。値はエンジンテキストなら `Value`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
