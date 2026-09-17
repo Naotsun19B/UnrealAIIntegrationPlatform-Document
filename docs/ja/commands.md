@@ -28,6 +28,16 @@ UAIP では 2 種類のコマンドを公開しています：
 
 本ページのドメインサマリでは件数のみを並べています。Toolset ブリッジコマンドの全名前を実行時に列挙したい場合は `uaip_list_commands(ProviderPrefix="Toolset")` を使ってください。
 
+### Toolset ブリッジコマンドへの引数宣言・厳格検証の導入が進行中
+
+これまで、Toolset ブリッジコマンドの大半は**引数を一切宣言していませんでした**。`uaip_describe_command` を呼んでも空の `Properties` が返り、実際にどんな引数を受け付けるかは分かりませんでした。送った JSON はそのまま検証なしで Toolset 側の呼び出しへ渡され、誤った引数を送ってもたいていエンジン側で汎用的な `ExecutionFailed` として失敗するだけで、どのキーが問題だったかは分かりませんでした。
+
+これをコマンド単位で、宣言済み・厳格検証（`AdditionalProperties: false`、実際の `Required` フラグ、実際の型）へ移行する作業が進行中です。**本更新時点で 161 件の Toolset ブリッジコマンドが移行を完了しています**——`Toolset.Editor.Niagara.*` / `Toolset.Editor.PCG.*` / `Toolset.Editor.Sequencer.*`（`SequencerAnimMixer` / `AnimationAssistant` の姉妹プロバイダを含む）/ `Toolset.Editor.Physics.*` / `Toolset.Editor.UMG.*` / `Toolset.MVVM.*` に集中しており、それ以外にも個別のコマンドがいくつか含まれます。移行は継続中で、あるコマンドが移行済みかどうかはそのコマンド自身のスキーマから直接分かります——`Properties` が非空で `AdditionalProperties: false` なら厳格検証済み、`Properties` が空で `AdditionalProperties: true` ならまだ未移行で引数は従来どおり素通りします。このリファレンスの記載を当てにせず、常に `uaip_describe_command` で最新のスキーマを確認してください。
+
+**これは「たまたま動いていた」呼び出しにとっての破壊的変更です**。余計なキーや綴り間違いのキーを送っても従来は黙って受理される（無視される、またはエンジン内部まで転送されて拒否される）だけでしたが、移行済みのコマンドでは、その場で問題のキー名を名指しした `InvalidParams` として拒否されるようになります。
+
+`Toolset.Editor.Niagara.*` の 5 コマンド（`DuplicateEmitter` / `GetScriptAssets` / `MoveModule` / `SetEmitterEnabled` / `SetEmitterName`）は、本更新時点でもまだ引数を宣言していません。これらを最終的にどう扱うか（移行済みコマンドとして扱う・使用不可を自己申告させる・その他）は**まだ確定していません**。このリファレンスに頼らず、`uaip_describe_command` でその時点の状態を確認してください。
+
 ---
 
 ## ドメインサマリ

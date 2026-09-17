@@ -668,13 +668,15 @@ curl -s -X POST http://127.0.0.1:8765/uaip/commands \
   }' | jq .
 ```
 
-Artifact 取得：
+Artifact 取得（取得元の `SessionId` を明示する）：
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  http://127.0.0.1:8765/uaip/artifacts/8D1403DB4896B4742E423CBD9F535F19 \
+  "http://127.0.0.1:8765/uaip/artifacts/8D1403DB4896B4742E423CBD9F535F19?SessionId=smoke-test" \
   -o capture.png
 ```
+
+> `SessionId` は現時点では省略可能です——省略すると、このエディタプロセス自身が生成した成果物のみを対象に解決され、警告が記録に残ります。*前回の*エディタセッションから見つけ直された成果物へ到達する唯一の方法でもあり（[Artifacts](artifacts.md) を参照）、**将来のメジャーバージョンでこのルートにおいて必須になります**——上記のように常に指定してください。
 
 ### 10.2 HTTP — Python
 
@@ -700,8 +702,13 @@ class UAIPClient:
             raise RuntimeError(f'{data["ErrorCode"]}: {data["ErrorMessage"]}')
         return data
 
-    def fetch_artifact(self, artifact_id):
-        r = self.session.get(f"{self.host}/uaip/artifacts/{artifact_id}", timeout=60)
+    def fetch_artifact(self, artifact_id, session_id=None):
+        # SessionId は現時点では省略可能（省略時はこのエディタプロセス自身の成果物のみを
+        # 対象に解決される）だが、将来のメジャーバージョンで必須になる予定で、
+        # 前回のエディタセッションから見つけ直された成果物へ到達する唯一の方法でもある。
+        # 取得元の SessionId は常に渡すこと。
+        params = {"SessionId": session_id} if session_id else None
+        r = self.session.get(f"{self.host}/uaip/artifacts/{artifact_id}", params=params, timeout=60)
         r.raise_for_status()
         return r.content
 

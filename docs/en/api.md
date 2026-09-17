@@ -668,13 +668,15 @@ curl -s -X POST http://127.0.0.1:8765/uaip/commands \
   }' | jq .
 ```
 
-Fetch an artifact:
+Fetch an artifact, naming the `SessionId` that produced it:
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  http://127.0.0.1:8765/uaip/artifacts/8D1403DB4896B4742E423CBD9F535F19 \
+  "http://127.0.0.1:8765/uaip/artifacts/8D1403DB4896B4742E423CBD9F535F19?SessionId=smoke-test" \
   -o capture.png
 ```
+
+> `SessionId` is optional today — omitting it resolves against this editor process's own artifacts only, and logs a warning. It is the only way to reach an artifact rediscovered from a *previous* editor session (see [Artifacts](artifacts.md)), and **it will become mandatory on this route in a future major version** — always pass it, as shown above.
 
 ### 10.2 HTTP — Python
 
@@ -700,8 +702,13 @@ class UAIPClient:
             raise RuntimeError(f'{data["ErrorCode"]}: {data["ErrorMessage"]}')
         return data
 
-    def fetch_artifact(self, artifact_id):
-        r = self.session.get(f"{self.host}/uaip/artifacts/{artifact_id}", timeout=60)
+    def fetch_artifact(self, artifact_id, session_id=None):
+        # SessionId is optional today (an omitted one resolves against this editor
+        # process's own artifacts only), but it will become mandatory in a future
+        # major version and is the only way to reach an artifact rediscovered from a
+        # previous editor session — always pass the SessionId that produced it.
+        params = {"SessionId": session_id} if session_id else None
+        r = self.session.get(f"{self.host}/uaip/artifacts/{artifact_id}", params=params, timeout=60)
         r.raise_for_status()
         return r.content
 

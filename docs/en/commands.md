@@ -28,6 +28,16 @@ UAIP exposes two categories of commands:
 
 The domain summary below lists counts only. To enumerate the actual Toolset bridge command names at runtime, use `uaip_list_commands(ProviderPrefix="Toolset")`.
 
+### Toolset bridge commands are gaining declared, validated parameter schemas
+
+Historically, most Toolset bridge commands declared **no parameters at all** — `uaip_describe_command` returned an empty `Properties` object regardless of what the command actually accepted, and any JSON you sent was passed straight through to the underlying Toolset call unchecked. A malformed call still reached the engine and typically failed there with a generic `ExecutionFailed`, giving no indication of which key was wrong.
+
+This is being migrated one command at a time to a declared, strictly-validated schema (`AdditionalProperties: false`, real `Required` flags, real types). **As of this update, 161 Toolset bridge commands have completed the migration** — concentrated in `Toolset.Editor.Niagara.*`, `Toolset.Editor.PCG.*`, `Toolset.Editor.Sequencer.*` (plus its `SequencerAnimMixer` / `AnimationAssistant` sibling providers), `Toolset.Editor.Physics.*`, `Toolset.Editor.UMG.*` and `Toolset.MVVM.*`, with a handful of individual commands elsewhere. The migration is ongoing — whether a given command has been migrated is visible directly from its schema: a non-empty `Properties` with `AdditionalProperties: false` means it validates strictly now; an empty `Properties` with `AdditionalProperties: true` means it is not migrated yet and still passes parameters through unchecked. Always check the live schema with `uaip_describe_command` rather than assuming from this reference.
+
+**This is a breaking change for calls that previously "worked by accident"**: a call that sent an extra or misspelled key used to be silently accepted (and simply ignored, or forwarded and rejected deep inside the engine) — on a migrated command it is now refused up front with `InvalidParams`, naming the offending key.
+
+Five `Toolset.Editor.Niagara.*` commands (`DuplicateEmitter`, `GetScriptAssets`, `MoveModule`, `SetEmitterEnabled`, `SetEmitterName`) still declare no parameters as of this update. How they will ultimately be documented — as migrated commands, as commands that report themselves unavailable, or otherwise — **is not yet decided**; check `uaip_describe_command` for their current, authoritative status rather than relying on this note.
+
 ---
 
 ## Domain summary
