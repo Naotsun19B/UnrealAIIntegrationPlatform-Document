@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1193 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1614 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1194 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1615 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -50,6 +50,7 @@ Five `Toolset.Editor.Niagara.*` commands (`DuplicateEmitter`, `GetScriptAssets`,
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | partial (5/9) |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
 | Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | partial (5/8) |
+| Editor Engine Toolset 🧩 | `UAIP.Editor.Engine.Toolset` | 1 | — | — |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ |
 | Editor Execution | `UAIP.Editor.Execution` | 9 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
@@ -433,6 +434,16 @@ Bridge commands via the `ConfigSettingsToolset` plugin (UE 5.8+). Provider: `Too
 | `Toolset.ConfigSettings.SetSectionProperties` | Set property values on a settings section and persist them (requires `ConfigSettingsEdit`) |
 | `Toolset.ConfigSettings.SaveSection` | Persist the current in-memory settings for a section to its ini file (requires `ConfigSettingsSave`) |
 | `Toolset.ConfigSettings.ResetSectionToDefaults` | Reset all property values of a settings section to their compiled defaults (requires `ConfigSettingsReset`) |
+
+---
+
+## UAIP.Editor.Engine.Toolset 🧩
+
+An investigation aid for authoring Toolset bridge commands, not a command you would reach for in ordinary use. Requires the `ToolsetRegistry` plugin (UE 5.8+); reports `Available: false` with `UnavailableDetail: OptionalPluginDisabled` when it is not present, and does not appear in `uaip_list_commands`' default output on such an environment — name it explicitly with `uaip_describe_command` to see why.
+
+| Command | Description |
+|---|---|
+| `DumpToolsetParameterSchemas` | Dump the raw JSON Schema (parameter names, types, `Required` flags) that `ToolsetRegistry` reports for every currently-registered Toolset, as a `Json` artifact. `{}` returns every registered toolset; the optional `ToolsetName` narrows the dump to one, by an exact, case-sensitive match against its full `<Module>.<Toolset>` name (e.g. `PCGToolset.PCGToolset` — the module name alone matches nothing). A name that matches nothing returns `Success: true` with an empty array, not `NotFound`. No capability required; read-only |
 
 ---
 

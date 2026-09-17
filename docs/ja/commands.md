@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1193 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1614 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1194 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1615 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -50,6 +50,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
 | Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | 一部（5/8） |
+| Editor Engine Toolset 🧩 | `UAIP.Editor.Engine.Toolset` | 1 | — | — |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ |
 | Editor Execution | `UAIP.Editor.Execution` | 9 | — | — |
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
@@ -433,6 +434,16 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | `Toolset.ConfigSettings.SetSectionProperties` | セクションのプロパティ値を設定して永続化（`ConfigSettingsEdit` 必要） |
 | `Toolset.ConfigSettings.SaveSection` | 現在のメモリ上の設定をセクションの ini ファイルに書き出す（`ConfigSettingsSave` 必要） |
 | `Toolset.ConfigSettings.ResetSectionToDefaults` | セクションの全プロパティ値をコンパイル済みデフォルトにリセット（`ConfigSettingsReset` 必要） |
+
+---
+
+## UAIP.Editor.Engine.Toolset 🧩
+
+Toolset ブリッジコマンドを実装する際の調査用コマンド。通常の操作で使うものではありません。`ToolsetRegistry` プラグイン（UE 5.8+）が必要で、無い環境では `Available: false`（`UnavailableDetail: OptionalPluginDisabled`）を返し、`uaip_list_commands` の既定出力にも現れません——その環境で理由を確認するには `uaip_describe_command` で名指しで呼んでください。
+
+| コマンド | 説明 |
+|---|---|
+| `DumpToolsetParameterSchemas` | `ToolsetRegistry` が現在登録している全 Toolset について、生の JSON Schema（パラメータ名・型・`Required` フラグ）を `Json` アーティファクトとしてダンプする。`{}` で呼ぶと登録済み全 Toolset 分が返る。任意の `ToolsetName` で、`<Module>.<Toolset>` という完全な名前への**大小文字を区別する完全一致**で1件に絞り込める（例: `PCGToolset.PCGToolset`——モジュール名だけでは何にも一致しない）。一致しない名前を渡すと `NotFound` ではなく `Success: true` かつ空配列が返る。Capability 不要、読み取り専用 |
 
 ---
 
