@@ -36,7 +36,7 @@ UAIP では 2 種類のコマンドを公開しています：
 
 **これは「たまたま動いていた」呼び出しにとっての破壊的変更です**。余計なキーや綴り間違いのキーを送っても従来は黙って受理される（無視される、またはエンジン内部まで転送されて拒否される）だけでしたが、移行済みのコマンドでは、その場で問題のキー名を名指しした `InvalidParams` として拒否されるようになります。
 
-`Toolset.Editor.Niagara.*` の 5 コマンド（`DuplicateEmitter` / `GetScriptAssets` / `MoveModule` / `SetEmitterEnabled` / `SetEmitterName`）は、本更新時点でもまだ引数を宣言していません。これらを最終的にどう扱うか（移行済みコマンドとして扱う・使用不可を自己申告させる・その他）は**まだ確定していません**。このリファレンスに頼らず、`uaip_describe_command` でその時点の状態を確認してください。
+`Toolset.Editor.Niagara.*` の 5 コマンド（`DuplicateEmitter` / `GetScriptAssets` / `MoveModule` / `SetEmitterEnabled` / `SetEmitterName`）は、本更新時点でもまだ引数を宣言していませんが、**これはもう未確定ではありません**。5 件とも、このプラグインが対応するどの Niagara toolset にも一致する関数が無いため、スキーマへ移行する代わりに、5 件すべてが `Available: false`（`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "DelegationTargetMissing"`）を返すようになりました——スキーマが説明すべき対象がそもそも無いということです。それぞれが何を理由に拒否するか、どれに動くネイティブ代替があるかは [UAIP.Editor.Niagara → Toolset ブリッジ](#uaipeditorniagara-) の注記を参照してください。「委譲先の toolset に一致する関数が無い」という同じ形は `Toolset.Editor.GameFeatures.ListGameFeatures` と `Toolset.Editor.Niagara.GetNiagaraParameterCollections` にも当てはまりますが、この 2 件はもともと正しい空のスキーマを宣言済みだったため、上記の 5 件には数えられていません——[UAIP.Editor.GameFeatures → Toolset ブリッジ](#uaipeditorgamefeatures-) を参照してください。これは Toolset ブリッジコマンドの中でこの状態にある全件を尽くしたものではありません。このリファレンスに頼らず、個別のコマンドの現在の状態は `uaip_describe_command` で確認してください。
 
 ---
 
@@ -913,10 +913,12 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 
 | コマンド | 説明 |
 |---|---|
-| `Toolset.Editor.GameFeatures.ListGameFeatures` | 登録済み GameFeature Plugin と現在の状態の一覧 |
+| `Toolset.Editor.GameFeatures.ListGameFeatures` | このブリッジコマンド経由では利用不可 — 代わりに `UAIP.Editor.GameFeatures.ListGameFeatures` を使ってください（後述の注記を参照） |
 | `Toolset.Editor.GameFeatures.FindGameFeatureData` | プラグイン名から `UGameFeatureData` アセットの refPath を解決 |
 | `Toolset.Editor.GameFeatures.GetActions` | `UGameFeatureData` の Action クラス名一覧（`{"refPath": "..."}` を渡す） |
 | `Toolset.Editor.GameFeatures.CreateGameFeaturePlugin` | コンテンツのみの GameFeature Plugin を作成（`GameFeatureCreate` 必要） |
+
+> **⚠️ Breaking change — `Toolset.Editor.GameFeatures.ListGameFeatures` は、このブリッジコマンド経由ではどのエンジンバージョンでも呼び出せません。** 内部で委譲している `GameFeaturesToolset` が `ListGameFeatures` という名前の関数を宣言していないため、そもそも実行に到達できませんでした — これまでは何を渡しても実行時に汎用的な `ExecutionFailed` で失敗していました。現在は `UAIP.Core.DescribeCommand` と `uaip_list_commands` が `Available: false` を報告し、`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "DelegationTargetMissing"` が付きます。名前指定で呼び出すと依然として失敗しますが、今度は `PolicyViolation` になり、`ErrorMessage` には同じ説明が入ります。**代わりに `UAIP.Editor.GameFeatures.ListGameFeatures` を使ってください** — ネイティブコマンドが委譲せずに同じ操作を行い、この変更の影響を受けません。
 
 ---
 
@@ -1023,7 +1025,7 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 |---|---|
 | `AddEmitter` 🧩 | Niagara システムにエミッターを追加 |
 | `RemoveEmitter` 🧩 | エミッターを削除 |
-| `DuplicateEmitter` 🧩 | エミッターを複製。このネイティブコマンドではどのエンジンバージョンでも使えません — 代わりに `Toolset.Editor.Niagara.DuplicateEmitter` を使ってください（後述の注記を参照） |
+| `DuplicateEmitter` 🧩 | エミッターを複製。このネイティブコマンドでは使えず、対応する Toolset ブリッジ側にも動く委譲先がありません — 後述の注記を参照 |
 | `SetEmitterEnabled` 🧩 | エミッターの有効/無効を切り替え |
 | `SetEmitterName` 🧩 | エミッターの名前を変更 |
 | `SetEmitterData` 🧩 | エミッターのデータを設定 |
@@ -1032,7 +1034,7 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `SetRendererData` 🧩 | レンダラーのデータを設定（`NiagaraStackEdit` 必須）。指定クラスのレンダラーがエミッタに無い場合は `NotFound` を返すようになりました — 最初に見つかった別のレンダラーへ書き込むフォールバックは廃止されています。書き込み経路が扱えないプロパティ名は黙って無視されず、リクエスト全体が `PolicyViolation` で失敗します。構造体の初期値が途中までしか解釈できない場合は「既定値として解釈した」成功ではなく `InvalidParams` で拒否されます。成功時は `PostEditChangeProperty` を呼ぶため、変更がエディタへ即座に反映されます |
 | `AddModule` 🧩 | エミッターのモジュールスタックにモジュールを追加 |
 | `RemoveModule` 🧩 | モジュールを削除 |
-| `MoveModule` 🧩 | スタック内でモジュールを移動。このネイティブコマンドではどのエンジンバージョンでも使えません — 代わりに `Toolset.Editor.Niagara.MoveModule` を使ってください（後述の注記を参照） |
+| `MoveModule` 🧩 | スタック内でモジュールを移動。このネイティブコマンドでは使えず、対応する Toolset ブリッジ側にも動く委譲先がありません — 後述の注記を参照 |
 | `SetModuleEnabled` 🧩 | モジュールの有効/無効を切り替え |
 | `SetStackInputData` 🧩 | モジュールスタック入力値を設定 |
 | `SetSystemData` 🧩 | システムのデータを設定 |
@@ -1043,7 +1045,9 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `AddSetParameterEntry` 🧩 | 既存の Set Parameters モジュールにパラメータエントリを追加する。`ScriptName`（例：`Spawn` / `Update`）が必須。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）に加え、`NiagaraReferenceEdit` があればオブジェクトパスで渡したデータインターフェース / オブジェクト型パラメータにも適用される — 下の Note を参照。 |
 | `RemoveSetParameterEntry` 🧩 | Set Parameters モジュールからパラメータエントリを削除する。`ScriptName`（例：`Spawn` / `Update`）が必須。 |
 
-> **⚠️ Breaking change — `DuplicateEmitter` と `MoveModule` は、これらのネイティブコマンド経由ではどのエンジンバージョンでも呼び出せません。** 内部で呼んでいるエンジン側 API（`FNiagaraSystemViewModel::DuplicateEmitters` と `FNiagaraStackGraphUtilities::MoveModule`）がエンジンモジュールの外へ export されていないため、そもそも実行に到達できませんでした — これまでは何を渡しても実行時に `NotAllowed` で失敗していました。現在は `UAIP.Core.DescribeCommand` と `uaip_list_commands` が、どのエンジンバージョンでも両方とも `Available: false` を報告し、`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "EngineApiNotExported"` が付きます。**エンジンを上げても解決しません** — export の欠落はどのバージョンでも同じだからです。名前指定で呼び出すと依然として失敗しますが、今度は `PolicyViolation` になり、`ErrorMessage` には同じ説明が入ります。**代わりに Toolset ブリッジ側の同等コマンドを使ってください**: `Toolset.Editor.Niagara.DuplicateEmitter` と `Toolset.Editor.Niagara.MoveModule`（UE 5.8+、Experimental）は、エンジン自身の toolset 経由で同じ操作に到達でき、この API の実体へアクセスできます。
+> **⚠️ Breaking change — `DuplicateEmitter` と `MoveModule` は、これらのネイティブコマンド経由ではどのエンジンバージョンでも呼び出せません。** 内部で呼んでいるエンジン側 API（`FNiagaraSystemViewModel::DuplicateEmitters` と `FNiagaraStackGraphUtilities::MoveModule`）がエンジンモジュールの外へ export されていないため、そもそも実行に到達できませんでした — これまでは何を渡しても実行時に `NotAllowed` で失敗していました。現在は `UAIP.Core.DescribeCommand` と `uaip_list_commands` が、どのエンジンバージョンでも両方とも `Available: false` を報告し、`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "EngineApiNotExported"` が付きます。**エンジンを上げても解決しません** — export の欠落はどのバージョンでも同じだからです。名前指定で呼び出すと依然として失敗しますが、今度は `PolicyViolation` になり、`ErrorMessage` には同じ説明が入ります。
+>
+> **⚠️ 更新 — Toolset ブリッジ側の同等コマンドも、この穴を埋めません。** `Toolset.Editor.Niagara.DuplicateEmitter` と `Toolset.Editor.Niagara.MoveModule` は、エンジン自身の toolset 経由で同じ操作に到達できると想定されていましたが、`NiagaraToolsets` プラグインは、このプラグインが対応するどのエンジンバージョンでも、どちらの名前の関数も宣言していません。この 2 件のブリッジコマンドも `Available: false` を返すようになり、`UnavailableDetail: "DelegationTargetMissing"` が付きます（後述の Toolset ブリッジの注記を参照）。**本更新時点で、どちらの操作もこのプラグイン内に動く経路が 1 つもありません。**
 >
 > **⚠️ 挙動の変更 — 参照型の `DefaultValue` が、捨てられずに書き込まれるようになりました。** パラメータの型がデータインターフェースまたはオブジェクト参照の場合、`AddSetParameterEntry` / `AddSetParametersModule` は従来 `DefaultValue` を**黙って無視**していました（リクエストは成功し、既定値の無いエントリが作られていました）。今後は値をオブジェクトパスとして渡すと、`FNiagaraVariant` のデータインターフェース / オブジェクト専用スロットへ保存されます。ここでは参照が正しく保持され、他のパラメータ型が使うバイト列へ詰め込まれることはありません。成功の代わりに返りうるもの:
 >
@@ -1075,6 +1079,12 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 > **⚠️ 破壊的変更 — `Toolset.Editor.Niagara.SetRendererData` が要求する Capability が `NiagaraStackEdit` になりました**（ネイティブ版と同じ名前）。従来は `NiagaraEmitterEdit` を要求していたため、運用者が `NiagaraStackEdit` を閉じてもブリッジ経由で同じ書き込みが通っていました。**`NiagaraEmitterEdit` だけを付与していたセッションはこのコマンドを使えなくなります** — `NiagaraStackEdit` を追加してください。
 >
 > **ブリッジ経由では UAIP の値検査が及びません。** ブリッジの書き込みはエンジンの toolset の内部で行われるため、ネイティブ版が適用する型ゲート・途中終了パースの検査・全件不可なら 1 件も書かない扱いは適用されません。検査が必要な場合はネイティブの `SetRendererData` を使ってください。
+>
+> **⚠️ Breaking change — このうち 6 件のブリッジコマンドは、どのエンジンバージョンでも呼び出せません：`GetScriptAssets` / `GetNiagaraParameterCollections` / `SetEmitterEnabled` / `SetEmitterName` / `DuplicateEmitter` / `MoveModule`。** これら 6 件が委譲する Niagara toolset は、6 つの名前のいずれにも一致する関数を宣言していないため、このプラグインが対応するどのエンジンバージョンでも、転送された呼び出しは実装に到達できませんでした——これまでは何を渡しても実行時に汎用的な `ExecutionFailed` で失敗していました。現在は 6 件すべてが `UAIP.Core.DescribeCommand` と `uaip_list_commands` で `Available: false` を返し、`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "DelegationTargetMissing"` が付きます。名前指定で呼び出すと依然として失敗しますが、今度は `PolicyViolation` になり、`ErrorMessage` には同じ説明が入ります。
+>
+> **6 件のうち 4 件には動くネイティブ代替があります**：`UAIP.Editor.Niagara.GetScriptAssets` / `GetNiagaraParameterCollections` / `SetEmitterEnabled` / `SetEmitterName` は委譲せずに同じ操作を行い、この変更の影響を受けません。
+>
+> **`DuplicateEmitter` と `MoveModule` にはありません。** 対応するネイティブコマンド自体が、別の理由で利用不可になっています（上の「編集」節の Breaking change 注記を参照）——必要とするエンジン側 API が、どのエンジンバージョンでもプラグインへ export されていないためです。**本更新時点で、どちらの操作もこのプラグイン内に動く経路が 1 つもありません** — ネイティブコマンドでも、このブリッジでも。
 
 ---
 

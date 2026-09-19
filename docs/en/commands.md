@@ -36,7 +36,7 @@ This is being migrated one command at a time to a declared, strictly-validated s
 
 **This is a breaking change for calls that previously "worked by accident"**: a call that sent an extra or misspelled key used to be silently accepted (and simply ignored, or forwarded and rejected deep inside the engine) — on a migrated command it is now refused up front with `InvalidParams`, naming the offending key.
 
-Five `Toolset.Editor.Niagara.*` commands (`DuplicateEmitter`, `GetScriptAssets`, `MoveModule`, `SetEmitterEnabled`, `SetEmitterName`) still declare no parameters as of this update. How they will ultimately be documented — as migrated commands, as commands that report themselves unavailable, or otherwise — **is not yet decided**; check `uaip_describe_command` for their current, authoritative status rather than relying on this note.
+Five `Toolset.Editor.Niagara.*` commands (`DuplicateEmitter`, `GetScriptAssets`, `MoveModule`, `SetEmitterEnabled`, `SetEmitterName`) still declare no parameters as of this update, and that is no longer an open question: none of the five has a matching function in any Niagara toolset this plugin supports, so instead of being migrated to a real schema, all five now report `Available: false` (`UnavailableReason: "HandlerUnavailable"`, `UnavailableDetail: "DelegationTargetMissing"`) — there is nothing left for a schema to describe. See the note under [UAIP.Editor.Niagara → Toolset bridges](#uaipeditorniagara-) for what each one refuses with and which ones have a working native alternative. The same "the toolset declares no matching function" shape also applies to `Toolset.Editor.GameFeatures.ListGameFeatures` and `Toolset.Editor.Niagara.GetNiagaraParameterCollections`, which were already declaring a proper empty schema and so are not counted among these five — see [UAIP.Editor.GameFeatures → Toolset bridges](#uaipeditorgamefeatures-). This is not necessarily the full set of Toolset bridge commands in this state; check `uaip_describe_command` for any specific command's current, authoritative status rather than relying on this note.
 
 ---
 
@@ -913,10 +913,12 @@ Bridge commands via the `GameFeaturesToolset` (UE 5.8+, Experimental). Provider:
 
 | Command | Description |
 |---|---|
-| `Toolset.Editor.GameFeatures.ListGameFeatures` | List all registered GameFeature Plugins with their current state |
+| `Toolset.Editor.GameFeatures.ListGameFeatures` | Not available through this bridge command — use `UAIP.Editor.GameFeatures.ListGameFeatures` instead (see the note below) |
 | `Toolset.Editor.GameFeatures.FindGameFeatureData` | Resolve the `UGameFeatureData` asset refPath for a named plugin |
 | `Toolset.Editor.GameFeatures.GetActions` | List the action class names of a `UGameFeatureData` (takes `{"refPath": "..."}`) |
 | `Toolset.Editor.GameFeatures.CreateGameFeaturePlugin` | Create a content-only GameFeature Plugin (requires `GameFeatureCreate`) |
+
+> **⚠️ Breaking change — `Toolset.Editor.GameFeatures.ListGameFeatures` is no longer reachable through this bridge command, on any engine version.** The `GameFeaturesToolset` this handler forwards to declares no function named `ListGameFeatures`, so the forwarded call could never reach an implementation — it used to fail at execution time with a generic `ExecutionFailed` no matter what was asked. It now reports `Available: false` from `UAIP.Core.DescribeCommand` and `uaip_list_commands`, with `UnavailableReason: "HandlerUnavailable"` and `UnavailableDetail: "DelegationTargetMissing"`. Calling it by name still fails, now with `PolicyViolation` and the same explanation in `ErrorMessage`. **Use `UAIP.Editor.GameFeatures.ListGameFeatures` instead** — the native command performs the same operation without delegating, and is unaffected by this change.
 
 ---
 
@@ -1023,7 +1025,7 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 |---|---|
 | `AddEmitter` 🧩 | Add an emitter to a Niagara system |
 | `RemoveEmitter` 🧩 | Remove an emitter |
-| `DuplicateEmitter` 🧩 | Duplicate an emitter. Not available through this native command on any engine version — use `Toolset.Editor.Niagara.DuplicateEmitter` instead (see the note below) |
+| `DuplicateEmitter` 🧩 | Duplicate an emitter. Not available through this native command, and the Toolset bridge equivalent has no working target either — see the note below |
 | `SetEmitterEnabled` 🧩 | Toggle emitter enabled state |
 | `SetEmitterName` 🧩 | Change emitter name |
 | `SetEmitterData` 🧩 | Set emitter data |
@@ -1032,7 +1034,7 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 | `SetRendererData` 🧩 | Set renderer data (requires `NiagaraStackEdit`). When the emitter has no renderer of the named class the command now answers `NotFound` — it no longer falls back to writing whichever renderer came first. A property the write path cannot handle fails the whole request with `PolicyViolation` instead of being ignored, a struct default that only parses part-way is refused with `InvalidParams` instead of being taken as the default, and a successful write raises `PostEditChangeProperty` so the editor reflects it immediately |
 | `AddModule` 🧩 | Add a module to an emitter module stack |
 | `RemoveModule` 🧩 | Remove a module |
-| `MoveModule` 🧩 | Move a module within the stack. Not available through this native command on any engine version — use `Toolset.Editor.Niagara.MoveModule` instead (see the note below) |
+| `MoveModule` 🧩 | Move a module within the stack. Not available through this native command, and the Toolset bridge equivalent has no working target either — see the note below |
 | `SetModuleEnabled` 🧩 | Toggle module enabled state |
 | `SetStackInputData` 🧩 | Set a module stack input value |
 | `SetSystemData` 🧩 | Set system data |
@@ -1043,7 +1045,9 @@ Niagara VFX system editing. Requires `Niagara` + `NiagaraEditor` plugins and **U
 | `AddSetParameterEntry` 🧩 | Add a parameter entry to an existing Set Parameters module. Requires `ScriptName` (e.g. `Spawn`, `Update`). The `DefaultValue` field is applied for common types (float, int, bool, struct) and, with `NiagaraReferenceEdit`, for a data interface or object parameter given as an object path — see the note below. |
 | `RemoveSetParameterEntry` 🧩 | Remove a parameter entry from a Set Parameters module. Requires `ScriptName` (e.g. `Spawn`, `Update`). |
 
-> **⚠️ Breaking change — `DuplicateEmitter` and `MoveModule` are no longer reachable through these native commands, on any engine version.** The engine-side APIs they call (`FNiagaraSystemViewModel::DuplicateEmitters` and `FNiagaraStackGraphUtilities::MoveModule`) are not exported outside the engine module, so neither could ever actually run — both used to fail at execution time with `NotAllowed` no matter what was asked. Both now report `Available: false` from `UAIP.Core.DescribeCommand` and `uaip_list_commands` on every engine version, with `UnavailableReason: "HandlerUnavailable"` and `UnavailableDetail: "EngineApiNotExported"`. **No engine upgrade fixes this** — the export is missing on every version, not just an older one. Calling either by name still fails, now with `PolicyViolation` and the same explanation in `ErrorMessage`. **Use the Toolset bridge equivalents instead**: `Toolset.Editor.Niagara.DuplicateEmitter` and `Toolset.Editor.Niagara.MoveModule` (UE 5.8+ Experimental) reach the same operations through the engine's own toolset, which does have access to the underlying implementation.
+> **⚠️ Breaking change — `DuplicateEmitter` and `MoveModule` are no longer reachable through these native commands, on any engine version.** The engine-side APIs they call (`FNiagaraSystemViewModel::DuplicateEmitters` and `FNiagaraStackGraphUtilities::MoveModule`) are not exported outside the engine module, so neither could ever actually run — both used to fail at execution time with `NotAllowed` no matter what was asked. Both now report `Available: false` from `UAIP.Core.DescribeCommand` and `uaip_list_commands` on every engine version, with `UnavailableReason: "HandlerUnavailable"` and `UnavailableDetail: "EngineApiNotExported"`. **No engine upgrade fixes this** — the export is missing on every version, not just an older one. Calling either by name still fails, now with `PolicyViolation` and the same explanation in `ErrorMessage`.
+>
+> **⚠️ Update — the Toolset bridge equivalents do not fill this gap either.** `Toolset.Editor.Niagara.DuplicateEmitter` and `Toolset.Editor.Niagara.MoveModule` were expected to reach the same operations through the engine's own toolset, but the `NiagaraToolsets` plugin declares no function under either name, in any engine version this plugin supports. Both bridge commands now report `Available: false` too, with `UnavailableDetail: "DelegationTargetMissing"` (see the note under Toolset bridges, below). **As of this update, neither operation has a working path anywhere in this plugin.**
 >
 > **⚠️ Behavior change — a reference-typed `DefaultValue` is written now instead of being dropped.** When the parameter's type is a data interface or an object reference, `AddSetParameterEntry` and `AddSetParametersModule` used to **silently ignore** `DefaultValue`: the request succeeded and the entry was created with no default. Pass the value as an object path and it is now stored in the dedicated data-interface / object slot of `FNiagaraVariant`, where the reference is retained properly rather than packed into the byte payload the other parameter types use. What can come back instead of a success:
 >
@@ -1075,6 +1079,12 @@ Mirror of native commands via the `NiagaraToolsets` plugin (UE 5.8+ Experimental
 > **⚠️ Breaking — `Toolset.Editor.Niagara.SetRendererData` now requires `NiagaraStackEdit`**, the capability its native counterpart reads. It used to require `NiagaraEmitterEdit`, so an operator who had closed `NiagaraStackEdit` could still perform the same write through the bridge. **A session granted only `NiagaraEmitterEdit` loses access to this command** — add `NiagaraStackEdit` instead.
 >
 > **The bridge does not run UAIP's value checks.** A bridge write happens inside the engine's toolset, so the type gate, the part-way-parse check and the all-or-nothing batching the native command applies do not reach it. Use the native `SetRendererData` when you want those checks.
+>
+> **⚠️ Breaking change — six of these bridge commands are no longer reachable, on any engine version: `GetScriptAssets`, `GetNiagaraParameterCollections`, `SetEmitterEnabled`, `SetEmitterName`, `DuplicateEmitter` and `MoveModule`.** The Niagara toolset these commands forward to declares no function under any of the six names, in any engine version this plugin supports, so the forwarded call could never reach an implementation — each used to fail at execution time with a generic `ExecutionFailed` no matter what was asked. All six now report `Available: false` from `UAIP.Core.DescribeCommand` and `uaip_list_commands`, with `UnavailableReason: "HandlerUnavailable"` and `UnavailableDetail: "DelegationTargetMissing"`. Calling any of them by name still fails, now with `PolicyViolation` and the same explanation in `ErrorMessage`.
+>
+> **Four of the six have a working native alternative**: `UAIP.Editor.Niagara.GetScriptAssets`, `GetNiagaraParameterCollections`, `SetEmitterEnabled` and `SetEmitterName` perform the same operations without delegating, and are unaffected by this change.
+>
+> **`DuplicateEmitter` and `MoveModule` do not.** Their native counterparts are themselves unavailable, for an unrelated reason (see the breaking-change note under [Editing](#editing-21) above): the engine-side APIs they need are never exported to a plugin, on any engine version. **As of this update, neither operation has a working path anywhere in this plugin** — not through the native command, and not through this bridge.
 
 ---
 

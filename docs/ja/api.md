@@ -393,7 +393,10 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
 | `EngineVersion` | 現在動作しているものとは異なるエンジンバージョンを要求している（特定リリースで追加された、または削除された API） | エンジンバージョンを上げる／下げる |
 | `BuildConfiguration` | このプロセスがビルドされていないビルド構成を要求している（例：Developer Tools、Editor ターゲット） | 必要な構成で再ビルドする |
 | `ExecutionEnvironment` | この実行環境が提供していないインフラを要求している（例：レンダーハードウェアインタフェース、対話的セッション） | 別の実行環境で実行する |
-| `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | **エンジン側では何をしても解決しない** — 代わりに Toolset bridge の代替手段を探す |
+| `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | **エンジン側では何をしても解決しない** — たいていは Toolset bridge に代替手段がある。ただし断定する前に両方を確認する |
+| `DelegationTargetMissing` | これは Toolset ブリッジコマンドで、委譲先の Toolset が、サポート対象のどのエンジンバージョンでもこのコマンド名に一致する関数を宣言していない——転送された呼び出しの行き先が無い | **エンジン側では何をしても解決しない** — 同名のネイティブコマンドを探す。そちらも利用不可なら、このプラグインにはこの操作の動く経路が無い |
+
+`DelegationTargetMissing` は `EngineApiNotExported` と、何が欠けているかが異なります。`EngineApiNotExported` は**エンジン自身**がそのコマンドに必要な API をどのプラグインへも export しないことを意味し、`DelegationTargetMissing` は、あるブリッジコマンドが委譲する先の **Toolset** がそもそも一致する関数を宣言していない——つまりそのコマンドが最初から何にも結び付いていない——ことを意味します。どちらも ini フラグや Capability 付与では解決しない点は共通で、違いが意味を持つのは「どこに代替手段を探しに行くか」を判断するときだけです。まれに、ブリッジコマンドとその対応ネイティブコマンドの**両方**がこのどちらかの値を返すことがあり、その場合はこのプラグインにその操作の動く経路が 1 つも無いことを意味します（実例は [コマンド — UAIP.Editor.Niagara](commands.md#uaipeditorniagara-) を参照）。
 
 `UnavailableDetail` が `Unspecified` 以外のとき、レスポンスには通常 `UnavailableDetailMessage` も含まれます。これはハンドラ自身による自由記述の補足説明です（上記例では `"KeyControlsAtFrames is not available in UE 5.7."`）。ハンドラに追加で伝えることが無い場合、このフィールドは空文字列ではなく**省略**されます。
 
