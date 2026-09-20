@@ -122,7 +122,8 @@ The bridge sets `SessionId` automatically if omitted (`MCP-Anonymous-<guid>`).
   "Data":         { ... },
   "Artifacts":    [ { "ArtifactId": "...", "FilePath": "...", "Type": "Image" } ],
   "ErrorCode":    "Success",
-  "ErrorMessage": ""
+  "ErrorMessage": "",
+  "SessionId":    "HTTP-Anonymous-7b8e"
 }
 ```
 
@@ -133,6 +134,7 @@ The bridge sets `SessionId` automatically if omitted (`MCP-Anonymous-<guid>`).
 | `Artifacts` | array | One entry per produced artifact; see [§5](#5-artifact-contract) |
 | `ErrorCode` | string | One of the codes in [§4](#4-error-codes), or `"Success"` |
 | `ErrorMessage` | string | Human-readable detail; empty on success |
+| `SessionId` | string | The session this request actually resolved to — including a server-assigned anonymous session when the caller omitted `SessionId` on the request. **Omitted from the response when empty**, and not present on every response: it is only filled in once a session has been resolved, so a response that never got that far (e.g. some failure paths) can be missing it too. Use it to name the session on later requests, including [`GET /uaip/artifacts/{artifactId}`](#5-artifact-contract) |
 
 ### 3.2 WebSocket envelope
 
@@ -225,6 +227,10 @@ to branch on `ErrorCode`, not the status. `PreconditionFailed`'s 503 does not me
 GET /uaip/artifacts/{artifactId}
 Authorization: Bearer <token>
 ```
+
+| Query parameter | Type | Required | Notes |
+|---|---|---|---|
+| `SessionId` | string | Optional during the migration window | Scopes the lookup to that session's artifacts. **Omitting it is accepted today**, but an omitted call can only resolve artifacts this editor process itself produced during its current run — it cannot reach artifacts rediscovered from a previous session (see [Artifacts](artifacts.md)). A *successful* response to an omitted call carries a `Deprecation` response header (RFC 9745) and a `Link; rel="deprecation"` header pointing at migration guidance; a call that names `SessionId` explicitly gets neither header. **`SessionId` will become mandatory on this route in a future major version** — see [Changelog](changelog.md#unreleased) for how to migrate before then. |
 
 Response: the raw bytes, with `Content-Type` from the artifact's metadata. 404 if the artifact has been GC'd (session ended or TTL expired).
 
@@ -477,9 +483,12 @@ Scenarios run an ordered list of commands as one request. See [Scenario Executio
       "DurationMs":   1234
     }
   ],
-  "ArtifactIds": ["8D14...", "F521..."]
+  "ArtifactIds": ["8D14...", "F521..."],
+  "SessionId":   "scenario-001"
 }
 ```
+
+`SessionId` carries the same meaning as on `CommandResponse` (§3.1) — the session the scenario actually resolved to, including a server-assigned anonymous session when the request omitted `SessionId`. It is omitted from the response when empty.
 
 | `Status` | Meaning |
 |---|---|

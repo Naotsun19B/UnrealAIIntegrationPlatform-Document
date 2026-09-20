@@ -122,7 +122,8 @@ uaip_execute(
   "Data":         { ... },
   "Artifacts":    [ { "ArtifactId": "...", "FilePath": "...", "Type": "Image" } ],
   "ErrorCode":    "Success",
-  "ErrorMessage": ""
+  "ErrorMessage": "",
+  "SessionId":    "HTTP-Anonymous-7b8e"
 }
 ```
 
@@ -133,6 +134,7 @@ uaip_execute(
 | `Artifacts` | array | 生成された Artifact 毎に 1 エントリ。詳細は [§5](#5-artifact-契約) |
 | `ErrorCode` | string | [§4](#4-エラーコード) のコードのいずれか、または `"Success"` |
 | `ErrorMessage` | string | 人間可読の詳細。成功時は空 |
+| `SessionId` | string | この要求が実際に解決されたセッション。呼び出し側がリクエストで `SessionId` を省略した場合、サーバが割り当てた匿名セッションの値が入る。**値が空のときはフィールド自体が応答に出ない**。また全ての応答に含まれるわけではない — セッションが解決された時点でしか埋まらないため、そこまで到達しなかった応答（一部の失敗応答など）には無いことがある。以降の要求（[`GET /uaip/artifacts/{artifactId}`](#5-artifact-契約) を含む）でセッションを名乗る際にこの値を使う |
 
 ### 3.2 WebSocket エンベロープ
 
@@ -225,6 +227,10 @@ HTTP ステータスは参考値 — 分岐は常に `ErrorCode` で。WebSocket
 GET /uaip/artifacts/{artifactId}
 Authorization: Bearer <token>
 ```
+
+| クエリパラメータ | 型 | 必須 | 備考 |
+|---|---|---|---|
+| `SessionId` | string | 移行期間中は省略可 | 対象をそのセッションの Artifact に絞り込む。**現在は省略しても受け付けられる**が、省略した呼び出しは、このエディタプロセスが**今回の起動中**に作った Artifact しか解決できない — 前回のセッションから見つけ直された Artifact には到達できない（[Artifacts](artifacts.md) 参照）。省略した呼び出しが**成功した**場合の応答には `Deprecation` レスポンスヘッダ（RFC 9745）と、移行手順を指す `Link; rel="deprecation"` ヘッダが付く。`SessionId` を明示した呼び出しにはどちらのヘッダも付かない。**`SessionId` は将来のメジャーバージョンでこのルートにおいて必須になります** — 移行方法は [Changelog](changelog.md#unreleased) を参照してください |
 
 レスポンス: 生バイト列、Artifact メタの `Content-Type`。GC 済み（セッション終了または TTL 切れ）の場合 404。
 
@@ -477,9 +483,12 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
       "DurationMs":   1234
     }
   ],
-  "ArtifactIds": ["8D14...", "F521..."]
+  "ArtifactIds": ["8D14...", "F521..."],
+  "SessionId":   "scenario-001"
 }
 ```
+
+`SessionId` の意味は `CommandResponse`（§3.1）と同じです — このシナリオ要求が実際に解決されたセッション。要求で `SessionId` を省略した場合はサーバが割り当てた匿名セッションの値が入ります。値が空のときはフィールド自体が応答に出ません。
 
 | `Status` | 意味 |
 |---|---|

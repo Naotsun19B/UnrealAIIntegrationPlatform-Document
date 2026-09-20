@@ -742,6 +742,28 @@ AllowUserInteractionPrompt=False
 
 ---
 
+## UnavailableDetail — HandlerUnavailable の7つの詳細理由
+
+コマンドは、上記の `CapabilityNotAvailable` や `PolicyViolation` では説明できない理由でも利用不可を返すことがあります — エンジンバージョンの不一致、ビルド構成の不足、必要な Runtime インフラの欠如、コンパイルから除外されたオプションプラグイン、あるいはどのエンジンバージョンにも存在したことのない委譲先などです。これらはすべて同じ `ICommandHandler::IsAvailable() == false` 経路と同じ `UnavailableReason: "HandlerUnavailable"` として現れます — この値単体では、ハンドラーが拒否したという事実しか分からず、理由までは分かりません。`UnavailableDetail` はその理由を 7 つの値のいずれかへ絞り込みます。現在利用可能かどうかにかかわらず `uaip_describe_command` から確認できます。`uaip_list_commands` の `HiddenReasons` オブジェクトには**含まれません** — こちらは常に固定 5 種の `UnavailableReason` キー（`DeniedCommand` / `MissingCapability` / `RoleRestricted` / `ReadOnlyPolicy` / `HandlerUnavailable`）のままです。特定の `HandlerUnavailable` エントリの詳細を見るには、そのコマンド名を指定して `uaip_describe_command` を呼んでください。以下のうち `Unspecified` 以外の 6 値をハンドラーが返す場合、通常はあわせて `UnavailableDetailMessage` 文字列も返ります — ハンドラー自身による自由記述の補足説明で、独自に言い換えず、そのまま利用者へ伝えてください。
+
+| `UnavailableDetail` | 意味 | 解消する方法 |
+|---|---|---|
+| `Unspecified` | `HandlerUnavailable` 以上の詳細なし — この項目が追加される前から存在するハンドラーの既定値であり、`Available` が再び `true` になったときにも全ハンドラーがこの値を返す | — |
+| `EngineVersion` | 現在動作しているものとは異なるエンジンバージョンを必要とする（特定のリリースで導入された、または特定のリリースまでしか存在しない API など） | エンジンバージョンを上げる、または下げる |
+| `BuildConfiguration` | このプロセスがビルドされていないビルド構成を必要とする（Developer Tools・Editor ターゲットなど） | 必要な構成でリビルドする |
+| `ExecutionEnvironment` | この実行環境が提供していないインフラを必要とする（レンダーハードウェアインターフェース、対話セッション、オプションの Runtime プラグインが登録するモジュラー機能クライアントなど） | 別の実行環境で動かす |
+| `OptionalPluginDisabled` | このプロセスのビルド時に無効化されていたオプションプラグインに依存しており、必要な型がコンパイルから除外されている | プラグインを有効化してリビルドする |
+| `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | エンジンバージョンの変更やプラグインの切り替えでは解決しない — 別の経路（例: エディタスクリプティング経由で同じ効果に到達する Toolset ブリッジコマンド）を探す |
+| `DelegationTargetMissing` | 委譲先の外部サーフェス（Toolset ブリッジのターゲット）に、サポート対象のどのエンジンバージョンも実際には宣言していない関数を呼び出しており、実装へ到達する手段がそもそも存在しない | これも解決しない — そのサーフェスを持つプラグイン自体はすでに有効になっている場合がある。同じ操作を行うネイティブコマンドがあれば、それを使う |
+
+`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` は、いずれも人間が変更できるものを指します。`EngineApiNotExported` と `DelegationTargetMissing` はそうではありません — ini フラグ、Capability 付与、エンジンバージョン、プラグインの切り替えのいずれも解決しません。取れる手段は別の経路を探すことだけです。**7 値のいずれも `AllowedCapabilities` / `DeniedCapabilities` の編集では解決しません** — 上記の `CapabilityNotAvailable` や `PolicyViolation` と異なり、`UnavailableDetail` は Capability や SafetyPolicy の話ではありません。
+
+`Available: false` のコマンドを名前で呼び出すと `PolicyViolation` で失敗します。`ErrorMessage` には同じ情報が繰り返されます：`"Command '<name>' is not available (<UnavailableDetail>): <UnavailableDetailMessage>"` — `UnavailableDetail` が `Unspecified` の場合は、従来からの汎用的な文 `"... is not available in the current SafetyPolicy configuration."` になります。
+
+具体例を 3 つ、いずれも [コマンドリファレンス](commands.md#unavailabledetail--handlerunavailable-の7つの詳細理由) から：`UAIP.Runtime.LiveLink.*` の全 14 コマンドは、このプロセスにモジュラー機能として `ILiveLinkClient` が登録されていない場合に `ExecutionEnvironment` を返す。`UAIP.Editor.AnimSequence.SelectAnimNotify`（UE 5.8 以降専用）は UE 5.7 で `EngineVersion` を返す。`UAIP.Core.ReloadCapabilities` は、`AllowCapabilityReload` が既定の `False` のままのとき、設定すべき ini キー名を含む `ExecutionEnvironment` を返す。
+
+---
+
 ## エラーの診断
 
 | エラーコード | 診断 | 対処 |
@@ -751,6 +773,7 @@ AllowUserInteractionPrompt=False
 | `PolicyViolation: ... denied by SafetyPolicy` | SafetyPolicy の ini フラグで拒否されている | `[UAIP.SafetyPolicy]` の対応するフラグを `True` にして再起動 |
 | `PolicyViolation: Scenario execution is not enabled` | シナリオルートのオプトイン不足 | `config.json` に `"enable_scenario": true` を追加 |
 | `PolicyViolation: Command is denied` | コマンドが `DeniedCommands` に入っている | ini から該当エントリを削除して再起動 |
+| `PolicyViolation: ... is not available (<UnavailableDetail>): ...` | `UnavailableDetail` で絞り込まれた `HandlerUnavailable` 拒否（上記参照） | 詳細による：`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` は変更できるものを指す。`EngineApiNotExported` / `DelegationTargetMissing` はそうではなく、別の経路を探す |
 | 🧩 コマンドで `CommandNotFound` | オプションプラグインが無効 | `.uproject` で必要なプラグインを有効化してリビルド |
 
 ---

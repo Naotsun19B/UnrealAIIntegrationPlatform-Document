@@ -36,7 +36,35 @@ UAIP では 2 種類のコマンドを公開しています：
 
 **これは「たまたま動いていた」呼び出しにとっての破壊的変更です**。余計なキーや綴り間違いのキーを送っても従来は黙って受理される（無視される、またはエンジン内部まで転送されて拒否される）だけでしたが、移行済みのコマンドでは、その場で問題のキー名を名指しした `InvalidParams` として拒否されるようになります。
 
-`Toolset.Editor.Niagara.*` の 5 コマンド（`DuplicateEmitter` / `GetScriptAssets` / `MoveModule` / `SetEmitterEnabled` / `SetEmitterName`）は、本更新時点でもまだ引数を宣言していませんが、**これはもう未確定ではありません**。5 件とも、このプラグインが対応するどの Niagara toolset にも一致する関数が無いため、スキーマへ移行する代わりに、5 件すべてが `Available: false`（`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "DelegationTargetMissing"`）を返すようになりました——スキーマが説明すべき対象がそもそも無いということです。それぞれが何を理由に拒否するか、どれに動くネイティブ代替があるかは [UAIP.Editor.Niagara → Toolset ブリッジ](#uaipeditorniagara-) の注記を参照してください。「委譲先の toolset に一致する関数が無い」という同じ形は `Toolset.Editor.GameFeatures.ListGameFeatures` と `Toolset.Editor.Niagara.GetNiagaraParameterCollections` にも当てはまりますが、この 2 件はもともと正しい空のスキーマを宣言済みだったため、上記の 5 件には数えられていません——[UAIP.Editor.GameFeatures → Toolset ブリッジ](#uaipeditorgamefeatures-) を参照してください。これは Toolset ブリッジコマンドの中でこの状態にある全件を尽くしたものではありません。このリファレンスに頼らず、個別のコマンドの現在の状態は `uaip_describe_command` で確認してください。
+`Toolset.Editor.Niagara.*` の 5 コマンド（`DuplicateEmitter` / `GetScriptAssets` / `MoveModule` / `SetEmitterEnabled` / `SetEmitterName`）は、本更新時点でもまだ引数を宣言していませんが、**これはもう未確定ではありません**。5 件とも、このプラグインが対応するどの Niagara toolset にも一致する関数が無いため、スキーマへ移行する代わりに、5 件すべてが `Available: false`（`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "DelegationTargetMissing"`）を返すようになりました——スキーマが説明すべき対象がそもそも無いということです。それぞれが何を理由に拒否するか、どれに動くネイティブ代替があるかは [UAIP.Editor.Niagara → Toolset ブリッジ](#uaipeditorniagara-) の注記を参照してください。「委譲先の toolset に一致する関数が無い」という同じ形は `Toolset.Editor.GameFeatures.ListGameFeatures` と `Toolset.Editor.Niagara.GetNiagaraParameterCollections` にも当てはまりますが、この 2 件はもともと正しい空のスキーマを宣言済みだったため、上記の 5 件には数えられていません——[UAIP.Editor.GameFeatures → Toolset ブリッジ](#uaipeditorgamefeatures-) を参照してください。**本更新で、この状態にあるコマンドの全件が分かりました。** ブリッジコマンド 413 件すべてについて、委譲先の (toolset 名, tool 名) の組がエンジン側に実在するかを静的に突き合わせた結果、**398 件が到達し、15 件が到達しません**。15 件はすべて `Available: false` と `UnavailableDetail: "DelegationTargetMissing"` を返します（内訳: Niagara 7 件 / GameFeatures 4 件 / SlateInspector 2 件 / UMG 2 件）。あわせて、**委譲先の綴りが誤っていた 16 件が実際に到達するようになりました**（Dataflow 7 件 / SlateInspector 8 件 / Niagara 1 件）——それまでは、このリファレンスが動作すると書いていながら実行時に失敗していました。個別のコマンドの現在の状態は、引き続き `uaip_describe_command` で確認できます。
+
+---
+
+## UnavailableDetail — HandlerUnavailable の7つの詳細理由
+
+このページの多くの注記が、`UnavailableReason: "HandlerUnavailable"` と並んで `UnavailableDetail` を挙げています。`HandlerUnavailable` 単体では、そのコマンドの `IsAvailable()` が `false` を返したという事実しか分かりません — なぜ拒否されたかは分かりません。`UnavailableDetail` はその理由を 7 つの値のいずれかへ絞り込みます。
+
+`UnavailableDetail` は、現在利用可能かどうかにかかわらず、どのコマンドについても `uaip_describe_command` から確認できます。`uaip_list_commands` の `HiddenReasons` オブジェクトには**含まれません** — こちらは常に固定 5 種の `UnavailableReason` キー（`DeniedCommand` / `MissingCapability` / `RoleRestricted` / `ReadOnlyPolicy` / `HandlerUnavailable`）のままです。特定の `HandlerUnavailable` エントリの詳細を見るには、そのコマンド名を指定して `uaip_describe_command` を呼んでください。以下のうち `Unspecified` 以外の 6 値をハンドラーが返す場合、通常はあわせて `UnavailableDetailMessage` 文字列も返ります — ハンドラー自身による自由記述の補足説明で、独自に言い換えず、そのまま利用者へ伝えてください。
+
+| `UnavailableDetail` | 意味 | 解消する方法 |
+|---|---|---|
+| `Unspecified` | `HandlerUnavailable` 以上の詳細なし — この項目が追加される前から存在するハンドラーの既定値であり、`Available` が再び `true` になったときにも全ハンドラーがこの値を返す | — |
+| `EngineVersion` | 現在動作しているものとは異なるエンジンバージョンを必要とする（特定のリリースで導入された、または特定のリリースまでしか存在しない API など） | エンジンバージョンを上げる、または下げる |
+| `BuildConfiguration` | このプロセスがビルドされていないビルド構成を必要とする（Developer Tools・Editor ターゲットなど） | 必要な構成でリビルドする |
+| `ExecutionEnvironment` | この実行環境が提供していないインフラを必要とする（レンダーハードウェアインターフェース、対話セッション、オプションの Runtime プラグインが登録するモジュラー機能クライアントなど） | 別の実行環境で動かす |
+| `OptionalPluginDisabled` | このプロセスのビルド時に無効化されていたオプションプラグインに依存しており、必要な型がコンパイルから除外されている | プラグインを有効化してリビルドする |
+| `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | エンジンバージョンの変更やプラグインの切り替えでは解決しない — 別の経路（例: エディタスクリプティング経由で同じ効果に到達する Toolset ブリッジコマンド）を探す |
+| `DelegationTargetMissing` | 委譲先の外部サーフェス（Toolset ブリッジのターゲット）に、サポート対象のどのエンジンバージョンも実際には宣言していない関数を呼び出しており、実装へ到達する手段がそもそも存在しない | これも解決しない — そのサーフェスを持つプラグイン自体はすでに有効になっている場合がある。同じ操作を行うネイティブコマンドがあれば、それを使う |
+
+`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` は、いずれも人間が変更できるものを指します。`EngineApiNotExported` と `DelegationTargetMissing` はそうではありません — ini フラグ、Capability 付与、エンジンバージョン、プラグインの切り替えのいずれも解決しません。取れる手段は別の経路を探すことだけです。
+
+`Available: false` のコマンドを名前で呼び出すと `PolicyViolation` で失敗します。`ErrorMessage` には同じ情報が繰り返されます：`"Command '<name>' is not available (<UnavailableDetail>): <UnavailableDetailMessage>"` — `UnavailableDetail` が `Unspecified` の場合は、従来からの汎用的な文 `"... is not available in the current SafetyPolicy configuration."` になります。
+
+### 新たに詳細が付くようになった対象
+
+- **`UAIP.Runtime.LiveLink.*` — このドメインの全 14 コマンド**は、このプロセスにモジュラー機能として `ILiveLinkClient` が登録されていない場合（`LiveLink` プラグインが無効、または未ロード）に `UnavailableDetail: "ExecutionEnvironment"` を返します。このモジュールでコンパイルから除外されているものはありません — [UAIP.Runtime.LiveLink](#uaipruntimelivelink) を参照。
+- **`UAIP.Editor.AnimSequence.SelectAnimNotify`** は UE 5.8 以降専用です。UE 5.7 では通知ウィジェットの型とそのノードオブジェクトインターフェースが Persona モジュール内部限定であるため、`UnavailableDetail: "EngineVersion"` を返します。[UAIP.Editor.AnimSequence](#uaipeditoranimsequence) を参照。
+- **`UAIP.Core.ReloadCapabilities`** は、`AllowCapabilityReload` が既定の `False` のままのとき、従来の汎用的な文だけでなく、設定すべき ini キー名を含む `UnavailableDetail: "ExecutionEnvironment"` を返すようになりました。[UAIP.Core](#uaipcore) を参照。
 
 ---
 
@@ -284,7 +312,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `DescribeCommand` | 単一コマンドの完全メタデータ（スキーマ・必要 Capability・可用性） |
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
 | 🆓 `EndSession` | セッションを明示的に終了しサーバー側リソースを解放する（成果物は GC 対象になる） |
-| 🆓 `ReloadCapabilities` | エディタを再起動せずに `Config/DefaultUAIP.ini` から Capability セットを再読み込みする（`AllowCapabilityReload=True` のときのみ登録） |
+| 🆓 `ReloadCapabilities` | エディタを再起動せずに `Config/DefaultUAIP.ini` から Capability セットを再読み込みする。`AllowCapabilityReload=True` になるまでは `ListCommands` の既定応答から隠れ、`Available: false`（設定すべき ini キー名を含む `UnavailableDetail: "ExecutionEnvironment"`）を返す — [UnavailableDetail](#unavailabledetail--handlerunavailable-の7つの詳細理由) 参照 |
 | 🆓 `GetPendingInteractionStatus` | 保留中の対話 1 件の状態 — `State`・`Cause`・`ElapsedSeconds`・`Prompt`・`Reason`・`Result` — を、変化を待たずに報告する。対話（`DrawPCGSpline` などの対話型コマンド）を開始したときと同じ `SessionId` を明示的に指定する必要があり、未知・期限切れ・他セッション所有はすべて同じ `NotFound` として扱われる |
 | 🆓 `WaitForPendingInteraction` | 対話が `AwaitingUser` を離れるか、この呼び出し自身の `TimeoutSeconds` 上限（デフォルト 30、範囲 [1, 600]）に達するまでブロックする。タイムアウトしても対話自体には影響せず、人間の応答を待ち続ける。同じ対話を同時に監視できる呼び出しは最大 4 件までだが、2 件目以降には `[UAIP.Transport] AllowConcurrentPassiveWaits` が必要（[設定](config.md) 参照） |
 | 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックする |
@@ -537,8 +565,8 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | コマンド | 説明 |
 |---|---|
 | `Toolset.Editor.SlateInspector.SnapshotUI` | 指定 ref のウィジェットツリーをスナップショット |
-| `Toolset.Editor.SlateInspector.ObserveWidget` | ウィジェットを観測対象として登録し、observer の `Identifier` を返す |
-| `Toolset.Editor.SlateInspector.UnobserveWidget` | `Identifier` で登録したウィジェットの観測を解除 |
+| `Toolset.Editor.SlateInspector.ObserveWidget` | ⚠️ **呼び出せません** — 委譲先が存在しない。下の注記を参照 |
+| `Toolset.Editor.SlateInspector.UnobserveWidget` | ⚠️ **呼び出せません** — 委譲先が存在しない。下の注記を参照 |
 | `Toolset.Editor.SlateInspector.ListObservers` | 現在有効なウィジェット observer を列挙 |
 | `Toolset.Editor.SlateInspector.ClickWidget` | 指定 ref のウィジェットへのマウスクリックをシミュレート |
 | `Toolset.Editor.SlateInspector.HoverWidget` | 指定 ref のウィジェット上へカーソルを移動 |
@@ -548,6 +576,10 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | `Toolset.Editor.SlateInspector.FillForm` | 複数のフォームフィールドを 1 回の呼び出しで入力 |
 
 > **Note**: `Toolset.Editor.SlateInspector.PressKey` はネイティブの `PressKey` と同じ危険ショートカットのブロックリストを適用しますが、現在どのウィジェットにフォーカスがあるかを解決する手段が無いため、**Backspace を常時ブロック**します — ネイティブコマンドが持つ「テキスト入力ウィジェットにフォーカスがある場合の例外」はブリッジには引き継がれません。
+
+> **⚠️ Breaking change — このセクションの 10 件は、これまで 1 件も動いていませんでした。** 委譲先の toolset 名を**モジュール修飾なしの `SlateInspectorToolset`** として渡しており、ToolsetRegistry は 1 回の完全一致検索でしか解決しないため（前方一致もサフィックス一致もありません）、正しい `SlateInspectorToolset.SlateInspectorToolset` に一致せず、どのコマンドも実行時に「そのような toolset は無い」で失敗していました。**本更新で 8 件が実際に動くようになりました**（`SnapshotUI` / `ListObservers` / `ClickWidget` / `HoverWidget` / `InputText` / `PressKey` / `SetComboSelection` / `FillForm`）。
+>
+> 残る 2 件、`ObserveWidget` と `UnobserveWidget` は**修飾名を直しても到達しません**。toolset が宣言しているのは `Observe` と `Unobserve` で、引数の形が違います（`Observe` はウィジェット ref と走査深さを取り、このコマンドが受け付ける observer 名を取りません。`Unobserve` は `Observe` が返した識別子で解除しますが、この経路の呼び出し元はその識別子を受け取りません）。名前を寄せるだけでは「到達はするが違うことをする」状態になるため、2 件とも `Available: false` と `UnavailableDetail: "DelegationTargetMissing"` を返します。`ObserveWidget` については **`UAIP.Editor.Observation.ObserveWidget`** が同じ操作をネイティブで行います。`UnobserveWidget` に対応するネイティブコマンドはありません。
 
 ---
 
@@ -834,6 +866,8 @@ Widget Blueprint 編集 — ツリー・変数・アニメーション・バイ�
 
 `UMGToolSet` プラグイン経由でネイティブコマンドを委譲。プロバイダ：`Toolset.Editor.UMG.*`。UE 5.8+ と `UMGToolSet` プラグインが必要です。
 
+> **⚠️ Breaking change — このうち 2 件は呼び出せません：`Toolset.Editor.UMG.ReparentWidgetBlueprint` と `Toolset.Editor.UMG.SetWidgetAsVariable`。** `UMGToolSet` はどちらの名前の tool も宣言していません。`SetWidgetAsVariable` については、toolset が宣言している `ToggleWidgetAsVariable` はフラグを**指定した値へ設定するのではなく反転させる**ため、そこへ寄せると「到達はするが違うことをする」状態になります。2 件とも `Available: false` と `UnavailableDetail: "DelegationTargetMissing"` を返すようになりました。**`UMGToolSet` プラグインを有効にしても解決しません。** ネイティブの **`UAIP.Editor.UMG.ReparentWidgetBlueprint`** と **`UAIP.Editor.UMG.SetWidgetAsVariable`** が同じ操作をプラグインなしで行います。
+
 ---
 
 ## UAIP.Editor.Material
@@ -914,11 +948,13 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 | コマンド | 説明 |
 |---|---|
 | `Toolset.Editor.GameFeatures.ListGameFeatures` | このブリッジコマンド経由では利用不可 — 代わりに `UAIP.Editor.GameFeatures.ListGameFeatures` を使ってください（後述の注記を参照） |
-| `Toolset.Editor.GameFeatures.FindGameFeatureData` | プラグイン名から `UGameFeatureData` アセットの refPath を解決 |
-| `Toolset.Editor.GameFeatures.GetActions` | `UGameFeatureData` の Action クラス名一覧（`{"refPath": "..."}` を渡す） |
-| `Toolset.Editor.GameFeatures.CreateGameFeaturePlugin` | コンテンツのみの GameFeature Plugin を作成（`GameFeatureCreate` 必要） |
+| `Toolset.Editor.GameFeatures.FindGameFeatureData` | ⚠️ **呼び出せません** — 委譲先が存在せず、ネイティブの代替もありません（後述の注記を参照） |
+| `Toolset.Editor.GameFeatures.GetActions` | ⚠️ **呼び出せません** — 委譲先が存在せず、ネイティブの代替もありません（後述の注記を参照） |
+| `Toolset.Editor.GameFeatures.CreateGameFeaturePlugin` | ⚠️ **呼び出せません** — 代わりに `UAIP.Editor.GameFeatures.CreateGameFeaturePlugin` を使ってください（後述の注記を参照） |
 
 > **⚠️ Breaking change — `Toolset.Editor.GameFeatures.ListGameFeatures` は、このブリッジコマンド経由ではどのエンジンバージョンでも呼び出せません。** 内部で委譲している `GameFeaturesToolset` が `ListGameFeatures` という名前の関数を宣言していないため、そもそも実行に到達できませんでした — これまでは何を渡しても実行時に汎用的な `ExecutionFailed` で失敗していました。現在は `UAIP.Core.DescribeCommand` と `uaip_list_commands` が `Available: false` を報告し、`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "DelegationTargetMissing"` が付きます。名前指定で呼び出すと依然として失敗しますが、今度は `PolicyViolation` になり、`ErrorMessage` には同じ説明が入ります。**代わりに `UAIP.Editor.GameFeatures.ListGameFeatures` を使ってください** — ネイティブコマンドが委譲せずに同じ操作を行い、この変更の影響を受けません。
+
+> **⚠️ Breaking change — 同じ状態がこのセクションの残り 3 件にも当てはまります。** 全件の突き合わせにより、`FindGameFeatureData` / `GetActions` / `CreateGameFeaturePlugin` も `GameFeaturesToolset` が宣言していない名前へ委譲していたことが分かりました（同 toolset が宣言しているのは `GetGameFeatureState` / `IsGameFeatureActive` / `IsGameFeaturePlugin` / `ListDiscoveredGameFeaturePlugins` / `ListEnabledGameFeaturePlugins` / `RequestActivateGameFeature` / `RequestDeactivateGameFeature` の 7 件のみ）。3 件とも `Available: false` と `UnavailableDetail: "DelegationTargetMissing"` を返すようになりました。**`GameFeaturesToolset` プラグインを有効にしても解決しません。** `CreateGameFeaturePlugin` には **`UAIP.Editor.GameFeatures.CreateGameFeaturePlugin`** という同じ操作を行うネイティブコマンドがあります。`FindGameFeatureData` と `GetActions` にはネイティブの代替がなく、本更新時点でこの 2 つの操作にはこのプラグイン内に動く経路がありません。
 
 ---
 
@@ -1085,6 +1121,10 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 > **6 件のうち 4 件には動くネイティブ代替があります**：`UAIP.Editor.Niagara.GetScriptAssets` / `GetNiagaraParameterCollections` / `SetEmitterEnabled` / `SetEmitterName` は委譲せずに同じ操作を行い、この変更の影響を受けません。
 >
 > **`DuplicateEmitter` と `MoveModule` にはありません。** 対応するネイティブコマンド自体が、別の理由で利用不可になっています（上の「編集」節の Breaking change 注記を参照）——必要とするエンジン側 API が、どのエンジンバージョンでもプラグインへ export されていないためです。**本更新時点で、どちらの操作もこのプラグイン内に動く経路が 1 つもありません** — ネイティブコマンドでも、このブリッジでも。
+>
+> **7 件目として `GetSystemInfo` が加わりました。** 全件の突き合わせにより、`Toolset.Editor.Niagara.GetSystemInfo` も委譲先が存在しないことが分かりました。toolset が宣言しているのは `GetSystemSummary` と `GetSystemData` で、どちらもこのコマンドの呼び出し元に約束された形を返しません。`Available: false` と `UnavailableDetail: "DelegationTargetMissing"` を返すようになりました。**`UAIP.Editor.Niagara.GetSystemInfo`** が同じ操作をネイティブで行います。
+>
+> **逆に `GetAssetDiscoveryInfo` は動くようになりました。** このコマンドは `NiagaraToolset_Info` へ委譲していましたが、実物は `NiagaraToolset_Assets` にあり、ToolsetRegistry は 1 回の完全一致検索でしか解決しないため到達していませんでした。宛先を修正済みです。
 
 ---
 
@@ -1170,6 +1210,8 @@ Dataflow グラフ編集。`DataflowEditor` プラグインが必要です。
 ### Toolset ブリッジ — Dataflow（7 件）🧩
 
 `DataflowAgentToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.DataflowAgent.*`。編集系は `DataflowGraphEdit` が必要です。
+
+> **このセクションの 7 件は、本更新まで 1 件も動いていませんでした。** 委譲先の toolset 名を**モジュール修飾なしの `DataflowAgentToolset`** として渡しており、正しい `DataflowAgent.DataflowAgentToolset` に一致していませんでした（ToolsetRegistry は 1 回の完全一致検索でしか解決しません）。加えて `ConnectDataflowPins` と `DisconnectDataflowPins` は tool 名も誤っており、toolset の実際の名前は `ConnectNodePins` / `DisconnectNodePins` です。**7 件とも修正され、実際に動作します。**
 
 | コマンド | 説明 |
 |---|---|
@@ -2808,6 +2850,7 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 | `SetAnimNotifyEvent`（要 `AnimNotifyEdit`） | `NotifyGuid` で識別される通知のイベントフィールド（`StartTime` / `Duration` / `TrackName` / `NotifyName` / `MontageTickType` / トリガー・フィルタ設定）を部分更新する — 指定したフィールドのみが変更される。`Duration` は点通知に対しては拒否、`MontageTickType` は `UAnimMontage` 以外では拒否。PIE/SIE 実行中は `NotAllowed` で拒否 |
 | `SetAnimNotifyProperty`（要 `AnimNotifyEdit`。ハードなオブジェクト/クラス参照の書き込みは追加で `AnimNotifyReferenceEdit` が必要） | `NotifyGuid` で識別される通知インスタンスのトップレベルプロパティ 1 件を、`GetAnimNotifyClassSchema` が `DefaultValueText` として報告するのと同じテキストインポート形式で書き込む。新たに `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`（未登録タグ、`Categories` / `GameplayTagFilter` の範囲外のタグ、コンテナ内の重複タグはいずれも `InvalidParams` で拒否）と `FBoneReference`（対象スケルトンに存在しないボーン名、または照合先スケルトンを解決できない場合は `InvalidParams` で拒否）も書き込み可能。ソフト/ウィーク/レイジー参照、マップ、セット、オプショナル、参照を含むものも含めたその他の構造体/配列は `ValueJson` で書き込み、コンテナの要素 1 つは `Operation` / `ElementIndex` / `ElementKeyJson` で指定する（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。ハード参照の値は**既にロード済み**のアセットを指すもので、書き込みが副作用でアセットをロードすることはない。PIE/SIE 実行中は `NotAllowed` で拒否 |
 | `FixupAnimNotifyGuids`（要 `AnimNotifyEdit`） | guid が現在無効な全通知に新しい guid を割り当てる。レガシー通知はこれを実行してアセットを保存するまで、リロードのたびに不安定な guid を持ち続ける。冪等 — 修復対象がない場合も `NumFixed: 0` で成功する。PIE/SIE 実行中は拒否 |
+| `SelectAnimNotify`（要 `EditorUIAutomation`） | `NotifyGuid` で識別される通知を、すでに開いているそのアセットのアニメーションエディタ内で選択し、そのエディタの Details パネルにプロパティが表示されるようにする — エンジンに該当 API が無いため、通知のタイムラインウィジェットへ人間が行うクリックをシミュレートする。アセットは変更しない。UE 5.8 以降専用: UE 5.7 では通知ウィジェットの型とそのノードオブジェクトインターフェースが Persona モジュール内部限定のため、任意の通知を選ぶのではなく `Available: false`（`UnavailableDetail: "EngineVersion"`）を返す — [UnavailableDetail](#unavailabledetail--handlerunavailable-の7つの詳細理由) 参照。冪等 |
 
 ---
 
@@ -3285,7 +3328,7 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 
 LiveLink の Source / Subject 観測、クライアント状態の制御、UAIP 所有の合成 Source。エディタでも Runtime でも動作し、PIE は不要です。
 
-**プラグイン要件は無く、🧩 も付きません。** これらのコマンドが使うクライアントインターフェースは、オプションの `LiveLink` プラグインではなくエンジン常設の `LiveLinkInterface` モジュールに含まれるため、コマンドは**常に登録されます**。LiveLink クライアントが存在しない場合（`LiveLink` プラグイン無効時）は、一覧から消えるのではなく `uaip_list_commands` / `uaip_describe_command` で `Available: false` として現れ、`ListLiveLinkSources` が `LiveLinkAvailable` を返すため、**1 回の呼び出しでこの環境で LiveLink が使えるかを判定できます**。プリセット・接続・録画は [UAIP.Editor.LiveLink](#uaipeditorlivelink-) にあり、そちらにはプラグイン要件があります。
+**プラグイン要件は無く、🧩 も付きません。** これらのコマンドが使うクライアントインターフェースは、オプションの `LiveLink` プラグインではなくエンジン常設の `LiveLinkInterface` モジュールに含まれるため、コマンドは**常に登録されます**。LiveLink クライアントが存在しない場合（`LiveLink` プラグイン無効時）は、一覧から消えるのではなく `uaip_list_commands` / `uaip_describe_command` で `Available: false` として現れ、`ListLiveLinkSources` が `LiveLinkAvailable` を返すため、**1 回の呼び出しでこの環境で LiveLink が使えるかを判定できます**。この状態では `uaip_describe_command` がこのドメインの全 14 コマンドに対して `UnavailableDetail: "ExecutionEnvironment"` も返します — このモジュールでコンパイルから除外されているものはなく、不足しているのは実行中プロセスの `ILiveLinkClient` です — [UnavailableDetail](#unavailabledetail--handlerunavailable-の7つの詳細理由) 参照。プリセット・接続・録画は [UAIP.Editor.LiveLink](#uaipeditorlivelink-) にあり、そちらにはプラグイン要件があります。
 
 **Subject の指定方法。** 別々の Source が同名の Subject を出すことがあります。読み取りは `SubjectName` だけを受け付けて解決しますが、複数一致した場合は候補を `Candidates` に列挙して `InvalidParams` で拒否します — 勝手にどれかを選ぶことはありません。変更系は代わりに `SubjectKey`（`SourceGuid` + `SubjectName`）を取ります。エンジン側が名前しか扱えない 3 箇所（仮想 Subject の構成メンバー、`StartLiveLinkRecording` の対象、`SetLiveLinkComponentSubject`）は、現在**有効な** Subject に対して解決し、曖昧なら拒否し、何に解決したかを応答に記録します。
 

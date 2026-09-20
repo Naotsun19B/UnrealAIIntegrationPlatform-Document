@@ -36,7 +36,35 @@ This is being migrated one command at a time to a declared, strictly-validated s
 
 **This is a breaking change for calls that previously "worked by accident"**: a call that sent an extra or misspelled key used to be silently accepted (and simply ignored, or forwarded and rejected deep inside the engine) — on a migrated command it is now refused up front with `InvalidParams`, naming the offending key.
 
-Five `Toolset.Editor.Niagara.*` commands (`DuplicateEmitter`, `GetScriptAssets`, `MoveModule`, `SetEmitterEnabled`, `SetEmitterName`) still declare no parameters as of this update, and that is no longer an open question: none of the five has a matching function in any Niagara toolset this plugin supports, so instead of being migrated to a real schema, all five now report `Available: false` (`UnavailableReason: "HandlerUnavailable"`, `UnavailableDetail: "DelegationTargetMissing"`) — there is nothing left for a schema to describe. See the note under [UAIP.Editor.Niagara → Toolset bridges](#uaipeditorniagara-) for what each one refuses with and which ones have a working native alternative. The same "the toolset declares no matching function" shape also applies to `Toolset.Editor.GameFeatures.ListGameFeatures` and `Toolset.Editor.Niagara.GetNiagaraParameterCollections`, which were already declaring a proper empty schema and so are not counted among these five — see [UAIP.Editor.GameFeatures → Toolset bridges](#uaipeditorgamefeatures-). This is not necessarily the full set of Toolset bridge commands in this state; check `uaip_describe_command` for any specific command's current, authoritative status rather than relying on this note.
+Five `Toolset.Editor.Niagara.*` commands (`DuplicateEmitter`, `GetScriptAssets`, `MoveModule`, `SetEmitterEnabled`, `SetEmitterName`) still declare no parameters as of this update, and that is no longer an open question: none of the five has a matching function in any Niagara toolset this plugin supports, so instead of being migrated to a real schema, all five now report `Available: false` (`UnavailableReason: "HandlerUnavailable"`, `UnavailableDetail: "DelegationTargetMissing"`) — there is nothing left for a schema to describe. See the note under [UAIP.Editor.Niagara → Toolset bridges](#uaipeditorniagara-) for what each one refuses with and which ones have a working native alternative. The same "the toolset declares no matching function" shape also applies to `Toolset.Editor.GameFeatures.ListGameFeatures` and `Toolset.Editor.Niagara.GetNiagaraParameterCollections`, which were already declaring a proper empty schema and so are not counted among these five — see [UAIP.Editor.GameFeatures → Toolset bridges](#uaipeditorgamefeatures-). **This update establishes the full set of commands in this state.** Every one of the 413 bridge commands has had its delegation pair — (toolset name, tool name) — checked statically against what the engine actually registers: **398 reach a target and 15 do not**. All 15 report `Available: false` with `UnavailableDetail: "DelegationTargetMissing"` (7 in Niagara, 4 in GameFeatures, 2 in SlateInspector, 2 in UMG). The same pass also found **16 commands whose delegation target was misspelled, which now reach it** (7 in Dataflow, 8 in SlateInspector, 1 in Niagara) — until now this reference described them as working while they failed at run time. `uaip_describe_command` remains the authoritative answer for any specific command.
+
+---
+
+## UnavailableDetail — the seven reasons behind a HandlerUnavailable refusal
+
+Several notes throughout this page cite `UnavailableDetail` next to `UnavailableReason: "HandlerUnavailable"`. `HandlerUnavailable` on its own only says a command's `IsAvailable()` reported `false` — it does not say why. `UnavailableDetail` narrows that down to one of seven values.
+
+It is visible from `uaip_describe_command` on any command, whether or not it is currently available. It is **not** part of `uaip_list_commands`'s `HiddenReasons` object, which stays at the five fixed `UnavailableReason` keys (`DeniedCommand` / `MissingCapability` / `RoleRestricted` / `ReadOnlyPolicy` / `HandlerUnavailable`) regardless — call `uaip_describe_command` by name to see the detail behind a specific `HandlerUnavailable` entry. When a handler reports one of the six non-`Unspecified` values below, a matching `UnavailableDetailMessage` string is usually present alongside it — the handler's own free-text elaboration; quote it back to the user rather than re-deriving your own wording.
+
+| `UnavailableDetail` | Meaning | What resolves it |
+|---|---|---|
+| `Unspecified` | No detail beyond `HandlerUnavailable` itself — the default for a handler that predates this field, and also what every handler reports once `Available` is `true` again | — |
+| `EngineVersion` | The command needs an engine version other than the one currently running (an API only introduced in, or only surviving up to, a specific release) | Raising or lowering the engine version |
+| `BuildConfiguration` | The command needs a build configuration this process was not built with (e.g. Developer Tools, an Editor target) | Rebuilding with the required configuration |
+| `ExecutionEnvironment` | The command needs infrastructure this execution environment does not provide (e.g. a render hardware interface, an interactive session, a modular-feature client an optional runtime plugin registers) | Running under a different execution environment |
+| `OptionalPluginDisabled` | The command depends on an optional plugin that was disabled when this process was built, so the types it needs were compiled out | Enabling the plugin and rebuilding |
+| `EngineApiNotExported` | The command depends on an engine-side API that is never exported to a plugin, on any supported engine version | Nothing an engine-version change or a plugin toggle fixes — look for a different code path (e.g. a Toolset bridge command reaching the same effect through editor scripting) |
+| `DelegationTargetMissing` | The command forwards to a function on an external surface (a Toolset bridge target) that no supported engine version actually declares, so the call could never reach an implementation | Nothing here either — the plugin owning that surface may already be enabled; use a native command covering the same operation, where one exists |
+
+`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` all name something a human can change. `EngineApiNotExported` and `DelegationTargetMissing` do not — no ini flag, capability grant, engine version, or plugin toggle changes either of them; the only way forward is a different code path.
+
+Calling a command by name while it is `Available: false` fails with `PolicyViolation`. `ErrorMessage` restates the same information: `"Command '<name>' is not available (<UnavailableDetail>): <UnavailableDetailMessage>"` — or, when `UnavailableDetail` is `Unspecified`, the older generic sentence `"... is not available in the current SafetyPolicy configuration."`.
+
+### Commands that newly report a detail
+
+- **`UAIP.Runtime.LiveLink.*` — all 14 commands in the domain** report `UnavailableDetail: "ExecutionEnvironment"` when no `ILiveLinkClient` is registered as a modular feature in this process (the `LiveLink` plugin not enabled, or not yet loaded). Nothing in the module is compiled out — see [UAIP.Runtime.LiveLink](#uaipruntimelivelink).
+- **`UAIP.Editor.AnimSequence.SelectAnimNotify`** is UE 5.8+ only; it reports `UnavailableDetail: "EngineVersion"` on UE 5.7, because the notify widget type and its node-object interface are private to the Persona module before 5.8. See [UAIP.Editor.AnimSequence](#uaipeditoranimsequence).
+- **`UAIP.Core.ReloadCapabilities`** now reports `UnavailableDetail: "ExecutionEnvironment"`, naming the ini key to set, while `AllowCapabilityReload` is left at its default `False` — instead of only the older generic sentence. See [UAIP.Core](#uaipcore).
 
 ---
 
@@ -284,7 +312,7 @@ System-level commands for discovery, health, and session management.
 | 🆓 `DescribeCommand` | Full metadata for a single command (schema, required capabilities, availability) |
 | 🆓 `ListPlugins` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.Plugin.ListPlugins` instead. List installed plugins and their enabled state (JSON) |
 | 🆓 `EndSession` | End a session explicitly and release its server-side resources; its artifacts become GC candidates |
-| 🆓 `ReloadCapabilities` | Reload the capability set from `Config/DefaultUAIP.ini` without restarting the editor (only registered when `AllowCapabilityReload=True`) |
+| 🆓 `ReloadCapabilities` | Reload the capability set from `Config/DefaultUAIP.ini` without restarting the editor. Hidden from the default `ListCommands` response, and reports `Available: false` with `UnavailableDetail: "ExecutionEnvironment"` naming the ini key to set, until `AllowCapabilityReload=True` — see [UnavailableDetail](#unavailabledetail--the-seven-reasons-behind-a-handlerunavailable-refusal) |
 | 🆓 `GetPendingInteractionStatus` | Reports where one pending interaction stands — `State`, `Cause`, `ElapsedSeconds`, `Prompt`, `Reason`, `Result` — without waiting for it to change. Requires the same explicitly given `SessionId` that started the interaction (an interactive command such as `DrawPCGSpline`); unknown, expired, and other-session all report `NotFound` identically |
 | 🆓 `WaitForPendingInteraction` | Blocks until a pending interaction leaves `AwaitingUser`, or until this call's own `TimeoutSeconds` ceiling is reached (default 30, range [1, 600]), whichever comes first; on timeout the interaction itself is unaffected and keeps waiting for the human. Up to 4 concurrent calls may watch the same interaction, but reaching more than one requires `[UAIP.Transport] AllowConcurrentPassiveWaits` — see [Configuration](config.md) |
 | 🆓 `CancelPendingInteraction` | Cancels a pending interaction the calling session started, without waiting for the human to act. An interaction already `Completed` is answered with `Success` rather than an error; the capabilities the starting command declared are re-checked against the session's current capability set |
@@ -537,8 +565,8 @@ Bridge commands via the `SlateInspectorToolset` (UE 5.8+). Provider: `Toolset.Ed
 | Command | Description |
 |---|---|
 | `Toolset.Editor.SlateInspector.SnapshotUI` | Snapshot the widget tree at the given ref |
-| `Toolset.Editor.SlateInspector.ObserveWidget` | Register a widget for observation; returns the observer `Identifier` |
-| `Toolset.Editor.SlateInspector.UnobserveWidget` | Stop observing the widget registered under an `Identifier` |
+| `Toolset.Editor.SlateInspector.ObserveWidget` | ⚠️ **Not callable** — no delegation target exists. See the note below |
+| `Toolset.Editor.SlateInspector.UnobserveWidget` | ⚠️ **Not callable** — no delegation target exists. See the note below |
 | `Toolset.Editor.SlateInspector.ListObservers` | List every currently active widget observer |
 | `Toolset.Editor.SlateInspector.ClickWidget` | Simulate a mouse click on the widget at the given ref |
 | `Toolset.Editor.SlateInspector.HoverWidget` | Move the cursor over the widget at the given ref |
@@ -548,6 +576,10 @@ Bridge commands via the `SlateInspectorToolset` (UE 5.8+). Provider: `Toolset.Ed
 | `Toolset.Editor.SlateInspector.FillForm` | Fill multiple form fields in a single call |
 
 > **Note**: `Toolset.Editor.SlateInspector.PressKey` applies the same blocked-shortcut list as the native `PressKey` command, but it has no way to resolve which widget currently has focus, so it blocks **Backspace unconditionally** — the native command's exemption for a focused text-input widget does not carry over to the bridge.
+
+> **⚠️ Breaking change — none of the 10 commands in this section worked until now.** They passed the toolset name **unqualified, as `SlateInspectorToolset`**, and the ToolsetRegistry resolves a call with one exact lookup and no fallback of any kind (no prefix match, no suffix match), so nothing matched the registered `SlateInspectorToolset.SlateInspectorToolset` and every command failed at run time with "no such toolset". **Eight of them now work**: `SnapshotUI`, `ListObservers`, `ClickWidget`, `HoverWidget`, `InputText`, `PressKey`, `SetComboSelection` and `FillForm`.
+>
+> The remaining two, `ObserveWidget` and `UnobserveWidget`, **do not reach a target even with the name corrected**. The toolset declares `Observe` and `Unobserve`, whose parameters differ: `Observe` takes a widget ref and a traversal depth rather than the observer name this command accepts, and `Unobserve` cancels an observer by the identifier `Observe` returned — an identifier a caller of this bridge never receives. Pointing them at the nearest name would make them reach something and do the wrong thing, so both report `Available: false` with `UnavailableDetail: "DelegationTargetMissing"`. For `ObserveWidget`, use **`UAIP.Editor.Observation.ObserveWidget`**, which performs the same operation natively. `UnobserveWidget` has no native counterpart.
 
 ---
 
@@ -834,6 +866,8 @@ Widget Blueprint editing — tree, variables, animation, bindings.
 
 Mirror of native commands via the `UMGToolSet` plugin. Provider: `Toolset.Editor.UMG.*`. Requires UE 5.8+ and the `UMGToolSet` plugin.
 
+> **⚠️ Breaking change — two of these are not callable: `Toolset.Editor.UMG.ReparentWidgetBlueprint` and `Toolset.Editor.UMG.SetWidgetAsVariable`.** `UMGToolSet` declares no tool under either name. For `SetWidgetAsVariable`, the `ToggleWidgetAsVariable` the toolset does declare **flips the flag rather than setting it to a requested value**, so pointing the bridge there would make it reach something and do the wrong thing. Both now report `Available: false` with `UnavailableDetail: "DelegationTargetMissing"`. **Enabling the `UMGToolSet` plugin does not resolve this.** The native **`UAIP.Editor.UMG.ReparentWidgetBlueprint`** and **`UAIP.Editor.UMG.SetWidgetAsVariable`** perform the same operations without the plugin.
+
 ---
 
 ## UAIP.Editor.Material
@@ -914,11 +948,13 @@ Bridge commands via the `GameFeaturesToolset` (UE 5.8+, Experimental). Provider:
 | Command | Description |
 |---|---|
 | `Toolset.Editor.GameFeatures.ListGameFeatures` | Not available through this bridge command — use `UAIP.Editor.GameFeatures.ListGameFeatures` instead (see the note below) |
-| `Toolset.Editor.GameFeatures.FindGameFeatureData` | Resolve the `UGameFeatureData` asset refPath for a named plugin |
-| `Toolset.Editor.GameFeatures.GetActions` | List the action class names of a `UGameFeatureData` (takes `{"refPath": "..."}`) |
-| `Toolset.Editor.GameFeatures.CreateGameFeaturePlugin` | Create a content-only GameFeature Plugin (requires `GameFeatureCreate`) |
+| `Toolset.Editor.GameFeatures.FindGameFeatureData` | ⚠️ **Not callable** — no delegation target exists and there is no native counterpart (see the note below) |
+| `Toolset.Editor.GameFeatures.GetActions` | ⚠️ **Not callable** — no delegation target exists and there is no native counterpart (see the note below) |
+| `Toolset.Editor.GameFeatures.CreateGameFeaturePlugin` | ⚠️ **Not callable** — use `UAIP.Editor.GameFeatures.CreateGameFeaturePlugin` instead (see the note below) |
 
 > **⚠️ Breaking change — `Toolset.Editor.GameFeatures.ListGameFeatures` is no longer reachable through this bridge command, on any engine version.** The `GameFeaturesToolset` this handler forwards to declares no function named `ListGameFeatures`, so the forwarded call could never reach an implementation — it used to fail at execution time with a generic `ExecutionFailed` no matter what was asked. It now reports `Available: false` from `UAIP.Core.DescribeCommand` and `uaip_list_commands`, with `UnavailableReason: "HandlerUnavailable"` and `UnavailableDetail: "DelegationTargetMissing"`. Calling it by name still fails, now with `PolicyViolation` and the same explanation in `ErrorMessage`. **Use `UAIP.Editor.GameFeatures.ListGameFeatures` instead** — the native command performs the same operation without delegating, and is unaffected by this change.
+
+> **⚠️ Breaking change — the same state applies to the other three commands in this section.** Checking every bridge command's delegation pair found that `FindGameFeatureData`, `GetActions` and `CreateGameFeaturePlugin` also delegate to names `GameFeaturesToolset` does not declare (the seven it does declare are `GetGameFeatureState`, `IsGameFeatureActive`, `IsGameFeaturePlugin`, `ListDiscoveredGameFeaturePlugins`, `ListEnabledGameFeaturePlugins`, `RequestActivateGameFeature` and `RequestDeactivateGameFeature`). All three now report `Available: false` with `UnavailableDetail: "DelegationTargetMissing"`. **Enabling the `GameFeaturesToolset` plugin does not resolve this.** For `CreateGameFeaturePlugin`, **`UAIP.Editor.GameFeatures.CreateGameFeaturePlugin`** performs the same operation natively. `FindGameFeatureData` and `GetActions` have no native counterpart, so as of this update neither operation has a working path in this plugin.
 
 ---
 
@@ -1085,6 +1121,10 @@ Mirror of native commands via the `NiagaraToolsets` plugin (UE 5.8+ Experimental
 > **Four of the six have a working native alternative**: `UAIP.Editor.Niagara.GetScriptAssets`, `GetNiagaraParameterCollections`, `SetEmitterEnabled` and `SetEmitterName` perform the same operations without delegating, and are unaffected by this change.
 >
 > **`DuplicateEmitter` and `MoveModule` do not.** Their native counterparts are themselves unavailable, for an unrelated reason (see the breaking-change note under [Editing](#editing-21) above): the engine-side APIs they need are never exported to a plugin, on any engine version. **As of this update, neither operation has a working path anywhere in this plugin** — not through the native command, and not through this bridge.
+>
+> **`GetSystemInfo` joins them as a seventh.** Checking every bridge command's delegation pair found that `Toolset.Editor.Niagara.GetSystemInfo` has no target either: the toolset declares `GetSystemSummary` and `GetSystemData`, neither of which returns the shape this command's callers are promised. It now reports `Available: false` with `UnavailableDetail: "DelegationTargetMissing"`. **`UAIP.Editor.Niagara.GetSystemInfo`** performs the same operation natively.
+>
+> **`GetAssetDiscoveryInfo`, by contrast, now works.** It delegated to `NiagaraToolset_Info` while the tool itself lives on `NiagaraToolset_Assets`, and the ToolsetRegistry resolves a call with one exact lookup, so it never arrived. The target has been corrected.
 
 ---
 
@@ -1170,6 +1210,8 @@ Dataflow graph editing. Requires `DataflowEditor` plugin.
 ### Toolset bridges — Dataflow (7) 🧩
 
 Bridge commands via the `DataflowAgentToolset` (UE 5.8+). Provider: `Toolset.Editor.DataflowAgent.*`. Editing commands require `DataflowGraphEdit`.
+
+> **None of the 7 commands in this section worked until this update.** They passed the toolset name **unqualified, as `DataflowAgentToolset`**, which does not match the registered `DataflowAgent.DataflowAgentToolset` (the ToolsetRegistry resolves a call with one exact lookup). `ConnectDataflowPins` and `DisconnectDataflowPins` also had the wrong tool name — the toolset declares them as `ConnectNodePins` and `DisconnectNodePins`. **All seven have been corrected and now work.**
 
 | Command | Description |
 |---|---|
@@ -2805,6 +2847,7 @@ Add, remove, and edit AnimNotify / AnimNotifyState entries and notify tracks on 
 | `SetAnimNotifyEvent` (requires `AnimNotifyEdit`) | Partially update one notify's event fields (`StartTime` / `Duration` / `TrackName` / `NotifyName` / `MontageTickType` / trigger and filter settings) identified by `NotifyGuid` — only the supplied fields change. `Duration` is rejected on a point notify; `MontageTickType` is rejected outside `UAnimMontage`. Rejected with `NotAllowed` while PIE/SIE is active |
 | `SetAnimNotifyProperty` (requires `AnimNotifyEdit`; hard object/class reference writes additionally require `AnimNotifyReferenceEdit`) | Write one top-level property on the notify instance identified by `NotifyGuid`, in the same text-import format `GetAnimNotifyClassSchema` reports as `DefaultValueText`. Also writable now: `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag` (rejected as `InvalidParams` for an unregistered tag, a tag outside a `Categories` / `GameplayTagFilter` scope, or a duplicate tag inside a container) and `FBoneReference` (rejected as `InvalidParams` for a bone the target skeleton does not have, or when no skeleton can be resolved to validate against). Soft / weak / lazy references, maps, sets, optionals and other structs or arrays — reference-containing ones included — are written through `ValueJson`, with a single container element addressed by `Operation` / `ElementIndex` / `ElementKeyJson` (see [Writing references, structs and containers](#writing-references-structs-and-containers)); a hard reference names an **already-loaded** asset, since a write never loads one as a side effect. Rejected with `NotAllowed` while PIE/SIE is active |
 | `FixupAnimNotifyGuids` (requires `AnimNotifyEdit`) | Assign a fresh guid to every notify whose guid is currently invalid; legacy notifies otherwise get an unstable guid on every reload until this is run and the asset is saved. Idempotent — nothing to repair succeeds with `NumFixed: 0`. Rejected while PIE/SIE is active |
+| `SelectAnimNotify` (requires `EditorUIAutomation`) | Select the notify identified by `NotifyGuid` inside the animation asset editor already open for it, so its properties appear in that editor's Details panel — simulating the click a human would make on the notify's timeline widget, since the engine exposes no API for it. Never modifies the asset. UE 5.8+ only: on UE 5.7 the notify widget type and its node-object interface are private to the Persona module, so rather than picking an arbitrary notify the command reports `Available: false` with `UnavailableDetail: "EngineVersion"` — see [UnavailableDetail](#unavailabledetail--the-seven-reasons-behind-a-handlerunavailable-refusal). Idempotent |
 
 ---
 
@@ -3336,7 +3379,7 @@ Provider: `Toolset.Runtime.Niagara.*`. Requires UE 5.8+ and `NiagaraToolsets`. M
 
 LiveLink Source / Subject observation, client-state control, and UAIP-owned synthetic Sources. Works in the editor and at runtime alike, and does not require PIE.
 
-**No plugin requirement, and no 🧩.** The client interface these commands use ships in the engine's own always-present `LiveLinkInterface` module, not in the optional `LiveLink` plugin, so the commands are **always registered**. When no LiveLink client is present — the `LiveLink` plugin disabled — they report `Available: false` in `uaip_list_commands` / `uaip_describe_command` rather than vanishing, and `ListLiveLinkSources` answers `LiveLinkAvailable`, so **one call tells you whether LiveLink is usable in this environment**. Preset, connection and recording commands live in [UAIP.Editor.LiveLink](#uaipeditorlivelink-), which does require plugins.
+**No plugin requirement, and no 🧩.** The client interface these commands use ships in the engine's own always-present `LiveLinkInterface` module, not in the optional `LiveLink` plugin, so the commands are **always registered**. When no LiveLink client is present — the `LiveLink` plugin disabled — they report `Available: false` in `uaip_list_commands` / `uaip_describe_command` rather than vanishing, and `ListLiveLinkSources` answers `LiveLinkAvailable`, so **one call tells you whether LiveLink is usable in this environment**. `uaip_describe_command` additionally reports `UnavailableDetail: "ExecutionEnvironment"` for all 14 commands in this domain in that state — nothing here is compiled out; what's missing is the running process's `ILiveLinkClient` — see [UnavailableDetail](#unavailabledetail--the-seven-reasons-behind-a-handlerunavailable-refusal). Preset, connection and recording commands live in [UAIP.Editor.LiveLink](#uaipeditorlivelink-), which does require plugins.
 
 **Naming a Subject.** Two different Sources may publish a Subject of the same name. Reads accept a bare `SubjectName` and resolve it, but a name matching more than one is refused with `InvalidParams` listing every match under `Candidates` — never silently resolved to one of them. Mutations take the full `SubjectKey` (`SourceGuid` + `SubjectName`) instead. The three places where the engine itself only accepts a name — a virtual Subject's member list, `StartLiveLinkRecording`'s targets, and `SetLiveLinkComponentSubject` — resolve against whichever Subject with that name is presently *enabled*, refuse an ambiguous one, and report back what they resolved to.
 
