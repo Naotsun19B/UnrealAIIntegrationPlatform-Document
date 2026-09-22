@@ -56,9 +56,11 @@ The free demo (GitHub Releases) and Pro (Fab) **always share the same version nu
 
 > Unreleased and upcoming changes are tracked on the [`next` branch changelog](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/en/changelog.md).
 
-### Unreleased
+### UAIP Plugin 1.2.0 — Unreleased
 
-Changes that have shipped in the plugin repository but are not yet released on Fab.
+A backward-compatible MINOR release. All changes below have shipped in the plugin repository (`.uplugin` `VersionName` is `1.2.0`) but are not yet released on Fab; the release date is filled in here once Fab review has passed.
+
+**1.2.0 adds 351 commands and removes none** — 341 UAIP commands and 10 Toolset bridge commands, taking the totals from 877 / 411 (1288) in 1.1.0 to **1218 / 421 (1639)**. Every command name that existed in 1.1.0 still exists and still means the same thing. The largest additions are MetaHuman (56), GroomAsset (35), ChaosDestruction (29), LiveLink (25 across the runtime and editor modules), MotionMatching (23), Subsonic (22), **Chooser (20 — a new domain)**, UAF (19), ControlRig Dynamics (17), AnimSequence (13) and Insights Trace (11). See the [Commands Reference](commands.md) for the full per-domain breakdown.
 
 #### UAIP Plugin
 
