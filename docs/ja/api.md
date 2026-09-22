@@ -178,9 +178,9 @@ stdin-stream モードでも同じマーカーがリクエスト毎に出ます�
 | `CommandNotFound` | 404 | `CommandName` 未登録 | `UAIP.Core.ListCommands` で確認。オプションプラグインコマンドはプラグインロードが必要 |
 | `InvalidParams` | 400 | 必須欠落 / 型不一致 / `AdditionalProperties:false` での未知フィールド。シナリオでは `${...}` テンプレート参照が解決できなかった場合も含む | `UAIP.Core.DescribeCommand` でスキーマ再取得。テンプレートの失敗は `RetryCount` によるリトライ対象**外**です — [シナリオ API](scenario.md#テンプレート解決の失敗) を参照 |
 | `CapabilityNotAvailable` | 403 | セッションに必要 Capability 不足 | `ErrorMessage` に不足 Capability 名。`Config/DefaultUAIP.ini` で有効化して再起動、または `UAIP.Core.ReloadCapabilities` |
-| `AbilityUnavailable` | 501 | 必要な Optional モジュール／プラグイン（例：Sequencer、LevelSequenceEditor）が読み込まれていない | `ErrorMessage` に有効化すべき対象名。モジュール／プラグインを有効化して再実行 |
+| `AbilityUnavailable` | 501 | このコマンドの `IsAvailable()` が、環境またはビルドに起因する理由で `false` になっている：必要な Optional モジュール／プラグイン（例：Sequencer、LevelSequenceEditor）が読み込まれていない、必要な構成でこのプロセスがビルドされていない、稼働中のエンジンバージョンがこのコマンドに対応していない、またはこのコマンド（ネイティブ・Toolset ブリッジ転送のいずれも）にそもそも到達できる実装経路が無い | `ErrorMessage` に何が欠けているかが載る。`UAIP.Core.DescribeCommand` を呼んで `UnavailableDetail`（`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`）を読み、値ごとの対処に従う — `EngineApiNotExported` と `DelegationTargetMissing` は設定変更では解決しないので、Toolset ブリッジまたはネイティブの代替コマンドを探す |
 | `UnsupportedOperation` | 501 | 要求された操作の実装が、このプラットフォーム／ビルド構成に**構造的に**存在しない。バージョンに依存しない恒久的な非対応（例：ControlRig の ModularRig 編集） | 設定変更では解決しない。このドメインでは別の手段を使う |
-| `PolicyViolation` | 403 | このコードは 2 つの異なる原因を表す。(a) SafetyPolicy による拒否またはルート opt-in 不足、(b) このコマンドの `IsAvailable()` がこの環境では `false`（エンジンバージョン不足、対象を除外するビルド構成、対応していない実行モード、またはエンジン API がそもそもプラグインへ export されていない） | (a) の場合：`ErrorMessage` は「SafetyPolicy による拒否」と「環境で未有効」を区別する。`Config/DefaultUAIP.ini` または起動フラグを調整する。(b) の場合：`UAIP.Core.DescribeCommand` を呼び、設定で直ると決めつける前に `UnavailableReason` / `UnavailableDetail` を読む。`EngineApiNotExported` はエンジンを上げても解決しないことを意味する — Toolset ブリッジ側の代替コマンドを探す |
+| `PolicyViolation` | 403 | このコードは 3 つの異なる原因を表す。(a) SafetyPolicy による拒否またはルート opt-in 不足、(b) このコマンドの `IsAvailable()` が、既定で無効な SafetyPolicy フラグがこのプロセスで無効であることを理由に `false`（`UnavailableDetail: SafetyPolicyDisabled`）、(c) `IsAvailable()` が `false` だがそれ以上具体的な detail が報告されていない（`UnavailableDetail: Unspecified`）— まれなケースで、多くは可用性チェックと detail 取得の間の競合。再試行だけで解決することが多い | (a) の場合：`ErrorMessage` は「SafetyPolicy による拒否」と「環境で未有効」を区別する。`Config/DefaultUAIP.ini` または起動フラグを調整する。(b) の場合：`Config/DefaultUAIP.ini` で該当フラグを有効にしてエディタを再起動するか、`AllowCapabilityReload` が既に有効なら `UAIP.Core.ReloadCapabilities` を呼ぶ。(c) の場合：`UAIP.Core.DescribeCommand` を呼んで再試行する。解消しない場合は `AbilityUnavailable` と同様に扱う |
 | `PreconditionFailed` | 503 | ハンドラが走る**前**の前提が成立していない（エディタがまだ使えない、ゲームワールドが無い、サブシステムが未登録など） | 待ってから再試行する。`PolicyViolation` と異なり一時的なランタイム状態であって設定の問題ではない。シナリオでは `RetryCount` により自動で再試行される |
 | `NotFound` | 404 | パラメータ参照のアセット / アクター / オブジェクトが存在しない。**存在するリソースの中の要素**（グラフ上に無いノードやピンなど）が見つからない場合も含む | `Search*` / `List*` コマンドでパス / GUID 確認 |
 | `NotAllowed` | 409 | 禁止パス（例：`/Engine/`）、禁止タイミング（PIE 中の Editor 編集）、または現在の状態がこの操作そのものを禁じている（モーダル表示中、対象が他者の所有下にある等） | 別パスを選ぶ、PIE 停止まで待つ、または再試行前に状態を変える |
@@ -194,6 +194,8 @@ HTTP ステータスは参考値 — 分岐は常に `ErrorCode` で。WebSocket
 `NotAllowed` と `Conflict` はどちらも 409 になるため、HTTP ステータスだけでは区別できません。これも
 ステータスではなく `ErrorCode` で分岐すべき理由の一つです。`PreconditionFailed` の 503 はサーバ自体が
 落ちていることを意味しません。回復時刻を約束できないため `Retry-After` ヘッダーは付与されません。
+
+**Capability 不足と `IsAvailable() == false` が同時に成立するとき。** Capability は `IsAvailable()` より先に評価されるため、レスポンスは `AbilityUnavailable` でも `PolicyViolation` でもなく `CapabilityNotAvailable` になる——呼び出し側は 2 つ目のチェックにそもそも到達しません。`ErrorMessage` には「もう一つ独立した理由がある」旨が引き続き含まれますが、その内容は `UnavailableDetail` の値名だけです（例：`"... also unavailable: ExecutionEnvironment"`）。`UnavailableDetailMessage` の全文はもう繰り返されません。後で Capability を付与された呼び出し側が全文の説明を必要とする場合は、その時点で `UAIP.Core.DescribeCommand` を呼びます。
 
 ---
 
@@ -401,12 +403,16 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
 | `ExecutionEnvironment` | この実行環境が提供していないインフラを要求している（例：レンダーハードウェアインタフェース、対話的セッション） | 別の実行環境で実行する |
 | `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | **エンジン側では何をしても解決しない** — たいていは Toolset bridge に代替手段がある。ただし断定する前に両方を確認する |
 | `DelegationTargetMissing` | これは Toolset ブリッジコマンドで、委譲先の Toolset が、サポート対象のどのエンジンバージョンでもこのコマンド名に一致する関数を宣言していない——転送された呼び出しの行き先が無い | **エンジン側では何をしても解決しない** — 同名のネイティブコマンドを探す。そちらも利用不可なら、このプラグインにはこの操作の動く経路が無い |
+| `OptionalPluginDisabled` | このプロセスが**ビルドされた時点**で無効化されていた Optional プラグインに依存しており、必要な型がバイナリから丸ごとコンパイルアウトされている | プラグインを有効化して**再ビルド**する — このコード経路自体がこのバイナリに存在しないため、再起動だけでは解決しない |
+| `SafetyPolicyDisabled` | 既定で無効な SafetyPolicy フラグがこのプロセスで無効になっていることが原因。上記の他の値と異なり、環境やビルドで実際に欠けているものは無い | `Config/DefaultUAIP.ini` で該当フラグを設定してエディタを再起動する（`AllowCapabilityReload` が既に有効なら `UAIP.Core.ReloadCapabilities` を呼ぶ） |
 
-`DelegationTargetMissing` は `EngineApiNotExported` と、何が欠けているかが異なります。`EngineApiNotExported` は**エンジン自身**がそのコマンドに必要な API をどのプラグインへも export しないことを意味し、`DelegationTargetMissing` は、あるブリッジコマンドが委譲する先の **Toolset** がそもそも一致する関数を宣言していない——つまりそのコマンドが最初から何にも結び付いていない——ことを意味します。どちらも ini フラグや Capability 付与では解決しない点は共通で、違いが意味を持つのは「どこに代替手段を探しに行くか」を判断するときだけです。まれに、ブリッジコマンドとその対応ネイティブコマンドの**両方**がこのどちらかの値を返すことがあり、その場合はこのプラグインにその操作の動く経路が 1 つも無いことを意味します（実例は [コマンド — UAIP.Editor.Niagara](commands.md#uaipeditorniagara-) を参照）。
+`OptionalPluginDisabled` と `EngineApiNotExported` は似て見えますが対処の方向が逆です。`OptionalPluginDisabled` は型を提供するプラグイン自体は存在し、有効化すれば解決することを意味し、`EngineApiNotExported` はエンジン自身がその API をどのプラグインへも渡さないため、プラグインの状態を変えても何も解決しないことを意味します。`DelegationTargetMissing` は `EngineApiNotExported` と、何が欠けているかが異なります。`EngineApiNotExported` は**エンジン自身**がそのコマンドに必要な API をどのプラグインへも export しないことを意味し、`DelegationTargetMissing` は、あるブリッジコマンドが委譲する先の **Toolset** がそもそも一致する関数を宣言していない——つまりそのコマンドが最初から何にも結び付いていない——ことを意味します。どちらも ini フラグや Capability 付与では解決しない点は共通で、違いが意味を持つのは「どこに代替手段を探しに行くか」を判断するときだけです。まれに、ブリッジコマンドとその対応ネイティブコマンドの**両方**がこのどちらかの値を返すことがあり、その場合はこのプラグインにその操作の動く経路が 1 つも無いことを意味します（実例は [コマンド — UAIP.Editor.Niagara](commands.md#uaipeditorniagara-) を参照）。
+
+`SafetyPolicyDisabled` はこの表の中で唯一 `ErrorCode` が他と異なる値です — [§4 エラーコード](#4-エラーコード) の `PolicyViolation` の行を参照してください。この表の他の値はすべて `AbilityUnavailable` に写像されます。他の原因はすべて環境またはビルドに起因し、ini フラグでは触れられないためです。
 
 `UnavailableDetail` が `Unspecified` 以外のとき、レスポンスには通常 `UnavailableDetailMessage` も含まれます。これはハンドラ自身による自由記述の補足説明です（上記例では `"KeyControlsAtFrames is not available in UE 5.7."`）。ハンドラに追加で伝えることが無い場合、このフィールドは空文字列ではなく**省略**されます。
 
-**`UAIP.Core.ListCommands` は `UnavailableDetail` を返しません。** その `HiddenReasons` オブジェクトは `UnavailableReason` と同じ 5 キーのままで、理由ごとの detail 内訳を持つようには拡張されていません。特定の 1 コマンドについて `HandlerUnavailable` の detail が必要な呼び出し側は、そのコマンド名を指定して `DescribeCommand` を 1 件ずつ呼び出します。このフィールドに一括取得の手段はありません。
+**`UAIP.Core.ListCommands` も `UnavailableDetail` を返すようになりましたが、コマンド単位かつ明示的に要求したときだけです。** `IncludeUnavailable: true` を付けて呼び出すと、現在隠れている各コマンドの行に、その コマンドについて `DescribeCommand` が返すのと同じ `UnavailableDetail` 文字列が付きます（`"Unspecified"` も省略されず出力されます）。既定のレスポンス（`IncludeUnavailable` を省略、または `false`）ではこのフィールドは一切出ません。利用不可な行はその応答そのものから除外されるためです（[コマンドリファレンス](commands.md#uaipcore) 参照）。このフィールドが現れるのは、隠れた行を見ることに呼び出し側が明示的にオプトインしたときだけです。変わっていないことも 2 点あります。`ListCommands` は `UnavailableDetailMessage` を一切返しません——自由記述の補足説明は引き続き `DescribeCommand` だけが持つフィールドで、これは一覧レスポンスのサイズを抑えるためです。また `HiddenReasons` は引き続き `UnavailableReason` と同じ 5 キーのままで、隠れたコマンド全体を集計した detail 別の内訳は今回も追加されていません。特定の 1 コマンドについてメッセージ本文が必要な呼び出し側は、そのコマンド名を指定して引き続き `DescribeCommand` を呼び出します。
 
 ---
 

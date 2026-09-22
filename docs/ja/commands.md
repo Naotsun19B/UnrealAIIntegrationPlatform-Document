@@ -40,11 +40,11 @@ UAIP では 2 種類のコマンドを公開しています：
 
 ---
 
-## UnavailableDetail — HandlerUnavailable の7つの詳細理由
+## UnavailableDetail — HandlerUnavailable の8つの詳細理由
 
-このページの多くの注記が、`UnavailableReason: "HandlerUnavailable"` と並んで `UnavailableDetail` を挙げています。`HandlerUnavailable` 単体では、そのコマンドの `IsAvailable()` が `false` を返したという事実しか分かりません — なぜ拒否されたかは分かりません。`UnavailableDetail` はその理由を 7 つの値のいずれかへ絞り込みます。
+このページの多くの注記が、`UnavailableReason: "HandlerUnavailable"` と並んで `UnavailableDetail` を挙げています。`HandlerUnavailable` 単体では、そのコマンドの `IsAvailable()` が `false` を返したという事実しか分かりません — なぜ拒否されたかは分かりません。`UnavailableDetail` はその理由を 8 つの値のいずれかへ絞り込みます。
 
-`UnavailableDetail` は、現在利用可能かどうかにかかわらず、どのコマンドについても `uaip_describe_command` から確認できます。`uaip_list_commands` の `HiddenReasons` オブジェクトには**含まれません** — こちらは常に固定 5 種の `UnavailableReason` キー（`DeniedCommand` / `MissingCapability` / `RoleRestricted` / `ReadOnlyPolicy` / `HandlerUnavailable`）のままです。特定の `HandlerUnavailable` エントリの詳細を見るには、そのコマンド名を指定して `uaip_describe_command` を呼んでください。以下のうち `Unspecified` 以外の 6 値をハンドラーが返す場合、通常はあわせて `UnavailableDetailMessage` 文字列も返ります — ハンドラー自身による自由記述の補足説明で、独自に言い換えず、そのまま利用者へ伝えてください。
+`UnavailableDetail` は、現在利用可能かどうかにかかわらず、どのコマンドについても `uaip_describe_command` から確認できます。`uaip_list_commands` の `HiddenReasons` オブジェクトには**含まれません** — こちらは常に固定 5 種の `UnavailableReason` キー（`DeniedCommand` / `MissingCapability` / `RoleRestricted` / `ReadOnlyPolicy` / `HandlerUnavailable`）のままです。特定の `HandlerUnavailable` エントリの詳細を見るには、そのコマンド名を指定して `uaip_describe_command` を呼ぶか、`uaip_list_commands` に `IncludeUnavailable: true` を付けて呼んでください — 隠れている各行にも同じ per-command の `UnavailableDetail` 文字列が付くようになりました（`UnavailableDetailMessage` は付きません。一覧レスポンスのサイズを抑えるため、こちらは引き続き `describe_command` だけが持つフィールドです）。以下のうち `Unspecified` 以外の 7 値をハンドラーが返す場合、通常はあわせて `UnavailableDetailMessage` 文字列も返ります — ハンドラー自身による自由記述の補足説明で、独自に言い換えず、そのまま利用者へ伝えてください。
 
 | `UnavailableDetail` | 意味 | 解消する方法 |
 |---|---|---|
@@ -55,16 +55,17 @@ UAIP では 2 種類のコマンドを公開しています：
 | `OptionalPluginDisabled` | このプロセスのビルド時に無効化されていたオプションプラグインに依存しており、必要な型がコンパイルから除外されている | プラグインを有効化してリビルドする |
 | `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | エンジンバージョンの変更やプラグインの切り替えでは解決しない — 別の経路（例: エディタスクリプティング経由で同じ効果に到達する Toolset ブリッジコマンド）を探す |
 | `DelegationTargetMissing` | 委譲先の外部サーフェス（Toolset ブリッジのターゲット）に、サポート対象のどのエンジンバージョンも実際には宣言していない関数を呼び出しており、実装へ到達する手段がそもそも存在しない | これも解決しない — そのサーフェスを持つプラグイン自体はすでに有効になっている場合がある。同じ操作を行うネイティブコマンドがあれば、それを使う |
+| `SafetyPolicyDisabled` | 環境にもビルドにも欠けているものは無い — 既定で無効な SafetyPolicy フラグでゲートされており、そのフラグがこのプロセスでオフになっている | `Config/DefaultUAIP.ini` でそのフラグを設定して再起動する（`ErrorMessage` がフラグ名を名指しする）。`AllowCapabilityReload=True` の環境なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できる |
 
-`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` は、いずれも人間が変更できるものを指します。`EngineApiNotExported` と `DelegationTargetMissing` はそうではありません — ini フラグ、Capability 付与、エンジンバージョン、プラグインの切り替えのいずれも解決しません。取れる手段は別の経路を探すことだけです。
+`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` は、いずれも人間が変更できるものを指します。`EngineApiNotExported` と `DelegationTargetMissing` はそうではありません — ini フラグ、Capability 付与、エンジンバージョン、プラグインの切り替えのいずれも解決しません。取れる手段は別の経路を探すことだけです。`SafetyPolicyDisabled` だけは性質が異なり、**唯一 ini の問題である値**です。`Config/DefaultUAIP.ini` への `AllowedCapabilities` / `DeniedCapabilities` と同種の編集で解決する値はこれだけです。
 
-`Available: false` のコマンドを名前で呼び出すと `PolicyViolation` で失敗します。`ErrorMessage` には同じ情報が繰り返されます：`"Command '<name>' is not available (<UnavailableDetail>): <UnavailableDetailMessage>"` — `UnavailableDetail` が `Unspecified` の場合は、従来からの汎用的な文 `"... is not available in the current SafetyPolicy configuration."` になります。
+`Available: false` のコマンドを名前で呼び出すと失敗しますが、**返る ErrorCode は detail によって変わります**。環境・ビルドに関する 6 値（`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` / `EngineApiNotExported` / `DelegationTargetMissing`）は `AbilityUnavailable`（HTTP 501「ここでは実行できない」）で失敗します。`SafetyPolicyDisabled` と `Unspecified` は `PolicyViolation`（HTTP 403）で失敗します — この 2 つだけが「設定を変えれば直る」に当てはまるためです。`ErrorMessage` にはいずれの場合も同じ情報が繰り返されます：`"Command '<name>' is not available (<UnavailableDetail>): <UnavailableDetailMessage>"` — `UnavailableDetail` が `Unspecified` の場合は、従来からの汎用的な文 `"... is not available in the current SafetyPolicy configuration."` になります。
 
 ### 新たに詳細が付くようになった対象
 
 - **`UAIP.Runtime.LiveLink.*` — このドメインの全 14 コマンド**は、このプロセスにモジュラー機能として `ILiveLinkClient` が登録されていない場合（`LiveLink` プラグインが無効、または未ロード）に `UnavailableDetail: "ExecutionEnvironment"` を返します。このモジュールでコンパイルから除外されているものはありません — [UAIP.Runtime.LiveLink](#uaipruntimelivelink) を参照。
 - **`UAIP.Editor.AnimSequence.SelectAnimNotify`** は UE 5.8 以降専用です。UE 5.7 では通知ウィジェットの型とそのノードオブジェクトインターフェースが Persona モジュール内部限定であるため、`UnavailableDetail: "EngineVersion"` を返します。[UAIP.Editor.AnimSequence](#uaipeditoranimsequence) を参照。
-- **`UAIP.Core.ReloadCapabilities`** は、`AllowCapabilityReload` が既定の `False` のままのとき、従来の汎用的な文だけでなく、設定すべき ini キー名を含む `UnavailableDetail: "ExecutionEnvironment"` を返すようになりました。[UAIP.Core](#uaipcore) を参照。
+- **`UAIP.Core.ReloadCapabilities`** は、`AllowCapabilityReload` が既定の `False` のままのとき、従来の汎用的な文だけでなく、設定すべき ini キー名を含む `UnavailableDetail: "SafetyPolicyDisabled"` を返すようになりました。この値だけは ErrorCode が `AbilityUnavailable` ではなく `PolicyViolation` のままです。フラグを設定すれば実際に解決するためです。[UAIP.Core](#uaipcore) を参照。
 
 ---
 
@@ -312,7 +313,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `DescribeCommand` | 単一コマンドの完全メタデータ（スキーマ・必要 Capability・可用性） |
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
 | 🆓 `EndSession` | セッションを明示的に終了しサーバー側リソースを解放する（成果物は GC 対象になる） |
-| 🆓 `ReloadCapabilities` | エディタを再起動せずに `Config/DefaultUAIP.ini` から Capability セットを再読み込みする。`AllowCapabilityReload=True` になるまでは `ListCommands` の既定応答から隠れ、`Available: false`（設定すべき ini キー名を含む `UnavailableDetail: "ExecutionEnvironment"`）を返す — [UnavailableDetail](#unavailabledetail--handlerunavailable-の7つの詳細理由) 参照 |
+| 🆓 `ReloadCapabilities` | エディタを再起動せずに `Config/DefaultUAIP.ini` から Capability セットを再読み込みする。`AllowCapabilityReload=True` になるまでは `ListCommands` の既定応答から隠れ、`Available: false`（設定すべき ini キー名を含む `UnavailableDetail: "SafetyPolicyDisabled"`）を返す — [UnavailableDetail](#unavailabledetail--handlerunavailable-の8つの詳細理由) 参照 |
 | 🆓 `GetPendingInteractionStatus` | 保留中の対話 1 件の状態 — `State`・`Cause`・`ElapsedSeconds`・`Prompt`・`Reason`・`Result` — を、変化を待たずに報告する。対話（`DrawPCGSpline` などの対話型コマンド）を開始したときと同じ `SessionId` を明示的に指定する必要があり、未知・期限切れ・他セッション所有はすべて同じ `NotFound` として扱われる |
 | 🆓 `WaitForPendingInteraction` | 対話が `AwaitingUser` を離れるか、この呼び出し自身の `TimeoutSeconds` 上限（デフォルト 30、範囲 [1, 600]）に達するまでブロックする。タイムアウトしても対話自体には影響せず、人間の応答を待ち続ける。同じ対話を同時に監視できる呼び出しは最大 4 件までだが、2 件目以降には `[UAIP.Transport] AllowConcurrentPassiveWaits` が必要（[設定](config.md) 参照） |
 | 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックする |
@@ -2850,7 +2851,7 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 | `SetAnimNotifyEvent`（要 `AnimNotifyEdit`） | `NotifyGuid` で識別される通知のイベントフィールド（`StartTime` / `Duration` / `TrackName` / `NotifyName` / `MontageTickType` / トリガー・フィルタ設定）を部分更新する — 指定したフィールドのみが変更される。`Duration` は点通知に対しては拒否、`MontageTickType` は `UAnimMontage` 以外では拒否。PIE/SIE 実行中は `NotAllowed` で拒否 |
 | `SetAnimNotifyProperty`（要 `AnimNotifyEdit`。ハードなオブジェクト/クラス参照の書き込みは追加で `AnimNotifyReferenceEdit` が必要） | `NotifyGuid` で識別される通知インスタンスのトップレベルプロパティ 1 件を、`GetAnimNotifyClassSchema` が `DefaultValueText` として報告するのと同じテキストインポート形式で書き込む。新たに `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`（未登録タグ、`Categories` / `GameplayTagFilter` の範囲外のタグ、コンテナ内の重複タグはいずれも `InvalidParams` で拒否）と `FBoneReference`（対象スケルトンに存在しないボーン名、または照合先スケルトンを解決できない場合は `InvalidParams` で拒否）も書き込み可能。ソフト/ウィーク/レイジー参照、マップ、セット、オプショナル、参照を含むものも含めたその他の構造体/配列は `ValueJson` で書き込み、コンテナの要素 1 つは `Operation` / `ElementIndex` / `ElementKeyJson` で指定する（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。ハード参照の値は**既にロード済み**のアセットを指すもので、書き込みが副作用でアセットをロードすることはない。PIE/SIE 実行中は `NotAllowed` で拒否 |
 | `FixupAnimNotifyGuids`（要 `AnimNotifyEdit`） | guid が現在無効な全通知に新しい guid を割り当てる。レガシー通知はこれを実行してアセットを保存するまで、リロードのたびに不安定な guid を持ち続ける。冪等 — 修復対象がない場合も `NumFixed: 0` で成功する。PIE/SIE 実行中は拒否 |
-| `SelectAnimNotify`（要 `EditorUIAutomation`） | `NotifyGuid` で識別される通知を、すでに開いているそのアセットのアニメーションエディタ内で選択し、そのエディタの Details パネルにプロパティが表示されるようにする — エンジンに該当 API が無いため、通知のタイムラインウィジェットへ人間が行うクリックをシミュレートする。アセットは変更しない。UE 5.8 以降専用: UE 5.7 では通知ウィジェットの型とそのノードオブジェクトインターフェースが Persona モジュール内部限定のため、任意の通知を選ぶのではなく `Available: false`（`UnavailableDetail: "EngineVersion"`）を返す — [UnavailableDetail](#unavailabledetail--handlerunavailable-の7つの詳細理由) 参照。冪等 |
+| `SelectAnimNotify`（要 `EditorUIAutomation`） | `NotifyGuid` で識別される通知を、すでに開いているそのアセットのアニメーションエディタ内で選択し、そのエディタの Details パネルにプロパティが表示されるようにする — エンジンに該当 API が無いため、通知のタイムラインウィジェットへ人間が行うクリックをシミュレートする。アセットは変更しない。UE 5.8 以降専用: UE 5.7 では通知ウィジェットの型とそのノードオブジェクトインターフェースが Persona モジュール内部限定のため、任意の通知を選ぶのではなく `Available: false`（`UnavailableDetail: "EngineVersion"`）を返す — [UnavailableDetail](#unavailabledetail--handlerunavailable-の8つの詳細理由) 参照。冪等 |
 
 ---
 
@@ -3328,7 +3329,7 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 
 LiveLink の Source / Subject 観測、クライアント状態の制御、UAIP 所有の合成 Source。エディタでも Runtime でも動作し、PIE は不要です。
 
-**プラグイン要件は無く、🧩 も付きません。** これらのコマンドが使うクライアントインターフェースは、オプションの `LiveLink` プラグインではなくエンジン常設の `LiveLinkInterface` モジュールに含まれるため、コマンドは**常に登録されます**。LiveLink クライアントが存在しない場合（`LiveLink` プラグイン無効時）は、一覧から消えるのではなく `uaip_list_commands` / `uaip_describe_command` で `Available: false` として現れ、`ListLiveLinkSources` が `LiveLinkAvailable` を返すため、**1 回の呼び出しでこの環境で LiveLink が使えるかを判定できます**。この状態では `uaip_describe_command` がこのドメインの全 14 コマンドに対して `UnavailableDetail: "ExecutionEnvironment"` も返します — このモジュールでコンパイルから除外されているものはなく、不足しているのは実行中プロセスの `ILiveLinkClient` です — [UnavailableDetail](#unavailabledetail--handlerunavailable-の7つの詳細理由) 参照。プリセット・接続・録画は [UAIP.Editor.LiveLink](#uaipeditorlivelink-) にあり、そちらにはプラグイン要件があります。
+**プラグイン要件は無く、🧩 も付きません。** これらのコマンドが使うクライアントインターフェースは、オプションの `LiveLink` プラグインではなくエンジン常設の `LiveLinkInterface` モジュールに含まれるため、コマンドは**常に登録されます**。LiveLink クライアントが存在しない場合（`LiveLink` プラグイン無効時）は、一覧から消えるのではなく `uaip_list_commands` / `uaip_describe_command` で `Available: false` として現れ、`ListLiveLinkSources` が `LiveLinkAvailable` を返すため、**1 回の呼び出しでこの環境で LiveLink が使えるかを判定できます**。この状態では `uaip_describe_command` がこのドメインの全 14 コマンドに対して `UnavailableDetail: "ExecutionEnvironment"` も返します — このモジュールでコンパイルから除外されているものはなく、不足しているのは実行中プロセスの `ILiveLinkClient` です — [UnavailableDetail](#unavailabledetail--handlerunavailable-の8つの詳細理由) 参照。プリセット・接続・録画は [UAIP.Editor.LiveLink](#uaipeditorlivelink-) にあり、そちらにはプラグイン要件があります。
 
 **Subject の指定方法。** 別々の Source が同名の Subject を出すことがあります。読み取りは `SubjectName` だけを受け付けて解決しますが、複数一致した場合は候補を `Candidates` に列挙して `InvalidParams` で拒否します — 勝手にどれかを選ぶことはありません。変更系は代わりに `SubjectKey`（`SourceGuid` + `SubjectName`）を取ります。エンジン側が名前しか扱えない 3 箇所（仮想 Subject の構成メンバー、`StartLiveLinkRecording` の対象、`SetLiveLinkComponentSubject`）は、現在**有効な** Subject に対して解決し、曖昧なら拒否し、何に解決したかを応答に記録します。
 

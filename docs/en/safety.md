@@ -14,8 +14,11 @@ UAIP applies per-command authorization in four layers. Understanding the layers 
 | 1.5 | `FRoleGate` — a deny-only downgrade bound to the session, resolved from an optional role token | Per-session (only narrows what Layer 1 already grants; can never add a capability) | `CapabilityNotAvailable` |
 | 2 | `FSafetyPolicy` bool switches / `DeniedCapabilities` | Process-wide, immutable at runtime | `PolicyViolation` |
 | 3 | Route-specific opt-in (e.g. scenario route) | Process-wide | `PolicyViolation` |
+| 4 | `ICommandHandler::IsAvailable()` — a per-command, per-process self-report of whether the handler can actually run right now, evaluated after Layers 1–3 pass | Per-command (each handler answers for itself; not a session- or process-wide switch) | `AbilityUnavailable` for an environment- or build-related cause, `PolicyViolation` for the one cause that is a SafetyPolicy flag (see below) |
 
 Layer 1 is **not** per-session — it is one capability set that every session shares, fixed at startup (or refreshed process-wide by `ReloadCapabilities`). Layer 1.5 is the only layer that varies per session: when the editor is configured with roles (see [Roles](#roles-layer-15) below) and a session is bound to one, that role's deny list is intersected with Layer 1's set for that session only. A session with no role bound behaves exactly like Layer 1 alone.
+
+Layer 4 is a different kind of check from Layers 1–3, and it's worth keeping that distinction clear: Layers 1–3 all gate on **what this session or process is allowed to do**, and every one of their rejections is fixed by an operator flipping a switch (a capability, a SafetyPolicy flag, a launch flag). Layer 4 gates on **whether the handler can do its job at all right now**, independent of permission — most of the reasons it fails (wrong engine version, a build configuration that excludes the command, missing infrastructure, an API the engine or a Toolset target never exposed) have **no ini flag or capability grant that fixes them**; see [API Reference → `UnavailableDetail`](api.md#65-command-availability-fields) for the full breakdown. The one exception is a handler gated behind a deny-by-default SafetyPolicy flag (`UnavailableDetail: SafetyPolicyDisabled`) — that one *is* fixed the same way a Layer 2 rejection is, by setting the flag in `Config/DefaultUAIP.ini` and restarting, which is why it alone maps to `PolicyViolation` rather than `AbilityUnavailable`.
 
 ```mermaid
 flowchart TB
@@ -24,6 +27,7 @@ flowchart TB
     L15[Layer 1.5: Role Gate<br/>deny-only, session-bound]
     L2[Layer 2: SafetyPolicy + DeniedCapabilities + DeniedCommands]
     L3[Layer 3: Route opt-in flags]
+    L4[Layer 4: ICommandHandler::IsAvailable&#40;&#41;<br/>per-command self-report]
     Exec([Execute on game thread])
 
     Cmd --> L1
@@ -34,12 +38,17 @@ flowchart TB
     L2 -- "capability denied / ReadOnly / DisableSave / etc." --> E2([PolicyViolation])
     L2 -- ok --> L3
     L3 -- "route flag not set at launch" --> E3([PolicyViolation])
-    L3 -- ok --> Exec
+    L3 -- ok --> L4
+    L4 -- "environment/build cause (no ini flag fixes it)" --> E4a([AbilityUnavailable])
+    L4 -- "SafetyPolicy flag off (SafetyPolicyDisabled)" --> E4b([PolicyViolation])
+    L4 -- ok --> Exec
 
     style E1 fill:#fdd
     style E15 fill:#fdd
     style E2 fill:#fdd
     style E3 fill:#fdd
+    style E4a fill:#fdd
+    style E4b fill:#fdd
 ```
 
 `AllowedCapabilities` and `DeniedCapabilities` interact at Layer 1 / 2 with **deny-wins** semantics:
@@ -742,9 +751,9 @@ Every other mutating command is rejected under `ReadOnly` exactly as before. A h
 
 ---
 
-## UnavailableDetail — the seven reasons behind a HandlerUnavailable refusal
+## UnavailableDetail — the eight reasons behind a HandlerUnavailable refusal
 
-A command can report itself unavailable for reasons `CapabilityNotAvailable` and `PolicyViolation` above don't cover: an engine version mismatch, a build configuration gap, a missing piece of runtime infrastructure, a compiled-out optional plugin, or a forwarding target that never existed on any engine version. All of these surface through the same `ICommandHandler::IsAvailable() == false` path and the same `UnavailableReason: "HandlerUnavailable"` — which by itself only says a handler refused, not why. `UnavailableDetail` narrows that down to one of seven values, visible from `uaip_describe_command` regardless of whether the command is currently available. It is **not** part of `uaip_list_commands`'s `HiddenReasons` object, which stays at the five fixed `UnavailableReason` keys (`DeniedCommand` / `MissingCapability` / `RoleRestricted` / `ReadOnlyPolicy` / `HandlerUnavailable`) — call `uaip_describe_command` by name to see the detail behind a specific `HandlerUnavailable` entry. When a handler reports one of the six non-`Unspecified` values below, a matching `UnavailableDetailMessage` string is usually present alongside it — the handler's own free-text elaboration; quote it back to the user rather than re-deriving your own wording.
+A command can report itself unavailable for reasons `CapabilityNotAvailable` and `PolicyViolation` above don't cover: an engine version mismatch, a build configuration gap, a missing piece of runtime infrastructure, a compiled-out optional plugin, or a forwarding target that never existed on any engine version. All of these surface through the same `ICommandHandler::IsAvailable() == false` path and the same `UnavailableReason: "HandlerUnavailable"` — which by itself only says a handler refused, not why. `UnavailableDetail` narrows that down to one of eight values, visible from `uaip_describe_command` regardless of whether the command is currently available. It is **not** part of `uaip_list_commands`'s `HiddenReasons` object, which stays at the five fixed `UnavailableReason` keys (`DeniedCommand` / `MissingCapability` / `RoleRestricted` / `ReadOnlyPolicy` / `HandlerUnavailable`) — call `uaip_describe_command` by name to see the detail behind a specific `HandlerUnavailable` entry, or pass `IncludeUnavailable: true` to `uaip_list_commands`, whose hidden rows now carry the same per-command `UnavailableDetail` string (never `UnavailableDetailMessage`, which stays a `describe_command`-only field so list responses stay bounded). When a handler reports one of the seven non-`Unspecified` values below, a matching `UnavailableDetailMessage` string is usually present alongside it — the handler's own free-text elaboration; quote it back to the user rather than re-deriving your own wording.
 
 | `UnavailableDetail` | Meaning | What resolves it |
 |---|---|---|
@@ -755,12 +764,13 @@ A command can report itself unavailable for reasons `CapabilityNotAvailable` and
 | `OptionalPluginDisabled` | The command depends on an optional plugin that was disabled when this process was built, so the types it needs were compiled out | Enabling the plugin and rebuilding |
 | `EngineApiNotExported` | The command depends on an engine-side API that is never exported to a plugin, on any supported engine version | Nothing an engine-version change or a plugin toggle fixes — look for a different code path (e.g. a Toolset bridge command reaching the same effect through editor scripting) |
 | `DelegationTargetMissing` | The command forwards to a function on an external surface (a Toolset bridge target) that no supported engine version actually declares, so the call could never reach an implementation | Nothing here either — the plugin owning that surface may already be enabled; use a native command covering the same operation, where one exists |
+| `SafetyPolicyDisabled` | Nothing about the environment or the build is missing: the command is gated behind a deny-by-default SafetyPolicy flag that is off in this process | Setting that flag in `Config/DefaultUAIP.ini` and restarting — the `ErrorMessage` names the flag. Where `AllowCapabilityReload=True`, `UAIP.Core.ReloadCapabilities` applies the edit without a restart |
 
-`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` all name something a human can change. `EngineApiNotExported` and `DelegationTargetMissing` do not — no ini flag, capability grant, engine version, or plugin toggle changes either of them; the only way forward is a different code path. **None of the seven values is fixed by an `AllowedCapabilities` / `DeniedCapabilities` edit** — unlike `CapabilityNotAvailable` and `PolicyViolation` above, `UnavailableDetail` is never a capability or SafetyPolicy question.
+`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` all name something a human can change. `EngineApiNotExported` and `DelegationTargetMissing` do not — no ini flag, capability grant, engine version, or plugin toggle changes either of them; the only way forward is a different code path. `SafetyPolicyDisabled` is the odd one out: it is the one value that *is* an ini question, and the only one an `AllowedCapabilities` / `DeniedCapabilities`-style edit to `Config/DefaultUAIP.ini` resolves. **With that one exception, no `UnavailableDetail` value is fixed by an `AllowedCapabilities` / `DeniedCapabilities` edit** — unlike `CapabilityNotAvailable` and `PolicyViolation` above, `UnavailableDetail` is otherwise never a capability question.
 
-Calling a command by name while it is `Available: false` fails with `PolicyViolation`. `ErrorMessage` restates the same information: `"Command '<name>' is not available (<UnavailableDetail>): <UnavailableDetailMessage>"` — or, when `UnavailableDetail` is `Unspecified`, the older generic sentence `"... is not available in the current SafetyPolicy configuration."`.
+Calling a command by name while it is `Available: false` fails, and **which error code comes back depends on the detail**. The six values that name something about the environment or the build — `EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` / `EngineApiNotExported` / `DelegationTargetMissing` — fail with `AbilityUnavailable` (HTTP 501, "this cannot be done here"). `SafetyPolicyDisabled` and `Unspecified` fail with `PolicyViolation` (HTTP 403), because those are the two cases where flipping a setting really is the answer. `ErrorMessage` restates the same information either way: `"Command '<name>' is not available (<UnavailableDetail>): <UnavailableDetailMessage>"` — or, when `UnavailableDetail` is `Unspecified`, the older generic sentence `"... is not available in the current SafetyPolicy configuration."`.
 
-Three concrete examples, all from [Commands Reference](commands.md#unavailabledetail--the-seven-reasons-behind-a-handlerunavailable-refusal): all 14 `UAIP.Runtime.LiveLink.*` commands report `ExecutionEnvironment` when no `ILiveLinkClient` is registered as a modular feature in this process; `UAIP.Editor.AnimSequence.SelectAnimNotify` reports `EngineVersion` on UE 5.7 (it is UE 5.8+ only); and `UAIP.Core.ReloadCapabilities` reports `ExecutionEnvironment`, naming the ini key to set, while `AllowCapabilityReload` is left at its default `False`.
+Three concrete examples, all from [Commands Reference](commands.md#unavailabledetail--the-eight-reasons-behind-a-handlerunavailable-refusal): all 14 `UAIP.Runtime.LiveLink.*` commands report `ExecutionEnvironment` when no `ILiveLinkClient` is registered as a modular feature in this process; `UAIP.Editor.AnimSequence.SelectAnimNotify` reports `EngineVersion` on UE 5.7 (it is UE 5.8+ only); and `UAIP.Core.ReloadCapabilities` reports `SafetyPolicyDisabled`, naming the ini key to set, while `AllowCapabilityReload` is left at its default `False`.
 
 ---
 

@@ -14,8 +14,11 @@ UAIP はコマンドごとの認可を 4 つの層で管理します。層を理
 | 1.5 | `FRoleGate` — セッションに束縛された deny-only の降格。任意の役割トークンから解決される | セッション単位（Layer 1 が許可した範囲を狭めるだけで、Capability を追加することは無い） | `CapabilityNotAvailable` |
 | 2 | `FSafetyPolicy` のブールスイッチ / `DeniedCapabilities` | プロセス全体（実行時不変） | `PolicyViolation` |
 | 3 | ルート単位のオプトイン（シナリオルートなど） | プロセス全体 | `PolicyViolation` |
+| 4 | `ICommandHandler::IsAvailable()` — Layer 1〜3 を通過した後に評価される、ハンドラが「今この場で実際に動けるか」のコマンド単位・プロセス単位の自己申告 | コマンド単位（各ハンドラが自分自身について答える。セッション単位・プロセス単位のスイッチではない） | 環境・ビルド起因の理由なら `AbilityUnavailable`、SafetyPolicy フラグが理由の唯一のケースなら `PolicyViolation`（後述） |
 
 Layer 1 は「セッション単位」**ではありません** — 起動時に確定し（または `ReloadCapabilities` でプロセス全体として再読込され）、すべてのセッションが共有する単一の Capability セットです。セッションごとに変わるのは Layer 1.5 だけです。役割（後述の [役割](#役割layer-15)）が設定されており、あるセッションがその役割に束縛されている場合、そのセッションに限って役割の deny リストが Layer 1 のセットと積を取られます。役割が束縛されていないセッションは、Layer 1 単独と全く同じ挙動をします。
+
+Layer 4 は Layer 1〜3 とは性質の異なるチェックであり、この区別ははっきりさせておく価値があります。Layer 1〜3 はどれも「このセッション・このプロセスに何が許可されているか」を判定するもので、そこでの拒否はすべて運用者がどこかのスイッチ（Capability、SafetyPolicy フラグ、起動フラグ）を切り替えれば直ります。Layer 4 は権限とは別に「ハンドラが今この場で実際に仕事をこなせるか」を判定するもので、失敗理由の大半（対応していないエンジンバージョン、対象を除外するビルド構成、必要なインフラが無い、エンジンや Toolset の転送先がその API をそもそも公開していない）には**それを直す ini フラグも Capability 付与も存在しません**。内訳の全体は [API リファレンス → `UnavailableDetail`](api.md#65-コマンド可用性フィールド) を参照してください。唯一の例外は、既定で無効な SafetyPolicy フラグでゲートされているハンドラ（`UnavailableDetail: SafetyPolicyDisabled`）です。これは Layer 2 の拒否と同じ形で、`Config/DefaultUAIP.ini` でフラグを設定して再起動すれば直ります。この 1 件だけが `AbilityUnavailable` ではなく `PolicyViolation` に写像される理由もここにあります。
 
 ```mermaid
 flowchart TB
@@ -24,6 +27,7 @@ flowchart TB
     L15[Layer 1.5: Role Gate<br/>deny-only・セッション単位]
     L2[Layer 2: SafetyPolicy + DeniedCapabilities + DeniedCommands]
     L3[Layer 3: ルート opt-in フラグ]
+    L4[Layer 4: ICommandHandler::IsAvailable&#40;&#41;<br/>コマンド単位の自己申告]
     Exec([ゲームスレッドで実行])
 
     Cmd --> L1
@@ -34,12 +38,17 @@ flowchart TB
     L2 -- "Capability 拒否 / ReadOnly / DisableSave 等" --> E2([PolicyViolation])
     L2 -- ok --> L3
     L3 -- "起動時にルートフラグなし" --> E3([PolicyViolation])
-    L3 -- ok --> Exec
+    L3 -- ok --> L4
+    L4 -- "環境・ビルド起因（ini フラグでは直らない）" --> E4a([AbilityUnavailable])
+    L4 -- "SafetyPolicy フラグが無効（SafetyPolicyDisabled）" --> E4b([PolicyViolation])
+    L4 -- ok --> Exec
 
     style E1 fill:#fdd
     style E15 fill:#fdd
     style E2 fill:#fdd
     style E3 fill:#fdd
+    style E4a fill:#fdd
+    style E4b fill:#fdd
 ```
 
 `AllowedCapabilities` と `DeniedCapabilities` は Layer 1 / 2 で **deny-wins** セマンティクスで相互作用します：
@@ -742,9 +751,9 @@ AllowUserInteractionPrompt=False
 
 ---
 
-## UnavailableDetail — HandlerUnavailable の7つの詳細理由
+## UnavailableDetail — HandlerUnavailable の8つの詳細理由
 
-コマンドは、上記の `CapabilityNotAvailable` や `PolicyViolation` では説明できない理由でも利用不可を返すことがあります — エンジンバージョンの不一致、ビルド構成の不足、必要な Runtime インフラの欠如、コンパイルから除外されたオプションプラグイン、あるいはどのエンジンバージョンにも存在したことのない委譲先などです。これらはすべて同じ `ICommandHandler::IsAvailable() == false` 経路と同じ `UnavailableReason: "HandlerUnavailable"` として現れます — この値単体では、ハンドラーが拒否したという事実しか分からず、理由までは分かりません。`UnavailableDetail` はその理由を 7 つの値のいずれかへ絞り込みます。現在利用可能かどうかにかかわらず `uaip_describe_command` から確認できます。`uaip_list_commands` の `HiddenReasons` オブジェクトには**含まれません** — こちらは常に固定 5 種の `UnavailableReason` キー（`DeniedCommand` / `MissingCapability` / `RoleRestricted` / `ReadOnlyPolicy` / `HandlerUnavailable`）のままです。特定の `HandlerUnavailable` エントリの詳細を見るには、そのコマンド名を指定して `uaip_describe_command` を呼んでください。以下のうち `Unspecified` 以外の 6 値をハンドラーが返す場合、通常はあわせて `UnavailableDetailMessage` 文字列も返ります — ハンドラー自身による自由記述の補足説明で、独自に言い換えず、そのまま利用者へ伝えてください。
+コマンドは、上記の `CapabilityNotAvailable` や `PolicyViolation` では説明できない理由でも利用不可を返すことがあります — エンジンバージョンの不一致、ビルド構成の不足、必要な Runtime インフラの欠如、コンパイルから除外されたオプションプラグイン、あるいはどのエンジンバージョンにも存在したことのない委譲先などです。これらはすべて同じ `ICommandHandler::IsAvailable() == false` 経路と同じ `UnavailableReason: "HandlerUnavailable"` として現れます — この値単体では、ハンドラーが拒否したという事実しか分からず、理由までは分かりません。`UnavailableDetail` はその理由を 8 つの値のいずれかへ絞り込みます。現在利用可能かどうかにかかわらず `uaip_describe_command` から確認できます。`uaip_list_commands` の `HiddenReasons` オブジェクトには**含まれません** — こちらは常に固定 5 種の `UnavailableReason` キー（`DeniedCommand` / `MissingCapability` / `RoleRestricted` / `ReadOnlyPolicy` / `HandlerUnavailable`）のままです。特定の `HandlerUnavailable` エントリの詳細を見るには、そのコマンド名を指定して `uaip_describe_command` を呼ぶか、`uaip_list_commands` に `IncludeUnavailable: true` を付けて呼んでください — 隠れている各行にも同じ per-command の `UnavailableDetail` 文字列が付くようになりました（`UnavailableDetailMessage` は付きません。一覧レスポンスのサイズを抑えるため、こちらは引き続き `describe_command` だけが持つフィールドです）。以下のうち `Unspecified` 以外の 7 値をハンドラーが返す場合、通常はあわせて `UnavailableDetailMessage` 文字列も返ります — ハンドラー自身による自由記述の補足説明で、独自に言い換えず、そのまま利用者へ伝えてください。
 
 | `UnavailableDetail` | 意味 | 解消する方法 |
 |---|---|---|
@@ -755,12 +764,13 @@ AllowUserInteractionPrompt=False
 | `OptionalPluginDisabled` | このプロセスのビルド時に無効化されていたオプションプラグインに依存しており、必要な型がコンパイルから除外されている | プラグインを有効化してリビルドする |
 | `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | エンジンバージョンの変更やプラグインの切り替えでは解決しない — 別の経路（例: エディタスクリプティング経由で同じ効果に到達する Toolset ブリッジコマンド）を探す |
 | `DelegationTargetMissing` | 委譲先の外部サーフェス（Toolset ブリッジのターゲット）に、サポート対象のどのエンジンバージョンも実際には宣言していない関数を呼び出しており、実装へ到達する手段がそもそも存在しない | これも解決しない — そのサーフェスを持つプラグイン自体はすでに有効になっている場合がある。同じ操作を行うネイティブコマンドがあれば、それを使う |
+| `SafetyPolicyDisabled` | 環境にもビルドにも欠けているものは無い — 既定で無効な SafetyPolicy フラグでゲートされており、そのフラグがこのプロセスでオフになっている | `Config/DefaultUAIP.ini` でそのフラグを設定して再起動する（`ErrorMessage` がフラグ名を名指しする）。`AllowCapabilityReload=True` の環境なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できる |
 
-`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` は、いずれも人間が変更できるものを指します。`EngineApiNotExported` と `DelegationTargetMissing` はそうではありません — ini フラグ、Capability 付与、エンジンバージョン、プラグインの切り替えのいずれも解決しません。取れる手段は別の経路を探すことだけです。**7 値のいずれも `AllowedCapabilities` / `DeniedCapabilities` の編集では解決しません** — 上記の `CapabilityNotAvailable` や `PolicyViolation` と異なり、`UnavailableDetail` は Capability や SafetyPolicy の話ではありません。
+`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` は、いずれも人間が変更できるものを指します。`EngineApiNotExported` と `DelegationTargetMissing` はそうではありません — ini フラグ、Capability 付与、エンジンバージョン、プラグインの切り替えのいずれも解決しません。取れる手段は別の経路を探すことだけです。`SafetyPolicyDisabled` だけは性質が異なり、**唯一 ini の問題である値**です。`Config/DefaultUAIP.ini` への `AllowedCapabilities` / `DeniedCapabilities` と同種の編集で解決する値はこれだけです。**その 1 件を除き、`UnavailableDetail` のどの値も `AllowedCapabilities` / `DeniedCapabilities` の編集では解決しません** — 上記の `CapabilityNotAvailable` や `PolicyViolation` と異なり、`UnavailableDetail` はそれ以外では Capability の話ではありません。
 
-`Available: false` のコマンドを名前で呼び出すと `PolicyViolation` で失敗します。`ErrorMessage` には同じ情報が繰り返されます：`"Command '<name>' is not available (<UnavailableDetail>): <UnavailableDetailMessage>"` — `UnavailableDetail` が `Unspecified` の場合は、従来からの汎用的な文 `"... is not available in the current SafetyPolicy configuration."` になります。
+`Available: false` のコマンドを名前で呼び出すと失敗しますが、**返る ErrorCode は detail によって変わります**。環境・ビルドに関する 6 値（`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` / `EngineApiNotExported` / `DelegationTargetMissing`）は `AbilityUnavailable`（HTTP 501「ここでは実行できない」）で失敗します。`SafetyPolicyDisabled` と `Unspecified` は `PolicyViolation`（HTTP 403）で失敗します — この 2 つだけが「設定を変えれば直る」に当てはまるためです。`ErrorMessage` にはいずれの場合も同じ情報が繰り返されます：`"Command '<name>' is not available (<UnavailableDetail>): <UnavailableDetailMessage>"` — `UnavailableDetail` が `Unspecified` の場合は、従来からの汎用的な文 `"... is not available in the current SafetyPolicy configuration."` になります。
 
-具体例を 3 つ、いずれも [コマンドリファレンス](commands.md#unavailabledetail--handlerunavailable-の7つの詳細理由) から：`UAIP.Runtime.LiveLink.*` の全 14 コマンドは、このプロセスにモジュラー機能として `ILiveLinkClient` が登録されていない場合に `ExecutionEnvironment` を返す。`UAIP.Editor.AnimSequence.SelectAnimNotify`（UE 5.8 以降専用）は UE 5.7 で `EngineVersion` を返す。`UAIP.Core.ReloadCapabilities` は、`AllowCapabilityReload` が既定の `False` のままのとき、設定すべき ini キー名を含む `ExecutionEnvironment` を返す。
+具体例を 3 つ、いずれも [コマンドリファレンス](commands.md#unavailabledetail--handlerunavailable-の8つの詳細理由) から：`UAIP.Runtime.LiveLink.*` の全 14 コマンドは、このプロセスにモジュラー機能として `ILiveLinkClient` が登録されていない場合に `ExecutionEnvironment` を返す。`UAIP.Editor.AnimSequence.SelectAnimNotify`（UE 5.8 以降専用）は UE 5.7 で `EngineVersion` を返す。`UAIP.Core.ReloadCapabilities` は、`AllowCapabilityReload` が既定の `False` のままのとき、設定すべき ini キー名を含む `SafetyPolicyDisabled` を返す。
 
 ---
 
