@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1194 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1615 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1218 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1639 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -74,7 +74,8 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Domain | Provider prefix | UAIP commands | Toolset bridge | Demo |
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 11 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 21 | 1 | partial (13/21) |
+| Core Artifacts | `UAIP.Core.Artifacts` | 1 | — | ✅ |
+| Editor Workspace | `UAIP.Editor.Workspace` | 22 | 1 | partial (17/22) |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | partial (5/9) |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
@@ -87,7 +88,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 22 | 8 | partial (8/22) |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | partial (6/12) |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 21 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
@@ -120,13 +121,14 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Editor ControlRig Physics 🧩 | `UAIP.Editor.ControlRig.Physics` | 8 | — | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 15 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 8 | 14 | — |
-| Editor Python Extension 🧩 | `UAIP.Editor.Python` | 2 | — | — |
+| Editor Python Extension 🧩 | `UAIP.Editor.Python` | 1 | — | — |
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
 | Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 23 | — | — |
-| Editor AnimSequence | `UAIP.Editor.AnimSequence` | 12 | — | — |
+| Editor Chooser 🧩 | `UAIP.Editor.Chooser` | 20 | — | — |
+| Editor AnimSequence | `UAIP.Editor.AnimSequence` | 13 | — | — |
 | Editor ChaosDestruction | `UAIP.Editor.ChaosDestruction` | 29 | — | — |
 | Editor Subsonic 🧩 | `UAIP.Editor.Subsonic` | 22 | — | — |
 | Editor GroomAsset 🧩 | `UAIP.Editor.GroomAsset` | 35 | — | — |
@@ -317,6 +319,16 @@ System-level commands for discovery, health, and session management.
 | 🆓 `GetPendingInteractionStatus` | Reports where one pending interaction stands — `State`, `Cause`, `ElapsedSeconds`, `Prompt`, `Reason`, `Result` — without waiting for it to change. Requires the same explicitly given `SessionId` that started the interaction (an interactive command such as `DrawPCGSpline`); unknown, expired, and other-session all report `NotFound` identically |
 | 🆓 `WaitForPendingInteraction` | Blocks until a pending interaction leaves `AwaitingUser`, or until this call's own `TimeoutSeconds` ceiling is reached (default 30, range [1, 600]), whichever comes first; on timeout the interaction itself is unaffected and keeps waiting for the human. Up to 4 concurrent calls may watch the same interaction, but reaching more than one requires `[UAIP.Transport] AllowConcurrentPassiveWaits` — see [Configuration](config.md) |
 | 🆓 `CancelPendingInteraction` | Cancels a pending interaction the calling session started, without waiting for the human to act. An interaction already `Completed` is answered with `Success` rather than an error; the capabilities the starting command declared are re-checked against the session's current capability set |
+
+---
+
+## UAIP.Core.Artifacts
+
+Reading back the content of an artifact a previous command produced. See [Artifacts](artifacts.md) for the artifact model itself.
+
+| Command | Description |
+|---|---|
+| 🆓 `GetArtifact` | Returns the stored content of an artifact by `ArtifactId`, for artifacts the calling session owns. Text-shaped artifacts (`Json` / `Log` / `Report` / `Bundle`) come back in `Content`, at most `MaxBytes` at a time (default and ceiling 65536, floor 4); binary ones (`Image` / `Trace`) come back as metadata and `TotalBytes` only and are meant to be opened as files instead. Pass the previous call's `NextOffset` as `Offset` to read on — the returned window always ends on a character boundary, so paging never splits a character, duplicates text or loses any. An `Offset` past the end succeeds with `ReturnedBytes` 0, which is how the end of a paged read is detected. `MetaIsPartial` true means the metadata was rebuilt from the file on disk after the store's index was lost, so `Sequence` / `Description` are absent and `CreatedAt` is the file's modification time; `CommandNameVerified` false means nothing corroborates the command name the artifact's filename carries. An artifact belonging to another session reports `NotFound`, indistinguishable from one that never existed. Requires `ArtifactContentRead` |
 
 ---
 
@@ -2825,6 +2837,41 @@ Motion Matching editing for the Pose Search plugin — `UPoseSearchDatabase` ani
 | `GetPoseSearchDatabaseIndexBuildStatus` | Poll one build's `State` (`Running` / `Succeeded` / `Failed`) and `ElapsedSeconds`; once `Succeeded`, also reports `NumPoses` / `SchemaCardinality` |
 
 > **Note**: `StartPoseSearchDatabaseIndexBuild` and `GetPoseSearchDatabaseIndexBuildStatus` must both be called with an explicit `SessionId` — the **same** one for both. An automatically generated session differs on every call, so a build started under one could never be polled afterward; both commands reject an anonymous or omitted `SessionId` with `InvalidParams`.
+
+---
+
+## UAIP.Editor.Chooser 🧩
+
+Authoring `UChooserTable` assets — rows, columns, the cell each row holds in each column, the result object a row selects, and the input binding that decides what a column looks at. Requires the **Chooser** plugin.
+
+Addressing is positional: `ColumnIndex` and `RowIndex` are the current zero-based indices the read commands report, and an index that names nothing is refused with `InvalidParams` carrying the table's current counts. Values round-trip — what a read reports under a cell's `Value`, a row's `ResultType` / `ResultValue`, or a column's input binding is exactly what the matching write accepts, so anything read from one row, column or table can be written to another unchanged.
+
+> **Note**: every edit command below takes an optional `Fingerprint` — the structural fingerprint the read commands report. When it no longer matches the table's current structure the edit is refused with `Conflict`, and the response carries the current value to reissue against. `CompileChooserTable` is the exception: it accepts no `Fingerprint`, since it touches no row or column. Every edit is rejected while a play session is in progress, and for an asset outside `/Game/`.
+>
+> Beyond `ChooserTableEdit`, an edit is judged per call against what it actually names: **`ChooserCustomTypeEdit`** when a column type, result type or input binding type comes from outside the modules this domain ships those types from (asked about the type already in the table as well as the one being written), **`ChooserReferenceEdit`** when a value is supplied for a type that can hold an object reference, and **`ChooserFunctionBindingEdit`** when a property chain resolves to a function the evaluation path would call rather than to plain properties. A chain reaching a function through a binding the chooser editor offers no functions for is refused with `NotAllowed` instead, which no capability lifts. The `Admission` field on the listing commands below reports, per type, which of these a call naming it would need.
+
+| Command | Description |
+|---|---|
+| `GetChooserTableInfo` | The table-wide summary: row and column counts, the output kind and the class constraining it, the context parameter count, whether a fallback result is assigned and what it holds, and the structural fingerprint. Structural only — no row, column or cell value is reported here. Read-only, requires `EditorInspect` |
+| `GetChooserTableRow` | One row: its result object, its disabled flag, and one cell entry per column, alongside the table's current counts and fingerprint. A cell whose column keeps no per-row data, or cannot round-trip as a plain value, is reported with a null `Value` and `bCellValueUnavailable` set rather than omitted. Read-only, requires `EditorInspect` |
+| `ListChooserTableRows` | One page of rows — each row's result object, disabled flag and one cell per column — as a JSON artifact. `StartIndex` / `Count` page through the table; an out-of-range `StartIndex` yields an empty or shortened page rather than an error, so a caller can walk pages until an empty one signals the end. Read-only, requires `EditorInspect` |
+| `ListChooserColumns` | Every column as a JSON artifact — its index, its own type, the input binding deciding what it looks at, whether it is disabled, and whether its cells round-trip as plain values — plus the table's counts and fingerprint. The `ColumnIndex` reported here is the one every column-targeting edit expects. Read-only, requires `EditorInspect` |
+| `ListChooserContextData` | Every context parameter the table's evaluation context declares — the candidates a column's input binding can be pointed at — each with its index, the type it exposes, and whether it is read from, written to, or both. A nested table resolves this from the root of the chooser chain. Read-only, requires `EditorInspect` |
+| `ListChooserColumnTypes` | Every `FChooserColumnBase`-derived struct currently discovered — the same set the Chooser editor's own Add Column menu offers. Pass a `ClassPath` from the result as `ColumnType` to `AddChooserColumn`. Each entry carries `Admission` (`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`) plus `RequiredCapabilities` / `MissingCapabilities`, and `TotalCount` / `ReturnedCount` / `Truncated` report whether the result cap cut anything off. Ordered by `ClassPath`, so a truncated result always carries the same leading types. `AssetPath` is optional and never narrows the listing, but is still resolved and refused with `NotFound` when it names no real chooser table. Read-only, requires `EditorInspect` |
+| `ListChooserResultTypes` | Every `FObjectChooserBase`-derived struct `AddChooserTableRow` / `SetChooserTableResult` / `SetChooserFallbackResult` accept as a `ResultType`, whether or not this session may currently use one. `AssetPath` is accepted but never resolved — the result type family is the same for every table. Same `Admission` / count / ordering contract as `ListChooserColumnTypes`. Read-only, requires `EditorInspect` |
+| `ListChooserInputTypes` | Every input binding type the column named by `ColumnIndex` may be bound to — the same candidates the editor's own binding widget offers. Pass a `ClassPath` from the result to `SetChooserColumnInput`. Unlike the two listings above the candidates depend entirely on which column is named, so both `AssetPath` and `ColumnIndex` are required. A column presenting no primary input — one an author cannot bind from the editor either — is described with an empty listing rather than refused. Same `Admission` / count / ordering contract. Read-only, requires `EditorInspect` |
+| `AddChooserColumn` (requires `ChooserTableEdit`) | Add one column of the named type and report the index it ended up at, the counts afterwards, and the new fingerprint. The new column is given one cell per existing row, so the table keeps answering for every row it already had. `ColumnType` must be one of the types `ListChooserColumnTypes` reports; `InsertAt` places the column, and omitting it appends |
+| `RemoveChooserColumn` (requires `ChooserTableEdit`) | Remove one column together with the cells it owns. No other column is affected, since each column owns its own cells |
+| `MoveChooserColumn` (requires `ChooserTableEdit`) | Move one column so that it ends up at `ToIndex`, taking every cell it owns with it. `ToIndex` is the position the column occupies **after** the move, not before; moving a column onto its own current index is a successful no-op |
+| `SetChooserColumnInput` (requires `ChooserTableEdit`) | Install a column's input binding — the parameter deciding what the column looks at. `InputType` / `InputValue` take exactly what `ListChooserColumns` reported for a column; a null `InputValue` writes the named type's own defaults, which is the unbound binding a column is given when its parameter type is picked in the editor. `InputType` has to name one of the types `ListChooserInputTypes` reports for *this* column — a type of a family the column cannot read a value as is refused with `InvalidParams`, as is every type for a column that presents no input binding at all |
+| `AddChooserTableRow` (requires `ChooserTableEdit`) | Add one row and report the index it ended up at. `InsertAt` places the row, and omitting it appends. `ResultType` / `ResultValue` give the new row its result object in the same shape the read commands report one, so a row read from one table can be added to another; omitting both adds a row whose result is empty |
+| `RemoveChooserTableRows` (requires `ChooserTableEdit`) | Remove one or more rows as a single change. `RowIndices` names every row by its current index; order does not matter, but every entry has to be distinct and in range or the whole request is refused. Removing several rows is one change, so a single Undo restores all of them |
+| `MoveChooserTableRow` (requires `ChooserTableEdit`) | Move one row so that it ends up at `ToIndex`, taking its result, its disabled flag and its cell in every column with it. Same after-the-move `ToIndex` semantics as `MoveChooserColumn` |
+| `SetChooserTableCell` (requires `ChooserTableEdit`) | Write one cell — the value one row holds in one column. A column that keeps no per-row data, or whose cell cannot round-trip as a plain value (the columns a read reports with `bCellValueUnavailable` set), is refused rather than written |
+| `SetChooserTableResult` (requires `ChooserTableEdit`) | Replace the result object one row selects. Omitting `ResultType`, or passing it empty, empties the row's result instead of rebuilding it — the state the editor's own result picker puts a row back into — in which case `ResultValue` has to be omitted or null. A nested chooser the row used to hold is unregistered from the table before the new result is written, and one being written is registered afterwards, so ownership follows the replacement |
+| `SetChooserFallbackResult` (requires `ChooserTableEdit`) | Replace the result the table produces when no row matched — the Fallback Result in the editor. The fallback belongs to the table rather than to a row, so this command takes no index. Same empty-by-omitting-`ResultType` and nested-chooser ownership rules as `SetChooserTableResult` |
+| `SetChooserRowDisabled` (requires `ChooserTableEdit`) | Take one row out of evaluation or put it back in, without moving it, changing its result, or touching any of its cells. The fingerprint does not change either, since a row's disabled flag is not one of the things it describes. Requires `ChooserTableEdit` and no other capability, since this command names no column, result or input binding type |
+| `CompileChooserTable` (requires `ChooserTableEdit`) | Compile the table explicitly. Compiling is not forced when the asset is saved, so an edit made through the other commands here can leave a column's input binding resolved against a stale offset until something asks for a recompile — which is what this command is for. No column, result or binding type already in the table is re-judged for where it came from; only every input binding the table already holds is put through the same binding chain resolver every write in this domain uses, which is why it additionally requires `ChooserFunctionBindingEdit` when one of them resolves to a function the evaluation path would call |
 
 ---
 

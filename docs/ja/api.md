@@ -568,7 +568,7 @@ python docs/scripts/generate_command_schema.py `
 
 `-uaip-http-no-auth` 起動時は `--no-auth` を追加。Provider 毎の JSON も欲しい場合は `--split-by-provider` を追加（`by-provider/` 配下に出力）。
 
-想定実行時間：オプションプラグイン構成にもよるが、約 730 コマンドで 10〜60 秒。
+実行時間は登録済みコマンド数に比例する。オプションプラグインをすべて有効にした場合で最大約 1640 コマンド、無効な構成ではそれより少ない。
 
 ### 9.3 出力形状
 

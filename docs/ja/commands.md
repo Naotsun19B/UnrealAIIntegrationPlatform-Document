@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1194 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1615 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1218 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1639 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -74,7 +74,8 @@ UAIP では 2 種類のコマンドを公開しています：
 | ドメイン | プロバイダプレフィックス | UAIP コマンド | Toolset ブリッジ | デモ |
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 11 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 21 | 1 | 一部（13/21） |
+| Core Artifacts | `UAIP.Core.Artifacts` | 1 | — | ✅ |
+| Editor Workspace | `UAIP.Editor.Workspace` | 22 | 1 | 一部（17/22） |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
@@ -87,7 +88,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 22 | 8 | 一部（8/22） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 21 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
@@ -120,13 +121,14 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor ControlRig Physics 🧩 | `UAIP.Editor.ControlRig.Physics` | 8 | — | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 15 | — | — |
 | Editor GAS 🧩 | `UAIP.Editor.GAS` | 8 | 14 | — |
-| Editor Python Extension 🧩 | `UAIP.Editor.Python` | 2 | — | — |
+| Editor Python Extension 🧩 | `UAIP.Editor.Python` | 1 | — | — |
 | Editor Sandbox 🧩 | `UAIP.Editor.Sandbox` | 6 | — | — |
 | Editor WorldPartition | `UAIP.Editor.WorldPartition` | 34 | — | — |
 | Editor Foliage | `UAIP.Editor.Foliage` | 11 | — | — |
 | Editor DataRegistry 🧩 | `UAIP.Editor.DataRegistry` | 9 | 7 | — |
 | Editor MotionMatching 🧩 | `UAIP.Editor.MotionMatching` | 23 | — | — |
-| Editor AnimSequence | `UAIP.Editor.AnimSequence` | 12 | — | — |
+| Editor Chooser 🧩 | `UAIP.Editor.Chooser` | 20 | — | — |
+| Editor AnimSequence | `UAIP.Editor.AnimSequence` | 13 | — | — |
 | Editor ChaosDestruction | `UAIP.Editor.ChaosDestruction` | 29 | — | — |
 | Editor Subsonic 🧩 | `UAIP.Editor.Subsonic` | 22 | — | — |
 | Editor GroomAsset 🧩 | `UAIP.Editor.GroomAsset` | 35 | — | — |
@@ -317,6 +319,16 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `GetPendingInteractionStatus` | 保留中の対話 1 件の状態 — `State`・`Cause`・`ElapsedSeconds`・`Prompt`・`Reason`・`Result` — を、変化を待たずに報告する。対話（`DrawPCGSpline` などの対話型コマンド）を開始したときと同じ `SessionId` を明示的に指定する必要があり、未知・期限切れ・他セッション所有はすべて同じ `NotFound` として扱われる |
 | 🆓 `WaitForPendingInteraction` | 対話が `AwaitingUser` を離れるか、この呼び出し自身の `TimeoutSeconds` 上限（デフォルト 30、範囲 [1, 600]）に達するまでブロックする。タイムアウトしても対話自体には影響せず、人間の応答を待ち続ける。同じ対話を同時に監視できる呼び出しは最大 4 件までだが、2 件目以降には `[UAIP.Transport] AllowConcurrentPassiveWaits` が必要（[設定](config.md) 参照） |
 | 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックする |
+
+---
+
+## UAIP.Core.Artifacts
+
+先行するコマンドが生成した artifact の内容を読み戻す。artifact のモデル自体は [Artifacts](artifacts.md) を参照。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `GetArtifact` | `ArtifactId` で指定した artifact の内容を返す（呼び出したセッションが所有するものに限る）。テキスト系（`Json` / `Log` / `Report` / `Bundle`）は 1 回あたり最大 `MaxBytes`（デフォルト・上限とも 65536、下限 4）まで `Content` に入って返る。バイナリ系（`Image` / `Trace`）は `Content` を返さずメタデータと `TotalBytes` のみで、ファイルとして開くことを想定している。続きを読むには前回の `NextOffset` を `Offset` に渡す — 返る範囲は必ず文字境界で終わるため、ページングが文字を分割したりテキストを重複・欠落させたりすることはない。末尾を越えた `Offset` は `ReturnedBytes` 0 で成功し、これがページ読み取りの終端判定になる。`MetaIsPartial` が true の場合はストアのインデックスが失われた後にディスク上のファイルからメタデータを再構築したことを意味し、`Sequence` / `Description` は無く `CreatedAt` はファイルの更新時刻になる。`CommandNameVerified` が false の場合、artifact のファイル名が持つコマンド名を裏付けるものが無いことを示す。他セッションの artifact は `NotFound` となり、存在しない場合と区別できない。`ArtifactContentRead` が必要 |
 
 ---
 
@@ -2828,6 +2840,41 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 | `GetPoseSearchDatabaseIndexBuildStatus` | 1 件のビルドの `State`（`Running` / `Succeeded` / `Failed`）と `ElapsedSeconds` を取得。`Succeeded` になると `NumPoses` / `SchemaCardinality` も報告 |
 
 > **Note**: `StartPoseSearchDatabaseIndexBuild` と `GetPoseSearchDatabaseIndexBuildStatus` は、いずれも明示的な `SessionId` を指定して呼び出す必要があり、両方で**同じ** `SessionId` を使うこと。自動生成されるセッションは呼び出しごとに異なるため、そのセッションで開始したビルドを後からポーリングできない。両コマンドとも、匿名または未指定の `SessionId` を `InvalidParams` で拒否する。
+
+---
+
+## UAIP.Editor.Chooser 🧩
+
+`UChooserTable` アセットのオーサリング — 行・列・各行が各列に持つセル・行が選択する結果オブジェクト・列が何を参照するかを決める入力バインディング。**Chooser** プラグインが必要。
+
+アドレッシングは位置ベース。`ColumnIndex` / `RowIndex` は読み取り系コマンドが報告する現在の 0 始まりインデックスであり、存在しないインデックスはテーブルの現在の件数を添えた `InvalidParams` で拒否される。値は往復可能で、読み取りがセルの `Value`・行の `ResultType` / `ResultValue`・列の入力バインディングとして報告した内容が、そのまま対応する書き込みの入力になる。したがって、ある行・列・テーブルから読んだ値を別のものへそのまま書き込める。
+
+> **Note**: 以下の編集系コマンドはすべて任意の `Fingerprint`（読み取り系コマンドが報告する構造フィンガープリント）を受け取る。テーブルの現在の構造と一致しなくなっている場合、編集は `Conflict` で拒否され、再実行に使う現在値が応答に含まれる。`CompileChooserTable` のみ例外で、行も列も触らないため `Fingerprint` を受け取らない。編集系はすべて、プレイセッション実行中および `/Game/` 外のアセットに対して拒否される。
+>
+> `ChooserTableEdit` に加えて、編集は「実際に何を指定したか」に応じて呼び出しごとに判定される。**`ChooserCustomTypeEdit`**: 列の型・結果の型・入力バインディングの型が、本ドメインが標準で提供するモジュール群の外から来ている場合（書き込む型だけでなく、すでにテーブルに入っている型についても判定される）。**`ChooserReferenceEdit`**: オブジェクト参照を保持できる型に対して値を指定した場合。**`ChooserFunctionBindingEdit`**: プロパティチェーンが、評価パスが呼び出す関数へ解決される場合（プレーンなプロパティではなく）。chooser エディタが関数を提示しないバインディング経由で関数に到達するチェーンは、Capability では解除できない `NotAllowed` として拒否される。以下の一覧系コマンドが返す `Admission` フィールドが、型ごとに「その型を指定した呼び出しに何が必要か」を報告する。
+
+| コマンド | 説明 |
+|---|---|
+| `GetChooserTableInfo` | テーブル全体のサマリ: 行数・列数、出力の種別とそれを制約するクラス、コンテキストパラメータ数、フォールバック結果の有無とその内容、構造フィンガープリント。構造のみで、行・列・セルの値は報告しない。読み取り専用、`EditorInspect` が必要 |
+| `GetChooserTableRow` | 1 行分: 結果オブジェクト・無効フラグ・列ごとに 1 件のセルエントリと、テーブルの現在の件数およびフィンガープリント。行ごとのデータを保持しない列、またはプレーンな値として往復できない列のセルは、省略ではなく `Value` を null にし `bCellValueUnavailable` を立てて報告する。読み取り専用、`EditorInspect` が必要 |
+| `ListChooserTableRows` | 行を 1 ページ分（各行の結果オブジェクト・無効フラグ・列ごとのセル）JSON artifact として返す。`StartIndex` / `Count` でページングする。範囲外の `StartIndex` はエラーではなく空または短いページを返すため、空ページが返るまで辿れば終端が分かる。読み取り専用、`EditorInspect` が必要 |
+| `ListChooserColumns` | 全列を JSON artifact として返す（インデックス・列自身の型・参照先を決める入力バインディング・無効かどうか・セルがプレーンな値として往復できるか）。テーブルの件数とフィンガープリントも報告する。ここで報告される `ColumnIndex` が、列を対象とする全編集コマンドの受け取るインデックス。読み取り専用、`EditorInspect` が必要 |
+| `ListChooserContextData` | テーブルの評価コンテキストが宣言する全コンテキストパラメータ（列の入力バインディングの向け先候補）を、それぞれのインデックス・公開する型・読み取り/書き込み/両方の区別とともに返す。ネストされたテーブルの場合は chooser チェーンのルートから解決する。読み取り専用、`EditorInspect` が必要 |
+| `ListChooserColumnTypes` | 現在検出されている `FChooserColumnBase` 派生構造体をすべて返す（chooser エディタの Add Column メニューが提示するものと同じ集合）。結果の `ClassPath` を `AddChooserColumn` の `ColumnType` に渡す。各エントリは `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持ち、`TotalCount` / `ReturnedCount` / `Truncated` が上限による打ち切りの有無を報告する。`ClassPath` 順で並ぶため、打ち切られた結果でも常に同じ先頭集合になる。`AssetPath` は任意で一覧を絞り込まないが、指定した場合は解決され、実在する chooser テーブルでなければ `NotFound` で拒否される。読み取り専用、`EditorInspect` が必要 |
+| `ListChooserResultTypes` | `AddChooserTableRow` / `SetChooserTableResult` / `SetChooserFallbackResult` が `ResultType` として受け取る `FObjectChooserBase` 派生構造体をすべて返す（現在のセッションが使用できるかどうかに関わらず）。`AssetPath` は受け取るが解決しない（結果型のファミリはどのテーブルでも同じため）。`Admission` / 件数 / 並び順の契約は `ListChooserColumnTypes` と同じ。読み取り専用、`EditorInspect` が必要 |
+| `ListChooserInputTypes` | `ColumnIndex` が指す列にバインドできる入力バインディング型をすべて返す（エディタのバインディングウィジェットが提示する候補と同じ）。結果の `ClassPath` を `SetChooserColumnInput` に渡す。上記 2 つの一覧と異なり候補が指定した列に完全に依存するため、`AssetPath` と `ColumnIndex` の両方が必須。主入力を持たない列（エディタからも author がバインドできない列）は拒否ではなく空の一覧として報告される。`Admission` / 件数 / 並び順の契約は同じ。読み取り専用、`EditorInspect` が必要 |
+| `AddChooserColumn`（`ChooserTableEdit` が必要） | 指定した型の列を 1 つ追加し、収まったインデックス・追加後の件数・新しいフィンガープリントを報告する。新しい列には既存の行ごとに 1 つのセルが与えられるため、テーブルは既存の全行に対して引き続き回答できる。`ColumnType` は `ListChooserColumnTypes` が報告する型のいずれかである必要がある。`InsertAt` で位置を指定し、省略すると末尾に追加する |
+| `RemoveChooserColumn`（`ChooserTableEdit` が必要） | 列 1 つを、それが保持するセルごと削除する。各列は自身のセルのみを保持するため、他の列は影響を受けない |
+| `MoveChooserColumn`（`ChooserTableEdit` が必要） | 列 1 つを、保持する全セルごと `ToIndex` の位置へ移動する。`ToIndex` は移動**後**に列が占める位置であり、移動前の位置ではない。自身の現在のインデックスへの移動は成功する no-op |
+| `SetChooserColumnInput`（`ChooserTableEdit` が必要） | 列の入力バインディング（その列が何を参照するかを決めるパラメータ）を設定する。`InputType` / `InputValue` は `ListChooserColumns` が列について報告した内容をそのまま受け取る。`InputValue` を null にすると指定型自身のデフォルトが書き込まれ、これはエディタでパラメータ型を選んだ直後の未バインド状態と同じ。`InputType` は**その列について** `ListChooserInputTypes` が報告する型のいずれかである必要があり、列が値として読めないファミリの型は `InvalidParams` で拒否される。入力バインディングを一切持たない列に対しては、あらゆる型が同様に拒否される |
+| `AddChooserTableRow`（`ChooserTableEdit` が必要） | 行を 1 つ追加し、収まったインデックスを報告する。`InsertAt` で位置を指定し、省略すると末尾に追加する。`ResultType` / `ResultValue` は読み取り系コマンドが報告するのと同じ形で新しい行に結果オブジェクトを与えるため、あるテーブルから読んだ行を別のテーブルへ追加できる。両方省略すると結果が空の行を追加する |
+| `RemoveChooserTableRows`（`ChooserTableEdit` が必要） | 1 つ以上の行を単一の変更として削除する。`RowIndices` は削除対象の行を現在のインデックスで列挙する。順序は問わないが、各エントリは相異なりかつ範囲内である必要があり、そうでなければリクエスト全体が拒否される。複数行の削除は 1 つの変更なので、1 回の Undo ですべて復元される |
+| `MoveChooserTableRow`（`ChooserTableEdit` が必要） | 行 1 つを、その結果・無効フラグ・全列のセルごと `ToIndex` の位置へ移動する。`ToIndex` の「移動後の位置」という意味は `MoveChooserColumn` と同じ |
+| `SetChooserTableCell`（`ChooserTableEdit` が必要） | セルを 1 つ書き込む（ある行がある列に持つ値）。行ごとのデータを保持しない列、またはセルがプレーンな値として往復できない列（読み取りが `bCellValueUnavailable` を立てて報告する列）は、書き込まれず拒否される |
+| `SetChooserTableResult`（`ChooserTableEdit` が必要） | 1 行が選択する結果オブジェクトを差し替える。`ResultType` を省略または空にすると、再構築ではなく行の結果を空にする（エディタの結果ピッカーが行を戻す状態と同じ）。この場合 `ResultValue` は省略または null である必要がある。行が保持していたネスト chooser は新しい結果の書き込み前にテーブルから登録解除され、書き込まれるネスト chooser は書き込み後に登録されるため、所有権は差し替えに追随する |
+| `SetChooserFallbackResult`（`ChooserTableEdit` が必要） | どの行にもマッチしなかったときにテーブルが返す結果（エディタの Fallback Result）を差し替える。フォールバックは行ではなくテーブルに属するため、このコマンドはインデックスを取らない。`ResultType` 省略による空化とネスト chooser の所有権の扱いは `SetChooserTableResult` と同じ |
+| `SetChooserRowDisabled`（`ChooserTableEdit` が必要） | 行 1 つを評価対象から外す / 戻す。行を移動せず、結果も変更せず、セルにも一切触れない。フィンガープリントも変化しない（行の無効フラグはフィンガープリントが記述する対象ではないため）。列・結果・入力バインディングの型を一切指定しないコマンドのため、必要なのは `ChooserTableEdit` のみ |
+| `CompileChooserTable`（`ChooserTableEdit` が必要） | テーブルを明示的にコンパイルする。アセット保存時にコンパイルは強制されないため、本ドメインの他コマンドで行った編集は、何かが再コンパイルを要求するまで列の入力バインディングが古いオフセットに解決されたまま残ることがある。このコマンドはそのためにある。テーブルに既にある列・結果・バインディングの型を出自の観点で再判定することはなく、テーブルが保持する全入力バインディングを、本ドメインの全書き込みが使うのと同じバインディングチェーン解決器に通すだけ。そのうち 1 つでも評価パスが呼び出す関数へ解決される場合、追加で `ChooserFunctionBindingEdit` が必要になる |
 
 ---
 

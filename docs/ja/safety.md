@@ -312,6 +312,19 @@ Engine 本体の `UAF` プラグインが必要で、無効な場合は以下の
 | `PoseSearchAssetEdit` 🧩 | PoseSearch Schema アセットへのチャンネル・互換 Skeleton の追加・削除・並べ替え・設定、PoseSearch Database アセットへのアニメーション追加・削除、データベーススキーマ・アニメーション設定・Normalization Set 所属の変更、データベースインデックスビルドの開始（`PoseSearch` プラグイン必須）。`SetPoseSearchSchemaChannelProperty` で構造体・コンテナを書き込むにはさらに `PropertyStructuredEdit` が必要。参照を内包する型は一律拒否され、これを解除できる Capability は存在しない |
 | `MotionMatchingCustomTypeEdit` 🧩 | チャンネルクラス、または書き込み対象のチャンネルプロパティを宣言するクラスが `/Script/PoseSearch` 以外（プロジェクトモジュール、プラグインモジュール、Blueprint 生成クラス）の場合、`PoseSearchAssetEdit` に加えて必要。1 つの名前が両方の面をカバーするのは意図的 — プロジェクト自身のチャンネルは自分自身のプロパティを宣言するため、プロパティ面に別の Capability を要求する理由がない。そのようなクラスが指定された場合の `AddPoseSearchSchemaChannel` と、対象のチャンネルまたは書き込み対象プロパティを宣言するクラスがそれに該当する場合の `RemovePoseSearchSchemaChannel` / `MovePoseSearchSchemaChannel` / `SetPoseSearchSchemaChannelProperty` / `StartPoseSearchDatabaseIndexBuild` をゲートする — 削除はそれが持ち去るネストしたサブツリー全体について、移動は移動対象のチャンネル自身のクラスのみについて、インデックスビルドの開始は対象 Schema が保持する全チャンネルクラスについて判定される。Schema に既に置かれているプロパティへの書き込みにも必要 — これは既存の制限の維持ではなく新規の制限であり、この Capability が存在する以前は、プロジェクト定義チャンネルのプロパティは宣言クラスに関する Capability チェックなしに書き込めていた。Blueprint 生成のチャンネルクラスは、何を保有していても拒否される — このドメインが解禁できる種類のカスタム型ではない。リクエストで指定された型（または対象から見つかった型）から判定されるため、いかなるハンドラの宣言済み `RequiredCapabilities` にも現れない。このドメインには「危険な型」用の対になる Capability は存在しない — チャンネルクラスの `Finalize` / `BuildQuery` / `IndexAsset` はそのクラスの作者が書いたコードであり、リクエストが持ち込むものではない。[コマンド — UAIP.Editor.MotionMatching](commands.md#uaipeditormotionmatching-) を参照 |
 
+#### Chooser テーブル編集
+
+chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であり、`UAIP.Editor.Chooser` の読み取り系 8 コマンドはそれ以外を必要としない。書き込みはすべて `ChooserTableEdit` を必要とする。残り 3 つはリクエストが実際に何を指定したかから呼び出しごとに判定されるため、いかなるハンドラの宣言済み `RequiredCapabilities` にも現れない。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `ChooserTableEdit` 🧩 | `UAIP.Editor.Chooser` の全書き込み — 行・列の追加/削除/移動、セルの書き込み、行の結果またはテーブルのフォールバック結果の差し替え、列の入力バインディングの設定、行の無効化、テーブルのコンパイル（`Chooser` プラグインが必要）。書き込みはプレイセッション実行中および `/Game/` 外のアセットに対して拒否される |
+| `ChooserCustomTypeEdit` 🧩 | 列の型・結果の型・入力バインディングの型が、本ドメインが標準で提供するモジュール群の外から来ている場合、`ChooserTableEdit` に加えて必要。書き込む型だけでなく、すでにテーブルに入っている型についても判定されるため、そのような型を保持しているものを削除・移動する場合にも必要になる。`SetChooserTableCell` は、リクエストがその列の型を変更するかどうかに関わらず列自身の型について判定する。`ListChooserColumnTypes` / `ListChooserResultTypes` / `ListChooserInputTypes` が、型ごとに `Admission` として「その型を指定した呼び出しにこれが必要かどうか」を報告する |
+| `ChooserReferenceEdit` 🧩 | オブジェクト参照を保持できる型に対して値を指定する場合、`ChooserTableEdit` に加えて必要 — そのような列のセル、そのような結果型への `ResultValue`、そのようなバインディング型への `InputValue` |
+| `ChooserFunctionBindingEdit` 🧩 | プロパティチェーンが、プレーンなプロパティではなく評価パスが呼び出す関数へ解決される場合、`ChooserTableEdit` に加えて必要。`CompileChooserTable` は、テーブルが既に保持するバインディングのいずれかがそのように解決される場合に必要となる（コンパイルは全バインディングを同じ解決器に通すため）。chooser エディタが関数を提示しないバインディング経由で関数に到達するチェーンは、Capability では解除できない `NotAllowed` として拒否される |
+
+[コマンド — UAIP.Editor.Chooser](commands.md#uaipeditorchooser-) を参照。
+
 #### AnimNotify 編集
 
 | Capability | 有効になる操作 |

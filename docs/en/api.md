@@ -568,7 +568,7 @@ python docs/scripts/generate_command_schema.py `
 
 Add `--no-auth` if launched with `-uaip-http-no-auth`. Add `--split-by-provider` for one JSON per provider under `by-provider/`.
 
-Expected runtime: 10–60 s for ~730 commands depending on optional plugin set.
+Runtime scales with the number of registered commands — up to ~1640 with every optional plugin enabled, fewer without.
 
 ### 9.3 Output shape
 
