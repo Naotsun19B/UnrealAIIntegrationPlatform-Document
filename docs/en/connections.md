@@ -89,6 +89,8 @@ What the installer does:
 
 Once finished, the bridge lives at `<UAIP-parent>/UAIPMCPBridge/` (sibling to `UnrealAIIntegrationPlatform/`) and the venv Python is at `<bridge-root>/.venv/Scripts/python.exe` (Windows) or `<bridge-root>/.venv/bin/python` (macOS / Linux).
 
+> **Updating an existing install by hand?** Step 6 — adding newly introduced `config.json` keys and migrating values a previous installer left behind — only runs through the installer script. If you update the bridge by manually copying the new files over an existing deployment instead of re-running `install.ps1` / `install.sh`, `config.json` is left exactly as it was: new keys are not added and nothing is migrated. Re-run the installer (safe to run repeatedly — see [Step 2](#step-2--run-the-installer) above) to bring `config.json` up to date, or diff it against `config.json.example` by hand.
+
 ### Step 3 — Pick an MCP server key
 
 The server key is how this bridge instance is identified in your AI client's config. The installer chooses a sensible default and prints it; the value below is for reference if you need to pick a different one.
@@ -148,7 +150,7 @@ Full installer / paths reference: `<bridge-root>/install/SETUP.md` (deployed alo
   "command_timeout_seconds":      180,
   "log_level":                    "INFO",
   "enable_scenario":              true,
-  "inline_artifacts": { "image": false, "json": true, "text": true }
+  "inline_artifacts": { "image": false, "json": false, "text": false }
 }
 ```
 
@@ -200,6 +202,7 @@ uaip_get_editor_status()
 | `IsAttachOnly` | Whether this bridge is configured for guest mode (`attach_only` in `config.json`) |
 | `RecommendedAction` | The action the caller should actually take |
 | `Lock` | A diagnostic snapshot of the on-disk `mcp_proxy.lock` file for this project — see [Lock diagnostics](#lock-diagnostics) below |
+| `Config` | A diagnostic snapshot of the `config.json` load that produced the bridge's current configuration — see [Config diagnostics](#config-diagnostics) below |
 
 For a guest-mode bridge, or an ordinary bridge that happens to be `ATTACHED` to someone else's editor, `RecommendedAction` never promises an automatic launch. Where an owner-mode bridge would say `RETRY: ... The next tool call launches a fresh one automatically`, these report `CHECK CONFIGURATION: ...` instead once that editor stops answering — because launching a replacement is exactly what they must not do.
 
@@ -241,6 +244,30 @@ Typical uses:
 
 - Before issuing a lifecycle command such as `UAIP.Editor.Workspace.ShutdownEditor` or `UAIP.Editor.Workspace.RestartEditor`, to confirm the editor is actually in a state where that makes sense.
 - After a command call returns a `Timeout` error, to check whether the editor is still working on it before deciding whether to retry.
+
+#### Config diagnostics
+
+`Data.Config` reports what the bridge actually read from `config.json` at the load that produced its current configuration — either the load at process startup, or the most recent `uaip_reload_config` call, whichever is more recent:
+
+```json
+"Config": {
+  "Path": "F:/Projects/MyProject/Plugins/UAIPMCPBridge/config.json",
+  "Status": "Loaded",
+  "KeyCount": 7,
+  "Keys": ["editor_path", "uproject_path", "http_port", "command_timeout_seconds", "log_level", "enable_scenario", "inline_artifacts"],
+  "LastReloadError": ""
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `Path` | The `config.json` path the bridge attempted to read. |
+| `Status` | `"Loaded"` when the file existed and was parsed, `"Absent"` when it did not exist at that path (the bridge runs on defaults and environment variables only). There is no `"Unreadable"` value here — a file that exists but cannot be parsed makes the bridge refuse to start in the first place (see [MCP setup troubleshooting](#mcp-setup-troubleshooting) below), so that state never reaches a running session to report. |
+| `KeyCount` | How many top-level keys `config.json` actually contained. |
+| `Keys` | The **names** of those keys only — never their values. This block is a diagnostic surface, not a way to read secrets like `role_token` back out of the running bridge. |
+| `LastReloadError` | Empty when the most recent `uaip_reload_config` call (if any) succeeded, or when none has been made yet. Non-empty when the last reload attempt failed to parse its `config.json` — the message names the file and the reason, and the bridge kept running on the configuration it already had (a failed reload never tears down the current session). See [Reload config without restarting the MCP client](#reload-config-without-restarting-the-mcp-client) above. |
+
+`RecommendedAction` (above) also gets an extra sentence appended when `Config` has something worth flagging — a `Status` of `"Absent"`, or a non-empty `LastReloadError` — so a caller that only ever parses `RecommendedAction` still learns about it without having to read `Data.Config` on every call.
 
 ### Long-running commands and the 120 s async timeout
 
@@ -295,6 +322,7 @@ See [Configuration → Reloading config at runtime](config.md#reloading-config-a
 | Python error on startup | Missing dependencies in venv | Re-run the installer (the venv is recreated) |
 | `PolicyViolation` on a command | Capability not granted, or SafetyPolicy flag off | See [Safety & Capabilities](safety.md) |
 | `CommandNotFound` | Wrong command name | `uaip_list_commands(ProviderPrefix="UAIP.Core")` |
+| Bridge does not start at all (no tools ever become available) | `config.json` exists but cannot be parsed (bad JSON, wrong encoding, over the 1 MiB size limit) — the bridge refuses to start on a config nobody chose rather than silently falling back to defaults, and exits before any MCP tool call is possible | Check your MCP client's **server log**, not the AI's context — the bridge prints the exact path and reason to stderr and exits with code 2 before it can answer any tool call, so there is no `uaip_get_editor_status` response to read this from |
 
 For broader diagnostics, see [Troubleshooting](troubleshooting.md).
 

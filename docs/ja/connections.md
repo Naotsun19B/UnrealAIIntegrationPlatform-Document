@@ -89,6 +89,8 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 
 完了後、Bridge は `<UAIP-parent>/UAIPMCPBridge/`（`UnrealAIIntegrationPlatform/` と同階層）に配置され、venv Python は `<bridge-root>/.venv/Scripts/python.exe`（Windows）または `<bridge-root>/.venv/bin/python`（macOS / Linux）に作成されます。
 
+> **既存インストールを手動で更新する場合の注意**：ステップ 6（新しく追加された `config.json` キーの補完と、旧インストーラが残した値の新既定値への移行）はインストーラスクリプト経由でのみ実行されます。`install.ps1` / `install.sh` を再実行せず、新しいファイルを既存のデプロイ先へ手動でコピーして更新した場合、`config.json` はそのまま手つかずになります — 新規キーは追加されず、移行も走りません。`config.json` を最新の状態にするには、インストーラを再実行する（繰り返し実行しても安全です。上の「[ステップ 2](#ステップ-2--インストーラを実行)」を参照）か、`config.json.example` と手動で見比べてください。
+
 ### ステップ 3 — MCP サーバーキーを決定
 
 サーバーキーは AI クライアント設定内で本 Bridge インスタンスを識別するための名前です。インストーラが既定値を選んで表示するので、別の値が必要な場合のみ参照してください。
@@ -148,7 +150,7 @@ AI クライアント上での表示にしか影響しないので、ユニー�
   "command_timeout_seconds":      180,
   "log_level":                    "INFO",
   "enable_scenario":              true,
-  "inline_artifacts": { "image": false, "json": true, "text": true }
+  "inline_artifacts": { "image": false, "json": false, "text": false }
 }
 ```
 
@@ -200,6 +202,7 @@ uaip_get_editor_status()
 | `IsAttachOnly` | この Bridge がゲストモード（`config.json` の `attach_only`）で設定されているか |
 | `RecommendedAction` | 呼び出し側が実際に取るべき行動 |
 | `Lock` | このプロジェクトのディスク上の `mcp_proxy.lock` ファイルの診断スナップショット。詳細は下記「[ロック診断](#ロック診断)」を参照 |
+| `Config` | Bridge の現在の設定を生み出した `config.json` 読み込みの診断スナップショット。詳細は下記「[Config 診断](#config-診断)」を参照 |
 
 ゲストモードの Bridge、および他人のエディタへたまたま `ATTACHED` になっている通常の Bridge では、`RecommendedAction` が自動起動を約束することは決してありません。オーナーモードの Bridge なら `RETRY: ... The next tool call launches a fresh one automatically` と返す場面でも、これらはそのエディタが応答しなくなった時点で代わりに `CHECK CONFIGURATION: ...` を返します — 代わりのエディタを起動することこそが、してはならない動作だからです。
 
@@ -241,6 +244,30 @@ uaip_get_editor_status()
 
 - `UAIP.Editor.Workspace.ShutdownEditor` や `UAIP.Editor.Workspace.RestartEditor` のようなライフサイクルコマンドを発行する前に、実際にそれが意味を持つ状態かを確認する。
 - コマンド呼び出しが `Timeout` エラーを返した後、再実行するかどうかを判断する前にエディタがまだ処理中かを確認する。
+
+#### Config 診断
+
+`Data.Config` は、Bridge の現在の設定を生み出した読み込み — プロセス起動時の読み込み、または直近の `uaip_reload_config` 呼び出しのどちらか新しい方 — で `config.json` から実際に読み取った内容を報告します：
+
+```json
+"Config": {
+  "Path": "F:/Projects/MyProject/Plugins/UAIPMCPBridge/config.json",
+  "Status": "Loaded",
+  "KeyCount": 7,
+  "Keys": ["editor_path", "uproject_path", "http_port", "command_timeout_seconds", "log_level", "enable_scenario", "inline_artifacts"],
+  "LastReloadError": ""
+}
+```
+
+| フィールド | 意味 |
+|---|---|
+| `Path` | Bridge が読み取りを試みた `config.json` のパス。 |
+| `Status` | ファイルが存在し解析できた場合は `"Loaded"`、そのパスに存在しなかった場合は `"Absent"`（この場合 Bridge は既定値と環境変数のみで動作する）。ここに `"Unreadable"` は存在しない — ファイルが存在するが解析できない場合、Bridge はそもそも起動を拒否する（下記「[MCP セットアップのトラブルシューティング](#mcp-セットアップのトラブルシューティング)」を参照）ため、その状態が稼働中のセッションに報告として届くことはない。 |
+| `KeyCount` | `config.json` に実際に含まれていたトップレベルキーの数。 |
+| `Keys` | それらキーの**名前のみ** — 値は一切含まれない。この項目は診断用のサーフェスであり、稼働中の Bridge から `role_token` のようなシークレットを読み出す手段ではない。 |
+| `LastReloadError` | 直近の `uaip_reload_config` 呼び出し（あれば）が成功した場合、またはまだ一度も呼ばれていない場合は空文字列。直近のリロード試行が `config.json` の解析に失敗した場合は非空になり、メッセージにファイルと理由が記される — このとき Bridge は既に持っていた設定のまま動作を続ける（リロード失敗が現在のセッションを止めることはない）。上記「[MCP クライアントを再起動せずに config をリロード](#mcp-クライアントを再起動せずに-config-をリロード)」を参照。 |
+
+上記の `RecommendedAction` にも、`Config` に報告すべき事項がある場合 — `Status` が `"Absent"` か、`LastReloadError` が非空 — は追加の一文が付与されます。`RecommendedAction` しか読まない呼び出し側でも、毎回 `Data.Config` を読まなくてもこの事実に気づける仕組みです。
 
 ### 長時間コマンドと 120 秒の非同期タイムアウト
 
@@ -295,6 +322,7 @@ uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\
 | Python 起動エラー | venv 内の依存不足 | インストーラを再実行（venv が再作成される） |
 | `PolicyViolation` が返る | Capability 未付与 / SafetyPolicy フラグ OFF | [Safety & Capabilities](safety.md) を参照 |
 | `CommandNotFound` | コマンド名の間違い | `uaip_list_commands(ProviderPrefix="UAIP.Core")` で確認 |
+| Bridge がそもそも起動しない（ツールが一つも使えるようにならない） | `config.json` は存在するが解析できない（JSON が壊れている・エンコーディングが不正・1 MiB のサイズ上限超過）— 誰も選んでいない既定値へ黙ってフォールバックする代わりに、Bridge は起動そのものを拒否し、どの MCP ツール呼び出しも可能になる前に終了する | AI のコンテキストではなく **MCP クライアントのサーバーログ** を確認する — Bridge は正確なパスと理由を stderr に出力して終了コード 2 で終了する。ツール呼び出しに一度も応答しないため `uaip_get_editor_status` でこれを読み取ることはできない |
 
 より広範な診断は [トラブルシューティング](troubleshooting.md) を参照してください。
 
