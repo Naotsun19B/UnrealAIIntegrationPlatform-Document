@@ -56,21 +56,30 @@ Edit `~/.claude.json` and add the same `mcpServers` block at the top level. Use 
 `<UAIP-parent>/UAIPMCPBridge/install/guides/` ships with Markdown documents that teach Claude how to use UAIP idiomatically (scenarios, capabilities, artifacts, graph editing, safety). Without them, Claude figures it out per-conversation, which wastes turns.
 
 ```powershell
-# Copy all guide files to your global Claude rules folder
-mkdir -Force ~/.claude/rules/uaip
-cp Plugins/UAIPMCPBridge/install/guides/*.md ~/.claude/rules/uaip/
+# Copy all guide files to ~/.claude/uaip/guides/ (outside ~/.claude/rules/)
+mkdir -Force ~/.claude/uaip/guides
+cp Plugins/UAIPMCPBridge/install/guides/*.md ~/.claude/uaip/guides/
 ```
 
-Then reference them from `~/.claude/CLAUDE.md` so they load on every conversation:
+Then import **only the index** from `~/.claude/CLAUDE.md`:
 
 ```markdown
-@rules/uaip/usage.md
-@rules/uaip/scenario.md
-@rules/uaip/safety-and-capabilities.md
-@rules/uaip/command-discovery.md
-@rules/uaip/artifacts.md
-@rules/uaip/graph-editing.md
+@uaip/guides/index.md
 ```
+
+`index.md` points Claude at the guide a task needs, and Claude reads that guide from `~/.claude/uaip/guides/` only when it needs it. Do not import every guide, and do not put them anywhere under `~/.claude/rules/` — Claude Code loads every `.md` there into every session, whatever `CLAUDE.md` imports. Together the guides are over 150k characters, enough to trigger Claude Code's instruction-size warning and to crowd every conversation, including ones that never touch UAIP.
+
+After upgrading the bridge, check that the deployed copy is current with `python Plugins/UAIPMCPBridge/install/check_guides.py` (add `--apply` to update it; see `install/SETUP.md` Step 3a).
+
+### Upgrading from the old location
+
+Earlier versions of this page had you copy the guides into `~/.claude/rules/uaip/` and import several of them. To move them:
+
+```powershell
+python Plugins/UAIPMCPBridge/install/check_guides.py --apply --migrate
+```
+
+This deploys the guides to `~/.claude/uaip/guides/` and, only once that copy is current, deletes the guide files from `~/.claude/rules/uaip/` (and the folder, if that empties it). Files it does not recognize as UAIP guides are kept and listed. Then replace the `@rules/uaip/...` lines in `~/.claude/CLAUDE.md` with the single `@uaip/guides/index.md` line, and start a new session.
 
 ---
 
@@ -100,6 +109,7 @@ Expected response shape:
 
 | Symptom | Fix |
 |---|---|
+| Startup warns that instruction files exceed the size limit, naming files under `.claude\rules\uaip\` | The guides are still in the old location. See [Upgrading from the old location](#upgrading-from-the-old-location) |
 | `claude mcp list` shows the server as failed | Run `python <path-to>/thin_proxy.py` directly — the error appears in stderr |
 | `TypeError: ...` from `thin_proxy.py` startup | Wrong Python version. Confirm `python --version` is 3.10+ |
 | `HealthCheck` works once, then later calls hang | The editor crashed and the bridge is reconnecting. Wait 60 s or check `Saved/Crashes/` |

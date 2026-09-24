@@ -46,18 +46,40 @@ After saving, **Cursor → Settings → Cursor Settings → Features → MCP** s
 
 ---
 
-## AI usage guides (.cursor/rules)
+## AI usage guides
 
-Copy the guide files to `.cursor/rules/` and rename them with the `.mdc` extension:
+Copy the guide files, unchanged, to `.cursor/uaip/guides/` — **not** into `.cursor/rules/`:
 
 ```powershell
-mkdir -Force .cursor/rules
-Get-ChildItem Plugins/UAIPMCPBridge/install/guides/*.md | ForEach-Object {
-    Copy-Item $_.FullName -Destination ".cursor/rules/$($_.BaseName).mdc"
-}
+mkdir -Force .cursor/uaip/guides
+cp Plugins/UAIPMCPBridge/install/guides/*.md .cursor/uaip/guides/
 ```
 
-The `.mdc` extension is required for Cursor to load them as rules. Cursor reads `.mdc` files in this folder automatically per project — no manual `@include` needed.
+Then create a single rule, `.cursor/rules/uaip.mdc`, that points at them:
+
+```markdown
+---
+description: UAIP — driving and observing the Unreal Editor through the uaip_* MCP tools
+alwaysApply: true
+---
+The UAIP usage guides are in `.cursor/uaip/guides/` at the project root.
+Before the first uaip_* tool call in a conversation, read `.cursor/uaip/guides/index.md`,
+then open only the guides it points to for the task at hand. Do not read every guide.
+```
+
+Why not `.cursor/rules/`: a rule with `alwaysApply: true` is included in every chat, so turning every guide into a rule puts the whole guide set — over 150k characters — into every conversation. This pointer costs a few lines, and the guides are read only when a task needs them. Write the path as plain text: an `@file` reference inside a rule inlines the referenced file.
+
+After upgrading the bridge, check the copy with `python Plugins/UAIPMCPBridge/install/check_guides.py --deployed .cursor/uaip/guides` (add `--apply` to update it).
+
+### Upgrading from the old layout
+
+Earlier versions of this page had you copy every guide into `.cursor/rules/` as a `.mdc` file. Remove those before adding `uaip.mdc`:
+
+```powershell
+Get-ChildItem Plugins/UAIPMCPBridge/install/guides/*.md | ForEach-Object {
+    Remove-Item -ErrorAction SilentlyContinue ".cursor/rules/$($_.BaseName).mdc"
+}
+```
 
 ---
 
@@ -76,7 +98,7 @@ The `.mdc` extension is required for Cursor to load them as rules. Cursor reads 
 |---|---|
 | Server doesn't appear in Settings → MCP | JSON syntax error or wrong path. Validate JSON, restart Cursor |
 | Server appears but "Failed to start" | Click the server name to see stderr. Common: wrong Python path or missing `mcp` package |
-| Tool calls succeed but rules aren't applied | `.mdc` extension missing on guide files. Rename them and restart |
+| Tool calls succeed but the AI ignores the guides | `.cursor/rules/uaip.mdc` is missing, lacks the `.mdc` extension, or lacks `alwaysApply: true`. Fix it and restart |
 | Editor doesn't launch on first call | Verify `UAIP_UE_EDITOR_PATH` and `UAIP_UPROJECT_PATH` in the `env` block |
 
 See [Troubleshooting](../troubleshooting.md) for the full error code reference.
