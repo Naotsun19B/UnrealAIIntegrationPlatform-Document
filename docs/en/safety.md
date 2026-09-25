@@ -428,7 +428,8 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | Capability | What it unlocks |
 |---|---|
 | `GameplayTagEdit` | Add, remove, and rename tags in project tag tables |
-| `GameplayTagRestrictedEdit` | Modify restricted tag lists |
+| `GameplayTagRestrictedEdit` | Add, remove, or rename a Restricted tag (`AddRestrictedGameplayTag`, and `RemoveGameplayTag` / `RenameGameplayTag` — native and Toolset bridge — whenever the tag acted on, or one of its descendants for a forced removal or a rename that carries children, is Restricted) |
+| `GameplayTagExternalSourceEdit` | Required in addition to `GameplayTagEdit` / `GameplayTagRestrictedEdit` when a tag add, remove, or rename would write to an INI source outside the project's own `Config/` directory — an engine plugin, a Fab / third-party plugin, or the project's own game plugin or Game Feature plugin. Gates `AddGameplayTag`, `AddRestrictedGameplayTag`, `RemoveGameplayTag`, `RenameGameplayTag`, and the Toolset `AddTag` / `RemoveTag` / `RenameTag` bridges. A Restricted source reached through a plugin's search path whose write destination does not match where it is actually read from is refused with `NotAllowed` regardless of this capability — the write would land somewhere other than where the source is read from, so no grant lifts that refusal. See [Commands — UAIP.Editor.GameplayTags](commands.md#uaipeditorgameplaytags) |
 | `GameFeatureCreate` 🧩 | Create and scaffold GameFeature Plugin definitions (requires `GameFeatures` + `GameFeaturesEditor` plugins) |
 | `GameplayCueMutation` 🧩 | Add / remove GameplayCue tags, create GameplayCueNotify assets, execute Cues on actors (requires `GameplayAbilities` plugin) |
 | `EnhancedInputEdit` | Edit Input Action / Input Mapping Context assets — add / remove / modify mappings, modifiers, and triggers |

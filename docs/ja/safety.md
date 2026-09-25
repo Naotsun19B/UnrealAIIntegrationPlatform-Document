@@ -428,7 +428,8 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | Capability | 有効になる操作 |
 |---|---|
 | `GameplayTagEdit` | プロジェクトタグテーブルへのタグ追加・削除・リネーム |
-| `GameplayTagRestrictedEdit` | Restricted タグリストの修正 |
+| `GameplayTagRestrictedEdit` | Restricted タグの追加・削除・リネーム（`AddRestrictedGameplayTag`、および `RemoveGameplayTag` / `RenameGameplayTag`（ネイティブと Toolset ブリッジの両方）で、対象タグ、または強制削除・子を含むリネームではその子孫のいずれかが Restricted の場合） |
+| `GameplayTagExternalSourceEdit` | タグの追加・削除・リネームが、プロジェクト自身の `Config/` の外にある INI 置き場（エンジンのプラグイン、Fab やサードパーティのプラグイン、プロジェクト自身のゲームプラグインや Game Feature プラグイン）へ書き込む場合に、`GameplayTagEdit` / `GameplayTagRestrictedEdit` に加えて必要。`AddGameplayTag`・`AddRestrictedGameplayTag`・`RemoveGameplayTag`・`RenameGameplayTag`、および Toolset の `AddTag` / `RemoveTag` / `RenameTag` をゲートする。プラグインの検索パス経由で見つかる Restricted な置き場で、書き込み先が実際の読み込み元と一致しないものは、この Capability の有無に関係なく `NotAllowed` で拒否される — 書き込み先が読み込み元と異なる場所になってしまうため、付与しても解消しない。[コマンド — UAIP.Editor.GameplayTags](commands.md#uaipeditorgameplaytags) を参照 |
 | `GameFeatureCreate` 🧩 | GameFeature Plugin 定義の作成・スキャフォールディング（`GameFeatures` + `GameFeaturesEditor` プラグイン必須） |
 | `GameplayCueMutation` 🧩 | GameplayCue タグの追加・削除、GameplayCueNotify アセットの作成、アクターへの Cue 実行（`GameplayAbilities` プラグイン必須） |
 | `EnhancedInputEdit` | Input Action / Input Mapping Context アセットの編集 — マッピング・Modifier・Trigger の追加・削除・変更 |

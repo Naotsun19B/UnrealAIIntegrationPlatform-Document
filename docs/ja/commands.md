@@ -939,8 +939,16 @@ Material グラフ編集とパラメータ管理。
 | `Toolset.Editor.GameplayTags.GetTagInfo` | 単一タグの詳細 — Comment・Source・Children |
 | `Toolset.Editor.GameplayTags.FindReferencersByTag` | タグを参照するアセットを検索（最大 256 パス） |
 | `Toolset.Editor.GameplayTags.AddTag` | 既存の `.ini` タグソースにタグを追加（`GameplayTagEdit` 必要） |
-| `Toolset.Editor.GameplayTags.RemoveTag` | タグをプロジェクトタグテーブルから削除。アセット参照は更新**されない**（`GameplayTagEdit` 必要） |
-| `Toolset.Editor.GameplayTags.RenameTag` | INI 上のみのリネーム。参照更新もリダイレクト登録も行わないため、通常はネイティブの `RenameGameplayTag` を推奨（`GameplayTagEdit` 必要） |
+| `Toolset.Editor.GameplayTags.RemoveTag` | タグをプロジェクトタグテーブルから削除。アセット参照は更新**されない**（`GameplayTagEdit` 必要。Restricted タグの場合は `GameplayTagRestrictedEdit` も必要） |
+| `Toolset.Editor.GameplayTags.RenameTag` | INI 上のみのリネーム。参照更新もリダイレクト登録も行わないため、通常はネイティブの `RenameGameplayTag` を推奨（`GameplayTagEdit` 必要。Restricted タグの場合は `GameplayTagRestrictedEdit` も必要） |
+
+> **Note — プロジェクト自身の `Config/` の外への書き込みには `GameplayTagExternalSourceEdit` が必要です**: `AddGameplayTag` / `AddRestrictedGameplayTag` / `RemoveGameplayTag` / `RenameGameplayTag` と、Toolset の `AddTag` / `RemoveTag` / `RenameTag` は、実際に書き込む場所を何も変更する前に解決します。書き込み先がプロジェクト自身の `Config/` の外 — エンジンのプラグイン、Fab やサードパーティのプラグイン、**プロジェクト自身のゲームプラグインや Game Feature プラグインを含む** — の場合、`GameplayTagEdit` / `GameplayTagRestrictedEdit` に加えて DefaultDenied の `GameplayTagExternalSourceEdit` が必要になり、無ければ `CapabilityNotAvailable` で拒否されその名前が示されます。⚠️ **挙動の変化**: プラグインが持つ置き場へのタグの追加・リネームは、これまで `GameplayTagEdit` だけで行えましたが、`GameplayTagExternalSourceEdit` も必要になりました。プラグインの検索パス経由で見つかる Restricted な置き場で、書き込み先が実際の読み込み元と一致しないものは、代わりに `NotAllowed` で無条件に拒否されます — 書き込み先が読み込み元と異なる場所になってしまうため、Capability を付与しても解消しません。境界の判定はパスの文字列だけで行われ、`Config/` の中にシンボリックリンクやジャンクションで外部を差し込んでいても、内側として扱われます。詳細は [Safety & Capabilities — Gameplay systems](safety.md#gameplay-systems)。
+>
+> **Note — Restricted タグの削除・リネームには `GameplayTagRestrictedEdit` が必要です**: Restricted タグの追加にはこれまでもこの Capability が必要でしたが、`RemoveGameplayTag` / `RenameGameplayTag` と Toolset の `RemoveTag` / `RenameTag` も、削除・リネームの対象タグ（強制削除や子を含むリネームの場合はその子孫のいずれか）が Restricted であれば同様に必要になりました。`GameplayTagEdit` だけを保有するセッションは `CapabilityNotAvailable` で拒否され、不足している Capability 名が示されます。
+>
+> **Note — Restricted タグのリネームでは旧タグが残ります**: これは UAIP の仕様ではなくエンジン側の制限です。エンジンのリネーム実装は、新しいタグを旧タグのソースへ追加する一方で旧タグ自体は残し、リダイレクトの登録はプロジェクトの既定タグファイルへ書き込みます（Restricted な置き場へは書きません）。`RenameGameplayTag` と Toolset の `RenameTag` はこの挙動をそのまま通します。上記の Capability・置き場の確認は、エンジンが実際に書き込む対象（旧タグの置き場と、リダイレクト用の既定の置き場の両方）に対して行われます。
+>
+> **Note — `AddGameplayTag` / Toolset `AddTag` は Restricted な置き場の名前を先に拒否します**: Restricted な置き場の名前を制限なしの追加コマンドに渡すと、Capability の確認より前に `InvalidParams` で拒否され、代わりに `AddRestrictedGameplayTag` を使うよう案内が出ます。逆に、制限なしの置き場の名前を `AddRestrictedGameplayTag` に渡した場合も同様に拒否されます。
 
 ---
 
