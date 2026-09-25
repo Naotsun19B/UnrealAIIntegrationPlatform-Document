@@ -13,6 +13,8 @@ UAIP supports four transport options. Choose the one that fits your integration 
 
 > **Demo limitation**: the demo binary supports the **MCP transport only**. HTTP, WebSocket, and CLI require the Pro version.
 
+> **Using Claude Code and don't want to set up an MCP server?** The [Claude Code Plugin](claude-code-plugin.md) is a separate, MCP-free way to reach UAIP from Claude Code: it talks the HTTP API below directly, through a small number of pre-approved scripts. It's an alternative to the MCP Bridge section that follows, not something you run alongside it for the same editor session.
+
 ---
 
 ## Transport comparison
@@ -41,6 +43,8 @@ The MCP Bridge is the recommended transport for AI client integration. A thin Py
 If you only want the shortest path to a working setup, see [Quickstart](quickstart.md).
 
 > The MCP Bridge is distributed **separately from the plugin** as `UAIP-MCPBridge-<version>.zip` in the documentation repository's [Releases](../../../releases). Per Fab packaging rules, it is not bundled with the plugin itself. A single zip works for every supported UE version.
+
+> **Since UAIP 1.2.0**: the bridge verifies the editor's identity — via [instance proof](security.md#instance-proof) — before attaching a role token's credential to a request, on the first request of a new connection and again after any reconnect, restart, or config reload. This needs no setup of its own, but it does mean `uproject_path` (already unconditionally required in `config.json`, see [Configuration](config.md#mcp-bridge-configjson)) is also what the bridge reads the per-launch secret file under; a role configured with `role_token` / `role_name` genuinely needs it correct, not just present.
 
 ### Prerequisites
 
@@ -273,7 +277,9 @@ Typical uses:
 
 The HTTP transport enforces its own async command timeout of **120 seconds**, independent of the bridge's `command_timeout_seconds` setting (see [Configuration → Timeout invariants](config.md#timeout-invariants)). Commands that occupy the game thread for longer than that — `UAIP.Editor.MetaHuman.BuildMetaHuman` is the primary example today — can exceed it even though the operation is still legitimately running.
 
-When that happens:
+**Since UAIP 1.2.0**, `uaip_execute` accepts an optional `TimeoutSeconds` argument — a JSON number from 1 to 1800, alongside `CommandName` and `Params` (not inside `Params`) — that overrides the 120-second wait for this one call. Omitting it keeps the 120-second default. A value outside that range, or of the wrong type, is refused before the command runs, with a JSON-RPC invalid-params error whose message never contains the words "execution timeout" — so a refusal cannot be mistaken for the case below, where the command may still be running. The bridge extends both its own read timeout and the interval during which it suppresses health polling to match the requested window, so a call that legitimately takes longer than the default is not cut off by the bridge, and a busy editor still answering that call is not mistaken for an unresponsive one partway through it. See [API Reference → Request format](api.md#2-request-format) (§2.4).
+
+When the 120-second window (or the `TimeoutSeconds` window, if named) is exceeded:
 
 1. The call returns `Timeout`, but **the command may still be executing inside the editor**.
 2. Do not immediately re-issue the same command — a second concurrent build/edit against the same target is not something the handler is designed to reconcile.
@@ -366,11 +372,14 @@ For development or CI environments where authentication is not needed:
 -uaip-http-no-auth
 ```
 
+**Since UAIP 1.2.0**, a well-behaved client verifies it is actually talking to this project's editor — not a different project's editor that restarted onto the same port, or an unrelated program — *before* it attaches this token to a request, via the new unauthenticated `GET /uaip/instance-proof` route (see the table below). Both the MCP Bridge and the [Claude Code Plugin](claude-code-plugin.md) do this automatically; see [Security → Instance proof](security.md#instance-proof) for the full protocol.
+
 ### Endpoints
 
 | Method | Path | Description |
 |---|---|---|
 | GET | `/uaip/health` | Health check — returns `{"status":"ok"}` |
+| GET | `/uaip/instance-proof?challenge=<64-char lowercase hex>` | Verify this port is this project's editor **before** sending a credential — no authentication required. See [Security → Instance proof](security.md#instance-proof) |
 | GET | `/uaip/capabilities` | Available capabilities for the current session |
 | POST | `/uaip/sessions` | Create a session — returns `{"SessionId":"..."}` |
 | DELETE | `/uaip/sessions/:sessionId` | End a session |
@@ -389,9 +398,12 @@ Authorization: Bearer <token>
 {
   "CommandName": "UAIP.Core.HealthCheck",
   "Params": {},
-  "SessionId": "my-session"
+  "SessionId": "my-session",
+  "TimeoutSeconds": 300
 }
 ```
+
+`TimeoutSeconds` is optional and top-level (not inside `Params`): a JSON number from 1 to 1800 that overrides the 120-second default below for this one request, so a slow command — a long-running Automation Test, for example — does not get cut off while it is still legitimately working. Omit it to keep the 120-second default. A value outside that range, of the wrong type, or a numeric string (`"300"`) is refused with HTTP 400 and `ErrorCode: "InvalidParams"` before the command starts. See [API Reference → Request format](api.md#2-request-format) (§2.1) for the full field table.
 
 Response:
 
@@ -412,7 +424,7 @@ Response:
 | Max request body | 64 KiB |
 | Max artifact response | 100 MiB |
 | Max concurrent commands | 1 (default; passive-wait commands can be excluded via ini — HTTP / MCP only, see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default)) |
-| Command timeout | 120 s |
+| Command timeout | 120 s (default; override per request with the optional top-level `TimeoutSeconds` field, 1–1800 s — see [Executing a command](#executing-a-command) above) |
 
 ---
 

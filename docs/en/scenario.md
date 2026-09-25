@@ -189,7 +189,9 @@ If you want `Field` to actually receive `42`, reference `${B.Data.x}` directly f
 |---|---|
 | `Completed` | All steps succeeded |
 | `Failed` | At least one step failed |
-| `Aborted` | Scenario exceeded the 1800-second wall-clock cap |
+| `TimedOut` | The scenario-wide 1800-second wall-clock cap fired before the run finished |
+
+A `TimedOut` response also carries `AllStepsSucceeded: false` and a top-level `ErrorCode: "Timeout"` (with a fixed `ErrorMessage` explaining that the editor may still be working on the scenario in the background). The HTTP status stays **200**, same as every other scenario response — branch on `Status` / `ErrorCode`, never on the HTTP status. `StepResults` may be empty even though steps did run: the runner has no safe way to hand the watchdog its in-progress step results, so a timeout is reported without them rather than with a partial, possibly-stale list.
 
 ---
 

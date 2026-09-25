@@ -13,6 +13,8 @@ UAIP には 4 つのトランスポートが用意されています。用途に
 
 > **デモ版の制限**：デモバイナリは **MCP トランスポートのみ** に対応しています。HTTP・WebSocket・CLI を使うには製品版が必要です。
 
+> **Claude Code を使っていて MCP サーバーを立てたくない場合**: [Claude Code Plugin](claude-code-plugin.md) は、MCP を使わずに Claude Code から UAIP へ到達する別の方法です。少数の事前承認済みスクリプトを通じて、下記の HTTP API へ直接アクセスします。この後に続く MCP Bridge の節の代替であり、同じエディタセッションに対して両方を同時に使うものではありません。
+
 ---
 
 ## トランスポート比較
@@ -41,6 +43,8 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 5 分で動かす最短ルートは [クイックスタート](quickstart.md) を参照してください。
 
 > MCP Bridge は **プラグイン本体とは別配布** で、ドキュメントリポジトリの [Releases](../../../releases) から `UAIP-MCPBridge-<version>.zip` をダウンロードします（Fab のパッケージング規約によりプラグインには同梱しません）。UE バージョン非依存の単一 zip です。
+
+> **UAIP 1.2.0 以降**: Bridge は、ロールトークンの資格情報をリクエストに付ける前に、[instance proof](security.md#instance-proof) 経由でエディタの身元を照合します。新規接続の最初のリクエスト、および再接続・再起動・config reload の後に毎回行われます。これ自体に追加の設定は不要ですが、`config.json` の `uproject_path`（元々どのモードでも無条件で必須。[設定](config.md#mcp-bridge-configjson) 参照）は、Bridge がこの照合用の起動ごとの秘密値ファイルを読む起点でもあります。`role_token` / `role_name` でロールを設定する場合、`uproject_path` は単に存在するだけでなく正しい値である必要があります。
 
 ### 前提条件
 
@@ -273,7 +277,9 @@ uaip_get_editor_status()
 
 HTTP トランスポートは、Bridge の `command_timeout_seconds` 設定とは独立して、それ自身の非同期コマンドタイムアウト（**120 秒**）を持っています（[設定リファレンス → タイムアウトの不変条件](config.md#タイムアウトの不変条件) を参照）。ゲームスレッドをそれより長く占有するコマンド — 現時点では `UAIP.Editor.MetaHuman.BuildMetaHuman` が代表例 — は、処理自体は正当に継続中であっても、これを超過することがあります。
 
-その場合:
+**UAIP 1.2.0 以降**、`uaip_execute` は任意の引数 `TimeoutSeconds` を受け付けます — `CommandName` や `Params` と同じ階層に置く 1〜1800 の JSON 数値（`Params` の中ではありません）で、この呼び出しに限り 120 秒の待ちを上書きします。省略すれば既定の 120 秒のままです。範囲外の値・型違いはコマンドの実行前に拒否され、その JSON-RPC の invalid-params エラーのメッセージには「execution timeout」という文言が含まれません — そのため、この拒否と、下記の「コマンドがまだ実行中かもしれない」ケースを取り違えることはありません。Bridge は自分自身の読み取りタイムアウトと、健全性ポーリングを抑止する時間の両方を、要求された待ち時間に合わせて自動的に延長します。これにより、既定より正当に長くかかる呼び出しが Bridge 側で打ち切られることも、その呼び出しにまだ応答しているだけのビジーなエディタを途中で無応答と誤判定することもありません。詳細は [API リファレンス → リクエスト形式](api.md#2-リクエスト形式)（§2.4）を参照してください。
+
+120 秒の窓（`TimeoutSeconds` を指定した場合はその窓）を超えた場合:
 
 1. 呼び出しは `Timeout` を返しますが、**コマンドはエディタ側で実行を継続している可能性があります**。
 2. 同じコマンドをすぐに再実行しないでください — 同じ対象に対する 2 度目の同時実行を整合させる設計にはなっていません。
@@ -366,11 +372,14 @@ Authorization: Bearer <token>
 -uaip-http-no-auth
 ```
 
+**UAIP 1.2.0 以降**、きちんとした振る舞いのクライアントは、このトークンをリクエストに付ける**前に**、新設の未認証ルート `GET /uaip/instance-proof`（下表参照）で、自分が本当にこのプロジェクトのエディタと話しているか（再起動後に同じポートに居座った別プロジェクトのエディタや無関係なプログラムではないか）を確かめます。MCP Bridge・[Claude Code Plugin](claude-code-plugin.md) はどちらもこれを自動で行います。プロトコルの詳細は [セキュリティ → Instance proof](security.md#instance-proof) を参照してください。
+
 ### エンドポイント
 
 | メソッド | パス | 説明 |
 |---|---|---|
 | GET | `/uaip/health` | ヘルスチェック — `{"status":"ok"}` を返す |
+| GET | `/uaip/instance-proof?challenge=<64桁の小文字16進>` | 資格情報を送る**前に**、このポートがこのプロジェクトのエディタかを確認する — 認証不要。[セキュリティ → Instance proof](security.md#instance-proof) 参照 |
 | GET | `/uaip/capabilities` | 現在のセッションで利用可能な Capability 一覧 |
 | POST | `/uaip/sessions` | セッション作成 — `{"SessionId":"..."}` を返す |
 | DELETE | `/uaip/sessions/:sessionId` | セッション終了 |
@@ -389,9 +398,12 @@ Authorization: Bearer <token>
 {
   "CommandName": "UAIP.Core.HealthCheck",
   "Params": {},
-  "SessionId": "my-session"
+  "SessionId": "my-session",
+  "TimeoutSeconds": 300
 }
 ```
+
+`TimeoutSeconds` は任意のトップレベルフィールド（`Params` の中ではない）です。1〜1800 の JSON 数値を指定すると、このリクエストに限り下記の既定 120 秒を上書きします。長時間かかる Automation Test の実行など、コマンドがまだ正当に処理を続けているのに打ち切られてしまう事態を避けられます。省略すれば既定の 120 秒のままです。範囲外の値・型違い・数値の文字列（`"300"` のような）を指定すると、コマンドの実行前に HTTP 400・`ErrorCode: "InvalidParams"` で拒否されます。全フィールドの一覧は [API リファレンス → リクエスト形式](api.md#2-リクエスト形式)（§2.1）を参照してください。
 
 レスポンス：
 
@@ -412,7 +424,7 @@ Authorization: Bearer <token>
 | 最大リクエストボディ | 64 KiB |
 | 最大 Artifact レスポンス | 100 MiB |
 | 最大同時コマンド数 | 1（既定。ini で受動的待機コマンドを除外可能 — HTTP / MCP のみ。[設定リファレンス → `[UAIP.Transport]` 受動的待機の同時実行](config.md#uaiptransport--受動的待機の同時実行既定オフ) 参照） |
-| コマンドタイムアウト | 120 秒 |
+| コマンドタイムアウト | 120 秒（既定。任意のトップレベルフィールド `TimeoutSeconds`（1〜1800 秒）でリクエストごとに上書き可 — 上記 [コマンド実行例](#コマンド実行例) 参照） |
 
 ---
 

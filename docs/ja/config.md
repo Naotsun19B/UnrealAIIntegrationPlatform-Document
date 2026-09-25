@@ -317,7 +317,7 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 | キー | 型 | デフォルト | 説明 |
 |---|---|---|---|
 | `editor_path` | string | `""` | `UnrealEditor.exe` の絶対パス。環境変数 `UAIP_UE_EDITOR_PATH` が設定されている場合はそちらが優先。**`attach_only` が `true` のときは不要** — ゲストモードの Bridge はエディタを一切起動しないため、指す先が無い |
-| `uproject_path` | string | `""` | `.uproject` ファイルの絶対パス。環境変数 `UAIP_UPROJECT_PATH` が設定されている場合はそちらが優先。**どのモードでも常に必須** — プロジェクト同一性検証・認証トークンの解決・crash marker のパス・接続情報記述子の解決に使われる |
+| `uproject_path` | string | `""` | `.uproject` ファイルの絶対パス。環境変数 `UAIP_UPROJECT_PATH` が設定されている場合はそちらが優先。**どのモードでも常に必須** — プロジェクト同一性検証・認証トークンの解決・crash marker のパス・接続情報記述子の解決に加え、[instance proof](security.md#instance-proof) の照合がこのパス配下の `Saved/UAIP/InstanceSecrets/` を読むのにも使われる |
 | `attach_only` | bool | `false` | ゲストモード。`true` のとき、Bridge は自分ではエディタを一切起動せず、既に待ち受けているエディタへアタッチするだけになる。ポートは[接続情報の記述子ファイル](config.md#接続情報の記述子ファイル)から解決し、見つからなければ `http_port` へフォールバックする。アタッチ中のエディタとの接続が切れても（ヘルスチェック失敗・config リロードのいずれでも）代わりのエディタを起動しない。詳細は [接続方法 → ゲストモード接続](connections.md#ゲストモード接続) を参照。環境変数オーバーライド：`UAIP_ATTACH_ONLY`（`1` / `true` / `yes`） |
 | `http_port` | int | `8765` | エディタ側 MCP エンドポイントの HTTP ポート。`-uaip-http-port` と一致させること |
 | `http_startup_timeout_seconds` | int | `120` | Bridge が起動後のエディタ準備完了を待つ最大秒数 |

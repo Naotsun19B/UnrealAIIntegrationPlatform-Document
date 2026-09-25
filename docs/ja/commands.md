@@ -343,7 +343,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `ListSpawnableTabs` | 開けるエディタタブの候補を一覧で返す。各行の `TabId` / `OwnerMajorTabId` / `OwnerInstanceId` はそのまま `OpenTabById` / `CloseTabById` の `TabId` / `OwnerTabId` / `OwnerInstanceId` として渡せる。表示名・ツールチップ・そのタブが既に開いているかどうかも含む。開いているかどうかはその行が示す所属先を基準に判定され、`MajorTabLocal` の行はそのウィンドウ内だけを、`Global` の行はエディタ全体を対象とする（エディタ全体に登録されたタブはレイアウト次第でどのタブウェルにも置かれるが、`"Global"` からは常に到達できるため）。網羅的な一覧ではなく、応答は常に `EnumerationScope: "MenuVisible"` を返す — 一覧に無い `TabId` でも開ける場合があり（生成メニューから外れているだけの場合がある）、逆に設定で恒久的に拒否されている場合もあるため、「一覧に無い」は「未列挙」であって「存在しない」ではない。読み取り専用だが、表示名・ツールチップの取得が第三者のデリゲートを評価しうるため `EditorTabSpawn` を要求する |
 | 🆓 `OpenTabById` | Slate レイアウトのタブ識別子（`TabId`。`FocusEditorTab` の `AssetPath` とは別の識別子空間）を指定してエディタタブを開く。`FocusEditorTab` やメニュー操作代行では届かないタブ — ToolMenus に一度も登録されていないレガシーメニュー経由のタブや、所属ウィンドウが前面にないタブ — にも到達できる。`OwnerTabId` に `"Global"` を指定するとエディタ全体に登録されたタブ（Output Log 等）を、major tab 自身の `TabId`（複数該当する場合は `OwnerInstanceId` で絞り込み）を指定するとその内部のパネルを対象にできる。所属先のウィンドウがまだ開いていなければ先に開く。既に開いている所属先はそのまま使うため、`ListSpawnableTabs` が返した行はそのまま渡せる（所属先に対するスポナー登録と許可の判定は、この呼び出しが所属先を開く必要がある場合にだけ適用される）。応答には実際に開いたタブの `InstanceId`（この応答からしか得られない値）、`WasAlreadyOpen`、`OwnerOpenedByThisCall` が含まれ、後始末で何を閉じるべきかを判断できる（閉じる順序は対象タブ→所属先）。失敗時はこの呼び出しが開いたものを取り除く。候補の発見には `ListSpawnableTabs` を使う（`EditorTabSpawn` 必要） |
 | 🆓 `CloseTabById` | `OpenTabById` と同じ指定（`TabId` / `OwnerTabId` / `InstanceId` / `OwnerInstanceId`）でタブを閉じる。アセットパスでは指定できない。`OpenTabById` と異なり `OwnerTabId` が開いていなくても新たに開くことはせず、その場合は `NotFound` になる。許可判定も行わない — 実行時にポリシーが変わったせいで後始末そのものが失敗する方が悪いという判断による。そのため対象は「このセッションが開いたタブ」に限らず、人間が手動で開いたものも含め、いま生きている任意のタブになる（`EditorTabSpawn` 必要） |
-| 🆓 `NormalizeEditorLayout` | メイングラフタブをフォーカスし、一時パネルを非表示にする |
+| 🆓 `NormalizeEditorLayout` | メイングラフタブをフォーカスし、一時パネルを非表示にする。`OpenAsset` と同じエディタ状態の成果物を保存し、非推奨の `ActiveTabId` フィールドも含む — 代わりに `ActiveAssetPath` を読むこと（[`OpenAsset`](#uaipeditorassets) を参照） |
 | 🆓 `SetGraphZoom` | グラフビューポートのズーム倍率を設定 |
 | 🆓 `FrameGraphAll` | グラフビューポートを全ノードが収まるようにズーム |
 | 🆓 `FrameGraphSelection` | グラフビューポートを選択ノードが収まるようにズーム |
@@ -498,7 +498,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | 🆓 `CaptureEditorTabImage` | 指定エディタタブのウィジェット領域のスクリーンショット。Slate レイアウト識別子で指定するため、`DumpEditorState` が返す `ActiveTabId` をそのまま渡せる。エディタが背面でも動作する。⚠️ 撮影前に対象タブをスタックの前面へ出すため（背面のタブは描画されておらず空の画像になる）、**ユーザーに見えているタブが切り替わる** |
 | 🆓 `CaptureGraphViewportImage` | SGraphEditor ビューポートのスクリーンショット |
 | 🆓 `DumpEditorState` | アクティブタブ・開いているアセット・ウィンドウサイズ等（JSON）。あわせてプレイセッションの状態を `IsPIERunning` / `IsPIEPaused` / `IsSimulatingInEditor` の 3 つの真偽値で返す。編集系コマンドの多くはセッション実行中に拒否され、その間に取ったワールドのダンプはエディタワールドではなくプレイワールドを表すため、変更を加える前にここを読む。3 つとも常に存在するので「何も再生されていない」と「報告されていない」を区別できる |
-| 🆓 `DumpSelectionState` | 現在の選択状態 — アクター・オブジェクト・グラフノード（JSON） |
+| 🆓 `DumpSelectionState` | 現在の選択状態（JSON）。`SelectedActors` / `SelectedObjects` は常に返る。`TabId` が開いているグラフエディタタブを指す場合に限り `SelectedNodes`（ノードごとに `NodeId` / `NodeClass` / `NodeTitle` / `Position`）も返る — 解決方法は `CaptureGraphViewportImage` の `TabId` と同じ（Slate タブへの完全一致、続いて開いているアセットの名前への大小文字を区別しない部分一致。`/` を含むコンテンツブラウザ形式のパスは `InvalidParams` で拒否される）。`TabId` がどのタブにも一致しない場合は `SelectedNodes` を空にして成功させるのではなく `NotFound` を返す。`TabId` を省略した場合の挙動は変更なし — `SelectedNodes` は空のままで、アクター/オブジェクトの選択は従来どおり返る |
 | 🆓 `DumpOpenTabs` | 開いているアセットエディタタブ一覧（JSON） |
 | 🆓 `DumpOutputLog` | バッファリングされた Output Log（テキスト Artifact、行数・フィルタ対応） |
 | 🆓 `DumpMessageLog` | Message Log エントリ（カテゴリフィルタ付き JSON Artifact） |
@@ -535,6 +535,8 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 > `TimeoutSec` は**バッチ全体ではなく 1 テストごとの上限**です（既定 60 秒）。マッチ件数が増えても各テストがこの時間内に終わる限り全件走ります。なお Runtime 側の `RunRuntimeAutomationTest` にはこれとは別に一括実行全体の壁時計上限（600 秒）があり、到達した場合はレポートに `(bulk execution time limit reached)` というエントリが `Error` として現れます。
 >
 > **v1.1.0 での変更**: 以前は 100 件で打ち切られ、**打ち切られたことが応答から分かりませんでした**（`Pass=100 Fail=0` は全件成功と字面が同じです）。100 件で止まる挙動に依存していた場合は `MaxMatchingTests=100` を明示してください。
+
+> **v1.2.0 での変更**: `RunAutomationSpec` がパラメータスキーマを宣言し、それ以外を拒否するようになりました — 受け付けるのは `TestName`（必須）・`TimeoutSec`・`RunAllMatching`・`MaxMatchingTests`（`RunAutomationTest` と同じパーサーを共有するため同じ4キー）で、`AdditionalProperties: false` です。**`SpecName` などこの集合の外のキーを指定すると、これまでの黙って無視される挙動から `InvalidParams` に変わりました** — 以前はスキーマを一切宣言していなかったため、未知のキーはチェックされずに通過し、単に何も起こしませんでした。`RunAllMatching` と `MaxMatchingTests` は `RunAutomationTest` とのスキーマ上の対称性のために受理されますが、**Spec の実行には影響しません** — `Execute()` は常に単一の完全一致に強制されるため、どちらのパラメータの値も無視されます。
 
 ---
 
@@ -602,7 +604,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 | コマンド | 説明 |
 |---|---|
-| `OpenAsset` | 指定アセットをエディタで開く |
+| `OpenAsset` | 指定アセットをエディタで開く。エディタ状態の成果物は、フォーカス中のエディタのアセットを `ActiveAssetPath` として返す。⚠️ **非推奨のフィールド:** 同じ成果物の `ActiveTabId` もそのアセットのパスを持つ（`DumpEditorState` が同じ名前で返す Slate レイアウト識別子ではない）。次の MAJOR でレイアウト識別子に切り替わるため、`ActiveAssetPath` を読むこと。成果物の `DeprecatedFields` 配列が同じことを機械可読な形で示す。エディタを `-uaip-active-tab-id-as-layout-id` 付きで起動すると、切り替え後の意味を先行して試せる（1.x の間だけ提供） |
 | `CloseAsset` | 指定アセットの全エディタを閉じる |
 | `SaveAsset` | 名指ししたアセットだけをディスクへ書き込む（`AssetMutate` 必要）。確認ダイアログを出さないため非対話でも完結する |
 | 🆓 `ListDirtyPackages` | 未保存の変更を持つパッケージを列挙する（保存前の事前確認用） |

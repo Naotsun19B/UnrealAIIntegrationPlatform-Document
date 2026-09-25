@@ -54,7 +54,8 @@ bind 層と認証層の関係の詳細は [セキュリティ → ネットワ�
 {
   "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage",
   "Params":      { ... },
-  "SessionId":   "my-task-001"
+  "SessionId":   "my-task-001",
+  "TimeoutSeconds": 300
 }
 ```
 
@@ -63,6 +64,7 @@ bind 層と認証層の関係の詳細は [セキュリティ → ネットワ�
 | `CommandName` | string | はい | 完全修飾名（例：`UAIP.Core.HealthCheck`） |
 | `Params` | object | いいえ | コマンド固有パラメータ（デフォルト `{}`）。コマンドの `ParameterSchema` で検証 |
 | `SessionId` | string | いいえ | `[A-Za-z0-9_-]{1,128}`。省略時は匿名セッション |
+| `TimeoutSeconds` | number | いいえ | トップレベルフィールド（`Params` の中ではない）。エディタが応答を待つ秒数の上限：1〜1800（既定 120。[接続方法 → 制限値](connections.md#制限値) 参照）。範囲外・型違い・数値の文字列（`"300"`）はコマンドの実行前に 400・`InvalidParams` で拒否される。`Params` にはコピーされないため、コマンドのハンドラからは一切見えない。`uaip_execute`（MCP）も `CommandName` と同じ階層で同じフィールドを受け付ける — §2.4 参照 |
 
 ### 2.2 `CommandRequest`（WebSocket フレーム）
 
@@ -104,11 +106,14 @@ MCP Bridge が同じ `CommandRequest` 形状をツール呼び出しでラップ
 uaip_execute(
     CommandName="UAIP.Editor.Observation.CaptureActiveWindowImage",
     Params={"TabId": "/Game/Maps/Main"},
-    SessionId="my-task-001"
+    SessionId="my-task-001",
+    TimeoutSeconds=300
 )
 ```
 
 `SessionId` 省略時 Bridge が自動設定（`MCP-Anonymous-<guid>`）。
+
+**UAIP 1.2.0 以降**、`TimeoutSeconds` もここで受け付ける — §2.1 と同じフィールド・同じ規則（1〜1800、既定 120、`Params` の中ではなくトップレベル、範囲外・型違いはコマンドの実行前に拒否）。ただし拒否は HTTP 400 ではなく JSON-RPC の invalid-params エラーになる。Bridge は自分自身の待ち時間と、健全性ポーリングを抑止する時間の両方を、この値に合わせて延長する — [接続方法 → 長時間コマンドと 120 秒の非同期タイムアウト](connections.md#長時間コマンドと-120-秒の非同期タイムアウト) を参照。
 
 ---
 
@@ -500,7 +505,9 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
 |---|---|
 | `Completed` | すべてのステップが成功 |
 | `Failed` | 1 つ以上のステップが `Success:false` を返した |
-| `Aborted` | シナリオ全体の 1800 秒上限を超過 |
+| `TimedOut` | 実行が終わる前にシナリオ全体の 1800 秒の壁時計上限が発火した |
+
+`TimedOut` の応答は追加で `AllStepsSucceeded: false` と、上の例には出ていない最上位フィールド 2 つ — `ErrorCode: "Timeout"` と固定の `ErrorMessage` — をこの場合に限り持ちます。HTTP ステータスは他のシナリオ応答と同じく **200** のままです。この文書の中で advisory な HTTP ステータスの規則（§4）が最も効いてくるのがこのケースで、2xx 以外のステータスだけを見る呼び出し元はこれを一切検出できません。`StepResults` は実際にステップが実行されていても空になることがあります — ランナーは実行中のステップ結果を watchdog に安全に渡す手段を持たないためで、空配列は「何も実行されなかった」ことの証拠ではありません。
 
 ### 7.4 ハード上限
 

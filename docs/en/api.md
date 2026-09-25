@@ -54,7 +54,8 @@ See [Security → Network surface](security.md#network-surface) for the detailed
 {
   "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage",
   "Params":      { ... },
-  "SessionId":   "my-task-001"
+  "SessionId":   "my-task-001",
+  "TimeoutSeconds": 300
 }
 ```
 
@@ -63,6 +64,7 @@ See [Security → Network surface](security.md#network-surface) for the detailed
 | `CommandName` | string | yes | Fully-qualified name (e.g. `UAIP.Core.HealthCheck`) |
 | `Params` | object | no | Command-specific parameters (default `{}`); validated against the command's `ParameterSchema` |
 | `SessionId` | string | no | `[A-Za-z0-9_-]{1,128}`. Omitting creates an anonymous session |
+| `TimeoutSeconds` | number | no | Top-level (not inside `Params`). How long the editor waits before giving up on an answer, in seconds: 1–1800 (default 120, see [Connection Methods → Limits](connections.md#limits)). Out of range, the wrong JSON type, or a numeric string (`"300"`) is refused with 400 `InvalidParams` before the command runs; it is never copied into `Params`, so a command handler never sees it. `uaip_execute` (MCP) accepts the same field, sibling to `CommandName` — see §2.4 |
 
 ### 2.2 `CommandRequest` (WebSocket frame)
 
@@ -104,11 +106,14 @@ The MCP Bridge wraps the same `CommandRequest` shape into a tool call:
 uaip_execute(
     CommandName="UAIP.Editor.Observation.CaptureActiveWindowImage",
     Params={"TabId": "/Game/Maps/Main"},
-    SessionId="my-task-001"
+    SessionId="my-task-001",
+    TimeoutSeconds=300
 )
 ```
 
 The bridge sets `SessionId` automatically if omitted (`MCP-Anonymous-<guid>`).
+
+**Since UAIP 1.2.0**, `TimeoutSeconds` is accepted here too — same field, same rules as §2.1 (1–1800, default 120, top level rather than inside `Params`, refused before the command runs when it is out of range or the wrong type). The refusal is a JSON-RPC invalid-params error rather than HTTP 400. The bridge extends its own wait, and the window during which it suppresses health polling, to match — see [Connection Methods → Long-running commands](connections.md#long-running-commands-and-the-120-s-async-timeout).
 
 ---
 
@@ -500,7 +505,9 @@ Scenarios run an ordered list of commands as one request. See [Scenario Executio
 |---|---|
 | `Completed` | Every step succeeded |
 | `Failed` | At least one step returned `Success:false` |
-| `Aborted` | Scenario-wide 1800-second cap exceeded |
+| `TimedOut` | The scenario-wide 1800-second wall-clock cap fired before the run finished |
+
+A `TimedOut` response additionally carries `AllStepsSucceeded: false` and two top-level fields not shown in the example above — `ErrorCode: "Timeout"` and a fixed `ErrorMessage` — present only in this case. The HTTP status stays **200**, the same as every other scenario response; this is the one case in this document where the advisory-HTTP-status rule (§4) matters most, since a caller that only checks for a non-2xx status never sees it. `StepResults` may be empty even when steps did run — the runner has no safe way to hand the watchdog its in-progress step results — so an empty array is not proof nothing executed.
 
 ### 7.4 Hard limits
 

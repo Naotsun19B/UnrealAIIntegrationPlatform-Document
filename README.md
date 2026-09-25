@@ -105,6 +105,7 @@ For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-clie
 | [Quickstart](docs/en/quickstart.md) | 5-minute path from install to first command |
 | [Connection Methods](docs/en/connections.md) | All transports: MCP Bridge setup + HTTP / WebSocket / CLI (Pro) |
 | &nbsp;&nbsp;↳ [Claude Code](docs/en/clients/claude-code.md) / [Codex CLI](docs/en/clients/codex.md) / [Claude Desktop](docs/en/clients/claude-desktop.md) / [Cursor](docs/en/clients/cursor.md) / [Windsurf](docs/en/clients/windsurf.md) / [Copilot](docs/en/clients/copilot.md) | Per-client config JSON and verification |
+| [Claude Code Plugin](docs/en/claude-code-plugin.md) | MCP-free alternative for Claude Code: `/uaip:*` skills that talk the HTTP API directly |
 | [Use Cases](docs/en/use-cases.md) | Who uses UAIP for what — testing, review, audits, pair programming |
 | [Examples / Cookbook](docs/en/cookbook.md) | Recipes — PIE smoke, AI review, asset audit, BP edit, UI automation |
 | [Commands Reference](docs/en/commands.md) | All 933+ commands organized by domain |

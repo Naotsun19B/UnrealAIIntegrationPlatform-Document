@@ -105,6 +105,7 @@ MCP Bridge は UE Editor と AI クライアントをつなぐ Python プロキ�
 | [クイックスタート](quickstart.md) | インストールから最初のコマンド実行まで 5 分 |
 | [接続方法](connections.md) | 全トランスポート：MCP Bridge のセットアップ + HTTP / WebSocket / CLI（製品版） |
 | &nbsp;&nbsp;↳ [Claude Code](clients/claude-code.md) / [Codex CLI](clients/codex.md) / [Claude Desktop](clients/claude-desktop.md) / [Cursor](clients/cursor.md) / [Windsurf](clients/windsurf.md) / [Copilot](clients/copilot.md) | クライアント別設定 JSON と動作確認手順 |
+| [Claude Code Plugin](claude-code-plugin.md) | Claude Code 向けの MCP 不要な代替手段：HTTP API に直接アクセスする `/uaip:*` スキル群 |
 | [ユースケース](use-cases.md) | 誰が UAIP を何のために使うか — テスト・レビュー・監査・ペアプロ |
 | [使用例集 / レシピ集](cookbook.md) | レシピ集 — PIE スモーク・AI レビュー・アセット監査・BP 編集・UI 自動化 |
 | [コマンドリファレンス](commands.md) | ドメイン別 730 以上のコマンド一覧 |
