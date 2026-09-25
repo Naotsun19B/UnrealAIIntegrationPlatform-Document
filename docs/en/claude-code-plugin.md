@@ -71,8 +71,11 @@ value recorded in the table below.
 3. In Claude Code, run `/plugin marketplace update uaip-tools`, then restart Claude Code.
 
 If you started the editor with the watchdog option (see [Starting the editor](#starting-the-editor)
-below), close the editor first. The watchdog is a separate background process that keeps running
-against the old scripts until the editor that spawned it exits.
+below), the watchdog is a separate background process running against the old scripts. It exits on
+its own a few minutes after the editor it was watching stops answering — no crash marker, nothing
+listening — so an update just has to wait that out; you do not have to find and close it by hand.
+If you would rather not wait, closing the editor first and then ending the watchdog process
+yourself has the same effect.
 
 ## Migrating from an earlier release
 
