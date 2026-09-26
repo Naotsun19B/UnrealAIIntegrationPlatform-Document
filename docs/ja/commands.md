@@ -16,7 +16,7 @@ UAIP は 1218 個の **UAIP コマンド**（プラグイン本体が直接提�
 |---|---|
 | 🆓 | デモバイナリで利用可能（製品版でも利用可能） |
 | (記号なし) | 製品版限定コマンド |
-| 🧩 | オプションプラグインが必要（プラグインが無効の場合は登録されません） |
+| 🧩 | オプションプラグインが必要（プラグインが無効の場合は登録されません）。エディタビルドでは、そのプラグインがエンジンに存在していて単に無効なだけなら、有効化してエディタを再起動すれば十分です — `.uproject` の編集もリビルドも不要です。このエンジン版にそのプラグインがそもそも存在しない場合はどの設定を変えても解決しません — [UnavailableDetail](#unavailabledetail--handlerunavailable-の8つの詳細理由) の `UnavailableDetail: OptionalPluginDisabled` を参照してください。いずれの場合も `UAIP.Core.ListIntegrations` で正確な状態が分かります |
 | ⚠️ | Experimental — 挙動や契約が変わる可能性がある、または既知の制約により記載どおりに動作しない |
 
 ## UAIP コマンドと Toolset ブリッジコマンド
@@ -52,7 +52,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | `EngineVersion` | 現在動作しているものとは異なるエンジンバージョンを必要とする（特定のリリースで導入された、または特定のリリースまでしか存在しない API など） | エンジンバージョンを上げる、または下げる |
 | `BuildConfiguration` | このプロセスがビルドされていないビルド構成を必要とする（Developer Tools・Editor ターゲットなど） | 必要な構成でリビルドする |
 | `ExecutionEnvironment` | この実行環境が提供していないインフラを必要とする（レンダーハードウェアインターフェース、対話セッション、オプションの Runtime プラグインが登録するモジュラー機能クライアントなど） | 別の実行環境で動かす |
-| `OptionalPluginDisabled` | このプロセスのビルド時に無効化されていたオプションプラグインに依存しており、必要な型がコンパイルから除外されている | プラグインを有効化してリビルドする |
+| `OptionalPluginDisabled` | 依存先のオプションプラグインへの対応が、このバイナリには一切コンパイルされていない — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します。プラグインが単に無効なだけで存在はしている場合、この値にはなりません — その場合は代わりに（対処付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。[`UAIP.Core.ListIntegrations`](#uaipcore) を参照 |
 | `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | エンジンバージョンの変更やプラグインの切り替えでは解決しない — 別の経路（例: エディタスクリプティング経由で同じ効果に到達する Toolset ブリッジコマンド）を探す |
 | `DelegationTargetMissing` | 委譲先の外部サーフェス（Toolset ブリッジのターゲット）に、サポート対象のどのエンジンバージョンも実際には宣言していない関数を呼び出しており、実装へ到達する手段がそもそも存在しない | これも解決しない — そのサーフェスを持つプラグイン自体はすでに有効になっている場合がある。同じ操作を行うネイティブコマンドがあれば、それを使う |
 | `SafetyPolicyDisabled` | 環境にもビルドにも欠けているものは無い — 既定で無効な SafetyPolicy フラグでゲートされており、そのフラグがこのプロセスでオフになっている | `Config/DefaultUAIP.ini` でそのフラグを設定して再起動する（`ErrorMessage` がフラグ名を名指しする）。`AllowCapabilityReload=True` の環境なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できる |
@@ -316,6 +316,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
 | 🆓 `EndSession` | セッションを明示的に終了しサーバー側リソースを解放する（成果物は GC 対象になる） |
 | 🆓 `ReloadCapabilities` | エディタを再起動せずに `Config/DefaultUAIP.ini` から Capability セットを再読み込みする。`AllowCapabilityReload=True` になるまでは `ListCommands` の既定応答から隠れ、`Available: false`（設定すべき ini キー名を含む `UnavailableDetail: "SafetyPolicyDisabled"`）を返す — [UnavailableDetail](#unavailabledetail--handlerunavailable-の8つの詳細理由) 参照 |
+| 🆓 `ListIntegrations` | UAIP が把握しているすべてのオプション統合（実行時に無効・不在になりうるプラグインを必要とする UAIP モジュール、またはその一部）の状態を返す。各エントリは `Name`・`State`（`Pending` / `Loading` / `Loaded` / `CompiledOut` / `PluginDisabled` / `PluginNotInstalled` / `DependencyNotLoaded` / `NotApplicable` / `LoadFailed`）・`RequiredPlugins`・`MissingPlugins`・`DependsOn`・`CommandMatchers`・平易な文の `Remedy`（そのコマンドの `CommandNotFound` ヒントと同じ文言）を持ち、`State` が `LoadFailed` のときだけ `FailureKind` / `FailureReason` も持つ。任意の `State` パラメータで返す `Integrations` 配列をその状態だけに絞り込めるが、`IntegrationCount` / `LoadedCount` / `NotLoadedCount` は絞り込みに関係なく常に全体の数を返す。未知の `State` 値は `InvalidParams` で拒否される。Capability は不要 |
 | 🆓 `GetPendingInteractionStatus` | 保留中の対話 1 件の状態 — `State`・`Cause`・`ElapsedSeconds`・`Prompt`・`Reason`・`Result` — を、変化を待たずに報告する。対話（`DrawPCGSpline` などの対話型コマンド）を開始したときと同じ `SessionId` を明示的に指定する必要があり、未知・期限切れ・他セッション所有はすべて同じ `NotFound` として扱われる |
 | 🆓 `WaitForPendingInteraction` | 対話が `AwaitingUser` を離れるか、この呼び出し自身の `TimeoutSeconds` 上限（デフォルト 30、範囲 [1, 600]）に達するまでブロックする。タイムアウトしても対話自体には影響せず、人間の応答を待ち続ける。同じ対話を同時に監視できる呼び出しは最大 4 件までだが、2 件目以降には `[UAIP.Transport] AllowConcurrentPassiveWaits` が必要（[設定](config.md) 参照） |
 | 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックする |
@@ -2496,7 +2497,7 @@ ControlRig ヒエラルキー上の `ControlRigDynamics` コンポーネント�
 
 `ControlRigDynamics` は Experimental のエンジンプラグインであり、その構造体はエンジンのマイナーバージョン間で変わりうるため、**このドメインのコマンドはすべて `Stability: Experimental`** を返します。読み取りは `EditorInspect`、書き込みはすべて `ControlRigComponentEdit`（既定無効）を要求し、PIE 実行中は拒否されます。本ドメインと `UAIP.Editor.ControlRig.Physics` は互いに独立しており、片方だけを持つプロジェクト構成でもそれぞれ単独で現れます。
 
-> **前提条件 — プラグインを `.uproject` に明記する必要があります**: UAIP が `ControlRigDynamics` にリンクするのは、プロジェクトが**明示的に**宣言している場合だけです。`.uproject` の `Plugins` 配列へ `{ "Name": "ControlRigDynamics", "Enabled": true }` を追加してリビルドしてください。判定はこのエントリだけを読みます — それ以外の理由でエンジンが有効とみなしているプラグインは数えません。エントリが無いとドメインごと `uaip_list_commands` に現れず、`uaip_list_commands(IncludeUnavailable=true)` が `UnavailableReason: HandlerUnavailable` を返します。
+> **前提条件 — プラグインを有効化してエディタを再起動してください**: エディタビルドでは、ビルド対象のエンジンに `ControlRigDynamics` が存在していれば UAIP が自動的にその対応をコンパイルへ含めます — `.uproject` の `Plugins` 配列への追加もリビルドも不要になりました。残っているのはプラグイン自体を有効化することだけです（`ControlRigDynamics` は Experimental で既定無効のため、たいていのプロジェクトはこの手順が必要です）。**Edit → Plugins** から有効化する（または `.uproject` へ自分で `{ "Name": "ControlRigDynamics", "Enabled": true }` を追加する）か、いずれにせよエディタを再起動してください。プラグインが無効な間はドメインごと `uaip_list_commands` に現れず、これらのコマンドを呼ぶと有効化すべきプラグイン名を含む `CommandNotFound` が返ります。`UAIP.Core.ListIntegrations` でもこのドメインの状態を直接確認できます。
 
 #### Typed reads（6 コマンド）— 要 `EditorInspect`
 
@@ -2552,7 +2553,7 @@ ControlRig ヒエラルキー上の `ControlRigPhysics` コンポーネント型
 
 読み取りは `EditorInspect`、書き込みはすべて `ControlRigComponentEdit`（既定無効）を要求し、PIE 実行中および ModularRig アセットに対しては拒否されます。本ドメインと `UAIP.Editor.ControlRig.Dynamics` は互いに独立しており、片方だけを持つプロジェクト構成でもそれぞれ単独で現れます。
 
-> **⚠️ 前提条件 — 「プラグインは有効なのにコマンドが無い」はここから始まります**: `ControlRigPhysics` はエンジン既定で有効（`EnabledByDefault`）のため、Plugins ウィンドウでは有効と表示され、その RigUnit も ControlRig エディタに既に出ています — それでも、プロジェクトがプラグインを**明示的に**宣言するまで UAIP はこれらのコマンドを 1 つも登録しません。`.uproject` の `Plugins` 配列へ `{ "Name": "ControlRigPhysics", "Enabled": true }` を追加してリビルドしてください。判定はこのエントリだけを読み、エンジンが既定で有効にしているという事実は見えていません。エントリが無いとドメインごと `uaip_list_commands` に現れず、`uaip_list_commands(IncludeUnavailable=true)` が `UnavailableReason: HandlerUnavailable` を返します。
+> **前提条件**: エディタビルドでは、ビルド対象のエンジンに `ControlRigPhysics` が存在していれば UAIP が自動的にその対応をコンパイルへ含めます — `.uproject` の `Plugins` 配列への追加もリビルドも不要になりました。`ControlRigPhysics` はエンジン既定で有効なため、ほとんどのプロジェクトではこれらのコマンドはそのまま動きます。プロジェクトが明示的に無効化している場合は、**Edit → Plugins** から有効化してエディタを再起動してください。プラグインが無効な間はドメインごと `uaip_list_commands` に現れず、これらのコマンドを呼ぶと有効化すべきプラグイン名を含む `CommandNotFound` が返ります。`UAIP.Core.ListIntegrations` でもこのドメインの状態を直接確認できます。
 
 #### Typed reads（4 コマンド）— 要 `EditorInspect`
 
@@ -3129,7 +3130,7 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 
 プロジェクトが登録したアセットバリデータを、少数のアセットに対してもコンテンツフォルダ全体に対しても実行し、検出された内容を読み、バリデータが提供する修正を適用します。何が「正しい」かを UAIP が決めることはありません — 判定はすべて `UEditorValidatorSubsystem` と、そこにエンジンおよびプロジェクトが登録したバリデータに由来します。`DataValidation` プラグインが必要です。このドメインに Toolset ブリッジは存在しません。
 
-> **前提条件**: `DataValidation` はエンジン同梱で既定有効ですが、UAIP がリンクするのはプロジェクトが**明示的に**宣言している場合だけです。`.uproject` の `Plugins` 配列へ `{ "Name": "DataValidation", "Enabled": true }` を追加してリビルドしてください。このエントリがないとドメインごと `uaip_list_commands` に現れず、`uaip_list_commands(IncludeUnavailable=true)` が `UnavailableReason: HandlerUnavailable` を返します。
+> **前提条件**: `DataValidation` はエンジン同梱で既定有効です。エディタビルドでは UAIP がその対応を自動的にコンパイルへ含めます — `.uproject` の `Plugins` 配列への追加もリビルドも不要になりました。プロジェクトが明示的に無効化している場合は、**Edit → Plugins** から有効化してエディタを再起動してください。プラグインが無効な間はドメインごと `uaip_list_commands` に現れず、これらのコマンドを呼ぶと有効化すべきプラグイン名を含む `CommandNotFound` が返ります。`UAIP.Core.ListIntegrations` でもこのドメインの状態を直接確認できます。
 
 > **Note — マテリアル検証にはさらに設定が必要です**: エンジンのマテリアルバリデータは、プロジェクトの `MaterialValidationPlatforms` 設定が空の間はすべてのマテリアルをスキップします。このプラットフォーム一覧はバリデータのクラスデフォルトオブジェクトの構築時に 1 度だけ作られるため、**設定変更はエディタを再起動するまで反映されません**。`ListValidators` はこれについて観測できる内容を `MaterialValidation` として返しますが、`EffectivelyRunnable` は答えではなく推定値です — バリデータが実際に保持している一覧は外部から読めないため、すべてのフラグが true でもマテリアルがスキップされることがあります。
 >
@@ -3172,7 +3173,7 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 
 ## UAIP.Editor.LiveLink 🧩
 
-エディタ側の LiveLink 作業 — プリセットアセット、配置済みアクターの LiveLink コントローラーコンポーネントへの Subject 割り当て、MessageBus の探索と接続、Take Recorder による録画。**`LiveLink` と `Takes` の両プラグインが必要**で、どちらかを無効にしたままビルドするとプロバイダごとコンパイルされず、これらのコマンドは `CommandNotFound` になります。両方を有効にしてビルドした後で LiveLink を無効にして起動した場合は、一覧に現れたうえで `Available: false` として表示されます（実行して初めて失敗するのではありません）。
+エディタ側の LiveLink 作業 — プリセットアセット、配置済みアクターの LiveLink コントローラーコンポーネントへの Subject 割り当て、MessageBus の探索と接続、Take Recorder による録画。**`LiveLink` と `Takes` の両プラグインが必要**です。エディタビルドでは、両プラグインがエンジンに存在してさえいれば UAIP が自動的にその対応をコンパイルへ含めます（両方ともエンジン同梱のため実質的に常に該当します）— `.uproject` への明示宣言は不要です。必要なのはプロジェクトで両方が**有効**になっていることだけです。どちらかが無効だとドメインごと登録されず、これらのコマンドは有効化すべきプラグイン名を含む `CommandNotFound` を返します — 両方を有効にしてエディタを再起動すれば直り、リビルドは不要です（万一そのプラグインがこのエンジン版に本当に存在しない場合はどの設定を変えても直らず、代わりに `UnavailableDetail: "OptionalPluginDisabled"` を返します — [UnavailableDetail](#unavailabledetail--handlerunavailable-の8つの詳細理由) 参照）。ドメインが登録された後も、録画系の 4 コマンド（`StartLiveLinkRecording` / `StopLiveLinkRecording` / `CancelLiveLinkRecording` / `GetLiveLinkRecordingStatus`）は、`TakeRecorder` モジュールがこのプロセスにまだ読み込まれていない場合、個別に `Available: false`（`UnavailableDetail: "ExecutionEnvironment"`）を返すことがあります — こちらもリビルドではなく再起動で直ります。
 
 LiveLink の観測系は [UAIP.Runtime.LiveLink](#uaipruntimelivelink) にあり、そちらにプラグイン要件はありません。
 

@@ -140,7 +140,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 
 各コマンドは必要な Capability を宣言しています。プロセスが必要な Capability をすべて持っており（Layer 1）、かつセッションが役割に束縛されている場合はその役割がいずれも拒否していないとき（Layer 1.5）だけコマンドを実行できます。Capability には **DefaultAllow**（自動付与）と **DefaultDenied**（`Config/DefaultUAIP.ini` で明示的に有効化が必要）の 2 種類があります。
 
-🧩 付きの Capability はオプションプラグインへの依存があります。該当プラグインが `.uproject` で有効になっていない環境では Capability が登録されず、必要とするコマンドは `CommandNotFound` を返します。
+🧩 付きの Capability はオプションプラグインへの依存があります。エディタビルド（ソースビルドでも Fab 配布の製品版バイナリでも同じ）では、**利用しているエンジンにそのプラグインが存在する限り** Capability は登録されます — プロジェクトの `.uproject` での明示宣言もリビルドも不要です。問題になるのはそのプラグインが**有効かどうか**だけです。無効なら Capability は登録されず、必要とするコマンドは `CommandNotFound` を返します — プラグインを有効にしてエディタを再起動すれば読み込まれます。プラグイン自体がこのエンジン版に存在しない場合は有効化のしようがなく、`CommandNotFound` はその旨を案内します。いずれの場合も `UAIP.Core.ListIntegrations` を呼べば、すべてのオプション統合の状態と対処が一度に分かり、該当コマンドの `CommandNotFound` 応答にも統合名と対処が直接付きます。
 
 ### どんな Capability が存在するかを調べる
 
@@ -452,7 +452,7 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 |---|---|
 | `ScriptExecution` 🧩 | エディタでの Python スクリプト実行（`RunEditorPythonScript`；`PythonScriptPlugin` 必須） |
 | `PythonCommandExecution` 🧩 | `@uaip_command` で動的登録された Python コマンドの実行（`PythonScriptPlugin` 必須） |
-| `PythonExtensionReload` 🧩 | 登録済み Python コマンドの再スキャン・リロード（`ReloadPythonCommands`；`PythonScriptPlugin` 必須） |
+| `PythonExtensionReload` 🧩 | 登録済み Python コマンドの再スキャン・リロード（`ReloadPythonCommands`；`PythonScriptPlugin` 必須）。エディタ起動時にプロジェクトの `Scripts/UAIPCommands/**/*.py` を自動スキャンするのにもこの Capability が必要です — 許可されていなければ起動時に Python コマンドは 1 つも登録されません。許可してから `ReloadPythonCommands` を呼ぶ（または、既に許可した状態で再起動する）と読み込まれます |
 
 #### Runtime — 制限付き操作
 
@@ -629,7 +629,7 @@ ExternalTraceDirectory=D:/TraceDrop
 
 #### アセット検証
 
-これらの Capability は `DataValidation` プラグインが必要で、プロジェクトの `.uproject` で明示的に宣言しておく必要があります（[コマンドリファレンス](commands.md)の `UAIP.Editor.Validation` セクション参照）。バリデータの列挙、検証ジョブの追跡、結果の取得は DefaultAllow（`EditorInspect`）で、ここでゲートされるのはバリデータの実行と修正の適用だけです。
+これらの Capability は `DataValidation` プラグインが必要です — エディタビルドでは UAIP がこのプラグインへの対応を自動的にコンパイルへ含めるため（エンジンが既定で有効にしています）、必要なのはプロジェクト側で無効化していないことだけです（[コマンドリファレンス](commands.md)の `UAIP.Editor.Validation` セクション参照）。バリデータの列挙、検証ジョブの追跡、結果の取得は DefaultAllow（`EditorInspect`）で、ここでゲートされるのはバリデータの実行と修正の適用だけです。
 
 | Capability | 有効になる操作 |
 |---|---|
@@ -775,7 +775,7 @@ AllowUserInteractionPrompt=False
 | `EngineVersion` | 現在動作しているものとは異なるエンジンバージョンを必要とする（特定のリリースで導入された、または特定のリリースまでしか存在しない API など） | エンジンバージョンを上げる、または下げる |
 | `BuildConfiguration` | このプロセスがビルドされていないビルド構成を必要とする（Developer Tools・Editor ターゲットなど） | 必要な構成でリビルドする |
 | `ExecutionEnvironment` | この実行環境が提供していないインフラを必要とする（レンダーハードウェアインターフェース、対話セッション、オプションの Runtime プラグインが登録するモジュラー機能クライアントなど） | 別の実行環境で動かす |
-| `OptionalPluginDisabled` | このプロセスのビルド時に無効化されていたオプションプラグインに依存しており、必要な型がコンパイルから除外されている | プラグインを有効化してリビルドする |
+| `OptionalPluginDisabled` | このバイナリには、依存先のオプションプラグインへの対応が一切コンパイルされていない — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します。プラグインが単に無効なだけで存在はしている場合、この値にはなりません — その場合は代わりに（ヒント付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。上記の [Capability リファレンス](#capability-リファレンス) と `UAIP.Core.ListIntegrations` を参照 |
 | `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | エンジンバージョンの変更やプラグインの切り替えでは解決しない — 別の経路（例: エディタスクリプティング経由で同じ効果に到達する Toolset ブリッジコマンド）を探す |
 | `DelegationTargetMissing` | 委譲先の外部サーフェス（Toolset ブリッジのターゲット）に、サポート対象のどのエンジンバージョンも実際には宣言していない関数を呼び出しており、実装へ到達する手段がそもそも存在しない | これも解決しない — そのサーフェスを持つプラグイン自体はすでに有効になっている場合がある。同じ操作を行うネイティブコマンドがあれば、それを使う |
 | `SafetyPolicyDisabled` | 環境にもビルドにも欠けているものは無い — 既定で無効な SafetyPolicy フラグでゲートされており、そのフラグがこのプロセスでオフになっている | `Config/DefaultUAIP.ini` でそのフラグを設定して再起動する（`ErrorMessage` がフラグ名を名指しする）。`AllowCapabilityReload=True` の環境なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できる |
@@ -798,7 +798,7 @@ AllowUserInteractionPrompt=False
 | `PolicyViolation: Scenario execution is not enabled` | シナリオルートのオプトイン不足 | `config.json` に `"enable_scenario": true` を追加 |
 | `PolicyViolation: Command is denied` | コマンドが `DeniedCommands` に入っている | ini から該当エントリを削除して再起動 |
 | `PolicyViolation: ... is not available (<UnavailableDetail>): ...` | `UnavailableDetail` で絞り込まれた `HandlerUnavailable` 拒否（上記参照） | 詳細による：`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` は変更できるものを指す。`EngineApiNotExported` / `DelegationTargetMissing` はそうではなく、別の経路を探す |
-| 🧩 コマンドで `CommandNotFound` | オプションプラグインが無効 | `.uproject` で必要なプラグインを有効化してリビルド |
+| 🧩 コマンドで `CommandNotFound` | オプションプラグインが無効、または（エディタビルドでは）このエンジン版に存在しない | `ErrorMessage` を読む — 統合名・状態・具体的な対処が書かれている。多くの場合はプラグインを有効化してエディタを再起動するだけでよい。このエンジン版にそもそもプラグインが無い場合は、どの設定でも解決しない。`UAIP.Core.ListIntegrations` ですべての統合の状態を一度に確認できる |
 
 ---
 

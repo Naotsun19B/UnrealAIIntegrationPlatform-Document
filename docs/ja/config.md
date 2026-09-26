@@ -118,7 +118,7 @@ CLI フラグ：`-uaip-gc-enabled` / `-uaip-gc-max-age-hours=N` / `-uaip-gc-max-
 
 ### `[UAIP.PythonExtension]` — Python コマンド拡張（🧩 `PythonScriptPlugin`）
 
-`@uaip_command` デコレータ付き Python ファイルをスキャンする場所を指定します。`.uproject` で `PythonScriptPlugin` が有効な場合のみ登録されます。
+`@uaip_command` デコレータ付き Python ファイルをスキャンする場所を指定します。このプロバイダは `PythonScriptPlugin` が有効な場合のみ登録されます — エディタがこのディレクトリを起動時に自動スキャンするのは、`PythonExtensionReload` Capability（既定拒否）が**すでに許可されている場合だけ**です。許可されていなければ、`UAIP.Editor.PythonExtension.ReloadPythonCommands` を呼ぶまで Python コマンドは 1 つも登録されません。[Safety & Capabilities → スクリプト実行](safety.md#スクリプト実行) を参照。
 
 | キー | 型 | デフォルト | 説明 |
 |---|---|---|---|

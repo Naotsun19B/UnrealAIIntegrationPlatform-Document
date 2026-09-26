@@ -12,7 +12,7 @@ UAIP のコマンドが失敗すると、レスポンスに `ErrorCode` と `Err
 
 | ErrorCode | 何が起きているか | 主な対処 |
 |---|---|---|
-| `CommandNotFound` | 完全修飾コマンド名が登録されていない | `uaip_list_commands(ProviderPrefix="UAIP.Core")` で正しい名前を確認してください。🧩 マーク付きのコマンドはオプションプラグインの有効化が必要です |
+| `CommandNotFound` | 完全修飾コマンド名が登録されていない | `uaip_list_commands(ProviderPrefix="UAIP.Core")` で正しい名前を確認してください。🧩 マーク付きのコマンドの場合、`ErrorMessage` に統合名と対処が示されます — 多くの場合はプラグインを有効化してエディタを再起動するだけです。`UAIP.Core.ListIntegrations` ですべての統合の状態を一度に確認できます |
 | `CapabilityNotAvailable` | セッションに必要な Capability がない | `ErrorMessage` に不足している Capability 名が含まれます。`Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy] +AllowedCapabilities=<名前>` に追加し、エディタを再起動するか `UAIP.Core.ReloadCapabilities` を呼び出してください |
 | `PolicyViolation` | 3 つの異なる原因がある。(a) SafetyPolicy ゲートまたはルート opt-in 不足で拒否された、(b) このコマンドの `IsAvailable()` が、既定で無効な SafetyPolicy フラグがこのプロセスで無効であることを理由に `false`（`UnavailableDetail: SafetyPolicyDisabled`）、(c) `IsAvailable()` が `false` だがそれ以上具体的な detail が報告されていない（`UnavailableDetail: Unspecified`、まれ） | `"is denied by SafetyPolicy"` の場合は ini フラグがオフ、`"is not enabled"` の場合は CLI の opt-in フラグ（`-uaip-enable-scenario`・`-uaip-http-enable` など）が起動時に指定されていません。(b) の場合は `ErrorMessage` に名指しされたフラグを `Config/DefaultUAIP.ini` で有効にしてから再起動するか `UAIP.Core.ReloadCapabilities` を呼んでください。(c) の場合は `UAIP.Core.DescribeCommand` を呼んで再試行してください |
 | `AbilityUnavailable` | このコマンドの `IsAvailable()` が、環境またはビルドに起因する理由で `false` になっている：必要な Optional モジュール／プラグインが読み込まれていない、必要な構成でこのプロセスがビルドされていない、稼働中のエンジンバージョンがこのコマンドに対応していない、またはそもそも到達できる実装経路が無い | `UAIP.Core.DescribeCommand(CommandName="...")` を呼んで `UnavailableDetail`（`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`）を確認してください — 最後の 2 つは設定変更では解決しないので、Toolset ブリッジまたはネイティブの代替コマンドを探してください。[API リファレンス → コマンド可用性フィールド](api.md#65-コマンド可用性フィールド) も参照してください |
@@ -81,11 +81,12 @@ Live Coding がビルド中でエディタが他のコマンドを受け付け�
 
 考えられる原因は次のとおりです：
 
-- そのコマンドのオプションプラグインが `.uproject` で有効になっていない（[コマンドリファレンス](commands.md) の 🧩 マークを参照）
+- そのコマンドのオプションプラグイン（[コマンドリファレンス](commands.md) の 🧩 マークを参照）が無効になっている。エディタビルドでは `.uproject` への追加もリビルドも不要です — プラグインを有効にしてエディタを再起動するだけです。`ErrorMessage` に有効化すべきプラグイン名が示され、`UAIP.Core.ListIntegrations` を呼べばすべてのオプション統合の状態（`Loaded` / `PluginDisabled` / `PluginNotInstalled` など）を一度に確認できます
+- そのプラグインがこのエンジン版にそもそも存在しない（`ErrorMessage` にその旨が示されます）— **「有効化して再起動する」と案内しないでください。それでは何も解決しません。** 対処は、そのプラグインを含むエンジン版向けの UAIP ビルドを使うことです（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）
 - デモ版で製品版限定のコマンドを呼んでいる（🆓 マークが付いていないもの）
 - Toolset ブリッジコマンド（例：`Toolset.Editor.UMG.GetWidgets`）は UE 5.8+ と対応する Toolset プラグインが必要
 
-`uaip_describe_command(CommandName="...")` で確認すると、`Available: false` だった場合に前提条件が欠けていることが分かります。
+`uaip_describe_command(CommandName="...")` で確認すると、`Available: false` だった場合に前提条件が欠けていることが分かります。（登録すらされていない場合は `Available: false` にはなりません）そのコマンドはまだ読み込まれていないオプション統合に属しているので、`UAIP.Core.ListIntegrations` で理由を確認してください。
 
 ### エディタがダイアログを表示している間、応答がまったく返らない
 

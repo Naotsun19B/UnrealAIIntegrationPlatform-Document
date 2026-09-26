@@ -118,7 +118,7 @@ CLI equivalents: `-uaip-gc-enabled` / `-uaip-gc-max-age-hours=N` / `-uaip-gc-max
 
 ### `[UAIP.PythonExtension]` — Python command extension (🧩 `PythonScriptPlugin`)
 
-Controls where the scanner looks for `@uaip_command`-decorated Python files. Only registered when the `PythonScriptPlugin` is enabled in your `.uproject`.
+Controls where the scanner looks for `@uaip_command`-decorated Python files. The provider is only registered when `PythonScriptPlugin` is enabled — the editor scans this directory automatically at startup **only if the `PythonExtensionReload` capability (DefaultDenied) is already granted**; otherwise no Python commands are registered until `UAIP.Editor.PythonExtension.ReloadPythonCommands` is called. See [Safety & Capabilities → Script execution](safety.md#script-execution).
 
 | Key | Type | Default | Description |
 |---|---|---|---|

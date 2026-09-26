@@ -140,7 +140,7 @@ What this feature does provide:
 
 Each command declares the capabilities it requires. A command runs only when the process holds every required capability (Layer 1) and, if the session is bound to a role, that role doesn't deny any of them (Layer 1.5). Capabilities are either **DefaultAllow** (granted automatically) or **DefaultDenied** (must be explicitly enabled in `Config/DefaultUAIP.ini`).
 
-Capabilities marked 🧩 require an optional plugin. If that plugin is not enabled in your `.uproject`, the capability is never registered and commands that require it return `CommandNotFound`.
+Capabilities marked 🧩 require an optional plugin. On an editor build (source or the Fab-distributed Pro binary alike), the capability is registered whenever the plugin **exists in the engine you're running** — the project's `.uproject` no longer has to declare it, and no rebuild is needed. What still matters is whether the plugin is **enabled**: if it is disabled, the capability is never registered and commands that require it return `CommandNotFound` — enable the plugin and restart the editor to pick it up. If the plugin genuinely is not present in this engine version at all, enabling it isn't possible and `CommandNotFound` says so instead. Either way, `UAIP.Core.ListIntegrations` reports every optional integration's state and what to do about it in one call, and a `CommandNotFound` response for a command that belongs to one of them names the integration and its remedy directly.
 
 ### Finding out which capabilities exist
 
@@ -452,7 +452,7 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 |---|---|
 | `ScriptExecution` 🧩 | Run Python scripts in the editor (`RunEditorPythonScript`; requires `PythonScriptPlugin`) |
 | `PythonCommandExecution` 🧩 | Execute dynamically registered `@uaip_command` Python commands (requires `PythonScriptPlugin`) |
-| `PythonExtensionReload` 🧩 | Rescan and reload registered Python commands (`ReloadPythonCommands`; requires `PythonScriptPlugin`) |
+| `PythonExtensionReload` 🧩 | Rescan and reload registered Python commands (`ReloadPythonCommands`; requires `PythonScriptPlugin`). Also required for the editor's own startup scan of the project's `Scripts/UAIPCommands/**/*.py` to run — without it, no Python commands are registered at launch; grant it and call `ReloadPythonCommands` (or restart with it already granted) to pick them up |
 
 #### Runtime — restricted operations
 
@@ -629,7 +629,7 @@ These capabilities all require the `HairStrands` plugin (Optional, disabled by d
 
 #### Asset validation
 
-These capabilities require the `DataValidation` plugin, which the project must name explicitly in its `.uproject` — see the `UAIP.Editor.Validation` section of the [Commands Reference](commands.md). Listing the validators, following a validation job and reading its result are DefaultAllow (`EditorInspect`); only running validators and applying their fixes are gated here.
+These capabilities require the `DataValidation` plugin — on an editor build, UAIP compiles support for it in automatically (the engine ships it enabled by default), so the only thing that has to be true is that the project hasn't turned it off; see the `UAIP.Editor.Validation` section of the [Commands Reference](commands.md). Listing the validators, following a validation job and reading its result are DefaultAllow (`EditorInspect`); only running validators and applying their fixes are gated here.
 
 | Capability | What it unlocks |
 |---|---|
@@ -775,7 +775,7 @@ A command can report itself unavailable for reasons `CapabilityNotAvailable` and
 | `EngineVersion` | The command needs an engine version other than the one currently running (an API only introduced in, or only surviving up to, a specific release) | Raising or lowering the engine version |
 | `BuildConfiguration` | The command needs a build configuration this process was not built with (e.g. Developer Tools, an Editor target) | Rebuilding with the required configuration |
 | `ExecutionEnvironment` | The command needs infrastructure this execution environment does not provide (e.g. a render hardware interface, an interactive session, a modular-feature client an optional runtime plugin registers) | Running under a different execution environment |
-| `OptionalPluginDisabled` | The command depends on an optional plugin that was disabled when this process was built, so the types it needs were compiled out | Enabling the plugin and rebuilding |
+| `OptionalPluginDisabled` | The command depends on an optional plugin this binary has no compiled-in support for at all — the plugin was absent from the engine this UAIP build was compiled against | **Enabling the plugin and restarting fixes nothing here.** On an editor build, the fix is a UAIP build for an engine version that includes the plugin (for a source build: add the plugin to that engine and rebuild). On a packaged game, enable the plugin in the `.uproject` and package again. A plugin that is merely *disabled*, not absent, never produces this value — that shows up as `CommandNotFound` (with a hint) or, for a Toolset bridge, `ExecutionEnvironment` instead — see [Capability reference](#capability-reference) above and `UAIP.Core.ListIntegrations` |
 | `EngineApiNotExported` | The command depends on an engine-side API that is never exported to a plugin, on any supported engine version | Nothing an engine-version change or a plugin toggle fixes — look for a different code path (e.g. a Toolset bridge command reaching the same effect through editor scripting) |
 | `DelegationTargetMissing` | The command forwards to a function on an external surface (a Toolset bridge target) that no supported engine version actually declares, so the call could never reach an implementation | Nothing here either — the plugin owning that surface may already be enabled; use a native command covering the same operation, where one exists |
 | `SafetyPolicyDisabled` | Nothing about the environment or the build is missing: the command is gated behind a deny-by-default SafetyPolicy flag that is off in this process | Setting that flag in `Config/DefaultUAIP.ini` and restarting — the `ErrorMessage` names the flag. Where `AllowCapabilityReload=True`, `UAIP.Core.ReloadCapabilities` applies the edit without a restart |
@@ -798,7 +798,7 @@ Three concrete examples, all from [Commands Reference](commands.md#unavailablede
 | `PolicyViolation: Scenario execution is not enabled` | Scenario route opt-in missing | Add `"enable_scenario": true` to `config.json` |
 | `PolicyViolation: Command is denied` | Command is in `DeniedCommands` | Remove it from `DeniedCommands` in the ini |
 | `PolicyViolation: ... is not available (<UnavailableDetail>): ...` | A `HandlerUnavailable` refusal narrowed by `UnavailableDetail` (see above) | Depends on the detail: `EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` name something you can change; `EngineApiNotExported` / `DelegationTargetMissing` do not — look for a different code path |
-| `CommandNotFound` for a 🧩 command | Optional plugin not enabled | Enable the required plugin in your `.uproject` and rebuild |
+| `CommandNotFound` for a 🧩 command | Optional plugin not enabled, or (on an editor build) genuinely absent from this engine version | Read the `ErrorMessage` — it names the integration, its state and the exact remedy. Usually: enable the plugin and restart the editor. If the plugin isn't in this engine at all, no toggle fixes it. `UAIP.Core.ListIntegrations` shows every integration's state at once |
 
 ---
 

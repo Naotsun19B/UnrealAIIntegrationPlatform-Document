@@ -12,7 +12,7 @@ When something fails, the response includes an `ErrorCode` and `ErrorMessage`. T
 
 | ErrorCode | What it means | Likely fix |
 |---|---|---|
-| `CommandNotFound` | The fully-qualified command name isn't registered | Verify spelling with `uaip_list_commands(ProviderPrefix="UAIP.Core")`. Optional-plugin commands (marked 🧩) require the plugin to be enabled |
+| `CommandNotFound` | The fully-qualified command name isn't registered | Verify spelling with `uaip_list_commands(ProviderPrefix="UAIP.Core")`. For an optional-plugin command (marked 🧩), `ErrorMessage` names the integration and what to do — usually enable the plugin and restart the editor; `UAIP.Core.ListIntegrations` shows every integration's state at once |
 | `CapabilityNotAvailable` | The session lacks the required capability | Read the missing capability name from `ErrorMessage`, add it to `[UAIP.SafetyPolicy] +AllowedCapabilities=<name>` in `Config/DefaultUAIP.ini`, then restart or call `UAIP.Core.ReloadCapabilities` |
 | `PolicyViolation` | Three distinct causes: (a) a SafetyPolicy gate or missing route opt-in rejected the call, (b) the command's `IsAvailable()` is `false` because a deny-by-default SafetyPolicy flag is off (`UnavailableDetail: SafetyPolicyDisabled`), or (c) `IsAvailable()` is `false` with no more specific detail reported (`UnavailableDetail: Unspecified`, rare) | `"is denied by SafetyPolicy"` → an ini flag is off; `"is not enabled"` → a CLI opt-in flag (`-uaip-enable-scenario`, `-uaip-http-enable`, etc.) is missing at launch. For (b), the flag named in `ErrorMessage` needs to be turned on in `Config/DefaultUAIP.ini`, then restart or call `UAIP.Core.ReloadCapabilities`. For (c), call `UAIP.Core.DescribeCommand` and retry |
 | `AbilityUnavailable` | The command's `IsAvailable()` is `false` for an environment- or build-related reason: a required optional module or plugin isn't loaded, the process wasn't built with a required configuration, the running engine version doesn't support the command, or there is no implementation path to reach it at all | Call `UAIP.Core.DescribeCommand(CommandName="...")` and read `UnavailableDetail` (`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`) — the last two mean no configuration change helps; look for a Toolset bridge or native alternative instead. See [API Reference → Command availability fields](api.md#65-command-availability-fields) |
@@ -79,11 +79,12 @@ When Live Coding is mid-build and the editor refuses other commands, ask the AI 
 ### "I got `CommandNotFound` for a command listed in the docs"
 
 Most likely:
-- The command's optional plugin isn't enabled in `.uproject` (see the 🧩 marker in [Commands Reference](commands.md)).
+- The command's optional plugin (see the 🧩 marker in [Commands Reference](commands.md)) is disabled. On an editor build you no longer need to add it to `.uproject` or rebuild — just enable the plugin and restart the editor. `ErrorMessage` names the plugin to enable, and `UAIP.Core.ListIntegrations` reports every optional integration's state (`Loaded` / `PluginDisabled` / `PluginNotInstalled` / …) in one call.
+- The plugin genuinely isn't part of this engine version at all (`ErrorMessage` says so) — **do not tell the user to enable it and restart, that fixes nothing**; the fix is a UAIP build for an engine version that includes the plugin (or, for a source build, adding the plugin to that engine and rebuilding).
 - You're on the demo and the command requires Pro (no 🆓 marker).
 - The Toolset bridge command (e.g., `Toolset.Editor.UMG.GetWidgets`) requires UE 5.8+ and the matching Toolset plugin.
 
-Confirm with `uaip_describe_command(CommandName="...")` — `Available: false` tells you which prerequisite is missing.
+Confirm with `uaip_describe_command(CommandName="...")` — `Available: false` tells you which prerequisite is missing. A command that isn't registered at all (rather than `Available: false`) belongs to an optional integration that hasn't loaded; call `UAIP.Core.ListIntegrations` to see why.
 
 ### "No response at all while the editor is showing a dialog"
 
