@@ -86,6 +86,14 @@ Most likely:
 
 Confirm with `uaip_describe_command(CommandName="...")` — `Available: false` tells you which prerequisite is missing. A command that isn't registered at all (rather than `Available: false`) belongs to an optional integration that hasn't loaded; call `UAIP.Core.ListIntegrations` to see why.
 
+### "On UE 5.7, the editor crashed after I deleted a duplicated Groom, Geometry Collection or Cloth asset"
+
+This is a UE 5.7 engine defect, fixed in UE 5.8. An asset that embeds a Dataflow instance — a Groom, Geometry Collection, Chaos Cloth asset or Dataflow attachment — leaves a property-change listener registered when it is duplicated. Once the duplicate is deleted or unloaded, the next property change anywhere in the editor crashes inside `FDataflowInstance::OnOwnerPostEditChangeProperty`, often in an unrelated editor (recompiling a material, for example).
+
+- Duplicates made through UAIP (`DuplicateAsset`, `CopyAsset`, `BakeGroomRBFDeformation`) are not affected: UAIP removes the listener right after duplicating.
+- Duplicates made with the engine's own tools (the Content Browser's Duplicate, and so on) still are. After duplicating such an asset, save it and restart the editor before deleting or unloading the duplicate: an asset loaded fresh in a new editor session does not carry the listener.
+- UE 5.8 is not affected.
+
 ### "No response at all while the editor is showing a dialog"
 
 Commands run inside the editor's ticker callback, and a modal dialog stops the game thread with that ticker on it. **Nothing is answered for as long as the dialog is up.** The dialog is sometimes behind another window, so from the AI's side this looks like a frozen editor.
