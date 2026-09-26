@@ -68,7 +68,9 @@ value recorded in the table below.
    in place can leave behind files an older version shipped that the new one removed.
 2. Extract the zip for the version you want — the newest release to update, an older release to
    roll back.
-3. In Claude Code, run `/plugin marketplace update uaip-tools`, then restart Claude Code.
+3. In Claude Code, run `/plugin marketplace update uaip-tools`, then `/plugin update uaip@uaip-tools`,
+   then restart Claude Code. Updating the marketplace alone only re-reads the folder: the installed copy
+   stays at the old version until `/plugin update` replaces it (this is also what rolls back).
 
 If you started the editor with the watchdog option (see [Starting the editor](#starting-the-editor)
 below), the watchdog is a separate background process running against the old scripts. It exits on

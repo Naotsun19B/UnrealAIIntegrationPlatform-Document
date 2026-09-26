@@ -65,7 +65,9 @@ Get-FileHash UAIP-ClaudeCodePlugin-<version>.zip -Algorithm SHA256
 1. 展開先フォルダの中身を**すべて**削除してください。上書きだけのアップデートでは、新しいバージョンで
    削除されたはずの古いファイルが残ってしまうことがあります。
 2. 目的のバージョン（アップデートなら最新リリース、ロールバックなら古いリリース）の zip を展開します。
-3. Claude Code で `/plugin marketplace update uaip-tools` を実行し、再起動します。
+3. Claude Code で `/plugin marketplace update uaip-tools` を実行し、続けて `/plugin update uaip@uaip-tools` を
+   実行してから再起動します。marketplace の更新だけではフォルダを読み直すだけで、インストール済みの版は
+   `/plugin update` で置き換えるまで古いままです（巻き戻しもこの手順で行います）。
 
 watchdog オプション付きでエディタを起動していた場合（下記 [エディタの起動](#エディタの起動) 参照）、
 watchdog は別のバックグラウンドプロセスとして古いスクリプトのまま動き続けます。ただし、見張っていた
