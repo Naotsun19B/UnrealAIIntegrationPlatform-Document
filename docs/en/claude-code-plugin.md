@@ -258,7 +258,7 @@ requires are also recorded here.
 
 | Version | Requires | SHA-256 (`UAIP-ClaudeCodePlugin-<version>.zip`) |
 |---|---|---|
-| _(recorded at release time)_ | UAIP 1.2.0 or later | |
+| 1.0.0 | UAIP 1.2.0 or later | `aa65f0eff24633f984ba49844ece0a194e60ef145117b69fca2c19a38f77aee0` |
 
 ---
 

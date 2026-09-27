@@ -242,7 +242,7 @@ python "<展開先フォルダ>/plugins/uaip/scripts/exec.py" "UAIP.Editor.Execu
 
 | バージョン | 要求バージョン | SHA-256（`UAIP-ClaudeCodePlugin-<version>.zip`） |
 |---|---|---|
-| _(リリース時に記入)_ | UAIP 1.2.0 以降 | |
+| 1.0.0 | UAIP 1.2.0 以降 | `aa65f0eff24633f984ba49844ece0a194e60ef145117b69fca2c19a38f77aee0` |
 
 ---
 
