@@ -22,7 +22,7 @@ A version number is `MAJOR.MINOR.PATCH`.
 
 ### Current phase: 1.x.y (Fab Pro released)
 
-The current version is **1.1.0**. UAIP is **released on Fab as the Pro product** ([listing](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)). For the changes since 1.0.0 — the first entry of the `1.x.y` series — see the release list below.
+The current version is **1.2.0**. UAIP is **released on Fab as the Pro product** ([listing](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)). For the changes since 1.0.0 — the first entry of the `1.x.y` series — see the release list below.
 
 - Standard SemVer rules now apply strictly: breaking changes require a MAJOR bump (e.g. `2.0.0`)
 - New commands / new capabilities ship as MINOR (e.g. `1.0.x` → `1.1.0`)
@@ -56,11 +56,13 @@ The free demo (GitHub Releases) and Pro (Fab) **always share the same version nu
 
 > Unreleased and upcoming changes are tracked on the [`next` branch changelog](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/en/changelog.md).
 
-### UAIP Plugin 1.2.0 — Unreleased
+### UAIP Plugin 1.2.0 — 2026-09-29
+
+**UAIP 1.2.0 is now live on Fab.** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
 
 [![Watch the update trailer on YouTube](https://markdown-videos-api.jorgenkh.no/youtube/5BqecMKK96c)](https://youtu.be/5BqecMKK96c)
 
-A backward-compatible MINOR release. All changes below have shipped in the plugin repository (`.uplugin` `VersionName` is `1.2.0`) but are not yet released on Fab; the release date is filled in here once Fab review has passed.
+A backward-compatible MINOR release. All changes below have shipped in the plugin repository (`.uplugin` `VersionName` is `1.2.0`) and passed Fab review.
 
 **1.2.0 adds 351 commands and removes none** — 341 UAIP commands and 10 Toolset bridge commands, taking the totals from 877 / 411 (1288) in 1.1.0 to **1218 / 421 (1639)**. Every command name that existed in 1.1.0 still exists and still means the same thing. The largest additions are MetaHuman (56), GroomAsset (35), ChaosDestruction (29), LiveLink (25 across the runtime and editor modules), MotionMatching (23), Subsonic (22), **Chooser (20 — a new domain)**, UAF (19), ControlRig Dynamics (17), AnimSequence (13) and Insights Trace (11). See the [Commands Reference](commands.md) for the full per-domain breakdown.
 
@@ -308,9 +310,9 @@ A backward-compatible MINOR release. All changes below have shipped in the plugi
 - **The `UAIP.GameplayTagEditing.AT_GAMETAG_INTEGRATION_*` automation tests no longer write to the executed project's `Config/` directory.** All five tests used to add, rename, or remove tags directly in the project's own tag sources, leaving redirect and tag entries behind on every run — including a `UAIPTestTag.RenameOld` → `UAIPTestTag.RenameNew` redirect in `DefaultGameplayTags.ini`. They now register disposable tag sources outside the project for the duration of the run and verify the project's `Config/` directory is byte-for-byte unchanged afterward, failing the run rather than leaving residue if it is not. **If you ran an earlier version of these tests**, your project's `DefaultGameplayTags.ini` may still contain a `+GameplayTagRedirects=(OldTagName="UAIPTestTag.RenameOld",NewTagName="UAIPTestTag.RenameNew")` line and tag entries starting with `UAIPTestTag.`; if the project also has a Restricted tag source, that source's `.ini` may contain a `UAIPTestTag.Restricted` entry. These are safe to delete by hand — the new tests do not depend on them and do not clean them up automatically.
 - **On UE 5.7, duplicating a Groom, Geometry Collection or Chaos Cloth asset through UAIP could crash the editor later** (`UAIPEditorAssets`, `UAIPEditorGroomAsset`, `UAIPEditorShared` modules): UE 5.7's `FDataflowInstance` copies its property-change delegate handle when it is assigned, so a duplicated asset that embeds one — a Groom, Geometry Collection, Chaos Cloth asset or Dataflow attachment — never unregisters its own listener. Once the duplicate was deleted or otherwise garbage collected, the next property change anywhere in the editor crashed inside `FDataflowInstance::OnOwnerPostEditChangeProperty`. `DuplicateAsset`, `CopyAsset`, `BakeGroomRBFDeformation` and property writes that copy an instanced subobject now remove that listener right after duplicating. The price is that, until the duplicate is reloaded, its Dataflow variable overrides no longer follow edits made to its own properties. Nothing changes on UE 5.8, where the engine no longer copies the handle. ⚠️ **Known issue on UE 5.7**: a duplicate made with the engine's own tools (the Content Browser's Duplicate, for example) still has the engine defect — see [Troubleshooting](troubleshooting.md).
 
-#### MCP Bridge
+#### MCP Bridge 1.2.0 — released 2026-09-29
 
-Unreleased since MCP Bridge 1.1.2. The bridge is versioned and released independently of the plugin; see the version numbering above.
+The bridge is versioned and released independently of the plugin; see the version numbering above.
 
 **Added**
 
@@ -340,7 +342,7 @@ Unreleased since MCP Bridge 1.1.2. The bridge is versioned and released independ
 - **The installer's own `config.json` defaults now match the ones documented here.** The installer template shipped `command_timeout_seconds: 60` (the documented default has always been `180`) and `inline_artifacts.json` / `inline_artifacts.text` at `true` (both are `false`, matching `inline_artifacts.image`). Running the installer over an existing install now moves a value onto the new default **only when it still equals the old default outright** — anything you set yourself is left untouched. See [Configuration → MCP Bridge config.json](config.md#mcp-bridge-configjson).
 - **Non-Windows note:** the BOM problem above was specific to `Set-Content` on Windows PowerShell 5.1, so `install.sh` never wrote one — and the automatic migration described above, which only fires for a BOM-prefixed file left by an old installer, never applies to a `config.json` `install.sh` created. If you installed on macOS / Linux with an older bridge, your `config.json` keeps its old defaults (`command_timeout_seconds: 60`, `inline_artifacts.json` / `.text`: `true`) until you edit it by hand or delete it and let the installer recreate it.
 
-#### Claude Code Plugin
+#### Claude Code Plugin 1.0.0 — released 2026-09-29
 
 First public release, `1.0.0`. Eight `/uaip:*` skills (`uaip`, `launch`, `health`, `diag`, `exec`, `capture`, `test`, `scenario`) that let Claude Code drive, observe, and test a UE Editor project over UAIP's HTTP API directly — no MCP server configured, no separate MCP Bridge install. Each skill runs one pre-approved, bundled Python script; the editor's own Capability grants and SafetyPolicy remain the boundary for what a command may actually do, the same as every other transport. Before sending its authentication token, it verifies the target port is genuinely this project's editor using the new [instance proof](security.md#instance-proof) mechanism above. Requires **UAIP 1.2.0 or later** with the HTTP API enabled (not MCP-only, not the demo build) and Python 3.10+. Distributed separately from both the plugin and the MCP Bridge, as `UAIP-ClaudeCodePlugin-<version>.zip` from this repository's Releases (tag `ClaudeCodePlugin-v<X.Y.Z>`), under marketplace `uaip-tools` / plugin name `uaip`. See [Claude Code Plugin](claude-code-plugin.md) for installation, verification, exit codes, and how it compares to the MCP Bridge.
 

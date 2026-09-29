@@ -237,7 +237,7 @@ Authorization: Bearer <token>
 
 | クエリパラメータ | 型 | 必須 | 備考 |
 |---|---|---|---|
-| `SessionId` | string | 移行期間中は省略可 | 対象をそのセッションの Artifact に絞り込む。**現在は省略しても受け付けられる**が、省略した呼び出しは、このエディタプロセスが**今回の起動中**に作った Artifact しか解決できない — 前回のセッションから見つけ直された Artifact には到達できない（[Artifacts](artifacts.md) 参照）。省略した呼び出しが**成功した**場合の応答には `Deprecation` レスポンスヘッダ（RFC 9745）と、移行手順を指す `Link; rel="deprecation"` ヘッダが付く。`SessionId` を明示した呼び出しにはどちらのヘッダも付かない。**`SessionId` は将来のメジャーバージョンでこのルートにおいて必須になります** — 移行方法は [Changelog](changelog.md#unreleased) を参照してください |
+| `SessionId` | string | 移行期間中は省略可 | 対象をそのセッションの Artifact に絞り込む。**現在は省略しても受け付けられる**が、省略した呼び出しは、このエディタプロセスが**今回の起動中**に作った Artifact しか解決できない — 前回のセッションから見つけ直された Artifact には到達できない（[Artifacts](artifacts.md) 参照）。省略した呼び出しが**成功した**場合の応答には `Deprecation` レスポンスヘッダ（RFC 9745）と、移行手順を指す `Link; rel="deprecation"` ヘッダが付く。`SessionId` を明示した呼び出しにはどちらのヘッダも付かない。**`SessionId` は将来のメジャーバージョンでこのルートにおいて必須になります** — 移行方法は [Changelog](changelog.md#uaip-plugin-120--2026-09-29) を参照してください |
 
 レスポンス: 生バイト列、Artifact メタの `Content-Type`。GC 済み（セッション終了または TTL 切れ）の場合 404。
 

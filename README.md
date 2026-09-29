@@ -136,4 +136,4 @@ Unless explicitly stated otherwise, all documentation content in this repository
 
 ## Changelog
 
-**Current version**: 1.2.0 (released RELEASE-DATE) — Pro is now [available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff). See [Changelog](docs/en/changelog.md) for the full history and versioning policy.
+**Current version**: 1.2.0 (released 2026-09-29) — Pro is now [available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff). See [Changelog](docs/en/changelog.md) for the full history and versioning policy.

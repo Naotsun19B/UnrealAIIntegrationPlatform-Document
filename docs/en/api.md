@@ -237,7 +237,7 @@ Authorization: Bearer <token>
 
 | Query parameter | Type | Required | Notes |
 |---|---|---|---|
-| `SessionId` | string | Optional during the migration window | Scopes the lookup to that session's artifacts. **Omitting it is accepted today**, but an omitted call can only resolve artifacts this editor process itself produced during its current run — it cannot reach artifacts rediscovered from a previous session (see [Artifacts](artifacts.md)). A *successful* response to an omitted call carries a `Deprecation` response header (RFC 9745) and a `Link; rel="deprecation"` header pointing at migration guidance; a call that names `SessionId` explicitly gets neither header. **`SessionId` will become mandatory on this route in a future major version** — see [Changelog](changelog.md#unreleased) for how to migrate before then. |
+| `SessionId` | string | Optional during the migration window | Scopes the lookup to that session's artifacts. **Omitting it is accepted today**, but an omitted call can only resolve artifacts this editor process itself produced during its current run — it cannot reach artifacts rediscovered from a previous session (see [Artifacts](artifacts.md)). A *successful* response to an omitted call carries a `Deprecation` response header (RFC 9745) and a `Link; rel="deprecation"` header pointing at migration guidance; a call that names `SessionId` explicitly gets neither header. **`SessionId` will become mandatory on this route in a future major version** — see [Changelog](changelog.md#uaip-plugin-120--2026-09-29) for how to migrate before then. |
 
 Response: the raw bytes, with `Content-Type` from the artifact's metadata. 404 if the artifact has been GC'd (session ended or TTL expired).
 

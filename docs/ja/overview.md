@@ -136,4 +136,4 @@ Fab で配布される製品版は [Fab Standard License (Fab EULA)](https://www
 
 ## 更新履歴
 
-**現在のバージョン**: 1.2.0（RELEASE-DATE リリース）― 製品版は [Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff) です。詳細な更新履歴とバージョニング方針は [更新履歴](changelog.md) を参照してください。
+**現在のバージョン**: 1.2.0（2026-09-29 リリース）― 製品版は [Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff) です。詳細な更新履歴とバージョニング方針は [更新履歴](changelog.md) を参照してください。

@@ -22,7 +22,7 @@ UAIP は [Semantic Versioning 2.0.0](https://semver.org/lang/ja/) に従って�
 
 ### 現在のフェーズ：1.x.y（Fab 製品版公開済み）
 
-現行バージョンは **1.1.0** で、UAIP は **Fab で製品版として公開済み**（[リスティング](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)）です。1.x.y 系列の初回エントリである 1.0.0 からの変更点は、下記のリリース一覧を参照してください。
+現行バージョンは **1.2.0** で、UAIP は **Fab で製品版として公開済み**（[リスティング](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)）です。1.x.y 系列の初回エントリである 1.0.0 からの変更点は、下記のリリース一覧を参照してください。
 
 - 以降は通常の SemVer ルールが厳格に適用されます。破壊的変更には MAJOR バンプ（`2.0.0` など）が必要
 - 新コマンド・新 Capability 追加は MINOR バンプ（例: `1.0.x` → `1.1.0`）
@@ -56,11 +56,13 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 > 未リリース・開発中の変更は [`next` ブランチの更新履歴](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/ja/changelog.md) で確認できます。
 
-### UAIP Plugin 1.2.0 — 未リリース
+### UAIP Plugin 1.2.0 — 2026-09-29
+
+**UAIP 1.2.0 を Fab で公開しました。** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
 
 [![YouTube でアップデートトレーラーを見る](https://markdown-videos-api.jorgenkh.no/youtube/5BqecMKK96c)](https://youtu.be/5BqecMKK96c)
 
-後方互換の MINOR リリースです。以下の変更はすべてプラグインリポジトリに取り込み済み（`.uplugin` の `VersionName` は `1.2.0`）ですが、Fab には未リリースです。リリース日は Fab の審査通過後にここへ記載します。
+後方互換の MINOR リリースです。以下の変更はすべてプラグインリポジトリに取り込み済みで（`.uplugin` の `VersionName` は `1.2.0`）、Fab 審査を通過してリリースされました。
 
 **1.2.0 ではコマンドを 351 件追加し、削除は 0 件です** — UAIP コマンド 341 件と Toolset ブリッジコマンド 10 件。合計は 1.1.0 の 877 / 411（1288）から **1218 / 421（1639）** になりました。1.1.0 に存在したコマンド名はすべて残っており、意味も変わっていません。追加が多いのは MetaHuman（56）、GroomAsset（35）、ChaosDestruction（29）、LiveLink（ランタイム・エディタ両モジュール合計 25）、MotionMatching（23）、Subsonic（22）、**Chooser（20 — 新規ドメイン）**、UAF（19）、ControlRig Dynamics（17）、AnimSequence（13）、Insights Trace（11）です。ドメイン別の内訳は [コマンドリファレンス](commands.md) を参照してください。
 
@@ -308,9 +310,9 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 - **`UAIP.GameplayTagEditing.AT_GAMETAG_INTEGRATION_*` の自動テストは、実行したプロジェクトの `Config/` に書き込まなくなりました。** 5 件のテストはいずれも、これまでプロジェクト自身のタグの置き場へ直接タグの追加・リネーム・削除を行っており、実行のたびにリダイレクトやタグのエントリを残していました。`DefaultGameplayTags.ini` に残る `UAIPTestTag.RenameOld` → `UAIPTestTag.RenameNew` のリダイレクトもその一つです。現在は実行のたびにプロジェクトの外へ使い捨ての置き場を登録し、実行後にプロジェクトの `Config/` がバイト単位で変化していないことを確認します。変化していた場合は、痕跡を残す代わりにテスト自体を失敗させます。**旧版のテストを実行したことがある場合**、`DefaultGameplayTags.ini` に `+GameplayTagRedirects=(OldTagName="UAIPTestTag.RenameOld",NewTagName="UAIPTestTag.RenameNew")` の行と、`UAIPTestTag.` で始まるタグのエントリが残っている可能性があります。プロジェクトに Restricted なタグの置き場がある場合は、その ini に `UAIPTestTag.Restricted` のエントリが残っていることもあります。これらは手で削除して問題ありません — 新しいテストはこれらに依存しておらず、自動でも消しません。
 - **UE 5.7 で、UAIP 経由で Groom・Geometry Collection・Chaos Cloth アセットを複製すると、後でエディタがクラッシュすることがありました**（`UAIPEditorAssets`、`UAIPEditorGroomAsset`、`UAIPEditorShared` モジュール）: UE 5.7 の `FDataflowInstance` は、代入されるとプロパティ変更デリゲートのハンドルまでコピーします。そのため、これを内部に持つアセット（Groom・Geometry Collection・Chaos Cloth アセット・Dataflow アタッチメント）を複製すると、複製は自分のリスナーを登録解除しなくなります。複製が削除されるなどしてガベージコレクションされると、エディタのどこかで次にプロパティが変更されたときに `FDataflowInstance::OnOwnerPostEditChangeProperty` の中でクラッシュしていました。`DuplicateAsset`、`CopyAsset`、`BakeGroomRBFDeformation`、およびインスタンス化されたサブオブジェクトをコピーするプロパティ書き込みは、複製の直後にこのリスナーを外すようになりました。代わりに、複製を再読み込みするまでは、複製自身のプロパティを編集しても Dataflow の変数の上書きが追従しません。エンジン側でハンドルをコピーしなくなった UE 5.8 では、何も変わりません。⚠️ **UE 5.7 の既知の問題**: エンジン自身の機能（コンテンツブラウザの「複製」など）で作った複製には、エンジンの欠陥がそのまま残ります。[トラブルシューティング](troubleshooting.md)を参照してください。
 
-#### MCP Bridge
+#### MCP Bridge 1.2.0 — 2026-09-29 リリース済み
 
-MCP Bridge 1.1.2 以降の未リリース分です。ブリッジはプラグインとは独立に採番・リリースされます（採番規則は上記のバージョニング方針を参照）。
+ブリッジはプラグインとは独立に採番・リリースされます（採番規則は上記のバージョニング方針を参照）。
 
 **追加**
 
@@ -340,7 +342,7 @@ MCP Bridge 1.1.2 以降の未リリース分です。ブリッジはプラグイ
 - **インストーラ自身の `config.json` 既定値を、このドキュメントに記載の値へ揃えました。** インストーラのテンプレートは `command_timeout_seconds: 60` を書き出していました（ドキュメント記載の既定値は一貫して `180` です）が、`inline_artifacts.json` / `inline_artifacts.text` は `true` でした（`inline_artifacts.image` と同じく、どちらも既定は `false` です）。既存のインストールに対してインストーラを再実行すると、**旧既定値のままの値だけ**が新既定値へ自動的に移行されます — 自分で設定した値には触れません。詳細は [設定リファレンス → MCP Bridge config.json](config.md#mcp-bridge-configjson) を参照してください。
 - **非 Windows 利用者向けの注記：** 上記の BOM 問題は Windows PowerShell 5.1 の `Set-Content` に固有のものだったため、`install.sh` は最初から BOM を書いていません。したがって上記の自動移行（旧インストーラが残した BOM 付きファイルにだけ発火する）は、`install.sh` が生成した `config.json` には一切適用されません。macOS / Linux で旧バージョンの Bridge をインストールしていた場合、`config.json` を手で編集するか、削除してインストーラに再生成させるまで、旧既定値（`command_timeout_seconds: 60`、`inline_artifacts.json` / `.text`: `true`）のまま残り続けます。
 
-#### Claude Code Plugin
+#### Claude Code Plugin 1.0.0 — 2026-09-29 リリース済み
 
 初回公開リリース、`1.0.0`。Claude Code から UAIP の HTTP API に直接アクセスして UE Editor プロジェクトを操作・観測・テストできる8つの `/uaip:*` スキル（`uaip`・`launch`・`health`・`diag`・`exec`・`capture`・`test`・`scenario`）— MCP サーバーの設定も、別途の MCP Bridge インストールも不要です。各スキルは事前承認済みの同梱 Python スクリプトを1本実行し、コマンドが実際に何をできるかの境界は他のトランスポートと同じく、エディタ自身の Capability 付与と SafetyPolicy です。認証トークンを送る前に、上記の新設 [instance proof](security.md#instance-proof) 機構で対象ポートが本当にこのプロジェクトのエディタかを確認します。**UAIP 1.2.0 以降**が HTTP API を有効にして動作していること（MCP 専用・デモ版は不可）と Python 3.10+ が必要です。プラグイン本体・MCP Bridge のいずれとも別配布で、このリポジトリの Releases から `UAIP-ClaudeCodePlugin-<version>.zip`（タグ `ClaudeCodePlugin-v<X.Y.Z>`）、マーケットプレイス `uaip-tools` / プラグイン名 `uaip` として配布します。インストール手順・検証方法・終了コード・MCP Bridge との使い分けは [Claude Code Plugin](claude-code-plugin.md) を参照してください。
 
