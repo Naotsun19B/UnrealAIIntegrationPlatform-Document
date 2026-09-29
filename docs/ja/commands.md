@@ -304,7 +304,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ## 実行時コマンドの対象プレイワールドを指定する
 
-ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 48 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
+ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 49 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
 
 | パラメータ | 型 | 意味 |
 |---|---|---|
@@ -338,12 +338,14 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | ドメイン | コマンド |
 |---|---|
 | `UAIP.Runtime.World` | `SpawnActor`、`DestroyActor`、`TeleportActor`、`PossessActor`、`SetTimeScale`、`ExecuteConsoleCommand`、`SetDataLayerRuntimeState`、`GetDataLayerRuntimeState`、`ListDataLayerRuntimeStates`、`WaitForDataLayerStreaming` |
-| `UAIP.Runtime.Observation` | `CaptureViewportImage`、`DumpWorldState`、`DumpActorState`、`DumpComponentState` |
+| `UAIP.Runtime.Observation` | `CaptureViewportImage`、`DumpWorldState`、`DumpActorState`、`DumpComponentState`、`CheckpointCapture` |
 | `UAIP.Runtime.Execution` | `RunFunctionalTest`、`RunRuntimeAutomationTest` |
 | `UAIP.Runtime.Assertion` | `WaitForCondition`、`AssertActorProperty`、`AssertWorldState` |
 | `UAIP.Runtime.Input` | `InjectInputKey`、`InjectEnhancedInputAction`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`AddMappingContext`、`RemoveMappingContext`、`SetInputMode`、`FlushInput`、`DumpInputState`、`GetEnhancedInputActionValue` |
 | `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`、`GrantAbility`、`RemoveAbility`、`ClearGrantedAbilities`、`ApplyEffect`、`RemoveEffect`、`ClearActiveEffects`、`SetAttributeValue`、`ResetAttributesToBase`、`SendGameplayEvent` |
 | `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`、`GetVariable`、`SetVariable`、`SetSystem` |
+
+上の一覧のうち `CheckpointCapture` だけは、自分でワールドを解決しません。`CaptureViewportImage` と `DumpWorldState` を組み合わせたコマンドであり、指定された対象をそのまま両方へ引き渡します。これにより、1 つのチェックポイントに含まれるスクリーンショットと状態ダンプが、エンジンが別々に選んだ 2 つのワールドではなく、常に同じワールドを指すようになります。
 
 `QuitGame` と `ListPlayWorlds`、および CVar 系コマンドはどちらのパラメータも受け付けません。前 2 つは単一のワールドに宛てた操作ではなく、CVar はワールド単位ではなくエンジン全体のものだからです。
 

@@ -304,7 +304,7 @@ Component classes are gated the same way but by a rule of their own, described i
 
 ## Choosing which play world a Runtime command acts on
 
-A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 48 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
+A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 49 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
 
 | Parameter | Type | Meaning |
 |---|---|---|
@@ -338,12 +338,14 @@ Two limits worth knowing:
 | Domain | Commands |
 |---|---|
 | `UAIP.Runtime.World` | `SpawnActor`, `DestroyActor`, `TeleportActor`, `PossessActor`, `SetTimeScale`, `ExecuteConsoleCommand`, `SetDataLayerRuntimeState`, `GetDataLayerRuntimeState`, `ListDataLayerRuntimeStates`, `WaitForDataLayerStreaming` |
-| `UAIP.Runtime.Observation` | `CaptureViewportImage`, `DumpWorldState`, `DumpActorState`, `DumpComponentState` |
+| `UAIP.Runtime.Observation` | `CaptureViewportImage`, `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `CheckpointCapture` |
 | `UAIP.Runtime.Execution` | `RunFunctionalTest`, `RunRuntimeAutomationTest` |
 | `UAIP.Runtime.Assertion` | `WaitForCondition`, `AssertActorProperty`, `AssertWorldState` |
 | `UAIP.Runtime.Input` | `InjectInputKey`, `InjectEnhancedInputAction`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `AddMappingContext`, `RemoveMappingContext`, `SetInputMode`, `FlushInput`, `DumpInputState`, `GetEnhancedInputActionValue` |
 | `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses`, `GrantAbility`, `RemoveAbility`, `ClearGrantedAbilities`, `ApplyEffect`, `RemoveEffect`, `ClearActiveEffects`, `SetAttributeValue`, `ResetAttributesToBase`, `SendGameplayEvent` |
 | `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`, `GetVariable`, `SetVariable`, `SetSystem` |
+
+`CheckpointCapture` is the one entry above that does not resolve a world of its own: it is composed of `CaptureViewportImage` and `DumpWorldState`, and hands whatever target you name to both of them. That is what keeps the screenshot and the state dump inside one checkpoint describing the same world, instead of two worlds the engine happened to pick separately.
 
 `QuitGame`, `ListPlayWorlds` and the CVar commands take neither: the first two are not addressed to a single world, and CVars are engine-global rather than per-world.
 
