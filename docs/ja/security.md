@@ -12,7 +12,7 @@ UAIP は **開発者マシンと、信頼できる社内 CI** での利用を想
 
 | 脅威 | 対処方法 |
 |---|---|
-| ネットワーク越しの攻撃者によるスキャン | WebSocket はループバックバインド、HTTP MCPOnly モードはアプリ層で localhost 強制（HTTP FullHTTP モードはトークン認証で別 PC 到達も許可） |
+| ネットワーク越しの攻撃者によるスキャン | すべての transport が既定でループバック（`127.0.0.1`）にバインドされます。HTTP MCPOnly モードはさらにアプリ層で localhost を強制します。別 PC から UAIP へ到達するには、UAIP 自身の設定範囲外にある、エンジン設定層での bind アドレス上書きを運用者が明示的に行う必要があります（[ネットワーク面](#ネットワーク面) を参照） |
 | 同一マシン上の UAIP 以外のプロセスからのコマンド呼び出し | HTTP / WebSocket での Bearer トークン認証 |
 | AI が破壊的なコマンドを誤って呼び出してしまう | Capability ゲート（編集系はデフォルトで拒否）と、コマンドごとの `IsReadOnly` フラグ |
 | AI が誘導されて広範囲な変更を実行してしまう | SafetyPolicy でプロセス全体を Read-Only モードに切り替え可能 |
@@ -30,14 +30,16 @@ UAIP は **開発者マシンと、信頼できる社内 CI** での利用を想
 
 | コンポーネント | bind 層 | アプリ層フィルタ | 認証 | 別 PC からの到達 |
 |---|---|---|---|---|
-| HTTP transport — FullHTTP モード（`-uaip-http-enable`） | `0.0.0.0` | なし | Bearer トークン | **可能**（トークンと FW 許可があれば。設計どおり） |
-| HTTP transport — MCPOnly モード（`-uaip-mcp-enable`） | `0.0.0.0` | PeerAddress / Host / Origin を 5 段検査して localhost 強制 | なし（localhost 前提） | 不可 |
-| HTTP transport — `-uaip-http-no-auth` | `0.0.0.0` | なし | なし | 可能（開発専用、本番では使わない） |
+| HTTP transport — FullHTTP モード（`-uaip-http-enable`） | ループバック（`127.0.0.1`） | なし | Bearer トークン | 不可 — 下の補足を参照 |
+| HTTP transport — MCPOnly モード（`-uaip-mcp-enable`） | ループバック（`127.0.0.1`） | PeerAddress / Host / Origin を 5 段検査して localhost 強制 | なし（localhost 前提） | 不可 |
+| HTTP transport — `-uaip-http-no-auth` | ループバック（`127.0.0.1`） | なし | なし | 不可 |
 | WebSocket transport（`-uaip-ws-enable`） | `127.0.0.1` 固定 | ClientIP を二重チェック | Bearer トークン（最初のフレーム） | 不可 |
 | MCP Bridge | AI クライアントと Bridge プロセス間の stdio | — | なし — ホスト信頼に依存 | — |
 | CLI transport | なし（プロセス内） | — | なし | — |
 
-WebSocket だけが socket 層で `127.0.0.1` バインドに固定されています。HTTP の FullHTTP モードは「リモートエージェントから操作される」前提があるため、socket 層は `0.0.0.0` で開いておき、Bearer トークンと Windows ファイアウォールでアクセスを絞る設計です。マシンをまたいで HTTP を公開する場合は、トークンの保管とファイアウォールのルール設定を運用側で担保してください。
+WebSocket だけでなく、HTTP のどのモードもループバックにバインドされます。UAIP は `FHttpServerModule::GetHttpRouter()` を呼ぶ際に bind アドレスを一切指定していません。エンジン側の `FHttpServerListenerConfig::BindAddress` の既定値は `"localhost"` であり、本プロジェクトの `Config/DefaultUAIP.ini` にも `DefaultEngine.ini` にも `[HTTPServer.Listeners]` の上書きはありません。これは MCPOnly だけでなく FullHTTP にも当てはまります — FullHTTP の Bearer トークン認証はリモートエージェントからの接続を想定して設計されましたが、実装としては socket 自体がマシンの外へは出ません。`-uaip-http-no-auth` もトークン検証を外すだけで、bind アドレスは変わりません。
+
+FullHTTP を本当に別 PC から到達可能にしたい運用者は、エンジン設定層の `[HTTPServer.Listeners]` で該当ポートの `BindAddress` を自分で上書きする必要があります（UAIP 側にはこのための設定項目はありません）。そうした場合、開いたポートとネットワークの間にあるのは Bearer トークンとファイアウォールだけになります。`-uaip-http-enable` を付けて起動するだけとは別の、明示的な判断として扱ってください。
 
 ---
 
@@ -63,11 +65,46 @@ UnrealEditor.exe MyProject.uproject -uaip-http-enable -uaip-http-no-auth
 UnrealEditor.exe MyProject.uproject -uaip-ws-enable -uaip-ws-no-auth
 ```
 
-**信頼できないプロセスが存在しない**、隔離された開発マシンや CI ランナーでのみ使用してください。HTTP の `-uaip-http-no-auth` は socket 層が `0.0.0.0` のままなので、ファイアウォールが開いていれば別 PC からも到達できてしまいます。WebSocket の `-uaip-ws-no-auth` は socket 層がループバック限定なので別 PC からは到達できませんが、同じマシン上の他プロセスはコマンドを発行できるようになります。
+**信頼できないプロセスが存在しない**、隔離された開発マシンや CI ランナーでのみ使用してください。HTTP の `-uaip-http-no-auth` は Bearer トークン検証を外すだけで、socket 自体はループバックのままなので、このフラグを付けただけで別 PC から到達できるようになるわけではありません。WebSocket の `-uaip-ws-no-auth` も socket 層はループバック限定です。ただしどちらの場合も、同じマシン上の他プロセスは認証なしでコマンドを発行できるようになります。
 
 ### MCP Bridge
 
 MCP は AI クライアントの stdio 子プロセスとして動くため、認証は AI クライアント側の MCP トランスポートが使う仕組み（通常はなし — そもそも子プロセスのため）に依存します。Bridge はエディタを自身の子プロセスとして起動するので、コマンドの流れは最初から最後までローカルで完結します。
+
+### Instance proof
+
+Bearer トークンやロールトークンが証明するのは、リクエストに「何らかの」資格情報が付いているという事実だけで、そのポートで応答しているプログラムが本当に**このプロジェクトの**エディタであることは証明しません。同じポートに再起動後の別プロジェクトの UAIP エディタが居座る、無関係なプログラムが待ち受ける、ポートフォワード／中継経由で接続する — いずれの場合も、そのポートへ資格情報を送れば実際に待ち受けている相手にそれを渡してしまいます。**UAIP 1.2.0** 以降、MCP Bridge と [Claude Code Plugin](claude-code-plugin.md) はどちらも、リクエストに資格情報を付ける前に新設の未認証ルートでエディタの身元を照合します。
+
+```
+GET /uaip/instance-proof?challenge=<64桁の小文字16進>
+```
+
+呼び出し側は照合のたびに新しいランダムな 32 バイトの challenge（小文字16進64桁）を生成します — 使い回すと、このチェックが本来持つはずの鮮度の保証が失われます。エディタは以下を返します。
+
+```json
+{
+  "Algorithm":    "HMAC-SHA1",
+  "Version":      1,
+  "Port":         8765,
+  "Mode":         "FullHTTP",
+  "AuthRequired": true,
+  "Proof":        "<40桁の小文字16進>"
+}
+```
+
+`Proof` は `"uaip-instance-proof-v1\n" + challenge + "\n" + Port + "\n" + Mode + "\n" + AuthRequired`（最後の2つはリテラルの `true`/`false`）に対する HMAC-SHA1 で、鍵はエディタが起動のたびに以下へ書き出す 64 桁の大文字16進の秘密値です。
+
+```
+Saved/UAIP/InstanceSecrets/<port>.txt
+```
+
+— このファイルはこのプロジェクト専用（`Saved/` 配下。`EditorHttpAuthToken.txt` と同じ）であり、かつこの起動専用です。起動のたびに再生成され、正常な停止で削除されます。このファイルを読める呼び出し側は、同じ HMAC をローカルで計算し `Proof` と比較します。一致すれば、`Port` で応答しているプログラムは**このプロジェクト自身の `Saved/` ディレクトリから起動された**ことを意味します — 秘密値を読めるのはそれ以外に存在しないため、他の何かがこの値を作ることはできません。不一致・秘密値ファイルが読めない・このルートが応答しない、のいずれの場合も「このポートに資格情報を渡してはいけない」ことを意味し、この照合を実装しているどの呼び出し側も、それでも送ってしまうフォールバックは持ちません。
+
+`AuthRequired` は、そのポートに到達するのに実際に資格情報が要るかを伝え、意味は `Mode` によって変わります。**FullHTTP** ではエディタが `-uaip-http-no-auth`付きで起動されたかどうかを反映し、**MCPOnly** では `Config/DefaultUAIP.ini` の `[UAIP.Roles]` に何か定義されているかを反映します — MCPOnly 自体のリクエスト単位の認証はロールベースであり `-uaip-http-no-auth` フラグではないため、ここでそのフラグの値を流用すると、このモードでは実態と逆の値を報告してしまいます。どちらのモードの呼び出し側も、このフィールドの使い方は同じです — `AuthRequired` が `true` のときだけ資格情報を付ける。
+
+**なぜ HMAC-SHA1 であって新しいハッシュではないか。** SHA1 の衝突攻撃（SHAttered 等）が破るのは、攻撃者が両方の入力を選べる場合の単純なダイジェストとしての利用であり、HMAC-SHA1 には引き継がれません。HMAC の安全性は、衝突発見攻撃が与えない別の性質（PRF/MAC 偽造への耐性）に帰着し、ここでの challenge は応答する側ではなく検証する呼び出し側が生成します。SHA1 は、この用途でエンジン自身の `FSHA1`（`Misc/SecureHash.h`）が公開している唯一のハッシュでもあります — 新しい依存関係を追加せずに使えるより新しいハッシュのエンジン実装は存在しませんでした。
+
+このルートは、上記の「他の全ての HTTP ルートが Bearer トークンを要求する」原則の**唯一の例外**です。これは意図的なもので、呼び出し側がポートに資格情報を渡すかどうかを決める**前に**その正当性を確かめられるようにするのが目的だからです。秘密値そのものは決して返さず、そこから計算した値のみを返します。他の GET・POST のいずれも、サブパスも受け付けません — `/uaip/instance-proof/anything` へのリクエストや、この完全一致パスへの `POST` は、この除外に届く前に拒否されます。
 
 ---
 
@@ -102,7 +139,7 @@ flowchart TB
 
 | フラグ | 効果 |
 |---|---|
-| `ReadOnly=True` | すべての変更コマンドを拒否（`IsReadOnly=false` ハンドラ） |
+| `ReadOnly=True` | 変更コマンドを拒否（`IsReadOnly=false` ハンドラ）。`ShutdownEditor` / `RestartEditor` のみ例外 — [Safety & Capabilities](safety.md#readonly-とエディタライフサイクルコマンド) を参照 |
 | `DisableSave=True` | すべてのディスク書き込みコマンドを拒否 |
 | `AllowLogDump=False` | `DumpOutputLog` / `DumpMessageLog` を拒否 |
 | `AllowContextMenuMutation=False` | `InvokeContextMenuAction` を拒否 |
@@ -131,6 +168,24 @@ flowchart TB
 
 ---
 
+## 運用上のセキュリティ注意点
+
+不具合と誤解されやすい挙動、あるいは影響範囲に気付かないまま選んでしまいがちな設定をまとめます。特に「既に起動しているエディタへ後から接続する」ワークフローで重要です — [接続方法 → ゲストモード接続](connections.md#ゲストモード接続) を参照してください。
+
+### 自動起動の設定はチーム共有であり、個人単位ではない
+
+`[UAIP.Transport].AutoStartMCP`（[設定リファレンス](config.md#uaiptransport--通常起動のエディタで-mcp-transport-を自動起動する) を参照）は `Config/DefaultUAIP.ini` に置かれ、バージョン管理対象です。エディタにはこれに対する per-user のオーバーライド層がありません — ランタイムオーバーライド機構はパッケージビルド（エディタではないビルド）にしか適用されません（[設定リファレンス → ランタイムオーバーライド機構](config.md#ランタイムオーバーライド機構パッケージビルド) を参照）。`AutoStartMCP=True` がコミットされると、**そのプロジェクトを開く全開発者が、通常の起動のたびに接続を受け付ける MCP エンドポイントを持つ**ことになります。個人単位で打ち消す仕組みはなく、ローカルで ini を編集してコミットしないという運用でしか回避できません。共有 ini でこれを有効化することは、個人の利便設定ではなくチーム全体の判断として扱ってください。
+
+### モーダルダイアログの裏でコマンドが順番待ちになることがある
+
+`-unattended` を付けずに起動したエディタ（人間が普段どおり操作する、通常起動のエディタ。MCP Bridge が自分で起動するエディタとは異なる）でも、UAIP コマンドはゲームスレッド上で実行されます。モーダルダイアログが表示されている間（「保存しますか？」やアセット検証の警告など）は、`[UAIP.CommandPump]` で設定された小さな allowlist（既定では `UAIP.Core.HealthCheck` と `UAIP.Core.QueryCapabilities` のみ）だけが応答します。それ以外は**拒否されるのではなく、ダイアログが閉じるまで順番待ちのまま保留**されます。これは意図した動作です — 人間が判断の途中にあるとき、UAIP はエディタの状態を変更しません。ただし呼び出し側からは、これはハングと見分けがつきません。人間が操作しているエディタに対する呼び出しが予想外に遅い場合は、故障を疑う前にダイアログが開いていないか確認してください。また、十分長く保留されると、エディタ自体は正常でも呼び出し側でタイムアウトになることがあります。
+
+### ゲスト接続には制限付きの役割を割り当てる
+
+「ゲスト」接続 — 自分でエディタを起動する代わりに、既に起動しているエディタへアタッチするよう設定された接続（`attach_only`。[接続方法 → ゲストモード接続](connections.md#ゲストモード接続) を参照） — は、そのセッションが本来持つはずの Capability をそのまま引き継ぎます。プロジェクトに [`[UAIP.Roles]`](safety.md#役割layer-15) が 1 つも定義されていない場合、人間のエディタへアタッチしたゲストは、DefaultAllow の Capability を含め、一次接続と同じことを何でも実行できます — このページの他の箇所で説明している「同じマシンは信頼する」という前提が、そのままそのエディタが開いている間ずっと延長される形です。少なくとも 1 つの制限付き役割（読み取り専用のレビュー用役割などが妥当な出発点です）を定義し、他人が起動しているエディタへ向ける前に、ゲスト側の Bridge をその役割で認証するよう設定してください。役割を割り当てていない場合、エディタ側からは、ある接続がゲストかどうかを見分ける手段がありません。
+
+---
+
 ## 推奨セキュリティプロファイル
 
 ### 「Read-only レビュー」 — 信頼できない PR の AI レビュー用
@@ -143,7 +198,7 @@ AllowLogDump=True
 DisablePIEStart=False
 ```
 
-AI は観測やキャプチャはできますが、何も編集できない構成です。新しくチェックアウトしたブランチを LLM に PR レビューさせたいときに有用です。
+AI は観測やキャプチャはできますが、何も編集できない構成です。新しくチェックアウトしたブランチを LLM に PR レビューさせたいときに有用です。なおエディタの終了・再起動は依然として可能です。これも塞ぎたい場合は `UAIP.Editor.Workspace.ShutdownEditor` と `UAIP.Editor.Workspace.RestartEditor` を `+DeniedCommands` に追加してください。
 
 ### 「サンドボックスプレイテスト」 — AI 駆動テスト自動化（エディタ編集なし）
 

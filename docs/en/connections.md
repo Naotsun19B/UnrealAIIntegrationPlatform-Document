@@ -13,6 +13,8 @@ UAIP supports four transport options. Choose the one that fits your integration 
 
 > **Demo limitation**: the demo binary supports the **MCP transport only**. HTTP, WebSocket, and CLI require the Pro version.
 
+> **Using Claude Code and don't want to set up an MCP server?** The [Claude Code Plugin](claude-code-plugin.md) is a separate, MCP-free way to reach UAIP from Claude Code: it talks the HTTP API below directly, through a small number of pre-approved scripts. It's an alternative to the MCP Bridge section that follows, not something you run alongside it for the same editor session.
+
 ---
 
 ## Transport comparison
@@ -41,6 +43,8 @@ The MCP Bridge is the recommended transport for AI client integration. A thin Py
 If you only want the shortest path to a working setup, see [Quickstart](quickstart.md).
 
 > The MCP Bridge is distributed **separately from the plugin** as `UAIP-MCPBridge-<version>.zip` in the documentation repository's [Releases](../../../releases). Per Fab packaging rules, it is not bundled with the plugin itself. A single zip works for every supported UE version.
+
+> **Since UAIP 1.2.0**: the bridge verifies the editor's identity — via [instance proof](security.md#instance-proof) — before attaching a role token's credential to a request, on the first request of a new connection and again after any reconnect, restart, or config reload. This needs no setup of its own, but it does mean `uproject_path` (already unconditionally required in `config.json`, see [Configuration](config.md#mcp-bridge-configjson)) is also what the bridge reads the per-launch secret file under; a role configured with `role_token` / `role_name` genuinely needs it correct, not just present.
 
 ### Prerequisites
 
@@ -88,6 +92,8 @@ What the installer does:
 | 7 | Print an MCP client registration snippet with auto-detected paths |
 
 Once finished, the bridge lives at `<UAIP-parent>/UAIPMCPBridge/` (sibling to `UnrealAIIntegrationPlatform/`) and the venv Python is at `<bridge-root>/.venv/Scripts/python.exe` (Windows) or `<bridge-root>/.venv/bin/python` (macOS / Linux).
+
+> **Updating an existing install by hand?** Step 6 — adding newly introduced `config.json` keys and migrating values a previous installer left behind — only runs through the installer script. If you update the bridge by manually copying the new files over an existing deployment instead of re-running `install.ps1` / `install.sh`, `config.json` is left exactly as it was: new keys are not added and nothing is migrated. Re-run the installer (safe to run repeatedly — see [Step 2](#step-2--run-the-installer) above) to bring `config.json` up to date, or diff it against `config.json.example` by hand.
 
 ### Step 3 — Pick an MCP server key
 
@@ -145,14 +151,155 @@ Full installer / paths reference: `<bridge-root>/install/SETUP.md` (deployed alo
   "editor_path":                  "",
   "uproject_path":                "",
   "http_startup_timeout_seconds": 120,
-  "command_timeout_seconds":      60,
+  "command_timeout_seconds":      180,
   "log_level":                    "INFO",
   "enable_scenario":              true,
-  "inline_artifacts": { "image": false, "json": true, "text": true }
+  "inline_artifacts": { "image": false, "json": false, "text": false }
 }
 ```
 
 `editor_path` / `uproject_path` in `config.json` are fallbacks; per-connection paths supplied through the MCP client's `env` block (`UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`) take precedence. See [Scenario Execution](scenario.md) for what scenarios enable and [Configuration](config.md#mcp-bridge-configjson) for the full key list.
+
+### Guest-mode connections
+
+Guest mode lets a bridge attach to an editor a human already has open — the workflow behind running an AI CLI from the editor's built-in Terminal panel and having it drive that same editor — instead of launching an editor of its own.
+
+**What guest mode changes:**
+
+- The bridge never calls into `launch_editor()` — not on the first tool call, not to recover from a crash, and not as a side effect of `uaip_reload_config`. If no editor answers, the bridge reports the situation instead of starting one.
+- `editor_path` becomes optional in `config.json` — see [Configuration → MCP Bridge config.json](config.md#mcp-bridge-configjson).
+- Port resolution tries the [endpoint descriptor](config.md#endpoint-descriptor-file) written by the editor first, then falls back to `http_port`.
+
+**Setup:**
+
+1. Enable `[UAIP.Transport].AutoStartMCP=True` in `Config/DefaultUAIP.ini` (see [Configuration](config.md#uaiptransport--auto-starting-the-mcp-transport-on-a-normal-launch)), or launch the editor with an explicit `-uaip-mcp-enable` flag if you would rather not change the shared ini.
+2. Launch the editor normally — Epic Games Launcher, double-clicking the `.uproject`, an IDE's Debug run. No special flags are needed once `AutoStartMCP` is on.
+3. In the guest bridge's `config.json`, set `attach_only: true` (or `UAIP_ATTACH_ONLY=1` in its environment). `uproject_path` still has to point at the same project; `editor_path` can be left empty.
+4. Point the AI client at that bridge as usual. The first `uaip_execute` call resolves the port, verifies project identity through `HealthCheck`, and attaches — no new editor process starts.
+
+> **Recommended**: assign the guest bridge a restricted [role](safety.md#roles-layer-15) rather than leaving `[UAIP.Roles]` undefined. Without a role, a guest connection can execute anything a first-party session could. See [Security → Operational security notes](security.md#operational-security-notes).
+
+If the attached editor stops answering, guest mode never launches a replacement — and neither does an ordinary (non-guest) bridge that happens to be `ATTACHED` to someone else's editor. Both report the situation through `RecommendedAction` (see [Check editor status](#check-editor-status-uaip_get_editor_status) below) instead of silently starting a second editor.
+
+### Check editor status (`uaip_get_editor_status`)
+
+`uaip_get_editor_status` reports the bridge's current view of the editor connection **without triggering auto-launch**. Unlike a regular `uaip_execute` call, it never spawns or attaches to an editor — it only observes.
+
+```
+uaip_get_editor_status()
+→ {
+    "IsConnected":      false,
+    "IsPortListening":  true,
+    "State":            "UNRESPONSIVE",
+    "Ownership":        "ATTACHED",
+    "IsAttachOnly":     false,
+    "RecommendedAction": "WAIT: the editor port is open but the game thread is not responding. Do not restart or kill the process; a long-running command is likely in progress."
+  }
+```
+
+| Field | Meaning |
+|---|---|
+| `IsConnected` | A **real HTTP health ping** issued at call time — not a cached value |
+| `IsPortListening` | A **real TCP connect check** issued at call time — not a cached value |
+| `State` | A diagnostic label describing the bridge's lifecycle state machine (`STOPPED` / `STARTING` / `RUNNING` / `UNRESPONSIVE` / `PORT_OCCUPIED` / `CRASHED` / `RESTARTING`) |
+| `Ownership` | Whether this bridge launched the editor itself (`OWNED`), attached to one it did not launch (`ATTACHED`), or has neither launched nor attached yet (`NONE`) — an observation at call time, not a history. See [Guest-mode connections](#guest-mode-connections) |
+| `IsAttachOnly` | Whether this bridge is configured for guest mode (`attach_only` in `config.json`) |
+| `RecommendedAction` | The action the caller should actually take |
+| `Lock` | A diagnostic snapshot of the on-disk `mcp_proxy.lock` file for this project — see [Lock diagnostics](#lock-diagnostics) below |
+| `Config` | A diagnostic snapshot of the `config.json` load that produced the bridge's current configuration — see [Config diagnostics](#config-diagnostics) below |
+
+For a guest-mode bridge, or an ordinary bridge that happens to be `ATTACHED` to someone else's editor, `RecommendedAction` never promises an automatic launch. Where an owner-mode bridge would say `RETRY: ... The next tool call launches a fresh one automatically`, these report `CHECK CONFIGURATION: ...` instead once that editor stops answering — because launching a replacement is exactly what they must not do.
+
+The tool probes the transport on **every call**, so both `IsConnected` and `IsPortListening` are fresh measurements, not values read from a background poll that may be stale.
+
+> **Important — parse `RecommendedAction`, not `State`.** `State` is a diagnostic string for humans reading logs; new values may be added to it in future releases without that being a breaking change. `RecommendedAction` is the stable, machine-actionable contract: it always starts with one of `WAIT:` / `PROCEED:` / `RETRY:` / `CHECK CONFIGURATION:` / `CHECK TRANSPORT SETTINGS:`, and callers should branch on that verb rather than switching over the set of `State` values.
+
+If you see `RecommendedAction` starting with `WAIT:` while `State` is `UNRESPONSIVE`: **do not restart the editor and do not try to kill the process.** The port is open but the game thread is busy — most often because a long-running command (see [Long-running commands and the 120 s async timeout](#long-running-commands-and-the-120-s-async-timeout) below) is still executing. Wait and re-check with `uaip_get_editor_status` instead.
+
+No process id is ever returned by this tool — naming a PID invites terminating it, which is exactly what `UNRESPONSIVE` handling must avoid.
+
+#### Lock diagnostics
+
+`Data.Lock` reports what the bridge currently sees in the `mcp_proxy.lock` file for this project, independent of `State` / `Ownership`:
+
+```json
+"Lock": {
+  "Present": true,
+  "HeldByThisBridge": false,
+  "RecordedPort": 8765,
+  "RecordedProject": "F:/Projects/MyProject/MyProject.uproject",
+  "RecordedAt": "2026-09-02T10:15:00Z",
+  "RecordedPortListening": true
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `Present` | Whether a lock file exists on disk. **Existence alone does not mean it is currently held** — a bridge that exits (cleanly or forcibly) releases the lock, but the file itself can be left behind, and the next bridge to start simply overwrites it. |
+| `HeldByThisBridge` | Whether this bridge process is the one currently holding the lock. |
+| `RecordedPort` | The HTTP port recorded in the lock file, or `null` if the file is missing or could not be parsed. |
+| `RecordedProject` | The `.uproject` path recorded in the lock file, or `null` if unavailable. |
+| `RecordedAt` | The timestamp the lock file was written, or `null` if unavailable. Display-only — do not use it to judge whether the lock is stale. |
+| `RecordedPortListening` | Whether `RecordedPort` currently has something listening on it. `null` when this cannot be determined: either `RecordedPort` does not match this bridge's own configured port (a diagnostic probe can only observe its own port, not an arbitrary other one), or `RecordedPort` itself could not be read from the lock file. |
+
+Read this alongside `RecommendedAction`: when another bridge genuinely holds the lock, `RecommendedAction` points at disconnecting or stopping that session — never at deleting the lock file. A lock file that is `Present` but not `HeldByThisBridge`, with `RecordedPortListening: false`, usually means the file was simply left behind and the next launch will take it over without issue.
+
+Typical uses:
+
+- Before issuing a lifecycle command such as `UAIP.Editor.Workspace.ShutdownEditor` or `UAIP.Editor.Workspace.RestartEditor`, to confirm the editor is actually in a state where that makes sense.
+- After a command call returns a `Timeout` error, to check whether the editor is still working on it before deciding whether to retry.
+
+#### Config diagnostics
+
+`Data.Config` reports what the bridge actually read from `config.json` at the load that produced its current configuration — either the load at process startup, or the most recent `uaip_reload_config` call, whichever is more recent:
+
+```json
+"Config": {
+  "Path": "F:/Projects/MyProject/Plugins/UAIPMCPBridge/config.json",
+  "Status": "Loaded",
+  "KeyCount": 7,
+  "Keys": ["editor_path", "uproject_path", "http_port", "command_timeout_seconds", "log_level", "enable_scenario", "inline_artifacts"],
+  "LastReloadError": ""
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `Path` | The `config.json` path the bridge attempted to read. |
+| `Status` | `"Loaded"` when the file existed and was parsed, `"Absent"` when it did not exist at that path (the bridge runs on defaults and environment variables only). There is no `"Unreadable"` value here — a file that exists but cannot be parsed makes the bridge refuse to start in the first place (see [MCP setup troubleshooting](#mcp-setup-troubleshooting) below), so that state never reaches a running session to report. |
+| `KeyCount` | How many top-level keys `config.json` actually contained. |
+| `Keys` | The **names** of those keys only — never their values. This block is a diagnostic surface, not a way to read secrets like `role_token` back out of the running bridge. |
+| `LastReloadError` | Empty when the most recent `uaip_reload_config` call (if any) succeeded, or when none has been made yet. Non-empty when the last reload attempt failed to parse its `config.json` — the message names the file and the reason, and the bridge kept running on the configuration it already had (a failed reload never tears down the current session). See [Reload config without restarting the MCP client](#reload-config-without-restarting-the-mcp-client) above. |
+
+`RecommendedAction` (above) also gets an extra sentence appended when `Config` has something worth flagging — a `Status` of `"Absent"`, or a non-empty `LastReloadError` — so a caller that only ever parses `RecommendedAction` still learns about it without having to read `Data.Config` on every call.
+
+### Long-running commands and the 120 s async timeout
+
+The HTTP transport enforces its own async command timeout of **120 seconds**, independent of the bridge's `command_timeout_seconds` setting (see [Configuration → Timeout invariants](config.md#timeout-invariants)). Commands that occupy the game thread for longer than that — `UAIP.Editor.MetaHuman.BuildMetaHuman` is the primary example today — can exceed it even though the operation is still legitimately running.
+
+**Since UAIP 1.2.0**, `uaip_execute` accepts an optional `TimeoutSeconds` argument — a JSON number from 1 to 1800, alongside `CommandName` and `Params` (not inside `Params`) — that overrides the 120-second wait for this one call. Omitting it keeps the 120-second default. A value outside that range, or of the wrong type, is refused before the command runs, with a JSON-RPC invalid-params error whose message never contains the words "execution timeout" — so a refusal cannot be mistaken for the case below, where the command may still be running. The bridge extends both its own read timeout and the interval during which it suppresses health polling to match the requested window, so a call that legitimately takes longer than the default is not cut off by the bridge, and a busy editor still answering that call is not mistaken for an unresponsive one partway through it. See [API Reference → Request format](api.md#2-request-format) (§2.4).
+
+When the 120-second window (or the `TimeoutSeconds` window, if named) is exceeded:
+
+1. The call returns `Timeout`, but **the command may still be executing inside the editor**.
+2. Do not immediately re-issue the same command — a second concurrent build/edit against the same target is not something the handler is designed to reconcile.
+3. Call `uaip_get_editor_status` and follow `RecommendedAction`. While the command is still running, expect `State: "UNRESPONSIVE"` and `RecommendedAction` starting with `WAIT:`.
+4. Once the editor becomes responsive again, its artifacts (if the command produces any) may only appear at that point — check for them rather than assuming the `Timeout` response means nothing happened.
+
+### Progress notifications while a call is pending
+
+When the AI client attaches an MCP progress token (`_meta.progressToken`) to a `uaip_execute` call, the bridge sends a `notifications/progress` update roughly every 5 seconds until that call returns. Each update carries only what the bridge can see from outside the editor:
+
+- how many seconds the call has been outstanding, and
+- the editor's state, collapsed to `STARTING`, `RUNNING` or `UNRESPONSIVE` — the same three answers that matter while waiting on one call.
+
+Three things follow from that:
+
+- **Nothing from inside the editor is reported.** How far an audit has walked, which report it is on, how far a trace analysis has parsed — none of it reaches the notification. Ask the command that knows: `UAIP.Editor.Assets.GetAssetAuditStatus` for an audit job, `UAIP.Runtime.Insights.Analysis.GetTraceAnalysisStatus` for a trace analysis.
+- **`uaip_execute` only, and only when asked.** `uaip_run_scenario` is out of scope — it has its own wall clock and per-step structure that one elapsed-seconds counter would not describe. With no progress token, nothing is sent at all.
+- **Whether you ever see the update is the client's decision.** The bridge sends it; rendering it is up to the MCP client, and a client that ignores `notifications/progress` shows nothing while the call is pending. Claude Code is one such client as of this writing: a pending call shows its usual spinner and neither value is displayed. That is not a sign the bridge failed to send.
+
+When the client does not surface it, `uaip_get_editor_status` answers the same question on demand — see [Check editor status](#check-editor-status-uaip_get_editor_status) above.
 
 ### Reload config without restarting the MCP client
 
@@ -181,6 +328,7 @@ See [Configuration → Reloading config at runtime](config.md#reloading-config-a
 | Python error on startup | Missing dependencies in venv | Re-run the installer (the venv is recreated) |
 | `PolicyViolation` on a command | Capability not granted, or SafetyPolicy flag off | See [Safety & Capabilities](safety.md) |
 | `CommandNotFound` | Wrong command name | `uaip_list_commands(ProviderPrefix="UAIP.Core")` |
+| Bridge does not start at all (no tools ever become available) | `config.json` exists but cannot be parsed (bad JSON, wrong encoding, over the 1 MiB size limit) — the bridge refuses to start on a config nobody chose rather than silently falling back to defaults, and exits before any MCP tool call is possible | Check your MCP client's **server log**, not the AI's context — the bridge prints the exact path and reason to stderr and exits with code 2 before it can answer any tool call, so there is no `uaip_get_editor_status` response to read this from |
 
 For broader diagnostics, see [Troubleshooting](troubleshooting.md).
 
@@ -188,7 +336,7 @@ For broader diagnostics, see [Troubleshooting](troubleshooting.md).
 
 ## HTTP API (Pro)
 
-The HTTP API exposes a REST interface. It's suited for custom scripts, CI/CD pipelines, and any integration where an AI client isn't involved. The socket binds to `0.0.0.0`, so with the Bearer token and a firewall allowance the editor can be reached from another machine (FullHTTP mode). Access control is the responsibility of the token and your network setup — see [Security → Network surface](security.md#network-surface) for the detailed model.
+The HTTP API exposes a REST interface. It's suited for custom scripts, CI/CD pipelines, and any integration where an AI client isn't involved. The socket binds to loopback (`127.0.0.1`) even in FullHTTP mode — reaching it from another machine requires an operator-applied bind-address override at the engine-config layer, which UAIP does not expose a setting for. See [Security → Network surface](security.md#network-surface) for the detailed model.
 
 ### Enable
 
@@ -224,11 +372,14 @@ For development or CI environments where authentication is not needed:
 -uaip-http-no-auth
 ```
 
+**Since UAIP 1.2.0**, a well-behaved client verifies it is actually talking to this project's editor — not a different project's editor that restarted onto the same port, or an unrelated program — *before* it attaches this token to a request, via the new unauthenticated `GET /uaip/instance-proof` route (see the table below). Both the MCP Bridge and the [Claude Code Plugin](claude-code-plugin.md) do this automatically; see [Security → Instance proof](security.md#instance-proof) for the full protocol.
+
 ### Endpoints
 
 | Method | Path | Description |
 |---|---|---|
 | GET | `/uaip/health` | Health check — returns `{"status":"ok"}` |
+| GET | `/uaip/instance-proof?challenge=<64-char lowercase hex>` | Verify this port is this project's editor **before** sending a credential — no authentication required. See [Security → Instance proof](security.md#instance-proof) |
 | GET | `/uaip/capabilities` | Available capabilities for the current session |
 | POST | `/uaip/sessions` | Create a session — returns `{"SessionId":"..."}` |
 | DELETE | `/uaip/sessions/:sessionId` | End a session |
@@ -247,9 +398,12 @@ Authorization: Bearer <token>
 {
   "CommandName": "UAIP.Core.HealthCheck",
   "Params": {},
-  "SessionId": "my-session"
+  "SessionId": "my-session",
+  "TimeoutSeconds": 300
 }
 ```
+
+`TimeoutSeconds` is optional and top-level (not inside `Params`): a JSON number from 1 to 1800 that overrides the 120-second default below for this one request, so a slow command — a long-running Automation Test, for example — does not get cut off while it is still legitimately working. Omit it to keep the 120-second default. A value outside that range, of the wrong type, or a numeric string (`"300"`) is refused with HTTP 400 and `ErrorCode: "InvalidParams"` before the command starts. See [API Reference → Request format](api.md#2-request-format) (§2.1) for the full field table.
 
 Response:
 
@@ -269,8 +423,8 @@ Response:
 |---|---|
 | Max request body | 64 KiB |
 | Max artifact response | 100 MiB |
-| Max concurrent commands | 1 |
-| Command timeout | 120 s |
+| Max concurrent commands | 1 (default; passive-wait commands can be excluded via ini — HTTP / MCP only, see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default)) |
+| Command timeout | 120 s (default; override per request with the optional top-level `TimeoutSeconds` field, 1–1800 s — see [Executing a command](#executing-a-command) above) |
 
 ---
 

@@ -39,7 +39,7 @@
 Claude Code・Codex CLI・Cursor・Windsurf・GitHub Copilot といった AI ツールが **Model Context Protocol (MCP)** 経由で接続し、意味レベルのコマンドを発行できます。座標クリックや壊れやすい UI スクリプトに頼る必要はありません。
 
 主な機能：
-- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御まで、540 以上の UAIP コマンド（公式 UE 5.8 [Toolset](glossary.md#toolset--toolset-bridge) への 190+ ブリッジコマンドを含め合計 730+）で Editor のほとんどの機能をカバー
+- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御まで、1,200 以上の UAIP コマンド（公式 UE 5.8 [Toolset](glossary.md#toolset--toolset-bridge) への 420+ ブリッジコマンドを含め合計 1,600+）で Editor のほとんどの機能をカバー
 - **視覚的・構造的な観測** — 任意の Editor タブやビューポートのスクリーンショット取得、ワールド状態 / Slate ウィジェットツリー / エディタ状態の JSON ダンプを [Artifact](glossary.md#artifactアーティファクト) として返却
 - **Runtime / [PIE](glossary.md#pieplay-in-editor) 制御** — PIE の開始と停止、アクターのスポーン、入力の注入、Gauntlet テストの実行、アクタープロパティのアサート
 - **[シナリオ](glossary.md#scenarioシナリオ)実行** — 複数のコマンドを順序付きリストとして一括送信。失敗時の中断・リトライ・ステップごとのタイムアウトに対応
@@ -105,6 +105,7 @@ MCP Bridge は UE Editor と AI クライアントをつなぐ Python プロキ�
 | [クイックスタート](quickstart.md) | インストールから最初のコマンド実行まで 5 分 |
 | [接続方法](connections.md) | 全トランスポート：MCP Bridge のセットアップ + HTTP / WebSocket / CLI（製品版） |
 | &nbsp;&nbsp;↳ [Claude Code](clients/claude-code.md) / [Codex CLI](clients/codex.md) / [Claude Desktop](clients/claude-desktop.md) / [Cursor](clients/cursor.md) / [Windsurf](clients/windsurf.md) / [Copilot](clients/copilot.md) | クライアント別設定 JSON と動作確認手順 |
+| [Claude Code Plugin](claude-code-plugin.md) | Claude Code 向けの MCP 不要な代替手段：HTTP API に直接アクセスする `/uaip:*` スキル群 |
 | [ユースケース](use-cases.md) | 誰が UAIP を何のために使うか — テスト・レビュー・監査・ペアプロ |
 | [使用例集 / レシピ集](cookbook.md) | レシピ集 — PIE スモーク・AI レビュー・アセット監査・BP 編集・UI 自動化 |
 | [コマンドリファレンス](commands.md) | ドメイン別 730 以上のコマンド一覧 |
@@ -135,4 +136,4 @@ Fab で配布される製品版は [Fab Standard License (Fab EULA)](https://www
 
 ## 更新履歴
 
-**現在のバージョン**: 1.0.0（2026-06-18 リリース）― 製品版は [Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff) です。詳細な更新履歴とバージョニング方針は [更新履歴](changelog.md) を参照してください。
+**現在のバージョン**: 1.2.0（2026-09-29 リリース）― 製品版は [Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff) です。詳細な更新履歴とバージョニング方針は [更新履歴](changelog.md) を参照してください。

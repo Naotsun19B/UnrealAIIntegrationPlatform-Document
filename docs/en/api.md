@@ -30,7 +30,7 @@ Every transport eventually lands on the same `CommandDispatcher`, so capability,
 
 | Transport | Format | Editor port | Packaged port | Bind layer | Auth |
 |---|---|---|---|---|---|
-| HTTP (Pro) | REST + JSON | 8765 | 8767 | `0.0.0.0` — FullHTTP is reachable from another machine; MCPOnly mode enforces localhost at the app layer | `Authorization: Bearer <token>` |
+| HTTP (Pro) | REST + JSON | 8765 | 8767 | loopback (`127.0.0.1`) for both FullHTTP and MCPOnly; MCPOnly additionally enforces localhost at the app layer — see [Security → Network surface](security.md#network-surface) | `Authorization: Bearer <token>` |
 | WebSocket (Pro) | JSON frames | 8766 | 8768 | `127.0.0.1` (hard-coded) | First frame `Token` field |
 | CLI (Pro) | stdin/stdout + CLI flags | n/a | n/a | — | none (in-process) |
 | MCP | stdio child of AI client | n/a | n/a | — | none (child process) |
@@ -54,7 +54,8 @@ See [Security → Network surface](security.md#network-surface) for the detailed
 {
   "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage",
   "Params":      { ... },
-  "SessionId":   "my-task-001"
+  "SessionId":   "my-task-001",
+  "TimeoutSeconds": 300
 }
 ```
 
@@ -63,6 +64,7 @@ See [Security → Network surface](security.md#network-surface) for the detailed
 | `CommandName` | string | yes | Fully-qualified name (e.g. `UAIP.Core.HealthCheck`) |
 | `Params` | object | no | Command-specific parameters (default `{}`); validated against the command's `ParameterSchema` |
 | `SessionId` | string | no | `[A-Za-z0-9_-]{1,128}`. Omitting creates an anonymous session |
+| `TimeoutSeconds` | number | no | Top-level (not inside `Params`). How long the editor waits before giving up on an answer, in seconds: 1–1800 (default 120, see [Connection Methods → Limits](connections.md#limits)). Out of range, the wrong JSON type, or a numeric string (`"300"`) is refused with 400 `InvalidParams` before the command runs; it is never copied into `Params`, so a command handler never sees it. `uaip_execute` (MCP) accepts the same field, sibling to `CommandName` — see §2.4 |
 
 ### 2.2 `CommandRequest` (WebSocket frame)
 
@@ -104,11 +106,14 @@ The MCP Bridge wraps the same `CommandRequest` shape into a tool call:
 uaip_execute(
     CommandName="UAIP.Editor.Observation.CaptureActiveWindowImage",
     Params={"TabId": "/Game/Maps/Main"},
-    SessionId="my-task-001"
+    SessionId="my-task-001",
+    TimeoutSeconds=300
 )
 ```
 
 The bridge sets `SessionId` automatically if omitted (`MCP-Anonymous-<guid>`).
+
+**Since UAIP 1.2.0**, `TimeoutSeconds` is accepted here too — same field, same rules as §2.1 (1–1800, default 120, top level rather than inside `Params`, refused before the command runs when it is out of range or the wrong type). The refusal is a JSON-RPC invalid-params error rather than HTTP 400. The bridge extends its own wait, and the window during which it suppresses health polling, to match — see [Connection Methods → Long-running commands](connections.md#long-running-commands-and-the-120-s-async-timeout).
 
 ---
 
@@ -122,7 +127,8 @@ The bridge sets `SessionId` automatically if omitted (`MCP-Anonymous-<guid>`).
   "Data":         { ... },
   "Artifacts":    [ { "ArtifactId": "...", "FilePath": "...", "Type": "Image" } ],
   "ErrorCode":    "Success",
-  "ErrorMessage": ""
+  "ErrorMessage": "",
+  "SessionId":    "HTTP-Anonymous-7b8e"
 }
 ```
 
@@ -133,6 +139,7 @@ The bridge sets `SessionId` automatically if omitted (`MCP-Anonymous-<guid>`).
 | `Artifacts` | array | One entry per produced artifact; see [§5](#5-artifact-contract) |
 | `ErrorCode` | string | One of the codes in [§4](#4-error-codes), or `"Success"` |
 | `ErrorMessage` | string | Human-readable detail; empty on success |
+| `SessionId` | string | The session this request actually resolved to — including a server-assigned anonymous session when the caller omitted `SessionId` on the request. **Omitted from the response when empty**, and not present on every response: it is only filled in once a session has been resolved, so a response that never got that far (e.g. some failure paths) can be missing it too. Use it to name the session on later requests, including [`GET /uaip/artifacts/{artifactId}`](#5-artifact-contract) |
 
 ### 3.2 WebSocket envelope
 
@@ -174,17 +181,26 @@ In stdin-stream mode the same markers appear per request.
 |---|---|---|---|
 | `Success` | 200 | Command completed | — |
 | `CommandNotFound` | 404 | `CommandName` not registered | Verify with `UAIP.Core.ListCommands`; optional-plugin commands need the plugin loaded |
-| `InvalidParams` | 400 | Missing required / wrong type / unknown field (with `AdditionalProperties:false`) | Re-fetch the schema via `UAIP.Core.DescribeCommand` |
+| `InvalidParams` | 400 | Missing required / wrong type / unknown field (with `AdditionalProperties:false`); in a scenario, also an unresolvable `${...}` template reference | Re-fetch the schema via `UAIP.Core.DescribeCommand`. Template failures are **not** retried by `RetryCount` — see [Scenario Execution](scenario.md#template-resolution-failures) |
 | `CapabilityNotAvailable` | 403 | Session lacks a required Capability | `ErrorMessage` names the missing capability; enable it via `Config/DefaultUAIP.ini` and restart or call `UAIP.Core.ReloadCapabilities` |
-| `PolicyViolation` | 403 | SafetyPolicy gate or missing route opt-in | `ErrorMessage` distinguishes "denied by SafetyPolicy" vs "not enabled in this environment" |
-| `NotFound` | 404 | Asset / actor / object referenced by params doesn't exist | Verify path / GUID with a `Search*` or `List*` command |
-| `NotAllowed` | 409 | Forbidden path (e.g. `/Engine/`) or forbidden timing (editor edit during PIE) | Choose a different path or wait for PIE to stop |
+| `AbilityUnavailable` | 501 | The command's `IsAvailable()` is `false` for an environment- or build-related reason: a required optional module or plugin is not loaded (e.g. Sequencer, LevelSequenceEditor), the process was built without a required configuration, the running engine version doesn't support the command, or the command (native or a Toolset bridge forward) has no implementation path to reach at all | `ErrorMessage` names what's missing. Call `UAIP.Core.DescribeCommand` and read `UnavailableDetail` (`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`) for the specific remediation — `EngineApiNotExported` and `DelegationTargetMissing` mean no configuration change helps; look for a Toolset bridge or native alternative instead |
+| `UnsupportedOperation` | 501 | The requested operation has no implementation on this platform or build configuration at all — this is structural and not version-dependent (e.g. ControlRig's ModularRig editing) | No configuration change fixes this; use a different approach for this domain |
+| `PolicyViolation` | 403 | Three distinct causes share this code: (a) blocked by SafetyPolicy or a missing route opt-in, (b) the command's `IsAvailable()` is `false` because a deny-by-default SafetyPolicy flag is off (`UnavailableDetail: SafetyPolicyDisabled`), or (c) `IsAvailable()` is `false` with no more specific detail reported (`UnavailableDetail: Unspecified`) — rare, and usually a race between the availability check and the detail read; retrying is often enough | For (a): read `ErrorMessage` — it distinguishes "denied by SafetyPolicy" from "not enabled in this environment" — and adjust `Config/DefaultUAIP.ini` or the launch flags. For (b): the named flag needs to be turned on in `Config/DefaultUAIP.ini`, then restart the editor or call `UAIP.Core.ReloadCapabilities` if `AllowCapabilityReload` is already set. For (c): call `UAIP.Core.DescribeCommand` and retry; if it persists, treat it the same as `AbilityUnavailable` |
+| `PreconditionFailed` | 503 | A precondition the handler needs was not met before it could run (e.g. the editor is not fully available yet, no game world exists, or a subsystem is not registered) | Wait and retry — this is a transient runtime state, not a policy decision like `PolicyViolation`. Scenarios retry it automatically via `RetryCount` |
+| `NotFound` | 404 | Asset / actor / object referenced by params doesn't exist — this also covers an element that lives inside a resource that does exist (e.g. a node or pin that is not on the graph) | Verify path / GUID with a `Search*` or `List*` command |
+| `NotAllowed` | 409 | Forbidden path (e.g. `/Engine/`), forbidden timing (editor edit during PIE), or the current state otherwise forbids this specific operation (a modal dialog is open, the target is owned elsewhere) | Choose a different path, wait for PIE to stop, or otherwise change the state before retrying |
+| `Conflict` | 409 | The caller's assumed state no longer matches the command's current state (e.g. a structural fingerprint changed since it was last read) | Re-read the current state and retry with the refreshed assumption — retrying blindly does not help, since the state, not the timing, is the problem |
 | `ExecutionFailed` | 500 | Runtime failure inside the handler | `ErrorMessage` carries detail; inside a scenario use `RetryCount` |
 | `Timeout` | 408 | Per-step or per-scenario wall-clock cap exceeded | Increase `TimeoutSeconds` or split the scenario |
-| `TooManyRequests` | 429 | Concurrency limit hit (1 scenario at a time, etc.) | Wait for the in-flight request to finish |
+| `TooManyRequests` | 429 | Concurrency limit hit — the single command slot, a scenario already running (1 at a time), a single command while a scenario is running (or vice versa), or the passive-wait pool if enabled — see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default) and [Scenario Execution → Exclusivity with single commands](scenario.md#exclusivity-with-single-commands) | Wait for the in-flight request to finish; the HTTP response includes `Retry-After: 1` |
 | `InternalError` | 500 | Process-fault level (handler threw, dispatcher invariant broken) | `RestartEditor`; if it persists, capture `Saved/Crashes/` and file an issue |
 
 HTTP status codes are advisory — always rely on `ErrorCode` for branching. WebSocket and CLI don't carry HTTP statuses.
+`NotAllowed` and `Conflict` both map to 409, so the HTTP status alone cannot tell them apart — this is one more reason
+to branch on `ErrorCode`, not the status. `PreconditionFailed`'s 503 does not mean the server itself is down; no
+`Retry-After` header is attached, since there is no way to promise when the precondition will clear.
+
+**When a command is both capability-gated and `IsAvailable() == false`.** Capability is evaluated before `IsAvailable()`, so the response is `CapabilityNotAvailable`, not `AbilityUnavailable` or `PolicyViolation` — the caller never even reaches the second check. `ErrorMessage` still notes that a second, independent reason exists, but only by naming the `UnavailableDetail` value (e.g. `"... also unavailable: ExecutionEnvironment"`); it no longer repeats the full `UnavailableDetailMessage` free-text elaboration. A caller who is later granted the capability and wants the full explanation calls `UAIP.Core.DescribeCommand` at that point.
 
 ---
 
@@ -218,6 +234,10 @@ HTTP status codes are advisory — always rely on `ErrorCode` for branching. Web
 GET /uaip/artifacts/{artifactId}
 Authorization: Bearer <token>
 ```
+
+| Query parameter | Type | Required | Notes |
+|---|---|---|---|
+| `SessionId` | string | Optional during the migration window | Scopes the lookup to that session's artifacts. **Omitting it is accepted today**, but an omitted call can only resolve artifacts this editor process itself produced during its current run — it cannot reach artifacts rediscovered from a previous session (see [Artifacts](artifacts.md)). A *successful* response to an omitted call carries a `Deprecation` response header (RFC 9745) and a `Link; rel="deprecation"` header pointing at migration guidance; a call that names `SessionId` explicitly gets neither header. **`SessionId` will become mandatory on this route in a future major version** — see [Changelog](changelog.md#uaip-plugin-120--2026-09-29) for how to migrate before then. |
 
 Response: the raw bytes, with `Content-Type` from the artifact's metadata. 404 if the artifact has been GC'd (session ended or TTL expired).
 
@@ -306,20 +326,102 @@ Response `Data`:
 
 ```json
 {
-  "Capabilities": ["EditorInspect", "PIEControl", "RuntimeCapture", ...],
+  "Capabilities": ["EditorInspect", "PIEControl", "RuntimeCapture", "..."],
+  "RegisteredCapabilityCount": 163,
+  "UngrantedCapabilityCount": 41,
+  "OperationalConstraints": { "...": "see below" }
+}
+```
+
+The `RegisteredCapabilities` catalog — every capability the loaded modules declare, held or not — is **not** in that response. It runs to well over a hundred entries, so it is opt-in, the same way `uaip_list_commands` hides unavailable commands by default. The two counts always come back, so a caller that never opts in still learns the catalog exists and how much of it this session cannot use.
+
+To receive it:
+
+```
+uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
+             Params={"IncludeUnavailable": true})
+```
+
+Response `Data` (the same fields, plus the catalog):
+
+```json
+{
+  "Capabilities": ["EditorInspect", "PIEControl", "RuntimeCapture", "..."],
+  "RegisteredCapabilityCount": 163,
+  "UngrantedCapabilityCount": 41,
+  "RegisteredCapabilities": [
+    { "Name": "EditorInspect",         "DefaultPolicy": "Allowed", "IsGranted": true  },
+    { "Name": "PropertyReferenceEdit", "DefaultPolicy": "Denied",  "IsGranted": false },
+    { "Name": "PropertyStructuredEdit","DefaultPolicy": "Denied",  "IsGranted": false }
+  ],
   "OperationalConstraints": {
-    "ReadOnly":              false,
-    "DisableSave":           false,
-    "AllowLogDump":          true,
-    "AllowContextMenuMutation": false,
-    "AllowKeyboardInput":    true,
-    "AllowKeyboardModifierInput": false,
-    "DisablePIEStart":       false
+    "IsReadOnly":                    false,
+    "IsSaveDisabled":                false,
+    "IsLogDumpAllowed":              true,
+    "IsContextMenuMutationAllowed":  false,
+    "IsPIEStartDisabled":            false,
+    "HasDeniedCommands":             false,
+    "IsKeyboardInputAllowed":        true,
+    "IsKeyboardModifierInputAllowed":false,
+    "IsPasswordFieldWriteAllowed":   false
   }
 }
 ```
 
-Use `OperationalConstraints` as a forward-looking gate: if `ReadOnly:true`, don't attempt mutating commands.
+The two arrays answer different questions. `Capabilities` is the **effective set** — what this session can use right now. `RegisteredCapabilities` is the **catalog** — every capability the loaded modules declare, held or not, so a name can appear there with `IsGranted: false` and be absent from `Capabilities`. The three entries above are an excerpt; `RegisteredCapabilityCount` is the real length, and it does not change with `IncludeUnavailable`.
+
+There is no separate list of the deny-by-default capabilities, because it is derivable: **the ones an operator would have to enable are the catalog entries whose `DefaultPolicy` is `Denied`.** See [Safety → Finding out which capabilities exist](safety.md#finding-out-which-capabilities-exist).
+
+Use `OperationalConstraints` as a forward-looking gate: if `IsReadOnly:true`, don't attempt mutating commands.
+
+### 6.5 Command availability fields
+
+`UAIP.Core.DescribeCommand` reports whether one specific command can be called right now (`Available: true`/`false`). When it cannot, the response also carries `UnavailableReason` and `UnavailableDetail` — two separate fields answering two separate questions.
+
+```json
+{
+  "Name": "UAIP.Editor.Sequencer.KeyControlsAtFrames",
+  "Available": false,
+  "UnavailableReason": "HandlerUnavailable",
+  "UnavailableDetail": "EngineVersion",
+  "UnavailableDetailMessage": "KeyControlsAtFrames is not available in UE 5.7."
+}
+```
+
+`UnavailableReason` answers **why the command was excluded from discovery at all** — the same five values `UAIP.Core.ListCommands`'s `HiddenReasons` object already counts by (see [Commands Reference](commands.md#uaipcore)):
+
+| `UnavailableReason` | Meaning |
+|---|---|
+| `DeniedCommand` | Listed in `SafetyPolicy::DeniedCommands` |
+| `MissingCapability` | At least one required capability is absent from the process-wide capability set |
+| `RoleRestricted` | The session's role denies at least one required capability the process otherwise holds |
+| `ReadOnlyPolicy` | `SafetyPolicy::bReadOnly` is set and the command mutates state |
+| `HandlerUnavailable` | The handler itself reports `IsAvailable() == false` |
+
+**When more than one reason applies.** `UnavailableReason` names only the first reason that applies, in the order of the table above. `AdditionalUnavailableReasons` lists every further reason that also applies — an empty array when there is none, present rather than omitted so that "nothing else blocks this command" is stated instead of inferred from a missing key. `DescribeCommand` returns it whenever `Available` is `false`, and `UAIP.Core.ListCommands` returns it on each unavailable row when called with `IncludeUnavailable: true`. It matters when the first reason looks fixable: a command reported as `MissingCapability`, with `HandlerUnavailable` in `AdditionalUnavailableReasons`, stays unavailable after the capability is granted.
+
+`ListCommands` makes the same distinction in aggregate. `HiddenReasons` attributes each hidden command to exactly one reason — its `UnavailableReason` — so its five values sum to `HiddenCount`. `HiddenAdditionalReasons`, with the same five keys and likewise present on every response, counts the hidden commands for which a reason applied *in addition to* that one. A command can be counted under several of its keys or under none, so its values do not sum to `HiddenCount` and are not a breakdown of it; they tell "granting the capabilities in `HiddenCapabilities` would reveal these commands" apart from "they would still be unavailable afterwards".
+
+`UnavailableDetail` answers a narrower, second question that only `HandlerUnavailable` has an interesting answer to: **which kind of "the handler is unavailable" is this?** The other four reasons are already fully explained by their own name, so `UnavailableDetail` reports `Unspecified` unless `HandlerUnavailable` is among the reasons that apply — whether in `UnavailableReason` or in `AdditionalUnavailableReasons` — and also for a `HandlerUnavailable` handler that has not opted into reporting a more specific detail:
+
+| `UnavailableDetail` | Meaning | What resolves it |
+|---|---|---|
+| `Unspecified` | No handler-reported detail beyond `HandlerUnavailable` itself | — |
+| `EngineVersion` | Requires an engine version other than the one currently running (an API introduced, or removed, at a specific release) | Raising or lowering the engine version |
+| `BuildConfiguration` | Requires a build configuration this process was not built with (e.g. Developer Tools, an Editor target) | Rebuilding with the required configuration |
+| `ExecutionEnvironment` | Requires infrastructure this execution environment does not provide (e.g. a render hardware interface, an interactive session) | Running under a different execution environment |
+| `EngineApiNotExported` | Depends on an engine-side API that is never exported to a plugin in any supported engine version | **Nothing engine-side** — usually a Toolset bridge alternative; check both before concluding there is no working path |
+| `DelegationTargetMissing` | This is a Toolset bridge command, and the Toolset it forwards to declares no function under this command's name, in any supported engine version — there is nothing for the forwarded call to reach | **Nothing engine-side** — look for the native command of the same name; if that is unavailable too, there is no working path for this operation in this plugin |
+| `OptionalPluginDisabled` | Depends on an optional plugin this binary has **no compiled-in support for at all** — the plugin was absent from the engine this UAIP build was compiled against | **Do not tell the user to enable the plugin and restart — that fixes nothing here.** On an editor build, the fix is a UAIP build for an engine version that includes the plugin (for a source build: add the plugin to that engine and rebuild). On a packaged game, enable the plugin in the project's `.uproject` and package again. A plugin that is merely *disabled*, not absent, never produces this value — that shows up as `CommandNotFound` (with a remedy) or, for a Toolset bridge, `ExecutionEnvironment` instead; see [`UAIP.Core.ListIntegrations`](commands.md#uaipcore) |
+| `SafetyPolicyDisabled` | Gated behind a deny-by-default SafetyPolicy flag that is off in this process. Unlike every other value above, nothing about the environment or build is actually missing | Setting the named flag in `Config/DefaultUAIP.ini` and restarting the editor (or calling `UAIP.Core.ReloadCapabilities` if `AllowCapabilityReload` is already on) |
+
+`OptionalPluginDisabled` and `EngineApiNotExported` sound similar but point in opposite directions: `OptionalPluginDisabled` means the plugin providing the types exists and enabling it fixes things, while `EngineApiNotExported` means no plugin state helps because the engine itself never hands the API out. `DelegationTargetMissing` differs from `EngineApiNotExported` in what is actually missing: `EngineApiNotExported` means the *engine itself* never exports the API a command needs to any plugin, while `DelegationTargetMissing` means the *Toolset* a specific bridge command forwards to never declared a matching function in the first place, so the command was never wired to anything real. Both mean no ini flag or capability grant fixes it; the difference only matters when deciding where to look for a working alternative — and, occasionally, both the bridge command and its native counterpart carry one of these two values at once, meaning there is no working path in this plugin at all (see [Commands — UAIP.Editor.Niagara](commands.md#uaipeditorniagara-) for a worked example).
+
+`SafetyPolicyDisabled` is the one value in this table whose `ErrorCode` differs from the rest — see the `PolicyViolation` row in [§4 Error codes](#4-error-codes). Every other value here maps to `AbilityUnavailable`, since every other cause is environment- or build-related and no ini flag touches it.
+
+When `UnavailableDetail` is anything other than `Unspecified`, the response usually also carries `UnavailableDetailMessage` — the handler's own free-text elaboration (`"KeyControlsAtFrames is not available in UE 5.7."` above). The field is omitted, not sent empty, when the handler has nothing further to add.
+
+**`UAIP.Core.ListCommands` now carries `UnavailableDetail` too, but only per command and only when asked for.** Calling it with `IncludeUnavailable: true` returns every currently-hidden command's row with the same `UnavailableDetail` string `DescribeCommand` would report for that command (including `"Unspecified"`, which is written out rather than omitted). The default response — `IncludeUnavailable` omitted or `false` — never carries this field, because unavailable rows are excluded from that response entirely (see [Commands Reference](commands.md#uaipcore)); the field only appears once a caller has opted into seeing hidden rows at all. Two things did **not** change: `ListCommands` never carries `UnavailableDetailMessage` — the free-text elaboration is still a `DescribeCommand`-only field, to keep list responses bounded — and `HiddenReasons` still stays at the same five keys `UnavailableReason` uses; there is still no aggregated per-detail breakdown across every hidden command. A caller that wants the message text for one specific command still calls `DescribeCommand` on that command's name.
 
 ---
 
@@ -352,8 +454,8 @@ Scenarios run an ordered list of commands as one request. See [Scenario Executio
 | `StepName` | string | — | `[A-Za-z0-9_]{1,64}`, unique per scenario |
 | `CommandName` | string | — | Same as `uaip_execute` |
 | `Params` | object | `{}` | After template resolution |
-| `AbortOnFailure` | bool | `true` | If false, scenario continues even if this step fails |
-| `RetryCount` | int | `0` | Retry on `ExecutionFailed` only — never on `CapabilityNotAvailable` / `PolicyViolation` |
+| `AbortOnFailure` | bool | `true` | Evaluated on **this** step when it fails: `true` skips every later step, `false` lets the scenario continue. It does not control whether this step is reached after an *earlier* step failed — see [Scenario Execution](scenario.md#failure-handling-and-cleanup) |
+| `RetryCount` | int | `0` | Retry on `ExecutionFailed` / `PreconditionFailed` only — never on `CapabilityNotAvailable` / `PolicyViolation` |
 | `TimeoutSeconds` | int | `60` | Per-step wall-clock cap |
 
 ### 7.2 Template expressions
@@ -362,14 +464,17 @@ Scenarios run an ordered list of commands as one request. See [Scenario Executio
 |---|---|
 | `${StepName.Success}` | bool |
 | `${StepName.ErrorCode}` | string |
-| `${StepName.Data.<JSON Pointer>}` | Any JSON value at that pointer in the step's `Data` |
+| `${StepName.Data.<pointer>}` | Any JSON value at that pointer in the step's `Data`. Pointer bodies starting with `/` are read as a strict RFC 6901 pointer; anything else is lenient, where `.` and `/` both separate segments. See [Scenario Execution](scenario.md#json-pointer-notation) for the full notation, escapes, and constraints |
+| `${StepName.Data}` | The whole `Data` object |
 | `${StepName.Artifacts[<index>]}` | Artifact id string |
 | `${StepName.Artifacts.<ArtifactId>}` | Artifact id string |
 | `${Variables.<key>}` | Value from the request's `Variables` map |
 
-**Type preservation**: if a string field is exactly one `${...}` expression, the resolved JSON value replaces it verbatim. Mixed strings stringify and concatenate.
+**Type preservation**: if a string field is exactly one `${...}` expression, the resolved JSON value replaces it verbatim. Mixed strings stringify and concatenate. Objects and arrays can only be spliced as a whole field — embedding one inside a larger string fails the step.
 
 **Single-pass invariant**: a template result is never re-evaluated. A `${...}` stored inside `Variables` is passed as a literal string to downstream steps.
+
+**Resolution failures**: a malformed `${...}` reference fails the step with `ErrorCode: InvalidParams`, which is not retried by `RetryCount`. See [Scenario Execution → Template size limits](scenario.md#template-size-limits) for the byte limits enforced during resolution.
 
 ### 7.3 `ScenarioResponse`
 
@@ -393,15 +498,20 @@ Scenarios run an ordered list of commands as one request. See [Scenario Executio
       "DurationMs":   1234
     }
   ],
-  "ArtifactIds": ["8D14...", "F521..."]
+  "ArtifactIds": ["8D14...", "F521..."],
+  "SessionId":   "scenario-001"
 }
 ```
+
+`SessionId` carries the same meaning as on `CommandResponse` (§3.1) — the session the scenario actually resolved to, including a server-assigned anonymous session when the request omitted `SessionId`. It is omitted from the response when empty.
 
 | `Status` | Meaning |
 |---|---|
 | `Completed` | Every step succeeded |
 | `Failed` | At least one step returned `Success:false` |
-| `Aborted` | Scenario-wide 1800-second cap exceeded |
+| `TimedOut` | The scenario-wide 1800-second wall-clock cap fired before the run finished |
+
+A `TimedOut` response additionally carries `AllStepsSucceeded: false` and two top-level fields not shown in the example above — `ErrorCode: "Timeout"` and a fixed `ErrorMessage` — present only in this case. The HTTP status stays **200**, the same as every other scenario response; this is the one case in this document where the advisory-HTTP-status rule (§4) matters most, since a caller that only checks for a non-2xx status never sees it. `StepResults` may be empty even when steps did run — the runner has no safe way to hand the watchdog its in-progress step results — so an empty array is not proof nothing executed.
 
 ### 7.4 Hard limits
 
@@ -410,6 +520,7 @@ Scenarios run an ordered list of commands as one request. See [Scenario Executio
 | Max steps | 100 |
 | Per-scenario wall-clock cap | 1800 s |
 | Concurrent scenarios | 1 (`TooManyRequests` otherwise) |
+| Single commands while a scenario runs | Refused with `TooManyRequests`, across HTTP / MCP / WS, except admitted passive waits — see [Scenario Execution → Exclusivity with single commands](scenario.md#exclusivity-with-single-commands) |
 | Per-step `Params` string | 8 KiB |
 | Total `Params` payload | 256 KiB |
 | Total `ScenarioRequest` size | 1 MiB |
@@ -468,7 +579,7 @@ python docs/scripts/generate_command_schema.py `
 
 Add `--no-auth` if launched with `-uaip-http-no-auth`. Add `--split-by-provider` for one JSON per provider under `by-provider/`.
 
-Expected runtime: 10–60 s for ~730 commands depending on optional plugin set.
+Runtime scales with the number of registered commands — up to ~1640 with every optional plugin enabled, fewer without.
 
 ### 9.3 Output shape
 
@@ -586,13 +697,15 @@ curl -s -X POST http://127.0.0.1:8765/uaip/commands \
   }' | jq .
 ```
 
-Fetch an artifact:
+Fetch an artifact, naming the `SessionId` that produced it:
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  http://127.0.0.1:8765/uaip/artifacts/8D1403DB4896B4742E423CBD9F535F19 \
+  "http://127.0.0.1:8765/uaip/artifacts/8D1403DB4896B4742E423CBD9F535F19?SessionId=smoke-test" \
   -o capture.png
 ```
+
+> `SessionId` is optional today — omitting it resolves against this editor process's own artifacts only, and logs a warning. It is the only way to reach an artifact rediscovered from a *previous* editor session (see [Artifacts](artifacts.md)), and **it will become mandatory on this route in a future major version** — always pass it, as shown above.
 
 ### 10.2 HTTP — Python
 
@@ -618,8 +731,13 @@ class UAIPClient:
             raise RuntimeError(f'{data["ErrorCode"]}: {data["ErrorMessage"]}')
         return data
 
-    def fetch_artifact(self, artifact_id):
-        r = self.session.get(f"{self.host}/uaip/artifacts/{artifact_id}", timeout=60)
+    def fetch_artifact(self, artifact_id, session_id=None):
+        # SessionId is optional today (an omitted one resolves against this editor
+        # process's own artifacts only), but it will become mandatory in a future
+        # major version and is the only way to reach an artifact rediscovered from a
+        # previous editor session — always pass the SessionId that produced it.
+        params = {"SessionId": session_id} if session_id else None
+        r = self.session.get(f"{self.host}/uaip/artifacts/{artifact_id}", params=params, timeout=60)
         r.raise_for_status()
         return r.content
 

@@ -2,37 +2,53 @@
 
 # Safety & Capabilities
 
-UAIP applies per-command authorization in three layers. Understanding the layers helps you diagnose errors quickly and configure the right permissions for your workflow.
+UAIP applies per-command authorization in four layers. Understanding the layers helps you diagnose errors quickly and configure the right permissions for your workflow.
 
 ---
 
 ## Authorization layers
 
-| Layer | Mechanism | Error on failure |
-|---|---|---|
-| 1 | Session's `FCapabilitySet` — per-session × per-command | `CapabilityNotAvailable` |
-| 2 | `FSafetyPolicy` bool switches / DeniedCapabilities — process-wide | `PolicyViolation` |
-| 3 | Route-specific opt-in (e.g. scenario route) — process-wide | `PolicyViolation` |
+| Layer | Mechanism | Scope | Error on failure |
+|---|---|---|---|
+| 1 | `FCapabilitySet` — the process-wide capability set computed once at editor startup from SafetyPolicy | Process-wide (shared by every session) | `CapabilityNotAvailable` |
+| 1.5 | `FRoleGate` — a deny-only downgrade bound to the session, resolved from an optional role token | Per-session (only narrows what Layer 1 already grants; can never add a capability) | `CapabilityNotAvailable` |
+| 2 | `FSafetyPolicy` bool switches / `DeniedCapabilities` | Process-wide, immutable at runtime | `PolicyViolation` |
+| 3 | Route-specific opt-in (e.g. scenario route) | Process-wide | `PolicyViolation` |
+| 4 | `ICommandHandler::IsAvailable()` — a per-command, per-process self-report of whether the handler can actually run right now, evaluated after Layers 1–3 pass | Per-command (each handler answers for itself; not a session- or process-wide switch) | `AbilityUnavailable` for an environment- or build-related cause, `PolicyViolation` for the one cause that is a SafetyPolicy flag (see below) |
+
+Layer 1 is **not** per-session — it is one capability set that every session shares, fixed at startup (or refreshed process-wide by `ReloadCapabilities`). Layer 1.5 is the only layer that varies per session: when the editor is configured with roles (see [Roles](#roles-layer-15) below) and a session is bound to one, that role's deny list is intersected with Layer 1's set for that session only. A session with no role bound behaves exactly like Layer 1 alone.
+
+Layer 4 is a different kind of check from Layers 1–3, and it's worth keeping that distinction clear: Layers 1–3 all gate on **what this session or process is allowed to do**, and every one of their rejections is fixed by an operator flipping a switch (a capability, a SafetyPolicy flag, a launch flag). Layer 4 gates on **whether the handler can do its job at all right now**, independent of permission — most of the reasons it fails (wrong engine version, a build configuration that excludes the command, missing infrastructure, an API the engine or a Toolset target never exposed) have **no ini flag or capability grant that fixes them**; see [API Reference → `UnavailableDetail`](api.md#65-command-availability-fields) for the full breakdown. The one exception is a handler gated behind a deny-by-default SafetyPolicy flag (`UnavailableDetail: SafetyPolicyDisabled`) — that one *is* fixed the same way a Layer 2 rejection is, by setting the flag in `Config/DefaultUAIP.ini` and restarting, which is why it alone maps to `PolicyViolation` rather than `AbilityUnavailable`.
 
 ```mermaid
 flowchart TB
     Cmd([CommandRequest])
-    L1[Layer 1: Session Capability Set]
+    L1[Layer 1: Process Capability Set]
+    L15[Layer 1.5: Role Gate<br/>deny-only, session-bound]
     L2[Layer 2: SafetyPolicy + DeniedCapabilities + DeniedCommands]
     L3[Layer 3: Route opt-in flags]
+    L4[Layer 4: ICommandHandler::IsAvailable&#40;&#41;<br/>per-command self-report]
     Exec([Execute on game thread])
 
     Cmd --> L1
     L1 -- "missing required capability" --> E1([CapabilityNotAvailable])
-    L1 -- ok --> L2
+    L1 -- ok --> L15
+    L15 -- "capability denied by the session's role" --> E15([CapabilityNotAvailable])
+    L15 -- ok --> L2
     L2 -- "capability denied / ReadOnly / DisableSave / etc." --> E2([PolicyViolation])
     L2 -- ok --> L3
     L3 -- "route flag not set at launch" --> E3([PolicyViolation])
-    L3 -- ok --> Exec
+    L3 -- ok --> L4
+    L4 -- "environment/build cause (no ini flag fixes it)" --> E4a([AbilityUnavailable])
+    L4 -- "SafetyPolicy flag off (SafetyPolicyDisabled)" --> E4b([PolicyViolation])
+    L4 -- ok --> Exec
 
     style E1 fill:#fdd
+    style E15 fill:#fdd
     style E2 fill:#fdd
     style E3 fill:#fdd
+    style E4a fill:#fdd
+    style E4b fill:#fdd
 ```
 
 `AllowedCapabilities` and `DeniedCapabilities` interact at Layer 1 / 2 with **deny-wins** semantics:
@@ -40,7 +56,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     Reg[Module-registered capabilities] --> Allow{"AllowedCapabilities<br/>list"}
-    Allow -- "in list" --> Active(Active in session)
+    Allow -- "in list" --> Active(Active in the process capability set)
     Allow -- "not in list" --> S1{"DefaultAllow?"}
     S1 -- yes --> Active
     S1 -- no --> X1(Inactive)
@@ -53,11 +69,96 @@ flowchart LR
 
 ---
 
+## Roles (Layer 1.5)
+
+A role narrows the process-wide capability set (Layer 1) for the sessions bound to it. Roles are **deny-only**: a role can only take capabilities away from what the process already grants — it can never add one the process doesn't have. This makes privilege escalation through a role definition structurally impossible, not just discouraged by convention.
+
+Roles are for running several AI agents against the same editor with different levels of trust — for example, an implementer agent that can edit assets and a reviewer agent that should never call a mutating command, even by mistake.
+
+### Defining roles
+
+Add one `+Role=` line per role to `[UAIP.Roles]` in `Config/DefaultUAIP.ini`:
+
+```ini
+[UAIP.Roles]
++Role=(Name="reviewer", DeniedCapabilities=("BlueprintEdit","AssetCreate","AssetDelete","EditorActorEdit"))
++Role=(Name="implementer", DeniedCapabilities=())
+
+; Only needed if you also rely on a transport that cannot carry a role identity — see below.
+; AllowRoleBlindTransports=False
+```
+
+- `Name` must match `[A-Za-z0-9_-]{1,64}` and be unique within the section. An invalid or duplicate entry is rejected at editor startup (the offending line is skipped and logged as an error) rather than silently accepted.
+- `DeniedCapabilities` may be empty (`DeniedCapabilities=()`) for a role that denies nothing.
+- Leaving `[UAIP.Roles]` with zero `+Role=` lines keeps the role feature **fully disabled** — every session keeps the unmodified process-wide capability set, exactly as before this feature existed.
+
+### How a session gets bound to a role
+
+A role is never inferred from `SessionId` — that value is a caller-supplied string over MCP and HTTP, so it can't be trusted as an identity. Instead:
+
+- Only **MCP-mode** requests (`-uaip-mcp-enable`) can carry a role, via `Authorization: Bearer <role-token>`.
+- The editor generates one token per defined role at startup and writes it to `Saved/UAIP/Roles/<RoleName>.token` (not committed to source control, same handling as the existing HTTP/WS auth tokens).
+- The MCP Bridge's `config.json` supplies `role_name` (and reads the matching token from that file automatically) or, alternatively, `role_token` directly when the token is provisioned some other way. Both have environment-variable overrides, `UAIP_ROLE_NAME` and `UAIP_ROLE_TOKEN`. Leaving both empty sends requests exactly as they were before roles existed.
+- The first request bearing a given `SessionId` binds that session to the resolved role; every later request for the same `SessionId` is checked against that binding, and a mismatched role is rejected — a session's role never changes mid-connection.
+
+Because roles are configured per MCP client connection (in that client's own bridge config) rather than per request, they compose naturally with one bridge process mapping to one UAIP session — see [Session lifecycle](architecture.md#6-session-lifecycle) in Architecture.
+
+### Transports that can't carry a role
+
+WebSocket, CLI, and the FullHTTP mode of the HTTP transport authenticate with a single shared secret and have no way to identify a role. Once `[UAIP.Roles]` defines at least one role, those transports **refuse to start by default** — starting them would let anyone connecting through one bypass every role restriction silently. Set `AllowRoleBlindTransports=True` to start them anyway; a warning is logged at startup for each affected transport so the bypass stays visible, and commands issued through it run with the unrestricted process-wide capability set.
+
+### How role restrictions surface to a client
+
+- `uaip_list_commands` omits role-denied commands from its default response, the same way it omits any other unavailable command, and counts them under `HiddenReasons.RoleRestricted` (see [Commands Reference → discovery filters](commands.md)).
+- `uaip_describe_command` still shows a role-denied command, with `UnavailableReason: "RoleRestricted"`.
+- `uaip_query_capabilities` reflects the session's role-narrowed set in its `Capabilities` field, not the full process set — so a capability a role denies never shows up as "available" to a session bound to that role. Its `RegisteredCapabilities` catalog (requested with `IncludeUnavailable: true`) is **not** narrowed: it names every capability the loaded modules declare, with `IsGranted: false` on the ones this session cannot use. That is deliberate — a client has to be able to see that a capability exists in order to ask an operator for it, or to understand why a command it expected is missing. Only names and default policies appear there; a role still denies the operation itself.
+- Calling a role-denied command returns the same `CapabilityNotAvailable` error code as a missing process capability, but `ErrorMessage` names both the role and the capability, so the remediation reads differently: a missing process capability is fixed by an operator enabling it, while a role restriction is fixed by not performing that operation under that role — there is nothing to enable.
+
+---
+
+## What this protects against (and what it doesn't)
+
+Both Layer 1.5 (roles) and the token authentication that identifies a role exist to prevent **accidents**, not to hold up against an adversary. There is no way to keep credentials secret from an AI agent running under the same user account on the same machine: a token written to a file can be read, one written to an environment variable can be read from the process environment, and one written to a config file can be read from that file. This is a known, permanent limitation — not a bug to be fixed later.
+
+| Attempted action | Effect |
+|---|---|
+| Retrying with a different `SessionId` | **Prevented.** The MCP Bridge overwrites every `SessionId` with the one it minted for its own connection, so an MCP client cannot express a different session at all |
+| Omitting `SessionId` to fall back to an anonymous session | **Prevented.** The bridge injects its session ID on every forwarded call |
+| Connecting through a transport that cannot carry a role identity (WS / CLI / FullHTTP) | **Prevented by default** once at least one role is defined — those transports refuse to start (see [Roles](#roles-layer-15) above). An operator can opt back in with `AllowRoleBlindTransports=True`; doing so makes the bypass visible in the startup log, not undone |
+| Pointing an MCP client at a different bridge instance / a different token | **Not prevented technically.** Whether this is possible depends entirely on operating-system file permissions — specifically, whether the AI agent can edit the MCP client's own configuration file. If an agent has broad file-system access, this assumption does not hold automatically |
+| Calling `POST /mcp` directly with `curl` or a raw HTTP client | **Not prevented.** Token authentication rejects requests with no token or the wrong one, but an agent that can read the token file can construct a valid request |
+| Going around UAIP entirely (a Python script, an Editor Utility Widget, …) | **Not prevented.** Outside UAIP's authorization stack by definition |
+
+What this feature does provide:
+
+1. **An explicit boundary.** Working around it stops being an accident and becomes a deliberate action — one that requires reading a token file, editing a bridge config file, or launching a client another way.
+2. **Observability.** Authentication failures, role-binding mismatches, and role-restricted dispatch rejections are all logged as warnings, so bypass attempts (accidental or deliberate) are visible after the fact.
+
+---
+
 ## Capability reference
 
-Each command declares the capabilities it requires. A command runs only when the session holds every required capability. Capabilities are either **DefaultAllow** (granted automatically) or **DefaultDenied** (must be explicitly enabled in `Config/DefaultUAIP.ini`).
+Each command declares the capabilities it requires. A command runs only when the process holds every required capability (Layer 1) and, if the session is bound to a role, that role doesn't deny any of them (Layer 1.5). Capabilities are either **DefaultAllow** (granted automatically) or **DefaultDenied** (must be explicitly enabled in `Config/DefaultUAIP.ini`).
 
-Capabilities marked 🧩 require an optional plugin. If that plugin is not enabled in your `.uproject`, the capability is never registered and commands that require it return `CommandNotFound`.
+Capabilities marked 🧩 require an optional plugin. On an editor build (source or the Fab-distributed Pro binary alike), the capability is registered whenever the plugin **exists in the engine you're running** — the project's `.uproject` no longer has to declare it, and no rebuild is needed. What still matters is whether the plugin is **enabled**: if it is disabled, the capability is never registered and commands that require it return `CommandNotFound` — enable the plugin and restart the editor to pick it up. If the plugin genuinely is not present in this engine version at all, enabling it isn't possible and `CommandNotFound` says so instead. Either way, `UAIP.Core.ListIntegrations` reports every optional integration's state and what to do about it in one call, and a `CommandNotFound` response for a command that belongs to one of them names the integration and its remedy directly.
+
+### Finding out which capabilities exist
+
+`QueryCapabilities` answers two different questions in one response, and it is worth keeping them apart:
+
+| Field | Question it answers |
+|---|---|
+| `Capabilities` | **What can this session use right now?** The effective set — the process capability set, minus anything `DeniedCapabilities` removes, minus anything the session's bound role denies |
+| `RegisteredCapabilityCount` / `UngrantedCapabilityCount` | **How much is there, and how much of it can't this session use?** Always returned, including when both are what you hoped — so "nothing is ungranted" never has to be guessed from a missing field |
+| `RegisteredCapabilities` | **What exists at all?** Every capability the loaded modules have declared, whether or not this session holds it. Each entry carries `Name`, `DefaultPolicy` (`Allowed` or `Denied`) and `IsGranted` — so a name present here with `IsGranted: false` is one to ask an operator to enable. **Returned only when you pass `IncludeUnavailable: true`** |
+
+The catalog is **opt-in**, for the same reason `uaip_list_commands` hides unavailable commands by default: it runs to well over a hundred entries in a normal editor, and this is the command you are told to call first. Pass `IncludeUnavailable: true` to receive it. What is *not* optional is knowing it is there — the two counts come back on every call, so a session that never opts in still learns how many capabilities it does not hold, and can then ask for the list.
+
+**"What would an operator have to enable?" is answered from `RegisteredCapabilities` alone**: those are the entries whose `DefaultPolicy` is `Denied`. The response carries no separate list of them, deliberately — it would repeat names already in the catalog without adding anything.
+
+The catalog matters because a DefaultDenied capability is invisible to the effective set by definition. For most of them that is not a problem — they appear in some command's `RequiredCapabilities`, so `uaip_describe_command` names them. `PropertyReferenceEdit` and `PropertyStructuredEdit` are the exception: they are decided from the type of the property being written, long after dispatch, so no command declares them and the catalog is the only place they can be found before one is granted.
+
+Only capability names and their default policies are disclosed. Nothing about the project's contents, and no values, are involved.
 
 ---
 
@@ -69,7 +170,7 @@ These are active in every session without any configuration. They cover read-onl
 |---|---|
 | `EditorObservation` | Screenshots (`CaptureActiveWindowImage`, `CaptureEditorTabImage`, `CaptureGraphViewportImage`) and JSON state dumps (`DumpEditorState`, `DumpSlateTree`, `DumpSelectionState`, `DumpOutputLog`, `DumpMessageLog`, etc.) |
 | `EditorInspect` | Read-only inspection of editor state — assets, details panel, viewport, graph info. Used by shared infrastructure commands |
-| `EditorUIAutomation` | UI-driving commands — `ClickWidget`, `SelectMenuItem`, `InputText`, `SetCheckboxState`, `DragGraphNode`, `AcceptDialog`, `CancelDialog`, `InvokeContextMenuAction`, `WaitForWidget`, `FillForm`, etc. |
+| `EditorUIAutomation` | UI-driving commands — `ClickWidget`, `SelectMenuItem`, `InputText`, `SetCheckboxState`, `DragGraphNode`, `AcceptDialog`, `CancelDialog`, `InvokeContextMenuAction`, `WaitForWidget`, `FillForm`, `SnapshotUI`, etc. — and their `Toolset.Editor.SlateInspector.*` bridge counterparts, which now require the same capability (earlier releases dispatched the bridge commands without a capability check) |
 | `EditorWorkspaceControl` | Tab and panel management — open/close tabs, focus graph editors, manage editor layout |
 | `EditorLifecycle` | Editor lifecycle operations — `SaveAll`, `ShutdownEditor`, `RestartEditor` |
 | `EditorExecution` | Run Automation Tests and Editor Utility Blueprints from the editor |
@@ -85,6 +186,8 @@ These are active in every session without any configuration. They cover read-onl
 | `RuntimeGASInspect` 🧩 | Read GAS state during PIE — `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses` (requires `GameplayAbilities` plugin) |
 | `RuntimeNiagaraInspect` 🧩 | Read Niagara component state during PIE — `GetUserVariables`, `GetVariable` (requires `Niagara` plugin) |
 | `SandboxObserve` 🧩 | Observe the active sandbox — `GetSandboxStatus`, `GetSandboxChanges` (requires `FileSandbox` plugin) |
+| `RuntimeInsightsInspect` | Read-only inspection of Unreal Insights tracing — `ListTraceChannels`, `GetTraceStatus`, `ListTraceFiles`. Does not allow starting, stopping or otherwise altering a trace |
+| `PendingInteractionInspect` | Poll and cancel a pending interaction — `GetPendingInteractionStatus`, `WaitForPendingInteraction`, `CancelPendingInteraction`. Read-only lookups only; starting an interaction (e.g. `DrawPCGSpline`) is gated separately by the interactive command's own capability plus `SafetyPolicy.AllowUserInteractionPrompt` |
 
 ---
 
@@ -101,7 +204,9 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `BlueprintGraphEdit` | Add, delete, and connect nodes in Blueprint event graphs |
 | `BlueprintComponentEdit` | Add, remove, rename, reparent, duplicate, and edit properties of Blueprint SCS components |
 | `AnimBlueprintGraphEdit` | Add, delete, and connect nodes in AnimGraph; compile Anim Blueprints |
+| `AnimBlueprintCustomTypeEdit` | Required by `AddAnimGraphNode` when `NodeClass` is not from one of the three modules this domain trusts (`AnimGraph`, `AnimGraphRuntime`, `Engine`) — a project- or plugin-defined `UAnimGraphNode_Base` subclass. There is no separate "dangerous node" capability for this domain: eight node kinds are refused outright regardless of any capability held, see [Commands — UAIP.Editor.AnimBlueprint](commands.md#uaipeditoranimblueprint) |
 | `AnimStateMachineEdit` | Add and remove States and Transitions in Anim State Machines |
+| `AnimBlueprintReferenceEdit` | Write a property, an implemented interface reference, or an embedded UAF graph reference that is — or contains — an object reference on an Anim Blueprint. `SetAnimGraphNodeProperty` asks for it dynamically, only when the write actually touches a reference; `ImplementAnimLayerInterface` and `AddUAFGraphNodeToAnimBlueprint` declare it statically, since every call writes a reference; `AddLinkedAnimLayerNode` asks for it dynamically, only when `InterfacePath` is set (a self-contained layer node writes no reference) |
 
 #### Level / Actor / Property editing
 
@@ -110,9 +215,26 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `EditorActorEdit` | Spawn, delete, and set transforms of actors in the Level Editor |
 | `EditorLevelLoad` | Open and create levels in the editor viewport |
 | `EditorViewportControl` | Control the level editor viewport camera — `FocusOnActors`, `GetCameraTransform`, `SetCameraTransform` |
+| `ActorComponentEdit` | Add, remove and re-attach a component on an actor **placed in the level**, and write a property on one — `AddActorComponent`, `DeleteActorComponent`, `ReparentActorComponent`, `SetActorComponentProperty`. Held apart from `EditorActorEdit` because the two change different things: that one moves and removes whole actors, this one changes what an actor is made of and how it is configured. Reading a component's properties (`GetActorComponentProperty`) and listing components (`ListActorComponents`) need only `EditorInspect`. A write whose value is a reference or a composite needs `PropertyReferenceEdit` / `PropertyStructuredEdit` in addition — call `GetActorComponentProperty` first to find out which |
+| `ComponentCustomTypeEdit` | Required **in addition** to the command's own capability whenever a command increases how many instances of a component class exist and that class is not declared by `/Script/Engine` or `/Script/LiveLinkComponents` — i.e. a project's own C++ component, another plugin's (engine plugins such as Niagara included), or a Blueprint-generated component class. Shared by all three such commands: `AddActorComponent` (instance side, with `ActorComponentEdit`) and `AddBlueprintComponent` / `DuplicateBlueprintComponent` (Blueprint / SCS side, with `BlueprintComponentEdit`). One name across all three so that granting it for one route cannot be used to reach the same class through another. ⚠️ **This is a change in behaviour for the two Blueprint commands** — see the note below. Deleting, renaming, reparenting a component and writing its properties are **not** gated by it, since none of them increases the number of instances |
 | `PropertyEdit` | Read and write actor / asset properties via the Details panel (`GetActorProperty`, `SetActorProperty`, `GetAssetProperty`, `SetAssetProperty`, etc.) |
+| `PropertyReferenceEdit` | Write a property whose value is — or contains, at any depth — an object / class / soft / weak / lazy / interface reference, a delegate or a field path. Clearing a reference needs it too, since attaching and detaching a dependency are the same kind of change |
+| `PropertyStructuredEdit` | Write a struct outside the built-in value catalogue, an array, a set, a map, an optional or a fixed-size array — and operate on a single container element rather than replacing the whole value |
+| `PropertyDefaultsOnlyEdit` | Write a property the editor shows only on defaults for a target of this kind — one declared `EditDefaultsOnly` being written to an instance, or `EditInstanceOnly` being written to a template. The engine's own details panel edits these: the flag decides where a row appears, not whether it can be typed into, and the graph editors that hold node objects ask for those rows outright. Refusing them flatly would be stricter than the editor being automated, so the refusal is a permission to hold rather than a wall. A property with no edit flag at all, one marked `EditConst`, and a deprecated one are refused whatever is held — no permission opens those |
+| `StateTreeNodeReferenceEdit` | Write a StateTree node property whose type graph can reach a reference. Asked for instead of the generic `PropertyReferenceEdit` so that opening references on StateTree nodes does not open them everywhere else |
+| `EQSNodePropertyReferenceEdit` | Write an EQS generator or test property whose type graph can reach a reference. Also required to write an `FAIDataProvider` property, which holds a `UAIDataProvider` pointer whether the value names a constant or a binding |
+| `BehaviorTreeNodeReferenceEdit` | Write a Behavior Tree node property whose type graph can reach a reference. The blackboard key selector is written by a path of its own and is not governed by this |
+| `WorldConditionPropertyReferenceEdit` | Write a World Condition property whose type graph can reach a reference |
 | `ProjectConfigEdit` | Read and write project settings (`GetProjectSetting`, `SetProjectSetting`) |
 | `EditorUndoRedo` | Undo and redo editor operations |
+
+> ⚠️ **Breaking change — `ComponentCustomTypeEdit` now applies to `AddBlueprintComponent` and `DuplicateBlueprintComponent` too.** Until now only the class allow-lists of other domains behaved this way; adding or duplicating a component class on a Blueprint went through on `BlueprintComponentEdit` alone whatever the class was. A session that used to add or duplicate a project-defined component with only `BlueprintComponentEdit` granted will now be refused with `CapabilityNotAvailable` naming `ComponentCustomTypeEdit`. Add `+AllowedCapabilities=ComponentCustomTypeEdit` to restore it. The gate was extended to both routes at once because gating only the new instance-side command would have left the Blueprint route as a way around it. Because the requirement is decided from the class while the command runs, it does not appear in any of the three commands' declared `RequiredCapabilities`; `ListActorComponents` reports per class what an add would take (`Admission` / `RequiredCapabilities` / `MissingCapabilities`), and `QueryCapabilities` with `IncludeUnavailable: true` lists the name in its catalog. See [Commands — Components — SCS](commands.md#components--scs-8).
+
+> **Note**: `PropertyReferenceEdit` and `PropertyStructuredEdit` are not confined to `UAIP.Editor.Property`. They gate reference / struct / container writes in **every** domain that writes properties — Blueprint SCS components, Sequencer sections, Sound and SoundCue assets, PCG and Conversation nodes, DataTable rows, World and project settings, and more. Writing a struct that contains a reference needs both, so the structured one alone is never a way around the reference gate.
+>
+> A module that already governs reference writes through a capability of its own keeps that name for the reference half — `AnimNotifyReferenceEdit` for `SetAnimNotifyProperty`, `DataflowReferenceEdit` for `SetDataflowNodeProperty`, `SubsonicEventEdit` for the Subsonic property setters, `WidgetSlotReferenceEdit` for `SetSlotProperties`, `EnhancedInputReferenceEdit` for the Enhanced Input mapping mutators, `StateTreeParameterReferenceEdit` for `SetStateTreeParameter`, `NiagaraReferenceEdit` for a reference-typed parameter default on `AddSetParameterEntry` / `AddSetParametersModule` — while the struct / container half is always `PropertyStructuredEdit`. `SetPoseSearchSchemaChannelProperty` is the exception that grants nothing for references: it refuses a reference-bearing type outright, because writing a channel's sub-channel array directly would sidestep the class allowlist `AddPoseSearchSchemaChannel` enforces.
+>
+> Because both are decided from the property's type while the write runs, **neither appears in any command's declared `RequiredCapabilities`** and `uaip_describe_command` will not show them. They can still be found without attempting a write: `QueryCapabilities` lists both in its `RegisteredCapabilities` catalog — call it with `IncludeUnavailable: true` — with `DefaultPolicy: "Denied"` and `IsGranted: false` until an operator enables them (see [Finding out which capabilities exist](#finding-out-which-capabilities-exist)). To learn what a **particular** property would need, read it first — its `WriteRequirements` object names what a write would need and which of those the session already holds — or take the name out of the refusal. See [Commands — Writing references, structs and containers](commands.md#writing-references-structs-and-containers).
 
 #### Asset management
 
@@ -136,7 +258,10 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 |---|---|
 | `MaterialGraphEdit` | Add, delete, and connect nodes in Material graphs; compile materials |
 | `MaterialParameterEdit` | Modify Material parameter values and defaults |
-| `MaterialCustomNodeEdit` | Edit custom HLSL expression nodes in Material graphs |
+| `MaterialCustomNodeEdit` | Required by `AddMaterialNode` when `ExpressionClass` is `UMaterialExpressionCustom`, `UMaterialExpressionCustomOutput`, or a subclass of either (arbitrary HLSL), regardless of which module it comes from. Already registered before this change, but no command required it until now |
+| `MaterialCustomTypeEdit` | Required by `AddMaterialNode` when `ExpressionClass` is not one of the engine's built-in modules (`Engine`, `RenderCore`, `MaterialEditor`, `Landscape`) — a project- or plugin-defined `UMaterialExpression` subclass. A class that is both project-defined and custom-HLSL needs this and `MaterialCustomNodeEdit` together |
+
+> **Note**: `MaterialCustomNodeEdit`, `MaterialCustomTypeEdit`, `AnimBlueprintCustomTypeEdit` (above, under [Blueprint & Anim Blueprint editing](#blueprint--anim-blueprint-editing)), `MotionMatchingCustomTypeEdit` (below, under [Motion Matching / Pose Search editing](#motion-matching--pose-search-editing)), `SequencerCustomTypeEdit` (below, under [Sequencer editing](#sequencer-editing)), `ControlRigCustomTypeEdit` (below, under [ControlRig editing](#controlrig-editing)), `BehaviorTreeCustomTypeEdit` / `BehaviorTreeExternalBehaviorNodeEdit` / `BlackboardReferenceKeyTypeEdit` (below, under [AI systems](#ai-systems)), `StateTreeCustomTypeEdit` (below, under [StateTree editing](#statetree-editing)), `SoundCueCustomTypeEdit` (below, under [SoundCue editing](#soundcue-editing)), `EnhancedInputCustomTypeEdit` (below, under [Gameplay systems](#gameplay-systems)), and `MetaSoundCustomTypeEdit` / `EQSCustomTypeEdit` / `EQSDelegatedGeneratorEdit` / `WorldConditionsCustomTypeEdit` / `ConversationCustomTypeEdit` (below, under [Optional graph editors](#optional-graph-editors)) are not only checked when a node of the gated type is added — the same capability is re-checked for every operation that touches an existing node of that type: editing, connecting, disconnecting, compiling, reparenting, and deleting it. ⚠️ Deleting and disconnecting such a node used to be ungated entirely before this change. A type that can no longer be added is still not, by itself, a reason an existing node of it can't be deleted or disconnected. See [Commands — Capability-gated custom types](commands.md#capability-gated-custom-types) for the full explanation.
 
 #### DataTable editing
 
@@ -157,8 +282,68 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 
 | Capability | What it unlocks |
 |---|---|
-| `SkeletonAssetEdit` | Add, remove, and modify sockets, virtual bones in Skeleton assets |
+| `SkeletonAssetEdit` | Add, remove, and modify sockets, virtual bones, and BlendProfiles in Skeleton assets |
 | `SkeletalMeshMaterialEdit` | Assign and replace material slots on Skeletal Meshes |
+
+#### Unified Animation Framework (UAF) editing 🧩
+
+Requires the Engine's own `UAF` plugin; if it is disabled none of the commands below are registered. **Every command gated by these three capabilities is `Stability: Experimental`**, because the UAF plugin is itself an Experimental engine feature and its API may change without notice in a future engine release. `UAFReferenceEdit` and `AnimBlueprintReferenceEdit` (above) are gated separately because they name different things: a UAF pin reference versus an implemented-interface / embedded-graph reference on an Anim Blueprint. `AddUAFGraphNodeToAnimBlueprint` (which embeds a UAF graph into an Anim Blueprint) is gated by the Anim Blueprint capabilities above, not by these three.
+
+| Capability | What it unlocks |
+|---|---|
+| `UAFGraphEdit` | Graph, variable, and compile editing on a UAF asset (`AddUAFGraphNode` / `RemoveUAFGraphNode` / `ConnectUAFPins` / `DisconnectUAFPins` / `SetUAFPinValue` / `AddUAFVariable` / `RemoveUAFVariable` / `AddUAFEventGraph` / `CompileUAFAsset`) |
+| `UAFCustomTypeEdit` | Required when a RigVM unit struct or animation trait used by an add / connect / disconnect / remove operation does not come from the framework's own packages — a type contributed by an optional UAF sub-plugin, a project module, or anything else outside that set. `GetAvailableUAFUnitStructs` and `GetAvailableUAFTraits` report which capability each entry would need |
+| `UAFReferenceEdit` | Required when `SetUAFPinValue` writes an object or class reference into a pin — either the pin's own declared type, or a struct that declares a reference anywhere in its own type graph |
+
+#### Geometry Collection (Chaos Destruction) editing
+
+Read-only inspection (`GetGeometryCollectionInfo`, `GetGeometryCollectionClusterInfo`, `GetGeometryCollectionDestructionSettings`) is DefaultAllow (`EditorInspect`). The read-only `SelectGeometryCollectionBones` command is also gated by `EditorInspect`, but additionally requires the `Fracture` plugin — see [Commands Reference](commands.md). Every write is split across three capabilities by risk profile: creating or merging assets, fracturing/merging/deleting/splitting/validating bones (all destructive geometry operations), and everything else (cluster hierarchy, geometry attributes, damage settings).
+
+| Capability | What it unlocks |
+|---|---|
+| `GeometryCollectionCreate` | Create a new `UGeometryCollection` from a Static Mesh (`CreateGeometryCollectionFromStaticMesh` 🧩, requires the `GeometryCollectionPlugin`) and merge one collection's geometry into another (`MergeGeometryCollectionAssets`, no plugin dependency) |
+| `GeometryCollectionFracture` 🧩 | Fracture a collection (`FractureGeometryCollectionUniform` / `Voronoi` / `Plane` / `Slice` / `Brick` / `WithMesh` / `WithMeshArray`), merge or delete bones (`MergeGeometryCollectionBones`, `DeleteGeometryCollectionBranch`), merge tiny geometry (`FixGeometryCollectionTinyGeometry`), split disconnected islands (`SplitGeometryCollectionIslands`), and clean up structural inconsistencies (`ValidateGeometryCollection`) — 12 commands, all requiring the `Fracture` plugin |
+| `GeometryCollectionEdit` | Edit the bone cluster hierarchy (`ClusterGeometryCollectionBones`, `UnclusterGeometryCollectionBones`, `RenameGeometryCollectionBone`), geometry display/derived-data attributes (visibility, material, normals, convex hulls, exploded view, bone colors), and the damage-model/clustering settings (`SetGeometryCollectionDestructionSettings`) — 11 commands. `AutoClusterGeometryCollection` and the 6 attribute-editing commands (marked 🧩) additionally require the `Fracture` plugin; the remaining 4 have no plugin dependency |
+
+#### Motion Matching / Pose Search editing
+
+| Capability | What it unlocks |
+|---|---|
+| `PoseSearchAssetEdit` 🧩 | Add, remove, reorder, and configure channels and compatible skeletons in PoseSearch Schema assets; add and remove animations, set database schema, animation settings, and Normalization Set membership on PoseSearch Database assets; start database index builds (requires `PoseSearch` plugin). Writing a struct or container through `SetPoseSearchSchemaChannelProperty` additionally requires `PropertyStructuredEdit`; a reference-bearing type is refused outright and no capability lifts that |
+| `MotionMatchingCustomTypeEdit` 🧩 | Required in addition to `PoseSearchAssetEdit` when a channel class — or the class declaring a channel property — comes from outside `/Script/PoseSearch`: a project module, a plugin module, or a Blueprint generated class. One name covers both places on purpose: a project's own channel declares its own properties, so requiring a second permission for the property face would not make sense. It gates `AddPoseSearchSchemaChannel` when such a class is named, and `RemovePoseSearchSchemaChannel` / `MovePoseSearchSchemaChannel` / `SetPoseSearchSchemaChannelProperty` / `StartPoseSearchDatabaseIndexBuild` when the channel being acted on, or the class declaring the property being written, is one — removal is judged over the whole nested subtree it takes with it, a move only over the moved channel's own class, and starting an index build over every distinct channel class the target schema holds. Also required to write a property already sitting in a schema — this is a new restriction, not a migrated one: before this capability existed, a project-defined channel's properties were writable without any capability check on the declaring class at all. A Blueprint generated channel class is refused outright whatever is held — it is not the kind of custom type this capability opens. Decided from the type named in the request (or found on the target) rather than from the command, so it does not appear in any handler's declared `RequiredCapabilities`. There is no companion "dangerous type" capability for this domain: a channel class's `Finalize` / `BuildQuery` / `IndexAsset` is its own author's compiled code, never something a request supplies. See [Commands — UAIP.Editor.MotionMatching](commands.md#uaipeditormotionmatching-) |
+
+#### Chooser table editing
+
+Reading a chooser table is DefaultAllow (`EditorInspect`) — the eight read commands in `UAIP.Editor.Chooser` need nothing else. Every write needs `ChooserTableEdit`; the other three are decided per call from what the request actually names, so they appear in no handler's declared `RequiredCapabilities`.
+
+| Capability | What it unlocks |
+|---|---|
+| `ChooserTableEdit` 🧩 | Every write in `UAIP.Editor.Chooser` — adding, removing and moving rows and columns, writing a cell, replacing a row's result or the table's fallback result, installing a column's input binding, disabling a row, and compiling the table (requires the `Chooser` plugin). Writes are refused while a play session is in progress, and for an asset outside `/Game/` |
+| `ChooserCustomTypeEdit` 🧩 | Required in addition to `ChooserTableEdit` when a column type, result type or input binding type comes from outside the modules this domain ships those types from. Judged over the type already in the table as well as the one being written, so removing or moving something that already holds such a type needs it too — and `SetChooserTableCell` asks about the column's own type whether or not the request changes it. `ListChooserColumnTypes` / `ListChooserResultTypes` / `ListChooserInputTypes` report per type, under `Admission`, whether a call naming it would need this |
+| `ChooserReferenceEdit` 🧩 | Required in addition to `ChooserTableEdit` when a value is supplied for a type that can hold an object reference — a cell in such a column, a `ResultValue` for such a result type, or an `InputValue` for such a binding type |
+| `ChooserFunctionBindingEdit` 🧩 | Required in addition to `ChooserTableEdit` when a property chain resolves to a function the evaluation path would call rather than to plain properties. `CompileChooserTable` needs it when any binding already in the table resolves that way, since compiling puts every one of them through the same resolver. A chain reaching a function through a binding the chooser editor offers no functions for is refused with `NotAllowed` instead, which no capability lifts |
+
+See [Commands — UAIP.Editor.Chooser](commands.md#uaipeditorchooser-).
+
+#### AnimNotify editing
+
+| Capability | What it unlocks |
+|---|---|
+| `AnimNotifyEdit` | Add / remove notify tracks; add / remove / edit AnimNotify and AnimNotifyState entries on `UAnimSequence` / `UAnimMontage` / `UAnimComposite`; fix up invalid notify guids. Required by every edit command in `UAIP.Editor.AnimSequence` |
+| `AnimNotifyReferenceEdit` | Required in addition to `AnimNotifyEdit` when `SetAnimNotifyProperty` writes a property that is — or contains — a reference of any kind (object / class / soft / weak / lazy / interface, delegate, field path). Writing a struct or container additionally requires `PropertyStructuredEdit` |
+
+#### MetaHuman character editing
+
+These capabilities all require the `MetaHumanCharacter` plugin. They are split by risk profile rather than by command count — creating an asset, reading a file off disk, starting a minutes-long synthesis job, sending data to an external service, and running a build that deletes assets on failure each deserve a separate decision.
+
+| Capability | What it unlocks |
+|---|---|
+| `MetaHumanAssetCreate` 🧩 | Create new MetaHuman character assets — `CreateMetaHumanCharacter` native and `Toolset.Editor.MetaHuman.Create` bridge. The generic `UAIP.Editor.Assets.CreateAsset` command is also blocked for `UMetaHumanCharacter` (and any subclass) unless this capability is granted, so the DefaultAllow `AssetCreate` capability cannot be used to bypass it |
+| `MetaHumanEdit` 🧩 | Every local mutation of an existing character — body constraints and shape, skin, eyes, makeup, head model and face evaluation settings, face sculpting and landmark editing, conforming and fitting, wardrobe slot assignment, preview viewport settings, build prerequisite checks and state polling, and `ReleaseEditSession` — plus the reads that require an edit session and therefore cannot declare themselves read-only. Also gates every `Toolset.Editor.MetaHuman.*` bridge command except `Create` |
+| `MetaHumanFileImport` 🧩 | Read a face DNA file from the OS file system — `ImportFaceFromDna`, `FitFaceFromBodyWithEyesTeethDna`. Gated separately from ordinary edits because the imported file is untrusted binary handed to an engine parser |
+| `MetaHumanTextureSynthesis` 🧩 | Start high resolution face texture synthesis — `RequestTextureSources`. Runs for minutes and writes its results to disk, so it is not granted along with ordinary parameter edits |
+| `MetaHumanCloudRigging` 🧩 | Start face rig generation — `RequestAutoRigging`. ⚠️ This is the only command in the module that sends character data to an external service (Epic's cloud rigging service), so it is always an explicit decision |
+| `MetaHumanBuild` 🧩 | Run the MetaHuman asset build pipeline — `BuildMetaHuman`. Blocks the game thread for the whole build and deletes the assets it created when the build fails, so it carries both a responsiveness and a destructive aspect |
 
 #### UMG / Widget editing
 
@@ -168,6 +353,7 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `WidgetVariableEdit` | Add and remove widget variables |
 | `WidgetAnimationEdit` | Create Widget Animations and add animation tracks |
 | `WidgetBindingEdit` | Add and remove property bindings |
+| `WidgetSlotReferenceEdit` | Required when `SetSlotProperties` writes a slot property that is — or contains, at any depth — a reference of any kind (object / class / soft / weak / lazy / interface, delegate, field path). Decided from the type of the property being written, so it will not appear in `SetSlotProperties`'s declared `RequiredCapabilities` — see the note under [Level / Actor / Property editing](#level--actor--property-editing). Writing a struct or container additionally requires `PropertyStructuredEdit` |
 
 #### Sequencer editing
 
@@ -178,6 +364,7 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `SequencerBindingEdit` | Add and remove actor Possessable bindings in Level Sequences |
 | `SequencerPlaybackControl` | Control Sequencer playback state (Play, Pause, SetPlayheadFrame, SetPlaybackSpeed, SetLoopMode) |
 | `SequencerPropertyEdit` | Read and write `UMovieSceneSection` properties |
+| `SequencerCustomTypeEdit` | Required in addition to `SequencerStructureEdit` or `SequencerKeyframeEdit` when a track class comes from outside the four modules this domain has always drawn tracks from (`/Script/MovieScene`, `/Script/MovieSceneTracks`, `/Script/LevelSequence`, `/Script/MovieSceneAnimMixer`) — a project module, a plugin module, or a Blueprint generated class. It gates `AddTrack` when such a class is named, and `RemoveTrack` / `AddSection` / `RemoveSection` / `AddKeyframe` / `RemoveKeyframe` / `SetKeyframeValue` when the owning track is one. `UMovieSceneSubTrack` and `UMovieSceneCinematicShotTrack` (each reachable only through their own dedicated command) and `UMovieSceneEventTrack` (which this domain has no command for at all) cannot be added through `AddTrack` regardless of any capability held, but removing one already sitting in a sequence needs no capability at all when it comes from a trusted module — deleting authors nothing, so the restriction that keeps it off the generic add path does not carry over to taking it back out. The same capability also gates a second, independent surface: the class of a decoration attached to a MovieScene decoration container, for a class from outside the five modules that ship decorations (`/Script/MovieScene`, `/Script/MovieSceneTracks`, `/Script/MovieSceneAnimMixer`, `/Script/MovieScenePoseSearchTracks`, `/Script/MovieSceneMixedControlRig`). It gates `AddDecoration` when such a class is named, and `RemoveDecoration` when the target is one — both the native commands and the `Toolset.Editor.SequencerAnimMixer.*` bridge versions of each. ⚠️ This is a new restriction on the decoration surface, not a migrated one: before this capability existed, the decoration commands resolved a class path with `StaticLoadClass` against no base type constraint at all, so any class that resolved — including a project's own — was force-loaded and accepted outright. Decided from the class named in the request (or found on the target) rather than from the command, so it does not appear in any handler's declared `RequiredCapabilities`. There is no companion "dangerous type" capability for either surface: a track class runs only the engine's own compiled logic against data the request supplies, and a decoration class is a plain data object whose class name is the only thing a request ever contributes. See [Commands — UAIP.Editor.Sequencer](commands.md#uaipeditorsequencer) |
 
 #### ControlRig editing
 
@@ -185,7 +372,9 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 |---|---|
 | `ControlRigHierarchyEdit` | Add / remove / transform Control elements, bones, and nulls in the ControlRig hierarchy |
 | `ControlRigGraphEdit` | Add, delete, and connect nodes in RigVM graphs; compile ControlRigs |
-| `ControlRigBlueprintCreate` | Create ControlRigBlueprint assets via `CreateAsset` |
+| `ControlRigBlueprintCreate` | Create ControlRigBlueprint assets via `CreateAsset`. Now evaluated against the calling session rather than against the process, so a session bound to a role that denies it is refused (`PolicyViolation`) where it used to be allowed. The parent class the request names in `FactoryParams.ParentClass` is a separate question — see `ControlRigCustomTypeEdit` below |
+| `ControlRigComponentEdit` | Add, remove, rename, reparent, and rewrite the content of components on hierarchy elements (`FRigBaseComponent` substructs) — the generic component commands under `UAIP.Editor.ControlRig`, and every write in `UAIP.Editor.ControlRig.Dynamics` and `UAIP.Editor.ControlRig.Physics`. One capability covers all of them deliberately: creating a component with initial content reaches the same import path as replacing the content of an existing one, so granting them separately would only offer a way around the other's checks |
+| `ControlRigCustomTypeEdit` | Required whenever a RigVM unit struct or a rig hierarchy component struct comes from outside the seven modules this domain accepts (`/Script/ControlRig`, `/Script/ControlRigDynamics`, `/Script/ControlRigPhysics`, `/Script/ControlRigSpline`, `/Script/ControlRigModules`, `/Script/AnimationCore`, `/Script/Engine`) — a struct a project or a plugin declares. It gates both `AddGraphNode` / `AddComponent` and every later operation on an existing node or component of such a struct. There is no separate "dangerous type" capability for this domain, and control types are not gated at all: structs marked `Deprecated` or `Hidden` are refused regardless of any capability held, see [Commands — UAIP.Editor.ControlRig](commands.md#uaipeditorcontrolrig). It also gates the parent class named in `CreateAsset`'s `FactoryParams.ParentClass`: every parent class the engine ships lives in those seven modules and stays free, while a native `UControlRig` subclass declared by the project or a third-party plugin, and the generated class of a Control Rig Blueprint in the project (`/Game/….CR_Foo_C`), require it. ⚠️ On that one path the refusal arrives as `InvalidParams` rather than `CapabilityNotAvailable`, with the missing capability names in the message — see [Commands — Capability-gated custom types](commands.md#capability-gated-custom-types) |
 
 #### AI systems
 
@@ -193,6 +382,9 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 |---|---|
 | `BehaviorTreeGraphEdit` | Add and remove Behavior Tree nodes; set node properties |
 | `BlackboardEdit` | Add and remove Blackboard keys |
+| `BehaviorTreeCustomTypeEdit` | Required in addition to `BehaviorTreeGraphEdit` or `BlackboardEdit` when a type comes from outside what this domain ships. Covers all three places this domain admits a type, each with its own accepted modules: a node class from outside `/Script/AIModule` / `/Script/AITestSuite`, a node property whose declaring class is from outside `/Script/AIModule` / `/Script/Engine`, and a Blackboard key type from outside `/Script/AIModule` — a project module, a plugin module (including engine plugins such as `GameplayBehaviorSmartObjects`), or a Blueprint generated class. It gates the four `Add*` node commands and `AddBlackboardKey` when such a type is named, and `RemoveBehaviorTreeNode` / `SetBehaviorTreeNodeProperty` / `RemoveBlackboardKey` when the target is one. Decided from the type named in the request (or found on the target) rather than from the command, so it does not appear in any handler's declared `RequiredCapabilities` |
+| `BehaviorTreeExternalBehaviorNodeEdit` | Required in addition to `BehaviorTreeGraphEdit` for the five node kinds whose body is defined somewhere other than the class itself: `UBTTask_RunBehavior` and `UBTTask_RunBehaviorDynamic`, which execute a whole other Behavior Tree asset, and `UBTTask_BlueprintBase` / `UBTDecorator_BlueprintBase` / `UBTService_BlueprintBase`, whose subclasses carry a graph authored in the editor. Matched by inheritance, and asked for independently of where the class came from — `/Script/AIModule` ships these kinds itself, so trusting the class says nothing about what it will run. ⚠️ A Blueprint-authored node of the project's own is **both**, so it needs this and `BehaviorTreeCustomTypeEdit` together; granting only one leaves it refused with the other named as missing |
+| `BlackboardReferenceKeyTypeEdit` | Required in addition to `BlackboardEdit` for the two key kinds whose stored value is a reference the writer gets to choose: `UBlackboardKeyType_Object`, which accepts any object in the project, and `UBlackboardKeyType_Class`, which names a class and has the engine resolve it. Also matched by inheritance, and a separate name from `BehaviorTreeExternalBehaviorNodeEdit` on purpose — one guards a node whose body is elsewhere, the other a key whose value points elsewhere, and sharing one name would have an operator allowing the first also allow the second without being asked. It gates `AddBlackboardKey` and `RemoveBlackboardKey`; **declaring such a key on a Blackboard does not make the Behavior Trees that reference that Blackboard need it**, so an ordinary tree stays editable without it. See [Commands — UAIP.Editor.BehaviorTree](commands.md#uaipeditorbehaviortree) |
 
 #### StateTree editing
 
@@ -200,12 +392,15 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 |---|---|
 | `StateTreeStructureEdit` | Add / remove States; compile StateTree assets |
 | `StateTreeNodeEdit` | Add / remove Tasks and Transitions; edit node properties |
+| `StateTreeCustomTypeEdit` | Required in addition to `StateTreeNodeEdit` when a task, evaluator or enter condition field comes from outside `/Script/StateTreeModule`, `/Script/AIModule` or `/Script/GameplayStateTreeModule` — a project module, a plugin module, or a Blueprint generated class — or when a node property is declared by a class or struct from outside those three. It gates `AddStateTask` / `AddGlobalTask` / `AddEvaluator` / `AddStateEnterCondition` and the four `Set*Property` commands when such a field or declaring type is named, and `RemoveStateTask` / `RemoveGlobalTask` / `RemoveEvaluator` / `RemoveStateEnterCondition` when the removed node is one. A property write checks the node's own class and the property's declaring type as two independent questions; either one can name this capability as missing. Decided from the type named in the request (or found on the target) rather than from the command, so it does not appear in any handler's declared `RequiredCapabilities`. Never required to compile an asset that merely contains such a field — only the type a request names or acts on is gated. See [Commands — UAIP.Editor.StateTree](commands.md#uaipeditorstatetree). It also gates the schema class named in `CreateAsset`'s `FactoryParams.SchemaClass`, which used to be accepted without any question about where the class came from. ⚠️ That includes schema classes the engine itself ships: `/Script/MassAIBehavior`, `/Script/GameplayCameras`, `/Script/GameplayInteractionsModule`, `/Script/AvalancheTransition` and `/Script/UAFStateTree` all sit outside the three modules above, so their schemas now require this capability, while `/Script/GameplayStateTreeModule` schemas continue to require nothing. ⚠️ On that one path the refusal arrives as `InvalidParams` rather than `CapabilityNotAvailable`, with the missing capability names in the message — see [Commands — Capability-gated custom types](commands.md#capability-gated-custom-types) |
+| `StateTreeParameterReferenceEdit` | Required when `SetStateTreeParameter` writes a root parameter value that is — or contains — a reference of any kind. Decided from the parameter's `PropertyBag` value type at write time, so it will not appear in `SetStateTreeParameter`'s declared `RequiredCapabilities` — see the note under [Level / Actor / Property editing](#level--actor--property-editing). Writing a struct or container additionally requires `PropertyStructuredEdit` |
 
 #### SoundCue editing
 
 | Capability | What it unlocks |
 |---|---|
 | `SoundCueGraphEdit` | Add, delete, and connect nodes in SoundCue graphs; edit properties; compile SoundCues |
+| `SoundCueCustomTypeEdit` | Required in addition to `SoundCueGraphEdit` when the `USoundNode` subclass a mutation touches comes from outside `/Script/Engine` — a project module, a plugin module, or a Blueprint generated class. It gates `AddSoundCueNode` when such a class is named, and `RemoveSoundCueNode` / `ConnectSoundCuePins` / `DisconnectSoundCuePins` / `SetSoundCueNodeProperty` when the node or endpoint acted on is one. `CompileSoundCue` never asks for it: it names no node class of its own, and the classes a cue already holds are judged by a separate, permission-free question a compile always answers the same way, so a cue containing a project's own node stays compilable without it. The graph's root output node owns no `USoundNode` at all and is therefore never judged by either question. Decided from the class named in the request (or found on the target) rather than from the command, so it does not appear in any handler's declared `RequiredCapabilities`. There is no companion "dangerous type" capability for this domain: a `USoundNode` subclass processes audio according to its own class implementation and never runs code the request itself supplies. See [Commands — UAIP.Editor.SoundCue](commands.md#uaipeditorsoundcue) |
 
 #### Sound asset editing
 
@@ -233,19 +428,23 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | Capability | What it unlocks |
 |---|---|
 | `GameplayTagEdit` | Add, remove, and rename tags in project tag tables |
-| `GameplayTagRestrictedEdit` | Modify restricted tag lists |
+| `GameplayTagRestrictedEdit` | Add, remove, or rename a Restricted tag (`AddRestrictedGameplayTag`, and `RemoveGameplayTag` / `RenameGameplayTag` — native and Toolset bridge — whenever the tag acted on, or one of its descendants for a forced removal or a rename that carries children, is Restricted) |
+| `GameplayTagExternalSourceEdit` | Required in addition to `GameplayTagEdit` / `GameplayTagRestrictedEdit` when a tag add, remove, or rename would write to an INI source outside the project's own `Config/` directory — an engine plugin, a Fab / third-party plugin, or the project's own game plugin or Game Feature plugin. Gates `AddGameplayTag`, `AddRestrictedGameplayTag`, `RemoveGameplayTag`, `RenameGameplayTag`, and the Toolset `AddTag` / `RemoveTag` / `RenameTag` bridges. A Restricted source reached through a plugin's search path whose write destination does not match where it is actually read from is refused with `NotAllowed` regardless of this capability — the write would land somewhere other than where the source is read from, so no grant lifts that refusal. See [Commands — UAIP.Editor.GameplayTags](commands.md#uaipeditorgameplaytags) |
 | `GameFeatureCreate` 🧩 | Create and scaffold GameFeature Plugin definitions (requires `GameFeatures` + `GameFeaturesEditor` plugins) |
 | `GameplayCueMutation` 🧩 | Add / remove GameplayCue tags, create GameplayCueNotify assets, execute Cues on actors (requires `GameplayAbilities` plugin) |
 | `EnhancedInputEdit` | Edit Input Action / Input Mapping Context assets — add / remove / modify mappings, modifiers, and triggers |
+| `EnhancedInputReferenceEdit` | Required in addition to `EnhancedInputEdit` when a Trigger or Modifier property being written is — or contains — a reference of any kind (object / class / soft / weak / lazy / interface, delegate, field path). Decided from the type of the property being written, so it will not appear in the mapping mutators' declared `RequiredCapabilities` — see the note under [Level / Actor / Property editing](#level--actor--property-editing). Writing a struct or container additionally requires `PropertyStructuredEdit` |
+| `EnhancedInputCustomTypeEdit` | Required in addition to `EnhancedInputEdit` when a Trigger or Modifier class comes from outside the `/Script/EnhancedInput` module — a project module, a plugin module, or a Blueprint subclass of `UInputTrigger` / `UInputModifier`. It gates `SetInputMappingTrigger` / `SetInputMappingModifier` / `SetInputActionTrigger` / `SetInputActionModifier` when such a class is named, and `RemoveInputMapping` / `DeleteInputAction` / `DeleteMappingContext` when the target holds an instance of one. Decided from the class named in the request (or found in the target) rather than from the command, so it does not appear in any handler's declared `RequiredCapabilities`. There is no separate "dangerous type" capability for this domain, and two trigger kinds — `UInputTriggerChordAction` and `UInputTriggerChordBlocker`, plus anything derived from either — are refused regardless of any capability held, see [Commands — UAIP.Editor.EnhancedInput](commands.md#uaipeditorenhancedinput) |
 
 #### Editor operations
 
 | Capability | What it unlocks |
 |---|---|
-| `EditorKeyboardInput` | Simulate keyboard input to editor UI widgets (`PressKey`) |
+| `EditorKeyboardInput` | Simulate keyboard input to editor UI widgets — `PressKey` native and `Toolset.Editor.SlateInspector.PressKey` bridge (the bridge also now applies `AllowKeyboardInput` / `AllowKeyboardModifierInput` and the blocked-shortcut list; see [Commands Reference](commands.md#uaipeditoruiautomation) for the one place it stays stricter than native) |
 | `EditorExecCommand` | Execute low-level editor commands via `GUnrealEd->Exec` |
 | `LogVerbosityEdit` | Change log verbosity levels — `SetLogVerbosity` native and `Toolset.Editor.Toolset.Logs.SetVerbosity` bridge |
 | `ViewportAnnotationCapture` | Capture annotated viewport images with world-coordinate labels — `CaptureViewportImageAnnotated` |
+| `EditorTabSpawn` | Open, close, and enumerate editor tabs by their Slate `FTabId` — `OpenTabById`, `CloseTabById`, `ListSpawnableTabs`. Distinct from the DefaultAllow `EditorWorkspaceControl`, which only reaches asset-editor tabs through `AssetPath`: an arbitrary `TabId` can run a third party's bound delegate — `CanSpawnTab`/`OnSpawnTab` when opening, `OnCanCloseTab`/`OnTabClosed` when closing, and the display-name/tooltip `TAttribute` accessors when listing — including internal tabs never shown in a menu. `ListSpawnableTabs` requires the same capability rather than being DefaultAllow: enumerating carries the same delegate-execution risk, and the only use for the list is deciding what to open or close. Closing is not limited to tabs this session opened — any tab currently open can be closed, including ones a human has open for their own work, and closing bypasses the tab permission list entirely so that cleanup never fails after a permission change |
 
 #### Script execution
 
@@ -253,7 +452,7 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 |---|---|
 | `ScriptExecution` 🧩 | Run Python scripts in the editor (`RunEditorPythonScript`; requires `PythonScriptPlugin`) |
 | `PythonCommandExecution` 🧩 | Execute dynamically registered `@uaip_command` Python commands (requires `PythonScriptPlugin`) |
-| `PythonExtensionReload` 🧩 | Rescan and reload registered Python commands (`ReloadPythonCommands`; requires `PythonScriptPlugin`) |
+| `PythonExtensionReload` 🧩 | Rescan and reload registered Python commands (`ReloadPythonCommands`; requires `PythonScriptPlugin`). Also required for the editor's own startup scan of the project's `Scripts/UAIPCommands/**/*.py` to run — without it, no Python commands are registered at launch; grant it and call `ReloadPythonCommands` (or restart with it already granted) to pick them up |
 
 #### Runtime — restricted operations
 
@@ -268,6 +467,54 @@ These must be explicitly enabled by adding `+AllowedCapabilities=<name>` entries
 | `RuntimeNiagaraMutation` 🧩 | Set Niagara user variables / replace Niagara system at runtime (`SetVariable`, `SetSystem`; requires `Niagara` plugin) |
 | `GauntletExecution` | Launch Gauntlet automated test sessions |
 
+#### Runtime Insights trace capture
+
+Unreal Insights tracing is split into four capabilities because reading the state of tracing, altering it, taking the raw capture file, and analysing a capture are four different decisions.
+
+| Capability | What it unlocks |
+|---|---|
+| `RuntimeInsightsControl` | Start, stop, pause and resume a trace, mutate its channel set, and write bookmarks and regions into it — `StartTrace`, `StopTrace`, `PauseTrace`, `ResumeTrace`, `SetTraceChannels`, `AddTraceBookmark`, `BeginTraceRegion`, `EndTraceRegion` |
+| `RuntimeInsightsAttachTraceFile` | Hand the captured `.utrace` file itself over as an artifact (`StopTrace` with `AttachTraceFile: true`). Gated separately from `RuntimeInsightsControl`, and never required to *stop* a trace — a session without it can always stop cleanly, the file is simply skipped |
+| `RuntimeInsightsAnalyze` | Analyse a captured trace and read the extracted sections — `AnalyzeTrace`, `GetTraceAnalysisStatus`, `GetTraceAnalysisResult`. Only registered in builds where trace analysis is supported |
+
+> ⚠️ **Taking the `.utrace` file discloses more than any channel setting suggests.**
+> The full process command line — absolute paths, the user name and every launch option — is written through an always-on internal channel that can neither be listed nor turned off. It is therefore present in **every** trace file regardless of which channels were recorded, and setting `AllowLogDump=False` does **not** prevent it. This is the reason `RuntimeInsightsAttachTraceFile` exists as its own DefaultDenied capability.
+> The analysis commands are not equivalent: the `Diagnostics` section reports a sanitised command line, so an analysis result and the raw `.utrace` disclose different things.
+
+**Channel disclosure gating.** Trace channels are classified by what they can disclose (log text, host paths, screen content, network data, asset structure, code structure, or nothing beyond timings). `StartTrace` is rejected with `PolicyViolation` when the effective channel set records log text and `AllowLogDump` is false, so Insights cannot be used to route around the flag that gates `DumpOutputLog`.
+
+Attaching the raw file is then decided per disclosure class, on top of the `RuntimeInsightsAttachTraceFile` capability:
+
+| What the recorded channels could disclose | What has to be set for the file to be attached |
+|---|---|
+| Nothing beyond timings, asset structure, code structure | Nothing — the analysis sections report these unredacted anyway, so the file discloses nothing they do not |
+| Log text (`log`, `bookmark`, `region`) | `AllowLogDump` — the same flag that decides whether those channels may record at all and whether the matching analysis sections may be extracted |
+| Host paths (`file`, `cook`), screen content (`screenshot`), network addresses (`net`) | `AllowDisclosingTraceAttachment` — the analysis sections sanitise, mask or reduce these to metadata, and the raw file does none of that |
+| A channel this build does not classify | Refused whatever is set — nothing knows what such a channel records, so no setting can speak for it |
+
+Attaching is refused regardless of those settings for a channel set that was mutated while recording, for a trace recovered as an orphan, and for files larger than 64 MB.
+
+> ⚠️ **In the editor, attaching normally needs both flags.** The engine enables `cpu`, `gpu`, `frame`, `log`, `bookmark`, `screenshot` and `region` at editor startup even without a `-trace` argument, so virtually every trace captured in the editor carries both log text and screen content. UAIP will not turn those channels off for you — channel state is process-global and disabling them would break a measurement someone else set up. Set **both** `AllowLogDump=True` and `AllowDisclosingTraceAttachment=True` if you want the `.utrace` file itself.
+>
+> `StartTrace` says so up front rather than letting you find out after several hundred megabytes: when the channels that would be recording carry something the policy withholds the raw file for, its `Data.Warnings[]` contains an `AttachDisabledByPolicy` entry naming those channels and the setting that would allow them. `StopTrace` still succeeds in that case — it reports `AttachSkippedReason: "DisclosureChannelPolicy"` instead of returning the file, so a cleanup step never fails and leaves a trace running.
+
+> ⚠️ **The channel set is sampled about once per second.** A channel enabled and disabled again inside that window can be missed, which is precisely why attaching the raw file is gated by its own capability rather than by the observed channel set alone. Treat the polling loop as a safety net, not as a guarantee.
+
+**Scope of the network-destination restriction.** No command in this module can send a trace to a network destination — the connection type is hard-coded to a file inside UAIP's own trace directory, and no parameter exposes it. The `trace.` console prefix is additionally on the `ExecuteConsoleCommand` deny-list, so `Trace.Send` / `Trace.Start` / `Trace.Enable` cannot be reached through that command. That deny-list covers one route, not every route: an editor with `PythonScriptPlugin` enabled can still reach the same console commands through `RunEditorPythonScript`, which is why `ScriptExecution` is a capability of its own. Read this as "no command here sends a trace to the network", not as "nothing in the editor can".
+
+**Analysing traces captured outside UAIP.** By default `AnalyzeTrace` only accepts a file name that `ListTraceFiles` reported, which keeps it inside UAIP's own trace directory. To analyse a `.utrace` produced by a packaged build, another machine or a CI run, **both** of these must be set in `[UAIP.SafetyPolicy]`:
+
+```ini
+AllowExternalTraceAnalysis=True
+ExternalTraceDirectory=D:/TraceDrop
+```
+
+Either one alone opens nothing. The path passed as `ExternalTracePath` is then required to resolve inside that directory.
+
+> ⚠️ **Symbolic links and junctions are not resolved.** A link placed inside `ExternalTraceDirectory` that points somewhere else is followed. Point `ExternalTraceDirectory` at a directory kept for UAIP alone — not at a shared drop location, a user profile folder, or the project directory.
+
+> **This is a scope limitation, not a structural guarantee.** `RunEditorPythonScript` still reaches the engine's trace system directly — Python execution is a known path around the capability layer, and it is managed by the capabilities that command requires (`EditorExecution` plus `ScriptExecution`, which is DefaultDenied) rather than by anything in this module. `GetTraceStatus` can report a networked destination such as `TracingToServer`; that is observability of something else's trace, not something UAIP can produce.
+
 #### Optional graph editors
 
 These capabilities depend on specific optional plugins. If the plugin is not enabled, the capability is never registered.
@@ -275,7 +522,9 @@ These capabilities depend on specific optional plugins. If the plugin is not ena
 | Capability | Plugin required | What it unlocks |
 |---|---|---|
 | `MetaSoundGraphEdit` 🧩 | `Metasound` | Add, delete, and connect nodes in MetaSound graphs |
+| `MetaSoundCustomTypeEdit` 🧩 | `Metasound` | Required in addition to `MetaSoundGraphEdit` when a node class comes from outside the four namespaces this domain has always drawn nodes from (`UE`, `Metasound`, `MetasoundStandardNodes`, `MetasoundEditor`) — a class registered by a project or plugin module under its own namespace, **and the graph class every MetaSound asset is itself registered as, which is what a referenced subgraph or a preset target appears as**. It gates `AddMetaSoundNode` when such a class is named, and `RemoveMetaSoundNode` / `ConnectMetaSoundPins` / `DisconnectMetaSoundPins` / `SetMetaSoundNodeProperty` when the node being worked on is one. ⚠️ **Because a subgraph or preset node is always one of these, a session without this capability cannot edit a graph that uses either — this bites harder here than in the other gated domains, where subgraph reuse is not the norm.** `CompileMetaSound` is never gated by it, and neither is the implicit re-registration every mutating command performs, so an asset that merely *contains* such a node still compiles without it. Decided from the class named in the request (or found on the node) rather than from the command, so it does not appear in any handler's declared `RequiredCapabilities`. There is no separate "dangerous type" capability for this domain: a MetaSound node evaluates the fixed signal operation its registry entry describes and runs nothing the caller supplied. See [Commands — UAIP.Editor.MetaSound](commands.md#uaipeditormetasound-) |
 | `DataflowGraphEdit` 🧩 | `Dataflow` | Add, delete, and connect nodes in Dataflow graphs; get/set node properties |
+| `DataflowReferenceEdit` 🧩 | `Dataflow` | Write a reference property of any kind — object / class / soft / weak / lazy / interface, delegate, field path — on Dataflow nodes, including one nested inside a struct or container. Required **in addition to** `DataflowGraphEdit`; a struct or container additionally requires `PropertyStructuredEdit`. A hard reference's target must already be loaded (a write never loads an asset as a side effect), while a soft one is validated against the asset registry. Gated separately because it can repoint a graph at a different asset |
 | `ClothAssetEdit` 🧩 | `ChaosClothAsset` | Create/convert Chaos Cloth Assets, create legacy Clothing Assets, bind/unbind them to Skeletal Mesh sections, set Weight Map vertex values, and set Import node mesh references (all destructive operations) |
 | `PCGGraphEdit` 🧩 | `PCG` | Add, delete, connect, and reposition nodes; edit graph/instance parameters; manage comment boxes and subgraph nodes in PCG graphs |
 | `PCGCustomNodeEdit` 🧩 | `PCG` | Write properties on C++ custom PCG nodes (`SetCustomCppPCGNodeProperty`) |
@@ -285,10 +534,15 @@ These capabilities depend on specific optional plugins. If the plugin is not ena
 | `PCGVolumeSpawn` 🧩 | `PCG` | Spawn APCGVolume actors into the world (`SpawnPCGGraphInstance`) — ⚠️ do not add to `AllowedCapabilities` in DefaultUAIP.ini (world mutation risk) |
 | `PCGNodeInspect` 🧩 | `PCG` | Inspect PCG node execution data views (`GetPCGNodeDataView`) — only functional when `PCG_PROFILING_ENABLED=1` |
 | `PCGToolsetUnsafeNodeAdd` 🧩 | `PCG` + `PCGToolset` | Bypass the node-type allowlist guard in `Toolset.Editor.PCG.AddNode` — ⚠️ do not add to `AllowedCapabilities` in DefaultUAIP.ini (allowlist bypass risk) |
+| `PCGSplineDraw` 🧩 | `PCG` | Start an interactive spline-draw pending interaction that hands the level viewport over to the human — `DrawPCGSpline` native and `Toolset.Editor.PCG.DrawSpline` bridge. Also requires `SafetyPolicy.AllowUserInteractionPrompt`: this capability states *what* may be touched, the policy flag states that starting one at all takes over the human's viewport and input focus |
 | `ConversationGraphEdit` 🧩 | `CommonConversation` | Structurally edit `UConversationDatabase` assets |
+| `ConversationCustomTypeEdit` 🧩 | `CommonConversation` | Required in addition to `ConversationGraphEdit` when a `UConversationNode` subclass a mutation touches comes from outside `/Script/CommonConversationRuntime` — a project module, a plugin module, or a Blueprint generated subclass of `UConversationTaskNode` / `UConversationRequirementNode` / `UConversationSideEffectNode` / `UConversationChoiceNode`, all four of which the stock graph editor's own "Add Node" menu offers as Blueprintable bases. It gates `AddConversationNode` / `AddConversationSubNode` when such a class is named, and `RemoveConversationNode` / `ConnectConversationNodes` / `DisconnectConversationNodes` / `SetConversationNodeProperty` when the node or endpoint acted on is one — removing a top-level node also judges every SubNode removed along with it. The implicit bank rebuild every mutation performs never asks for it on the classes a database already holds: rebuilding runs no code the request itself supplies, so a database containing a project's own node stays compilable and repairable without a grant. Decided from the class named in the request (or found on the target) rather than from the command, so it does not appear in any handler's declared `RequiredCapabilities`. There is no companion "dangerous type" capability for this domain: a `UConversationNode` subclass runs the behaviour its own class implements and never runs code the request itself supplies. See [Commands — UAIP.Editor.Conversation](commands.md#uaipeditorconversation-) |
 | `EQSAssetEdit` 🧩 | `EnvironmentQueryEditor` | Add / remove EQS Generators and Tests; set their properties |
+| `EQSCustomTypeEdit` 🧩 | `EnvironmentQueryEditor` | Required in addition to `EQSAssetEdit` when a Generator class, a Test class, or the class declaring a Generator/Test property, comes from outside `/Script/AIModule` — a project module, a plugin module (including an engine plugin such as `SmartObjects` or `MassEQS`), or a Blueprint generated Test class. One name covers all three places on purpose: which place a project's own type is reached through is not something an operator granting this permission would want to decide separately. Decided from the type named in the request (or found on the target) rather than from the command, so it does not appear in any handler's declared `RequiredCapabilities` |
+| `EQSDelegatedGeneratorEdit` 🧩 | `EnvironmentQueryEditor` | Required in addition to `EQSAssetEdit` for a Generator kind whose item production is not its own compiled code — `UEnvQueryGenerator_Composite`, which runs a set of nested Generator instances held inside it, and `UEnvQueryGenerator_BlueprintBase`, whose subclasses carry a graph authored in the editor — and for a property such a Generator declares. Matched by inheritance, and asked for independently of where the class came from — `/Script/AIModule` ships both kinds itself, so trusting the class says nothing about what it will run. ⚠️ A project-defined Composite-derived Generator is **both**, so it needs this and `EQSCustomTypeEdit` together; granting only one leaves it refused with the other named as missing. There is no companion "dangerous type" capability for the Test surface: nothing this domain accepts as a Test runs code somewhere other than its own compiled class. See [Commands — UAIP.Editor.EQS](commands.md#uaipeditoreqs-) |
 | `WorldConditionStructureEdit` 🧩 | `WorldConditions` | Add and remove conditions in WorldCondition assets |
 | `WorldConditionNodeEdit` 🧩 | `WorldConditions` | Edit WorldCondition operator, expression depth, and properties |
+| `WorldConditionsCustomTypeEdit` 🧩 | `WorldConditions` | Required in addition to `WorldConditionStructureEdit` or `WorldConditionNodeEdit` when a condition struct — or the struct declaring a condition property — comes from outside `/Script/WorldConditions`: a project module, a plugin module (including an engine plugin such as `SmartObjects`), or a Blueprint generated struct. One name covers both places on purpose: a project's own condition declares its own properties, so requiring a second permission for the property face would not make sense. It gates `AddWorldCondition` / `ReplaceWorldCondition` when such a struct is named, and `RemoveWorldCondition` / `ClearWorldConditionQuery` / `MoveWorldCondition` / `DuplicateWorldCondition` / `SetWorldConditionOperator` / `SetWorldConditionExpressionDepth` / `SetWorldConditionProperty` / `SetMultipleWorldConditionProperties` when the target condition, or the property being written, is one. Also required to write a property already sitting in an asset — this is a new restriction, not a migrated one: before this capability existed, a project-defined condition's properties were writable without any capability check on the declaring struct at all. Decided from the type named in the request (or found on the target) rather than from the command, so it does not appear in any handler's declared `RequiredCapabilities`. There is no companion "dangerous type" capability for this domain: a condition's `IsTrue()` is its own author's compiled code, never something a request supplies. See [Commands — UAIP.Editor.WorldConditions](commands.md#uaipeditorworldconditions-) |
 
 #### Semantic search
 
@@ -305,8 +559,9 @@ These capabilities all require the `Niagara` plugin.
 | `NiagaraAssetCreate` 🧩 | Create Niagara System and Parameter Collection assets |
 | `NiagaraBlueprintCreate` 🧩 | Generate Blueprint wrapper classes from Niagara Systems and Components |
 | `NiagaraEmitterEdit` 🧩 | Add, remove, and configure emitters in Niagara Systems |
-| `NiagaraStackEdit` 🧩 | Add / remove modules and set stack input parameters on Niagara emitters |
+| `NiagaraStackEdit` 🧩 | Add / remove modules, set stack input parameters, and write renderer data (`SetRendererData`, native and bridge) on Niagara emitters |
 | `NiagaraStackAutoFix` 🧩 | Automatically resolve Niagara stack diagnostic issues |
+| `NiagaraReferenceEdit` 🧩 | Required in addition to `NiagaraStackEdit` when `AddSetParameterEntry` or `AddSetParametersModule` supplies a `DefaultValue` for a parameter whose type is a data interface or an object reference. The value is given as an object path and is stored in the dedicated data-interface / object slot of `FNiagaraVariant`, so the reference is retained properly — it is not packed into the byte payload the other parameter types use. Decided from the parameter's type while the write runs, so it will not appear in either command's declared `RequiredCapabilities` — see the note under [Level / Actor / Property editing](#level--actor--property-editing). Leaving `DefaultValue` unset needs nothing extra. ⚠️ In practice only **data interface** types are reachable: an ordinary object type such as `UTexture2D` is refused at the parameter type-name stage by the type allowlist, before this capability is ever consulted |
 
 #### World Partition editing
 
@@ -352,6 +607,58 @@ These capabilities all require the `FileSandbox` plugin.
 | `SandboxPersist` 🧩 | Flush sandbox changes to disk — `CommitSandboxChanges` |
 | `SandboxRevert` 🧩 | Discard pending sandbox changes — `RevertSandboxChanges` |
 
+#### Subsonic editing & audition
+
+These capabilities all require UE 5.8+ and the `Subsonic` plugin (Experimental).
+
+| Capability | What it unlocks |
+|---|---|
+| `SubsonicEventEdit` 🧩 | Every mutating event / action / modifier / parameter / property-binding command on a `USubsonicEventCollection` asset — 16 commands. All of them mutate a single asset within a single transaction, so they are bundled at the same granularity as `PhysicsAssetEdit`. It also serves as the reference capability for the three property setters, so no separate grant is needed to write a reference; writing a struct or container through them additionally requires `PropertyStructuredEdit` |
+| `SubsonicEventAudition` 🧩 | Audition an event and stop the current audition — `AuditionSubsonicEvent`, `StopSubsonicAudition`. Kept separate from `SubsonicEventEdit` because auditioning does not mutate the asset, but drives audio device side effects and executes the `Execute()` of loaded action types |
+
+#### Groom editing
+
+These capabilities all require the `HairStrands` plugin (Optional, disabled by default); the whole `UAIP.Editor.GroomAsset` domain is unavailable when it is disabled. Split by what a failure can destroy, not by command count — settings changes leave the source curve data untouched and can be restored by writing the old values back, new-asset generation destroys nothing at all, and curve/binding rebuilds can permanently lose data the caller cannot get back.
+
+| Capability | What it unlocks |
+|---|---|
+| `GroomAssetEdit` 🧩 | Group/LOD/interpolation/rendering settings patches, asset-wide settings, LOD slot add/remove, Cards/Meshes source configuration and derived-data builds, and non-destructive Dataflow graph assignment — 12 commands. Every affected value is a saved setting the caller can restore by writing the prior value back; the source curve data itself is never touched |
+| `GroomAssetCreate` 🧩 | Create a new asset from a Groom without modifying the source — follicle-mask and strands texture generation (`GenerateGroomFollicleMaskTexture`, `GenerateGroomStrandsTextures`) and RBF deformation baking into a new `UGroomAsset` (`BakeGroomRBFDeformation`) — 3 commands. Nothing existing is ever lost, but the commands are heavy (GPU texture generation, or a bake whose engine-side root-data generation can crash the editor process on failure — see the `BakeGroomRBFDeformation` entry in the [Commands Reference](commands.md)) |
+| `GroomCurveEdit` 🧩 | Everything that can overwrite guide/strand curve control points — direct writes (`SetGroomGuideCurves`, `SetGroomStrandCurves`), Dataflow graph evaluation (`EvaluateGroomDataflow`), and reimporting a Groom from its source file (`ReimportGroom`) — 4 commands. Curve data lost this way cannot be recovered by writing settings back; a failed reimport in particular is not guaranteed to leave the asset's prior content intact |
+| `GroomBindingEdit` 🧩 | Create a `UGroomBindingAsset` against a target SkeletalMesh or GeometryCache, and rebuild an existing binding's derived data in place — 3 commands (`CreateGroomBinding`, `CreateGeometryCacheGroomBinding`, `RebuildGroomBinding`). Creation destroys nothing; a failed rebuild does, because the engine discards the binding's prior derived data before regenerating it |
+
+#### Asset validation
+
+These capabilities require the `DataValidation` plugin — on an editor build, UAIP compiles support for it in automatically (the engine ships it enabled by default), so the only thing that has to be true is that the project hasn't turned it off; see the `UAIP.Editor.Validation` section of the [Commands Reference](commands.md). Listing the validators, following a validation job and reading its result are DefaultAllow (`EditorInspect`); only running validators and applying their fixes are gated here.
+
+| Capability | What it unlocks |
+|---|---|
+| `AssetValidation` 🧩 | Run the validators the project registered over assets — `ValidateAssets` (synchronous, up to 8 assets) and `StartValidationJob` (a folder or a list, validated in steps). Denied by default because validation executes project-supplied C++ / Blueprint / Python code that the engine does not forbid from having side effects, and because it loads assets and can trigger shader compilation. Both commands declare themselves read-only so an unrelated session holding a sandbox open cannot block them, but they evaluate the `ReadOnly` policy themselves and refuse while it is in force |
+| `AssetValidationFix` 🧩 | Apply one fix a validator offered for a message it produced — `ApplyValidationFix`. Denied by default because it rewrites a real asset and the fixer may leave it saved to disk. Refused outright while `DisableSave` is in force, whatever the fix would do, and refused for an asset under a root UAIP will not write to — validation reads from engine content, repair does not reach it |
+
+#### LiveLink
+
+Reading LiveLink state is DefaultAllow — the observation commands in `UAIP.Runtime.LiveLink` require `RuntimeInspect`, and the two read-only editor commands require `EditorInspect`. Everything below is denied by default and split by **what a failure costs**, not by command count: a Subject you disabled can be re-enabled, a Source you removed cannot be recreated under the same identity, and a preset you applied cannot be rolled back at all.
+
+The five names owned by `UAIP.Runtime.LiveLink` carry no 🧩 — that module has no plugin requirement and its commands are always registered. The seven owned by `UAIP.Editor.LiveLink` are only registered when both the `LiveLink` and the `Takes` plugins were enabled at build time.
+
+| Capability | What it unlocks |
+|---|---|
+| `LiveLinkClientControl` | Change which Subjects the client evaluates — `SetLiveLinkSubjectEnabled`, `AddLiveLinkVirtualSubject`, `RemoveLiveLinkVirtualSubject`. Kept apart from `LiveLinkSourceDelete` because every one of these is reversible by another call of the same kind |
+| `LiveLinkSourceDelete` | Remove a Source from the client — `RemoveLiveLinkSource`. Its own name because **a removed Source cannot be recreated under the same Guid**; this is the one irreversible mutation in the group, and a single grant is deliberately not allowed to cover both the reversible and the irreversible ones |
+| `LiveLinkSyntheticSource` | Create and remove the minimal, UAIP-owned Sources used to exercise LiveLink without hardware — `CreateLiveLinkSyntheticSource`, `RemoveLiveLinkSyntheticSource`. Denied by default because registering a Source is a change to the client's configuration even when UAIP owns it |
+| `LiveLinkFrameInjection` | Push frames into a synthetic Source this session created — `PushLiveLinkSyntheticFrame`. Deliberately separate from `LiveLinkSyntheticSource`: creating a Source and feeding data into one are different privileges, so a session can be given test data injection without also being allowed to create or remove Sources |
+| `LiveLinkSourceInspectSensitive` | Read the fields a Source or a discovered provider controls that can carry host addresses or credentials — `ListLiveLinkSources` with `IncludeSensitiveDetails: true` (`ConnectionString` / `StatusText` / `MachineName`) and `DiscoverLiveLinkMessageBusProviders` with the same flag (`MachineName`). Without it those fields are simply omitted and the rest of the response is unaffected. **Decided from a parameter value rather than declared statically**, so it does not appear in either command's `RequiredCapabilities`; both echo the name under `SensitiveDetailsRequiredCapability` on every response, asked for or not |
+| `LiveLinkNetworkDiscovery` 🧩 | Broadcast a MessageBus discovery ping and read what replies — `DiscoverLiveLinkMessageBusProviders`. Denied by default because it puts traffic on the network and holds the process-wide discovery slot for up to 30 seconds. Kept apart from `LiveLinkSourceConnect` so a session can be allowed to see what is on the network without being allowed to attach any of it |
+| `LiveLinkSourceConnect` 🧩 | Attach a discovered provider to the client as a new Source — `ConnectLiveLinkMessageBusSource`. A connected Source is real client configuration and is **not** cleaned up when the session ends |
+| `LiveLinkPresetApply` 🧩 | Replace the client's whole configuration from a preset — `ApplyLiveLinkPreset` — and additionally required for `AddLiveLinkPresetToClient`'s `RecreateExisting` flag. ⚠️ **The most destructive operation in this domain**: every existing Source is removed before the preset is rebuilt, and a run that does not finish leaves a partially removed configuration rather than the previous one. The engine keeps nothing to roll back to |
+| `LiveLinkPresetAdd` 🧩 | Add a preset's Sources and Subjects to the current configuration — `AddLiveLinkPresetToClient`. A lesser permission than `LiveLinkPresetApply` because it only extends the configuration, so a session may be allowed to add without being allowed to replace |
+| `LiveLinkPresetSave` 🧩 | Write the current configuration out as a preset asset — `SaveLiveLinkPreset`. Deliberately **not** covered by the DefaultAllow `AssetCreate`: a preset records the connection settings of every Source the client holds, so producing one is a disclosure step to permit on purpose rather than to inherit |
+| `LiveLinkComponentEdit` 🧩 | Bind a Subject to a LiveLink controller component on a placed actor — `SetLiveLinkComponentSubject`. Kept apart from `ActorComponentEdit` because this only changes a component's settings: a session that maintains Subject assignments need not also be able to change what components an actor has |
+| `LiveLinkRecording` 🧩 | Start, stop and cancel a Take Recorder recording of LiveLink Subjects — `StartLiveLinkRecording`, `StopLiveLinkRecording`, `CancelLiveLinkRecording`. Starting one holds the domain's mutation state for as long as it runs, and stopping or cancelling acts on a real recording and the LevelSequence it produces. `GetLiveLinkRecordingStatus` is read-only and uses `EditorInspect` instead, since observing whether a recording is in progress carries none of that risk |
+
+> **Stopping and cancelling only ever act on a recording UAIP started.** A recording begun from the Take Recorder panel or by another plugin is observable through `GetLiveLinkRecordingStatus` but is never stopped or cancelled by these commands, whatever capabilities are held.
+
 ---
 
 ## Enabling DefaultDenied capabilities
@@ -372,6 +679,16 @@ After editing, either restart the editor or (if `AllowCapabilityReload=True` is 
 uaip_execute(CommandName="UAIP.Core.ReloadCapabilities")
 ```
 
+Any registered capability can be named here, including one that no command declares in its
+`RequiredCapabilities` because the write path asks for it only when the value in hand needs it —
+`PropertyDefaultsOnlyEdit` and `PropertyStructuredEdit` are the two of those. Deleting a line takes the
+capability away again on the next reload, so the add–use–delete cycle works for every name.
+
+`ReloadCapabilities` reports three arrays: `AddedCapabilities` and `RemovedCapabilities` for what the
+reload actually changed, and **`UnknownCapabilities`** for names the ini states that are not registered
+capabilities at all. A misspelled name lands in the third array rather than silently doing nothing, which
+is what tells a typo apart from a name that was already in the state the ini asks for.
+
 ---
 
 ## SafetyPolicy settings
@@ -390,6 +707,13 @@ AllowPasswordFieldWrite=False
 AllowInputModeBypass=False
 DisablePIEStart=False
 AllowCheatCVarWrite=False
+AllowExternalTraceAnalysis=False
+AllowDisclosingTraceAttachment=False
+AllowUserInteractionPrompt=False
+
+; Directory externally captured .utrace files may be analysed from.
+; Has no default; AllowExternalTraceAnalysis alone opens nothing.
+; ExternalTraceDirectory=D:/TraceDrop
 
 ; Lift DefaultDenied capabilities:
 ; +AllowedCapabilities=BlueprintEdit
@@ -406,7 +730,7 @@ AllowCheatCVarWrite=False
 
 | Key | Default | Effect |
 |---|---|---|
-| `ReadOnly` | `False` | Reject every mutating command |
+| `ReadOnly` | `False` | Reject mutating commands. The two editor lifecycle commands are the one exception — see below |
 | `DisableSave` | `False` | Reject disk-writing commands |
 | `AllowLogDump` | `False` | Allow `DumpOutputLog` / `DumpMessageLog` |
 | `AllowContextMenuMutation` | `False` | Allow `InvokeContextMenuAction` |
@@ -416,10 +740,51 @@ AllowCheatCVarWrite=False
 | `AllowInputModeBypass` | `False` | Allow `BypassInputMode=true` in Inject commands |
 | `DisablePIEStart` | `False` | Reject PIE startup |
 | `AllowCheatCVarWrite` | `False` | Allow `SetConsoleVariable` / `ResetConsoleVariable` to write `ECVF_Cheat`-flagged CVars (also requires `RuntimeCVarWrite`) |
+| `AllowExternalTraceAnalysis` | `False` | Allow `AnalyzeTrace` to read a `.utrace` captured outside UAIP. **Grants nothing on its own** — `ExternalTraceDirectory` must be set as well |
+| `ExternalTraceDirectory` | unset | Root directory an externally captured `.utrace` must live under. ini only (no CLI override), and deliberately has no default |
+| `AllowDisclosingTraceAttachment` | `False` | Allow `StopTrace` to hand a captured `.utrace` over as an artifact when its channels could have recorded **host paths, screen content or network addresses**. The analysis sections sanitise, mask or reduce those to metadata; the raw file does not, which is why handing it over is a separate decision. Disclosure of **log text** is governed by `AllowLogDump` instead, and an unclassified channel is refused whatever both are set to. Also requires the `RuntimeInsightsAttachTraceFile` capability. In the editor both this and `AllowLogDump` are normally needed, because the engine enables the log and screenshot channels by itself |
+| `AllowUserInteractionPrompt` | `False` | Allow a pending interaction (a command that hands off to a human in the editor instead of finishing on its own, e.g. `DrawPCGSpline`) to start at all. Rejected with `PolicyViolation` before it ever reserves a resource or changes anything in the editor. A separate axis from the interactive command's own DefaultDenied capability (e.g. `PCGSplineDraw`): the capability states *what* may be touched, this flag states that taking over the human's viewport and input focus is allowed in the first place. Independently of this flag, starting one is also refused when nothing registered can currently show the human a prompt — see the `UAIP.Editor.PCG` section of the [Commands Reference](commands.md) |
 | `AllowedCapabilities` | empty | DefaultDenied capabilities to grant (one `+` entry per line) |
 | `DeniedCapabilities` | empty | Remove DefaultAllow capabilities from all sessions |
-| `DeniedCommands` | empty | Block commands by fully-qualified name |
+| `DeniedCommands` | empty | Block commands by fully-qualified name. Blocked commands are hidden from the default `ListCommands` response and counted in `HiddenReasons.DeniedCommand`; pass `IncludeUnavailable=true` to list them explicitly (`Available: false`, `UnavailableReason: "DeniedCommand"`), or use `DescribeCommand`, which always shows them |
 | `AllowCapabilityReload` | `False` | Enable `UAIP.Core.ReloadCapabilities` for hot-reload of capability settings |
+
+### ReadOnly and the editor lifecycle commands
+
+What `ReadOnly` protects is **project data** — assets, levels, config files. Two commands are exempt from it and stay callable while `ReadOnly=True`: `UAIP.Editor.Workspace.ShutdownEditor` and `UAIP.Editor.Workspace.RestartEditor`. `ListCommands` and `DescribeCommand` report them as `Available: true` in that mode, matching what a dispatch actually does.
+
+They are exempt because neither writes anything `ReadOnly` exists to protect; what they change is the lifetime of the editor process itself. Refusing them costs something that has nothing to do with safety: an editor launched with `ReadOnly=True` holds the policy in memory, so editing the ini back does not reach the running process, and with both lifecycle commands refused there is no supported way left to shut that editor down or restart it through UAIP at all.
+
+The exemption removes the `ReadOnly` gate and nothing else:
+
+- Both commands still require the `EditorLifecycle` capability, so `+DeniedCapabilities=EditorLifecycle` still takes them away from every session.
+- `+DeniedCommands=UAIP.Editor.Workspace.ShutdownEditor` still blocks either of them by name. That is the switch to reach for when you want them gone but want the rest of `ReadOnly` left as it is.
+- Their optional `SaveAll` is governed by `DisableSave`, not by `ReadOnly`, so `DisableSave=True` still stops them from writing packages to disk.
+
+Every other mutating command is rejected under `ReadOnly` exactly as before. A handler has to declare the exemption for itself, it defaults to off, and no command other than these two declares it.
+
+---
+
+## UnavailableDetail — the eight reasons behind a HandlerUnavailable refusal
+
+A command can report itself unavailable for reasons `CapabilityNotAvailable` and `PolicyViolation` above don't cover: an engine version mismatch, a build configuration gap, a missing piece of runtime infrastructure, a compiled-out optional plugin, or a forwarding target that never existed on any engine version. All of these surface through the same `ICommandHandler::IsAvailable() == false` path and the same `UnavailableReason: "HandlerUnavailable"` — which by itself only says a handler refused, not why. `UnavailableDetail` narrows that down to one of eight values, visible from `uaip_describe_command` regardless of whether the command is currently available. It is **not** part of `uaip_list_commands`'s `HiddenReasons` object, which stays at the five fixed `UnavailableReason` keys (`DeniedCommand` / `MissingCapability` / `RoleRestricted` / `ReadOnlyPolicy` / `HandlerUnavailable`) — call `uaip_describe_command` by name to see the detail behind a specific `HandlerUnavailable` entry, or pass `IncludeUnavailable: true` to `uaip_list_commands`, whose hidden rows now carry the same per-command `UnavailableDetail` string (never `UnavailableDetailMessage`, which stays a `describe_command`-only field so list responses stay bounded). When a handler reports one of the seven non-`Unspecified` values below, a matching `UnavailableDetailMessage` string is usually present alongside it — the handler's own free-text elaboration; quote it back to the user rather than re-deriving your own wording.
+
+| `UnavailableDetail` | Meaning | What resolves it |
+|---|---|---|
+| `Unspecified` | No detail beyond `HandlerUnavailable` itself — the default for a handler that predates this field, and also what every handler reports once `Available` is `true` again | — |
+| `EngineVersion` | The command needs an engine version other than the one currently running (an API only introduced in, or only surviving up to, a specific release) | Raising or lowering the engine version |
+| `BuildConfiguration` | The command needs a build configuration this process was not built with (e.g. Developer Tools, an Editor target) | Rebuilding with the required configuration |
+| `ExecutionEnvironment` | The command needs infrastructure this execution environment does not provide (e.g. a render hardware interface, an interactive session, a modular-feature client an optional runtime plugin registers) | Running under a different execution environment |
+| `OptionalPluginDisabled` | The command depends on an optional plugin this binary has no compiled-in support for at all — the plugin was absent from the engine this UAIP build was compiled against | **Enabling the plugin and restarting fixes nothing here.** On an editor build, the fix is a UAIP build for an engine version that includes the plugin (for a source build: add the plugin to that engine and rebuild). On a packaged game, enable the plugin in the `.uproject` and package again. A plugin that is merely *disabled*, not absent, never produces this value — that shows up as `CommandNotFound` (with a hint) or, for a Toolset bridge, `ExecutionEnvironment` instead — see [Capability reference](#capability-reference) above and `UAIP.Core.ListIntegrations` |
+| `EngineApiNotExported` | The command depends on an engine-side API that is never exported to a plugin, on any supported engine version | Nothing an engine-version change or a plugin toggle fixes — look for a different code path (e.g. a Toolset bridge command reaching the same effect through editor scripting) |
+| `DelegationTargetMissing` | The command forwards to a function on an external surface (a Toolset bridge target) that no supported engine version actually declares, so the call could never reach an implementation | Nothing here either — the plugin owning that surface may already be enabled; use a native command covering the same operation, where one exists |
+| `SafetyPolicyDisabled` | Nothing about the environment or the build is missing: the command is gated behind a deny-by-default SafetyPolicy flag that is off in this process | Setting that flag in `Config/DefaultUAIP.ini` and restarting — the `ErrorMessage` names the flag. Where `AllowCapabilityReload=True`, `UAIP.Core.ReloadCapabilities` applies the edit without a restart |
+
+`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` all name something a human can change. `EngineApiNotExported` and `DelegationTargetMissing` do not — no ini flag, capability grant, engine version, or plugin toggle changes either of them; the only way forward is a different code path. `SafetyPolicyDisabled` is the odd one out: it is the one value that *is* an ini question, and the only one an `AllowedCapabilities` / `DeniedCapabilities`-style edit to `Config/DefaultUAIP.ini` resolves. **With that one exception, no `UnavailableDetail` value is fixed by an `AllowedCapabilities` / `DeniedCapabilities` edit** — unlike `CapabilityNotAvailable` and `PolicyViolation` above, `UnavailableDetail` is otherwise never a capability question.
+
+Calling a command by name while it is `Available: false` fails, and **which error code comes back depends on the detail**. The six values that name something about the environment or the build — `EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` / `EngineApiNotExported` / `DelegationTargetMissing` — fail with `AbilityUnavailable` (HTTP 501, "this cannot be done here"). `SafetyPolicyDisabled` and `Unspecified` fail with `PolicyViolation` (HTTP 403), because those are the two cases where flipping a setting really is the answer. `ErrorMessage` restates the same information either way: `"Command '<name>' is not available (<UnavailableDetail>): <UnavailableDetailMessage>"` — or, when `UnavailableDetail` is `Unspecified`, the older generic sentence `"... is not available in the current SafetyPolicy configuration."`.
+
+Three concrete examples, all from [Commands Reference](commands.md#unavailabledetail--the-eight-reasons-behind-a-handlerunavailable-refusal): all 14 `UAIP.Runtime.LiveLink.*` commands report `ExecutionEnvironment` when no `ILiveLinkClient` is registered as a modular feature in this process; `UAIP.Editor.AnimSequence.SelectAnimNotify` reports `EngineVersion` on UE 5.7 (it is UE 5.8+ only); and `UAIP.Core.ReloadCapabilities` reports `SafetyPolicyDisabled`, naming the ini key to set, while `AllowCapabilityReload` is left at its default `False`.
 
 ---
 
@@ -427,11 +792,13 @@ AllowCheatCVarWrite=False
 
 | ErrorCode | Diagnosis | Action |
 |---|---|---|
-| `CapabilityNotAvailable` | Session lacks the capability | Read the name from `ErrorMessage`; add it to `AllowedCapabilities` in the ini and restart (or call `ReloadCapabilities`) |
+| `CapabilityNotAvailable` | Process lacks the capability | Read the name from `ErrorMessage`; add it to `AllowedCapabilities` in the ini and restart (or call `ReloadCapabilities`) |
+| `CapabilityNotAvailable` with a role name in `ErrorMessage` | The session's role denies this capability (Layer 1.5) | Nothing to enable — perform the operation from a session bound to a different role, or ask the operator to change the role's `DeniedCapabilities` and restart |
 | `PolicyViolation: ... denied by SafetyPolicy` | SafetyPolicy ini flag is blocking | Set the corresponding flag to `True` in `[UAIP.SafetyPolicy]` and restart |
 | `PolicyViolation: Scenario execution is not enabled` | Scenario route opt-in missing | Add `"enable_scenario": true` to `config.json` |
 | `PolicyViolation: Command is denied` | Command is in `DeniedCommands` | Remove it from `DeniedCommands` in the ini |
-| `CommandNotFound` for a 🧩 command | Optional plugin not enabled | Enable the required plugin in your `.uproject` and rebuild |
+| `PolicyViolation: ... is not available (<UnavailableDetail>): ...` | A `HandlerUnavailable` refusal narrowed by `UnavailableDetail` (see above) | Depends on the detail: `EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` name something you can change; `EngineApiNotExported` / `DelegationTargetMissing` do not — look for a different code path |
+| `CommandNotFound` for a 🧩 command | Optional plugin not enabled, or (on an editor build) genuinely absent from this engine version | Read the `ErrorMessage` — it names the integration, its state and the exact remedy. Usually: enable the plugin and restart the editor. If the plugin isn't in this engine at all, no toggle fixes it. `UAIP.Core.ListIntegrations` shows every integration's state at once |
 
 ---
 

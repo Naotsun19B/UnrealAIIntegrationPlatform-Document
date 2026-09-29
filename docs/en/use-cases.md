@@ -83,7 +83,7 @@ Who uses UAIP, for what, and why. Each scenario links to the relevant Cookbook r
 
 **Cookbook**: [Asset audit & naming check](cookbook.md#3-asset-audit--naming-check).
 
-**Roadmap-adjacent**: deeper dependency analysis (unused-asset detection, circular references, size maps) is planned but not yet implemented. See [Roadmap → Asset Audit](roadmap.md#asset-audit--dependency-analysis).
+**Going deeper**: dependency analysis — unused-asset detection, circular and broken references, size maps — is available as well. `UAIP.Editor.Assets.StartAssetAudit` runs the folder-wide audit as a job that leaves the editor responsive while it scans, and `GetAssetAuditStatus` / `GetAssetAuditResult` follow it to completion. See [Commands → `UAIP.Editor.Assets`](commands.md#uaipeditorassets).
 
 ---
 

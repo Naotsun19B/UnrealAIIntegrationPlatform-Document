@@ -41,9 +41,52 @@ UAIP は以下 4 つの場所から設定を読み込み、優先度順にマー
 
 CLI フラグ：なし。
 
+### `[UAIP.CommandPump]` — モーダル表示中のコマンド実行（既定で無効）
+
+エディタがモーダルダイアログを表示している間、UAIP は通常いっさい応答できません。コマンドはティッカーのコールバック内で実行されており、モーダルはそのティッカーごとゲームスレッドを止めてしまうためです。AI 側からは「エディタが固まった」ようにしか見えません。
+
+この機能を有効にすると、コマンドの実行を受付とは別のタイミング（フレーム終端）へ移し、モーダル表示中でも **状態を読むだけの安全なコマンド** に応答を返せるようになります。エディタを変更するコマンドは失敗せずに順番待ちへ入り、モーダルが閉じた後に実行されます。
+
+> **既定は無効です。** 有効化するとすべてのコマンドの実行タイミングが変わるため、段階的に確認したうえで判断してください。コマンドライン実行（commandlet）では、フレーム終端が回らない構成があるため自動的に無効になります。
+
+| キー | 型 | デフォルト | 説明 |
+|---|---|---|---|
+| `StarvedTickAllowList` | string | `UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities` | モーダル表示中に実行してよいコマンドの完全修飾名（カンマ区切り）。ここに無いコマンドは**拒否されず、モーダルが閉じるまで順番待ちのまま**になります |
+
+`StarvedTickAllowList` を既定の 2 件に絞っているのは、モーダルが開いている最中は「他の処理の途中」だからです。`ListCommands` / `DescribeCommand` は読み取り専用ですが、登録済みの全ハンドラへ問い合わせるため、あらゆるドメインのコードをこの状況で動かすことになります。そのため既定には含めていません。
+
+対応する CLI フラグ：`-uaip-command-pump-starved-tick-allow-list=...`
+
+実効値は起動時に解決され、Output Log に 1 行だけ記録されます（`Starved tick allowlist: ...`）。ini に書いたのに効いていない場合や、書式を誤って無視されたエントリがある場合は、**起動直後のログで確認できます**。CVar `uaip.Command.StarvedTickAllowList` を読んでも既定値しか返らない点に注意してください — ini とコマンドラインは CVar を書き換えず、その上に重ねます。
+
+#### コンソール変数
+
+| CVar | デフォルト | 実行中の変更 | 説明 |
+|---|---|---|---|
+| `uaip.Command.PumpedExecution` | `0` | 可能 | この機能のマスタースイッチ。`1` で有効 |
+| `uaip.Command.MaxQueuedCommands` | `32` | 可能 | 順番待ちできるコマンド数の上限。超過分は `TooManyRequests` で断られます（実行されていないので再送は安全）。1 セッションあたりの上限はこの値から導出されます |
+| `uaip.Command.MaxCommandsPerDrain` | `8` | 可能 | 1 フレームで実行する最大コマンド数 |
+| `uaip.Command.StarvedTickAllowList` | 上表のとおり | **不可** | 読み取り専用。ini またはコマンドラインからのみ設定できます |
+
+`StarvedTickAllowList` を読み取り専用にしているのは、コンソールがまさにこの制限で守ろうとしている経路から到達できるためです。実行中に広げられる防御は防御になりません。
+
+### `[UAIP.Jobs]` — ジョブ型コマンドの 1 フレームあたりの予算
+
+`UAIP.Editor.Assets.StartAssetAudit` はジョブを登録した時点で応答を返し、実際の走査は監査が終わるまでゲームスレッドを占有せず、エディタのフレームの合間で進みます。このキーは、その走査が 1 フレームあたりに使ってよい時間を決めます。
+
+| キー | 型 | デフォルト | 範囲 | 説明 |
+|---|---|---|---|---|
+| `AuditStepBudgetMs` | float | `10.0` | `[1.0, 100.0]` | 監査ジョブが 1 フレームあたり走査に使ってよいミリ秒数。大きくすると監査は早く終わりますが実行中のエディタは重くなり、小さくするとその逆になります。範囲外の値はエラーにはならず、範囲内へ収められます |
+
+値はモジュール起動時に一度だけ読まれるため、変更はエディタの次回起動時から反映されます。
+
+これは努力目標であり保証ではありません。分割できない処理は予算を超過します — `Preparing` が発行するアセット一覧の取得と、アセット 1 件あたりのディスクサイズ取得がこれに当たります。
+
+CLI フラグ：なし。
+
 ### `[UAIP.Session]` — セッション永続化
 
-セッションメタデータ（ID・コマンドログ・Capability セット）をディスクに永続化し、エディタ再起動を跨いでセッションを復元する機能の設定。
+セッションメタデータ（ID・コマンドログ・キーバリューのコンテキスト）をディスクに永続化し、エディタ再起動を跨いでセッションを復元する機能の設定。セッションの Capability セットはこの対象に含まれません — そもそもセッション側に保存されるものではなく、プロセス全体の Capability セットと（該当すれば）セッションが束縛された役割から都度計算されます（詳細は [Safety & Capabilities → 役割](safety.md#役割layer-15)）。役割の束縛も再起動を跨いでは残りません — 復元されたセッションは未束縛の状態に戻り、有効な役割の資格情報を運ぶ次のリクエストによって改めて束縛される必要があります。そのため、古いセッションがかつて持っていた役割のまま復活することはありません。
 
 | キー | 型 | デフォルト | 範囲 | 説明 |
 |---|---|---|---|---|
@@ -55,6 +98,10 @@ CLI フラグ：なし。
 | `MaxScanFiles` | int32 | `1000` | `[1, 100000]` | 起動時にセッションを復元する際にスキャンする最大ファイル数 |
 
 CLI フラグ：`-uaip-session-enabled` / `-uaip-session-sub-directory=...` / `-uaip-session-max-command-log-entries=N` / `-uaip-session-lifetime-hours=N` / `-uaip-session-max-allowed-lifetime-hours=N` / `-uaip-session-max-scan-files=N`
+
+### `[UAIP.Roles]` — 役割による Capability の降格
+
+意図的にここでは詳細を扱いません — 役割は Capability をゲートする仕組み（Layer 1.5）であり安全性に関わる事項のため、完全なリファレンス（ini 書式・セッションが役割へ束縛される仕組み・役割を運べない Transport 向けの opt-in フラグ）は、他の認可レイヤーと合わせて [Safety & Capabilities → 役割](safety.md#役割layer-15) にまとめています。概要だけ述べると、`+Role=(Name="...", DeniedCapabilities=(...))` の行で役割を定義し、`AllowRoleBlindTransports`（ini 専用、既定 `False`）で、役割が 1 つでも定義された後に WS・CLI・FullHTTP を明示的に併用できるようにします。
 
 ### `[UAIP.ArtifactGC]` — Artifact 自動 GC
 
@@ -71,13 +118,69 @@ CLI フラグ：`-uaip-gc-enabled` / `-uaip-gc-max-age-hours=N` / `-uaip-gc-max-
 
 ### `[UAIP.PythonExtension]` — Python コマンド拡張（🧩 `PythonScriptPlugin`）
 
-`@uaip_command` デコレータ付き Python ファイルをスキャンする場所を指定します。`.uproject` で `PythonScriptPlugin` が有効な場合のみ登録されます。
+`@uaip_command` デコレータ付き Python ファイルをスキャンする場所を指定します。このプロバイダは `PythonScriptPlugin` が有効な場合のみ登録されます — エディタがこのディレクトリを起動時に自動スキャンするのは、`PythonExtensionReload` Capability（既定拒否）が**すでに許可されている場合だけ**です。許可されていなければ、`UAIP.Editor.PythonExtension.ReloadPythonCommands` を呼ぶまで Python コマンドは 1 つも登録されません。[Safety & Capabilities → スクリプト実行](safety.md#スクリプト実行) を参照。
 
 | キー | 型 | デフォルト | 説明 |
 |---|---|---|---|
 | `CommandsDir` | string | `<Project>/Scripts/UAIPCommands` | Python コマンド定義ファイルを探すディレクトリ。相対パスはプロジェクトルートを基点に解決 |
 
 CLI フラグ：なし。
+
+### `[UAIP.Transport]` — 通常起動のエディタで MCP transport を自動起動する
+
+通常の手順で起動したエディタ（Epic Games Launcher・`.uproject` のダブルクリック・IDE のデバッグ実行など、`-uaip-mcp-enable` / `-uaip-http-enable` を指定していない起動）が、自ら MCP 接続を受け付ける状態になれるようにします。これにより、ゲストモードで設定した Bridge が後から接続できる相手が用意されます。一連の流れは [接続方法 → ゲストモード接続](connections.md#ゲストモード接続) を参照してください。
+
+| キー | 型 | デフォルト | 範囲 | 説明 |
+|---|---|---|---|---|
+| `AutoStartMCP` | bool | `False` | — | マスタースイッチ。`True` のとき、エディタは `OnPostEngineInit` で **MCPOnly モード**として transport を起動します。この方法で FullHTTP を自動起動する ini キーはありません |
+| `AutoStartPort` | int32 | `0` | `[0, 65535]` | 最初に試すポート。`0` は transport の組み込み既定ポート（`8765`）を意味します |
+| `AutoStartPortScanCount` | int32 | `8` | `[1, 64]` | `AutoStartPort` から何個連続したポートを試すか |
+
+CLI フラグ（ini を編集せずに 1 回だけ試すための alias）：`-uaip-auto-start-mcp` / `-uaip-auto-start-port=N` / `-uaip-auto-start-port-scan-count=N`
+
+範囲外の値は**丸められません** — 起動時に Warning を出したうえで既定値のまま動作します（UAIP が読む他の範囲付き ini キーと同じ「警告して変更しない」挙動です）。コマンドラインに `-uaip-mcp-enable` または `-uaip-http-enable` が指定されている場合、このセクションはそもそも読まれません — 明示フラグは常に自動起動より優先されます。
+
+このセクションはデモビルドでは読まれません。デモは以前からこのセクションの設定に関係なく MCPOnly として無条件に起動します。
+
+> **セキュリティ上の注意**: `Config/DefaultUAIP.ini` はバージョン管理対象で、エディタには per-user のオーバーライド層がありません。`AutoStartMCP=True` をそこで有効化すると、そのプロジェクトを開く全開発者が通常起動のたびに接続を受け付ける MCP エンドポイントを持つことになり、個人単位で打ち消す方法もありません — [Security → 運用上のセキュリティ注意点](security.md#運用上のセキュリティ注意点) を参照。
+
+#### 接続情報の記述子ファイル
+
+HTTP transport が実際に起動すると（`AutoStartMCP` 経由でも、`-uaip-mcp-enable` / `-uaip-http-enable` 経由でも）、`<Project>/Saved/UAIP/EditorEndpoint.json` を書き出します：
+
+```json
+{
+  "Port": 8765,
+  "Mode": "MCPOnly",
+  "ProjectFilePath": "F:/MyProjects/MyGame/MyGame.uproject"
+}
+```
+
+- リスナーが実際に bind された時点で原子的に（一時ファイル + リネームで）書き出され、正常終了時に削除されます
+- 読み取り時は 1024 バイトの上限があり、超えるものは解析せず無視されます
+- **権限判断の入力には一切なりません。** ゲスト接続候補にどのポートを試すかを伝えるだけのヒントであり、役割名・認証トークン・プロセス ID は含みません。読み手は、そのポートを目的のエディタとして扱う前に、既存の `HealthCheck` によるプロジェクト同一性検証を必ず通す必要があります
+- エディタが異常終了すると、古い記述子が残ることがあります。読み手はそれを見つけても信用する前にポートへ probe し、待ち受けていなければ設定に書かれたポートへフォールバックします
+
+### `[UAIP.Transport]` — 受動的待機の同時実行（既定オフ）
+
+HTTP / MCP transport は、プロセス全体で**同時に in-flight 1 件まで**しかコマンドを受け付けません。人間の操作待ち・シェーダーコンパイル待ち・ウィジェット出現待ちのように「ただ待つだけ」のコマンドも、待っている間ずっとこの唯一の枠を占有し続けるため、その間は他の全セッションが締め出されます。このセクションは、受動的に待つだけのコマンドをこの枠の勘定から切り離すための設定です。
+
+| キー | 型 | デフォルト | 範囲 | 説明 |
+|---|---|---|---|---|
+| `AllowConcurrentPassiveWaits` | bool | `False` | — | `True` にすると、受動的待機だと自ら宣言しているコマンドが通常の同時コマンド枠を消費しなくなります。**HTTP / MCP のみ**が対象で、WebSocket は対象外です（理由は後述） |
+| `MaxConcurrentPassiveWaits` | int32 | `16` | `[1, 64]` | 上のフラグが `True` のときに意味を持つ、受動的待機を同時に何本まで通すかの全体上限。フラグが `False` の間は無意味 |
+
+- **1 セッションあたりの上限は個別に設定できません** — 全体上限から `max(1, MaxConcurrentPassiveWaits / 4)`（既定値では 4 本）として導出されます。これは意図的な仕様です。セッションごとの上限を個別に設定できてしまうと、1 セッションが全体の枠を独占できる構成を作れてしまいます。
+- **範囲外の値は丸められず、無視されます。** 起動時に Warning を出したうえで、直前の値（多くの場合は既定値）のまま動作します。これは上の `[UAIP.Transport].AutoStartPort` と同じ「警告して変更しない」挙動で、`MaxConcurrentPassiveWaits=100` は `64` ではなく `16` になります。
+- 対応する CLI フラグ：`-uaip-allow-concurrent-passive-waits` / `-uaip-max-concurrent-passive-waits=N`
+- **どちらのキーにもコンソール変数は用意されていません**（他の多くの Transport 設定と違う点です）— コンソールへ到達できる AI セッションが、自分を縛る制約を自分で広げられてはならないためです。どちらも ini / CLI 専用で、起動時に一度だけ読まれます。変更にはエディタの再起動が必要です。
+- 現時点で受動的待機を自己宣言しているコマンド：`UAIP.Core.WaitForPendingInteraction` / `UAIP.Editor.Workspace.WaitForShaderCompilation` / `UAIP.Runtime.Assertion.WaitForCondition` / `UAIP.Runtime.Assertion.WaitSeconds` / `UAIP.Editor.UIAutomation.WaitForWidget` / `UAIP.Editor.Observation.ObserveWidget`。どのコマンドが対象かはコマンド自身の性質であり、この ini セクションで選べる allowlist ではありません。
+- 全体上限・セッション上限のいずれを超えても `TooManyRequests` で断られます。通常の単一コマンド枠を超えたときと同じ扱いです。どちらの上限に当たったかは応答からは分かりません。
+- 受動枠に入ったコマンドは、実際に終わるまで枠を保持し続けます — HTTP / MCP の 120 秒応答タイムアウトでは**解放されません**。これは意図的な設計です。応答タイムアウトで解放してしまうと、`WaitForPendingInteraction`（最大 600 秒）のような自身の上限より長く裏で生き続け、再投入によって上限を迂回できてしまいます。自力で終了しない待機は、次のエディタ再起動まで枠を占有し続けます。
+- この設定は状態を変更するコマンドの同時実行数（既定 1）には影響しません。また、シナリオが実行中かどうかとも独立ではなく、**シナリオ実行中は本設定に関わらず単発コマンドは弾かれます**。ただし受動的待機だけは例外で、このフラグが有効な限りシナリオ実行中でも通ります（[シナリオ実行 → 単発コマンドとの排他](scenario.md#単発コマンドとの排他) を参照）。
+- 実効設定は起動時に一度だけ Output Log へ 1 行出力されます。`[UAIP.CommandPump]` の allowlist ログと同じ形式です：`Transport concurrency: MaxConcurrentCommands=1, ConcurrentPassiveWaits=enabled(total=16, per-session=4)`（無効時は `disabled`）。ini を編集したのに効いていないように見える場合 — セクション名やキー名の誤り、再起動していない、値が範囲外で捨てられた、`AllowConcurrentPassiveWaits` を立てずに `MaxConcurrentPassiveWaits` だけ書いた等 — このログ行を確認してください。
+
+> **なぜ WebSocket は対象外か**: WS の 1 接続は内部的に in-flight リクエストを 1 件分しか保持できません。同じ接続上で複数の受動的待機を通すと、片方の待機が完了したときに別の待機の枠まで誤って解放してしまいます。ただし WS には既に別の回避手段があります — 長い待機で行き詰まったクライアントは、同じ接続で待つ代わりに別の接続をもう 1 本開けます（1 エディタあたり最大 4 接続まで同時に張れます）。
 
 > `[UAIP.SafetyPolicy]` セクションは意図的にこのページから除外しています — `AllowedCapabilities` / `DeniedCapabilities` / `DeniedCommands` / `AllowCapabilityReload` を含む完全なリファレンスは [Safety & Capabilities](safety.md) を参照。
 
@@ -106,7 +209,7 @@ CLI フラグはエディタプロセスのコマンドライン（`UnrealEditor
 
 | フラグ | 説明 |
 |---|---|
-| `-uaip-http-enable` | HTTP API モード（FullHTTP）を有効化。`0.0.0.0:<port>` にバインドし `/uaip/*` + `/mcp` を公開。`-uaip-http-no-auth` がない限り Bearer Token 必須 |
+| `-uaip-http-enable` | HTTP API モード（FullHTTP）を有効化。ループバック（`127.0.0.1:<port>`）にバインドし `/uaip/*` + `/mcp` を公開。`-uaip-http-no-auth` がない限り Bearer Token 必須 — [Security → ネットワーク面](security.md#ネットワーク面) を参照 |
 | `-uaip-mcp-enable` | MCP 専用モードを有効化。`-uaip-http-enable` を暗黙的に有効化するが `/mcp` と `/uaip/artifacts/*` のみ公開。5 段階の localhost チェック（PeerAddress / Host / Origin）を強制。認証不要 |
 | `-uaip-ws-enable` | WebSocket Transport を有効化。`127.0.0.1:<port>` にバインド（ハードコード）。`-uaip-ws-no-auth` がない限り初回フレームに Bearer Token 必須 |
 | `-uaip-enable-scenario` | `uaip_run_scenario` ルートを有効化。これがないと scenario 送信時に `PolicyViolation: Scenario execution is not enabled` |
@@ -176,8 +279,11 @@ UnrealEditor-Cmd.exe MyProject.uproject \
 | `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write` |
 | `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass` |
 | `DisablePIEStart` | `-uaip-policy-disable-pie-start` |
+| `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write` |
+| `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis` |
+| `AllowDisclosingTraceAttachment` | `-uaip-policy-allow-disclosing-trace-attachment` |
 
-`AllowCapabilityReload` / `AllowedCapabilities` / `DeniedCapabilities` / `DeniedCommands` / `AllowedArtifactDirectory` は **ini 専用**（CLI フラグなし — Capability の昇格やサンドボックス境界に関わるため、プロセスコマンドラインからの変更を許可しない設計）。
+`AllowCapabilityReload` / `AllowedCapabilities` / `DeniedCapabilities` / `DeniedCommands` / `AllowedArtifactDirectory` / `ExternalTraceDirectory` は **ini 専用**（CLI フラグなし — Capability の昇格やサンドボックス境界に関わるため、プロセスコマンドラインからの変更を許可しない設計）。
 
 ---
 
@@ -210,18 +316,40 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 
 | キー | 型 | デフォルト | 説明 |
 |---|---|---|---|
-| `editor_path` | string | `""` | `UnrealEditor.exe` の絶対パス。環境変数 `UAIP_UE_EDITOR_PATH` が設定されている場合はそちらが優先 |
-| `uproject_path` | string | `""` | `.uproject` ファイルの絶対パス。環境変数 `UAIP_UPROJECT_PATH` が設定されている場合はそちらが優先 |
+| `editor_path` | string | `""` | `UnrealEditor.exe` の絶対パス。環境変数 `UAIP_UE_EDITOR_PATH` が設定されている場合はそちらが優先。**`attach_only` が `true` のときは不要** — ゲストモードの Bridge はエディタを一切起動しないため、指す先が無い |
+| `uproject_path` | string | `""` | `.uproject` ファイルの絶対パス。環境変数 `UAIP_UPROJECT_PATH` が設定されている場合はそちらが優先。**どのモードでも常に必須** — プロジェクト同一性検証・認証トークンの解決・crash marker のパス・接続情報記述子の解決に加え、[instance proof](security.md#instance-proof) の照合がこのパス配下の `Saved/UAIP/InstanceSecrets/` を読むのにも使われる |
+| `attach_only` | bool | `false` | ゲストモード。`true` のとき、Bridge は自分ではエディタを一切起動せず、既に待ち受けているエディタへアタッチするだけになる。ポートは[接続情報の記述子ファイル](config.md#接続情報の記述子ファイル)から解決し、見つからなければ `http_port` へフォールバックする。アタッチ中のエディタとの接続が切れても（ヘルスチェック失敗・config リロードのいずれでも）代わりのエディタを起動しない。詳細は [接続方法 → ゲストモード接続](connections.md#ゲストモード接続) を参照。環境変数オーバーライド：`UAIP_ATTACH_ONLY`（`1` / `true` / `yes`） |
 | `http_port` | int | `8765` | エディタ側 MCP エンドポイントの HTTP ポート。`-uaip-http-port` と一致させること |
 | `http_startup_timeout_seconds` | int | `120` | Bridge が起動後のエディタ準備完了を待つ最大秒数 |
-| `command_timeout_seconds` | int | `60` | 転送されるコマンドのリクエストごとの HTTP タイムアウト |
+| `command_timeout_seconds` | int | `180` | 転送されるコマンドのリクエストごとの HTTP タイムアウト。**HTTP トランスポート自身の非同期コマンドタイムアウト（120 秒）より小さい値には設定できない** — 詳細は下記「タイムアウトの不変条件」を参照 |
+| `unresponsive_timeout_seconds` | int | `30` | ポートは LISTEN しているがヘルス ping に応答しない状態を何秒許容してから `UNRESPONSIVE` と判定するか。この状態では自動起動も自動再起動も行わない — [接続方法 → エディタ状態の確認](connections.md#エディタ状態の確認uaip_get_editor_status) を参照 |
+| `health_poll_interval_seconds` | int | `15` | エディタが稼働中とみなされている間のバックグラウンドヘルス ping の間隔 |
+| `handshake_timeout_seconds` | int | `10` | プロジェクト同一性検証に使う `HealthCheck` 呼び出し、および config リロード時に発行される `ShutdownEditor` 呼び出しのタイムアウト |
+| `scenario_timeout_seconds` | int | `1800` | Bridge 経由で転送される `uaip_run_scenario` の wall-clock 上限（scenario ルート自体の 30 分制限に合わせている） |
+| `artifact_timeout_seconds` | int | `60` | Artifact ダウンロードのタイムアウト。コマンド実行時間とは独立に管理される |
+| `probe_tcp_timeout_seconds` | float | `1.0` | エディタのポートが LISTEN しているかどうかだけを確認する TCP connect タイムアウト |
+| `probe_ping_timeout_seconds` | float | `5.0` | LISTEN 中のエディタが実際に応答するかを確認する HTTP ping タイムアウト |
+| `process_exit_wait_seconds` | int | `10` | Bridge が起動したエディタプロセスの終了を待つ最大秒数 |
+| `allow_unverified_attach` | bool | `false` | `HealthCheck` 応答に `ProjectFilePath` を持たない旧バージョンのプラグインへアタッチすることを許可するオプトイン。**既定では拒否**される — 同一性を検証できないピアは黙ってアタッチせず拒否するのが既定の挙動 |
 | `log_level` | string | `"INFO"` | Python logger の冗長度 — `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `enable_scenario` | bool | `false` | `true` のとき Bridge がエディタを `-uaip-enable-scenario` 付きで起動する。環境変数オーバーライド：`UAIP_ENABLE_SCENARIO=1` |
+| `role_name` | string | `""` | エディタの `[UAIP.Roles]` が役割を 1 つ以上定義している場合のみ必要。この Bridge が認証する役割名を指定する。対応するトークンは `Saved/UAIP/Roles/<role_name>.token` から**遅延読み込み**される — 一定周期ではなく、リクエストが `401` で返ってきたときにだけ読み直す。環境変数オーバーライド：`UAIP_ROLE_NAME` |
+| `role_token` | string | `""` | 役割の Bearer Token 値を直接指定し、`role_token_file` の読み込みを完全にバイパスする。トークンをシークレット管理ツールなど別の方法で払い出している場合に使う。設定されていれば `role_name` によるファイル参照より優先される。環境変数オーバーライド：`UAIP_ROLE_TOKEN`。`role_name` と `role_token` を両方とも空のままにすると、役割機能が存在しなかった場合と全く同じリクエストが送信される — 詳細は [Safety & Capabilities → 役割](safety.md#役割layer-15) を参照 |
 | `inline_artifacts.image` | bool | `false` | PNG Artifact を MCP レスポンスに base64 インライン化する。**長時間セッションで PNG が蓄積し `"Could not process image"` API エラーが発生するため、デフォルト OFF** — スクリーンショットは Artifact パスを `Read` ツールに渡して表示する |
-| `inline_artifacts.json` | bool | `true` | JSON Artifact を MCP レスポンスに base64 インライン化する |
-| `inline_artifacts.text` | bool | `true` | テキスト Artifact を MCP レスポンスに base64 インライン化する |
+| `inline_artifacts.json` | bool | `false` | JSON Artifact を MCP レスポンスに base64 インライン化する。**デフォルト OFF** — AI は `UAIP.Core.Artifacts.GetArtifact` で必要になったときだけ本文を取得する設計であり、毎レスポンスへ無条件で載せることはしない |
+| `inline_artifacts.text` | bool | `false` | テキスト Artifact を MCP レスポンスに base64 インライン化する。**デフォルト OFF**（理由は `inline_artifacts.json` と同様） |
 
-環境変数（`UAIP_UE_EDITOR_PATH`・`UAIP_UPROJECT_PATH`・`UAIP_ENABLE_SCENARIO`）が設定されている場合は対応する JSON 値を上書きします。フルコメント付きテンプレートは `config.json.example`（Bridge zip 同梱、インストール後は `<bridge-root>/config.json.example`）を参照してください。
+環境変数（`UAIP_UE_EDITOR_PATH`・`UAIP_UPROJECT_PATH`・`UAIP_ENABLE_SCENARIO`・`UAIP_ROLE_NAME`・`UAIP_ROLE_TOKEN`）が設定されている場合は対応する JSON 値を上書きします。フルコメント付きテンプレートは `config.json.example`（Bridge zip 同梱、インストール後は `<bridge-root>/config.json.example`）を参照してください。
+
+### タイムアウトの不変条件
+
+Bridge はタイムアウト設定を検証し、どの不変条件が破られたかによって異なる挙動を取ります。
+
+- `health_poll_interval_seconds` < `unresponsive_timeout_seconds` < `command_timeout_seconds`、かつ `unresponsive_timeout_seconds` < `http_startup_timeout_seconds`。この 4 値は**ひとまとまりのプロファイル**として扱われ、いずれか 1 つの比較でも破られると **4 値すべて**が既定値へ戻される（Bridge のログに警告が出力される）。中途半端なプロファイルのまま起動することはない。
+- `handshake_timeout_seconds` < `command_timeout_seconds` は独立して検証され、違反時は `handshake_timeout_seconds` のみが既定値へ戻される。
+- `TransportTimeouts.HTTP`（エディタ自身の非同期コマンドタイムアウト。既定 `120`）`<` `command_timeout_seconds` は、ハードコードされた定数ではなく**起動/アタッチ直後にエディタの `HealthCheck` 応答から取得した実値**に対して検証される。違反時は警告ログのみで、起動をブロックしたり値をリセットしたりはしない（このチェックが走る時点でエディタプロセスは既に生きているため）。`command_timeout_seconds` をエディタの実際の非同期タイムアウトより小さく設定すると、エディタ側ではまだ実行を継続してよいコマンドを Bridge 側が先に諦めてしまうことになる。詳細は [接続方法 → 長時間コマンドと 120 秒の非同期タイムアウト](connections.md#長時間コマンドと-120-秒の非同期タイムアウト) を参照。
+
+`inflight_suppression_max_seconds` という独立キーは存在しない。`scenario_timeout_seconds + 60` の導出値であり、境界で scenario ルート自体のタイムアウトとレースしないようにするための設計。
 
 ### 実行時の config リロード（`uaip_reload_config`）
 
@@ -259,5 +387,6 @@ uaip_reload_config()
 | 録画時にエディタのトーストが映り込む | `[UAIP.CommandNotification].Enabled=False` |
 | Bearer Token が拒否される | `Saved/UAIP/Auth/http_token.txt`（HTTP）または `ws_token.txt`（WS）と Token 値が一致しているか確認。[Security](security.md) を参照 |
 | `CapabilityNotAvailable: <name>` | `[UAIP.SafetyPolicy]` に `+AllowedCapabilities=<name>` を追記して `UAIP.Core.ReloadCapabilities` を実行（または再起動） |
+| `AllowConcurrentPassiveWaits=True` にしたのに待機コマンドが他セッションを止めたまま | 起動時ログの `Transport concurrency: ...` を確認 — 反映には再起動が必要で、対象は HTTP / MCP のみ（WebSocket は対象外） |
 
 それ以外のケースは [Troubleshooting](troubleshooting.md) を参照。

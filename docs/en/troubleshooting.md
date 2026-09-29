@@ -12,10 +12,11 @@ When something fails, the response includes an `ErrorCode` and `ErrorMessage`. T
 
 | ErrorCode | What it means | Likely fix |
 |---|---|---|
-| `CommandNotFound` | The fully-qualified command name isn't registered | Verify spelling with `uaip_list_commands(ProviderPrefix="UAIP.Core")`. Optional-plugin commands (marked 🧩) require the plugin to be enabled |
+| `CommandNotFound` | The fully-qualified command name isn't registered | Verify spelling with `uaip_list_commands(ProviderPrefix="UAIP.Core")`. For an optional-plugin command (marked 🧩), `ErrorMessage` names the integration and what to do — usually enable the plugin and restart the editor; `UAIP.Core.ListIntegrations` shows every integration's state at once |
 | `CapabilityNotAvailable` | The session lacks the required capability | Read the missing capability name from `ErrorMessage`, add it to `[UAIP.SafetyPolicy] +AllowedCapabilities=<name>` in `Config/DefaultUAIP.ini`, then restart or call `UAIP.Core.ReloadCapabilities` |
-| `PolicyViolation` | A SafetyPolicy gate rejected the call | `"is denied by SafetyPolicy"` → an ini flag is off; `"is not enabled"` → a CLI opt-in flag (`-uaip-enable-scenario`, `-uaip-http-enable`, etc.) is missing at launch |
-| `InvalidParams` | Wrong / missing parameters | Re-read the schema with `uaip_describe_command(CommandName="...")` |
+| `PolicyViolation` | Three distinct causes: (a) a SafetyPolicy gate or missing route opt-in rejected the call, (b) the command's `IsAvailable()` is `false` because a deny-by-default SafetyPolicy flag is off (`UnavailableDetail: SafetyPolicyDisabled`), or (c) `IsAvailable()` is `false` with no more specific detail reported (`UnavailableDetail: Unspecified`, rare) | `"is denied by SafetyPolicy"` → an ini flag is off; `"is not enabled"` → a CLI opt-in flag (`-uaip-enable-scenario`, `-uaip-http-enable`, etc.) is missing at launch. For (b), the flag named in `ErrorMessage` needs to be turned on in `Config/DefaultUAIP.ini`, then restart or call `UAIP.Core.ReloadCapabilities`. For (c), call `UAIP.Core.DescribeCommand` and retry |
+| `AbilityUnavailable` | The command's `IsAvailable()` is `false` for an environment- or build-related reason: a required optional module or plugin isn't loaded, the process wasn't built with a required configuration, the running engine version doesn't support the command, or there is no implementation path to reach it at all | Call `UAIP.Core.DescribeCommand(CommandName="...")` and read `UnavailableDetail` (`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`) — the last two mean no configuration change helps; look for a Toolset bridge or native alternative instead. See [API Reference → Command availability fields](api.md#65-command-availability-fields) |
+| `InvalidParams` | Wrong / missing parameters, or (in a scenario) a `${...}` template reference that couldn't be resolved | Re-read the schema with `uaip_describe_command(CommandName="...")`. For template failures, see [Scenario Execution → Template resolution failures](scenario.md#template-resolution-failures) — this is **not** retried by `RetryCount` |
 | `NotFound` | Target asset / actor / object doesn't exist | Verify the path or name; `SearchAssets` or `ListLevelActors` to confirm |
 | `ExecutionFailed` | Runtime failure inside the command | Read `ErrorMessage` for details. In scenarios, set `RetryCount` on the step |
 | `NotAllowed` | Forbidden path (`/Engine/`) or forbidden timing (editor edits during PIE) | Pick a different target path, or wait until PIE has stopped |
@@ -73,24 +74,45 @@ UAIP edits do call `MarkPackageDirty` (or the equivalent), but the file on disk 
 
 ### "Live Coding rebuild is blocked"
 
-When Live Coding is mid-build and the editor refuses other commands, ask the AI to call `UAIP.Workspace.GetLiveCodingStatus` first; if a build is in progress, wait. Forcing other operations during a Live Coding build leads to undefined behavior. If you need to shut down for a full rebuild, prefer `UAIP.Workspace.ShutdownEditor` over `taskkill` — `taskkill` leaves `mcp_proxy.lock` behind and causes the next session to disconnect.
+When Live Coding is mid-build and the editor refuses other commands, ask the AI to call `UAIP.Workspace.GetLiveCodingStatus` first; if a build is in progress, wait. Forcing other operations during a Live Coding build leads to undefined behavior. If you need to shut down for a full rebuild, prefer `UAIP.Workspace.ShutdownEditor` over `taskkill` — `taskkill` still terminates every UE editor instance on the host (including other projects), so it remains best avoided for that reason. It no longer leaves `mcp_proxy.lock` behind, though: the bridge notices the editor disappeared from the port and releases the lock on its own (unless it is mid a self-requested restart), and even if the bridge process itself were force-terminated, the OS releases the lock the instant that process ends. There is nothing to clean up by hand.
 
 ### "I got `CommandNotFound` for a command listed in the docs"
 
 Most likely:
-- The command's optional plugin isn't enabled in `.uproject` (see the 🧩 marker in [Commands Reference](commands.md)).
+- The command's optional plugin (see the 🧩 marker in [Commands Reference](commands.md)) is disabled. On an editor build you no longer need to add it to `.uproject` or rebuild — just enable the plugin and restart the editor. `ErrorMessage` names the plugin to enable, and `UAIP.Core.ListIntegrations` reports every optional integration's state (`Loaded` / `PluginDisabled` / `PluginNotInstalled` / …) in one call.
+- The plugin genuinely isn't part of this engine version at all (`ErrorMessage` says so) — **do not tell the user to enable it and restart, that fixes nothing**; the fix is a UAIP build for an engine version that includes the plugin (or, for a source build, adding the plugin to that engine and rebuilding).
 - You're on the demo and the command requires Pro (no 🆓 marker).
 - The Toolset bridge command (e.g., `Toolset.Editor.UMG.GetWidgets`) requires UE 5.8+ and the matching Toolset plugin.
 
-Confirm with `uaip_describe_command(CommandName="...")` — `Available: false` tells you which prerequisite is missing.
+Confirm with `uaip_describe_command(CommandName="...")` — `Available: false` tells you which prerequisite is missing. A command that isn't registered at all (rather than `Available: false`) belongs to an optional integration that hasn't loaded; call `UAIP.Core.ListIntegrations` to see why.
+
+### "On UE 5.7, the editor crashed after I deleted a duplicated Groom, Geometry Collection or Cloth asset"
+
+This is a UE 5.7 engine defect, fixed in UE 5.8. An asset that embeds a Dataflow instance — a Groom, Geometry Collection, Chaos Cloth asset or Dataflow attachment — leaves a property-change listener registered when it is duplicated. Once the duplicate is deleted or unloaded, the next property change anywhere in the editor crashes inside `FDataflowInstance::OnOwnerPostEditChangeProperty`, often in an unrelated editor (recompiling a material, for example).
+
+- Duplicates made through UAIP (`DuplicateAsset`, `CopyAsset`, `BakeGroomRBFDeformation`) are not affected: UAIP removes the listener right after duplicating.
+- Duplicates made with the engine's own tools (the Content Browser's Duplicate, and so on) still are. After duplicating such an asset, save it and restart the editor before deleting or unloading the duplicate: an asset loaded fresh in a new editor session does not carry the listener.
+- UE 5.8 is not affected.
+
+### "No response at all while the editor is showing a dialog"
+
+Commands run inside the editor's ticker callback, and a modal dialog stops the game thread with that ticker on it. **Nothing is answered for as long as the dialog is up.** The dialog is sometimes behind another window, so from the AI's side this looks like a frozen editor.
+
+Look at the editor and close the dialog; responses resume.
+
+There is a feature that softens this (`[UAIP.CommandPump]`). With it enabled, commands that only read state — `HealthCheck` and the like — are answered while the dialog is up, and commands that change the editor wait their turn instead of failing, running once the dialog closes. **It is off by default**; see the [configuration reference](config.md).
+
+A progress bar (slow task) is different: nothing is answered there even with the feature on. Cutting into an operation that is halfway through would corrupt state, so that case is refused on purpose.
 
 ### "MCP appears stuck — should I kill the editor?"
 
-**No, don't `taskkill` the editor.** That terminates every UE editor instance on the host (including other projects) and leaves `mcp_proxy.lock`. The right sequence:
+**No, don't `taskkill` the editor**, and don't assume it needs restarting just because a call didn't come back. `taskkill` still terminates every UE editor instance on the host (including other projects), so it remains a bad idea for that reason alone — but it no longer leaves `mcp_proxy.lock` behind. The bridge notices the editor disappeared from the port and releases the lock itself (unless it is mid a self-requested restart), so a stale lock is not something you need to clean up by hand anymore. The right sequence:
 
-1. Try `uaip_execute(CommandName="UAIP.Workspace.RestartEditor")` — the bridge handles the restart cleanly.
-2. If MCP itself is unresponsive, restart only the bridge process (the editor stays running).
-3. Only as a last resort, manually `Stop-Process` the specific editor PID after closing the AI client.
+1. **Call `uaip_get_editor_status()` first** — it probes the connection without triggering auto-launch and returns `State` + `RecommendedAction`. See [Connection Methods → Check editor status](connections.md#check-editor-status-uaip_get_editor_status).
+2. If `State` is `UNRESPONSIVE` (port open, game thread not answering), `RecommendedAction` starts with `WAIT:` — **do not restart or kill anything.** A long-running command (see [Long-running commands and the 120 s async timeout](connections.md#long-running-commands-and-the-120-s-async-timeout)) is most likely still executing. Re-check periodically instead.
+3. Only when `RecommendedAction` actually suggests recovering — e.g. `State` is `CRASHED` (`RETRY:`) or `PORT_OCCUPIED` (`CHECK CONFIGURATION:`) — act on it: `uaip_execute(CommandName="UAIP.Editor.Workspace.RestartEditor")` handles a clean restart for you.
+4. If MCP itself is unresponsive (not just the editor), restart only the bridge process; the editor can stay running.
+5. Only as an absolute last resort, manually `Stop-Process` the specific editor PID after closing the AI client — and only after `uaip_get_editor_status` has ruled out `UNRESPONSIVE`.
 
 ---
 

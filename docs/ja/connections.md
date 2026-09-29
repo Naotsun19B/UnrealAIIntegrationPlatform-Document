@@ -13,6 +13,8 @@ UAIP には 4 つのトランスポートが用意されています。用途に
 
 > **デモ版の制限**：デモバイナリは **MCP トランスポートのみ** に対応しています。HTTP・WebSocket・CLI を使うには製品版が必要です。
 
+> **Claude Code を使っていて MCP サーバーを立てたくない場合**: [Claude Code Plugin](claude-code-plugin.md) は、MCP を使わずに Claude Code から UAIP へ到達する別の方法です。少数の事前承認済みスクリプトを通じて、下記の HTTP API へ直接アクセスします。この後に続く MCP Bridge の節の代替であり、同じエディタセッションに対して両方を同時に使うものではありません。
+
 ---
 
 ## トランスポート比較
@@ -41,6 +43,8 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 5 分で動かす最短ルートは [クイックスタート](quickstart.md) を参照してください。
 
 > MCP Bridge は **プラグイン本体とは別配布** で、ドキュメントリポジトリの [Releases](../../../releases) から `UAIP-MCPBridge-<version>.zip` をダウンロードします（Fab のパッケージング規約によりプラグインには同梱しません）。UE バージョン非依存の単一 zip です。
+
+> **UAIP 1.2.0 以降**: Bridge は、ロールトークンの資格情報をリクエストに付ける前に、[instance proof](security.md#instance-proof) 経由でエディタの身元を照合します。新規接続の最初のリクエスト、および再接続・再起動・config reload の後に毎回行われます。これ自体に追加の設定は不要ですが、`config.json` の `uproject_path`（元々どのモードでも無条件で必須。[設定](config.md#mcp-bridge-configjson) 参照）は、Bridge がこの照合用の起動ごとの秘密値ファイルを読む起点でもあります。`role_token` / `role_name` でロールを設定する場合、`uproject_path` は単に存在するだけでなく正しい値である必要があります。
 
 ### 前提条件
 
@@ -88,6 +92,8 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 | 7 | 検出済みパスを埋めた MCP クライアント登録スニペットを表示 |
 
 完了後、Bridge は `<UAIP-parent>/UAIPMCPBridge/`（`UnrealAIIntegrationPlatform/` と同階層）に配置され、venv Python は `<bridge-root>/.venv/Scripts/python.exe`（Windows）または `<bridge-root>/.venv/bin/python`（macOS / Linux）に作成されます。
+
+> **既存インストールを手動で更新する場合の注意**：ステップ 6（新しく追加された `config.json` キーの補完と、旧インストーラが残した値の新既定値への移行）はインストーラスクリプト経由でのみ実行されます。`install.ps1` / `install.sh` を再実行せず、新しいファイルを既存のデプロイ先へ手動でコピーして更新した場合、`config.json` はそのまま手つかずになります — 新規キーは追加されず、移行も走りません。`config.json` を最新の状態にするには、インストーラを再実行する（繰り返し実行しても安全です。上の「[ステップ 2](#ステップ-2--インストーラを実行)」を参照）か、`config.json.example` と手動で見比べてください。
 
 ### ステップ 3 — MCP サーバーキーを決定
 
@@ -145,14 +151,155 @@ AI クライアント上での表示にしか影響しないので、ユニー�
   "editor_path":                  "",
   "uproject_path":                "",
   "http_startup_timeout_seconds": 120,
-  "command_timeout_seconds":      60,
+  "command_timeout_seconds":      180,
   "log_level":                    "INFO",
   "enable_scenario":              true,
-  "inline_artifacts": { "image": false, "json": true, "text": true }
+  "inline_artifacts": { "image": false, "json": false, "text": false }
 }
 ```
 
 `config.json` の `editor_path` / `uproject_path` はフォールバック値で、MCP クライアントの `env`（`UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH`）が優先されます。シナリオで何ができるかは [シナリオ実行](scenario.md)、`config.json` の全キーは [設定リファレンス](config.md#mcp-bridge-configjson) を参照。
+
+### ゲストモード接続
+
+ゲストモードは、Bridge が自分でエディタを起動する代わりに、人間が既に開いているエディタへアタッチできるようにする仕組みです。エディタ内蔵の Terminal パネルから AI CLI を起動し、その AI にホスト側のエディタそのものを操作させるワークフローの土台になります。
+
+**ゲストモードで変わること:**
+
+- Bridge は `launch_editor()` を一切呼びません — 最初のツール呼び出しでも、クラッシュからの自動復旧でも、`uaip_reload_config` の副作用としても起動しません。応答するエディタが見つからない場合は、起動する代わりに状況を報告します。
+- `config.json` の `editor_path` が不要になります — 詳細は [設定リファレンス → MCP Bridge config.json](config.md#mcp-bridge-configjson) を参照。
+- ポート解決は、まずエディタが書き出す[接続情報の記述子ファイル](config.md#接続情報の記述子ファイル)を試し、駄目なら `http_port` へフォールバックします。
+
+**設定手順:**
+
+1. `Config/DefaultUAIP.ini` で `[UAIP.Transport].AutoStartMCP=True` を有効にする（[設定リファレンス](config.md#uaiptransport--通常起動のエディタで-mcp-transport-を自動起動する) を参照）。共有 ini を変更したくない場合は、`-uaip-mcp-enable` フラグを明示してエディタを起動してもかまいません。
+2. エディタを通常どおり起動する — Epic Games Launcher・`.uproject` のダブルクリック・IDE のデバッグ実行など。`AutoStartMCP` を有効にしていれば特別なフラグは不要です。
+3. ゲスト側 Bridge の `config.json` で `attach_only: true` を設定する（または環境変数 `UAIP_ATTACH_ONLY=1`）。`uproject_path` は引き続き同じプロジェクトを指す必要がありますが、`editor_path` は空のままでかまいません。
+4. AI クライアントをいつもどおりその Bridge へ向ける。最初の `uaip_execute` 呼び出しでポートが解決され、`HealthCheck` でプロジェクトの同一性が検証されてからアタッチします — 新しいエディタプロセスは起動しません。
+
+> **推奨**: `[UAIP.Roles]` を未定義のままにせず、ゲスト側 Bridge には制限付きの[役割](safety.md#役割layer-15)を割り当ててください。役割を設定していない場合、ゲスト接続は一次接続と同じことを何でも実行できます。詳細は [Security → 運用上のセキュリティ注意点](security.md#運用上のセキュリティ注意点) を参照。
+
+アタッチ先のエディタが応答しなくなっても、ゲストモードは代わりのエディタを起動しません。これは、たまたま他人のエディタへ `ATTACHED` になっている通常（非ゲスト）の Bridge でも同じです。どちらも、黙って 2 つ目のエディタを起動する代わりに `RecommendedAction`（下記「[エディタ状態の確認](#エディタ状態の確認uaip_get_editor_status)」を参照）を通じて状況を報告します。
+
+### エディタ状態の確認（`uaip_get_editor_status`）
+
+`uaip_get_editor_status` は、**自動起動を一切トリガーせず**、Bridge から見た現在のエディタ接続状態を返します。通常の `uaip_execute` 呼び出しと異なり、エディタの起動やアタッチは行わず、観測のみを行います。
+
+```
+uaip_get_editor_status()
+→ {
+    "IsConnected":      false,
+    "IsPortListening":  true,
+    "State":            "UNRESPONSIVE",
+    "Ownership":        "ATTACHED",
+    "IsAttachOnly":     false,
+    "RecommendedAction": "WAIT: the editor port is open but the game thread is not responding. Do not restart or kill the process; a long-running command is likely in progress."
+  }
+```
+
+| フィールド | 意味 |
+|---|---|
+| `IsConnected` | 呼び出し時点で実行される**実測の HTTP ヘルス ping** — キャッシュ値ではない |
+| `IsPortListening` | 呼び出し時点で実行される**実測の TCP connect チェック** — キャッシュ値ではない |
+| `State` | Bridge のライフサイクル状態機械を表す診断用ラベル（`STOPPED` / `STARTING` / `RUNNING` / `UNRESPONSIVE` / `PORT_OCCUPIED` / `CRASHED` / `RESTARTING`） |
+| `Ownership` | この Bridge がエディタを自分で起動したか（`OWNED`）、自分では起動していないエディタへアタッチしたか（`ATTACHED`）、まだどちらも行っていないか（`NONE`）。あくまで呼び出し時点の観測値であり履歴ではない。詳細は [ゲストモード接続](#ゲストモード接続) を参照 |
+| `IsAttachOnly` | この Bridge がゲストモード（`config.json` の `attach_only`）で設定されているか |
+| `RecommendedAction` | 呼び出し側が実際に取るべき行動 |
+| `Lock` | このプロジェクトのディスク上の `mcp_proxy.lock` ファイルの診断スナップショット。詳細は下記「[ロック診断](#ロック診断)」を参照 |
+| `Config` | Bridge の現在の設定を生み出した `config.json` 読み込みの診断スナップショット。詳細は下記「[Config 診断](#config-診断)」を参照 |
+
+ゲストモードの Bridge、および他人のエディタへたまたま `ATTACHED` になっている通常の Bridge では、`RecommendedAction` が自動起動を約束することは決してありません。オーナーモードの Bridge なら `RETRY: ... The next tool call launches a fresh one automatically` と返す場面でも、これらはそのエディタが応答しなくなった時点で代わりに `CHECK CONFIGURATION: ...` を返します — 代わりのエディタを起動することこそが、してはならない動作だからです。
+
+このツールは**呼び出しごとに**トランスポートをプローブするため、`IsConnected` と `IsPortListening` はどちらも都度の実測値であり、陳腐化しうるバックグラウンドポーリングの値を読んでいるわけではありません。
+
+> **重要 — 判定には `State` ではなく `RecommendedAction` を使ってください。** `State` はログを読む人間向けの診断用文字列であり、将来のリリースで値が追加される可能性があります（それは破壊的変更として扱いません）。安定した機械可読の契約は `RecommendedAction` の方です。先頭は必ず `WAIT:` / `PROCEED:` / `RETRY:` / `CHECK CONFIGURATION:` / `CHECK TRANSPORT SETTINGS:` のいずれかで始まり、呼び出し側は `State` の値集合で分岐するのではなくこの先頭の動詞で分岐してください。
+
+`State` が `UNRESPONSIVE` で `RecommendedAction` が `WAIT:` から始まっている場合は、**エディタを再起動したりプロセスを終了したりしないでください。** ポートは開いていますがゲームスレッドがビジー状態にあるだけで、多くの場合は長時間コマンド（下記「[長時間コマンドと 120 秒の非同期タイムアウト](#長時間コマンドと-120-秒の非同期タイムアウト)」を参照）がまだ実行中です。待ってから再度 `uaip_get_editor_status` で確認してください。
+
+このツールは PID を一切返しません — PID を返すと、それを終了させたくなる誘惑を生むため、`UNRESPONSIVE` の扱いとして避けるべきものです。
+
+#### ロック診断
+
+`Data.Lock` は、このプロジェクトの `mcp_proxy.lock` ファイルについて Bridge が現在把握している内容を報告します。`State` / `Ownership` とは独立した情報です：
+
+```json
+"Lock": {
+  "Present": true,
+  "HeldByThisBridge": false,
+  "RecordedPort": 8765,
+  "RecordedProject": "F:/Projects/MyProject/MyProject.uproject",
+  "RecordedAt": "2026-09-02T10:15:00Z",
+  "RecordedPortListening": true
+}
+```
+
+| フィールド | 意味 |
+|---|---|
+| `Present` | ロックファイルがディスク上に存在するか。**存在すること自体は、現在誰かが保持していることを意味しません** — Bridge が終了する（正常終了・強制終了のどちらでも）とロックは解放されますが、ファイル自体が残ることはあり、次に起動する Bridge がそのまま上書きして取得します。 |
+| `HeldByThisBridge` | 現在このロックを保持しているのが、このブリッジプロセス自身かどうか。 |
+| `RecordedPort` | ロックファイルに記録されている HTTP ポート。ファイルが存在しない、または解釈できない場合は `null`。 |
+| `RecordedProject` | ロックファイルに記録されている `.uproject` パス。取得できない場合は `null`。 |
+| `RecordedAt` | ロックファイルが書き込まれた時刻。取得できない場合は `null`。表示専用であり、ロックが古いかどうかの判定には使わないでください。 |
+| `RecordedPortListening` | `RecordedPort` に現在何かが listening しているか。判定できない場合は `null` になります： `RecordedPort` がこのブリッジ自身の設定ポートと一致しない場合（診断プローブは自分自身のポートしか観測できず、任意の別ポートは観測できません）、または `RecordedPort` 自体をロックファイルから読み取れなかった場合のいずれかです。 |
+
+`RecommendedAction` と併せて読んでください。別の Bridge が本当にロックを保持している場合、`RecommendedAction` はそのセッションの切断・停止を指します — ロックファイルの削除を指すことは決してありません。`Present` が `true` で `HeldByThisBridge` が `false`、かつ `RecordedPortListening` が `false` の組み合わせは、多くの場合ファイルが単に残っているだけで、次の起動がそのまま問題なく引き継ぐことを意味します。
+
+主な用途:
+
+- `UAIP.Editor.Workspace.ShutdownEditor` や `UAIP.Editor.Workspace.RestartEditor` のようなライフサイクルコマンドを発行する前に、実際にそれが意味を持つ状態かを確認する。
+- コマンド呼び出しが `Timeout` エラーを返した後、再実行するかどうかを判断する前にエディタがまだ処理中かを確認する。
+
+#### Config 診断
+
+`Data.Config` は、Bridge の現在の設定を生み出した読み込み — プロセス起動時の読み込み、または直近の `uaip_reload_config` 呼び出しのどちらか新しい方 — で `config.json` から実際に読み取った内容を報告します：
+
+```json
+"Config": {
+  "Path": "F:/Projects/MyProject/Plugins/UAIPMCPBridge/config.json",
+  "Status": "Loaded",
+  "KeyCount": 7,
+  "Keys": ["editor_path", "uproject_path", "http_port", "command_timeout_seconds", "log_level", "enable_scenario", "inline_artifacts"],
+  "LastReloadError": ""
+}
+```
+
+| フィールド | 意味 |
+|---|---|
+| `Path` | Bridge が読み取りを試みた `config.json` のパス。 |
+| `Status` | ファイルが存在し解析できた場合は `"Loaded"`、そのパスに存在しなかった場合は `"Absent"`（この場合 Bridge は既定値と環境変数のみで動作する）。ここに `"Unreadable"` は存在しない — ファイルが存在するが解析できない場合、Bridge はそもそも起動を拒否する（下記「[MCP セットアップのトラブルシューティング](#mcp-セットアップのトラブルシューティング)」を参照）ため、その状態が稼働中のセッションに報告として届くことはない。 |
+| `KeyCount` | `config.json` に実際に含まれていたトップレベルキーの数。 |
+| `Keys` | それらキーの**名前のみ** — 値は一切含まれない。この項目は診断用のサーフェスであり、稼働中の Bridge から `role_token` のようなシークレットを読み出す手段ではない。 |
+| `LastReloadError` | 直近の `uaip_reload_config` 呼び出し（あれば）が成功した場合、またはまだ一度も呼ばれていない場合は空文字列。直近のリロード試行が `config.json` の解析に失敗した場合は非空になり、メッセージにファイルと理由が記される — このとき Bridge は既に持っていた設定のまま動作を続ける（リロード失敗が現在のセッションを止めることはない）。上記「[MCP クライアントを再起動せずに config をリロード](#mcp-クライアントを再起動せずに-config-をリロード)」を参照。 |
+
+上記の `RecommendedAction` にも、`Config` に報告すべき事項がある場合 — `Status` が `"Absent"` か、`LastReloadError` が非空 — は追加の一文が付与されます。`RecommendedAction` しか読まない呼び出し側でも、毎回 `Data.Config` を読まなくてもこの事実に気づける仕組みです。
+
+### 長時間コマンドと 120 秒の非同期タイムアウト
+
+HTTP トランスポートは、Bridge の `command_timeout_seconds` 設定とは独立して、それ自身の非同期コマンドタイムアウト（**120 秒**）を持っています（[設定リファレンス → タイムアウトの不変条件](config.md#タイムアウトの不変条件) を参照）。ゲームスレッドをそれより長く占有するコマンド — 現時点では `UAIP.Editor.MetaHuman.BuildMetaHuman` が代表例 — は、処理自体は正当に継続中であっても、これを超過することがあります。
+
+**UAIP 1.2.0 以降**、`uaip_execute` は任意の引数 `TimeoutSeconds` を受け付けます — `CommandName` や `Params` と同じ階層に置く 1〜1800 の JSON 数値（`Params` の中ではありません）で、この呼び出しに限り 120 秒の待ちを上書きします。省略すれば既定の 120 秒のままです。範囲外の値・型違いはコマンドの実行前に拒否され、その JSON-RPC の invalid-params エラーのメッセージには「execution timeout」という文言が含まれません — そのため、この拒否と、下記の「コマンドがまだ実行中かもしれない」ケースを取り違えることはありません。Bridge は自分自身の読み取りタイムアウトと、健全性ポーリングを抑止する時間の両方を、要求された待ち時間に合わせて自動的に延長します。これにより、既定より正当に長くかかる呼び出しが Bridge 側で打ち切られることも、その呼び出しにまだ応答しているだけのビジーなエディタを途中で無応答と誤判定することもありません。詳細は [API リファレンス → リクエスト形式](api.md#2-リクエスト形式)（§2.4）を参照してください。
+
+120 秒の窓（`TimeoutSeconds` を指定した場合はその窓）を超えた場合:
+
+1. 呼び出しは `Timeout` を返しますが、**コマンドはエディタ側で実行を継続している可能性があります**。
+2. 同じコマンドをすぐに再実行しないでください — 同じ対象に対する 2 度目の同時実行を整合させる設計にはなっていません。
+3. `uaip_get_editor_status` を呼んで `RecommendedAction` に従ってください。コマンドがまだ実行中の間は `State: "UNRESPONSIVE"` と `WAIT:` で始まる `RecommendedAction` が返ることが想定されます。
+4. エディタが再び応答するようになった時点で、コマンドが artifact を生成するものであれば、そこで初めて artifact が現れる場合があります。`Timeout` が返ったからといって何も起きていないと決めつけず、確認してください。
+
+### 応答待ちの間に送られる進捗通知
+
+AI クライアントが `uaip_execute` の呼び出しに MCP の進捗トークン（`_meta.progressToken`）を添えると、Bridge はその呼び出しが返るまでおよそ 5 秒おきに `notifications/progress` を送出します。内容は Bridge がエディタの外側から観測できる情報だけです：
+
+- その呼び出しが何秒応答待ちになっているか
+- エディタの状態を `STARTING` / `RUNNING` / `UNRESPONSIVE` の 3 値に畳んだもの（1 つの呼び出しを待つ間に必要なのはこの区別だけです）
+
+ここから 3 点が導かれます：
+
+- **エディタ内部の情報は一切含まれません。** 監査が何件目を走査しているか、いまどのレポートを処理しているか、トレース解析がどこまで進んだか — いずれも通知には載りません。それを知るには、その情報を持つコマンドを呼びます（監査ジョブなら `UAIP.Editor.Assets.GetAssetAuditStatus`、トレース解析なら `UAIP.Runtime.Insights.Analysis.GetTraceAnalysisStatus`）。
+- **対象は `uaip_execute` のみで、要求された場合にのみ送られます。** `uaip_run_scenario` は対象外です（独自の実行時間上限とステップ構造を持ち、経過秒数のカウンタ 1 本では説明できないため）。進捗トークンが無ければ何も送られません。
+- **その通知が表示されるかどうかはクライアント側の判断です。** Bridge は送出しますが、描画するかは MCP クライアントの実装次第で、`notifications/progress` を扱わないクライアントでは応答待ちの間に何も表示されません。本ドキュメント執筆時点の Claude Code がその一例で、応答待ちの表示は通常のスピナーのみ、経過秒数もエディタ状態も表示されません。これは Bridge の送出が失敗している兆候ではありません。
+
+クライアントが表示しない場合でも、「エディタは動いているのか」という同じ問いには `uaip_get_editor_status` が必要なときに答えられます — 上の [エディタ状態の確認](#エディタ状態の確認uaip_get_editor_status) を参照してください。
 
 ### MCP クライアントを再起動せずに config をリロード
 
@@ -181,6 +328,7 @@ uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\
 | Python 起動エラー | venv 内の依存不足 | インストーラを再実行（venv が再作成される） |
 | `PolicyViolation` が返る | Capability 未付与 / SafetyPolicy フラグ OFF | [Safety & Capabilities](safety.md) を参照 |
 | `CommandNotFound` | コマンド名の間違い | `uaip_list_commands(ProviderPrefix="UAIP.Core")` で確認 |
+| Bridge がそもそも起動しない（ツールが一つも使えるようにならない） | `config.json` は存在するが解析できない（JSON が壊れている・エンコーディングが不正・1 MiB のサイズ上限超過）— 誰も選んでいない既定値へ黙ってフォールバックする代わりに、Bridge は起動そのものを拒否し、どの MCP ツール呼び出しも可能になる前に終了する | AI のコンテキストではなく **MCP クライアントのサーバーログ** を確認する — Bridge は正確なパスと理由を stderr に出力して終了コード 2 で終了する。ツール呼び出しに一度も応答しないため `uaip_get_editor_status` でこれを読み取ることはできない |
 
 より広範な診断は [トラブルシューティング](troubleshooting.md) を参照してください。
 
@@ -188,7 +336,7 @@ uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\
 
 ## HTTP API（製品版）
 
-HTTP API は REST インターフェースを公開します。AI クライアントを介さない独自スクリプト・CI/CD・独自ツール連携に向いています。socket 層は `0.0.0.0` にバインドするため、Bearer トークンとファイアウォール越しに別 PC からも到達できます（FullHTTP モード）。アクセス制御はトークンと運用側のネットワーク設定で担保してください。詳細は [セキュリティ → ネットワーク面](security.md#ネットワーク面) を参照。
+HTTP API は REST インターフェースを公開します。AI クライアントを介さない独自スクリプト・CI/CD・独自ツール連携に向いています。FullHTTP モードでも socket 層はループバック（`127.0.0.1`）にバインドされ、別 PC から到達するにはエンジン設定層での bind アドレス上書きを運用者が明示的に行う必要があります（UAIP 側にはそのための設定項目はありません）。詳細は [セキュリティ → ネットワーク面](security.md#ネットワーク面) を参照。
 
 ### 有効化
 
@@ -224,11 +372,14 @@ Authorization: Bearer <token>
 -uaip-http-no-auth
 ```
 
+**UAIP 1.2.0 以降**、きちんとした振る舞いのクライアントは、このトークンをリクエストに付ける**前に**、新設の未認証ルート `GET /uaip/instance-proof`（下表参照）で、自分が本当にこのプロジェクトのエディタと話しているか（再起動後に同じポートに居座った別プロジェクトのエディタや無関係なプログラムではないか）を確かめます。MCP Bridge・[Claude Code Plugin](claude-code-plugin.md) はどちらもこれを自動で行います。プロトコルの詳細は [セキュリティ → Instance proof](security.md#instance-proof) を参照してください。
+
 ### エンドポイント
 
 | メソッド | パス | 説明 |
 |---|---|---|
 | GET | `/uaip/health` | ヘルスチェック — `{"status":"ok"}` を返す |
+| GET | `/uaip/instance-proof?challenge=<64桁の小文字16進>` | 資格情報を送る**前に**、このポートがこのプロジェクトのエディタかを確認する — 認証不要。[セキュリティ → Instance proof](security.md#instance-proof) 参照 |
 | GET | `/uaip/capabilities` | 現在のセッションで利用可能な Capability 一覧 |
 | POST | `/uaip/sessions` | セッション作成 — `{"SessionId":"..."}` を返す |
 | DELETE | `/uaip/sessions/:sessionId` | セッション終了 |
@@ -247,9 +398,12 @@ Authorization: Bearer <token>
 {
   "CommandName": "UAIP.Core.HealthCheck",
   "Params": {},
-  "SessionId": "my-session"
+  "SessionId": "my-session",
+  "TimeoutSeconds": 300
 }
 ```
+
+`TimeoutSeconds` は任意のトップレベルフィールド（`Params` の中ではない）です。1〜1800 の JSON 数値を指定すると、このリクエストに限り下記の既定 120 秒を上書きします。長時間かかる Automation Test の実行など、コマンドがまだ正当に処理を続けているのに打ち切られてしまう事態を避けられます。省略すれば既定の 120 秒のままです。範囲外の値・型違い・数値の文字列（`"300"` のような）を指定すると、コマンドの実行前に HTTP 400・`ErrorCode: "InvalidParams"` で拒否されます。全フィールドの一覧は [API リファレンス → リクエスト形式](api.md#2-リクエスト形式)（§2.1）を参照してください。
 
 レスポンス：
 
@@ -269,8 +423,8 @@ Authorization: Bearer <token>
 |---|---|
 | 最大リクエストボディ | 64 KiB |
 | 最大 Artifact レスポンス | 100 MiB |
-| 最大同時コマンド数 | 1 |
-| コマンドタイムアウト | 120 秒 |
+| 最大同時コマンド数 | 1（既定。ini で受動的待機コマンドを除外可能 — HTTP / MCP のみ。[設定リファレンス → `[UAIP.Transport]` 受動的待機の同時実行](config.md#uaiptransport--受動的待機の同時実行既定オフ) 参照） |
+| コマンドタイムアウト | 120 秒（既定。任意のトップレベルフィールド `TimeoutSeconds`（1〜1800 秒）でリクエストごとに上書き可 — 上記 [コマンド実行例](#コマンド実行例) 参照） |
 
 ---
 

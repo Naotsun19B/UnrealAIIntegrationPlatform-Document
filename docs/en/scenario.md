@@ -57,9 +57,9 @@ sequenceDiagram
         Hd-->>Di: StepResult
         Di-->>Sc: StepResult
         alt StepResult.Success == false
-            alt AbortOnFailure == true
-                Note over Sc: skip remaining steps
-            else AbortOnFailure == false
+            alt AbortOnFailure of the failed step == true
+                Note over Sc: skip every remaining step
+            else AbortOnFailure of the failed step == false
                 Note over Sc: continue
             end
         end
@@ -84,7 +84,7 @@ uaip_run_scenario(
       "StepName":        "Load",        # [A-Za-z0-9_]{1,64}, unique
       "CommandName":     "UAIP.Runtime.PIE.LoadMap",
       "Params":          { "MapPath": "/Game/Maps/TestMap" },
-      "AbortOnFailure":  true,          # default: true
+      "AbortOnFailure":  true,          # default: true — see "Failure handling and cleanup"
       "RetryCount":      0,             # default: 0
       "TimeoutSeconds":  60             # default: 60
     },
@@ -97,17 +97,59 @@ uaip_run_scenario(
 
 ## Template splicing `${...}`
 
-Use `${StepName.Data.<path>}` to pass output from an earlier step into a later step's params.
+Use `${StepName.Data.<pointer>}` to pass output from an earlier step into a later step's params.
 
 | Expression | Meaning |
 |---|---|
 | `${StepName.Success}` | bool — true if the step succeeded |
 | `${StepName.ErrorCode}` | string error code |
-| `${StepName.Data.<JsonPointer>}` | Value inside the step's response data |
+| `${StepName.Data.<pointer>}` | Value inside the step's response data — see notation below |
+| `${StepName.Data}` | The whole `Data` object |
 | `${StepName.Artifacts[0]}` | First artifact id of the step |
 | `${Variables.<key>}` | Value from the `Variables` map |
 
+### JSON Pointer notation
+
+The pointer body has **two accepted notations**, told apart by its first character:
+
+| Notation | Trigger | Behaviour |
+|---|---|---|
+| **Strict** | Body starts with `/` | Read verbatim as an RFC 6901 JSON Pointer — `.` is never treated as a separator, so a key that itself contains `.` becomes addressable |
+| **Lenient** | Body starts with anything else | `.` and `/` are both accepted as segment separators — this is how most existing scenarios are written |
+
+Examples:
+
+| Expression | Notation | Pointer | Result |
+|---|---|---|---|
+| `${S.Data.Result}` | lenient | `/Result` | The top-level `Result` field |
+| `${S.Data.Result/0/refPath}` | lenient | `/Result/0/refPath` | Array element 0's `refPath` field |
+| `${S.Data./refPath}` | strict | `/refPath` | Same field, written strictly |
+| `${S.Data./a.b/0}` | strict | `/a.b/0` | Array element 0 under the key `a.b` — only reachable in strict notation, since lenient would split on the `.` |
+| `${S.Data}` | — | *(empty)* | The whole `Data` object |
+| `${S.Data./With~1Slash}` | strict | `/With~1Slash` | A field literally named `With/Slash` (`/` escaped as `~1`) |
+| `${S.Data.With~0Tilde}` | lenient | `/With~0Tilde` | A field literally named `With~Tilde` (`~` escaped as `~0`) |
+
+The `~1` / `~0` escapes are part of JSON Pointer semantics, not of the surface notation, so they apply the same way in **both** strict and lenient form. A key that itself contains `~` must be written as `~0`.
+
+Additional constraints:
+
+- **Object key matching is case-sensitive, exact match.** `refPath` does not match a field named `RefPath` or `REFPATH`.
+- **Array indices** must be `0` or `[1-9][0-9]*` — no leading zeros (`01`), no sign (`+1`), no trailing characters (`1abc`), no leading whitespace.
+- **Objects and arrays can only be spliced as a whole field.** Embedding one inside a larger string (e.g. `"prefix-${S.Data.SomeObject}"`) fails the step instead of silently rendering as an empty string.
+
 Templates are resolved once before the step runs. They are **not** re-evaluated — a template inside `Variables` is passed as a literal string, not re-expanded.
+
+### Template resolution failures
+
+A malformed reference — unknown sub-identifier, empty pointer, invalid `~` escape, a pointer that doesn't match anything in the step's data, an oversized value, an object/array embedded in a mixed string, and so on — fails the step with `ErrorCode: InvalidParams`. This is **not retried**: `RetryCount` only applies to `ExecutionFailed` and `PreconditionFailed`.
+
+### Template size limits
+
+| Limit | What it bounds | Enforced at |
+|---|---|---|
+| 64 KiB | One `Variables` entry's value | When the variable is stored |
+| 8 KiB | One value spliced from `Step.Data` | Template resolution |
+| 256 KiB | One step's whole Params payload, and the total resolved expansion | Submission, and again at resolution |
 
 ### Single-pass resolution
 
@@ -147,7 +189,9 @@ If you want `Field` to actually receive `42`, reference `${B.Data.x}` directly f
 |---|---|
 | `Completed` | All steps succeeded |
 | `Failed` | At least one step failed |
-| `Aborted` | Scenario exceeded the 1800-second wall-clock cap |
+| `TimedOut` | The scenario-wide 1800-second wall-clock cap fired before the run finished |
+
+A `TimedOut` response also carries `AllStepsSucceeded: false` and a top-level `ErrorCode: "Timeout"` (with a fixed `ErrorMessage` explaining that the editor may still be working on the scenario in the background). The HTTP status stays **200**, same as every other scenario response — branch on `Status` / `ErrorCode`, never on the HTTP status. `StepResults` may be empty even though steps did run: the runner has no safe way to hand the watchdog its in-progress step results, so a timeout is reported without them rather than with a partial, possibly-stale list.
 
 ---
 
@@ -162,12 +206,25 @@ If you want `Field` to actually receive `42`, reference `${B.Data.x}` directly f
 
 ---
 
+## Exclusivity with single commands
+
+A scenario's exclusivity is not limited to other scenarios — it also excludes single commands submitted through `uaip_execute`, in both directions, across **every transport** (HTTP, MCP, and WebSocket alike):
+
+- **While a scenario is running**, a single command submitted by any session — including the session that submitted the scenario — is refused with `TooManyRequests`. This holds for the whole run, up to the 1800-second wall-clock cap; if the wall-clock watchdog fires without the runner actually finishing, the gate stays closed until it does. The one exception is a passive-wait command (see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default)): those are still admitted while a scenario runs, provided `AllowConcurrentPassiveWaits=True` is set — they don't change editor state, so they can't interleave with a scenario's steps.
+- **The reverse also holds**: submitting a scenario is refused with `TooManyRequests` while a non-passive command is still executing anywhere in the editor — even one that has already timed out its own response (the HTTP/MCP 120-second async timeout) but is still running server-side, such as a map load or a shader recompile still in progress. Passive waits don't count toward this check, so a long-running wait never blocks starting a scenario.
+- If the same command stays in flight for far longer than a scenario's own wall-clock cap would allow, the rejection changes from `TooManyRequests` to `InternalError` with a message indicating the editor needs to be restarted — this distinguishes ordinary congestion (worth retrying) from a wedged handler (not worth retrying).
+- Neither direction reveals *what* is currently running, only that something is.
+
+This is a correctness fix, not a new restriction you opt into: earlier releases only excluded other scenarios, so a single command could interleave mid-scenario. If your scenario-based workflow relied on being able to slip a single command in between two scenario submissions from the same session, that no longer works — split the work into two scenarios instead, or issue the single command before or after the scenario, not during.
+
+---
+
 ## Example — full PIE validation flow
 
 ```json
 {
   "ScenarioName": "PIE_HealthCheck",
-  "Variables": { "ExpectedHp": 100 },
+  "Variables": { "ExpectedHp": "100" },
   "Steps": [
     { "StepName": "Load",   "CommandName": "UAIP.Runtime.PIE.LoadMap",
       "Params": { "MapPath": "/Game/Maps/TestMap" } },
@@ -181,12 +238,66 @@ If you want `Field` to actually receive `42`, reference `${B.Data.x}` directly f
                   "PropertyName": "Health",
                   "ExpectedValue": "${Variables.ExpectedHp}" } },
     { "StepName": "Stop",   "CommandName": "UAIP.Runtime.PIE.StopPIE",
-      "Params": {}, "AbortOnFailure": false }
+      "Params": {} }
   ]
 }
 ```
 
-Setting `AbortOnFailure: false` on the `Stop` step ensures PIE is always terminated even if an earlier step fails.
+As written, a failure in `Load` … `Assert` finalizes the scenario at that step and `Stop` is never dispatched — PIE stays running. See the next section for why, and what to do about it.
+
+---
+
+## Failure handling and cleanup
+
+`AbortOnFailure` is evaluated on **the step that just failed**, never on the steps that come after it:
+
+- The failed step's own `AbortOnFailure` is `true` (the default) → the scenario finalizes immediately. Every later step is never dispatched and never appears in `StepResults`.
+- The failed step's own `AbortOnFailure` is `false` → execution continues with the next step; the failure is still recorded in `StepResults`.
+
+`AbortOnFailure: false` therefore means "a failure of **this** step is not fatal", not "run this step even after an earlier failure". Putting it only on a trailing cleanup step (`StopPIE`, delete-temp-asset, close-tab, …) does **not** make that step run — it is skipped along with everything else after the failure.
+
+The same rule applies when a step fails template resolution (`InvalidParams`): that step's own flag decides.
+
+### Making a cleanup step actually run
+
+| Approach | What to do | Trade-off |
+|---|---|---|
+| Give up fail-fast | Set `AbortOnFailure: false` on **every step that precedes the cleanup steps**, not only on the cleanup steps | The scenario never stops early, so steps after a failure run against a broken precondition and usually fail too. Read `StepResults` to find the first failure |
+| Clean up outside the scenario | Keep fail-fast and run the cleanup afterwards — a `uaip_execute` call, or a second cleanup-only scenario, issued once the first scenario returns | Extra round trips, but the cleanup is driven by the client, so it also covers the cases below |
+| Leave nothing to clean | Order the scenario so the failure-prone steps come before anything that leaves a trace | Not always possible |
+
+### What no in-scenario pattern can cover
+
+- **Submit-time rejects** (opt-in missing, malformed payload, `TooManyRequests`) — no step runs at all.
+- **The scenario wall-clock watchdog** — when the whole-scenario budget expires, the route responds immediately with a result that carries **no `StepResults`**, while the runner keeps going in the background. The response cannot tell you whether the cleanup step ran, and a new submission is refused until the runner finishes.
+- **An editor crash or hang mid-scenario** — nothing after it runs.
+
+Whichever approach you take, confirm the traces are gone (PIE stopped, temp assets deleted) with a state dump after the scenario returns instead of inferring it from `StepResults`.
+
+---
+
+## Scenarios and undo
+
+Each editing command inside a scenario is now pushed onto the undo history as its own independent entry whenever it succeeds and actually records a change.
+
+### Before and after
+
+- **Before**: Running several editing commands inside one scenario left only a single undo history entry — named after the first editing command that succeeded. Undoing that one entry rolled back every edit in the scenario at once, regardless of the name shown.
+- **Now**: Editing commands inside a scenario are pushed one at a time. The number of entries equals the **number of commands that actually recorded a change** — not the number of scenario steps. Read-only steps never push an entry.
+
+This means the name `Undo` returns in its response now matches the range that actually gets rolled back. You can undo just the last command, or pass a `StepCount` to roll back a scenario's edits in one call. See the [command reference](commands.md) for `Undo` / `Redo`.
+
+### `StepCount` limit
+
+The `StepCount` parameter on `Undo` / `Redo` now allows up to **100** — matching the scenario's max steps in [Hard limits](#hard-limits). The two limits are kept in sync so that even a long, per-step-granular scenario can be rolled back with a single `Undo` call.
+
+Matching the limits does not guarantee a single call always rolls back the whole scenario — that still requires no other edit to have happened after the scenario, each editing step to have pushed exactly one entry, and all of those entries to still be present in the history.
+
+### Caveats
+
+- Undo acts on the editor's single, shared history and **does not distinguish who made the edit**. Edits from another concurrent session, or made by hand by a human operator, sit in the same history and can get rolled back too if you request a large `StepCount`.
+- **`GetUndoHistory` shows you what would be undone before you undo it.** It executes nothing and returns how many steps can be undone or redone, together with their names. It needs only `EditorInspect` — not the `EditorUndoRedo` capability undo itself requires (denied by default) — so the history stays readable even where undo is not permitted.
+- Check the target with it before passing a large `StepCount`. Calling `Undo` in small increments and reading the names it returns still works too.
 
 ---
 
@@ -195,6 +306,8 @@ Setting `AbortOnFailure: false` on the `Stop` step ensures PIE is always termina
 | Symptom | Cause | Fix |
 |---|---|---|
 | `PolicyViolation: Scenario execution is not enabled` | `enable_scenario` not set | Add `"enable_scenario": true` to `config.json` |
-| Steps 2+ missing from `StepResults` | Step 1 failed with default `AbortOnFailure: true` | Set `"AbortOnFailure": false` on the failing step if you want to continue |
+| Steps 2+ missing from `StepResults` | Step 1 failed with default `AbortOnFailure: true` | Set `"AbortOnFailure": false` on **the failing step**, not on the steps you want to keep running |
+| A cleanup step marked `AbortOnFailure: false` never ran | An earlier step failed with the default `AbortOnFailure: true`, so the scenario finalized before reaching it | See [Failure handling and cleanup](#failure-handling-and-cleanup) — mark every preceding step `false`, or clean up outside the scenario |
 | Template left as literal `"${...}"` | Single-pass resolver — `Variables` are not re-expanded | Pass the value directly via `Variables` or split into two steps |
+| Step fails with `InvalidParams` and a template-related message | Malformed `${...}` reference (wrong notation, bad escape, pointer miss, oversized value, object/array in a mixed string) | Re-read [JSON Pointer notation](#json-pointer-notation) above; this is not retried by `RetryCount` |
 | `TooManyRequests` | Another scenario is running | Wait for it to finish |
