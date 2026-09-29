@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1218 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1639 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1223 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1644 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -135,7 +135,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Validation 🧩 | `UAIP.Editor.Validation` | 7 | — | — |
 | Editor LiveLink 🧩 | `UAIP.Editor.LiveLink` | 11 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
-| Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
+| Runtime World | `UAIP.Runtime.World` | 14 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
@@ -299,6 +299,53 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 - **もう追加できない型でも、片付けることはできます。** クラスの読み込みに失敗する型や、エンジンの更新でサポートが打ち切られた型は再追加できません — これは Capability を付与しても解消しない構造的な拒否です。しかしそのこと自体は、既存のノードを削除・切断できない理由にはなりません。セッションがその型に要る Capability を保有している限り、削除・切断は引き続き通ります。
 - **コンパイルで確認されるのは「危険な種類」だけで、「自作」であること自体は対象にしません。** 「プロジェクト・プラグイン定義」と「危険」を分けて扱うドメイン（Material はそうです。この区別が無いドメインについては該当ドメイン自身の Note を参照してください）では、アセットのコンパイルはそのアセットに含まれる危険な種類の型についてだけ Capability を要求します。危険な種類ではない、ただの自作型はコンパイルを妨げません。そうでなければ、カスタム型を 1 つでも含むプロジェクトは、どのセッションでも毎回 Capability の付与なしには一切コンパイルできなくなってしまいます。
 - **アセット作成経路の Capability 不足も、他の経路と同じく `CapabilityNotAvailable` で返ります。** `CreateAsset` の `FactoryParams` で名指しされた型（現時点では StateTree の `SchemaClass` と ControlRig の `ParentClass`）は、他と同じ admission ポリシーを通り、Capability 不足は `CapabilityNotAvailable` として返り、不足している Capability 名がメッセージ本文にすべて列挙されます（`Required capability is not available: <names>`）— `Add*` 自身の拒否とまったく同じです。同じフィールドに対する構造的な拒否（クラスが解決できない・基底型違い・abstract・deprecated）は、権限の欠落ではなくパラメータ自体についての判定であるため、引き続き `InvalidParams` です。⚠️ 本ページの過去の記述を訂正します: `ICreateAssetInterceptor` の割り込み地点はもともと成否の真偽値とメッセージだけを返す契約で、エラー分類を持ち回す手段がありませんでした — その結果、原因を問わず Capability 不足を含むこの経路の拒否はすべて `InvalidParams` になっていました。現在は分類を持ち回せるようになり、他の Capability でゲートされたドメインと同じエラーコードで分岐できます。
+
+---
+
+## 実行時コマンドの対象プレイワールドを指定する
+
+ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 48 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
+
+| パラメータ | 型 | 意味 |
+|---|---|---|
+| `TargetNetRole` | string | `"Standalone"` / `"Server"` / `"Client"`。大文字小文字は区別しません。`"Server"` は Dedicated Server と Listen Server の**両方**にマッチします — 呼び出し側が考えるのは権限の所在であって、PIE がどちらの形式のサーバーを起動したかではないためです |
+| `TargetPIEInstance` | integer | `ListPlayWorlds` が返すインスタンス番号。役割だけでは対象が 1 つに定まらないときに使います |
+
+まずは [`ListPlayWorlds`](#uaipruntimeworld) から始めてください。エンジンがいま保持しているプレイワールドをすべて、それぞれの `PIEInstance` / `NetMode` / `MapName` / `bIsPrimaryPIEInstance` 付きで返します。この `PIEInstance` がそのまま `TargetPIEInstance` に渡せる値です。
+
+### 対象の決まり方
+
+| 送った内容 | 結果 |
+|---|---|
+| どちらも省略 | これらのパラメータが存在しなかった頃にこのコマンドが使っていたワールド — 主となるプレイセッション |
+| `TargetNetRole` のみ、該当ワールドが 1 つ | そのワールド |
+| `TargetNetRole` のみ、該当ワールドが複数 | `InvalidParams`。メッセージに候補が `TargetPIEInstance <n> (TargetNetRole "...", NetMode ..., map ...)` の形ですべて列挙されるため、そのうちの番号を足して同じ呼び出しを再実行できます |
+| `TargetPIEInstance` のみ | そのインスタンス |
+| 両方指定し、内容が一致 | そのインスタンス |
+| 両方指定し、内容が食い違う | `InvalidParams`。そのインスタンスが実際には何の役割で動いているかを示します |
+| どれにも当てはまらない役割・番号 | `NotAllowed` — プレイワールドは存在するが、指定したものが無い場合です。メッセージに実在するものが列挙されます |
+| そもそも何も動いていない | `NotAllowed`。メッセージは `PIE is not running.`（パッケージ実行時は `No active game world.`） |
+
+`InvalidParams` は「要求が実現できない対象を名指しした」こと、`NotAllowed` は「エディタがそのコマンドを実行できる状態にない」ことを意味します。どちらが返るかが、「呼び出しを直す」のか「プレイを開始する」のかの区別になります。
+
+押さえておくべき制限が 2 つあります。
+
+- **選べるのはこのエディタプロセス内のプレイセッションだけです。** 別プロセスとして起動した Dedicated Server は候補にならず、`ListPlayWorlds` にも現れません。
+- **Toolset ブリッジコマンド（`Toolset.*`）はこれらのパラメータを受け付けません。** ブリッジはエンジン側 Toolset の入力をそのまま転送する層であり、スキーマも Toolset の宣言から生成されるため、UAIP 独自のパラメータを足す場所がありません。セッションを指定したい場合は、同じ操作を行うネイティブコマンドの方を使ってください。
+
+### これらのパラメータを受け付けるコマンド
+
+| ドメイン | コマンド |
+|---|---|
+| `UAIP.Runtime.World` | `SpawnActor`、`DestroyActor`、`TeleportActor`、`PossessActor`、`SetTimeScale`、`ExecuteConsoleCommand`、`SetDataLayerRuntimeState`、`GetDataLayerRuntimeState`、`ListDataLayerRuntimeStates`、`WaitForDataLayerStreaming` |
+| `UAIP.Runtime.Observation` | `CaptureViewportImage`、`DumpWorldState`、`DumpActorState`、`DumpComponentState` |
+| `UAIP.Runtime.Execution` | `RunFunctionalTest`、`RunRuntimeAutomationTest` |
+| `UAIP.Runtime.Assertion` | `WaitForCondition`、`AssertActorProperty`、`AssertWorldState` |
+| `UAIP.Runtime.Input` | `InjectInputKey`、`InjectEnhancedInputAction`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`AddMappingContext`、`RemoveMappingContext`、`SetInputMode`、`FlushInput`、`DumpInputState`、`GetEnhancedInputActionValue` |
+| `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`、`GrantAbility`、`RemoveAbility`、`ClearGrantedAbilities`、`ApplyEffect`、`RemoveEffect`、`ClearActiveEffects`、`SetAttributeValue`、`ResetAttributesToBase`、`SendGameplayEvent` |
+| `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`、`GetVariable`、`SetVariable`、`SetSystem` |
+
+`QuitGame` と `ListPlayWorlds`、および CVar 系コマンドはどちらのパラメータも受け付けません。前 2 つは単一のワールドに宛てた操作ではなく、CVar はワールド単位ではなくエンジン全体のものだからです。
 
 ---
 
@@ -3243,6 +3290,8 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 
 **実行中**のゲームワールドの操作・検査。旧バージョンではこれらは `UAIP.Runtime.PIE` 配下に登録されていました。
 
+このドメインのコマンドは、`QuitGame` と `ListPlayWorlds`、および CVar 系 2 つを除き、任意パラメータ `TargetNetRole` / `TargetPIEInstance` を受け付けます — [実行時コマンドの対象プレイワールドを指定する](#実行時コマンドの対象プレイワールドを指定する) を参照してください。
+
 | コマンド | 説明 |
 |---|---|
 | `SpawnActor` | アクティブな PIE ワールドに指定クラスのアクターをスポーン（`RuntimeActorManipulation` 必要） |
@@ -3254,6 +3303,28 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | `ExecuteConsoleCommand` | アクティブなゲームワールドでコンソールコマンドを実行（`RuntimeExecCommand` 必要） |
 | 🆓 `GetConsoleVariable` | コンソール変数の値・型・ヘルプテキストを取得。機微な名前は not found 扱い（`RuntimeCVarRead` 必要） |
 | 🆓 `SearchConsoleVariables` | ワイルドカード（`*`）でコンソール変数を検索。`MaxResults` は既定 50・最大 200、機微な名前は除外 |
+| `ListPlayWorlds` | エンジンがいま保持しているプレイワールドをすべて返します — `PIEInstance`、`NetMode`（`Standalone` / `DedicatedServer` / `ListenServer` / `Client`）、`MapName`、`bIsPrimaryPIEInstance`、および `Count`。プレイしていないときもエラーではなく空のリストを返すため、プレイ開始前に呼んでも安全です。パラメータは一切取りません。ここで返る値がそのまま `TargetNetRole` / `TargetPIEInstance` に渡せます。Capability 不要 |
+
+> ⚠️ **破壊的変更 — `SetTimeScale` / `TeleportActor` / `PossessActor` / `ExecuteConsoleCommand` はエディタで開いているレベルに作用しなくなりました。** この 4 つは対象ワールドを世界種別で絞らずに解決していたため、プレイしていない状態では最初に見つかったワールド — つまり**編集中のレベル** — を掴み、実際にそこへ変更を適用していました。今後は適用されません。プレイセッションの外では失敗し、何も変更しません。拒否の形も変わり、`ExecutionFailed` ＋ `No active game world found.` から **`NotAllowed` ＋ `PIE is not running.`** になりました。この 4 つは実行中のゲームを対象とするコマンドです。編集中のレベルを変更したい場合は、対応する `UAIP.Editor.*` コマンドを使ってください。旧エラーコードや旧メッセージ文字列でパターンマッチしている箇所は更新が必要です。
+
+> **エディタのプレイセッションではないゲームワールドは `PIEInstance: -1` を返します**（パッケージ実行時の単一ワールドなど）。この `-1` はここでは実在の番号であり、**そのまま `TargetPIEInstance` に渡せます**。「インスタンス無し」を表す番兵値として除外しないでください。
+
+### Data Layer ランタイム状態（4 件）
+
+**実行中のプレイワールド**における World Partition Data Layer の状態を扱います。Data Layer のオーサリング — 作成・親子付け・レベル開始時の状態指定 — は [`UAIP.Editor.WorldPartition`](#uaipeditorworldpartition) の担当で、このグループはディスクへ何も書き込みません。`DataLayerInstanceId` はエディタ側コマンドと同じ識別子なので、プレイ開始前に調べておいたものをそのまま渡せます。
+
+| コマンド | 説明 |
+|---|---|
+| `SetDataLayerRuntimeState` | ランタイム Data Layer インスタンス 1 つの状態を設定します。`RuntimeState` は `Activated` / `Loaded` / `Unloaded`（大文字小文字は区別せず、それ以外の綴りは受理値 3 つを列挙した `InvalidParams`）。`bIsRecursive: true` で同じ状態を全子孫へ適用し、応答に `AffectedCount`、`bPartialSuccess`、`RejectedDescendants[]` が加わります（各要素は `DataLayerInstanceId` と短い `RejectionReason` トークン `NotRuntime` / `ClientOnlyFromServer` / `ServerOnlyFromClient` / `AuthoritativeFromClient` / `Unknown`）。ただし*指定した*インスタンス自身が拒否された場合は、部分成功ではなくコマンド全体が失敗します。応答には `PreviousRuntimeState`、`RequestedRuntimeState`、`EffectiveRuntimeState`、`bStateChanged`、`bEffectiveStateDiffers`、`LimitingAncestorId`（祖先を実際に特定できたときのみ）、ストリーミングフラグ 2 つ、作用したワールドの情報が含まれます。識別子が未知なら `NotFound`、編集専用 Data Layer や World Partition 無効なワールドなら `ExecutionFailed`、ワールドのネットワーク役割が変更を許さない場合は `NotAllowed`。`RuntimeDataLayerControl` 必要 |
+| `ListDataLayerRuntimeStates` | 対象プレイワールドの全 Data Layer インスタンスを、`DataLayerInstanceName`、`DataLayerType`、`RuntimeState`、`EffectiveRuntimeState`、`ParentInstanceId`（ルートでは省略）、`bIsClientOnly`、`bIsServerOnly` 付きで返します。**配列本体は JSON Artifact 側にあり**、応答には配列の要素数である `Count` と、`bIsWorldPartitionEnabled`、`NetMode`、`WorldContext`、`PIEInstance` が含まれるため、Artifact を取得しなくても分岐できます。World Partition 無効なレベルではエラーではなく、空リスト ＋ `bIsWorldPartitionEnabled: false` を返します。Capability 不要 |
+| `GetDataLayerRuntimeState` | インスタンス 1 つの完全な記述を返します。`ListDataLayerRuntimeStates` と同じ項目に加えて `bEffectiveStateDiffers`、`LimitingAncestorId`、ストリーミングフラグ 2 つ。小さいので全体が Artifact と応答の両方に入ります。World Partition 無効なレベルでは `NotFound` ではなく `bIsWorldPartitionEnabled: false` を返します — これが「このレベルには Data Layer が存在しない」と「その識別子の Data Layer が無い」を区別します。Capability 不要 |
+| `WaitForDataLayerStreaming` | `DataLayerInstanceIds` で指定したインスタンス群 — 省略または空なら対象ワールドの全ランタイム Data Layer インスタンス — のストリーミングが落ち着くまでポーリングします。完了すると `ElapsedSeconds` と空の `IncompleteDataLayerInstanceIds[]` を伴う `Success`、時間切れなら同じ項目に未完了分を列挙した `Timeout` を返します。待機中にプレイワールドが破棄された場合は `ExecutionFailed` となり、待機がセッションより長生きすることはありません。World Partition 無効なレベルでは待たずに `bIsWorldPartitionEnabled: false` で完了します。Capability 不要 |
+
+> **`WaitForDataLayerStreaming` の上限は待機開始前に検査され、違反は `Timeout` ではなく `InvalidParams` になります。** `TimeoutSeconds` は既定 30、0 より大きい有限の数値で**最大 60** — `WaitForCondition` と同じ上限で、待機系コマンドの契約を揃えています。`PollIntervalSeconds` は既定 0.1 で 0.05〜1.0 の範囲。`DataLayerInstanceIds` は**最大 64 件**で、それ以上必要な場合はパラメータを省略してワールド全体を待つよう切り替える合図です。リスト中に存在しない識別子があれば、これも待機前に `NotFound` となります。
+
+> **2 つのストリーミングフラグは別々の問いに答えており、どちらも他方を包含しません。** `bStreamingCompleted` は対象の Data Layer に絞られていますが、位置に応じて読み込まれるセルを見ません。`bWorldStreamingCompleted` はワールド全体を見ますが、対象の Data Layer には絞れません。`SetDataLayerRuntimeState` / `GetDataLayerRuntimeState` / `WaitForDataLayerStreaming` がいずれも両方を返すのはこのためです — **確実を期すなら両方が完了になるまで待ってください**。
+
+> **`bStateChanged` は成功フラグではありません。** 「状態が以前と変わったか」に答えるものなので、すでに要求と同じ状態だった Data Layer は、完全に成功した呼び出しでも `bStateChanged: false` を返します。要求が効いたかどうかは `RequestedRuntimeState` と `EffectiveRuntimeState` の一致で判定してください。両者が食い違う場合は `bEffectiveStateDiffers` が `true` になり、`LimitingAncestorId` が実効状態を抑えている祖先を示します — 未読み込みの親は子が到達できる状態に上限を課しますが、要求自体は失われず記録されています。
 
 ### Toolset ブリッジ（1 件）🧩
 

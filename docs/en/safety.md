@@ -464,6 +464,7 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `CVarInspect` | Search CVars with sensitive-pattern filtering — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` bridge (owned by `UAIPEditorEngineManagement`) |
 | `RuntimeActorManipulation` | Spawn, destroy, teleport, and possess actors during PIE |
 | `RuntimeExecCommand` | Execute console commands at runtime via `UWorld` |
+| `RuntimeDataLayerControl` | Change the runtime state of a World Partition Data Layer in a running play world — `UAIP.Runtime.World.SetDataLayerRuntimeState`, and that command alone. Observing that state (`ListDataLayerRuntimeStates`, `GetDataLayerRuntimeState`), waiting for streaming to settle (`WaitForDataLayerStreaming`) and enumerating play worlds (`ListPlayWorlds`) need no capability at all. Held apart from `WorldPartitionEdit` / `DataLayerEdit`, which author Data Layers in the level asset: this one changes only what a running session has loaded, and changes nothing that is saved to disk |
 | `RuntimeInputInjection` | Inject keyboard / Enhanced Input / legacy input events into PIE (`InjectInputKey`, `InjectEnhancedInputAction`, `AddMappingContext`, `SetInputMode`, `FlushInput`, …) |
 | `RuntimeNiagaraMutation` 🧩 | Set Niagara user variables / replace Niagara system at runtime (`SetVariable`, `SetSystem`; requires `Niagara` plugin) |
 | `GauntletExecution` | Launch Gauntlet automated test sessions |

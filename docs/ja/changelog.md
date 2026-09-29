@@ -56,6 +56,21 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 > 未リリース・開発中の変更は [`next` ブランチの更新履歴](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/ja/changelog.md) で確認できます。
 
+### 未リリース
+
+プラグインリポジトリには入っているが、まだ Fab でリリースしていない変更です。
+
+#### UAIP Plugin
+
+**追加**
+
+- **Data Layer ランタイム状態の制御**（`UAIPRuntimeWorld` モジュール）: レベルアセット側の Data Layer をオーサリングするだけでなく、*実行中*のプレイワールドで World Partition の Data Layer ストリーミングを AI エージェントが動かし、その結果を自分で確認できるようになりました。`UAIP.Runtime.World` に 5 コマンドを追加します — `SetDataLayerRuntimeState`（インスタンス 1 つを `Activated` / `Loaded` / `Unloaded` に設定。任意で全子孫へ再帰適用し、拒否された子孫を理由トークン付きで列挙）、`ListDataLayerRuntimeStates`（全インスタンスを種別・2 つのランタイム状態・親・ネットワーク制約付きで返す。配列は Artifact 側、応答には `Count`）、`GetDataLayerRuntimeState`（インスタンス 1 つの完全な情報。実効状態を抑えている祖先も含む）、`WaitForDataLayerStreaming`（ストリーミングが落ち着くまでポーリング。`TimeoutSeconds` は既定 30・上限 60、`DataLayerInstanceIds` は最大 64 件で、範囲外の値は待機開始前に `InvalidParams`）、`ListPlayWorlds`（エンジンが保持する全プレイワールド。何も動いていなければエラーではなく空リスト）。DefaultDenied な Capability `RuntimeDataLayerControl` を 1 つ追加し、これを要求するのは `SetDataLayerRuntimeState` のみです。観測・待機の 4 コマンドは Capability 不要。Data Layer の識別子は `UAIP.Editor.WorldPartition` と同一のものです。World Partition が無効なレベルでは、読み取り系はエラーではなく `bIsWorldPartitionEnabled: false` を伴う Degraded Success を返します。ストリーミング完了フラグは 2 つ並べて返します（`bStreamingCompleted` は対象 Data Layer に絞られるが位置依存セルを見ない、`bWorldStreamingCompleted` はワールド全体だが絞り込めない）— どちらも他方を包含しないためです。
+- **実行時コマンドの対象プレイワールド指定**（`UAIPRuntimeShared` モジュールおよび各 Runtime ドメインモジュール）: ネットワークプレイの PIE セッションでは同じエディタプロセス内でサーバーと 1 つ以上のクライアントが同時に動きます。**48 個の実行時コマンド**が、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けるようになりました — `TargetNetRole`（`"Standalone"` / `"Server"` / `"Client"`、大文字小文字を区別せず、`"Server"` は Dedicated と Listen の両方にマッチ）と `TargetPIEInstance`（`ListPlayWorlds` が返す番号）。両方省略すれば従来とまったく同じ挙動になるため、**既存の呼び出しの意味は変わりません**。役割が複数のワールドに一致して番号が無い場合、および役割と番号が食い違う場合は、候補を列挙した `InvalidParams`。どれにも当てはまらない場合は `NotAllowed`。選べるのは同じエディタプロセス内のプレイセッションだけで、別プロセスで起動した Dedicated Server は候補になりません。Toolset ブリッジコマンド（`Toolset.*`）はこれらのパラメータを受け付けません — ブリッジのスキーマはエンジン側 Toolset の宣言から生成されるためです。詳細は [コマンドリファレンス — 実行時コマンドの対象プレイワールドを指定する](commands.md#実行時コマンドの対象プレイワールドを指定する)。
+
+**変更**
+
+- **⚠️ 破壊的変更 — `SetTimeScale` / `TeleportActor` / `PossessActor` / `ExecuteConsoleCommand`（`UAIP.Runtime.World`）がエディタで開いているレベルに作用しなくなりました。** この 4 つは対象ワールドを世界種別で絞らずに解決していたため、プレイしていない状態では最初に見つかったワールド — 編集中のレベル — を掴み、実際にそこへ変更を適用していました。今後はプレイセッションの外では拒否され、何も変更しません。拒否の形も `ExecutionFailed` ＋ `No active game world found.` から **`NotAllowed` ＋ `PIE is not running.`** に変わりました。この 4 つは実行中のゲームを対象とするコマンドです。編集中のレベルを変更したい場合は対応する `UAIP.Editor.*` コマンドを使ってください。旧エラーコードや旧メッセージ文字列でパターンマッチしている呼び出し側は更新が必要です。
+
 ### UAIP Plugin 1.2.0 — 2026-09-29
 
 **UAIP 1.2.0 を Fab で公開しました。** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)

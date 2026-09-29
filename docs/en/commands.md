@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1218 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1639 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1223 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1644 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -139,7 +139,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Runtime Engine CVar | `UAIP.Runtime.Engine.CVar` | 4 | — | partial (2/4) |
 | Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | partial (1/2) |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
-| Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
+| Runtime World | `UAIP.Runtime.World` | 14 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
@@ -299,6 +299,53 @@ Component classes are gated the same way but by a rule of their own, described i
 - **A type that can no longer be added can still be cleaned up.** A node whose class fails to load, or whose class an engine upgrade dropped support for, cannot be re-added — that is a structural refusal no capability grant changes. By itself, that is not a reason the existing node can't be deleted or disconnected: as long as the session holds whatever capability that type would require, removing it still works.
 - **Compiling checks only the dangerous kind, not "custom" by itself.** In a domain that separates "project-/plugin-defined" from "dangerous" (Material does; see its own note for a domain where the distinction doesn't exist), compiling an asset only requires a capability for the dangerous kinds of type it contains — an ordinary project-defined type that isn't also a dangerous kind does not block compilation. Otherwise, a project containing any custom type at all would never compile without a capability grant, for every session, every time.
 - **A missing capability on the asset-creation path is reported as `CapabilityNotAvailable`, the same as everywhere else.** A type named in `CreateAsset`'s `FactoryParams` — StateTree's `SchemaClass`, ControlRig's `ParentClass` — is admitted by the same policy as everywhere else, and a capability shortfall for that type arrives as `CapabilityNotAvailable`, naming every missing capability in full (`Required capability is not available: <names>`), exactly like `Add*`'s own refusal would. A structural refusal for the same field — the class did not resolve, is the wrong base type, is abstract, or is deprecated — is still `InvalidParams`, because that is a statement about the parameter rather than about a missing permission. ⚠️ This corrects an earlier state of this page: `ICreateAssetInterceptor`'s interception point originally answered with only a success flag and a message, with no way to carry an error classification out — every refusal it produced, capability shortfalls included, arrived as `InvalidParams` regardless of cause. It now carries the classification through, so the code you branch on matches the other capability-gated domains.
+
+---
+
+## Choosing which play world a Runtime command acts on
+
+A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 48 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
+
+| Parameter | Type | Meaning |
+|---|---|---|
+| `TargetNetRole` | string | `"Standalone"`, `"Server"` or `"Client"`, matched case-insensitively. `"Server"` matches a dedicated server **and** a listen server — a caller reasons about authority, not about which flavour of server PIE happened to start |
+| `TargetPIEInstance` | integer | The instance index `ListPlayWorlds` reports. Use it when a role alone does not identify exactly one world |
+
+Start from [`ListPlayWorlds`](#uaipruntimeworld): it reports every play world the engine currently holds, with the `PIEInstance`, `NetMode`, `MapName` and `bIsPrimaryPIEInstance` of each — and `PIEInstance` is the value `TargetPIEInstance` takes.
+
+### How a target is resolved
+
+| What you send | What happens |
+|---|---|
+| Neither parameter | The world the command would have used before these parameters existed — the primary play session |
+| `TargetNetRole` alone, one world in that role | That world |
+| `TargetNetRole` alone, several worlds in that role | `InvalidParams`. The message lists every candidate as `TargetPIEInstance <n> (TargetNetRole "...", NetMode ..., map ...)`, so the retry is the same call with one of those numbers added |
+| `TargetPIEInstance` alone | That instance |
+| Both, and they agree | That instance |
+| Both, and they disagree | `InvalidParams`, naming the role that instance actually runs as |
+| A role or an instance matching nothing | `NotAllowed` — play worlds exist, but none is the one you named. The message lists the ones that do |
+| Nothing running at all | `NotAllowed` with `PIE is not running.` (`No active game world.` in a packaged build) |
+
+`InvalidParams` means the request named a target that cannot be honoured; `NotAllowed` means the editor is not in a state the command can act on. Which of the two comes back is what tells "fix the call" apart from "start a play session".
+
+Two limits worth knowing:
+
+- **Only play sessions inside this editor process can be selected.** A dedicated server launched as a separate process is never a candidate and never appears in `ListPlayWorlds`.
+- **Toolset bridge commands (`Toolset.*`) do not accept these parameters.** A bridge forwards the engine toolset's own inputs unchanged and its schema is generated from what the toolset declares, so there is nowhere to add a UAIP-specific parameter. Where you need to pick a session, use the native command covering the same operation.
+
+### Commands that accept these parameters
+
+| Domain | Commands |
+|---|---|
+| `UAIP.Runtime.World` | `SpawnActor`, `DestroyActor`, `TeleportActor`, `PossessActor`, `SetTimeScale`, `ExecuteConsoleCommand`, `SetDataLayerRuntimeState`, `GetDataLayerRuntimeState`, `ListDataLayerRuntimeStates`, `WaitForDataLayerStreaming` |
+| `UAIP.Runtime.Observation` | `CaptureViewportImage`, `DumpWorldState`, `DumpActorState`, `DumpComponentState` |
+| `UAIP.Runtime.Execution` | `RunFunctionalTest`, `RunRuntimeAutomationTest` |
+| `UAIP.Runtime.Assertion` | `WaitForCondition`, `AssertActorProperty`, `AssertWorldState` |
+| `UAIP.Runtime.Input` | `InjectInputKey`, `InjectEnhancedInputAction`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `AddMappingContext`, `RemoveMappingContext`, `SetInputMode`, `FlushInput`, `DumpInputState`, `GetEnhancedInputActionValue` |
+| `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses`, `GrantAbility`, `RemoveAbility`, `ClearGrantedAbilities`, `ApplyEffect`, `RemoveEffect`, `ClearActiveEffects`, `SetAttributeValue`, `ResetAttributesToBase`, `SendGameplayEvent` |
+| `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`, `GetVariable`, `SetVariable`, `SetSystem` |
+
+`QuitGame`, `ListPlayWorlds` and the CVar commands take neither: the first two are not addressed to a single world, and CVars are engine-global rather than per-world.
 
 ---
 
@@ -3294,6 +3341,8 @@ Bridge commands via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Prov
 
 Manipulate and inspect the **running** game world. These commands were registered under `UAIP.Runtime.PIE` in earlier releases.
 
+Every command in this domain except `QuitGame`, `ListPlayWorlds` and the two CVar commands accepts the optional `TargetNetRole` / `TargetPIEInstance` parameters — see [Choosing which play world a Runtime command acts on](#choosing-which-play-world-a-runtime-command-acts-on).
+
 | Command | Description |
 |---|---|
 | `SpawnActor` | Spawn an actor of a class in the active PIE world (requires `RuntimeActorManipulation`) |
@@ -3305,6 +3354,28 @@ Manipulate and inspect the **running** game world. These commands were registere
 | `ExecuteConsoleCommand` | Execute a console command in the active game world (requires `RuntimeExecCommand`) |
 | 🆓 `GetConsoleVariable` | Value, type and help text of a console variable; sensitive names report as not found (requires `RuntimeCVarRead`) |
 | 🆓 `SearchConsoleVariables` | Wildcard (`*`) search over registered console variables — `MaxResults` default 50, max 200; sensitive names are excluded |
+| `ListPlayWorlds` | Every play world the engine currently holds — `PIEInstance`, `NetMode` (`Standalone` / `DedicatedServer` / `ListenServer` / `Client`), `MapName`, `bIsPrimaryPIEInstance` — plus `Count`. Returns an empty list rather than an error when nothing is playing, so it is safe to call before starting play, and it takes no parameters at all. What it reports is exactly what `TargetNetRole` / `TargetPIEInstance` accept. Requires no capability |
+
+> ⚠️ **Breaking change — `SetTimeScale`, `TeleportActor`, `PossessActor` and `ExecuteConsoleCommand` no longer act on the level open in the editor.** These four used to resolve their world without filtering by world type, so with no play session running they picked up the first world they found — **the level being edited** — and really did apply the change there. They no longer do: outside a play session they now fail and change nothing. The refusal also changed shape, from `ExecutionFailed` with `No active game world found.` to **`NotAllowed` with `PIE is not running.`** These four are addressed to a running game; to change the level being edited, use the matching `UAIP.Editor.*` commands. Update anything that pattern-matches the old error code or the old message text.
+
+> **A game world that is not an editor play session reports `PIEInstance: -1`** — a packaged build's single world, for instance. That `-1` is a real index here and **can be passed to `TargetPIEInstance` as is**; it is not a "no instance" sentinel to be filtered out.
+
+### Data Layer runtime state (4)
+
+World Partition Data Layer state **in a running play world**. Authoring Data Layers — creating them, reparenting them, choosing the state a level starts in — is [`UAIP.Editor.WorldPartition`](#uaipeditorworldpartition); nothing in this group writes anything to disk. `DataLayerInstanceId` is the same identifier those editor commands use, so one looked up before play starts can be passed straight in.
+
+| Command | Description |
+|---|---|
+| `SetDataLayerRuntimeState` | Set one runtime Data Layer instance's state — `RuntimeState` is `Activated`, `Loaded` or `Unloaded` (case-insensitive; any other spelling is `InvalidParams` listing the three accepted values). `bIsRecursive: true` applies the same state to every descendant and adds `AffectedCount`, `bPartialSuccess` and `RejectedDescendants[]`, each entry naming a `DataLayerInstanceId` and a short `RejectionReason` token (`NotRuntime`, `ClientOnlyFromServer`, `ServerOnlyFromClient`, `AuthoritativeFromClient`, `Unknown`) — a refusal of the *requested* instance itself fails the whole call instead. Reports `PreviousRuntimeState`, `RequestedRuntimeState`, `EffectiveRuntimeState`, `bStateChanged`, `bEffectiveStateDiffers`, `LimitingAncestorId` (only when an ancestor was actually identified), both streaming flags and the world acted on. `NotFound` for an unknown identifier, `ExecutionFailed` for an editor-only Data Layer or a world without World Partition, `NotAllowed` when the world's net role is not allowed to make the change. Requires `RuntimeDataLayerControl` |
+| `ListDataLayerRuntimeStates` | Every Data Layer instance in the target play world with its `DataLayerInstanceName`, `DataLayerType`, `RuntimeState`, `EffectiveRuntimeState`, `ParentInstanceId` (omitted at the root), `bIsClientOnly` and `bIsServerOnly`. **The array itself lives in the JSON artifact**; the response carries `Count` — how many entries that array holds — alongside `bIsWorldPartitionEnabled`, `NetMode`, `WorldContext` and `PIEInstance`, so a caller can branch without fetching the artifact first. A level without World Partition answers an empty list with `bIsWorldPartitionEnabled: false`, not an error. Requires no capability |
+| `GetDataLayerRuntimeState` | One instance's full description: the same per-instance fields `ListDataLayerRuntimeStates` reports, plus `bEffectiveStateDiffers`, `LimitingAncestorId` and both streaming flags. Small enough that the whole payload is mirrored into the response as well as the artifact. A level without World Partition answers `bIsWorldPartitionEnabled: false` rather than `NotFound`, which is what distinguishes "this level has no Data Layers at all" from "no Data Layer by that identifier". Requires no capability |
+| `WaitForDataLayerStreaming` | Poll until streaming settles for the instances named in `DataLayerInstanceIds`, or — when that is omitted or empty — for every runtime Data Layer instance in the target world. Returns `Success` with `ElapsedSeconds` and an empty `IncompleteDataLayerInstanceIds[]` once everything settles, `Timeout` with the same fields listing what had not. `ExecutionFailed` if the play world is destroyed mid-wait, so a wait never outlives the session it was watching. A level without World Partition completes immediately with `bIsWorldPartitionEnabled: false`. Requires no capability |
+
+> **`WaitForDataLayerStreaming`'s limits are checked before the wait starts, and a violation is `InvalidParams`, never `Timeout`.** `TimeoutSeconds` defaults to 30 and must be a finite number greater than 0 and **at most 60** — the same ceiling `WaitForCondition` carries, so the wait commands share one contract. `PollIntervalSeconds` defaults to 0.1 and must be between 0.05 and 1.0. `DataLayerInstanceIds` takes **at most 64 entries**; needing more is the signal to omit the parameter and wait on the whole world instead. An identifier in the list that names no Data Layer is `NotFound`, again before any waiting happens.
+
+> **The two streaming flags answer different questions, and neither covers the other.** `bStreamingCompleted` is scoped to the Data Layers the call is about, but does not see spatially loaded cells. `bWorldStreamingCompleted` covers the whole world, but cannot be narrowed to those Data Layers. `SetDataLayerRuntimeState`, `GetDataLayerRuntimeState` and `WaitForDataLayerStreaming` all report both for exactly that reason — **wait for both when it has to be certain**.
+
+> **`bStateChanged` is not a success flag.** It answers "is the state different from what it was", so a Data Layer that already held the requested state comes back with `bStateChanged: false` on a call that fully succeeded. Judge whether the request took effect by comparing `RequestedRuntimeState` with `EffectiveRuntimeState`. When those two differ, `bEffectiveStateDiffers` is `true` and `LimitingAncestorId` names the ancestor holding the effective state down — an unloaded parent caps what a child can reach, and the request is recorded rather than lost.
 
 ### Toolset bridges (1) 🧩
 
