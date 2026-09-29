@@ -187,6 +187,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `RuntimeNiagaraInspect` 🧩 | PIE 中の Niagara コンポーネント状態読み取り — `GetUserVariables`、`GetVariable`（`Niagara` プラグイン必須） |
 | `SandboxObserve` 🧩 | アクティブな Sandbox の観測 — `GetSandboxStatus`、`GetSandboxChanges`（`FileSandbox` プラグイン必須） |
 | `RuntimeInsightsInspect` | Unreal Insights トレースの読み取り専用検査 — `ListTraceChannels`、`GetTraceStatus`、`ListTraceFiles`。トレースの開始・停止・変更は一切できません |
+| `ArtifactContentRead` | セッションが生成した成果物の保存内容を読み出す — `UAIP.Core.Artifacts.GetArtifact`。他のセッションの成果物には届かない |
 | `PendingInteractionInspect` | 保留中の対話の状態照会・キャンセル — `GetPendingInteractionStatus`、`WaitForPendingInteraction`、`CancelPendingInteraction`。読み取り専用の照会のみで、対話の開始（`DrawPCGSpline` など）は対話型コマンド自身の Capability と `SafetyPolicy.AllowUserInteractionPrompt` によって別途ゲートされます |
 
 ---
