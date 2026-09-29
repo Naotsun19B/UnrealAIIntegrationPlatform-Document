@@ -44,7 +44,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 ## インストール
 
 1. [Releases](../../../releases) ページから `UAIP-Demo-UE<version>-Win64.zip` をダウンロード
-2. zip を UE プロジェクトの `Plugins/` フォルダに展開（`Plugins/UnrealAIIntegrationPlatformDemo/` として展開されます）
+2. zip を UE プロジェクトの `Plugins/` フォルダに展開（製品版と同じ `Plugins/UnrealAIIntegrationPlatform/` として展開されます）。以前のデモ版が `Plugins/UnrealAIIntegrationPlatformDemo/` に残っている場合は、先にそのフォルダを削除してください。同じプラグインを 2 つ並べて有効にすることはできません
 3. 展開したフォルダ内の `Config/DefaultUAIP.ini` をプロジェクトの `Config/` フォルダにコピー（`AllowLogDump` / `AllowContextMenuMutation` / `AllowKeyboardInput` / `AllowKeyboardModifierInput` が有効で、コンソール変数の読み取り用に `RuntimeCVarRead` Capability を許可済みの設定）。観測・UI 自動化・PIE 制御は既定で許可されているため追記は不要です。下のコマンド表で Capability 名が書かれた一部のコマンドだけは、`[UAIP.SafetyPolicy]` に `+AllowedCapabilities=<Name>` の行を追加してください
 4. AI クライアントに MCP サーバーを登録（[接続方法 → MCP Bridge](connections.md#mcp-bridge) を参照）
 

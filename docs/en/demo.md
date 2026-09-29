@@ -44,7 +44,7 @@ The UAIP demo binary is a free, feature-limited build distributed via GitHub Rel
 ## Installation
 
 1. Download `UAIP-Demo-UE<version>-Win64.zip` from the [Releases](../../../releases) page
-2. Extract the zip into your UE project's `Plugins/` folder — it unpacks as `Plugins/UnrealAIIntegrationPlatformDemo/`
+2. Extract the zip into your UE project's `Plugins/` folder — it unpacks as `Plugins/UnrealAIIntegrationPlatform/`, the same folder the Pro plugin uses. If an earlier demo is still under `Plugins/UnrealAIIntegrationPlatformDemo/`, delete that folder first: two copies of the plugin cannot be enabled side by side
 3. Copy `Config/DefaultUAIP.ini` from the extracted folder to your project's `Config/` folder — it turns on `AllowLogDump`, `AllowContextMenuMutation`, `AllowKeyboardInput` and `AllowKeyboardModifierInput`, and grants the `RuntimeCVarRead` capability for the console-variable reads. Observation, UI automation and PIE control are allowed by default and need no entry. The few commands marked with a capability in the tables below need one more `+AllowedCapabilities=<Name>` line in `[UAIP.SafetyPolicy]`
 4. Register the MCP server in your AI client (see [Connection Methods → MCP Bridge](connections.md#mcp-bridge))
 
