@@ -39,7 +39,7 @@
 Claude Code・Codex CLI・Cursor・Windsurf・GitHub Copilot といった AI ツールが **Model Context Protocol (MCP)** 経由で接続し、意味レベルのコマンドを発行できます。座標クリックや壊れやすい UI スクリプトに頼る必要はありません。
 
 主な機能：
-- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御まで、540 以上の UAIP コマンド（公式 UE 5.8 [Toolset](glossary.md#toolset--toolset-bridge) への 190+ ブリッジコマンドを含め合計 730+）で Editor のほとんどの機能をカバー
+- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御まで、1,200 以上の UAIP コマンド（公式 UE 5.8 [Toolset](glossary.md#toolset--toolset-bridge) への 420+ ブリッジコマンドを含め合計 1,600+）で Editor のほとんどの機能をカバー
 - **視覚的・構造的な観測** — 任意の Editor タブやビューポートのスクリーンショット取得、ワールド状態 / Slate ウィジェットツリー / エディタ状態の JSON ダンプを [Artifact](glossary.md#artifactアーティファクト) として返却
 - **Runtime / [PIE](glossary.md#pieplay-in-editor) 制御** — PIE の開始と停止、アクターのスポーン、入力の注入、Gauntlet テストの実行、アクタープロパティのアサート
 - **[シナリオ](glossary.md#scenarioシナリオ)実行** — 複数のコマンドを順序付きリストとして一括送信。失敗時の中断・リトライ・ステップごとのタイムアウトに対応
@@ -136,4 +136,4 @@ Fab で配布される製品版は [Fab Standard License (Fab EULA)](https://www
 
 ## 更新履歴
 
-**現在のバージョン**: 1.0.0（2026-06-18 リリース）― 製品版は [Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff) です。詳細な更新履歴とバージョニング方針は [更新履歴](changelog.md) を参照してください。
+**現在のバージョン**: 1.2.0（RELEASE-DATE リリース）― 製品版は [Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff) です。詳細な更新履歴とバージョニング方針は [更新履歴](changelog.md) を参照してください。

@@ -398,7 +398,11 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
 | `ReadOnlyPolicy` | `SafetyPolicy::bReadOnly` が設定されており、このコマンドは状態を変更する |
 | `HandlerUnavailable` | ハンドラ自身が `IsAvailable() == false` を返している |
 
-`UnavailableDetail` は、`HandlerUnavailable` のときだけ意味のある答えを持つ、より狭い第 2 の問い——「『ハンドラが利用不可』のうち、どの種類か」——に答えます。他の 4 つの理由はその名前自体で説明が完結しているため、`UnavailableDetail` はそれらすべてで `Unspecified` を返します。より詳細な detail を報告する実装になっていない `HandlerUnavailable` ハンドラでも同様に `Unspecified` です。
+**複数の理由が当てはまるとき。** `UnavailableReason` が示すのは、上の表の順で最初に当てはまった理由だけです。`AdditionalUnavailableReasons` は、それ以外に当てはまるすべての理由を列挙します。1 つも無ければ空配列で、キーを省略せずに返すことで「このコマンドを妨げているものはほかに無い」ことを、キーの欠落から推測させるのではなく明示します。`DescribeCommand` は `Available` が `false` のとき常にこれを返し、`UAIP.Core.ListCommands` は `IncludeUnavailable: true` を付けたときに利用不可な各行へこれを付けます。これが効いてくるのは、最初の理由が解消できそうに見えるときです。`MissingCapability` と報告され、`AdditionalUnavailableReasons` に `HandlerUnavailable` を含むコマンドは、その Capability を許可しても利用不可のままです。
+
+`ListCommands` は同じ区別を集計でも示します。`HiddenReasons` は除外した各コマンドをちょうど 1 つの理由 — その `UnavailableReason` — に割り当てるため、5 つの値の合計は `HiddenCount` に一致します。同じ 5 キーを持ち、同じくすべてのレスポンスに含まれる `HiddenAdditionalReasons` は、その理由に*加えて*別の理由が当てはまった除外コマンドを数えます。1 つのコマンドが複数のキーに数えられることも、どのキーにも数えられないこともあるため、値の合計は `HiddenCount` と一致せず、その内訳として読んではいけません。これは「`HiddenCapabilities` の Capability を許可すればこれらのコマンドが現れる」のか「許可しても利用できないままか」を区別するためのものです。
+
+`UnavailableDetail` は、`HandlerUnavailable` のときだけ意味のある答えを持つ、より狭い第 2 の問い——「『ハンドラが利用不可』のうち、どの種類か」——に答えます。他の 4 つの理由はその名前自体で説明が完結しているため、当てはまる理由の中に `HandlerUnavailable` が無い限り — `UnavailableReason` と `AdditionalUnavailableReasons` のどちらにも無い限り — `UnavailableDetail` は `Unspecified` を返します。より詳細な detail を報告する実装になっていない `HandlerUnavailable` ハンドラでも同様に `Unspecified` です。
 
 | `UnavailableDetail` | 意味 | 解消する方法 |
 |---|---|---|
