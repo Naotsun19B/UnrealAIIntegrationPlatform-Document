@@ -58,6 +58,8 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 ### UAIP Plugin 1.2.0 — 未リリース
 
+[![YouTube でアップデートトレーラーを見る](https://markdown-videos-api.jorgenkh.no/youtube/5BqecMKK96c)](https://youtu.be/5BqecMKK96c)
+
 後方互換の MINOR リリースです。以下の変更はすべてプラグインリポジトリに取り込み済み（`.uplugin` の `VersionName` は `1.2.0`）ですが、Fab には未リリースです。リリース日は Fab の審査通過後にここへ記載します。
 
 **1.2.0 ではコマンドを 351 件追加し、削除は 0 件です** — UAIP コマンド 341 件と Toolset ブリッジコマンド 10 件。合計は 1.1.0 の 877 / 411（1288）から **1218 / 421（1639）** になりました。1.1.0 に存在したコマンド名はすべて残っており、意味も変わっていません。追加が多いのは MetaHuman（56）、GroomAsset（35）、ChaosDestruction（29）、LiveLink（ランタイム・エディタ両モジュール合計 25）、MotionMatching（23）、Subsonic（22）、**Chooser（20 — 新規ドメイン）**、UAF（19）、ControlRig Dynamics（17）、AnimSequence（13）、Insights Trace（11）です。ドメイン別の内訳は [コマンドリファレンス](commands.md) を参照してください。
