@@ -578,6 +578,16 @@ Run tests, Python scripts, and Editor Utility Blueprints.
 | `RunEditorUtilityBlueprint` | Run a specified Editor Utility Blueprint |
 | `RunNamedEditorCommand` | Run a named editor console command via `GUnrealEd->Exec` |
 
+> **`RunEditorPythonScript` can interrupt a script that runs too long.** The optional `AbortAfterSeconds` parameter is an integer from `0` to `1800`. `0` means never interrupt; omitting it or passing `null` uses the ini default (`[UAIP.Python] DefaultAbortAfterSeconds`, itself `0` by default — see [Configuration](config.md#uaippython--default-abort-deadline-for-runeditorpythonscript)). Once the deadline passes, an exception is raised inside the script on the game thread, and raised again every second until the script stops.
+>
+> **This is best effort.** The exception arrives only between Python bytecode instructions, so a script blocked inside a native call (`time.sleep`, a long engine call) is interrupted only when that call returns. Edits made before the interruption **remain**. A script that catches the exception is not stopped — it is sent again every second — and the repeated exception can also interrupt the script's own cleanup. After the deadline the exception can reach other Python running on the same thread. Threads the script started are not stopped. The abort works only on Python 3.11 builds; on another version a call that asks for one is refused with `AbilityUnavailable`.
+>
+> **An interrupted call** answers `Timeout` with `Data.Aborted: true` and `Data.NotExecuted: false` (the script ran partially — check the editor state before running it again). `Data` carries `AbortAfterSeconds`, `AbortSource` (`Argument` or `Config`), `DeadlineExceeded`, `Aborted`, `AbortSignalsSent` and `ElapsedSeconds`, plus `NotExecuted`, `AbortDrainFailed` and `AbortInjectionFailed` when they apply. An explicit `0` in the argument answers with only `AbortAfterSeconds` and `AbortSource`; a `0` that came from the ini adds no `Data` at all.
+>
+> **Refusals:** a call made from inside another Python execution on the game thread is `NotAllowed`; before Python has initialized, or while it is shutting down, it is `PreconditionFailed`.
+>
+> **Recommendations:** keep the call's `TimeoutSeconds` (how long the MCP / HTTP request waits) longer than `AbortAfterSeconds`, or the request gives up before the script's answer arrives. Pass `0` explicitly while debugging Python. `TimeoutSec` is accepted but has no effect — use `AbortAfterSeconds` to cut a script short.
+
 > **Note**: `RunAutomationTest` (and its runtime counterpart `RunRuntimeAutomationTest`) runs **every matching test** when `RunAllMatching=true`, which is the default. To bound the run, pass `MaxMatchingTests` (1 or greater; omit it for no bound). `0` is rejected rather than read as "no bound" — they are opposite requests, and quietly turning one into the other is how a bounded run starts claiming full coverage.
 >
 > The report always carries `Summary.Matched` (how many tests matched the filter) and `Summary.Selected` (how many were actually run). **Both are stated whether or not they differ** — a line that appears only on truncation is one the reader has to already know about, since its absence would otherwise be indistinguishable from a build that never emitted it. The human-readable report and the Output Log carry the same pair.

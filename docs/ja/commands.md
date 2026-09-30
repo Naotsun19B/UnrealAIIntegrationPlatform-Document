@@ -578,6 +578,16 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | `RunEditorUtilityBlueprint` | 指定 Editor Utility Blueprint を実行 |
 | `RunNamedEditorCommand` | `GUnrealEd->Exec` 経由で名前付き Editor コンソールコマンドを実行 |
 
+> **`RunEditorPythonScript` は、長引いたスクリプトを打ち切れます。** 省略可能な `AbortAfterSeconds` は `0`〜`1800` の整数です。`0` は打ち切らない意味で、省略するか `null` を渡すと ini の既定（`[UAIP.Python] DefaultAbortAfterSeconds`、これ自体の既定は `0`。[設定](config.md#uaippython--runeditorpythonscript-の既定の打ち切り期限) を参照）が使われます。期限が過ぎると、ゲームスレッド上でスクリプトの中に例外が送られ、スクリプトが止まるまで 1 秒ごとに送り直されます。
+>
+> **これは best effort です。** 例外が届くのは Python のバイトコードの合間だけなので、ネイティブ呼び出し（`time.sleep` や長いエンジン呼び出しなど）の途中にいるスクリプトは、その呼び出しが戻った時点で初めて止まります。打ち切り前に行われた編集は**残ります**。例外を握りつぶすスクリプトは止まらず（1 秒ごとに送り直されます）、繰り返し送られる例外がスクリプト自身の後始末を中断することもあります。期限後は、同じスレッドで動く他の Python に例外が届くこともあります。スクリプトが起動したスレッドは止まりません。打ち切りは Python 3.11 のビルドでだけ使え、他の版では打ち切りを求めた呼び出しが `AbilityUnavailable` で拒否されます。
+>
+> **打ち切られた呼び出し**は `Timeout` を返し、`Data.Aborted: true`・`Data.NotExecuted: false`（スクリプトは部分的に実行済み。再実行の前にエディタの状態を確認してください）が付きます。`Data` には `AbortAfterSeconds`、`AbortSource`（`Argument` または `Config`）、`DeadlineExceeded`、`Aborted`、`AbortSignalsSent`、`ElapsedSeconds` が載り、該当する場合に限り `NotExecuted`、`AbortDrainFailed`、`AbortInjectionFailed` も載ります。引数で `0` を明示した場合は `AbortAfterSeconds` と `AbortSource` の 2 キーだけ、ini 由来の `0` では `Data` は付きません。
+>
+> **拒否:** ゲームスレッド上の別の Python 実行の中から呼ぶと `NotAllowed`、Python の初期化前または終了処理中は `PreconditionFailed` になります。
+>
+> **推奨:** 呼び出しの `TimeoutSeconds`（MCP / HTTP のリクエストの待ち時間）は `AbortAfterSeconds` より長くしてください。短いと、スクリプトの応答が届く前にリクエストが諦めます。Python をデバッグ中は `0` を明示してください。`TimeoutSec` は受け付けますが効きません。打ち切りたいときは `AbortAfterSeconds` を使ってください。
+
 > **Note**: `RunAutomationTest`（および Runtime 側の `RunRuntimeAutomationTest`）は、`RunAllMatching=true`（既定）のとき**マッチした全件を実行します**。件数を絞るには `MaxMatchingTests`（1 以上。省略すると上限なし）を指定してください。`0` は「上限なし」ではなく無効値として拒否されます — 両者は正反対の要求であり、読み替えると絞った実行が全件カバーを名乗ることになるためです。
 >
 > レポートには常に `Summary.Matched`（フィルタに一致した数）と `Summary.Selected`（実際に走らせた数）が入ります。**差の有無に関わらず必ず出力されます** — 差があるときだけ出す形式では、その行が無いことが「全件だった」のか「その版が出力しないだけ」なのか読み手に区別できないためです。人間向けレポート本文と Output Log にも同じ 2 つが出ます。

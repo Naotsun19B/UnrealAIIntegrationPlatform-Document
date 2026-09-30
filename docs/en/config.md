@@ -76,7 +76,7 @@ The effective list is resolved at startup and written to the Output Log as a sin
 
 | Key | Type | Default | Range | Description |
 |---|---|---|---|---|
-| `AuditStepBudgetMs` | float | `10.0` | `[1.0, 100.0]` | Milliseconds of each frame the audit job may spend scanning. A larger value finishes audits sooner and makes the editor heavier while one runs; a smaller value does the opposite. A value outside the range is clamped rather than rejected |
+| `AuditStepBudgetMs` | float | `10.0` | `[1.0, 100.0]` | Milliseconds of each frame the audit job may spend scanning. A larger value finishes audits sooner and makes the editor heavier while one runs; a smaller value does the opposite. A value outside the range, or one that cannot be read as a number, is ignored with a startup warning and the default is kept |
 
 The value is read once when the module starts, so an edit takes effect the next time the editor starts.
 
@@ -124,7 +124,23 @@ Controls where the scanner looks for `@uaip_command`-decorated Python files. The
 |---|---|---|---|
 | `CommandsDir` | string | `<Project>/Scripts/UAIPCommands` | Directory scanned for Python command definition files. Relative paths are resolved against the project root |
 
+The key is read from `Config/DefaultUAIP.ini` first. Only if it is absent there is `Config/DefaultGame.ini` read as a migration fallback, and a value found only there is used but logs a warning asking you to move it to `DefaultUAIP.ini`. If both files set the key and the values differ, `DefaultUAIP.ini` wins and a warning is logged. The effective directory and the file it came from are written to the Output Log at startup, so check the log if the scanner is not looking where you expect.
+
 No CLI equivalents.
+
+### `[UAIP.Python]` — Default abort deadline for `RunEditorPythonScript`
+
+`RunEditorPythonScript` can interrupt a script that runs too long by raising an exception inside it (`AbortAfterSeconds`, see [Commands](commands.md)). This section sets the value used when a call **omits** that parameter (or passes `null`).
+
+| Key | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `DefaultAbortAfterSeconds` | int32 | `0` | `[0, 1800]` | Seconds after which a script that omits `AbortAfterSeconds` is interrupted. `0` disables the abort, which is the behavior before this key existed. A caller can override it per call, including with an explicit `0` to run without an abort |
+
+The value is read **once when the module starts**, so an edit takes effect the next time the editor starts. The effective value is written to the Output Log at startup. A value outside the range, or one that cannot be read as an integer, is ignored with a startup warning and the key keeps its default of `0`.
+
+**No CLI equivalent.** The setting cannot be overridden from the command line; it is an ini-only default that each call may override.
+
+**A build that cannot abort.** The abort works only with the Python version the plugin supports (3.11). If the embedded Python is a different version and this key is set to `1` or more, the editor logs a startup warning, and **every call that omits `AbortAfterSeconds` is refused with `AbilityUnavailable`** without running the script. Clear the key, or pass `AbortAfterSeconds: 0` explicitly, to run without an abort. When Python itself is unavailable, the existing `CapabilityNotAvailable` answer comes first and this warning is not logged.
 
 ### `[UAIP.Transport]` — Auto-starting the MCP transport on a normal launch
 
