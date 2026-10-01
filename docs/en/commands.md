@@ -2748,7 +2748,7 @@ World Partition, Data Layer, and HLOD management for partitioned worlds (require
 | Command | Description |
 |---|---|
 | `ListDataLayers` | List all Data Layer instances in the current level |
-| `GetDataLayerInfo` | Get detailed info for a Data Layer instance — type, runtime state, visibility, and parent hierarchy |
+| `GetDataLayerInfo` | Get detailed info for a Data Layer instance — type, load filter, runtime state, visibility, and parent hierarchy |
 | `CreateDataLayerAsset` | Create a new Data Layer asset in the Content Browser (requires `DataLayerEdit`) |
 | `DeleteDataLayerAsset` | Delete a Data Layer asset (requires `DataLayerEdit`) |
 | `CreateDataLayerInstance` | Create a new Data Layer instance in the current level from a Data Layer asset (requires `DataLayerEdit`) |
@@ -2757,7 +2757,7 @@ World Partition, Data Layer, and HLOD management for partitioned worlds (require
 | `SetDataLayerInitialRuntimeState` | Set the initial runtime state of a Data Layer — Unloaded, Loaded, or Activated (requires `DataLayerEdit`) |
 | `SetDataLayerIsLoadedInEditor` | Set whether a Data Layer is loaded in the editor viewport (requires `DataLayerEdit`) |
 | `SetDataLayerVisibility` | Set the visibility of a Data Layer in the editor (requires `DataLayerEdit`) |
-| `SetParentDataLayerInstance` | Set the parent Data Layer instance, building a hierarchy (max 64 levels; requires `DataLayerEdit`) |
+| `SetParentDataLayerInstance` | Set the parent Data Layer instance, building a hierarchy (max 64 levels; requires `DataLayerEdit`). A pairing that cannot be parented is refused with the reason |
 | `GetActorDataLayers` | Get the Data Layer instances assigned to an actor |
 | `AddActorToDataLayer` | Add an actor to a Data Layer instance (requires `DataLayerEdit`) |
 | `RemoveActorFromDataLayer` | Remove an actor from a Data Layer instance (requires `DataLayerEdit`) |
@@ -3369,6 +3369,8 @@ Every command in this domain except `QuitGame`, `ListPlayWorlds` and the two CVa
 | `ListPlayWorlds` | Every play world the engine currently holds — `PIEInstance`, `NetMode` (`Standalone` / `DedicatedServer` / `ListenServer` / `Client`), `MapName`, `bIsPrimaryPIEInstance` — plus `Count`. Returns an empty list rather than an error when nothing is playing, so it is safe to call before starting play, and it takes no parameters at all. What it reports is exactly what `TargetNetRole` / `TargetPIEInstance` accept. Requires no capability |
 
 > ⚠️ **Breaking change — `SetTimeScale`, `TeleportActor`, `PossessActor` and `ExecuteConsoleCommand` no longer act on the level open in the editor.** These four used to resolve their world without filtering by world type, so with no play session running they picked up the first world they found — **the level being edited** — and really did apply the change there. They no longer do: outside a play session they now fail and change nothing. The refusal also changed shape, from `ExecutionFailed` with `No active game world found.` to **`NotAllowed` with `PIE is not running.`** These four are addressed to a running game; to change the level being edited, use the matching `UAIP.Editor.*` commands. Update anything that pattern-matches the old error code or the old message text.
+
+> ⚠️ **`TeleportActor` no longer reports success for an actor it could not move.** `AActor::TeleportTo` returns `true` even when nothing moved: with a root component that is not a `UPrimitiveComponent`, and on the paths that skip the collision check, the result of the move is never read back. An actor whose root component mobility is not `Movable` cannot be moved during play, so the command used to report success while the actor stood still. It now compares the location and rotation before and against after the call, and answers **`ExecutionFailed`** when nothing changed. The refusal message also names which cause applies, where it used to report all of them as one sentence: the root component's mobility, an actor with no root component at all, or a destination the actor could not be placed at. A move that collision nudged to a nearby spot still succeeds, as before. For the same reason `UAIP.Editor.Level.SetActorTransform` now answers `ExecutionFailed` when the transform could not be applied, which is the case for an actor with no root component.
 
 > **A game world that is not an editor play session reports `PIEInstance: -1`** — a packaged build's single world, for instance. That `-1` is a real index here and **can be passed to `TargetPIEInstance` as is**; it is not a "no instance" sentinel to be filtered out.
 

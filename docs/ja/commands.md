@@ -2751,7 +2751,7 @@ Sandbox セッションのライフサイクル管理。`FileSandbox` プラグ�
 | コマンド | 説明 |
 |---|---|
 | `ListDataLayers` | 現在のレベルに存在する全 Data Layer インスタンスを一覧表示 |
-| `GetDataLayerInfo` | Data Layer インスタンスの詳細情報を取得 — タイプ・ランタイム状態・可視性・親階層 |
+| `GetDataLayerInfo` | Data Layer インスタンスの詳細情報を取得 — タイプ・読み込みフィルタ・ランタイム状態・可視性・親階層 |
 | `CreateDataLayerAsset` | コンテンツブラウザに新しい Data Layer アセットを作成（`DataLayerEdit` 必須） |
 | `DeleteDataLayerAsset` | Data Layer アセットを削除（`DataLayerEdit` 必須） |
 | `CreateDataLayerInstance` | Data Layer アセットから現在のレベルに Data Layer インスタンスを追加（`DataLayerEdit` 必須） |
@@ -2760,7 +2760,7 @@ Sandbox セッションのライフサイクル管理。`FileSandbox` プラグ�
 | `SetDataLayerInitialRuntimeState` | Data Layer の初期ランタイム状態を設定 — Unloaded / Loaded / Activated（`DataLayerEdit` 必須） |
 | `SetDataLayerIsLoadedInEditor` | エディタビューポートで Data Layer をロードするかどうかを設定（`DataLayerEdit` 必須） |
 | `SetDataLayerVisibility` | エディタ内の Data Layer の可視性を設定（`DataLayerEdit` 必須） |
-| `SetParentDataLayerInstance` | 親 Data Layer インスタンスを設定して階層を構築（最大 64 レベル・`DataLayerEdit` 必須） |
+| `SetParentDataLayerInstance` | 親 Data Layer インスタンスを設定して階層を構築（最大 64 レベル・`DataLayerEdit` 必須）。親にできない組み合わせは理由を添えて拒否されます |
 | `GetActorDataLayers` | アクターに割り当てられた Data Layer インスタンスを取得 |
 | `AddActorToDataLayer` | アクターを Data Layer インスタンスに追加（`DataLayerEdit` 必須） |
 | `RemoveActorFromDataLayer` | アクターを Data Layer インスタンスから除外（`DataLayerEdit` 必須） |
@@ -3318,6 +3318,8 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | `ListPlayWorlds` | エンジンがいま保持しているプレイワールドをすべて返します — `PIEInstance`、`NetMode`（`Standalone` / `DedicatedServer` / `ListenServer` / `Client`）、`MapName`、`bIsPrimaryPIEInstance`、および `Count`。プレイしていないときもエラーではなく空のリストを返すため、プレイ開始前に呼んでも安全です。パラメータは一切取りません。ここで返る値がそのまま `TargetNetRole` / `TargetPIEInstance` に渡せます。Capability 不要 |
 
 > ⚠️ **破壊的変更 — `SetTimeScale` / `TeleportActor` / `PossessActor` / `ExecuteConsoleCommand` はエディタで開いているレベルに作用しなくなりました。** この 4 つは対象ワールドを世界種別で絞らずに解決していたため、プレイしていない状態では最初に見つかったワールド — つまり**編集中のレベル** — を掴み、実際にそこへ変更を適用していました。今後は適用されません。プレイセッションの外では失敗し、何も変更しません。拒否の形も変わり、`ExecutionFailed` ＋ `No active game world found.` から **`NotAllowed` ＋ `PIE is not running.`** になりました。この 4 つは実行中のゲームを対象とするコマンドです。編集中のレベルを変更したい場合は、対応する `UAIP.Editor.*` コマンドを使ってください。旧エラーコードや旧メッセージ文字列でパターンマッチしている箇所は更新が必要です。
+
+> ⚠️ **`TeleportActor` は、移動できないアクターに対して成功を返さなくなりました。** `AActor::TeleportTo` は、root コンポーネントが `UPrimitiveComponent` でない場合や衝突チェックを省く経路では、移動が行われなくても `true` を返します。可動設定（Mobility）が `Movable` でないアクターはプレイ中に移動できないため、これまではコマンドが成功を報告しながらアクターが動いていませんでした。今後は移動の前後で位置と回転を突き合わせ、何も変わっていなければ **`ExecutionFailed`** を返します。拒否メッセージは原因も名指しします（**可動設定**／**root コンポーネントが無い**／**要求した場所に置けなかった**）。従来はこの 3 通りが「移動に失敗した」の一文に押し込められていました。衝突で目的地から近くへずらされた場合は、これまでと同じく成功です。同じ理由で `UAIP.Editor.Level.SetActorTransform` も、適用できなかった場合（root コンポーネントを持たないアクター）に `ExecutionFailed` を返すようになりました。
 
 > **エディタのプレイセッションではないゲームワールドは `PIEInstance: -1` を返します**（パッケージ実行時の単一ワールドなど）。この `-1` はここでは実在の番号であり、**そのまま `TargetPIEInstance` に渡せます**。「インスタンス無し」を表す番兵値として除外しないでください。
 
