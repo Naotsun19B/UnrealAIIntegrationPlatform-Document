@@ -3421,7 +3421,7 @@ GameplayAbilities 状態の検査と実行時操作。`GameplayAbilities` プラ
 | `ApplyEffect` 🧩 | アクターに GameplayEffect を適用 |
 | `RemoveEffect` 🧩 | 指定 GameplayEffect クラスの有効インスタンスをすべて削除 |
 | `ClearActiveEffects` 🧩 | 有効な GameplayEffect をすべて削除（`TagFilter` で絞り込み可） |
-| `SetAttributeValue` 🧩 | 属性の base 値を設定（`AttributeName` は `UMyAttributeSet.Health` 形式） |
+| `SetAttributeValue` 🧩 | 属性の base 値を設定（`AttributeName` は `Health` と、`GetAttributeValues` が返す `MyAttributeSet.Health` 形式の両方を受け付ける） |
 | `ResetAttributesToBase` 🧩 | 全属性の current 値を base 値へリセット |
 | `SendGameplayEvent` 🧩 | アクターへ GameplayEvent を送信（magnitude 任意） |
 

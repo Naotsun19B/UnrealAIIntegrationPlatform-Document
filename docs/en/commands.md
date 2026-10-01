@@ -3472,7 +3472,7 @@ All require the `RuntimeGASManipulation` capability and an active PIE session.
 | `ApplyEffect` 🧩 | Apply a GameplayEffect to an actor |
 | `RemoveEffect` 🧩 | Remove all active instances of a GameplayEffect class |
 | `ClearActiveEffects` 🧩 | Remove all active GameplayEffects, optionally narrowed by `TagFilter` |
-| `SetAttributeValue` 🧩 | Set an attribute's base value (`AttributeName` format `UMyAttributeSet.Health`) |
+| `SetAttributeValue` 🧩 | Set an attribute's base value (`AttributeName` takes either `Health` or `MyAttributeSet.Health`, the form `GetAttributeValues` reports) |
 | `ResetAttributesToBase` 🧩 | Reset every attribute's current value to its base value |
 | `SendGameplayEvent` 🧩 | Send a GameplayEvent with an optional magnitude to an actor |
 
