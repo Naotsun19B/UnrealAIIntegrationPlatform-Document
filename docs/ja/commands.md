@@ -847,7 +847,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 
 | コマンド | 説明 |
 |---|---|
-| `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください |
+| `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。Blueprint で変数の型として使えない型は、エディタの変数型メニューと同じ規則で `InvalidParams` として拒否されます。クラスは自身または祖先に `BlueprintType`（または `BlueprintSpawnableComponent`）が必要で、`NotBlueprintType` のものは拒否されます。構造体は `BlueprintType` が必要で、`BlueprintInternalUseOnly` のものは拒否されます。拒否された呼び出しは Blueprint を変更しません（変数は追加されず、アセットも dirty になりません）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください |
 | `DeleteBlueprintVariable` | メンバー変数を削除 |
 | `SetBlueprintVariableDefault` | Blueprint 変数の CDO デフォルト値を更新 |
 | `AddGraphNode` | Blueprint アセットの**あらゆるグラフ**にノードを追加（VariableGet/Set・FunctionCall・Event 等）— イベントグラフと関数グラフに限らない。対象は `GraphName` または `GraphGuid` で選ぶ。グラフの選び方・複数一致時の扱い・2 段階の受け入れ判定は表の下の注記を参照 |
