@@ -177,7 +177,7 @@ __UAIP_RESPONSE_END__
 
 In stdin-stream mode the same markers appear per request.
 
-When the CLI transport refuses a request before it reaches dispatch, the response is still a normal `CommandResponse` with `Success: false`, and the command is not run. The `ErrorCode` tells the kind of failure apart:
+When the CLI transport refuses a request before it runs anything, the response is still a normal `CommandResponse` with `Success: false`, and neither the command nor any scenario step is run. The `ErrorCode` tells the kind of failure apart:
 
 | Refusal | ErrorCode |
 |---|---|
@@ -185,9 +185,11 @@ When the CLI transport refuses a request before it reaches dispatch, the respons
 | The `SessionId` you named does not exist in the editor | `NotFound` |
 | `[UAIP.Roles]` defines roles and `AllowRoleBlindTransports` is not enabled, so this transport is not allowed | `PolicyViolation` |
 | The command was dispatched but did not finish within 120 seconds | `Timeout` |
-| The response file cannot be written, or the scenario module is not available | `InternalError` |
+| The scenario module is not available | `InternalError` |
 
-The process exit code is unchanged: `0` on success, `1` when the command ran and failed (this includes the 120-second `Timeout`), and `2` when the transport refused the request before dispatch or outside it.
+A response file path that is refused is checked before anything runs, and the `InvalidParams` response goes to stdout (nothing is written to the refused path). A response file whose path is allowed but that cannot be written is a different case: it is a failure *after* the command (or scenario) ran, so the command has already taken effect. The response then goes to stdout with `InternalError`.
+
+The process exit code: `0` on success, `1` when the command ran and failed (this includes the 120-second `Timeout`), and `2` when the transport refused the request before running anything, or when the response file could not be written after the command ran (`2` even if the command itself succeeded, because the caller did not receive the result).
 
 ---
 
@@ -255,7 +257,7 @@ Authorization: Bearer <token>
 |---|---|---|---|
 | `SessionId` | string | Optional during the migration window | Scopes the lookup to that session's artifacts. **Omitting it is accepted today**, but an omitted call can only resolve artifacts this editor process itself produced during its current run — it cannot reach artifacts rediscovered from a previous session (see [Artifacts](artifacts.md)). A *successful* response to an omitted call carries a `Deprecation` response header (RFC 9745) and a `Link; rel="deprecation"` header pointing at migration guidance; a call that names `SessionId` explicitly gets neither header. **`SessionId` will become mandatory on this route in a future major version** — see [Changelog](changelog.md#uaip-plugin-120--2026-09-29) for how to migrate before then. |
 
-Response: the raw bytes, with `Content-Type` from the artifact's metadata. 404 if the artifact has been GC'd (session ended or TTL expired).
+Response: the raw bytes, with `Content-Type` from the artifact's metadata. 404 with `ErrorCode: NotFound` if the artifact has been GC'd (session ended or TTL expired), or if it does not exist or is not visible to the caller.
 
 For sessions, listing is available:
 
@@ -263,6 +265,8 @@ For sessions, listing is available:
 GET /uaip/sessions/{sessionId}/artifacts
 Authorization: Bearer <token>
 ```
+
+The listing is refused with 404, `ErrorCode: NotFound` and the message `Session not found.` when the session does not exist, when the caller's role cannot be resolved, when the session is not bound to a role, or when it is bound to a different role than the caller's. All of these answer identically, so the response does not reveal whether a session exists.
 
 ### 5.3 Inline embedding (MCP bridge only)
 
@@ -330,7 +334,7 @@ DELETE /uaip/sessions/{sessionId}
 Authorization: Bearer <token>
 ```
 
-Ending a session releases observed-widget caches and marks artifacts for GC.
+Ending a session releases observed-widget caches and marks artifacts for GC. A `sessionId` that does not exist answers 404 with `ErrorCode: NotFound`.
 
 ### 6.4 Capability discovery
 

@@ -177,7 +177,7 @@ __UAIP_RESPONSE_END__
 
 stdin-stream モードでも同じマーカーがリクエスト毎に出ます。
 
-CLI transport がディスパッチの前にリクエストを拒否した場合も、レスポンスは `Success: false` の通常の `CommandResponse` で、コマンドは実行されません。失敗の種類は `ErrorCode` で見分けます。
+CLI transport が何かを実行する前にリクエストを拒否した場合も、レスポンスは `Success: false` の通常の `CommandResponse` で、コマンドもシナリオの手順も実行されません。失敗の種類は `ErrorCode` で見分けます。
 
 | 拒否の理由 | ErrorCode |
 |---|---|
@@ -185,9 +185,11 @@ CLI transport がディスパッチの前にリクエストを拒否した場合
 | 指定した `SessionId` のセッションがエディタに存在しない | `NotFound` |
 | `[UAIP.Roles]` にロールが定義されていて `AllowRoleBlindTransports` が有効でないため、この transport は許可されない | `PolicyViolation` |
 | コマンドはディスパッチされたが 120 秒以内に完了しなかった | `Timeout` |
-| レスポンスファイルを書き出せない、またはシナリオモジュールが利用できない | `InternalError` |
+| シナリオモジュールが利用できない | `InternalError` |
 
-プロセスの終了コードは変わりません。成功は `0`、コマンドを実行して失敗した場合（120 秒の `Timeout` を含む）は `1`、ディスパッチの前か外で transport が拒否した場合は `2` です。
+拒否されるレスポンスファイルのパスは、何かを実行する前に検査され、`InvalidParams` のレスポンスは stdout に出ます（拒否されたパスには何も書き込みません）。パスは許可されているが書き込めないレスポンスファイルは別のケースです。これはコマンド（またはシナリオ）を実行した**後**の失敗なので、コマンドの効果はすでに反映されています。このときのレスポンスは `InternalError` で stdout に出ます。
+
+プロセスの終了コードは、成功が `0`、コマンドを実行して失敗した場合（120 秒の `Timeout` を含む）は `1`、何も実行する前に transport が拒否した場合と、コマンドの実行後にレスポンスファイルを書き込めなかった場合は `2` です（呼び出し側が結果を受け取れていないため、コマンド自体が成功していても `2` になります）。
 
 ---
 
@@ -255,7 +257,7 @@ Authorization: Bearer <token>
 |---|---|---|---|
 | `SessionId` | string | 移行期間中は省略可 | 対象をそのセッションの Artifact に絞り込む。**現在は省略しても受け付けられる**が、省略した呼び出しは、このエディタプロセスが**今回の起動中**に作った Artifact しか解決できない — 前回のセッションから見つけ直された Artifact には到達できない（[Artifacts](artifacts.md) 参照）。省略した呼び出しが**成功した**場合の応答には `Deprecation` レスポンスヘッダ（RFC 9745）と、移行手順を指す `Link; rel="deprecation"` ヘッダが付く。`SessionId` を明示した呼び出しにはどちらのヘッダも付かない。**`SessionId` は将来のメジャーバージョンでこのルートにおいて必須になります** — 移行方法は [Changelog](changelog.md#uaip-plugin-120--2026-09-29) を参照してください |
 
-レスポンス: 生バイト列、Artifact メタの `Content-Type`。GC 済み（セッション終了または TTL 切れ）の場合 404。
+レスポンス: 生バイト列、Artifact メタの `Content-Type`。GC 済み（セッション終了または TTL 切れ）の場合、または存在しない・呼び出し側から見えない場合は、404 で `ErrorCode: NotFound`。
 
 セッション単位の一覧取得：
 
@@ -263,6 +265,8 @@ Authorization: Bearer <token>
 GET /uaip/sessions/{sessionId}/artifacts
 Authorization: Bearer <token>
 ```
+
+一覧は、セッションが存在しない場合、呼び出し側のロールを解決できない場合、セッションがロールに紐付いていない場合、セッションが呼び出し側と別のロールに紐付いている場合に、404・`ErrorCode: NotFound`・メッセージ `Session not found.` で拒否されます。どの場合も同じ応答なので、セッションの存在は外から分かりません。
 
 ### 5.3 インライン埋め込み（MCP Bridge のみ）
 
@@ -330,7 +334,7 @@ DELETE /uaip/sessions/{sessionId}
 Authorization: Bearer <token>
 ```
 
-セッション終了で観測 Widget キャッシュ解放、Artifact が GC マーク。
+セッション終了で観測 Widget キャッシュ解放、Artifact が GC マーク。存在しない `sessionId` は 404 で `ErrorCode: NotFound` を返します。
 
 ### 6.4 Capability 発見
 
