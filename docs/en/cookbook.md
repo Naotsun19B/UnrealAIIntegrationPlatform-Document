@@ -67,8 +67,10 @@ Demo OK = works on the demo binary. Others require Pro.
    `uaip_execute(CommandName="UAIP.Editor.Workspace.NormalizeEditorLayout")`
 3. Capture the graph:
    `uaip_execute(CommandName="UAIP.Editor.Observation.CaptureGraphViewportImage", Params={"TabId": "BP_PlayerCharacter"})`
-4. Dump the graph structurally:
-   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<NodeGuid>"})` (`NodeId` is the NodeGuid of the node whose pins you want to list)
+4. List the graph's nodes, and read the `NodeId` (the NodeGuid) of the node you want from the artifact. Each entry also carries `NodeClass`, `NodeTitle`, and `Position`:
+   `uaip_execute(CommandName="UAIP.Editor.Observation.ListGraphNodes", Params={"TabId": "BP_PlayerCharacter"})`
+5. Dump the pins of that node:
+   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<NodeId read from the ListGraphNodes artifact>"})`
 
 Then ask the AI: "Review this Blueprint — look for unconnected execution pins, missing null checks on the cast nodes, and any dangling event nodes."
 
@@ -175,7 +177,7 @@ The AI can `Read` the screenshot to verify the dialog actually appeared.
 
 **Waiting for a widget** takes two separate calls, because a `WidgetRef` is issued by `SnapshotUI` and cannot be spliced into the same scenario. A ref is scoped to the session (pass the same `SessionId` to both calls) and expires after 60 seconds, so make the second call soon after the first.
 
-1. Call `SnapshotUI` and read the `WidgetRef` of the widget you want from its artifact (the `Snap` step above does this).
+1. Call `SnapshotUI` and read the `WidgetRef` of the widget you want from its artifact — it is the `Ref` field of that widget's entry (the `Snap` step above does this).
 2. In a separate call, pass that ref to `WaitForWidget`:
 
 ```json

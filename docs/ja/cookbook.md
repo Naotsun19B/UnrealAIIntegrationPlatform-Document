@@ -67,8 +67,10 @@ UAIP でよく出てくるワークフローを、すぐに動かせるレシピ
    `uaip_execute(CommandName="UAIP.Editor.Workspace.NormalizeEditorLayout")`
 3. グラフをキャプチャする：
    `uaip_execute(CommandName="UAIP.Editor.Observation.CaptureGraphViewportImage", Params={"TabId": "BP_PlayerCharacter"})`
-4. グラフ構造をダンプする：
-   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<NodeGuid>"})`（`NodeId` はピンを列挙したいノードの NodeGuid）
+4. グラフのノードを一覧し、成果物から目的のノードの `NodeId`（NodeGuid）を読み取る。各要素には `NodeClass`・`NodeTitle`・`Position` も入っている：
+   `uaip_execute(CommandName="UAIP.Editor.Observation.ListGraphNodes", Params={"TabId": "BP_PlayerCharacter"})`
+5. そのノードのピンをダンプする：
+   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<ListGraphNodes の成果物から読み取った NodeId>"})`
 
 ここまでお膳立てしたうえで、AI に「この Blueprint をレビューして — 未接続の実行ピン、Cast ノードでの null チェック漏れ、孤立したイベントノードを探して」と依頼します。
 
@@ -175,7 +177,7 @@ AI はスクリーンショットを `Read` することで、ダイアログが
 
 **ウィジェットを待つ**には 2 回の別々の呼び出しが要ります。`WidgetRef` は `SnapshotUI` が発行するもので、同じシナリオの中へは差し込めないためです。ref はセッション単位で、60 秒で失効します（2 回の呼び出しには同じ `SessionId` を渡し、1 回目の直後に 2 回目を呼んでください）。
 
-1. `SnapshotUI` を呼び、その成果物から待ちたいウィジェットの `WidgetRef` を読み取る（上の `Snap` ステップがこれにあたります）。
+1. `SnapshotUI` を呼び、その成果物から待ちたいウィジェットの `WidgetRef` を読み取る。ウィジェットの要素の `Ref` フィールドがそれにあたります（上の `Snap` ステップがこの呼び出しです）。
 2. 別の呼び出しで、その ref を `WaitForWidget` に渡す：
 
 ```json
