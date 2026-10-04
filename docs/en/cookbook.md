@@ -240,28 +240,36 @@ UAIP can be invoked from CI / CD pipelines via the **CLI transport** (Pro only).
 
 ### Example (PowerShell on a Windows GitHub Actions runner)
 
+Run it from the project root.
+
 ```powershell
-# 1. Write the request as JSON
+# 1. Write the request as JSON (requests are only read from under Saved/UAIP/Requests/)
+New-Item -ItemType Directory -Force Saved/UAIP/Requests, Saved/UAIP/Responses | Out-Null
 @'
 {
-  "CommandName": "UAIP.Editor.Execution.RunAutomationTest",
+  "Command": "UAIP.Editor.Execution.RunAutomationTest",
   "Params": {
     "TestName": "MyGame.Smoke.MainMenu",
     "RunAllMatching": false
   }
 }
-'@ | Set-Content cmd.json
+'@ | Set-Content Saved/UAIP/Requests/cmd.json
 
-# 2. Run the editor with the CLI transport
-& "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" `
-    "$pwd/MyGame.uproject" `
-    "-uaip-request-file=$pwd/cmd.json" `
-    "-uaip-response-file=$pwd/result.json"
+# 2. Run the editor with the CLI transport and wait for it to exit
+Start-Process -Wait -FilePath "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" -ArgumentList @(
+    "`"$pwd/MyGame.uproject`"",
+    "-uaip-request-file=Saved/UAIP/Requests/cmd.json",
+    "-uaip-response-file=Saved/UAIP/Responses/result.json"
+)
 
 # 3. Inspect the JSON result, fail the CI step if not Success
-$r = Get-Content result.json | ConvertFrom-Json
+$r = Get-Content Saved/UAIP/Responses/result.json | ConvertFrom-Json
 if (-not $r.Success) { exit 1 }
 ```
+
+- The request names the command under the key `Command` (not `CommandName`, which is the argument name of the MCP tool `uaip_execute`).
+- The request file must be under `Saved/UAIP/Requests/` and the response file under `Saved/UAIP/Responses/`, passed as paths relative to the project root.
+- `UnrealEditor.exe` is a GUI application, so calling it with PowerShell's `&` returns without waiting for it to exit. `Start-Process -Wait` waits before the result is read.
 
 The same pattern works for `RunAutomationSpec`, `RunFunctionalTest`, and `RunGauntletTest`.
 

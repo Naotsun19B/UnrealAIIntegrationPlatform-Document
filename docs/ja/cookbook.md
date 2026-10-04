@@ -240,28 +240,36 @@ UAIP は **CLI トランスポート**（製品版限定）経由で CI / CD パ
 
 ### 例：Windows の GitHub Actions ランナーから PowerShell で
 
+プロジェクトのルートで実行します。
+
 ```powershell
-# 1. リクエストを JSON ファイルとして書き出す
+# 1. リクエストを JSON ファイルとして書き出す（読み込めるのは Saved/UAIP/Requests/ の下だけ）
+New-Item -ItemType Directory -Force Saved/UAIP/Requests, Saved/UAIP/Responses | Out-Null
 @'
 {
-  "CommandName": "UAIP.Editor.Execution.RunAutomationTest",
+  "Command": "UAIP.Editor.Execution.RunAutomationTest",
   "Params": {
     "TestName": "MyGame.Smoke.MainMenu",
     "RunAllMatching": false
   }
 }
-'@ | Set-Content cmd.json
+'@ | Set-Content Saved/UAIP/Requests/cmd.json
 
-# 2. CLI トランスポートでエディタを起動して実行する
-& "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" `
-    "$pwd/MyGame.uproject" `
-    "-uaip-request-file=$pwd/cmd.json" `
-    "-uaip-response-file=$pwd/result.json"
+# 2. CLI トランスポートでエディタを起動し、終了を待つ
+Start-Process -Wait -FilePath "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" -ArgumentList @(
+    "`"$pwd/MyGame.uproject`"",
+    "-uaip-request-file=Saved/UAIP/Requests/cmd.json",
+    "-uaip-response-file=Saved/UAIP/Responses/result.json"
+)
 
 # 3. 結果の JSON を確認し、Success でなければ CI を失敗扱いにする
-$r = Get-Content result.json | ConvertFrom-Json
+$r = Get-Content Saved/UAIP/Responses/result.json | ConvertFrom-Json
 if (-not $r.Success) { exit 1 }
 ```
+
+- リクエストのコマンド名のキーは `Command` です（MCP の `uaip_execute` の引数名 `CommandName` とは違います）。
+- リクエストファイルは `Saved/UAIP/Requests/`、レスポンスファイルは `Saved/UAIP/Responses/` の下に置き、プロジェクトのルートからの相対パスで渡します。
+- `UnrealEditor.exe` は GUI アプリなので、PowerShell の `&` で呼ぶと終了を待たずに戻ります。`Start-Process -Wait` で終了を待ってから結果を読みます。
 
 同じ要領で `RunAutomationSpec`・`RunFunctionalTest`・`RunGauntletTest` も実行できます。
 
