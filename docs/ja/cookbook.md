@@ -41,7 +41,7 @@ UAIP でよく出てくるワークフローを、すぐに動かせるレシピ
     { "StepName": "Settle", "CommandName": "UAIP.Runtime.Assertion.WaitSeconds",
       "Params": { "Seconds": 3 }, "AbortOnFailure": false },
     { "StepName": "Shot",   "CommandName": "UAIP.Runtime.Observation.CheckpointCapture",
-      "Params": { "Label": "after-load" }, "AbortOnFailure": false },
+      "Params": { "Label": "after_load" }, "AbortOnFailure": false },
     { "StepName": "Stop",   "CommandName": "UAIP.Runtime.PIE.StopPIE" }
   ]
 }
@@ -66,9 +66,9 @@ UAIP でよく出てくるワークフローを、すぐに動かせるレシピ
 2. スクリーンショットの再現性を担保するためレイアウトを整える：
    `uaip_execute(CommandName="UAIP.Editor.Workspace.NormalizeEditorLayout")`
 3. グラフをキャプチャする：
-   `uaip_execute(CommandName="UAIP.Editor.Observation.CaptureGraphViewportImage", Params={"TabId": "/Game/Blueprints/BP_PlayerCharacter"})`
+   `uaip_execute(CommandName="UAIP.Editor.Observation.CaptureGraphViewportImage", Params={"TabId": "BP_PlayerCharacter"})`
 4. グラフ構造をダンプする：
-   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={...})`
+   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<NodeGuid>"})`（`NodeId` はピンを列挙したいノードの NodeGuid）
 
 ここまでお膳立てしたうえで、AI に「この Blueprint をレビューして — 未接続の実行ピン、Cast ノードでの null チェック漏れ、孤立したイベントノードを探して」と依頼します。
 
@@ -88,8 +88,8 @@ UAIP でよく出てくるワークフローを、すぐに動かせるレシピ
 uaip_execute(
   CommandName="UAIP.Editor.Assets.SearchAssets",
   Params={
-    "Path": "/Game/Characters",
-    "ClassNames": ["Blueprint"],
+    "PackagePath": "/Game/Characters",
+    "ClassNames": ["/Script/Engine.Blueprint"],
     "Recursive": true
   }
 )
@@ -116,27 +116,27 @@ uaip_execute(
     { "StepName": "AddVar", "CommandName": "UAIP.Editor.Blueprint.AddBlueprintVariable",
       "Params": {
         "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
-        "VariableName":  "Health",
-        "PinCategory":   "real",
-        "PinSubCategory":"double",
+        "VarName":       "Health",
+        "VarType":       "Float",
         "DefaultValue":  "100.0"
       } },
     { "StepName": "AddGet", "CommandName": "UAIP.Editor.Blueprint.AddGraphNode",
       "Params": {
         "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
-        "NodeKind":      "VariableGet",
-        "VariableName":  "Health",
+        "NodeType":      "VariableGet",
+        "VarName":       "Health",
         "NodeX": 0, "NodeY": 200
-      } },
-    { "StepName": "Inspect", "CommandName": "UAIP.Editor.Blueprint.ListBlueprintPins",
-      "Params": {
-        "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
-        "NodeId":        "${AddGet.Data.NodeId}"
       } },
     { "StepName": "Save",   "CommandName": "UAIP.Editor.Workspace.SaveAllPackages" }
   ]
 }
 ```
+
+`AddGraphNode` は新しいノードの `NodeId` を成果物にだけ書き、ステップの `Data` には書きません。そのため `${AddGet.Data.NodeId}` というテンプレートでは後続のステップへ渡せません。次の 2 段階で確認します。
+
+1. `AddGet` ステップの成果物から、新しいノードの `NodeId` を読み取る。
+2. 別の呼び出しでその値を渡す：
+   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<成果物から読み取った NodeId>"})`
 
 保存が完了したら、続けて AI に `CaptureGraphViewportImage` で Blueprint グラフを取得させ、配線が意図どおりになっているかを目視で確認してもらいます。構造化されたエラー取得つきの専用 `CompileBlueprint` コマンドは計画段階です。詳細は [ロードマップ → Blueprint Compile / コンパイルエラー取得](roadmap.md#blueprint-compile--コンパイルエラー取得) を参照してください。
 
@@ -155,22 +155,40 @@ uaip_execute(
 
 ## 5. UI 自動化テスト
 
-**目的**：メニューから Project Settings ダイアログを開き、指定のタブが表示されることを確認する。
+**目的**：メニューから Project Settings ダイアログを開き、画面をキャプチャして AI が表示を確認できるようにし、各ウィジェットの `WidgetRef` を得る UI スナップショットを取る。
 
 ```json
 {
   "ScenarioName": "OpenProjectSettings",
   "Steps": [
-    { "StepName": "Menu",  "CommandName": "UAIP.Editor.UIAutomation.SelectMenuItem",
-      "Params": { "MenuPath": "Edit/Project Settings" } },
-    { "StepName": "Wait",  "CommandName": "UAIP.Editor.UIAutomation.WaitForWidget",
-      "Params": { "WidgetPath": "Window:Project Settings", "TimeoutSeconds": 10 } },
-    { "StepName": "Shot",  "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage" }
+    { "StepName": "Menu",   "CommandName": "UAIP.Editor.UIAutomation.SelectMenuItem",
+      "Params": { "MenuPath": "Edit/Project Settings..." } },
+    { "StepName": "Settle", "CommandName": "UAIP.Runtime.Assertion.WaitSeconds",
+      "Params": { "Seconds": 2 } },
+    { "StepName": "Snap",   "CommandName": "UAIP.Editor.UIAutomation.SnapshotUI" },
+    { "StepName": "Shot",   "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage" }
   ]
 }
 ```
 
-AI はスクリーンショットを `Read` することで、ダイアログが実際に表示されたかを自分で確認できます。対話的なフローを組む場合は `ClickWidget`・`InputText`・`SetComboSelection`・`AcceptDialog` を組み合わせてください。
+AI はスクリーンショットを `Read` することで、ダイアログが実際に表示されたかを自分で確認できます。
+
+**ウィジェットを待つ**には 2 回の別々の呼び出しが要ります。`WidgetRef` は `SnapshotUI` が発行するもので、同じシナリオの中へは差し込めないためです。ref はセッション単位で、60 秒で失効します（2 回の呼び出しには同じ `SessionId` を渡し、1 回目の直後に 2 回目を呼んでください）。
+
+1. `SnapshotUI` を呼び、その成果物から待ちたいウィジェットの `WidgetRef` を読み取る（上の `Snap` ステップがこれにあたります）。
+2. 別の呼び出しで、その ref を `WaitForWidget` に渡す：
+
+```json
+{
+  "WidgetRef":          "<SnapshotUI の Artifact から読み取った ref>",
+  "ExpectedState":      "Visible",
+  "WaitTimeoutSeconds": 10
+}
+```
+
+ref が失効していたら、`SnapshotUI` をもう一度呼んで取り直してください。
+
+対話的なフローを組む場合は `ClickWidget`・`InputText`・`SetComboSelection`・`AcceptDialog` を組み合わせてください。
 
 **必要な Capability**：`EditorUIAutomation`（DefaultAllow）が基本です。サブ機能のなかには明示的な opt-in が必要なものがあります — `PressKey` には `EditorKeyboardInput`、`InvokeContextMenuAction` には `AllowContextMenuMutation` を有効化してください。詳細は [Safety & Capabilities](safety.md) を参照してください。
 

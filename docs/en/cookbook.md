@@ -41,7 +41,7 @@ Demo OK = works on the demo binary. Others require Pro.
     { "StepName": "Settle", "CommandName": "UAIP.Runtime.Assertion.WaitSeconds",
       "Params": { "Seconds": 3 }, "AbortOnFailure": false },
     { "StepName": "Shot",   "CommandName": "UAIP.Runtime.Observation.CheckpointCapture",
-      "Params": { "Label": "after-load" }, "AbortOnFailure": false },
+      "Params": { "Label": "after_load" }, "AbortOnFailure": false },
     { "StepName": "Stop",   "CommandName": "UAIP.Runtime.PIE.StopPIE" }
   ]
 }
@@ -66,9 +66,9 @@ Demo OK = works on the demo binary. Others require Pro.
 2. Normalize the layout so the screenshot is reproducible:
    `uaip_execute(CommandName="UAIP.Editor.Workspace.NormalizeEditorLayout")`
 3. Capture the graph:
-   `uaip_execute(CommandName="UAIP.Editor.Observation.CaptureGraphViewportImage", Params={"TabId": "/Game/Blueprints/BP_PlayerCharacter"})`
+   `uaip_execute(CommandName="UAIP.Editor.Observation.CaptureGraphViewportImage", Params={"TabId": "BP_PlayerCharacter"})`
 4. Dump the graph structurally:
-   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={...})`
+   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<NodeGuid>"})` (`NodeId` is the NodeGuid of the node whose pins you want to list)
 
 Then ask the AI: "Review this Blueprint — look for unconnected execution pins, missing null checks on the cast nodes, and any dangling event nodes."
 
@@ -88,8 +88,8 @@ Then ask the AI: "Review this Blueprint — look for unconnected execution pins,
 uaip_execute(
   CommandName="UAIP.Editor.Assets.SearchAssets",
   Params={
-    "Path": "/Game/Characters",
-    "ClassNames": ["Blueprint"],
+    "PackagePath": "/Game/Characters",
+    "ClassNames": ["/Script/Engine.Blueprint"],
     "Recursive": true
   }
 )
@@ -116,27 +116,27 @@ For dependency-style audits (unused assets, circular references, broken referenc
     { "StepName": "AddVar", "CommandName": "UAIP.Editor.Blueprint.AddBlueprintVariable",
       "Params": {
         "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
-        "VariableName":  "Health",
-        "PinCategory":   "real",
-        "PinSubCategory":"double",
+        "VarName":       "Health",
+        "VarType":       "Float",
         "DefaultValue":  "100.0"
       } },
     { "StepName": "AddGet", "CommandName": "UAIP.Editor.Blueprint.AddGraphNode",
       "Params": {
         "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
-        "NodeKind":      "VariableGet",
-        "VariableName":  "Health",
+        "NodeType":      "VariableGet",
+        "VarName":       "Health",
         "NodeX": 0, "NodeY": 200
-      } },
-    { "StepName": "Inspect", "CommandName": "UAIP.Editor.Blueprint.ListBlueprintPins",
-      "Params": {
-        "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
-        "NodeId":        "${AddGet.Data.NodeId}"
       } },
     { "StepName": "Save",   "CommandName": "UAIP.Editor.Workspace.SaveAllPackages" }
   ]
 }
 ```
+
+`AddGraphNode` writes the new node's `NodeId` to its artifact only, not to the step's `Data`, so a `${AddGet.Data.NodeId}` template cannot carry it into a later step. Verify in two stages instead:
+
+1. Read the `NodeId` of the new node from the artifact of the `AddGet` step.
+2. In a separate call, pass it on:
+   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<NodeId read from the artifact>"})`
 
 After save, ask the AI to inspect the Blueprint graph visually with `CaptureGraphViewportImage` and confirm the wiring matches intent. A dedicated `CompileBlueprint` command with structured error retrieval is planned — see [Roadmap → Blueprint Compile & Error Retrieval](roadmap.md#blueprint-compile--error-retrieval).
 
@@ -155,22 +155,40 @@ Pro only — Blueprint editing modules are not in the demo binary.
 
 ## 5. UI automation test
 
-**Goal**: open the Project Settings dialog from the menu and confirm a specific tab appears.
+**Goal**: open the Project Settings dialog from the menu, capture the screen so the AI can check that it appeared, and take a snapshot of the UI that yields the `WidgetRef` of each widget.
 
 ```json
 {
   "ScenarioName": "OpenProjectSettings",
   "Steps": [
-    { "StepName": "Menu",  "CommandName": "UAIP.Editor.UIAutomation.SelectMenuItem",
-      "Params": { "MenuPath": "Edit/Project Settings" } },
-    { "StepName": "Wait",  "CommandName": "UAIP.Editor.UIAutomation.WaitForWidget",
-      "Params": { "WidgetPath": "Window:Project Settings", "TimeoutSeconds": 10 } },
-    { "StepName": "Shot",  "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage" }
+    { "StepName": "Menu",   "CommandName": "UAIP.Editor.UIAutomation.SelectMenuItem",
+      "Params": { "MenuPath": "Edit/Project Settings..." } },
+    { "StepName": "Settle", "CommandName": "UAIP.Runtime.Assertion.WaitSeconds",
+      "Params": { "Seconds": 2 } },
+    { "StepName": "Snap",   "CommandName": "UAIP.Editor.UIAutomation.SnapshotUI" },
+    { "StepName": "Shot",   "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage" }
   ]
 }
 ```
 
-The AI can `Read` the screenshot to verify the dialog actually appeared. For interactive flows, chain `ClickWidget`, `InputText`, `SetComboSelection`, and `AcceptDialog`.
+The AI can `Read` the screenshot to verify the dialog actually appeared.
+
+**Waiting for a widget** takes two separate calls, because a `WidgetRef` is issued by `SnapshotUI` and cannot be spliced into the same scenario. A ref is scoped to the session (pass the same `SessionId` to both calls) and expires after 60 seconds, so make the second call soon after the first.
+
+1. Call `SnapshotUI` and read the `WidgetRef` of the widget you want from its artifact (the `Snap` step above does this).
+2. In a separate call, pass that ref to `WaitForWidget`:
+
+```json
+{
+  "WidgetRef":          "<ref read from the SnapshotUI artifact>",
+  "ExpectedState":      "Visible",
+  "WaitTimeoutSeconds": 10
+}
+```
+
+If the ref has expired, call `SnapshotUI` again to get a fresh one.
+
+For interactive flows, chain `ClickWidget`, `InputText`, `SetComboSelection`, and `AcceptDialog`.
 
 **Capabilities**: `EditorUIAutomation` — DefaultAllow. Some sub-features need explicit opt-in: `EditorKeyboardInput` for `PressKey`, `AllowContextMenuMutation` for `InvokeContextMenuAction`. See [Safety & Capabilities](safety.md).
 

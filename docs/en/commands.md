@@ -2,13 +2,14 @@
 
 # Commands Reference
 
-UAIP exposes 1223 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1644 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1225 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1646 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
 - Use `uaip_describe_command(CommandName="...")` to get the full parameter schema for a command
 - Use `uaip_list_commands(ProviderPrefix="UAIP.Editor")` to filter by domain at runtime
 - For the required Capability per command, see [Safety & Capabilities](safety.md)
+- These commands delete, move or rename files on disk, so they are refused with `PolicyViolation` — before anything else is checked, PIE included — when the safety policy sets `DisableSave` ("Disk write operations are disabled by the current safety policy."): `DeleteAsset`, `DeleteFolder`, `ForceDeleteFolder`, `RenameAsset`, `MoveAsset`, `MoveFolder`, `FixAssetRedirectors`, `FixUpRedirectorsInFolder`, `DeleteInputAction`, `DeleteMappingContext`, `DeleteDataLayerAsset`, `DeleteHLODs` and `DeleteGameFeaturePlugin`. Commands that already refused under `DisableSave` are unchanged. See [Safety & Capabilities](safety.md#disablesave-and-the-commands-that-delete-move-or-rename)
 
 ## Symbols
 
@@ -73,9 +74,9 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 
 | Domain | Provider prefix | UAIP commands | Toolset bridge | Demo |
 |---|---|---:|---:|---:|
-| Core | `UAIP.Core` | 11 | — | ✅ |
+| Core | `UAIP.Core` | 12 | — | ✅ |
 | Core Artifacts | `UAIP.Core.Artifacts` | 1 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 22 | 1 | partial (17/22) |
+| Editor Workspace | `UAIP.Editor.Workspace` | 23 | 1 | partial (18/23) |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | partial (5/9) |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
@@ -357,7 +358,7 @@ System-level commands for discovery, health, and session management.
 
 | Command | Description |
 |---|---|
-| 🆓 `HealthCheck` | Plugin connectivity check — returns `Status`, `UAIPVersion`, `EngineVersion`, `BuildConfig`, `ProjectFilePath` (absolute path of the open `.uproject`, used by the MCP Bridge to verify it is attaching to the right editor instance), `TransportTimeouts` (per-transport async command timeout in seconds, e.g. `{"HTTP": 120, "WS": 12}`), `QueueCongestion` (how busy the deferred-execution queue is, as one of `None` / `Low` / `High` — the exact number waiting is not returned, since it would let one session infer another session's activity) |
+| 🆓 `HealthCheck` | Plugin connectivity check — returns `Status`, `UAIPVersion`, `EngineVersion`, `BuildConfig`, `ProjectFilePath` (absolute path of the open `.uproject`, used by the MCP Bridge to verify it is attaching to the right editor instance), `TransportTimeouts` (per-transport async command timeout in seconds, e.g. `{"HTTP": 120, "WS": 12}`), `QueueCongestion` (how busy the deferred-execution queue is, as one of `None` / `Low` / `High` — the exact number waiting is not returned, since it would let one session infer another session's activity), `MinBridgeVersion` (the oldest MCP Bridge version this plugin accepts — the bridge reads it from this response and refuses to run below it) |
 | 🆓 `GetSystemInfo` | Returns UE version (Major/Minor/Patch/Changelist), project name, platform, build config, UAIP version |
 | 🆓 `QueryCapabilities` | Returns `Capabilities` (the session's effective set), `RegisteredCapabilityCount` / `UngrantedCapabilityCount` (always) and `OperationalConstraints` (9 policy flags). Pass `IncludeUnavailable: true` to also get `RegisteredCapabilities` — every capability the loaded modules declare, each with `Name` / `DefaultPolicy` / `IsGranted`, so one this session does not hold can still be found by name; the deny-by-default ones are the entries whose `DefaultPolicy` is `Denied` |
 | 🆓 `ListCommands` | Filtered command catalog (filters: `ProviderPrefix`, `KeywordFilter`, `IncludeUnavailable`, `Stability`; `ResultMode` — `Commands` (default) or `Providers` to list providers instead of commands; `Limit` — max results returned (1–1000); `IncludeDescription` — include each command's description text in the listing) |
@@ -398,8 +399,9 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 | 🆓 `FrameGraphAll` | Zoom the graph viewport to fit all nodes |
 | 🆓 `FrameGraphSelection` | Zoom the graph viewport to fit selected nodes |
 | 🆓 `SetGraphSelection` | Select graph nodes by ID list |
-| 🆓 `ShutdownEditor` | Shut down the UE Editor (optionally save packages) |
-| 🆓 `RestartEditor` | Restart the UE Editor (optionally save packages) |
+| 🆓 `ShutdownEditor` | Shut down the UE Editor (optionally save packages). Cancels a `RestartEditor` attempt that is still in progress, so the exit is not turned into a restart |
+| 🆓 `RestartEditor` | Restart the UE Editor (optionally save packages). `Success` means the request was **accepted**, not that the editor has restarted — the outcome is read with `GetRestartStatus`, and the MCP Bridge waits for it automatically. See the note below the table |
+| 🆓 `GetRestartStatus` | Report the state of a `RestartEditor` attempt (`Scheduled` / `CloseRetrying` / `Declined` / `ExitStarted`). Read-only; requires `EditorLifecycle` |
 | 🆓 `SaveAllPackages` | Save all modified packages (optionally include maps) |
 | 🆓 `Undo` | Undo the last editor operation |
 | 🆓 `Redo` | Redo the last undone operation |
@@ -410,6 +412,17 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 | `CompileLiveCoding` | Trigger Live Coding recompilation |
 | `GetLiveCodingStatus` | Get the current Live Coding status |
 | `EnableLiveCodingForSession` | Enable Live Coding for the current session |
+
+> **`RestartEditor` and `GetRestartStatus` — what `Success` means and how to learn the outcome.** Both require `EditorLifecycle`. `RestartEditor` takes one optional parameter, `SaveAll`. When omitted, it saves unsaved changes first unless `DisableSave` is in force (then it does not save); an explicit `SaveAll: true` under `DisableSave` is refused with `PolicyViolation`. `Success` means the request was **accepted**. `Data` carries `AttemptId`, `State` (`Scheduled`), `RestartScheduled: true`, `CloseDeadlineSeconds` and `ProcessId` (the id of the editor process that accepted the request).
+>
+> - **Through the MCP Bridge**, the call does not return at acceptance. The bridge waits for the outcome, keeps sending progress to the client, and answers once the new editor is connected, the restart was declined (the editor's reason and remedy are returned as the error), or the outcome could not be confirmed within the time limit. There are two limits: until the editor closes, the deadline the editor reported plus about 30 seconds (and up to 60 more seconds once shutdown has begun); after it closes, the bridge's editor-startup wait (default 120 seconds). When the bridge reports that it could not confirm the outcome, check `GetRestartStatus` and `uaip_get_editor_status`.
+> - **Over any other transport** (HTTP and so on), `Success` is only the acceptance. Call `GetRestartStatus` with the `AttemptId`, or without it for the most recent attempt. It answers only while the editor that accepted the request is still running: a restarted editor has no record of earlier attempts, and an unknown `AttemptId` — or one that has aged out (the latest 8 attempts are kept) — returns `NotFound`. Every `GetRestartStatus` answer, `NotFound` included, carries `ProcessId`, so a caller can tell the editor it asked from its successor.
+> - **`GetRestartStatus` data**: `AttemptId`, `State`, `RequestedAt`, `ElapsedSeconds`, `CloseDeadlineSeconds`, `ProcessId`. `State` is `Scheduled`, `CloseRetrying` (the editor is busy saving or loading and keeps trying to close), `Declined` or `ExitStarted`. A `Declined` attempt also carries `DeclineReason`, `DeclineDetail`, `Remedy`, `OutcomeErrorCode` (`ExecutionFailed`), `OutcomeErrorMessage`, `RestoredDirtyPackageCount` and `LostDirtyPackageCount`.
+> - **Refused up front (nothing is saved, discarded or changed)**: `PreconditionFailed` while a lighting build (`LightingBuildRunning`), an Interchange import (`InterchangeActive`) or a main window recreation (`MainFrameRecreating`) is running, or while a modal dialog is open (`ModalWindowOpen`; only in an editor a person operates, not in the unattended editor the bridge launches) — `Data` carries `DeclineReason` and `Remedy`, and the message ends with the remedy. `NotAllowed` when the editor is already exiting. `Conflict` while another attempt is in progress (`Data.AttemptId` names it; this is decided before the conditions above). `ExecutionFailed` when saving was requested and some packages failed to save (`Data.FailedPackages` lists them); the editor does not restart.
+> - **Declined after acceptance**: the editor logs a warning, restores the settings it changed for the restart, and puts unsaved changes it was about to discard back into the unsaved state (`RestoredDirtyPackageCount` / `LostDirtyPackageCount` give the counts). `DeclineReason` is one of `LightingBuildRunning`, `InterchangeActive`, `CloseRequestDeclined`, `CloseTimedOut` or `SupersededByShutdown`. The editor keeps running.
+> - **Close deadline**: if the editor cannot close within `CloseDeadlineSeconds` (default 60) of acceptance, the attempt is declined with `CloseTimedOut`; in an editor a person operates, it is not declined while a dialog such as a save prompt is open. Change it in `DefaultUAIP.ini` with `[UAIP.EditorRestart]` `CloseDeadlineSeconds` (10 to 600; see [Configuration](config.md#uaipeditorrestart--closing-deadline-for-restarteditor)) — raise it if you often restart right after a heavy save or shader compilation.
+> - **Shutting down during an attempt**: `ShutdownEditor`, or `QuitGame` when it ends up asking the editor itself to exit, cancels the attempt and the editor exits without starting a new one. A `ShutdownEditor` refused by the safety policy (`PolicyViolation`) cancels nothing. Before the editor exits, `GetRestartStatus` reports the attempt as `Declined` with `SupersededByShutdown`. A person closing the window, or an exit that does not come from UAIP, during an attempt still ends in a restart.
+> - **Older components**: an older MCP Bridge still returns at acceptance, and an older editor returns no `AttemptId`, so a newer bridge behaves as before. Either way, a restart declined after acceptance is only visible through `GetRestartStatus` on a newer editor.
 
 > **`FocusEditorTab`'s `GraphName` — response contract.** When `GraphName` is a non-empty string, `Result` carries four fields: `WindowFocusRequested` (bool — records that bringing the editor window to front was *requested*; it does not guarantee the OS actually put it in the foreground), `GraphNameRequested` (bool), `GraphNameApplied` (bool), and `Reason` — a closed set of three strings, `Applied` / `BlueprintEditorInterfaceUnavailable` / `OpenFailed`. Read `GraphNameApplied` and `Reason` rather than `Success` alone: a `BlueprintEditorInterfaceUnavailable` reason still reports `Success: true`, because the open editor genuinely has no Blueprint graph-navigation entry point (for example a ControlRig editor with `RigVM.UseNewEditor` enabled) and retrying the same input cannot change that. None of these four fields are set when `GraphName` is omitted or empty — callers must handle both "`Result` absent" and "`Result.GraphNameRequested` is `false`". Applying a graph move clears the editor's current UI selection, and for a Widget Blueprint opened in Designer mode, switches it to Graph mode first (needed to display the graph at all); both happen before the graph itself is opened, so they can already have taken effect even when the open subsequently fails with `OpenFailed`.
 >
@@ -570,8 +583,8 @@ Run tests, Python scripts, and Editor Utility Blueprints.
 |---|---|
 | `DiscoverAutomationTests` | Load the automation test modules and return summary counts of discovered tests |
 | `ListAutomationTests` | Return a filtered list of automation tests as a JSON artifact |
-| `RunAutomationTest` | Run a UE Automation Test by name and return Pass/Fail/Error report |
-| `RunAutomationSpec` | Run a UE Automation Spec by name and return Pass/Fail/Error report |
+| `RunAutomationTest` | Run a UE Automation Test by name and return a per-test report (Pass / Fail / Skipped / Error / Cancelled; see [the report contract](#automation-test-report-contract)) |
+| `RunAutomationSpec` | Run a UE Automation Spec by name and return a per-test report (same contract as `RunAutomationTest`) |
 | `GetAutomationTestStatus` | Return the current automation test manager status (inline by default) |
 | `StopAutomationTests` | Request cancellation of the running automation test batch |
 | `RunEditorPythonScript` 🧩 | Run an inline Python script or a `.py` file (requires `PythonScriptPlugin`) |
@@ -598,6 +611,30 @@ Run tests, Python scripts, and Editor Utility Blueprints.
 
 > **Changed in v1.2.0**: `RunAutomationSpec` now declares a parameter schema and rejects anything outside it — it accepts `TestName` (required), `TimeoutSec`, `RunAllMatching`, and `MaxMatchingTests` (the same four keys `RunAutomationTest` reads, since both share a parser), with `AdditionalProperties: false`. **A call naming `SpecName`, or any other key outside this set, now fails with `InvalidParams` instead of being silently ignored** — earlier releases declared no schema at all, so an unrecognized key passed through unchecked and simply had no effect. `RunAllMatching` and `MaxMatchingTests` are accepted for schema symmetry with `RunAutomationTest`, but have **no effect on a Spec run**: `Execute()` always forces a single exact-name match regardless of what either parameter is set to.
 
+#### Automation test report contract
+
+`RunAutomationTest`, `RunAutomationSpec` and `RunRuntimeAutomationTest` return the same report shape.
+
+**Each `Tests[]` entry** carries `Name`, `Result` and `TimeSec`, plus three message lists that are written **only when non-empty**, in this order: `FailMessages`, `SkipMessages`, `WarningMessages`.
+
+**`Result` is one of five values:**
+
+| Value | Meaning |
+|---|---|
+| `Pass` | The test succeeded and wrote no skip line |
+| `Fail` | The test recorded at least one error. The errors are in `FailMessages` |
+| `Skipped` | The test succeeded and wrote at least one skip line (`TEST-SKIP[<Reason>]: <Detail>`). The lines are in `SkipMessages` |
+| `Error` | The test failed without recording any error (or the runner could not run it, for example on a timeout). When the test recorded no error, `FailMessages` holds a synthesized message, `The test reported failure without recording an error.`, so a failed result always carries a reason |
+| `Cancelled` | The test was cancelled before it finished |
+
+A test that recorded an error is `Fail` even when one of its messages looks like a skip line. Warnings never change `Result`: they go to `WarningMessages` and do not fail the test.
+
+**`Summary`** counts `Pass`, `Fail` (both `Fail` and `Error` results), `Skip` (the `Skipped` results) and `Cancelled`, together with `Matched`, `Selected` and `TotalTimeSec`. A skipped test is counted in `Summary.Skip`, **not** in `Summary.Pass`.
+
+**The log artifact** lists each test's entries in the order `FAIL:` (from `FailMessages`), `SKIP:` (from `SkipMessages`), `WARN:` (from `WarningMessages`), then `LOG:` (other output).
+
+**`ReportErrors`** at the root of the report holds problems of the whole run that belong to no single test. It is written only when there is at least one, and its entries are not counted in `Summary`.
+
 ---
 
 ## UAIP.Editor.UIAutomation
@@ -606,9 +643,9 @@ Drive the editor UI — click, type, select, drag.
 
 | Command | Description |
 |---|---|
-| 🆓 `ClickWidget` | Simulate a left click on a widget identified by path |
+| 🆓 `ClickWidget` | Simulate a left click on a widget identified by the `WidgetRef` that `SnapshotUI` returns |
 | 🆓 `SelectMenuItem` | Open and select a menu item by slash-separated label path |
-| 🆓 `InputText` | Type text into a widget identified by path |
+| 🆓 `InputText` | Type text into a widget identified by the `WidgetRef` that `SnapshotUI` returns |
 | 🆓 `SetCheckboxState` | Set the checked state of a checkbox |
 | 🆓 `SetComboSelection` | Select a combo box item by label |
 | 🆓 `DragGraphNode` | Drag a graph node by a pixel offset on a specified graph editor tab |
@@ -618,10 +655,21 @@ Drive the editor UI — click, type, select, drag.
 | 🆓 `InvokeContextMenuAction` | Right-click a target and execute an item from the context menu |
 | 🆓 `HoverWidget` | Simulate OnMouseEnter on a widget |
 | 🆓 `PressKey` | Simulate a key press with modifiers (blacklist for dangerous shortcuts) |
-| 🆓 `WaitForWidget` | Poll until a widget reaches an expected state |
+| 🆓 `WaitForWidget` | Poll until a widget, identified by a `WidgetRef` from `SnapshotUI`, reaches an expected state |
 | 🆓 `FillForm` | Bulk-fill a form widget using a sequential state machine |
 | 🆓 `SnapshotUI` | Capture a structured, scope-filterable snapshot of the UI and report what was left out |
 | 🆓 `OpenPasswordTestWindow` | Open a floating test window holding a password `SEditableTextBox` — provides a target for password-field policy tests |
+
+> **Note**: Commands that act on a widget take the `WidgetRef` that `SnapshotUI` returns, not a widget path. Call `SnapshotUI` first and pass the `WidgetRef` of the widget you want.
+>
+> **`SelectMenuItem`** takes one required parameter, `MenuPath`: a slash-separated list of menu labels, for example `Edit/Project Settings...`.
+>
+> - The first element is the menu name. Each later element matches a menu name or a display label, ignoring case, and must match it completely.
+> - A label that contains `/` cannot be specified.
+> - A label that contains `...` can be used, as in `Project Settings...`.
+> - These are refused with `InvalidParams`: a segment that is only `..`, an empty segment, a control character, a path longer than 256 characters, and a path nested deeper than 10 levels.
+>
+> **`WaitForWidget`** takes `WidgetRef` (required) and `ExpectedState` (required; one of `Exists`, `Absent`, `Visible`, `Hidden`, `Enabled`, `Disabled`, `Focused`). `WaitTimeoutSeconds` is optional (default 5.0, at most 30). `PollIntervalSeconds` (default 0.1, at least 0.05) and `ConfirmTickCount` (default 3, at most 10) are also optional.
 
 > **Note**: `SnapshotUI` takes an optional scope — `RootWidgetRef` or `RootWidgetPath` (mutually exclusive; neither combines with `WindowTitle`) to pick a starting widget, `MaxDepth` (default 30) and `MaxNodes` (default 50000, shared across every root the call visits) to bound the walk, `WidgetTypes` + `WidgetTypeMode` (`"Add"` layers extra types on top of the usual roster, `"Only"` restricts to just the listed types) and `LabelContains` to filter, and `bIncludeInvisible` / `bIncludeUnclassified` to opt into widgets the default scan skips. The response always carries `EmittedCount`, `FilteredCount`, `FilteredReasons` (six reason keys present even at zero — `InvisibleSubtreeRoot`, `StructuralContainer`, `TypeFilterMismatch`, `LabelFilterMismatch`, `Unclassified`, `RegistrationFailed`), `UnclassifiedTypes` (up to 200 entries of `Type` + `Count`, sorted by count then name — each `Type` can be passed straight back into `WidgetTypes`), `Traversal` (`Complete` / `NodeLimitReached` / `DepthLimitReached` / `VisitedNodeCount`), `MatchedRootCount`, and `EffectiveParams` (the clamped/normalized values actually applied).
 >
@@ -635,7 +683,7 @@ Drive the editor UI — click, type, select, drag.
 
 ### Toolset bridges — SlateInspector (10) 🧩
 
-Bridge commands via the `SlateInspectorToolset` (UE 5.8+). Provider: `Toolset.Editor.SlateInspector.*`. Widgets are addressed by refPath rather than by the widget-path syntax the native commands use. Every bridge command in this section now requires the same capability as its native counterpart (see [Safety & Capabilities](safety.md)) — earlier releases dispatched these without a capability check.
+Bridge commands via the `SlateInspectorToolset` (UE 5.8+). Provider: `Toolset.Editor.SlateInspector.*`. Widgets are addressed by refPath, whereas the native commands address a widget by the `WidgetRef` that `SnapshotUI` returns. Every bridge command in this section now requires the same capability as its native counterpart (see [Safety & Capabilities](safety.md)) — earlier releases dispatched these without a capability check.
 
 | Command | Description |
 |---|---|
@@ -674,21 +722,21 @@ Open, search, create, duplicate, rename, delete assets and folders.
 | 🆓 `ListFactoriesForClass` | Return the factory candidates for a `ClassName`, each with its `FactoryParams` schema |
 | `DuplicateAsset` | Duplicate an existing asset |
 | `CopyAsset` | Copy an asset to a new full package path (fails if the destination exists; requires `AssetCreate`) |
-| `RenameAsset` | Rename / move an asset to another path |
-| `MoveAsset` | Move an asset to another folder keeping its name; reports whether a redirector was left behind (requires `AssetMutate`) |
-| `DeleteAsset` | Delete an asset |
+| `RenameAsset` | Rename / move an asset to another path. Refused with `PolicyViolation` while `DisableSave` is in force |
+| `MoveAsset` | Move an asset to another folder keeping its name; reports whether a redirector was left behind (requires `AssetMutate`). Refused with `PolicyViolation` while `DisableSave` is in force |
+| `DeleteAsset` | Delete an asset. Refused with `PolicyViolation` while `DisableSave` is in force |
 | `CreateFolder` | Create a new folder in the Content Browser |
-| `DeleteFolder` | Delete an empty folder (returns `NotEmpty` if not empty) |
-| `ForceDeleteFolder` | Delete a folder and its assets (max 50 items, no external-reference check) |
-| `MoveFolder` | Move every asset in a folder to a destination folder, preserving sub-folders; partial failures are listed in `FailedAssets` (requires `AssetFolderRefactor`) |
+| `DeleteFolder` | Delete an empty folder (returns `NotEmpty` if not empty). Refused with `PolicyViolation` while `DisableSave` is in force |
+| `ForceDeleteFolder` | Delete a folder and its assets (max 50 items, no external-reference check). Refused with `PolicyViolation` while `DisableSave` is in force |
+| `MoveFolder` | Move every asset in a folder to a destination folder, preserving sub-folders; partial failures are listed in `FailedAssets` (requires `AssetFolderRefactor`). Refused with `PolicyViolation` while `DisableSave` is in force |
 | 🆓 `GetSelectedAssets` | Return the assets currently selected in the Content Browser |
 | `SelectAssets` | Select the specified assets in the Content Browser (requires `ContentBrowserNavigate`) |
 | 🆓 `GetContentBrowserPath` | Return the current folder path shown in the Content Browser |
 | `SetContentBrowserPath` | Navigate the Content Browser to a specified folder (requires `ContentBrowserNavigate`) |
 | 🆓 `GetOpenAssets` | Return the list of assets currently open in an asset editor |
 | 🆓 `ListAssetRedirectors` | List asset redirectors under a folder (`/Game` project-wide by default) with source/destination paths, without loading any assets |
-| `FixAssetRedirectors` (requires `RedirectorFixup`) | Fix up and delete all resolvable asset redirectors under `/Game` (project-wide, recursive, always) |
-| `FixUpRedirectorsInFolder` (requires `RedirectorFixup`) | Same fix-up limited to one folder; unresolved entries are returned in `FailedRedirectors` |
+| `FixAssetRedirectors` (requires `RedirectorFixup`) | Fix up and delete all resolvable asset redirectors under `/Game` (project-wide, recursive, always). Refused with `PolicyViolation` while `DisableSave` is in force |
+| `FixUpRedirectorsInFolder` (requires `RedirectorFixup`) | Same fix-up limited to one folder; unresolved entries are returned in `FailedRedirectors`. Refused with `PolicyViolation` while `DisableSave` is in force |
 | 🆓 `GetAssetReferences` | Traverse the asset reference graph (referencers, dependencies, or both) rooted at an asset up to a given depth |
 | 🆓 `GetAssetSizeMap` | Aggregate per-asset disk (and optionally resident memory) size under a folder, sorted descending |
 | 🆓 `GetAssetSizeMapByClass` | Aggregate disk size per asset class under a folder, sorted descending |
@@ -1021,8 +1069,16 @@ GameFeature Plugin management. Requires `GameFeatures` + `GameFeaturesEditor` pl
 | `ListGameFeatures` 🧩 | List GameFeature Plugins with a `FilterState` filter (All / Installed / Mounted / Registered / Loaded / Active) |
 | `GetGameFeatureInfo` 🧩 | GFP details (State, Actions, dependencies) |
 | `GetGameFeatureActions` 🧩 | List the actions declared by a GameFeature Plugin's `UGameFeatureData` |
-| `CreateGameFeaturePlugin` 🧩 | Scaffold a new GameFeature Plugin (with name validation) |
-| `DeleteGameFeaturePlugin` 🧩 | Delete a GameFeature Plugin and its content from disk |
+| `CreateGameFeaturePlugin` 🧩 | Create a new GameFeature Plugin under the project's `Plugins/GameFeatures/` folder, register it with the Game Feature subsystem and take it to `InitialState`. See the note below the table |
+| `DeleteGameFeaturePlugin` 🧩 | Delete a content-only GameFeature Plugin from the project's `Plugins/GameFeatures/` folder. Requires `GameFeatureDelete`. Refused with `PolicyViolation` while `DisableSave` is in force. See the note below the table |
+
+> **`CreateGameFeaturePlugin`** requires `GameFeatureCreate` and `PluginName` (a letter followed by up to 63 letters, digits or `_`). The optional `OutputPath` defaults to the project's `Plugins/GameFeatures/`; a relative path is taken from the project root, so `Plugins/GameFeatures/Combat` creates the plugin in `Plugins/GameFeatures/Combat/<PluginName>/`. The optional `InitialState` (`Installed`, `Registered`, `Loaded` or `Active`; default `Active`) is the state the plugin is taken to, and it is the state it starts from after a restart. The plugin gets a GameFeature data asset with the same name, is registered as a GameFeature in the session that created it (usually within a few seconds), and is registered again after an editor restart. The `.uproject` file is not changed.
+>
+> - **Success**: `Data` carries `PluginPath` (relative to the project root; the real location), `PluginUrl`, `State` and `Warnings`. When the project has no asset-manager setting for GameFeature data, `Warnings` explains that a packaged build may leave this GameFeature's data out and gives the `DefaultGame.ini` lines to add. The command never edits project settings itself.
+> - **`InvalidParams`**: `OutputPath` outside the project's `Plugins/GameFeatures/` folder (for example directly under `Plugins/`, or outside the project), inside an existing plugin, or reaching outside the project through a junction; an invalid name; an invalid `InitialState`. Nothing is created. `Conflict` when a folder or plugin with the name already exists. `NotAllowed` while the editor is shutting down, in PIE or running as a commandlet. `PolicyViolation` when the safety policy disables disk writes.
+> - **`ExecutionFailed`** when a step fails partway (plugin creation, data asset creation or save, registration), registration does not finish within 30 seconds, the editor starts shutting down, or the location turns out to be outside the project when it is checked again after creation. What was already created is left in place, and `Data` reports how far it got (`CreatedOnDisk`, `Mounted`, `DataAssetCreated`, `DataAssetSaved`, `Registered`), the reached `State` and `PluginPath`; the same report is attached as a JSON artifact, with a copy of the `.uplugin` when one exists. Use `DeleteGameFeaturePlugin` to clean up — except when the location check failed: the plugin is then detached from the editor but its files stay and `DeleteGameFeaturePlugin` also refuses it, so inspect and delete it by hand.
+>
+> **`DeleteGameFeaturePlugin`** takes `PluginName`. It unregisters the GameFeature (a plugin that never got registered, as after a failed create, skips this), unloads its assets, checks again that the target may be deleted, removes the plugin and deletes the folder. It refuses, and deletes nothing, when: the plugin does not exist (`NotFound`); the target is not a GameFeature — a plugin outside `Plugins/GameFeatures/`, or one an older version created directly under `Plugins/` — or it is the `GameFeatures` folder itself, contains other plugins, has code modules or contains a link such as a junction (`NotAllowed`); the GameFeature is changing state (`PreconditionFailed`; wait and retry); unloading the assets failed, unregistering did not finish within 30 seconds, or the editor began shutting down (`ExecutionFailed`).
 
 ### Toolset bridges — GameFeatures (4) 🧩
 
@@ -2647,8 +2703,8 @@ Enhanced Input asset editing — Input Actions and Input Mapping Contexts.
 | `ListMappingContexts` | List Input Mapping Context assets in the project |
 | `GetInputActionInfo` | Get an Input Action's details (ValueType, Triggers, Modifiers). Each trigger / modifier's `Params` now carries reference, container and struct values too — in the same form the setters accept — and gains a `PropertyWriteRequirements` map |
 | `GetMappingContextInfo` | Get a Mapping Context's details (entries, keys, modifiers, triggers), with the same structured `Params` values and `PropertyWriteRequirements` map |
-| `DeleteInputAction` | Delete an Input Action asset |
-| `DeleteMappingContext` | Delete an Input Mapping Context asset |
+| `DeleteInputAction` | Delete an Input Action asset. Refused with `PolicyViolation` while `DisableSave` is in force |
+| `DeleteMappingContext` | Delete an Input Mapping Context asset. Refused with `PolicyViolation` while `DisableSave` is in force |
 | `AddInputMapping` | Add a key mapping to an Input Mapping Context |
 | `RemoveInputMapping` | Remove a key mapping by index |
 | `SetInputMappingKey` | Update a mapping's key |
@@ -2750,7 +2806,7 @@ World Partition, Data Layer, and HLOD management for partitioned worlds (require
 | `ListDataLayers` | List all Data Layer instances in the current level |
 | `GetDataLayerInfo` | Get detailed info for a Data Layer instance — type, load filter, runtime state, visibility, and parent hierarchy |
 | `CreateDataLayerAsset` | Create a new Data Layer asset in the Content Browser (requires `DataLayerEdit`) |
-| `DeleteDataLayerAsset` | Delete a Data Layer asset (requires `DataLayerEdit`) |
+| `DeleteDataLayerAsset` | Delete a Data Layer asset (requires `DataLayerEdit`). Refused with `PolicyViolation` while `DisableSave` is in force |
 | `CreateDataLayerInstance` | Create a new Data Layer instance in the current level from a Data Layer asset (requires `DataLayerEdit`) |
 | `DeleteDataLayerInstance` | Delete a Data Layer instance from the current level (requires `DataLayerEdit`) |
 | `SetDataLayerType` | Set the type of a Data Layer instance — Editor or Runtime (requires `DataLayerEdit`) |
@@ -2769,7 +2825,7 @@ World Partition, Data Layer, and HLOD management for partitioned worlds (require
 |---|---|
 | `ListHLODLayers` | List all HLOD Layer assets in the project |
 | `CreateHLODLayer` | Create a new HLOD Layer asset under `/Game/` (requires `HLODBuild`) |
-| `DeleteHLODs` | Delete built HLOD data for a specified HLOD Layer (requires `HLODBuild`) |
+| `DeleteHLODs` | Delete built HLOD data for a specified HLOD Layer (requires `HLODBuild`). Refused with `PolicyViolation` while `DisableSave` is in force |
 | `SetActorHLODLayer` | Assign an actor to an HLOD Layer asset (requires `HLODBuild`) |
 | `BuildHLODs` | Start an HLOD build job for the current world; returns `HLODBuildJobId` (requires `HLODBuild`) |
 | `CancelHLODBuild` | Cancel an in-progress HLOD build job by job ID (requires `HLODBuild`) |
@@ -3424,9 +3480,40 @@ Test execution in PIE / Standalone.
 
 | Command | Description |
 |---|---|
-| `RunFunctionalTest` | Run an `AFunctionalTest` actor by asset path and return a JSON report |
-| `RunRuntimeAutomationTest` | Run a UE Automation Test in PIE context |
+| `RunFunctionalTest` | Run an `AFunctionalTest` actor in the PIE world, found by its display name (actor label), and return a JSON report |
+| `RunRuntimeAutomationTest` | Run a UE Automation Test in PIE context and return a per-test report (Pass / Fail / Skipped / Error / Cancelled; see [the report contract](#automation-test-report-contract)) |
 | `RunGauntletTest` | Launch a Gauntlet test as an external process via RunUAT |
+
+> **`RunFunctionalTest`** runs the `AFunctionalTest` actor in the PIE world whose display name (actor label) equals `TestPath`, ignoring case; the whole name must match. The name is not a file path, so a name that contains `..` can be used.
+>
+> **`RunGauntletTest`** takes `TestName` (required), `TestParams` (optional) and `TimeoutSec` (optional, 1 to 1800, default 600). It requires the `GauntletExecution` capability. Anything outside the formats below is refused with `InvalidParams` and nothing is launched.
+>
+> **`TestName`** is at most 512 characters: a comma-separated list of test specs, for example `UE.BootTest`.
+>
+> - Each spec is a dotted name. Every part starts with an ASCII letter or `_`, followed by ASCII letters, digits or `_`.
+> - A spec may be followed by one per-test parameter list in parentheses. The list may hold ASCII letters, digits and `_ . , = + - '`, but no `..` and no nested parentheses.
+> - Characters such as `/`, `\`, `:`, spaces and quotes are refused.
+>
+> **`TestParams`** is an object with at most 32 entries, and every value is a string. The parameters reach Gauntlet in the form `-Key="Value"`.
+>
+> - **Key**: 1 to 128 characters matching `[A-Za-z][A-Za-z0-9_]*`. Write it without a leading `-`; `.` is not allowed.
+> - **Value**: up to 1024 characters from `[A-Za-z0-9_.:/+-]`, without `..`. An empty value is allowed.
+>
+> Some arguments that are well-formed still change what the test or its child process does. They need the `GauntletUnrestrictedArguments` capability, which is denied by default (see [Safety & Capabilities](safety.md)). Without it the call fails with `CapabilityNotAvailable`. All matching below ignores case.
+>
+> - A per-test parameter list in parentheses in `TestName`.
+> - A key that ends with one of: `Args`, `ExecCmds`, `Cmds`, `CommandLine`, `Cmdline`, `Platform`, `Configuration`, `Flavor`, `Dir`, `Directory`, `Path`, `Root`, `File`, `URL`.
+> - A key that starts with one of: `Skip`, `Editor`, `Script`, `Automation`, `Horde`, `Telemetry`, `Device`, `P4`.
+> - A key that is exactly one of: `NoCompileUAT`, `noturnkeyvariables`, `profile`, `ScriptsForProject`, `Bootstrap`, `Build`, `Builds`, `Project`, `ProjectName`, `Target`, `CustomModuleRoles`, `Sandbox`, `Clean`, `FullClean`, `cleardevices`, `Reboot`, `FirmwareVersion`, `UpdateFirmware`, `TryUpdateFirmware`, `VerifyLogin`, `test`, `tests`, `Namespaces`, `RunTest`, `TestFilter`, `TagFilter`, `Map`, `Controller`, `EnablePlugins`, `DDC`, `RHI`, `UseEditor`, `CookedEditor`, `packaged`, `staged`, `bulk`, `notbulk`, `devices`, `PerfSpec`, `PrefSpec`, `PerfModel`, `PrefModel`, `RequiredDeviceTags`, `PreferredDeviceTags`, `UndesiredDeviceTags`, `BlockedDeviceTags`, `WorkerJobID`, `LocalDeviceIndex`, `MaxLocalDevices`, `MaxVirtualDevices`, `username`, `password`, `JobDetails`, `PublishTelemetryTo`, `PerfReportServer`, `uploadreport`, `UseAgentTag`, `EnableHordeDeviceReservations`, `clientip`, `serverip`, `hostip`, `EpicApp`, `McpRegion`, `McpSubRegion`, `BuildIDOverride`, `NoMCP`, `RemoteServer`, `RequiresLogin`, `PreAssignAccount`, `ArtifactName`, `ArtifactPostfix`, `PgcFilenamePrefix`, `LocalReplay`, `MemPro`, `EditorTraces`, `ClientTraces`, `ServerTraces`, `VerboseLogCategories`, `Compile`, `NoCompile`, `CompileOnly`, `Submit`, `NoSubmit`, `NoKill`, `BuildMachine`, `UseLocalBuildStorage`, `WaitForDebugger`, `List`, `Help`, `forcestepfail`, `listargs`, `listallargs`.
+> - A key that Gauntlet forwards to the child process: a key that starts with the text before the first `test` in any dot-separated part of `TestName` or of the default namespaces (`Gauntlet`, `UnrealTest`, `UnrealGame`, `UnrealEditor`), or with the whole part when it has no `test`. For `UE.BootTest` these include `UE` and `Boot`. When a part starts with `test`, every key is forwarded.
+> - A value that contains `:`, or that has a `+`-separated element starting with `/` (an absolute path, a UNC path or a URL).
+> - A value that starts with `-` followed by an ASCII letter, which RunUAT.bat reads as one of its own switches.
+>
+> Shell and batch special characters stay refused even with the capability.
+>
+> Parameter values and the contents of a per-test parameter list never appear in logs, errors or artifacts. A parameter list is shown as `(<redacted>)`; only parameter keys are recorded.
+>
+> Errors: a refused argument is `InvalidParams`; a request that needs `GauntletUnrestrictedArguments` without holding it is `CapabilityNotAvailable`; a launch that could not start (another Gauntlet test is running, RunUAT or the shell was not found, a path RunUAT.bat cannot carry, or the process failed to start) is `ExecutionFailed`.
 
 ---
 

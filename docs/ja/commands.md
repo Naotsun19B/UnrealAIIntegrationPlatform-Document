@@ -2,13 +2,14 @@
 
 # コマンドリファレンス
 
-UAIP は 1223 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1644 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1225 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1646 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
 - 各コマンドの完全なパラメータスキーマは `uaip_describe_command(CommandName="...")` で取得できます
 - 実行時にドメインでフィルタするには `uaip_list_commands(ProviderPrefix="UAIP.Editor")` を使用します
 - 各コマンドに必要な Capability については [Safety & Capabilities](safety.md) を参照してください
+- 次のコマンドはディスク上のファイルを削除・移動・リネームするため、安全ポリシーで `DisableSave` が有効なときは、他の何よりも先に（PIE 中かどうかの判定よりも先に）`PolicyViolation` で拒否します（"Disk write operations are disabled by the current safety policy."）: `DeleteAsset`・`DeleteFolder`・`ForceDeleteFolder`・`RenameAsset`・`MoveAsset`・`MoveFolder`・`FixAssetRedirectors`・`FixUpRedirectorsInFolder`・`DeleteInputAction`・`DeleteMappingContext`・`DeleteDataLayerAsset`・`DeleteHLODs`・`DeleteGameFeaturePlugin`。以前から `DisableSave` で拒否していたコマンドは変わりません。詳細は [Safety & Capabilities](safety.md#disablesave-と削除移動リネームのコマンド) を参照してください
 
 ## 凡例
 
@@ -73,9 +74,9 @@ UAIP では 2 種類のコマンドを公開しています：
 
 | ドメイン | プロバイダプレフィックス | UAIP コマンド | Toolset ブリッジ | デモ |
 |---|---|---:|---:|---:|
-| Core | `UAIP.Core` | 11 | — | ✅ |
+| Core | `UAIP.Core` | 12 | — | ✅ |
 | Core Artifacts | `UAIP.Core.Artifacts` | 1 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 22 | 1 | 一部（17/22） |
+| Editor Workspace | `UAIP.Editor.Workspace` | 23 | 1 | 一部（18/23） |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
 | Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
@@ -357,7 +358,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` に加え、`ProjectFilePath`（開いている `.uproject` の絶対パス。MCP Bridge が正しいエディタインスタンスへアタッチしているか検証するために使う）・`TransportTimeouts`（トランスポートごとの非同期コマンドタイムアウト秒数。例 `{"HTTP": 120, "WS": 12}`）・`QueueCongestion`（遅延実行キューの混雑度。`None` / `Low` / `High` の 3 段階。正確な待ち件数は他セッションの活動量を推測させるため返しません）を返す |
+| 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` に加え、`ProjectFilePath`（開いている `.uproject` の絶対パス。MCP Bridge が正しいエディタインスタンスへアタッチしているか検証するために使う）・`TransportTimeouts`（トランスポートごとの非同期コマンドタイムアウト秒数。例 `{"HTTP": 120, "WS": 12}`）・`QueueCongestion`（遅延実行キューの混雑度。`None` / `Low` / `High` の 3 段階。正確な待ち件数は他セッションの活動量を推測させるため返しません）・`MinBridgeVersion`（この UAIP が受け入れる MCP Bridge の最低バージョン。Bridge はこの応答から読み取り、これ未満では動作を拒否します）を返す |
 | 🆓 `GetSystemInfo` | UE バージョン（Major/Minor/Patch/Changelist）・プロジェクト名・プラットフォーム・ビルド設定・UAIP バージョンを返す |
 | 🆓 `QueryCapabilities` | `Capabilities`（セッションの実効セット）・`RegisteredCapabilityCount` / `UngrantedCapabilityCount`（常に返る）・`OperationalConstraints`（9 つのポリシーフラグ）を返す。`IncludeUnavailable: true` を渡すと `RegisteredCapabilities`（ロード済みモジュールが宣言したすべての Capability。各要素が `Name` / `DefaultPolicy` / `IsGranted` を持つため、このセッションが保有していないものも名前で見つけられる。既定で拒否されるものは `DefaultPolicy` が `Denied` の要素）も返る |
 | 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`ProviderPrefix`・`KeywordFilter`・`IncludeUnavailable`・`Stability`。`ResultMode` — `Commands`（既定）または `Providers` を指定するとコマンドではなく Provider の一覧を返す。`Limit` — 返却件数の上限（1〜1000）。`IncludeDescription` — 一覧に各コマンドの説明文を含める） |
@@ -398,8 +399,9 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `FrameGraphAll` | グラフビューポートを全ノードが収まるようにズーム |
 | 🆓 `FrameGraphSelection` | グラフビューポートを選択ノードが収まるようにズーム |
 | 🆓 `SetGraphSelection` | ID リストでグラフノードを選択状態にする |
-| 🆓 `ShutdownEditor` | UE Editor をシャットダウンする（任意でパッケージ保存） |
-| 🆓 `RestartEditor` | UE Editor を再起動する（任意でパッケージ保存） |
+| 🆓 `ShutdownEditor` | UE Editor をシャットダウンする（任意でパッケージ保存）。進行中の `RestartEditor` の試行があれば取り消すので、終了が再起動に化けることはない |
+| 🆓 `RestartEditor` | UE Editor を再起動する（任意でパッケージ保存）。`Success` は要求を**受け付けた**ことを表し、再起動が済んだことではない。結果は `GetRestartStatus` で確認でき、MCP Bridge 経由なら Bridge が自動で待つ。表の下の注記を参照 |
+| 🆓 `GetRestartStatus` | `RestartEditor` の試行の状態（`Scheduled` / `CloseRetrying` / `Declined` / `ExitStarted`）を返す。読み取り専用で `EditorLifecycle` が必要 |
 | 🆓 `SaveAllPackages` | 変更済みパッケージをすべて保存（任意でマップを含む） |
 | 🆓 `Undo` | 直前の Editor 操作を取り消す |
 | 🆓 `Redo` | 取り消した操作をやり直す |
@@ -410,6 +412,17 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | `CompileLiveCoding` | Live Coding 再コンパイルをトリガー |
 | `GetLiveCodingStatus` | 現在の Live Coding ステータスを取得 |
 | `EnableLiveCodingForSession` | セッションに対して Live Coding を有効化 |
+
+> **`RestartEditor` と `GetRestartStatus` — `Success` の意味と、結果の確かめ方。** どちらも `EditorLifecycle` が必要です。`RestartEditor` の引数は省略可能な `SaveAll` だけです。省略すると、`DisableSave` が有効でない限り未保存の変更を先に保存し、有効なときは保存しません。`DisableSave` のときに `SaveAll: true` を明示すると `PolicyViolation` で拒否します。`Success` は要求を**受け付けた**ことを表します。`Data` には `AttemptId`・`State`（`Scheduled`）・`RestartScheduled: true`・`CloseDeadlineSeconds`・`ProcessId`（要求を受け付けたエディタのプロセス ID）が入ります。
+>
+> - **MCP Bridge 経由**では、受け付けた時点では応答を返しません。Bridge が結果が出るまで待ち、その間も AI クライアントへ進捗を送り続け、新しいエディタにつながったとき・再起動が見送られたとき（エディタが返した理由と対処をそのままエラーとして返す）・上限時間内に結果を確認できなかったときに応答します。待ちの上限は 2 段あります。エディタが閉じるまでは、エディタが示した期限に約 30 秒を足した時間（終了処理が始まったら、そこからさらに最大 60 秒）。閉じてから先は、Bridge のエディタ起動待ち（既定 120 秒）です。Bridge が「結果を確認できなかった」と返したときは、`GetRestartStatus` と `uaip_get_editor_status` で今の状態を確かめてください。
+> - **それ以外の経路**（HTTP など）では、`Success` は受付だけを意味します。`AttemptId` を指定して `GetRestartStatus` を呼びます。省略すると最新の試行になります。答えるのは、要求を受け付けたエディタがまだ動いている間だけです。再起動した後のエディタは以前の試行を持たず、存在しない `AttemptId`、または保持の範囲（直近 8 件）から外れた `AttemptId` は `NotFound` になります。`NotFound` を含むすべての `GetRestartStatus` の応答に `ProcessId` が入るので、呼び出し側は、照会したエディタと後継のエディタを見分けられます。
+> - **`GetRestartStatus` の `Data`**: `AttemptId`・`State`・`RequestedAt`・`ElapsedSeconds`・`CloseDeadlineSeconds`・`ProcessId`。`State` は `Scheduled`、`CloseRetrying`（保存や読み込みで忙しく、閉じるのを再試行中）、`Declined`、`ExitStarted` のいずれかです。`Declined` の試行には、さらに `DeclineReason`・`DeclineDetail`・`Remedy`・`OutcomeErrorCode`（`ExecutionFailed`）・`OutcomeErrorMessage`・`RestoredDirtyPackageCount`・`LostDirtyPackageCount` が入ります。
+> - **受付前に断られる場合（保存も破棄もせず、何も変えない）**: ライティングビルド（`LightingBuildRunning`）・Interchange のインポート（`InterchangeActive`）・メインウィンドウの作り直し（`MainFrameRecreating`）の最中、またはモーダルダイアログが開いている間（`ModalWindowOpen`。人が操作する通常起動のときだけで、Bridge が起動する無人のエディタは対象外）は `PreconditionFailed` です。`Data` に `DeclineReason` と `Remedy` が入り、メッセージの末尾にも対処が付きます。エディタが既に終了処理に入っていれば `NotAllowed`。別の試行が進行中なら `Conflict`（`Data.AttemptId` が進行中の試行を示します。上の条件より先に判定します）。保存を指定して一部のパッケージが保存できなかったときは `ExecutionFailed`（`Data.FailedPackages` に一覧）で、再起動しません。
+> - **受付後に見送られる場合**: エディタはログに警告を出し、再起動のために変えた設定を元に戻し、破棄しかけた未保存の変更を未保存の状態に戻します（件数は `RestoredDirtyPackageCount` / `LostDirtyPackageCount`）。`DeclineReason` は `LightingBuildRunning`・`InterchangeActive`・`CloseRequestDeclined`・`CloseTimedOut`・`SupersededByShutdown` のいずれかです。エディタはそのまま動き続けます。
+> - **閉じる期限**: 受付から `CloseDeadlineSeconds`（既定 60 秒）以内に閉じられないと、試行は `CloseTimedOut` で見送られます。人が操作する通常起動では、保存確認などのダイアログが開いている間は見送りません。`DefaultUAIP.ini` の `[UAIP.EditorRestart]` の `CloseDeadlineSeconds`（10〜600。[Configuration](config.md#uaipeditorrestart--restarteditor-の閉じる期限) を参照）で変更できます。重い保存やシェーダーのコンパイルの直後に再起動することが多い場合は延ばしてください。
+> - **試行の途中での終了**: `ShutdownEditor`、または `QuitGame` が結果としてエディタ自体の終了を要求した場合は、試行を取り消し、新しいエディタを起動せずに終了します。安全ポリシーに拒否された（`PolicyViolation`）`ShutdownEditor` は何も取り消しません。エディタが終了する前に照会すると、その試行は `SupersededByShutdown` の `Declined` になっています。人がウィンドウを閉じた場合や、UAIP 以外の経路での終了は、試行の期間中なら再起動になります。
+> - **古い組み合わせ**: 古い MCP Bridge は今までどおり受付の時点で応答を返し、古いエディタは `AttemptId` を返しません。新しい Bridge は今までどおりに振る舞います。どちらの場合も、受付後に見送られた再起動は、新しいエディタの `GetRestartStatus` でしか分かりません。
 
 > **`FocusEditorTab` の `GraphName` — 応答の契約。** `GraphName` を非空の文字列で指定した呼び出しに限り、`Result` に 4 つのフィールドが載る: `WindowFocusRequested`（bool — エディタウィンドウを前面化する**要求を行った**ことの記録。OS が実際に最前面へ持って行ったことまでは保証しない）、`GraphNameRequested`（bool）、`GraphNameApplied`（bool）、`Reason`（`Applied` / `BlueprintEditorInterfaceUnavailable` / `OpenFailed` の 3 値だけを取る閉じた列挙）。成否判定には `Success` だけでなく `GraphNameApplied` と `Reason` を読むこと — `BlueprintEditorInterfaceUnavailable` の場合も `Success: true` が返る。これは開いているエディタに Blueprint グラフのナビゲーション手段がそもそも存在しない（例: `RigVM.UseNewEditor` を有効にした ControlRig エディタ）という構造的な状態であり、同じ指定で呼び直しても変わらないため。`GraphName` を省略または空文字列にした呼び出しでは、この 4 フィールドはいずれも設定されない — 呼び出し側は「`Result` が無い」場合と「`Result.GraphNameRequested` が `false`」の場合の両方を扱う必要がある。グラフ移動が適用されると、エディタの現在の UI 選択状態がクリアされ、Widget Blueprint を Designer モードで開いている場合は先に Graph モードへ切り替わる（グラフを表示するために必要）。この 2 つはいずれもグラフを開く処理より前に起きるため、その後グラフを開く処理自体が `OpenFailed` で失敗した場合でも、既に起きていることがある。
 >
@@ -570,8 +583,8 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 |---|---|
 | `DiscoverAutomationTests` | Automation Test モジュールを読み込み、検出されたテスト数のサマリを返す |
 | `ListAutomationTests` | 検出済み Automation Test をフィルタして JSON Artifact で返す |
-| `RunAutomationTest` | UE Automation Test を名前で実行し Pass/Fail/Error レポートを返す |
-| `RunAutomationSpec` | UE Automation Spec を名前で実行し Pass/Fail/Error レポートを返す |
+| `RunAutomationTest` | UE Automation Test を名前で実行し、テストごとのレポート（Pass / Fail / Skipped / Error / Cancelled。[レポートの共通契約](#automation-test-のレポートの共通契約) を参照）を返す |
+| `RunAutomationSpec` | UE Automation Spec を名前で実行し、テストごとのレポート（`RunAutomationTest` と同じ契約）を返す |
 | `GetAutomationTestStatus` | Automation Test マネージャの現在状態を返す（既定はインライン） |
 | `StopAutomationTests` | 実行中の Automation Test バッチのキャンセルを要求 |
 | `RunEditorPythonScript` 🧩 | インライン Python スクリプトまたは `.py` ファイルを実行（`PythonScriptPlugin` 必須） |
@@ -598,6 +611,30 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 > **v1.2.0 での変更**: `RunAutomationSpec` がパラメータスキーマを宣言し、それ以外を拒否するようになりました — 受け付けるのは `TestName`（必須）・`TimeoutSec`・`RunAllMatching`・`MaxMatchingTests`（`RunAutomationTest` と同じパーサーを共有するため同じ4キー）で、`AdditionalProperties: false` です。**`SpecName` などこの集合の外のキーを指定すると、これまでの黙って無視される挙動から `InvalidParams` に変わりました** — 以前はスキーマを一切宣言していなかったため、未知のキーはチェックされずに通過し、単に何も起こしませんでした。`RunAllMatching` と `MaxMatchingTests` は `RunAutomationTest` とのスキーマ上の対称性のために受理されますが、**Spec の実行には影響しません** — `Execute()` は常に単一の完全一致に強制されるため、どちらのパラメータの値も無視されます。
 
+#### Automation Test のレポートの共通契約
+
+`RunAutomationTest`・`RunAutomationSpec`・`RunRuntimeAutomationTest` は同じ形のレポートを返します。
+
+**`Tests[]` の各要素**は `Name`・`Result`・`TimeSec` を持ち、さらに 3 つのメッセージ配列を、**空でないときだけ**この順で持ちます: `FailMessages`、`SkipMessages`、`WarningMessages`。
+
+**`Result` は次の 5 値のいずれかです。**
+
+| 値 | 意味 |
+|---|---|
+| `Pass` | テストが成功し、スキップ行も出さなかった |
+| `Fail` | テストがエラーを 1 つ以上記録した。エラーは `FailMessages` に入る |
+| `Skipped` | テストが成功し、スキップ行（`TEST-SKIP[<Reason>]: <Detail>`）を 1 つ以上出した。その行は `SkipMessages` に入る |
+| `Error` | テストがエラーを記録せずに失敗した（または実行側がテストを走らせられなかった。例: タイムアウト）。テストがエラーを記録していないときは、`FailMessages` に合成メッセージ `The test reported failure without recording an error.` が入り、失敗した結果には必ず理由が付く |
+| `Cancelled` | テストが完了する前にキャンセルされた |
+
+エラーを記録したテストは、メッセージの 1 つがスキップ行に見えても `Fail` です。警告は `Result` を変えません。警告は `WarningMessages` に入り、テストを失敗させません。
+
+**`Summary`** は `Pass`、`Fail`（`Fail` と `Error` の両方）、`Skip`（`Skipped` の結果）、`Cancelled` を数え、`Matched`・`Selected`・`TotalTimeSec` も持ちます。スキップしたテストは `Summary.Pass` ではなく **`Summary.Skip`** に数えられます。
+
+**ログの成果物**は、各テストのエントリを `FAIL:`（`FailMessages`）→ `SKIP:`（`SkipMessages`）→ `WARN:`（`WarningMessages`）→ `LOG:`（その他の出力）の順に並べます。
+
+**`ReportErrors`**（レポートのルート）は、特定の 1 テストに属さない実行全体の問題を持ちます。1 件以上あるときだけ出力され、`Summary` の件数には数えません。
+
 ---
 
 ## UAIP.Editor.UIAutomation
@@ -606,9 +643,9 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `ClickWidget` | パスで識別したウィジェットへの左クリックをシミュレート |
+| 🆓 `ClickWidget` | `SnapshotUI` が返す `WidgetRef` で識別したウィジェットへの左クリックをシミュレート |
 | 🆓 `SelectMenuItem` | スラッシュ区切りのラベルパスでメニュー項目を選択 |
-| 🆓 `InputText` | パスで識別したウィジェットにテキストを入力 |
+| 🆓 `InputText` | `SnapshotUI` が返す `WidgetRef` で識別したウィジェットにテキストを入力 |
 | 🆓 `SetCheckboxState` | チェックボックスの状態を設定 |
 | 🆓 `SetComboSelection` | コンボボックスでラベル指定の項目を選択 |
 | 🆓 `DragGraphNode` | 指定グラフエディタタブでグラフノードをピクセル単位でドラッグ |
@@ -618,10 +655,21 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | 🆓 `InvokeContextMenuAction` | 指定対象を右クリックしてコンテキストメニューから項目を実行 |
 | 🆓 `HoverWidget` | ウィジェットに OnMouseEnter をシミュレート |
 | 🆓 `PressKey` | 修飾キー対応のキー入力をシミュレート（危険ショートカットブラックリスト付き） |
-| 🆓 `WaitForWidget` | ウィジェットが期待状態になるまでポーリング |
+| 🆓 `WaitForWidget` | `SnapshotUI` の `WidgetRef` で識別したウィジェットが期待状態になるまでポーリング |
 | 🆓 `FillForm` | フォームウィジェットへの一括入力を逐次 state machine で実行 |
 | 🆓 `SnapshotUI` | 範囲を絞り込め、除外分も報告する UI の構造スナップショットを取得 |
 | 🆓 `OpenPasswordTestWindow` | パスワード用 `SEditableTextBox` を持つフローティングテストウィンドウを開く（パスワードフィールドのポリシーテスト用ターゲット） |
+
+> **Note**: ウィジェットを対象にするコマンドは、ウィジェットパスではなく `SnapshotUI` が返す `WidgetRef` を受け取ります。先に `SnapshotUI` を呼び、対象ウィジェットの `WidgetRef` を渡してください。
+>
+> **`SelectMenuItem`** の必須パラメータは `MenuPath` の 1 つです。スラッシュ区切りのメニューラベルの並びで、例は `Edit/Project Settings...` です。
+>
+> - 先頭の要素はメニュー名です。2 番目以降の要素は、メニュー名か表示ラベルに、大文字小文字を無視して完全一致する必要があります。
+> - `/` を含むラベルは指定できません。
+> - `...` を含むラベル（`Project Settings...` など）は使えます。
+> - 次のものは `InvalidParams` で拒否されます: `..` だけのセグメント、空のセグメント、制御文字、長さが 256 を超えるもの、階層が 10 を超えるもの。
+>
+> **`WaitForWidget`** は `WidgetRef`（必須）と `ExpectedState`（必須。`Exists` / `Absent` / `Visible` / `Hidden` / `Enabled` / `Disabled` / `Focused` のいずれか）を受け取ります。`WaitTimeoutSeconds` は任意です（既定 5.0、30 以下）。`PollIntervalSeconds`（既定 0.1、0.05 以上）と `ConfirmTickCount`（既定 3、10 以下）も任意です。
 
 > **Note**: `SnapshotUI` は任意の走査範囲を指定できます。起点には `RootWidgetRef` または `RootWidgetPath`（互いに排他。どちらも `WindowTitle` とは併用不可）、走査量には `MaxDepth`（既定 30）と `MaxNodes`（既定 50000。1 回の呼び出しで訪れる全ルートで共有される単一予算）、絞り込みには `WidgetTypes` + `WidgetTypeMode`（`"Add"` は既定の対象に追加、`"Only"` は指定した型だけに限定）と `LabelContains`、既定で外れるウィジェットを拾うには `bIncludeInvisible` / `bIncludeUnclassified` を使います。応答には常に `EmittedCount`・`FilteredCount`・`FilteredReasons`（0 件でも常に存在する 6 つの理由キー — `InvisibleSubtreeRoot` / `StructuralContainer` / `TypeFilterMismatch` / `LabelFilterMismatch` / `Unclassified` / `RegistrationFailed`）・`UnclassifiedTypes`（`Type` + `Count` を件数降順・同数なら型名昇順で最大 200 件。各 `Type` はそのまま `WidgetTypes` に渡せる）・`Traversal`（`Complete` / `NodeLimitReached` / `DepthLimitReached` / `VisitedNodeCount`）・`MatchedRootCount`・`EffectiveParams`（クランプ・正規化後に実際に適用された値）が含まれます。
 >
@@ -635,7 +683,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 ### Toolset ブリッジ — SlateInspector（10 件）🧩
 
-`SlateInspectorToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SlateInspector.*`。ネイティブ側のウィジェットパス記法ではなく refPath でウィジェットを指定します。このセクションの全ブリッジコマンドは、対応するネイティブコマンドと同じ Capability を要求するようになりました（[Safety & Capabilities](safety.md) 参照）— それまでのリリースでは Capability チェックなしにディスパッチされていました。
+`SlateInspectorToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SlateInspector.*`。refPath でウィジェットを指定します。ネイティブ側のコマンドは、`SnapshotUI` が返す `WidgetRef` でウィジェットを指定します。このセクションの全ブリッジコマンドは、対応するネイティブコマンドと同じ Capability を要求するようになりました（[Safety & Capabilities](safety.md) 参照）— それまでのリリースでは Capability チェックなしにディスパッチされていました。
 
 | コマンド | 説明 |
 |---|---|
@@ -674,21 +722,21 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | 🆓 `ListFactoriesForClass` | 指定 `ClassName` に対応する Factory 候補と各 `FactoryParams` スキーマを返す |
 | `DuplicateAsset` | 既存アセットを複製 |
 | `CopyAsset` | アセットを新しい完全パッケージパスへコピー（コピー先が存在する場合は失敗・`AssetCreate` 必要） |
-| `RenameAsset` | アセットをリネーム / 別パスへ移動 |
-| `MoveAsset` | 名前を維持したままアセットを別フォルダへ移動し、リダイレクタが残ったかを報告（`AssetMutate` 必要） |
-| `DeleteAsset` | アセットを削除 |
+| `RenameAsset` | アセットをリネーム / 別パスへ移動。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `MoveAsset` | 名前を維持したままアセットを別フォルダへ移動し、リダイレクタが残ったかを報告（`AssetMutate` 必要）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `DeleteAsset` | アセットを削除。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | `CreateFolder` | Content Browser に新規フォルダを作成 |
-| `DeleteFolder` | 空フォルダを削除（空でない場合 `NotEmpty`） |
-| `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし） |
-| `MoveFolder` | フォルダ内の全アセットをサブフォルダ構造を保ったまま移動。部分失敗は `FailedAssets` に列挙（`AssetFolderRefactor` 必要） |
+| `DeleteFolder` | 空フォルダを削除（空でない場合 `NotEmpty`）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `MoveFolder` | フォルダ内の全アセットをサブフォルダ構造を保ったまま移動。部分失敗は `FailedAssets` に列挙（`AssetFolderRefactor` 必要）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | 🆓 `GetSelectedAssets` | Content Browser で現在選択中のアセットを返す |
 | `SelectAssets` | Content Browser で指定アセットを選択（`ContentBrowserNavigate` 必要） |
 | 🆓 `GetContentBrowserPath` | Content Browser に現在表示されているフォルダパスを返す |
 | `SetContentBrowserPath` | Content Browser を指定フォルダに移動（`ContentBrowserNavigate` 必要） |
 | 🆓 `GetOpenAssets` | アセットエディタで現在開いているアセット一覧を返す |
 | 🆓 `ListAssetRedirectors` | フォルダ配下（既定はプロジェクト全体の `/Game`）のアセットリダイレクタを、アセットをロードせずに元パス・先パス付きで一覧取得する |
-| `FixAssetRedirectors`（`RedirectorFixup` 必要） | `/Game` 全体（常に再帰的）を対象に、解決可能なアセットリダイレクタを一括修正・削除する |
-| `FixUpRedirectorsInFolder`（`RedirectorFixup` 必要） | 同じ修正処理を 1 フォルダに限定して実行。解決できなかったものは `FailedRedirectors` に返る |
+| `FixAssetRedirectors`（`RedirectorFixup` 必要） | `/Game` 全体（常に再帰的）を対象に、解決可能なアセットリダイレクタを一括修正・削除する。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `FixUpRedirectorsInFolder`（`RedirectorFixup` 必要） | 同じ修正処理を 1 フォルダに限定して実行。解決できなかったものは `FailedRedirectors` に返る。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | 🆓 `GetAssetReferences` | 指定アセットを起点に参照グラフ（参照元・参照先・両方）を指定深さまで探索する |
 | 🆓 `GetAssetSizeMap` | フォルダ配下のディスクサイズ（任意で常駐メモリサイズ）をアセット単位で集計し降順ソートする |
 | 🆓 `GetAssetSizeMapByClass` | フォルダ配下のディスクサイズをアセットクラス単位で集計し降順ソートする |
@@ -1021,8 +1069,16 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 | `ListGameFeatures` 🧩 | GameFeature Plugin 一覧（`FilterState`：All / Installed / Mounted / Registered / Loaded / Active） |
 | `GetGameFeatureInfo` 🧩 | GFP 詳細（State・Actions・依存関係） |
 | `GetGameFeatureActions` 🧩 | GameFeature Plugin の `UGameFeatureData` が宣言する Action 一覧 |
-| `CreateGameFeaturePlugin` 🧩 | 新規 GameFeature Plugin のスキャフォールド（名前バリデーション付き） |
-| `DeleteGameFeaturePlugin` 🧩 | コンテンツのみの GameFeature Plugin をディスクから削除 |
+| `CreateGameFeaturePlugin` 🧩 | プロジェクトの `Plugins/GameFeatures/` の下に新しい GameFeature Plugin を作り、Game Feature サブシステムに登録して `InitialState` まで進める。表の下の注記を参照 |
+| `DeleteGameFeaturePlugin` 🧩 | プロジェクトの `Plugins/GameFeatures/` にあるコンテンツのみの GameFeature Plugin を削除。`GameFeatureDelete` が必要。`DisableSave` が有効なときは `PolicyViolation` で拒否。表の下の注記を参照 |
+
+> **`CreateGameFeaturePlugin`** には `GameFeatureCreate` と `PluginName`（英字で始まり、英数字と `_` を合わせて最大 64 文字）が必要です。省略可能な `OutputPath` の既定はプロジェクトの `Plugins/GameFeatures/` で、相対パスで指定するとプロジェクトルートが基準になります（`Plugins/GameFeatures/Combat` なら、`Plugins/GameFeatures/Combat/<PluginName>/` に作成）。省略可能な `InitialState`（`Installed` / `Registered` / `Loaded` / `Active`。既定は `Active`）は、作成後に進める状態で、再起動後に始まる状態でもあります。プラグインには同名の GameFeature データのアセットが作られ、作成したセッションのうちに（通常は数秒以内）GameFeature として登録されます。エディタを再起動しても同じように登録されます。`.uproject` は変更しません。
+>
+> - **成功**: `Data` に `PluginPath`（プロジェクトルートからの相対パス。実際の作成先）・`PluginUrl`・`State`・`Warnings` が入ります。プロジェクトに GameFeature データのアセット管理設定が無いときは、`Warnings` に、パッケージ版でこの GameFeature のデータが含まれない恐れがあることと、`DefaultGame.ini` に足す設定行が入ります。プロジェクトの設定をコマンドが書き換えることはありません。
+> - **`InvalidParams`**: `OutputPath` がプロジェクトの `Plugins/GameFeatures/` の外（`Plugins/` の直下やプロジェクトの外など）・既存プラグインの中・ジャンクション経由でプロジェクト外を指す場合、名前や `InitialState` が不正な場合。何も作りません。同名のフォルダやプラグインがあると `Conflict`、エディタが終了中・PIE 中・コマンドレット実行中は `NotAllowed`、安全ポリシーがディスク書き込みを無効にしていると `PolicyViolation` です。
+> - **`ExecutionFailed`**: 途中の手順（プラグイン作成・データアセットの作成や保存・登録）が失敗した、登録が 30 秒以内に終わらなかった、エディタの終了が始まった、または作成後にもう一度場所を確かめたらプロジェクトの外だった場合。作ったものは消さずに残し、`Data` にどこまで進んだか（`CreatedOnDisk` / `Mounted` / `DataAssetCreated` / `DataAssetSaved` / `Registered`）・到達した `State`・`PluginPath` を載せます。同じ内容を JSON の成果物にも残し、`.uplugin` があればその写しも付けます。後始末には `DeleteGameFeaturePlugin` を使ってください。ただし場所の確認で外れた場合は例外で、プラグインはエディタから外されますがファイルは残り、`DeleteGameFeaturePlugin` も拒否するので、手で確認して削除してください。
+>
+> **`DeleteGameFeaturePlugin`** は `PluginName` を取ります。GameFeature の登録を解除し（作成の途中で失敗して一度も登録されなかったものは、この手順を飛ばします）、アセットの読み込みを解除し、削除してよい対象かをもう一度確かめてから、プラグインを外してフォルダを削除します。次の場合は拒否し、何も消しません。プラグインが無い（`NotFound`）。対象が GameFeature ではない（`Plugins/GameFeatures/` の外にあるプラグイン、旧版が `Plugins/` 直下に作ったもの）、`GameFeatures` フォルダそのもの、他のプラグインを含む、コードのモジュールを持つ、またはジャンクションなどのリンクを含む（`NotAllowed`）。GameFeature の状態が切り替わっている最中（`PreconditionFailed`。待ってから再試行）。アセットの読み込み解除に失敗した、登録の解除が 30 秒以内に終わらなかった、またはエディタの終了が始まった（`ExecutionFailed`）。
 
 ### Toolset ブリッジ — GameFeatures（4 件）🧩
 
@@ -2650,8 +2706,8 @@ Enhanced Input アセット編集 — Input Action と Input Mapping Context。
 | `ListMappingContexts` | プロジェクト内の Input Mapping Context アセット一覧 |
 | `GetInputActionInfo` | Input Action の詳細（ValueType・Triggers・Modifiers）。各 Trigger / Modifier の `Params` が参照・コンテナ・構造体の値も返すようになり（書き込み側が受け付けるのと同じ形式）、あわせて `PropertyWriteRequirements` マップが付きます |
 | `GetMappingContextInfo` | Mapping Context の詳細（エントリ・キー・Modifier・Trigger）。`Params` の構造化された値と `PropertyWriteRequirements` マップは `GetInputActionInfo` と同じ |
-| `DeleteInputAction` | Input Action アセットを削除 |
-| `DeleteMappingContext` | Input Mapping Context アセットを削除 |
+| `DeleteInputAction` | Input Action アセットを削除。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `DeleteMappingContext` | Input Mapping Context アセットを削除。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | `AddInputMapping` | Mapping Context にキーマッピングを追加 |
 | `RemoveInputMapping` | インデックス指定でキーマッピングを削除 |
 | `SetInputMappingKey` | マッピングのキーを変更 |
@@ -2753,7 +2809,7 @@ Sandbox セッションのライフサイクル管理。`FileSandbox` プラグ�
 | `ListDataLayers` | 現在のレベルに存在する全 Data Layer インスタンスを一覧表示 |
 | `GetDataLayerInfo` | Data Layer インスタンスの詳細情報を取得 — タイプ・読み込みフィルタ・ランタイム状態・可視性・親階層 |
 | `CreateDataLayerAsset` | コンテンツブラウザに新しい Data Layer アセットを作成（`DataLayerEdit` 必須） |
-| `DeleteDataLayerAsset` | Data Layer アセットを削除（`DataLayerEdit` 必須） |
+| `DeleteDataLayerAsset` | Data Layer アセットを削除（`DataLayerEdit` 必須）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | `CreateDataLayerInstance` | Data Layer アセットから現在のレベルに Data Layer インスタンスを追加（`DataLayerEdit` 必須） |
 | `DeleteDataLayerInstance` | 現在のレベルから Data Layer インスタンスを削除（`DataLayerEdit` 必須） |
 | `SetDataLayerType` | Data Layer インスタンスのタイプを設定 — Editor または Runtime（`DataLayerEdit` 必須） |
@@ -2772,7 +2828,7 @@ Sandbox セッションのライフサイクル管理。`FileSandbox` プラグ�
 |---|---|
 | `ListHLODLayers` | プロジェクト内の全 HLOD Layer アセットを一覧表示 |
 | `CreateHLODLayer` | `/Game/` 配下に新しい HLOD Layer アセットを作成（`HLODBuild` 必須） |
-| `DeleteHLODs` | 指定した HLOD Layer のビルド済み HLOD データを削除（`HLODBuild` 必須） |
+| `DeleteHLODs` | 指定した HLOD Layer のビルド済み HLOD データを削除（`HLODBuild` 必須）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | `SetActorHLODLayer` | アクターを HLOD Layer アセットに割り当て（`HLODBuild` 必須） |
 | `BuildHLODs` | 現在のワールドの HLOD ビルドジョブを開始。`HLODBuildJobId` を返す（`HLODBuild` 必須） |
 | `CancelHLODBuild` | ジョブ ID を指定して進行中の HLOD ビルドジョブをキャンセル（`HLODBuild` 必須） |
@@ -3373,9 +3429,40 @@ PIE / Standalone でのテスト実行。
 
 | コマンド | 説明 |
 |---|---|
-| `RunFunctionalTest` | `AFunctionalTest` アクターをアセットパス指定で実行し JSON レポートを返す |
-| `RunRuntimeAutomationTest` | PIE 文脈で UE Automation Test を実行 |
+| `RunFunctionalTest` | PIE ワールドの `AFunctionalTest` アクターを表示名（アクターラベル）で指定して実行し JSON レポートを返す |
+| `RunRuntimeAutomationTest` | PIE 文脈で UE Automation Test を実行し、テストごとのレポート（Pass / Fail / Skipped / Error / Cancelled。[レポートの共通契約](#automation-test-のレポートの共通契約) を参照）を返す |
 | `RunGauntletTest` | RunUAT 経由で Gauntlet テストを外部プロセスとして起動 |
+
+> **`RunFunctionalTest`** は、PIE ワールドの `AFunctionalTest` アクターのうち、表示名（アクターラベル）が `TestPath` と大文字小文字を無視して完全一致するものを実行します。名前はファイルパスではないため、`..` を含む名前も使えます。
+>
+> **`RunGauntletTest`** は `TestName`（必須）、`TestParams`（任意）、`TimeoutSec`（任意。1 から 1800、既定 600）を受け取ります。`GauntletExecution` Capability が必要です。以下の書式の外にあるものは `InvalidParams` で拒否され、何も起動されません。
+>
+> **`TestName`** は 512 文字以下で、カンマ区切りのテスト指定の並びです。例は `UE.BootTest` です。
+>
+> - 各指定はドット区切りの名前です。各部分は ASCII の英字か `_` で始まり、その後ろは ASCII の英字・数字・`_` です。
+> - 指定の後ろに、括弧で囲んだテスト単位のパラメータリストを 1 つ付けられます。リストには ASCII の英字・数字と `_ . , = + - '` を書けますが、`..` と括弧の入れ子は使えません。
+> - `/`、`\`、`:`、空白、引用符などの文字は拒否されます。
+>
+> **`TestParams`** は 32 件以下のオブジェクトで、値はすべて文字列です。パラメータは Gauntlet に `-Key="Value"` の形で渡されます。
+>
+> - **キー**: 1 から 128 文字で `[A-Za-z][A-Za-z0-9_]*` に一致するもの。先頭に `-` を付けずに書きます。`.` は使えません。
+> - **値**: `[A-Za-z0-9_.:/+-]` の文字だけで 1024 文字以下。`..` は含められません。空の値は許可されます。
+>
+> 書式が正しくても、テストやその子プロセスの動作を変えるものがあります。これらには `GauntletUnrestrictedArguments` Capability が必要で、既定では拒否されます（[Safety & Capabilities](safety.md) 参照）。持っていない場合は `CapabilityNotAvailable` で失敗します。以下の照合はすべて大文字小文字を無視します。
+>
+> - `TestName` の括弧によるテスト単位のパラメータリスト。
+> - 末尾が次のいずれかのキー: `Args`、`ExecCmds`、`Cmds`、`CommandLine`、`Cmdline`、`Platform`、`Configuration`、`Flavor`、`Dir`、`Directory`、`Path`、`Root`、`File`、`URL`。
+> - 先頭が次のいずれかのキー: `Skip`、`Editor`、`Script`、`Automation`、`Horde`、`Telemetry`、`Device`、`P4`。
+> - 次のいずれかに完全一致するキー: `NoCompileUAT`、`noturnkeyvariables`、`profile`、`ScriptsForProject`、`Bootstrap`、`Build`、`Builds`、`Project`、`ProjectName`、`Target`、`CustomModuleRoles`、`Sandbox`、`Clean`、`FullClean`、`cleardevices`、`Reboot`、`FirmwareVersion`、`UpdateFirmware`、`TryUpdateFirmware`、`VerifyLogin`、`test`、`tests`、`Namespaces`、`RunTest`、`TestFilter`、`TagFilter`、`Map`、`Controller`、`EnablePlugins`、`DDC`、`RHI`、`UseEditor`、`CookedEditor`、`packaged`、`staged`、`bulk`、`notbulk`、`devices`、`PerfSpec`、`PrefSpec`、`PerfModel`、`PrefModel`、`RequiredDeviceTags`、`PreferredDeviceTags`、`UndesiredDeviceTags`、`BlockedDeviceTags`、`WorkerJobID`、`LocalDeviceIndex`、`MaxLocalDevices`、`MaxVirtualDevices`、`username`、`password`、`JobDetails`、`PublishTelemetryTo`、`PerfReportServer`、`uploadreport`、`UseAgentTag`、`EnableHordeDeviceReservations`、`clientip`、`serverip`、`hostip`、`EpicApp`、`McpRegion`、`McpSubRegion`、`BuildIDOverride`、`NoMCP`、`RemoteServer`、`RequiresLogin`、`PreAssignAccount`、`ArtifactName`、`ArtifactPostfix`、`PgcFilenamePrefix`、`LocalReplay`、`MemPro`、`EditorTraces`、`ClientTraces`、`ServerTraces`、`VerboseLogCategories`、`Compile`、`NoCompile`、`CompileOnly`、`Submit`、`NoSubmit`、`NoKill`、`BuildMachine`、`UseLocalBuildStorage`、`WaitForDebugger`、`List`、`Help`、`forcestepfail`、`listargs`、`listallargs`。
+> - Gauntlet が子プロセスへ転送するキー: `TestName` の各ドット区切りの部分、および既定の名前空間（`Gauntlet`、`UnrealTest`、`UnrealGame`、`UnrealEditor`）の各部分について、最初の `test` より前の文字列（`test` を含まない部分は部分全体）で始まるキー。`UE.BootTest` では `UE` と `Boot` などが該当します。`test` で始まる部分があると、すべてのキーが転送されます。
+> - `:` を含む値、または `+` で区切った要素のどれかが `/` で始まる値（絶対パス・UNC パス・URL）。
+> - `-` と ASCII の英字で始まる値。RunUAT.bat が自身のスイッチとして読むためです。
+>
+> シェルやバッチの特殊文字は、この Capability があっても拒否されたままです。
+>
+> パラメータの値と、テスト単位のパラメータリストの中身は、ログ・エラー・成果物のどこにも残りません。パラメータリストは `(<redacted>)` と表示され、記録されるのはパラメータのキーだけです。
+>
+> エラー: 引数の拒否は `InvalidParams`、`GauntletUnrestrictedArguments` が要るのに持っていない場合は `CapabilityNotAvailable`、起動できなかった場合（別の Gauntlet テストが実行中、RunUAT やシェルが見つからない、RunUAT.bat が運べないパス、プロセスの起動失敗）は `ExecutionFailed` です。
 
 ---
 

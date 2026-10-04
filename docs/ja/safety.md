@@ -431,7 +431,8 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `GameplayTagEdit` | プロジェクトタグテーブルへのタグ追加・削除・リネーム |
 | `GameplayTagRestrictedEdit` | Restricted タグの追加・削除・リネーム（`AddRestrictedGameplayTag`、および `RemoveGameplayTag` / `RenameGameplayTag`（ネイティブと Toolset ブリッジの両方）で、対象タグ、または強制削除・子を含むリネームではその子孫のいずれかが Restricted の場合） |
 | `GameplayTagExternalSourceEdit` | タグの追加・削除・リネームが、プロジェクト自身の `Config/` の外にある INI 置き場（エンジンのプラグイン、Fab やサードパーティのプラグイン、プロジェクト自身のゲームプラグインや Game Feature プラグイン）へ書き込む場合に、`GameplayTagEdit` / `GameplayTagRestrictedEdit` に加えて必要。`AddGameplayTag`・`AddRestrictedGameplayTag`・`RemoveGameplayTag`・`RenameGameplayTag`、および Toolset の `AddTag` / `RemoveTag` / `RenameTag` をゲートする。プラグインの検索パス経由で見つかる Restricted な置き場で、書き込み先が実際の読み込み元と一致しないものは、この Capability の有無に関係なく `NotAllowed` で拒否される — 書き込み先が読み込み元と異なる場所になってしまうため、付与しても解消しない。[コマンド — UAIP.Editor.GameplayTags](commands.md#uaipeditorgameplaytags) を参照 |
-| `GameFeatureCreate` 🧩 | GameFeature Plugin 定義の作成・スキャフォールディング（`GameFeatures` + `GameFeaturesEditor` プラグイン必須） |
+| `GameFeatureCreate` 🧩 | GameFeature Plugin 定義の作成・スキャフォールディング（`GameFeatures` + `GameFeaturesEditor` プラグイン必須）。`DisableSave` が有効なときは拒否 |
+| `GameFeatureDelete` 🧩 | プロジェクトの `Plugins/GameFeatures/` にあるコンテンツのみの GameFeature Plugin を削除 — `DeleteGameFeaturePlugin`（`GameFeatures` + `GameFeaturesEditor` プラグイン必須）。`DisableSave` が有効なときは拒否 |
 | `GameplayCueMutation` 🧩 | GameplayCue タグの追加・削除、GameplayCueNotify アセットの作成、アクターへの Cue 実行（`GameplayAbilities` プラグイン必須） |
 | `EnhancedInputEdit` | Input Action / Input Mapping Context アセットの編集 — マッピング・Modifier・Trigger の追加・削除・変更 |
 | `EnhancedInputReferenceEdit` | Trigger または Modifier のプロパティが、あらゆる種類の参照（オブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパス）であるか、それを内包する値へ書き込む場合に `EnhancedInputEdit` に加えて必要。書き込み実行時にプロパティの型から決まるため、マッピング mutator 群の宣言する `RequiredCapabilities` には現れない — [Level / アクター / プロパティ編集](#level--アクター--プロパティ編集) の Note を参照。構造体・コンテナの書き込みにはさらに `PropertyStructuredEdit` が必要 |
@@ -468,6 +469,7 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `RuntimeInputInjection` | PIE へのキーボード / Enhanced Input / レガシー入力イベントの注入（`InjectInputKey`、`InjectEnhancedInputAction`、`AddMappingContext`、`SetInputMode`、`FlushInput` など） |
 | `RuntimeNiagaraMutation` 🧩 | Runtime での Niagara ユーザー変数設定・Niagara システム差し替え（`SetVariable`、`SetSystem`；`Niagara` プラグイン必須） |
 | `GauntletExecution` | Gauntlet 自動テストセッションの起動 |
+| `GauntletUnrestrictedArguments` | `RunGauntletTest` で、テストの対象や子プロセスの動作を変える引数を許可します。テスト名に付ける括弧のテストごとのパラメータの構文、危険なキー、テスト名で始まるキー、絶対パス / UNC / URL などの値（`-` と英字で始まる値を含む）が対象です。外部プロセスのコマンドラインに安全に渡せない文字（空白・引用符・記号）は、この Capability でも解禁されません |
 
 #### Runtime Insights トレース採取
 
@@ -733,7 +735,7 @@ AllowUserInteractionPrompt=False
 | キー | デフォルト | 効果 |
 |---|---|---|
 | `ReadOnly` | `False` | 書き込みコマンドを拒否。エディタライフサイクルの 2 コマンドのみ例外 — 下記参照 |
-| `DisableSave` | `False` | ディスク書き込みコマンドを拒否 |
+| `DisableSave` | `False` | ディスク書き込みコマンド（ファイルの削除・移動・リネームを含む）を拒否 — 下記参照 |
 | `AllowLogDump` | `False` | `DumpOutputLog` / `DumpMessageLog` を許可 |
 | `AllowContextMenuMutation` | `False` | `InvokeContextMenuAction` を許可 |
 | `AllowKeyboardInput` | `False` | `PressKey` を許可（`EditorKeyboardInput` Capability も別途必要） |
@@ -750,6 +752,19 @@ AllowUserInteractionPrompt=False
 | `DeniedCapabilities` | 空 | DefaultAllow の Capability を全セッションから取り除く |
 | `DeniedCommands` | 空 | 完全修飾名で指定したコマンドをブロック。ブロックされたコマンドは `ListCommands` の既定応答からは隠れ、`HiddenReasons.DeniedCommand` に計上される。`IncludeUnavailable=true` を指定すると `Available: false`・`UnavailableReason: "DeniedCommand"` として明示的に列挙できる。`DescribeCommand` では常に表示される |
 | `AllowCapabilityReload` | `False` | `UAIP.Core.ReloadCapabilities` を有効化（再起動不要で設定反映） |
+
+### DisableSave と、削除・移動・リネームのコマンド
+
+`DisableSave` は、UAIP がディスク上のファイルを変更することを止めます。保存するコマンドに加えて、アセットの削除・移動・リネームはディスク上のファイルを消したり書き換えたりする（その間にエンジンが保存も行う）ため、`True` のとき次のコマンドを `PolicyViolation` で拒否します。
+
+- `DeleteAsset`・`DeleteFolder`・`ForceDeleteFolder`
+- `RenameAsset`・`MoveAsset`・`MoveFolder`
+- `FixAssetRedirectors`・`FixUpRedirectorsInFolder`
+- `DeleteInputAction`・`DeleteMappingContext`
+- `DeleteDataLayerAsset`・`DeleteHLODs`
+- `DeleteGameFeaturePlugin`と、`CreateGameFeaturePlugin`（新しいプラグインをディスクに書き出すため）
+
+拒否の文言は "Disk write operations are disabled by the current safety policy." で、何も削除・移動・リネームされません。これらのコマンドでは、この判定を PIE 中かどうかの判定やエディタの状態の確認より先に行うので、PIE 中に依頼しても `NotAllowed` ではなく `PolicyViolation` が返ります。`RestartEditor` と `ShutdownEditor` は、`SaveAll: true` を明示したときだけ拒否されます。以前から `DisableSave` で拒否していたコマンドは、それぞれの文言のままです。それ以外の方法でディスクに書くコマンド（GameplayTag や PrimaryAssetType の設定ファイルへの書き込み、サンドボックスの変更の確定、Niagara の Blueprint ラッパーや Groom の作成など）は `DisableSave` を確認しません。
 
 ### ReadOnly とエディタライフサイクルコマンド
 

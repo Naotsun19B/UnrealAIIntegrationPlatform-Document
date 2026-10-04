@@ -18,7 +18,7 @@ UAIP reads its configuration from four locations, merged in this priority order 
 | 3 | `<Project>/Saved/UAIP/UAIPOverride.ini` | **Packaged builds only** — user-editable override created on first launch | Editor restart |
 | 4 | CLI launch flags (`-uaip-*`) | Per-process, transient | Re-launch the editor |
 
-`UAIP.Core.ReloadCapabilities` can reload `AllowedCapabilities` and `DeniedCapabilities` at runtime without restarting (see [Safety & Capabilities](safety.md#enabling-defaultdenied-capabilities)). All other keys require an editor restart.
+`UAIP.Core.ReloadCapabilities` can reload `AllowedCapabilities` and `DeniedCapabilities` at runtime without restarting (see [Safety & Capabilities](safety.md#enabling-defaultdenied-capabilities)). All other keys require an editor restart, except `[UAIP.Build]`, which is a build setting that needs a rebuild and reads only the project's `Config/DefaultUAIP.ini` (see [`[UAIP.Build]`](#uaipbuild--compiling-the-test-only-types)).
 
 > The MCP Bridge (`Plugins/UAIPMCPBridge/` after install) has its own configuration layer (`config.json` + environment variables). The bridge is distributed separately from the plugin — see [MCP Bridge config.json](#mcp-bridge-configjson) below.
 
@@ -141,6 +141,49 @@ The value is read **once when the module starts**, so an edit takes effect the n
 **No CLI equivalent.** The setting cannot be overridden from the command line; it is an ini-only default that each call may override.
 
 **A build that cannot abort.** The abort works only with the Python version the plugin supports (3.11). If the embedded Python is a different version and this key is set to `1` or more, the editor logs a startup warning, and **every call that omits `AbortAfterSeconds` is refused with `AbilityUnavailable`** without running the script. Clear the key, or pass `AbortAfterSeconds: 0` explicitly, to run without an abort. When Python itself is unavailable, the existing `CapabilityNotAvailable` answer comes first and this warning is not logged.
+
+### `[UAIP.EditorRestart]` — Closing deadline for `RestartEditor`
+
+After `RestartEditor` accepts a request (see [Commands](commands.md)), the editor has a limited time to start closing. This section sets that time.
+
+| Key | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `CloseDeadlineSeconds` | float | `60.0` | `[10.0, 600.0]` | Seconds the editor may take to close after a request has been accepted. If it has not closed by then, the attempt is declined (`Declined`, reason `CloseTimedOut`) and the editor keeps running |
+
+- A value outside the range, or one that cannot be read as a number, is ignored with a Warning in the Output Log, and the default of `60.0` stays.
+- In an editor started normally and operated by a person, the attempt is **not** declined while a modal dialog such as a save prompt is open.
+- Raise it if you often restart right after a heavy save or shader compilation and the attempt is declined before the editor finishes closing.
+- The value is read when the editor starts, so an edit takes effect the next time it starts.
+
+```ini
+[UAIP.EditorRestart]
+CloseDeadlineSeconds=120.0
+```
+
+**No CLI equivalent.** The setting cannot be overridden from the command line.
+
+### `[UAIP.Build]` — Compiling the test-only types
+
+UAIP's automation tests use reflection types that exist only for testing. They are compiled into the plugin by default, so the tests that depend on them register and run on your machine. They stay out of the editor's type pickers, menus and class lists, and out of UAIP's type-listing commands, unless a test that uses them is running. This section lets you leave them out of the build.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `bCompileTestFixtures` | bool | `True` | Whether the test-only types are compiled into the build. `False` leaves them out; the tests that depend on them are then not registered, and every other test runs as before |
+
+This is a **build setting**: changing it takes a **rebuild**, not just an editor restart. The build log prints one line saying whether the types are included and where the value came from (the built-in default or the project file).
+
+- **Only `<Project>/Config/DefaultUAIP.ini` is read.** The plugin's own `DefaultUAIP.ini` and `DefaultEngine.ini` are not. If the line is not there, add it under `[UAIP.Build]`, adding the section too if needed. A file carried over from an older version has neither the section nor the comment line.
+- **It works only when the plugin sits in the project's `Plugins/` folder and is built from source.** A precompiled plugin (for example one installed under the engine) cannot leave the types out and ignores the setting.
+- A value that cannot be read as `True` or `False` (for example `Flase`) stops the build with an error that names the file, section, key and value. If no build runs (a precompiled plugin), the editor warns at startup and keeps the build as it is.
+
+If the setting and the build disagree when the editor starts, a warning is logged. It names the value in the file, what the binary was built with, and what to do. For a precompiled plugin it says the setting has no effect and to build from source from the project's `Plugins/` folder. Otherwise it says to rebuild the project; if you created the file outside the editor just now, the build may not have noticed it, so it also names the build's stamp file to touch (or the target makefile under `Intermediate/Build` to delete) so the build re-evaluates the setting.
+
+```ini
+[UAIP.Build]
+bCompileTestFixtures=False
+```
+
+No CLI equivalent.
 
 ### `[UAIP.Transport]` — Auto-starting the MCP transport on a normal launch
 

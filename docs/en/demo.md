@@ -121,6 +121,7 @@ Every command below is registered in the demo build. Where a namespace is marked
 | `UAIP.Editor.Workspace.SaveAllPackages` | Save all modified packages | |
 | `UAIP.Editor.Workspace.ShutdownEditor` | Shut down the editor | |
 | `UAIP.Editor.Workspace.RestartEditor` | Restart the editor | |
+| `UAIP.Editor.Workspace.GetRestartStatus` | Read the state of a restart attempt | |
 | `UAIP.Editor.Workspace.GetLastCrashReport` | Get the most recent crash report | |
 
 ### `UAIP.Runtime.PIE.*`

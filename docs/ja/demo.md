@@ -121,6 +121,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.Workspace.SaveAllPackages` | 変更のあるパッケージをすべて保存する | |
 | `UAIP.Editor.Workspace.ShutdownEditor` | エディタを終了する | |
 | `UAIP.Editor.Workspace.RestartEditor` | エディタを再起動する | |
+| `UAIP.Editor.Workspace.GetRestartStatus` | 再起動の試行の状態を読む | |
 | `UAIP.Editor.Workspace.GetLastCrashReport` | 最新のクラッシュレポートを取得する | |
 
 ### `UAIP.Runtime.PIE.*`

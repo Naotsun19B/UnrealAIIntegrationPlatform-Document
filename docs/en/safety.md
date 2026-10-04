@@ -431,7 +431,8 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `GameplayTagEdit` | Add, remove, and rename tags in project tag tables |
 | `GameplayTagRestrictedEdit` | Add, remove, or rename a Restricted tag (`AddRestrictedGameplayTag`, and `RemoveGameplayTag` / `RenameGameplayTag` — native and Toolset bridge — whenever the tag acted on, or one of its descendants for a forced removal or a rename that carries children, is Restricted) |
 | `GameplayTagExternalSourceEdit` | Required in addition to `GameplayTagEdit` / `GameplayTagRestrictedEdit` when a tag add, remove, or rename would write to an INI source outside the project's own `Config/` directory — an engine plugin, a Fab / third-party plugin, or the project's own game plugin or Game Feature plugin. Gates `AddGameplayTag`, `AddRestrictedGameplayTag`, `RemoveGameplayTag`, `RenameGameplayTag`, and the Toolset `AddTag` / `RemoveTag` / `RenameTag` bridges. A Restricted source reached through a plugin's search path whose write destination does not match where it is actually read from is refused with `NotAllowed` regardless of this capability — the write would land somewhere other than where the source is read from, so no grant lifts that refusal. See [Commands — UAIP.Editor.GameplayTags](commands.md#uaipeditorgameplaytags) |
-| `GameFeatureCreate` 🧩 | Create and scaffold GameFeature Plugin definitions (requires `GameFeatures` + `GameFeaturesEditor` plugins) |
+| `GameFeatureCreate` 🧩 | Create and scaffold GameFeature Plugin definitions (requires `GameFeatures` + `GameFeaturesEditor` plugins). Refused while `DisableSave` is in force |
+| `GameFeatureDelete` 🧩 | Delete a content-only GameFeature Plugin from the project's `Plugins/GameFeatures/` folder — `DeleteGameFeaturePlugin` (requires `GameFeatures` + `GameFeaturesEditor` plugins). Refused while `DisableSave` is in force |
 | `GameplayCueMutation` 🧩 | Add / remove GameplayCue tags, create GameplayCueNotify assets, execute Cues on actors (requires `GameplayAbilities` plugin) |
 | `EnhancedInputEdit` | Edit Input Action / Input Mapping Context assets — add / remove / modify mappings, modifiers, and triggers |
 | `EnhancedInputReferenceEdit` | Required in addition to `EnhancedInputEdit` when a Trigger or Modifier property being written is — or contains — a reference of any kind (object / class / soft / weak / lazy / interface, delegate, field path). Decided from the type of the property being written, so it will not appear in the mapping mutators' declared `RequiredCapabilities` — see the note under [Level / Actor / Property editing](#level--actor--property-editing). Writing a struct or container additionally requires `PropertyStructuredEdit` |
@@ -468,6 +469,7 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `RuntimeInputInjection` | Inject keyboard / Enhanced Input / legacy input events into PIE (`InjectInputKey`, `InjectEnhancedInputAction`, `AddMappingContext`, `SetInputMode`, `FlushInput`, …) |
 | `RuntimeNiagaraMutation` 🧩 | Set Niagara user variables / replace Niagara system at runtime (`SetVariable`, `SetSystem`; requires `Niagara` plugin) |
 | `GauntletExecution` | Launch Gauntlet automated test sessions |
+| `GauntletUnrestrictedArguments` | In `RunGauntletTest`, allow arguments that change what the test targets or how the child process behaves: the parenthesized per-test parameter syntax on a test name, dangerous keys, keys that start with the test name, and values such as absolute paths, UNC paths and URLs (also values that start with `-` and a letter). Characters that cannot be passed safely on an external process command line (spaces, quotes, symbols) are **not** unlocked by this capability either |
 
 #### Runtime Insights trace capture
 
@@ -733,7 +735,7 @@ AllowUserInteractionPrompt=False
 | Key | Default | Effect |
 |---|---|---|
 | `ReadOnly` | `False` | Reject mutating commands. The two editor lifecycle commands are the one exception — see below |
-| `DisableSave` | `False` | Reject disk-writing commands |
+| `DisableSave` | `False` | Reject disk-writing commands, including those that delete, move or rename files — see below |
 | `AllowLogDump` | `False` | Allow `DumpOutputLog` / `DumpMessageLog` |
 | `AllowContextMenuMutation` | `False` | Allow `InvokeContextMenuAction` |
 | `AllowKeyboardInput` | `False` | Allow `PressKey` (also requires `EditorKeyboardInput` capability) |
@@ -750,6 +752,19 @@ AllowUserInteractionPrompt=False
 | `DeniedCapabilities` | empty | Remove DefaultAllow capabilities from all sessions |
 | `DeniedCommands` | empty | Block commands by fully-qualified name. Blocked commands are hidden from the default `ListCommands` response and counted in `HiddenReasons.DeniedCommand`; pass `IncludeUnavailable=true` to list them explicitly (`Available: false`, `UnavailableReason: "DeniedCommand"`), or use `DescribeCommand`, which always shows them |
 | `AllowCapabilityReload` | `False` | Enable `UAIP.Core.ReloadCapabilities` for hot-reload of capability settings |
+
+### DisableSave and the commands that delete, move or rename
+
+`DisableSave` stops UAIP from changing files on disk. Besides the commands that save, the following commands are refused with `PolicyViolation` while it is `True`, because deleting, moving or renaming an asset removes or rewrites files on disk (the engine saves while it does so):
+
+- `DeleteAsset`, `DeleteFolder`, `ForceDeleteFolder`
+- `RenameAsset`, `MoveAsset`, `MoveFolder`
+- `FixAssetRedirectors`, `FixUpRedirectorsInFolder`
+- `DeleteInputAction`, `DeleteMappingContext`
+- `DeleteDataLayerAsset`, `DeleteHLODs`
+- `DeleteGameFeaturePlugin`, and `CreateGameFeaturePlugin` (it writes a new plugin to disk)
+
+The refusal message is "Disk write operations are disabled by the current safety policy.", and nothing is deleted, moved or renamed. For these commands the check comes before the PIE check and before the editor-state checks, so asking during PIE returns `PolicyViolation`, not `NotAllowed`. `RestartEditor` and `ShutdownEditor` are refused only when `SaveAll: true` is given explicitly. Commands that already refused under `DisableSave` keep their own messages. Commands that write to disk in other ways — for example the GameplayTag and PrimaryAssetType settings files, committing sandbox changes, or creating Niagara Blueprint wrappers and Grooms — do not check `DisableSave`.
 
 ### ReadOnly and the editor lifecycle commands
 
