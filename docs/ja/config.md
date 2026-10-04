@@ -302,25 +302,25 @@ CLI フラグはエディタプロセスのコマンドライン（`UnrealEditor
 
 | フラグ | 説明 |
 |---|---|
-| `-uaip-request=<json>` | インライン `uaip_execute` リクエスト JSON（シェルに応じてクォートをエスケープ） |
-| `-uaip-request-file=<path>` | ファイルからリクエスト JSON を読み込み |
+| `-uaip-request=<json>` | インラインのリクエスト JSON。`{"Command": "...", "Params": {...}}` の形（シェルに応じてクォートをエスケープ）。キーは `Command` で、MCP の引数名 `CommandName` ではない |
+| `-uaip-request-file=<path>` | `Saved/UAIP/Requests/` の下のファイルからリクエスト JSON を読み込み（プロジェクトのルートからの相対パス） |
 | `-uaip-scenario=<json>` | インライン `uaip_run_scenario` ペイロード |
-| `-uaip-scenario-file=<path>` | ファイルから scenario JSON を読み込み |
-| `-uaip-response-file=<path>` | レスポンス書き出し先。省略時は stdout |
+| `-uaip-scenario-file=<path>` | `Saved/UAIP/Requests/` の下のファイルから scenario JSON を読み込み（プロジェクトのルートからの相対パス） |
+| `-uaip-response-file=<path>` | レスポンス書き出し先。`Saved/UAIP/Responses/` の下（プロジェクトのルートからの相対パス）。省略時は stdout |
 | `-uaip-stdin` | リクエスト JSON を標準入力から読み込み |
 
 例：
 
 ```bash
-# HealthCheck を 1 回実行し、JSON レスポンスを ./result.json に書き出し
+# HealthCheck を 1 回実行し、JSON レスポンスを Saved/UAIP/Responses/result.json に書き出し
 UnrealEditor-Cmd.exe MyProject.uproject \
-  -uaip-request='{"CommandName":"UAIP.Core.HealthCheck","Params":{}}' \
-  -uaip-response-file=./result.json
+  -uaip-request='{"Command":"UAIP.Core.HealthCheck","Params":{}}' \
+  -uaip-response-file=Saved/UAIP/Responses/result.json
 
 # 保存済み scenario を実行
 UnrealEditor-Cmd.exe MyProject.uproject \
-  -uaip-scenario-file=./scenarios/pie-smoke.json \
-  -uaip-response-file=./scenarios/pie-smoke.result.json
+  -uaip-scenario-file=Saved/UAIP/Requests/pie-smoke.json \
+  -uaip-response-file=Saved/UAIP/Responses/pie-smoke.result.json
 ```
 
 ### SafetyPolicy 系 CLI フラグ

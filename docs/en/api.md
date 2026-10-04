@@ -52,7 +52,7 @@ See [Security → Network surface](security.md#network-surface) for the detailed
 
 ```json
 {
-  "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage",
+  "Command":     "UAIP.Editor.Observation.CaptureActiveWindowImage",
   "Params":      { ... },
   "SessionId":   "my-task-001",
   "TimeoutSeconds": 300
@@ -61,10 +61,12 @@ See [Security → Network surface](security.md#network-surface) for the detailed
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `CommandName` | string | yes | Fully-qualified name (e.g. `UAIP.Core.HealthCheck`) |
+| `Command` | string | yes | Fully-qualified name (e.g. `UAIP.Core.HealthCheck`) |
 | `Params` | object | no | Command-specific parameters (default `{}`); validated against the command's `ParameterSchema` |
 | `SessionId` | string | no | `[A-Za-z0-9_-]{1,128}`. Omitting creates an anonymous session |
-| `TimeoutSeconds` | number | no | Top-level (not inside `Params`). How long the editor waits before giving up on an answer, in seconds: 1–1800 (default 120, see [Connection Methods → Limits](connections.md#limits)). Out of range, the wrong JSON type, or a numeric string (`"300"`) is refused with 400 `InvalidParams` before the command runs; it is never copied into `Params`, so a command handler never sees it. `uaip_execute` (MCP) accepts the same field, sibling to `CommandName` — see §2.4 |
+| `TimeoutSeconds` | number | no | Top-level (not inside `Params`). How long the editor waits before giving up on an answer, in seconds: 1–1800 (default 120, see [Connection Methods → Limits](connections.md#limits)). Out of range, the wrong JSON type, or a numeric string (`"300"`) is refused with 400 `InvalidParams` before the command runs; it is never copied into `Params`, so a command handler never sees it. `uaip_execute` (MCP) accepts the same field, sibling to its `CommandName` argument — see §2.4 |
+
+> **`Command` or `CommandName`?** HTTP, WebSocket, and CLI requests (including stdin-stream lines) name the command under `Command`. Only the MCP tool arguments (`uaip_execute`, `uaip_describe_command`) and scenario steps (§7.1) use `CommandName`. A transport request that sends `CommandName` instead is refused with `Missing or non-string 'command' field.`
 
 ### 2.2 `CommandRequest` (WebSocket frame)
 
@@ -75,7 +77,7 @@ See [Security → Network surface](security.md#network-surface) for the detailed
   "Token":                 "<32-char-bearer>",
   "RequestId":             "req-001",
   "SessionId":             "my-task-001",
-  "CommandName":           "UAIP.Core.HealthCheck",
+  "Command":               "UAIP.Core.HealthCheck",
   "Params":                {}
 }
 ```
@@ -87,20 +89,22 @@ See [Security → Network surface](security.md#network-surface) for the detailed
 ### 2.3 `CommandRequest` (CLI inline)
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-request="{\"CommandName\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
+UnrealEditor.exe MyProject.uproject -uaip-request="{\"Command\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
 ```
 
 Or, for repeat use:
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-request-file=path/to/cmd.json
+UnrealEditor.exe MyProject.uproject -uaip-request-file=Saved/UAIP/Requests/cmd.json
 ```
 
 CLI requests get an auto-generated `SessionId` and the editor exits after the response is written.
 
+Request and scenario files are read only from under `Saved/UAIP/Requests/`, and `-uaip-response-file` writes only under `Saved/UAIP/Responses/`. Pass both as paths relative to the project root.
+
 ### 2.4 `CommandRequest` (MCP)
 
-The MCP Bridge wraps the same `CommandRequest` shape into a tool call:
+The MCP Bridge wraps the same `CommandRequest` shape into a tool call. Here the command name is the `CommandName` argument:
 
 ```python
 uaip_execute(
@@ -180,7 +184,7 @@ In stdin-stream mode the same markers appear per request.
 | ErrorCode | HTTP status | When | How to recover |
 |---|---|---|---|
 | `Success` | 200 | Command completed | — |
-| `CommandNotFound` | 404 | `CommandName` not registered | Verify with `UAIP.Core.ListCommands`; optional-plugin commands need the plugin loaded |
+| `CommandNotFound` | 404 | The named command is not registered | Verify with `UAIP.Core.ListCommands`; optional-plugin commands need the plugin loaded |
 | `InvalidParams` | 400 | Missing required / wrong type / unknown field (with `AdditionalProperties:false`); in a scenario, also an unresolvable `${...}` template reference | Re-fetch the schema via `UAIP.Core.DescribeCommand`. Template failures are **not** retried by `RetryCount` — see [Scenario Execution](scenario.md#template-resolution-failures) |
 | `CapabilityNotAvailable` | 403 | Session lacks a required Capability | `ErrorMessage` names the missing capability; enable it via `Config/DefaultUAIP.ini` and restart or call `UAIP.Core.ReloadCapabilities` |
 | `AbilityUnavailable` | 501 | The command's `IsAvailable()` is `false` for an environment- or build-related reason: a required optional module or plugin is not loaded (e.g. Sequencer, LevelSequenceEditor), the process was built without a required configuration, the running engine version doesn't support the command, or the command (native or a Toolset bridge forward) has no implementation path to reach at all — **or a part of the command that the caller asked for through a parameter cannot be used in this build or environment** (e.g. `RunEditorPythonScript` with `AbortAfterSeconds` on a Python version that cannot be aborted) | `ErrorMessage` names what's missing. Call `UAIP.Core.DescribeCommand` and read `UnavailableDetail` (`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`) for the specific remediation — `EngineApiNotExported` and `DelegationTargetMissing` mean no configuration change helps; look for a Toolset bridge or native alternative instead. When only an optional part was requested, `IsAvailable()` is `true`, so `UnavailableDetail` is no help — read `ErrorMessage` and call again without that part (for `AbortAfterSeconds`, pass `0`) |
@@ -691,7 +695,7 @@ curl -s -X POST http://127.0.0.1:8765/uaip/commands \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "CommandName": "UAIP.Core.HealthCheck",
+    "Command": "UAIP.Core.HealthCheck",
     "Params": {},
     "SessionId": "smoke-test"
   }' | jq .
@@ -721,7 +725,7 @@ class UAIPClient:
         self.session.headers["Content-Type"] = "application/json"
 
     def execute(self, command, params=None, session_id=None):
-        body = {"CommandName": command, "Params": params or {}}
+        body = {"Command": command, "Params": params or {}}
         if session_id:
             body["SessionId"] = session_id
         r = self.session.post(f"{self.host}/uaip/commands", json=body, timeout=120)
@@ -764,7 +768,7 @@ ws.on("open", () => {
     Token: token,
     RequestId: "init",
     SessionId: "ws-session",
-    CommandName: "UAIP.Core.HealthCheck",
+    Command: "UAIP.Core.HealthCheck",
     Params: {}
   }));
 });
@@ -786,7 +790,7 @@ function execute(command, params, sessionId) {
       Type: "CommandRequest",
       RequestId: id,
       SessionId: sessionId,
-      CommandName: command,
+      Command: command,
       Params: params
     }));
   });
@@ -795,20 +799,25 @@ function execute(command, params, sessionId) {
 
 ### 10.4 CLI — PowerShell one-shot
 
+Run it from the project root.
+
 ```powershell
+New-Item -ItemType Directory -Force Saved/UAIP/Requests, Saved/UAIP/Responses | Out-Null
 @'
 {
-  "CommandName": "UAIP.Editor.Execution.RunAutomationTest",
-  "Params":      { "TestName": "MyGame.Smoke.MainMenu" }
+  "Command": "UAIP.Editor.Execution.RunAutomationTest",
+  "Params":  { "TestName": "MyGame.Smoke.MainMenu" }
 }
-'@ | Set-Content cmd.json
+'@ | Set-Content Saved/UAIP/Requests/cmd.json
 
-& "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" `
-    "$pwd/MyGame.uproject" `
-    "-uaip-request-file=$pwd/cmd.json" `
-    "-uaip-response-file=$pwd/result.json"
+# UnrealEditor.exe is a GUI application: `&` would return without waiting, so use Start-Process -Wait.
+Start-Process -Wait -FilePath "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" -ArgumentList @(
+    "`"$pwd/MyGame.uproject`"",
+    "-uaip-request-file=Saved/UAIP/Requests/cmd.json",
+    "-uaip-response-file=Saved/UAIP/Responses/result.json"
+)
 
-$result = Get-Content result.json | ConvertFrom-Json
+$result = Get-Content Saved/UAIP/Responses/result.json | ConvertFrom-Json
 if (-not $result.Success) {
     Write-Error "$($result.ErrorCode): $($result.ErrorMessage)"
     exit 1
@@ -841,7 +850,7 @@ def read_responses():
 
 threading.Thread(target=lambda: list(read_responses()), daemon=True).start()
 
-proc.stdin.write(json.dumps({"CommandName":"UAIP.Core.HealthCheck","Params":{}}) + "\n")
+proc.stdin.write(json.dumps({"Command":"UAIP.Core.HealthCheck","Params":{}}) + "\n")
 proc.stdin.flush()
 ```
 

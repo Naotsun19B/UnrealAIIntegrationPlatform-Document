@@ -52,7 +52,7 @@ bind 層と認証層の関係の詳細は [セキュリティ → ネットワ�
 
 ```json
 {
-  "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage",
+  "Command":     "UAIP.Editor.Observation.CaptureActiveWindowImage",
   "Params":      { ... },
   "SessionId":   "my-task-001",
   "TimeoutSeconds": 300
@@ -61,10 +61,12 @@ bind 層と認証層の関係の詳細は [セキュリティ → ネットワ�
 
 | フィールド | 型 | 必須 | 備考 |
 |---|---|---|---|
-| `CommandName` | string | はい | 完全修飾名（例：`UAIP.Core.HealthCheck`） |
+| `Command` | string | はい | 完全修飾名（例：`UAIP.Core.HealthCheck`） |
 | `Params` | object | いいえ | コマンド固有パラメータ（デフォルト `{}`）。コマンドの `ParameterSchema` で検証 |
 | `SessionId` | string | いいえ | `[A-Za-z0-9_-]{1,128}`。省略時は匿名セッション |
-| `TimeoutSeconds` | number | いいえ | トップレベルフィールド（`Params` の中ではない）。エディタが応答を待つ秒数の上限：1〜1800（既定 120。[接続方法 → 制限値](connections.md#制限値) 参照）。範囲外・型違い・数値の文字列（`"300"`）はコマンドの実行前に 400・`InvalidParams` で拒否される。`Params` にはコピーされないため、コマンドのハンドラからは一切見えない。`uaip_execute`（MCP）も `CommandName` と同じ階層で同じフィールドを受け付ける — §2.4 参照 |
+| `TimeoutSeconds` | number | いいえ | トップレベルフィールド（`Params` の中ではない）。エディタが応答を待つ秒数の上限：1〜1800（既定 120。[接続方法 → 制限値](connections.md#制限値) 参照）。範囲外・型違い・数値の文字列（`"300"`）はコマンドの実行前に 400・`InvalidParams` で拒否される。`Params` にはコピーされないため、コマンドのハンドラからは一切見えない。`uaip_execute`（MCP）も、引数 `CommandName` と同じ階層で同じフィールドを受け付ける — §2.4 参照 |
+
+> **`Command` と `CommandName` の違い**：HTTP・WebSocket・CLI のリクエスト（stdin ストリームの各行も含む）では、コマンド名のキーは `Command` です。`CommandName` を使うのは MCP ツールの引数（`uaip_execute`・`uaip_describe_command`）と、シナリオのステップ（§7.1）だけです。トランスポートのリクエストに `CommandName` で送ると、`Missing or non-string 'command' field.` で拒否されます。
 
 ### 2.2 `CommandRequest`（WebSocket フレーム）
 
@@ -75,7 +77,7 @@ bind 層と認証層の関係の詳細は [セキュリティ → ネットワ�
   "Token":                 "<32文字 Bearer>",
   "RequestId":             "req-001",
   "SessionId":             "my-task-001",
-  "CommandName":           "UAIP.Core.HealthCheck",
+  "Command":               "UAIP.Core.HealthCheck",
   "Params":                {}
 }
 ```
@@ -87,20 +89,22 @@ bind 層と認証層の関係の詳細は [セキュリティ → ネットワ�
 ### 2.3 `CommandRequest`（CLI インライン）
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-request="{\"CommandName\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
+UnrealEditor.exe MyProject.uproject -uaip-request="{\"Command\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
 ```
 
 または繰り返し利用：
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-request-file=path/to/cmd.json
+UnrealEditor.exe MyProject.uproject -uaip-request-file=Saved/UAIP/Requests/cmd.json
 ```
 
 CLI リクエストは自動生成 `SessionId` を取得し、レスポンス書き出し後にエディタ終了。
 
+リクエストファイルとシナリオファイルは `Saved/UAIP/Requests/` の下からしか読み込めず、`-uaip-response-file` は `Saved/UAIP/Responses/` の下にしか書き出せません。どちらもプロジェクトのルートからの相対パスで渡します。
+
 ### 2.4 `CommandRequest`（MCP）
 
-MCP Bridge が同じ `CommandRequest` 形状をツール呼び出しでラップ：
+MCP Bridge が同じ `CommandRequest` 形状をツール呼び出しでラップ。ここではコマンド名を引数 `CommandName` で渡す：
 
 ```python
 uaip_execute(
@@ -180,7 +184,7 @@ stdin-stream モードでも同じマーカーがリクエスト毎に出ます�
 | ErrorCode | HTTP ステータス | 発生時 | 復旧方法 |
 |---|---|---|---|
 | `Success` | 200 | コマンド完了 | — |
-| `CommandNotFound` | 404 | `CommandName` 未登録 | `UAIP.Core.ListCommands` で確認。オプションプラグインコマンドはプラグインロードが必要 |
+| `CommandNotFound` | 404 | 指定したコマンドが未登録 | `UAIP.Core.ListCommands` で確認。オプションプラグインコマンドはプラグインロードが必要 |
 | `InvalidParams` | 400 | 必須欠落 / 型不一致 / `AdditionalProperties:false` での未知フィールド。シナリオでは `${...}` テンプレート参照が解決できなかった場合も含む | `UAIP.Core.DescribeCommand` でスキーマ再取得。テンプレートの失敗は `RetryCount` によるリトライ対象**外**です — [シナリオ API](scenario.md#テンプレート解決の失敗) を参照 |
 | `CapabilityNotAvailable` | 403 | セッションに必要 Capability 不足 | `ErrorMessage` に不足 Capability 名。`Config/DefaultUAIP.ini` で有効化して再起動、または `UAIP.Core.ReloadCapabilities` |
 | `AbilityUnavailable` | 501 | このコマンドの `IsAvailable()` が、環境またはビルドに起因する理由で `false` になっている：必要な Optional モジュール／プラグイン（例：Sequencer、LevelSequenceEditor）が読み込まれていない、必要な構成でこのプロセスがビルドされていない、稼働中のエンジンバージョンがこのコマンドに対応していない、またはこのコマンド（ネイティブ・Toolset ブリッジ転送のいずれも）にそもそも到達できる実装経路が無い、**あるいは引数で求めたコマンドの一部の機能が、このビルド・環境では使えない**（例：打ち切りに対応しない Python のバージョンで `AbortAfterSeconds` を付けた `RunEditorPythonScript`） | `ErrorMessage` に何が欠けているかが載る。`UAIP.Core.DescribeCommand` を呼んで `UnavailableDetail`（`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`）を読み、値ごとの対処に従う — `EngineApiNotExported` と `DelegationTargetMissing` は設定変更では解決しないので、Toolset ブリッジまたはネイティブの代替コマンドを探す。引数で求めた一部の機能だけが使えない場合は `IsAvailable()` が `true` なので `UnavailableDetail` は手掛かりにならない — `ErrorMessage` を読み、その機能を外して呼び直す（`AbortAfterSeconds` なら `0` を渡す） |
@@ -691,7 +695,7 @@ curl -s -X POST http://127.0.0.1:8765/uaip/commands \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "CommandName": "UAIP.Core.HealthCheck",
+    "Command": "UAIP.Core.HealthCheck",
     "Params": {},
     "SessionId": "smoke-test"
   }' | jq .
@@ -721,7 +725,7 @@ class UAIPClient:
         self.session.headers["Content-Type"] = "application/json"
 
     def execute(self, command, params=None, session_id=None):
-        body = {"CommandName": command, "Params": params or {}}
+        body = {"Command": command, "Params": params or {}}
         if session_id:
             body["SessionId"] = session_id
         r = self.session.post(f"{self.host}/uaip/commands", json=body, timeout=120)
@@ -764,7 +768,7 @@ ws.on("open", () => {
     Token: token,
     RequestId: "init",
     SessionId: "ws-session",
-    CommandName: "UAIP.Core.HealthCheck",
+    Command: "UAIP.Core.HealthCheck",
     Params: {}
   }));
 });
@@ -786,7 +790,7 @@ function execute(command, params, sessionId) {
       Type: "CommandRequest",
       RequestId: id,
       SessionId: sessionId,
-      CommandName: command,
+      Command: command,
       Params: params
     }));
   });
@@ -795,20 +799,25 @@ function execute(command, params, sessionId) {
 
 ### 10.4 CLI — PowerShell ワンショット
 
+プロジェクトのルートで実行します。
+
 ```powershell
+New-Item -ItemType Directory -Force Saved/UAIP/Requests, Saved/UAIP/Responses | Out-Null
 @'
 {
-  "CommandName": "UAIP.Editor.Execution.RunAutomationTest",
-  "Params":      { "TestName": "MyGame.Smoke.MainMenu" }
+  "Command": "UAIP.Editor.Execution.RunAutomationTest",
+  "Params":  { "TestName": "MyGame.Smoke.MainMenu" }
 }
-'@ | Set-Content cmd.json
+'@ | Set-Content Saved/UAIP/Requests/cmd.json
 
-& "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" `
-    "$pwd/MyGame.uproject" `
-    "-uaip-request-file=$pwd/cmd.json" `
-    "-uaip-response-file=$pwd/result.json"
+# UnrealEditor.exe は GUI アプリなので、`&` では終了を待たずに戻る。Start-Process -Wait で待つ。
+Start-Process -Wait -FilePath "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" -ArgumentList @(
+    "`"$pwd/MyGame.uproject`"",
+    "-uaip-request-file=Saved/UAIP/Requests/cmd.json",
+    "-uaip-response-file=Saved/UAIP/Responses/result.json"
+)
 
-$result = Get-Content result.json | ConvertFrom-Json
+$result = Get-Content Saved/UAIP/Responses/result.json | ConvertFrom-Json
 if (-not $result.Success) {
     Write-Error "$($result.ErrorCode): $($result.ErrorMessage)"
     exit 1
@@ -841,7 +850,7 @@ def read_responses():
 
 threading.Thread(target=lambda: list(read_responses()), daemon=True).start()
 
-proc.stdin.write(json.dumps({"CommandName":"UAIP.Core.HealthCheck","Params":{}}) + "\n")
+proc.stdin.write(json.dumps({"Command":"UAIP.Core.HealthCheck","Params":{}}) + "\n")
 proc.stdin.flush()
 ```
 

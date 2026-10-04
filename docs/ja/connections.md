@@ -396,7 +396,7 @@ Content-Type: application/json
 Authorization: Bearer <token>
 
 {
-  "CommandName": "UAIP.Core.HealthCheck",
+  "Command": "UAIP.Core.HealthCheck",
   "Params": {},
   "SessionId": "my-session",
   "TimeoutSeconds": 300
@@ -469,7 +469,7 @@ Saved/UAIP/EditorWsAuthToken.txt
   "Token": "<token>",
   "RequestId": "req-001",
   "SessionId": "my-session",
-  "CommandName": "UAIP.Core.HealthCheck",
+  "Command": "UAIP.Core.HealthCheck",
   "Params": {}
 }
 ```
@@ -553,7 +553,7 @@ CLI トランスポートはエディタを特定の引数付きで起動する�
 **インライン JSON：**
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-request="{\"CommandName\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
+UnrealEditor.exe MyProject.uproject -uaip-request="{\"Command\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
 ```
 
 **JSON ファイルから：**
@@ -571,8 +571,10 @@ UnrealEditor.exe MyProject.uproject -uaip-request-file="..." -uaip-response-file
 **シナリオをファイルから実行：**
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-scenario-file="path/to/scenario.json"
+UnrealEditor.exe MyProject.uproject -uaip-scenario-file="Saved/UAIP/Requests/scenario.json"
 ```
+
+リクエストファイルとシナリオファイルは `Saved/UAIP/Requests/` の下からしか読み込めず、レスポンスファイルは `Saved/UAIP/Responses/` の下にしか書き出せません。どちらもプロジェクトのルートからの相対パスで渡します。コマンド名のキーは `Command` です（MCP ツールの引数名 `CommandName` はここでは受け付けません）。
 
 ### ストリームモード
 
@@ -591,7 +593,7 @@ sequenceDiagram
     Br->>Ed: 起動（-uaip-stdin-stream）
     Ed-->>Br: stdout: __UAIP_STREAM_READY__
     loop エディタ生存中
-        Br->>Ed: stdin: { "CommandName": "...", ... }\n
+        Br->>Ed: stdin: { "Command": "...", ... }\n
         Ed-->>Br: stdout: __UAIP_RESPONSE_BEGIN__
         Ed-->>Br: stdout: { "Success": true, ... }
         Ed-->>Br: stdout: __UAIP_RESPONSE_END__

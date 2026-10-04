@@ -396,7 +396,7 @@ Content-Type: application/json
 Authorization: Bearer <token>
 
 {
-  "CommandName": "UAIP.Core.HealthCheck",
+  "Command": "UAIP.Core.HealthCheck",
   "Params": {},
   "SessionId": "my-session",
   "TimeoutSeconds": 300
@@ -469,7 +469,7 @@ Include it in the first request frame:
   "Token": "<token>",
   "RequestId": "req-001",
   "SessionId": "my-session",
-  "CommandName": "UAIP.Core.HealthCheck",
+  "Command": "UAIP.Core.HealthCheck",
   "Params": {}
 }
 ```
@@ -551,7 +551,7 @@ The editor executes the command, writes the result, and exits.
 **Inline JSON:**
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-request="{\"CommandName\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
+UnrealEditor.exe MyProject.uproject -uaip-request="{\"Command\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
 ```
 
 **From a JSON file:**
@@ -569,8 +569,10 @@ UnrealEditor.exe MyProject.uproject -uaip-request-file="..." -uaip-response-file
 **Scenario from a file:**
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-scenario-file="path/to/scenario.json"
+UnrealEditor.exe MyProject.uproject -uaip-scenario-file="Saved/UAIP/Requests/scenario.json"
 ```
+
+Request and scenario files are read only from under `Saved/UAIP/Requests/`, and the response file is written only under `Saved/UAIP/Responses/`. Pass them as paths relative to the project root. The command name goes under the key `Command` (the MCP tool argument `CommandName` is not accepted here).
 
 ### Stream mode
 
@@ -585,7 +587,7 @@ sequenceDiagram
     Br->>Ed: spawn (-uaip-stdin-stream)
     Ed-->>Br: stdout: __UAIP_STREAM_READY__
     loop while editor alive
-        Br->>Ed: stdin: { "CommandName": "...", ... }\n
+        Br->>Ed: stdin: { "Command": "...", ... }\n
         Ed-->>Br: stdout: __UAIP_RESPONSE_BEGIN__
         Ed-->>Br: stdout: { "Success": true, ... }
         Ed-->>Br: stdout: __UAIP_RESPONSE_END__

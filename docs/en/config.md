@@ -302,25 +302,25 @@ The CLI transport runs a single command (or scenario) from the editor command li
 
 | Flag | Description |
 |---|---|
-| `-uaip-request=<json>` | Inline `uaip_execute` request JSON (escape quotes per your shell) |
-| `-uaip-request-file=<path>` | Read the request JSON from a file |
+| `-uaip-request=<json>` | Inline request JSON, `{"Command": "...", "Params": {...}}` (escape quotes per your shell). The key is `Command`, not the MCP argument name `CommandName` |
+| `-uaip-request-file=<path>` | Read the request JSON from a file under `Saved/UAIP/Requests/` (path relative to the project root) |
 | `-uaip-scenario=<json>` | Inline `uaip_run_scenario` payload |
-| `-uaip-scenario-file=<path>` | Read the scenario JSON from a file |
-| `-uaip-response-file=<path>` | Where to write the response. Defaults to stdout when omitted |
+| `-uaip-scenario-file=<path>` | Read the scenario JSON from a file under `Saved/UAIP/Requests/` (path relative to the project root) |
+| `-uaip-response-file=<path>` | Where to write the response, under `Saved/UAIP/Responses/` (path relative to the project root). Defaults to stdout when omitted |
 | `-uaip-stdin` | Read the request JSON from standard input |
 
 Examples:
 
 ```bash
-# Run HealthCheck once and write the JSON response to ./result.json
+# Run HealthCheck once and write the JSON response to Saved/UAIP/Responses/result.json
 UnrealEditor-Cmd.exe MyProject.uproject \
-  -uaip-request='{"CommandName":"UAIP.Core.HealthCheck","Params":{}}' \
-  -uaip-response-file=./result.json
+  -uaip-request='{"Command":"UAIP.Core.HealthCheck","Params":{}}' \
+  -uaip-response-file=Saved/UAIP/Responses/result.json
 
 # Run a saved scenario
 UnrealEditor-Cmd.exe MyProject.uproject \
-  -uaip-scenario-file=./scenarios/pie-smoke.json \
-  -uaip-response-file=./scenarios/pie-smoke.result.json
+  -uaip-scenario-file=Saved/UAIP/Requests/pie-smoke.json \
+  -uaip-response-file=Saved/UAIP/Responses/pie-smoke.result.json
 ```
 
 ### SafetyPolicy CLI flags
