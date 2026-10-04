@@ -572,7 +572,9 @@ UnrealEditor.exe MyProject.uproject -uaip-request-file="..." -uaip-response-file
 UnrealEditor.exe MyProject.uproject -uaip-scenario-file="Saved/UAIP/Requests/scenario.json"
 ```
 
-Request and scenario files are read only from under `Saved/UAIP/Requests/`, and the response file is written only under `Saved/UAIP/Responses/`. Pass them as paths relative to the project root. The command name goes under the key `Command` (the MCP tool argument `CommandName` is not accepted here).
+Request and scenario files are read only from under `Saved/UAIP/Requests/`, and the response file is written only under `Saved/UAIP/Responses/`. Each path may be relative to the project root or absolute, as long as it falls under that directory. The command name goes under the key `Command` (the MCP tool argument `CommandName` is not accepted here).
+
+When the CLI refuses a request before running anything, it returns a failed response and exits with code 2. The `ErrorCode` tells the kind of mistake: `InvalidParams` for a bad request (a path outside the allowed directories, malformed JSON, an unreadable or oversized file, conflicting flags), `NotFound` for a `SessionId` that does not exist, and `PolicyViolation` when the role gate blocks this transport. A one-shot command that does not finish within 120 seconds returns `Timeout` with exit code 1. `InternalError` is kept for server-side faults, such as being unable to write the response file.
 
 ### Stream mode
 

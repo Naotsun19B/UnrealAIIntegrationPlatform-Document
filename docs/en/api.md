@@ -100,7 +100,7 @@ UnrealEditor.exe MyProject.uproject -uaip-request-file=Saved/UAIP/Requests/cmd.j
 
 CLI requests get an auto-generated `SessionId` and the editor exits after the response is written.
 
-Request and scenario files are read only from under `Saved/UAIP/Requests/`, and `-uaip-response-file` writes only under `Saved/UAIP/Responses/`. Pass both as paths relative to the project root.
+Request and scenario files are read only from under `Saved/UAIP/Requests/`, and `-uaip-response-file` writes only under `Saved/UAIP/Responses/`. Either a relative path or an absolute path works, as long as it points inside those directories.
 
 ### 2.4 `CommandRequest` (MCP)
 
@@ -177,6 +177,18 @@ __UAIP_RESPONSE_END__
 
 In stdin-stream mode the same markers appear per request.
 
+When the CLI transport refuses a request before it reaches dispatch, the response is still a normal `CommandResponse` with `Success: false`, and the command is not run. The `ErrorCode` tells the kind of failure apart:
+
+| Refusal | ErrorCode |
+|---|---|
+| The request is wrong: more than one request source, a request / scenario / response file path outside the allowed directories or with a disallowed extension, an unreadable file, a file or input over the size limit, malformed JSON, or an invalid `Command` / `SessionId` / `Params` | `InvalidParams` |
+| The `SessionId` you named does not exist in the editor | `NotFound` |
+| `[UAIP.Roles]` defines roles and `AllowRoleBlindTransports` is not enabled, so this transport is not allowed | `PolicyViolation` |
+| The command was dispatched but did not finish within 120 seconds | `Timeout` |
+| The response file cannot be written, or the scenario module is not available | `InternalError` |
+
+The process exit code is unchanged: `0` on success, `1` when the command ran and failed (this includes the 120-second `Timeout`), and `2` when the transport refused the request before dispatch or outside it.
+
 ---
 
 ## 4. Error codes
@@ -197,7 +209,7 @@ In stdin-stream mode the same markers appear per request.
 | `ExecutionFailed` | 500 | Runtime failure inside the handler | `ErrorMessage` carries detail; inside a scenario use `RetryCount` |
 | `Timeout` | 408 | Per-step or per-scenario wall-clock cap exceeded, or a command's own abort deadline passed (`RunEditorPythonScript` with `AbortAfterSeconds`) | Increase `TimeoutSeconds` or split the scenario. When the response `Data` carries `NotExecuted: false`, the command **did run partially** and its edits are kept — check the editor state before running it again. Without `NotExecuted` (a scenario or step deadline) the guidance is unchanged |
 | `TooManyRequests` | 429 | Concurrency limit hit — the single command slot, a scenario already running (1 at a time), a single command while a scenario is running (or vice versa), or the passive-wait pool if enabled — see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default) and [Scenario Execution → Exclusivity with single commands](scenario.md#exclusivity-with-single-commands) | Wait for the in-flight request to finish; the HTTP response includes `Retry-After: 1` |
-| `InternalError` | 500 | Process-fault level (handler threw, dispatcher invariant broken) | `RestartEditor`; if it persists, capture `Saved/Crashes/` and file an issue |
+| `InternalError` | 500 | Process-fault level (handler threw, dispatcher invariant broken). On the CLI transport it is also returned when the response file cannot be written or the scenario module is not available; other CLI refusals use `InvalidParams`, `NotFound`, `PolicyViolation`, or `Timeout` (see [CLI response](#33-cli-response)) | `RestartEditor`; if it persists, capture `Saved/Crashes/` and file an issue |
 
 HTTP status codes are advisory — always rely on `ErrorCode` for branching. WebSocket and CLI don't carry HTTP statuses.
 `NotAllowed` and `Conflict` both map to 409, so the HTTP status alone cannot tell them apart — this is one more reason

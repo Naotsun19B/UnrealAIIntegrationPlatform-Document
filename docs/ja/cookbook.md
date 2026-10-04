@@ -268,7 +268,7 @@ if (-not $r.Success) { exit 1 }
 ```
 
 - リクエストのコマンド名のキーは `Command` です（MCP の `uaip_execute` の引数名 `CommandName` とは違います）。
-- リクエストファイルは `Saved/UAIP/Requests/`、レスポンスファイルは `Saved/UAIP/Responses/` の下に置き、プロジェクトのルートからの相対パスで渡します。
+- リクエストファイルは `Saved/UAIP/Requests/`、レスポンスファイルは `Saved/UAIP/Responses/` の下に置きます。その下にあれば、相対パスでも絶対パスでも渡せます。
 - `UnrealEditor.exe` は GUI アプリなので、PowerShell の `&` で呼ぶと終了を待たずに戻ります。`Start-Process -Wait` で終了を待ってから結果を読みます。
 
 同じ要領で `RunAutomationSpec`・`RunFunctionalTest`・`RunGauntletTest` も実行できます。

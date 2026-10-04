@@ -574,7 +574,9 @@ UnrealEditor.exe MyProject.uproject -uaip-request-file="..." -uaip-response-file
 UnrealEditor.exe MyProject.uproject -uaip-scenario-file="Saved/UAIP/Requests/scenario.json"
 ```
 
-リクエストファイルとシナリオファイルは `Saved/UAIP/Requests/` の下からしか読み込めず、レスポンスファイルは `Saved/UAIP/Responses/` の下にしか書き出せません。どちらもプロジェクトのルートからの相対パスで渡します。コマンド名のキーは `Command` です（MCP ツールの引数名 `CommandName` はここでは受け付けません）。
+リクエストファイルとシナリオファイルは `Saved/UAIP/Requests/` の下からしか読み込めず、レスポンスファイルは `Saved/UAIP/Responses/` の下にしか書き出せません。パスはプロジェクトのルートからの相対パスでも絶対パスでもかまいませんが、いずれもそのディレクトリの下にある必要があります。コマンド名のキーは `Command` です（MCP ツールの引数名 `CommandName` はここでは受け付けません）。
+
+CLI は、何も実行する前にリクエストを拒否した場合、失敗レスポンスを返して終了コード 2 で終了します。`ErrorCode` は誤りの種類を表します。`InvalidParams` はリクエストの誤り（許可ディレクトリの外のパス、壊れた JSON、読めないファイルやサイズ超過のファイル、併用できないフラグ）、`NotFound` は存在しない `SessionId`、`PolicyViolation` はロールのゲートがこの transport を止めた場合です。一発実行のコマンドが 120 秒以内に終わらなかった場合は、終了コード 1 で `Timeout` を返します。`InternalError` は、レスポンスファイルを書き出せないなど、サーバー側の障害のために残してあります。
 
 ### ストリームモード
 

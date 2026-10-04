@@ -303,10 +303,10 @@ CLI フラグはエディタプロセスのコマンドライン（`UnrealEditor
 | フラグ | 説明 |
 |---|---|
 | `-uaip-request=<json>` | インラインのリクエスト JSON。`{"Command": "...", "Params": {...}}` の形（シェルに応じてクォートをエスケープ）。キーは `Command` で、MCP の引数名 `CommandName` ではない |
-| `-uaip-request-file=<path>` | `Saved/UAIP/Requests/` の下のファイルからリクエスト JSON を読み込み（プロジェクトのルートからの相対パス） |
+| `-uaip-request-file=<path>` | `Saved/UAIP/Requests/` の下のファイルからリクエスト JSON を読み込み（相対パスでも絶対パスでもよい） |
 | `-uaip-scenario=<json>` | インライン `uaip_run_scenario` ペイロード |
-| `-uaip-scenario-file=<path>` | `Saved/UAIP/Requests/` の下のファイルから scenario JSON を読み込み（プロジェクトのルートからの相対パス） |
-| `-uaip-response-file=<path>` | レスポンス書き出し先。`Saved/UAIP/Responses/` の下（プロジェクトのルートからの相対パス）。省略時は stdout |
+| `-uaip-scenario-file=<path>` | `Saved/UAIP/Requests/` の下のファイルから scenario JSON を読み込み（相対パスでも絶対パスでもよい） |
+| `-uaip-response-file=<path>` | レスポンス書き出し先。`Saved/UAIP/Responses/` の下（相対パスでも絶対パスでもよい）。省略時は stdout |
 | `-uaip-stdin` | リクエスト JSON を標準入力から読み込み |
 
 例：

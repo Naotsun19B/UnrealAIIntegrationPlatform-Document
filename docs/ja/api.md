@@ -100,7 +100,7 @@ UnrealEditor.exe MyProject.uproject -uaip-request-file=Saved/UAIP/Requests/cmd.j
 
 CLI リクエストは自動生成 `SessionId` を取得し、レスポンス書き出し後にエディタ終了。
 
-リクエストファイルとシナリオファイルは `Saved/UAIP/Requests/` の下からしか読み込めず、`-uaip-response-file` は `Saved/UAIP/Responses/` の下にしか書き出せません。どちらもプロジェクトのルートからの相対パスで渡します。
+リクエストファイルとシナリオファイルは `Saved/UAIP/Requests/` の下からしか読み込めず、`-uaip-response-file` は `Saved/UAIP/Responses/` の下にしか書き出せません。その下にあれば、相対パスでも絶対パスでも渡せます。
 
 ### 2.4 `CommandRequest`（MCP）
 
@@ -177,6 +177,18 @@ __UAIP_RESPONSE_END__
 
 stdin-stream モードでも同じマーカーがリクエスト毎に出ます。
 
+CLI transport がディスパッチの前にリクエストを拒否した場合も、レスポンスは `Success: false` の通常の `CommandResponse` で、コマンドは実行されません。失敗の種類は `ErrorCode` で見分けます。
+
+| 拒否の理由 | ErrorCode |
+|---|---|
+| リクエストの誤り：リクエストの指定元が複数ある、リクエスト / シナリオ / レスポンスファイルのパスが許可ディレクトリの外にある・許可されない拡張子である、読めないファイル、サイズ上限を超えたファイルや入力、壊れた JSON、不正な `Command` / `SessionId` / `Params` | `InvalidParams` |
+| 指定した `SessionId` のセッションがエディタに存在しない | `NotFound` |
+| `[UAIP.Roles]` にロールが定義されていて `AllowRoleBlindTransports` が有効でないため、この transport は許可されない | `PolicyViolation` |
+| コマンドはディスパッチされたが 120 秒以内に完了しなかった | `Timeout` |
+| レスポンスファイルを書き出せない、またはシナリオモジュールが利用できない | `InternalError` |
+
+プロセスの終了コードは変わりません。成功は `0`、コマンドを実行して失敗した場合（120 秒の `Timeout` を含む）は `1`、ディスパッチの前か外で transport が拒否した場合は `2` です。
+
 ---
 
 ## 4. エラーコード
@@ -197,7 +209,7 @@ stdin-stream モードでも同じマーカーがリクエスト毎に出ます�
 | `ExecutionFailed` | 500 | ハンドラ内の Runtime 失敗 | `ErrorMessage` に詳細。シナリオでは `RetryCount` 活用 |
 | `Timeout` | 408 | ステップ単位 / シナリオ単位の壁時計上限超過、またはコマンド自身の打ち切り期限の到来（`AbortAfterSeconds` を付けた `RunEditorPythonScript`） | `TimeoutSeconds` を増やすかシナリオ分割。応答の `Data` に `NotExecuted: false` があれば、コマンドは**部分的に実行済み**で、その編集は残っている — 再実行の前にエディタの状態を確かめる。`NotExecuted` が無い場合（シナリオやステップの期限切れ）は従来どおり |
 | `TooManyRequests` | 429 | 並行性制限ヒット — 単一コマンド枠、シナリオの同時実行（1 件まで）、シナリオ実行中の単発コマンド（逆方向も含む）、有効化時の受動的待機プールのいずれか — [設定リファレンス → `[UAIP.Transport]` 受動的待機の同時実行](config.md#uaiptransport--受動的待機の同時実行既定オフ) と [シナリオ実行 → 単発コマンドとの排他](scenario.md#単発コマンドとの排他) を参照 | 進行中リクエスト終了待ち。HTTP レスポンスには `Retry-After: 1` が付く |
-| `InternalError` | 500 | プロセス障害レベル（ハンドラ例外、ディスパッチャ不変条件違反） | `RestartEditor`、継続なら `Saved/Crashes/` 添付で Issue 起票 |
+| `InternalError` | 500 | プロセス障害レベル（ハンドラ例外、ディスパッチャ不変条件違反）。CLI transport では、レスポンスファイルを書き出せない場合とシナリオモジュールが利用できない場合にも返る。それ以外の CLI の拒否は `InvalidParams` / `NotFound` / `PolicyViolation` / `Timeout`（[CLI レスポンス](#33-cli-レスポンス) を参照） | `RestartEditor`、継続なら `Saved/Crashes/` 添付で Issue 起票 |
 
 HTTP ステータスは参考値 — 分岐は常に `ErrorCode` で。WebSocket と CLI は HTTP ステータスを持ちません。
 `NotAllowed` と `Conflict` はどちらも 409 になるため、HTTP ステータスだけでは区別できません。これも

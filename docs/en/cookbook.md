@@ -268,7 +268,7 @@ if (-not $r.Success) { exit 1 }
 ```
 
 - The request names the command under the key `Command` (not `CommandName`, which is the argument name of the MCP tool `uaip_execute`).
-- The request file must be under `Saved/UAIP/Requests/` and the response file under `Saved/UAIP/Responses/`, passed as paths relative to the project root.
+- The request file must be under `Saved/UAIP/Requests/` and the response file under `Saved/UAIP/Responses/`. Either a relative path or an absolute path works, as long as it points inside those directories.
 - `UnrealEditor.exe` is a GUI application, so calling it with PowerShell's `&` returns without waiting for it to exit. `Start-Process -Wait` waits before the result is read.
 
 The same pattern works for `RunAutomationSpec`, `RunFunctionalTest`, and `RunGauntletTest`.

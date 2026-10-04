@@ -303,10 +303,10 @@ The CLI transport runs a single command (or scenario) from the editor command li
 | Flag | Description |
 |---|---|
 | `-uaip-request=<json>` | Inline request JSON, `{"Command": "...", "Params": {...}}` (escape quotes per your shell). The key is `Command`, not the MCP argument name `CommandName` |
-| `-uaip-request-file=<path>` | Read the request JSON from a file under `Saved/UAIP/Requests/` (path relative to the project root) |
+| `-uaip-request-file=<path>` | Read the request JSON from a file under `Saved/UAIP/Requests/` (a relative or absolute path) |
 | `-uaip-scenario=<json>` | Inline `uaip_run_scenario` payload |
-| `-uaip-scenario-file=<path>` | Read the scenario JSON from a file under `Saved/UAIP/Requests/` (path relative to the project root) |
-| `-uaip-response-file=<path>` | Where to write the response, under `Saved/UAIP/Responses/` (path relative to the project root). Defaults to stdout when omitted |
+| `-uaip-scenario-file=<path>` | Read the scenario JSON from a file under `Saved/UAIP/Requests/` (a relative or absolute path) |
+| `-uaip-response-file=<path>` | Where to write the response, under `Saved/UAIP/Responses/` (a relative or absolute path). Defaults to stdout when omitted |
 | `-uaip-stdin` | Read the request JSON from standard input |
 
 Examples:
