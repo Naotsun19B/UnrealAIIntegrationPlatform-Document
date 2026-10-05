@@ -18,7 +18,7 @@ UAIP reads its configuration from four locations, merged in this priority order 
 | 3 | `<Project>/Saved/UAIP/UAIPOverride.ini` | **Packaged builds only** — user-editable override created on first launch | Editor restart |
 | 4 | CLI launch flags (`-uaip-*`) | Per-process, transient | Re-launch the editor |
 
-`UAIP.Core.ReloadCapabilities` can reload `AllowedCapabilities` and `DeniedCapabilities` at runtime without restarting (see [Safety & Capabilities](safety.md#enabling-defaultdenied-capabilities)). All other keys require an editor restart, except `[UAIP.Build]`, which is a build setting that needs a rebuild and reads only the project's `Config/DefaultUAIP.ini` (see [`[UAIP.Build]`](#uaipbuild--compiling-the-test-only-types)).
+`UAIP.Core.ReloadCapabilities` can reload `AllowedCapabilities` and `DeniedCapabilities` at runtime without restarting (see [Safety & Capabilities](safety.md#enabling-defaultdenied-capabilities)). All other keys require an editor restart, except `[UAIP.SaveGame]`, which is read each time a command runs (see [`[UAIP.SaveGame]`](#uaipsavegame--save-game-slot-commands)), and `[UAIP.Build]`, which is a build setting that needs a rebuild and reads only the project's `Config/DefaultUAIP.ini` (see [`[UAIP.Build]`](#uaipbuild--compiling-the-test-only-types)).
 
 > The MCP Bridge (`Plugins/UAIPMCPBridge/` after install) has its own configuration layer (`config.json` + environment variables). The bridge is distributed separately from the plugin — see [MCP Bridge config.json](#mcp-bridge-configjson) below.
 
@@ -161,6 +161,25 @@ CloseDeadlineSeconds=120.0
 ```
 
 **No CLI equivalent.** The setting cannot be overridden from the command line.
+
+### `[UAIP.SaveGame]` — Save game slot commands
+
+Two settings for the save game slot commands ([`UAIP.Runtime.SaveGame`](commands.md#uaipruntimesavegame)). Which capabilities these commands need, and what each protects, is on [Safety & Capabilities](safety.md#runtime-savegame-slots).
+
+| Key | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `bAllowWritesDuringPIE` | bool | `False` | — | Whether the commands that change a slot may run while the editor is in PIE. Outside PIE, and in `-game` or a packaged build, the setting has no effect |
+| `MaxSaveFileBytes` | int | `67108864` (64 MiB) | `[1048576, 1073741824]` (1 MiB to 1 GiB) | The largest save file, in bytes, that a command reads or stores |
+
+- A `MaxSaveFileBytes` outside the range, or one that cannot be read as a number, is ignored and the default of 64 MiB stays.
+- **Applied per command.** Both keys are read from the already loaded configuration each time a command runs, so no editor restart is needed. Edit the ini, then call `UAIP.Core.ReloadCapabilities` to re-read it (it reloads the ini files from disk), or restart the editor.
+- Neither key has a CLI equivalent; both are ini-only.
+
+```ini
+[UAIP.SaveGame]
+bAllowWritesDuringPIE=False
+MaxSaveFileBytes=67108864
+```
 
 ### `[UAIP.Build]` — Compiling the test-only types
 

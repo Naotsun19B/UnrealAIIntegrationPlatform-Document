@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1225 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1646 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1235 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1656 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -150,6 +150,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Runtime LiveLink | `UAIP.Runtime.LiveLink` | 14 | — | — |
 | Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | partial (3/11) |
 | Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
+| Runtime SaveGame | `UAIP.Runtime.SaveGame` | 10 | — | — |
 
 ---
 
@@ -3703,6 +3704,136 @@ Three per-section details worth knowing before reading a result:
 - **`Frames`** counts only frames that both began and ended. A capture stops in the middle of a frame, so the last frame of each frame type is almost always still open and has no duration to report; such a frame is left out of the statistics and out of `TotalCount` alike. `TotalCount` and `ReturnedCount` therefore differ only when a time window was requested, and this section never truncates.
 - **`Screenshots`** reports metadata only — the identifier, name, time, width and height of each screenshot, alongside `ImageDataIncluded: false` — and never the encoded image bytes. No image ever arrives from it, so there is nothing to wait for beyond that metadata.
 - **`Diagnostics`** omits its `EngineVersion` key on UE 5.7. That version's trace format does not carry an engine version at all, so the key is left out rather than reported as an empty string, which would be indistinguishable from a capture that genuinely recorded none.
+
+---
+
+## UAIP.Runtime.SaveGame
+
+List, inspect, read, back up, prepare, delete and restore the game's save slots — the `USaveGame` objects the engine's save game system stores under a slot name. Built for tests that have to start from a particular save, or from no save at all, and put things back afterwards. Works in the editor with or without PIE, and in `-game` and packaged builds; no plugin requirement.
+
+**Nothing is ever loaded.** Reading a slot never loads a class or an asset: the SaveGame class a slot names, and every object a hard reference in it points at, must already be loaded in the process. A C++ class is normally loaded whenever the project is open in the editor; a Blueprint class may not be until its asset has been opened. Reading or writing a slot also never changes the state of a running game — UAIP reads and writes slots, and how a game applies a slot it loads is up to the game.
+
+**Capabilities.** `ListSaveGameSlots`, `GetSaveGameInfo` and `ListSaveGameSnapshots` require `RuntimeSaveGameInspect` (DefaultAllow). `DumpSaveGame` requires `RuntimeSaveGameContentRead` (DefaultDenied). Every command that changes a slot or a snapshot requires `RuntimeSaveGameWrite` (DefaultDenied) — `SnapshotSaveGame` included, because it copies the raw bytes of a slot into the UAIP working directory. Two arguments add a capability on top: `WriteSaveGame` with `BaseSlotName` also requires `RuntimeSaveGameContentRead`, and `SkipValidation: true` on `CopySaveGameSlot` / `RestoreSaveGame` requires `RuntimeSaveGameUnvalidatedWrite` (DefaultDenied). A missing one is `CapabilityNotAvailable`. See [Safety & Capabilities](safety.md#runtime-savegame-slots).
+
+**Names.** A slot name or a snapshot name passed to a command is 1 to 64 characters from `A-Z`, `a-z`, `0-9`, `_` and `-`, and not a Windows reserved device name (`CON`, `PRN`, `AUX`, `NUL`, `COM0`-`COM9`, `LPT0`-`LPT9`); anything else is `InvalidParams`. Slot names and snapshot names are separate, so a snapshot may have the same name as its slot. `UserIndex` is a whole number from 0 (default 0); the default save game system on Windows ignores it and keeps every user index in the same file.
+
+**A typical round.** `SnapshotSaveGame` the slot → change it (`DeleteSaveGame`, `WriteSaveGame` or `CopySaveGameSlot`) → run the test and stop PIE → `RestoreSaveGame` the snapshot (`Overwrite: true` when the slot exists) → `DeleteSaveGameSnapshot` once it is no longer needed. When the slot did not exist beforehand there is nothing to snapshot; clean up by deleting the slot you created.
+
+### Inspection (3) — requires `RuntimeSaveGameInspect`
+
+| Command | Description |
+|---|---|
+| `ListSaveGameSlots` | Slot names of the configured save game system in ascending name order (ignoring case). `MaxResults` 1–1024 (default 256); `Truncated` is `true` when slots were left out. Each entry of `Slots[]` carries `Name`, `Addressable` (`false` for a name the other commands cannot take — such a slot is listed but never gets details) and `NameTruncated` (names that come from the files are sanitized and cut to 256 characters). `IncludeDetails: true` adds `Status`, `ByteCount`, `ModifiedAt`, `Format`, `SaveGameClassName`, `ClassNameIsGuess` and `SaveGameClassNameTruncated` to each addressable slot, reading only the leading part of it (the first 1 MiB with the default save game system); once 256 MiB have been read in total, the remaining slots are listed without details and `DetailsTruncated` is `true`. `SaveGameSystem` reports `ConfiguredSaveGameSystemModule` and `GenericPathsAvailable` — whether the project uses the default save game system, which is when sizes and modification times are available. An abnormal slot never fails the command. A project whose save game system cannot list its slots answers `UnsupportedOperation`; the other commands still work with a known slot name |
+| `GetSaveGameInfo` | Metadata of one slot, without loading any class: `Status`, `Format`, `StoppedAtStage`, `FileVersion`, `PackageFileUEVersion`, `EngineVersion`, `CustomVersionFormat`, `UnregisteredCustomVersionCount`, `SaveGameClassName`, `ClassNameIsGuess`, `SaveGameClassNameTruncated`, `ClassLoaded` (whether that class is loaded right now — looked up, never loaded), `ByteCount`, `ModifiedAt` and `ContentHash` (SHA-1 as 40 hexadecimal digits — the value `ExpectedHash` takes). A damaged, oversized or unreadable slot does not fail the command: `Status` says so and whatever could be read is returned. `ContentHash` is returned only when the whole slot was read, so never for `TooLarge` or `Unreadable`; `ModifiedAt` only with the default save game system. A slot that does not exist is `NotFound` |
+| `ListSaveGameSnapshots` | Snapshots taken by `SnapshotSaveGame`, in ascending name order (ignoring case). `MaxResults` 1–1024 (default 256), with `Truncated`. Only the metadata is read, never the slot bytes. Each entry of `Snapshots[]` carries `Name`, `NameTruncated` and `Status` — `OK`, or `Corrupt` for a snapshot file whose metadata cannot be read. An `OK` entry adds `SourceSlotName`, `UserIndex`, `CreatedAt` (UTC), `ByteCount`, `ContentHash`, `Format` and, when the header named one, `SaveGameClassName` (with `SaveGameClassNameTruncated` when it was cut). A `Corrupt` entry carries only those three keys; it is listed so that it can be found and deleted |
+
+### Content read (1) — requires `RuntimeSaveGameContentRead`
+
+| Command | Description |
+|---|---|
+| `DumpSaveGame` | Read one slot and return its property values as a JSON artifact holding `Properties` (property name → value), `PropertyCount`, and `UnresolvedReferences` / `ClearedSoftReferences` with their counts. The response carries `PropertyCount`, `UnresolvedReferenceCount` and `ClearedSoftReferenceCount`. A hard reference to an object that is not loaded becomes `null` and its path is listed in `UnresolvedReferences`; a soft reference normally stays as a path, and the few that had to be emptied are listed in `ClearedSoftReferences`. Both lists are deduplicated and hold at most 64 paths (the counts cover all of them), and a path longer than 1023 characters is cut and ends with `...`. A text that refers to a string table is dumped without loading the table. Refused before the body is read: a header this command cannot use (`ExecutionFailed`), a SaveGame class that is not loaded (`NotFound`) or is not a usable SaveGame class, and a slot larger than `MaxSaveFileBytes` (`NotAllowed`). ⚠️ The artifact holds the contents of the save as they are — see [the note on dump artifacts](#the-dumpsavegame-artifact-and-snapshots-hold-the-save-as-it-is) below |
+
+### Slot changes (3) — requires `RuntimeSaveGameWrite`
+
+| Command | Description |
+|---|---|
+| `DeleteSaveGame` | Delete one slot. A slot that does not exist is `NotFound`, with or without `ExpectedHash`. With `ExpectedHash` the whole slot is read once and compared first, and a mismatch is `Conflict`. A deleted slot cannot be recovered — snapshot it first when the data matters. Reports `Deleted`, `PreviousContentHash` (only when the slot was read) and `PlayWorldActive` |
+| `CopySaveGameSlot` | Copy the bytes of `SourceSlotName` to `TargetSlotName` unchanged. The two must not name the same slot (compared ignoring case). The copied bytes are validated up to the SaveGame header (layout, versions and class), and the class it names must be loaded; the body after the header is never checked, so a slot whose body is damaged can be copied and can stop the game that later loads it. `SkipValidation: true` skips the header check — see [SkipValidation](#skipvalidation) below. Reports `ByteCount`, `Overwritten`, `ContentHash`, `PreviousContentHash` (only when the target was read for `ExpectedHash`), `ValidationSkipped`, `ValidationSkipReason` (`RequestedByCaller` when skipped) and `PlayWorldActive` |
+| `WriteSaveGame` | Write a slot from the JSON object `Values`. Give exactly one of **`SaveGameClass`** — create a new object of that class with the class defaults and apply `Values` to it; the class is a full path, `/Script/<Module>.<Class>` or `/Game/<Path>/<Blueprint>.<Blueprint>_C`, and short names are refused — or **`BaseSlotName`** — read and restore that slot, apply `Values` on top, and save the result to `SlotName`, which may be the same slot (then `Overwrite: true` is required) or another one. Patching reads the contents of the base slot, so it also requires `RuntimeSaveGameContentRead`. Every key and value is checked before anything is written, and a single refused value writes nothing. Arrays, sets and maps are replaced as a whole (give one element and the others are gone); structs are merged field by field. The bytes about to be saved are validated up to the SaveGame header; the body is not checked. Reports `ByteCount`, `Overwritten`, `ContentHash`, `PreviousContentHash` (only when the target was read), `ValidationSkipped` (always `false`) and `PlayWorldActive`. See [Values of WriteSaveGame](#values-of-writesavegame) below for what `Values` accepts |
+
+### Snapshots (3) — requires `RuntimeSaveGameWrite`
+
+| Command | Description |
+|---|---|
+| `SnapshotSaveGame` | Copy the bytes of a slot unchanged into a named snapshot — a file in the `SaveGameSnapshots` folder of the UAIP working directory (`Saved/UAIP/SaveGameSnapshots/` unless [`AllowedArtifactDirectory`](config.md#allowedartifactdirectory-override) moves it). The bytes are not validated, so a damaged slot or a slot in a game's own format can be taken as well; only a slot larger than `MaxSaveFileBytes` is refused (`NotAllowed`). The snapshot records the source slot, the user index, the time it was taken (UTC), the size, the content hash, the `Format` and, when the header names it, the SaveGame class. An existing snapshot of the same name is replaced only with `Overwrite: true`; the replacement is not atomic, but wherever it stops, either the old or the new snapshot is left in place. The slot is only read, so this is allowed while the editor is playing and under `DisableSave`. Reports `ByteCount`, `ContentHash`, `Format` (`SaveGameHeader`, `Legacy` or `Unknown`), `Overwritten` and `PlayWorldActive` (when `true`, a running game may also be writing the slot, so the snapshot may not match what it saves next) |
+| `RestoreSaveGame` | Write the bytes of a snapshot back to a slot. The snapshot is checked before any slot is touched, and a damaged one fails with `ExecutionFailed` (reason `SnapshotCorrupt`). `SlotName` and `UserIndex` each default to the value recorded in the snapshot, so omitting them restores the slot it was taken from. The header check is skipped on its own — `ValidationSkipReason: "SameSourceSlot"`, with no extra capability — when the bytes go back to the slot and user index they were taken from (slot names compared ignoring case) and still have the content hash recorded in the snapshot: that only brings back what was there, so a game with its own save format can still use snapshots. Restoring to another slot, or bytes whose hash no longer matches, is validated as usual and fails for a game's own format unless `SkipValidation: true` is given. The snapshot is kept, so a restore can be repeated. Reports the same keys as `CopySaveGameSlot`, with `ValidationSkipReason` `SameSourceSlot` or `RequestedByCaller` when the check was skipped |
+| `DeleteSaveGameSnapshot` | Delete one snapshot together with its backup copy and any temporary file an interrupted snapshot left behind. A snapshot that does not exist is `NotFound`; a damaged one can be deleted. It touches no slot, so it is allowed while the editor is playing and under `DisableSave`. Reports `Deleted` |
+
+#### Status of a slot
+
+| `Status` | Meaning |
+|---|---|
+| `OK` | The header was read in full and every check passed |
+| `LegacyOrUnknown` | The bytes do not start with the SaveGame header — a game's own format, or a layout from an old engine. A class name reported for it is a guess (`ClassNameIsGuess: true`) |
+| `UnsupportedVersion` | The header declares a layout newer than this engine, or an old one (UE4, UE 5.0 and so on) that is deliberately not read |
+| `Corrupt` | The header is truncated, malformed or holds values out of range |
+| `TooLarge` | The file is larger than `MaxSaveFileBytes` and was not read |
+| `Unreadable` | The save game system failed to load the slot |
+
+**Only the leading part of the file is examined**, so `OK` does not promise that the rest of the file can be restored. Slots are not saved atomically either, so a slot the game is writing at that moment can read as `Corrupt` — snapshot it first when you need a stable copy.
+
+**`PackageFileUEVersion` is a string, not a number**: `"UE4=<n>"`, or `"UE4=<n> UE5=<m>"` when the header also carries a UE5 version. It is omitted when the header reader stopped before reaching it. `StoppedAtStage` names the step the reader reached — `ByteCount`, `Tag`, `FileVersion`, `EngineVersion`, `CustomVersionFormat`, `CustomVersions`, `ClassName` or `Completed` — which tells how far a `Corrupt` header could be read.
+
+**`SaveGameClassNameTruncated`.** A class name comes from the file, so it is sanitized and cut to 256 characters before it is returned. When a name was cut, `SaveGameClassNameTruncated: true` is present next to it — in `GetSaveGameInfo`, in `ListSaveGameSlots` with `IncludeDetails`, and in `ListSaveGameSnapshots`. The key is absent when the name was not cut. A cut name is not the real path of the class, so do not pass it on as `SaveGameClass`.
+
+#### The DumpSaveGame artifact and snapshots hold the save as it is
+
+> ⚠️ **A `DumpSaveGame` artifact is the contents of the save in plain JSON.** A save file can hold personal data — player names, account identifiers, anything the game stores — and the runtime has **no secret masking**: at run time there is no information that tells which values are secret. That is why `RuntimeSaveGameContentRead` is denied by default. The artifact stays in the artifact store until artifact garbage collection removes it (`[UAIP.ArtifactGC]` in [Configuration](config.md)), and anyone who can read the UAIP working directory can read it.
+>
+> **Snapshots hold the same thing as raw bytes**, and they stay until `DeleteSaveGameSnapshot` removes them: there is no limit on their number or total size, and nothing deletes them automatically. Delete the snapshots you no longer need.
+
+#### Values of WriteSaveGame
+
+- Keys match the property names ignoring case, also inside nested structs. An unknown key, or a property that is transient, deprecated or skipped by serialization, is refused rather than ignored.
+- At most 49152 bytes of JSON, 16 levels of nesting and 4096 values. Names, enum names and reference paths are at most 1023 characters.
+- Numbers have to fit the property. 64-bit integers are accepted up to ±2^53 — the range a JSON number represents exactly; a larger value would be rounded, so it is refused. Floats also accept the strings `"NaN"`, `"Infinity"` and `"-Infinity"`. Enums take an entry name or a declared value.
+- Texts are stored as the given string. A string written in the form of a string table reference is not kept as a reference, and no string table is loaded.
+- Object, class and soft references take a full path starting with `/` (the `Class'/Path.Obj'` form `DumpSaveGame` writes is accepted as is). A hard reference has to resolve to a loaded object, otherwise `NotFound`. An empty string `""` sets a reference to nothing.
+- Structs take a JSON object, not a string. A set must not contain the same element twice, nor a map the same key.
+- Not writable: interface, lazy, delegate and field path properties, and nested objects the save owns (an object carrying `_ClassName`) — creating them would load arbitrary classes.
+- A refused value fails the whole request with `InvalidParams`. The failure diagnostics artifact lists where and why (`RejectedValues`, `RejectedValueCount`), never the values themselves.
+
+> ⚠️ **`null` works one way only.** A reference that points at nothing comes out of `DumpSaveGame` as `null`, but `WriteSaveGame` refuses `null` everywhere. So a dump cannot always be sent back as it is. To clear a reference, pass `""`. When patching with `BaseSlotName`, leave the key out of `Values` instead, and the value in the base slot stays as it was.
+
+> ⚠️ **Keys that differ only in case are not refused as duplicates.** `Values` is read with keys compared ignoring case, so `{"Score": 1, "score": 2}` is accepted and only the one written later is kept. A map keyed by strings ends up the same, because the game side compares those keys ignoring case as well, so the saved result would not differ. Check your keys for case-only collisions before sending them.
+
+**What a dump cannot write back as it is.** Besides `null`: 64-bit integers beyond ±2^53 come out of `DumpSaveGame` rounded and are refused here; texts are written as plain strings (a string table reference or localization data is not kept); and nested objects (`_ClassName`) and interface, lazy, delegate and field path properties cannot be written.
+
+**Patching a slot that holds references that would be lost.** When the base slot has any entry that `DumpSaveGame` would list in `UnresolvedReferences` or `ClearedSoftReferences`, `WriteSaveGame` refuses it with `NotFound` and lists the paths in the failure artifact, because saving it again would drop references you did not touch. Load the referenced assets first.
+
+#### Refused before the body is read
+
+`DumpSaveGame` and `WriteSaveGame` with `BaseSlotName` restore the slot into an object of its class. Before doing so they scan the stored property layout and refuse, with `ExecutionFailed`, a slot that would stop the editor while loading. The error names the location of the property and the reason, never the value:
+
+- a string of 1024 characters or more stored for a property the class has since changed to a type other than a string or a text (container elements included), or no longer has
+- a text stored for a property that is now a name (`FName`), whatever its length
+- an object reference stored for a property that is now a field path
+- a layout that is broken (a size out of range, a negative element count and so on)
+
+The game itself may read some of these without trouble — notably a long string left in a property that was removed — but UAIP does not read them. Structs that serialize themselves (such as `InstancedStruct`) are not looked into; see [what remains a risk](safety.md#runtime-savegame-slots).
+
+#### Overwriting and ExpectedHash
+
+`CopySaveGameSlot`, `WriteSaveGame`, `RestoreSaveGame`, and `SnapshotSaveGame` for an existing snapshot, refuse to replace something that exists unless `Overwrite: true` is given (`NotAllowed`); patching a slot in place always needs it. The response reports `Overwritten: true` when something was replaced.
+
+`ExpectedHash` on `DeleteSaveGame`, `CopySaveGameSlot`, `WriteSaveGame` and `RestoreSaveGame` is the content hash that the slot being written — not the source slot, the base slot or the snapshot — must have right before the write: 40 hexadecimal digits, compared ignoring case, as `GetSaveGameInfo` returns. A different hash, or a target that does not exist, is `Conflict` and nothing is written (for `DeleteSaveGame` a missing slot is `NotFound`). With `ExpectedHash` the target is read in full, so the read limit applies to it; without it the target is not read, so even a slot larger than the limit can be replaced or deleted. The check happens once, right before the write: a game saving in the background or another process can still write the slot in between.
+
+#### During PIE and under DisableSave
+
+`DeleteSaveGame`, `CopySaveGameSlot`, `WriteSaveGame` and `RestoreSaveGame` are refused with `NotAllowed` while the editor is playing, because the running game may read or overwrite the same slots; the message names `bAllowWritesDuringPIE` in `[UAIP.SaveGame]`, the setting that allows it. Stop PIE and run the command again. A `-game` or packaged build has no such refusal, although the game can still overwrite the same slot later. The same four are refused with `PolicyViolation` while the safety policy sets `DisableSave`.
+
+`ListSaveGameSlots`, `GetSaveGameInfo`, `DumpSaveGame`, `SnapshotSaveGame`, `ListSaveGameSnapshots` and `DeleteSaveGameSnapshot` are allowed in both cases. `PlayWorldActive` in the response of the four slot-changing commands and of `SnapshotSaveGame` reports whether a game could be writing the same slots at that moment — an editor play session, or a `-game` or packaged run.
+
+**Writes are not atomic.** A failure while writing (a full disk, a locked file) can leave the target slot damaged. Snapshot a slot worth keeping before you replace it; the snapshot brings it back.
+
+#### SkipValidation
+
+`CopySaveGameSlot` and `RestoreSaveGame` accept `SkipValidation: true`, which skips the header check so that a slot in a game's own format, a damaged one, one of an unsupported version or one whose class is not loaded can be copied or restored to any slot. It requires `RuntimeSaveGameUnvalidatedWrite` (DefaultDenied); without it the request fails with `CapabilityNotAvailable`, even when a restore would have qualified for `SameSourceSlot`. The response reports `ValidationSkipped: true` with `ValidationSkipReason: "RequestedByCaller"`, or `"SameSourceSlot"` when that also applies. The size limit still applies. ⚠️ **A slot written this way can stop the game that loads it.**
+
+#### Errors
+
+| ErrorCode | When |
+|---|---|
+| `InvalidParams` | A name, `UserIndex`, `MaxResults`, hash, class path or value is not valid; `SourceSlotName` and `TargetSlotName` name the same slot; `WriteSaveGame` gets both or neither of `SaveGameClass` and `BaseSlotName`; the class is not a concrete, current subclass of `USaveGame` |
+| `NotFound` | The slot or the snapshot does not exist; the SaveGame class or an object a value refers to is not loaded; the base slot of a patch holds references that would be lost |
+| `NotAllowed` | The target exists and `Overwrite` is not `true`; the editor is playing; the file is larger than `MaxSaveFileBytes` (the message names the setting) |
+| `Conflict` | `ExpectedHash` does not match, or the target it was given for does not exist |
+| `PolicyViolation` | The safety policy sets `DisableSave` (slot changes only) |
+| `CapabilityNotAvailable` | A required capability — including one an argument adds — is not granted; the message names it |
+| `ExecutionFailed` | The header cannot be used, the class named by the data cannot be used, the body could not be read (including the refusals above), the snapshot is damaged, or reading or writing a slot or a snapshot failed |
+| `UnsupportedOperation` | `ListSaveGameSlots` on a save game system that cannot list its slots |
+
+A failed command attaches a failure diagnostics artifact carrying `Command`, `FailedStage`, `Reason` (the cause, e.g. `SnapshotCorrupt`), `ErrorMessage` and what the failing step reported — the header fields for a header that could not be used, the reference paths for references that do not resolve, `RejectedValues` / `RejectedValueCount` for refused `Values`. Values stored in a save are never part of it.
 
 ---
 

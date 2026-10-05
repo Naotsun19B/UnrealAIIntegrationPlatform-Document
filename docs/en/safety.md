@@ -187,6 +187,7 @@ These are active in every session without any configuration. They cover read-onl
 | `RuntimeNiagaraInspect` 🧩 | Read Niagara component state during PIE — `GetUserVariables`, `GetVariable` (requires `Niagara` plugin) |
 | `SandboxObserve` 🧩 | Observe the active sandbox — `GetSandboxStatus`, `GetSandboxChanges` (requires `FileSandbox` plugin) |
 | `RuntimeInsightsInspect` | Read-only inspection of Unreal Insights tracing — `ListTraceChannels`, `GetTraceStatus`, `ListTraceFiles`. Does not allow starting, stopping or otherwise altering a trace |
+| `RuntimeSaveGameInspect` | Read-only inspection of save game slots and snapshots — `ListSaveGameSlots`, `GetSaveGameInfo`, `ListSaveGameSnapshots`. Reports names, sizes, times, header metadata and content hashes; never the values stored in a slot, and never loads a class. See [Runtime SaveGame slots](#runtime-savegame-slots) |
 | `ArtifactContentRead` | Read back the stored content of an artifact the session produced — `UAIP.Core.Artifacts.GetArtifact`. Another session's artifacts stay unreachable |
 | `PendingInteractionInspect` | Poll and cancel a pending interaction — `GetPendingInteractionStatus`, `WaitForPendingInteraction`, `CancelPendingInteraction`. Read-only lookups only; starting an interaction (e.g. `DrawPCGSpline`) is gated separately by the interactive command's own capability plus `SafetyPolicy.AllowUserInteractionPrompt` |
 
@@ -519,6 +520,41 @@ Either one alone opens nothing. The path passed as `ExternalTracePath` is then r
 
 > **This is a scope limitation, not a structural guarantee.** `RunEditorPythonScript` still reaches the engine's trace system directly — Python execution is a known path around the capability layer, and it is managed by the capabilities that command requires (`EditorExecution` plus `ScriptExecution`, which is DefaultDenied) rather than by anything in this module. `GetTraceStatus` can report a networked destination such as `TracingToServer`; that is observability of something else's trace, not something UAIP can produce.
 
+#### Runtime SaveGame slots
+
+The save game slot commands ([`UAIP.Runtime.SaveGame`](commands.md#uaipruntimesavegame)) are split by what they expose or change. Listing slots and snapshots and reading slot metadata is DefaultAllow (`RuntimeSaveGameInspect`, above). The three capabilities below are denied by default. The module has no plugin requirement, so none of them carries 🧩.
+
+| Capability | What it unlocks |
+|---|---|
+| `RuntimeSaveGameContentRead` | Read the property values stored in a slot — `DumpSaveGame`, and `WriteSaveGame` with `BaseSlotName` (patching reads and restores the base slot first). Denied by default because a save file can hold personal data and the runtime has no secret masking. For `WriteSaveGame` it is decided from the presence of `BaseSlotName`, so it does not appear in that command's `RequiredCapabilities` |
+| `RuntimeSaveGameWrite` | Delete, copy, write, snapshot and restore slots, and delete snapshots — `DeleteSaveGame`, `CopySaveGameSlot`, `WriteSaveGame`, `SnapshotSaveGame`, `RestoreSaveGame`, `DeleteSaveGameSnapshot`. Denied by default because each of these either replaces or removes user data, or copies its raw bytes into the UAIP working directory. A deleted slot cannot be recovered |
+| `RuntimeSaveGameUnvalidatedWrite` | Skip the header check of the bytes a copy or a restore is about to store — `SkipValidation: true` on `CopySaveGameSlot` and `RestoreSaveGame`. Required **in addition to** `RuntimeSaveGameWrite`. Decided from the parameter value, so it does not appear in either command's `RequiredCapabilities`. Not needed to restore a snapshot's unchanged bytes to the slot they were taken from, which skips the check by itself |
+
+> ⚠️ **`RuntimeSaveGameWrite` alone is enough to take the contents of a save out.** `SnapshotSaveGame` copies the raw bytes of a slot into the `SaveGameSnapshots` folder of the UAIP working directory, and anyone who can read that directory can read them — a save in the engine's format keeps property names and string values readable in those bytes. Withholding `RuntimeSaveGameContentRead` stops `DumpSaveGame` from turning a slot into JSON; it does not stop a session that holds `RuntimeSaveGameWrite` from reaching the same contents through a snapshot file. Grant `RuntimeSaveGameWrite` only where reading the saves would be acceptable too.
+
+> ⚠️ **There is no secret masking at run time.** Nothing available at run time tells which values in a save are secret, so `DumpSaveGame` returns every value as it is stored. The answer is to keep `RuntimeSaveGameContentRead` denied unless the saves may be read. A `DumpSaveGame` artifact stays in the artifact store until artifact garbage collection removes it (`[UAIP.ArtifactGC]` in [Configuration](config.md)), so it outlives the call that produced it.
+
+> **Snapshots stay until they are deleted.** A snapshot holds the raw bytes of the slot as they were, and it stays in the UAIP working directory until `DeleteSaveGameSnapshot` removes it. There is no limit on the number or the total size of snapshots, and nothing deletes them automatically.
+
+> ⚠️ **`SkipValidation` can leave a slot that stops the game.** With the check skipped, a slot in a game's own format, a damaged one, one of an unsupported version or one whose class is not loaded can be copied or restored to any slot, and the game that later loads it can stop. Only the size limit still applies.
+
+**What the checks cover, and what remains a risk.** A slot UAIP writes is validated up to the SaveGame header — layout, versions and class — so a game that loads it is not stopped by its header. The values in the body are not checked. Two cases skip even the header check: restoring a snapshot's unchanged bytes to the slot it was taken from (that only brings back what was there), and `SkipValidation`. When UAIP itself reads the body of a slot (`DumpSaveGame`, and `WriteSaveGame` with `BaseSlotName`), it refuses, before reading, the known ways in which a property whose type changed in the class stops the engine — see [Commands — Refused before the body is read](commands.md#refused-before-the-body-is-read). It does **not** look inside structs that serialize themselves (such as `InstancedStruct`), and it does not prevent every way a damaged body can stop a load: an out-of-range value inside the body (an extreme element count, for instance) is accepted as the same risk the game takes when it reads the same file, and the file size limit mitigates it. A slot brought in by a copy or a restore can likewise stop the game that reads it when its body is damaged.
+
+**Settings — `[UAIP.SaveGame]`.** Two settings in `Config/DefaultUAIP.ini` control the save game commands:
+
+```ini
+[UAIP.SaveGame]
+bAllowWritesDuringPIE=False
+MaxSaveFileBytes=67108864
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `bAllowWritesDuringPIE` | `False` | Whether `DeleteSaveGame`, `CopySaveGameSlot`, `WriteSaveGame` and `RestoreSaveGame` may run while an editor Play In Editor session is running. `False` refuses them with `NotAllowed`, because the running game may read or overwrite the same slots. Set `True` when you accept that the game and these commands share the slots. Has no effect in `-game` and packaged builds, where they are never refused for this reason |
+| `MaxSaveFileBytes` | `67108864` (64 MiB) | Largest save file, in bytes, that a command reads. Accepted range `1048576` (1 MiB) to `1073741824` (1 GiB). A larger file is reported as `TooLarge` by `ListSaveGameSlots` and `GetSaveGameInfo`, and refused with `NotAllowed` by the other commands — `SkipValidation` does not lift it. The limit does not apply to replacing or deleting a slot without `ExpectedHash`, because the slot is then not read |
+
+A value outside the range, or one that cannot be read as a number, is ignored with a warning and the default stays. Neither key can be overridden from the command line. Both are read from the loaded configuration each time a command runs, so a change applies to the next command once the configuration has been reloaded — `UAIP.Core.ReloadCapabilities` re-reads `DefaultUAIP.ini` where `AllowCapabilityReload=True` — or the editor has been restarted.
+
 #### Optional graph editors
 
 These capabilities depend on specific optional plugins. If the plugin is not enabled, the capability is never registered.
@@ -821,4 +857,4 @@ Three concrete examples, all from [Commands Reference](commands.md#unavailablede
 
 ## Other ini sections
 
-`[UAIP.SafetyPolicy]` is the only section covered on this page. The other ini sections (`[UAIP.Session]`, `[UAIP.ArtifactGC]`, `[UAIP.CommandNotification]`, `[UAIP.PythonExtension]`), along with every `-uaip-*` CLI launch flag and the MCP Bridge `config.json`, are documented in [Configuration](config.md).
+`[UAIP.SafetyPolicy]` is the only section covered in full on this page; `[UAIP.SaveGame]` is described with the capabilities it belongs to, under [Runtime SaveGame slots](#runtime-savegame-slots). The other ini sections (`[UAIP.Session]`, `[UAIP.ArtifactGC]`, `[UAIP.CommandNotification]`, `[UAIP.PythonExtension]`), along with every `-uaip-*` CLI launch flag and the MCP Bridge `config.json`, are documented in [Configuration](config.md).

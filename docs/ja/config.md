@@ -18,7 +18,7 @@ UAIP は以下 4 つの場所から設定を読み込み、優先度順にマー
 | 3 | `<Project>/Saved/UAIP/UAIPOverride.ini` | **パッケージビルド専用** — 初回起動時に自動生成されるユーザー編集可能オーバーライド | エディタ再起動 |
 | 4 | CLI 起動フラグ（`-uaip-*`） | プロセス単位の一時設定 | エディタ再起動 |
 
-`AllowedCapabilities` / `DeniedCapabilities` は `UAIP.Core.ReloadCapabilities` コマンドで再起動なしに反映できます（[Safety & Capabilities](safety.md#enabling-defaultdenied-capabilities) を参照）。それ以外のキーはエディタ再起動が必要です。ただし `[UAIP.Build]` はビルド設定で、反映には再ビルドが要り、読まれるのはプロジェクトの `Config/DefaultUAIP.ini` だけです（[`[UAIP.Build]`](#uaipbuild--テスト専用の型をビルドに含めるか) を参照）。
+`AllowedCapabilities` / `DeniedCapabilities` は `UAIP.Core.ReloadCapabilities` コマンドで再起動なしに反映できます（[Safety & Capabilities](safety.md#enabling-defaultdenied-capabilities) を参照）。それ以外のキーはエディタ再起動が必要です。ただし `[UAIP.SaveGame]` はコマンドの実行のたびに読まれ（[`[UAIP.SaveGame]`](#uaipsavegame--セーブスロットのコマンド) を参照）、`[UAIP.Build]` はビルド設定で、反映には再ビルドが要り、読まれるのはプロジェクトの `Config/DefaultUAIP.ini` だけです（[`[UAIP.Build]`](#uaipbuild--テスト専用の型をビルドに含めるか) を参照）。
 
 > MCP Bridge（インストール後は `Plugins/UAIPMCPBridge/`）には独自の設定レイヤー（`config.json` + 環境変数）があります。Bridge はプラグイン本体とは別配布です — 下の [MCP Bridge `config.json`](#mcp-bridge-configjson) を参照。
 
@@ -161,6 +161,25 @@ CloseDeadlineSeconds=120.0
 ```
 
 **CLI での指定はできません。** コマンドラインからは変更できません。
+
+### `[UAIP.SaveGame]` — セーブスロットのコマンド
+
+セーブスロットのコマンド（[`UAIP.Runtime.SaveGame`](commands.md#uaipruntimesavegame)）に関する 2 つの設定です。これらのコマンドに必要な Capability と、それぞれが守るものは [Safety & Capabilities](safety.md#runtime-savegame-スロット) にあります。
+
+| キー | 型 | デフォルト | 範囲 | 説明 |
+|---|---|---|---|---|
+| `bAllowWritesDuringPIE` | bool | `False` | — | エディタの PIE 中に、スロットを書き換えるコマンドの実行を許すか。PIE 外と、`-game`・パッケージ版では、この設定は影響しません |
+| `MaxSaveFileBytes` | int | `67108864`（64 MiB） | `[1048576, 1073741824]`（1 MiB〜1 GiB） | コマンドが読み込む・保存するセーブファイルの最大サイズ（バイト） |
+
+- 範囲外の `MaxSaveFileBytes` や、数値として読めない値は無視され、既定の 64 MiB が使われます。
+- **コマンドのたびに反映されます。** どちらのキーも、コマンドを実行するたびに、読み込み済みの設定から読み直すので、エディタの再起動は要りません。ini を編集したら `UAIP.Core.ReloadCapabilities` を呼ぶと読み直されます（ini ファイルをディスクから読み込み直します）。再起動でも反映されます。
+- どちらのキーも CLI での指定はできません。ini のみです。
+
+```ini
+[UAIP.SaveGame]
+bAllowWritesDuringPIE=False
+MaxSaveFileBytes=67108864
+```
 
 ### `[UAIP.Build]` — テスト専用の型をビルドに含めるか
 

@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1225 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1646 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1235 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1656 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -150,6 +150,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | 一部（1/2） |
 | Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | 一部（3/11） |
 | Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
+| Runtime SaveGame | `UAIP.Runtime.SaveGame` | 10 | — | — |
 
 ---
 
@@ -3706,6 +3707,136 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 - **`Frames`** は開始と終了の両方が揃ったフレームだけを数えます。採取はフレームの途中で止まるため、各フレーム種別の最後のフレームはほぼ常に開いたままで報告できる長さを持ちません。そうしたフレームは統計からも `TotalCount` からも同様に除外されます。したがって `TotalCount` と `ReturnedCount` が食い違うのは時間範囲を指定したときだけで、本セクションが切り詰めを行うことはありません。
 - **`Screenshots`** はメタデータのみを報告します（各スクリーンショットの識別子・名前・時刻・幅・高さと `ImageDataIncluded: false`）。エンコード済みの画像バイト列は返しません。画像が後から届くことはないため、メタデータ以外に待つものはありません。
 - **`Diagnostics`** は UE 5.7 では `EngineVersion` キー自体を出力しません。UE 5.7 のトレース形式はエンジンバージョンを一切運んでいないため、空文字列（本当に記録がなかった採取と区別できない）ではなくキーの省略で表現しています。
+
+---
+
+## UAIP.Runtime.SaveGame
+
+ゲームのセーブスロット（エンジンのセーブの仕組みがスロット名ごとに保存する `USaveGame` オブジェクト）を、一覧・確認・読み出し・退避・用意・削除・復元するコマンド群です。「特定のセーブから始める」「セーブが無い状態から始める」テストを組み、終わったら元に戻すために使います。エディタ（PIE の有無を問わない）でも、`-game` 起動やパッケージ版でも動作し、プラグインの依存はありません。
+
+**何も読み込みません。** スロットを読むときにクラスやアセットを読み込むことはありません。スロットが指す SaveGame クラスと、その中のハード参照が指すオブジェクトは、すべてプロセス内に読み込み済みである必要があります。C++ のクラスはエディタでプロジェクトを開いていれば通常は読み込まれていますが、Blueprint のクラスはそのアセットを開くまで読み込まれていないことがあります。また、スロットの読み書きは実行中のゲームの状態を一切変えません。UAIP が担うのはスロットの読み書きまでで、読み込んだスロットをどう反映するかはゲーム側が決めます。
+
+**Capability。** `ListSaveGameSlots`・`GetSaveGameInfo`・`ListSaveGameSnapshots` は `RuntimeSaveGameInspect`（DefaultAllow）が必要です。`DumpSaveGame` は `RuntimeSaveGameContentRead`（DefaultDenied）が必要です。スロットやスナップショットを変えるコマンドはすべて `RuntimeSaveGameWrite`（DefaultDenied）が必要です。`SnapshotSaveGame` も、スロットの生のバイト列を UAIP の作業ディレクトリへ複製するため、これに含まれます。さらに 2 つの引数が Capability を追加で要求します。`WriteSaveGame` で `BaseSlotName` を指定すると `RuntimeSaveGameContentRead` も必要になり、`CopySaveGameSlot` / `RestoreSaveGame` で `SkipValidation: true` を指定すると `RuntimeSaveGameUnvalidatedWrite`（DefaultDenied）が必要になります。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-savegame-スロット) を参照してください。
+
+**名前。** コマンドに渡すスロット名・スナップショット名は、`A-Z`・`a-z`・`0-9`・`_`・`-` からなる 1〜64 文字で、Windows の予約デバイス名（`CON`・`PRN`・`AUX`・`NUL`・`COM0`〜`COM9`・`LPT0`〜`LPT9`）ではないものに限ります。それ以外は `InvalidParams` です。スロット名とスナップショット名は別の名前空間なので、スナップショットに元のスロットと同じ名前を付けても構いません。`UserIndex` は 0 以上の整数（既定 0）です。Windows の標準のセーブの仕組みはこれを無視し、すべてのユーザー番号を同じファイルに保存します。
+
+**典型的な流れ。** `SnapshotSaveGame` でスロットを退避 → スロットを変更（`DeleteSaveGame`・`WriteSaveGame`・`CopySaveGameSlot`）→ テストを実行して PIE を止める → `RestoreSaveGame` でスナップショットを戻す（スロットがあれば `Overwrite: true`）→ 不要になったら `DeleteSaveGameSnapshot`。変更前にスロットが無かった場合は退避するものがありません。後片付けは、作ったスロットの削除で行います。
+
+### 確認（3）— `RuntimeSaveGameInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `ListSaveGameSlots` | 設定中のセーブの仕組みが持つスロット名を、名前の昇順（大文字小文字を区別しない）で返します。`MaxResults` は 1〜1024（既定 256）で、漏れたスロットがあれば `Truncated` が `true` になります。`Slots[]` の各要素は `Name`・`Addressable`（他のコマンドに渡せない名前なら `false`。そのスロットは一覧には出ますが詳細は付きません）・`NameTruncated`（ファイル由来の名前は無害化したうえで 256 文字で切り詰めます）を持ちます。`IncludeDetails: true` を指定すると、指定できるスロットごとに `Status`・`ByteCount`・`ModifiedAt`・`Format`・`SaveGameClassName`・`ClassNameIsGuess`・`SaveGameClassNameTruncated` が付きます。読むのはスロットの先頭部分だけです（標準のセーブの仕組みでは先頭 1 MiB）。読んだ量の合計が 256 MiB に達すると、残りのスロットは詳細なしで返し、`DetailsTruncated` が `true` になります。`SaveGameSystem` には `ConfiguredSaveGameSystemModule` と `GenericPathsAvailable`（プロジェクトが標準のセーブの仕組みを使っているか。サイズと更新日時が得られるのはこのときです）が入ります。異常なスロットがあってもコマンドは失敗しません。セーブの仕組みがスロットの一覧に対応していないプロジェクトでは `UnsupportedOperation` を返します。スロット名が分かっていれば、他のコマンドは使えます |
+| `GetSaveGameInfo` | 1 つのスロットのメタ情報を、クラスを読み込まずに返します。`Status`・`Format`・`StoppedAtStage`・`FileVersion`・`PackageFileUEVersion`・`EngineVersion`・`CustomVersionFormat`・`UnregisteredCustomVersionCount`・`SaveGameClassName`・`ClassNameIsGuess`・`SaveGameClassNameTruncated`・`ClassLoaded`（そのクラスが今読み込まれているか。探すだけで読み込みはしません）・`ByteCount`・`ModifiedAt`・`ContentHash`（SHA-1 を 16 進 40 桁で表したもの。`ExpectedHash` に渡す値です）。壊れている・大きすぎる・読めないスロットでもコマンドは失敗せず、`Status` でそれを示し、読めたところまでを返します。`ContentHash` はスロット全体を読めたときだけ返すため、`TooLarge` と `Unreadable` では付きません。`ModifiedAt` は標準のセーブの仕組みのときだけです。存在しないスロットは `NotFound` です |
+| `ListSaveGameSnapshots` | `SnapshotSaveGame` が作ったスナップショットを、名前の昇順（大文字小文字を区別しない）で返します。`MaxResults` は 1〜1024（既定 256）で、`Truncated` も返します。読むのはメタ情報だけで、スロットのバイト列は読みません。`Snapshots[]` の各要素は `Name`・`NameTruncated`・`Status` を持ちます。`Status` は `OK`、またはメタ情報を読めないスナップショットファイルなら `Corrupt` です。`OK` の要素には `SourceSlotName`・`UserIndex`・`CreatedAt`（UTC）・`ByteCount`・`ContentHash`・`Format` と、ヘッダにクラス名があれば `SaveGameClassName`（切り詰めた場合は `SaveGameClassNameTruncated` も）が付きます。`Corrupt` の要素は上の 3 つのキーだけを持ち、見つけて削除できるように一覧に残します |
+
+### 中身の読み出し（1）— `RuntimeSaveGameContentRead` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `DumpSaveGame` | 1 つのスロットを読み、プロパティの値を JSON の artifact として返します。artifact には `Properties`（プロパティ名 → 値）・`PropertyCount`・`UnresolvedReferences` / `ClearedSoftReferences` とその件数が入り、応答には `PropertyCount`・`UnresolvedReferenceCount`・`ClearedSoftReferenceCount` が入ります。読み込まれていないオブジェクトへのハード参照は `null` になり、そのパスを `UnresolvedReferences` に挙げます。ソフト参照は通常パスのまま残り、例外的に空にしたものを `ClearedSoftReferences` に挙げます。どちらの一覧も重複を除いて先頭 64 件までで、件数は全件を数えます。1023 文字を超えるパスは切り詰めて末尾に `...` を付けます。文字列テーブルを参照するテキストは、文字列テーブルを読み込まずに出力します。本体を読む前に拒否するもの: このコマンドが扱えないヘッダ（`ExecutionFailed`）、読み込まれていない SaveGame クラス（`NotFound`）や使えない SaveGame クラス、`MaxSaveFileBytes` を超えるスロット（`NotAllowed`）。⚠️ artifact にはセーブの中身がそのまま入ります — 後述の [DumpSaveGame の artifact とスナップショット](#dumpsavegame-の-artifact-とスナップショットはセーブをそのまま持つ) を参照してください |
+
+### スロットの変更（3）— `RuntimeSaveGameWrite` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `DeleteSaveGame` | 1 つのスロットを削除します。存在しないスロットは、`ExpectedHash` の有無にかかわらず `NotFound` です。`ExpectedHash` を渡すと、先にスロット全体を 1 回読んで比較し、一致しなければ `Conflict` です。削除したスロットは元に戻せません。大事なデータなら先にスナップショットを取ってください。応答は `Deleted`・`PreviousContentHash`（スロットを読んだときだけ）・`PlayWorldActive` |
+| `CopySaveGameSlot` | `SourceSlotName` のバイト列を、そのまま `TargetSlotName` へ複製します。2 つが同じスロット（大文字小文字を区別せずに比較）であってはいけません。複製するバイト列は SaveGame のヘッダ（形式・バージョン・クラス）まで確かめ、ヘッダが指すクラスは読み込み済みである必要があります。ヘッダより後ろの本体は確かめないため、本体が壊れたスロットも複製でき、それを後で読み込んだゲームが止まることがあります。`SkipValidation: true` でヘッダの確認を省けます — 後述の [SkipValidation](#skipvalidation) を参照してください。応答は `ByteCount`・`Overwritten`・`ContentHash`・`PreviousContentHash`（`ExpectedHash` のために複製先を読んだときだけ）・`ValidationSkipped`・`ValidationSkipReason`（省いたときは `RequestedByCaller`）・`PlayWorldActive` |
+| `WriteSaveGame` | JSON オブジェクト `Values` からスロットを書きます。次のどちらか一方だけを指定します。**`SaveGameClass`** — そのクラスの新しいオブジェクトをクラスの初期値で作り、`Values` を適用します。クラスはフルパス（`/Script/<Module>.<Class>` または `/Game/<Path>/<Blueprint>.<Blueprint>_C`）で指定し、短い名前は拒否します。**`BaseSlotName`** — そのスロットを読んで復元し、`Values` を上書きした結果を `SlotName` へ保存します。`SlotName` は同じスロットでも（このときは `Overwrite: true` が必要）別のスロットでも構いません。一部書き換えは元のスロットの中身を読むため、`RuntimeSaveGameContentRead` も必要です。書き込む前にすべてのキーと値を確かめ、1 つでも拒否された値があれば何も書きません。配列・セット・マップは丸ごと置き換わり（要素を 1 つだけ指定すると他の要素は消えます）、構造体は指定した項目だけが変わります。保存するバイト列は SaveGame のヘッダまで確かめ、本体は確かめません。応答は `ByteCount`・`Overwritten`・`ContentHash`・`PreviousContentHash`（書き先を読んだときだけ）・`ValidationSkipped`（常に `false`）・`PlayWorldActive`。`Values` に書けるものは後述の [WriteSaveGame の Values](#writesavegame-の-values) を参照してください |
+
+### スナップショット（3）— `RuntimeSaveGameWrite` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `SnapshotSaveGame` | スロットのバイト列を、そのまま名前付きのスナップショット（退避データ）へ複製します。保存先は UAIP 作業ディレクトリの `SaveGameSnapshots` フォルダ内のファイルです（[`AllowedArtifactDirectory`](config.md#allowedartifactdirectory-オーバーライド) で移していなければ `Saved/UAIP/SaveGameSnapshots/`）。バイト列は確かめないため、壊れたスロットやゲーム独自形式のスロットも退避できます。拒否するのは `MaxSaveFileBytes` を超えるスロットだけです（`NotAllowed`）。スナップショットには、退避元のスロット・ユーザー番号・退避した日時（UTC）・サイズ・内容のハッシュ・`Format`、ヘッダにあれば SaveGame クラスを記録します。同じ名前のスナップショットがあれば、`Overwrite: true` のときだけ置き換えます。置き換えは不可分ではありませんが、どこで止まっても古いものか新しいもののどちらかが残ります。スロットは読むだけなので、エディタでプレイ中でも `DisableSave` 下でも使えます。応答は `ByteCount`・`ContentHash`・`Format`（`SaveGameHeader`・`Legacy`・`Unknown`）・`Overwritten`・`PlayWorldActive`（`true` なら実行中のゲームも同じスロットへ書きうるため、ゲームが次に保存する内容とスナップショットが一致しないことがあります） |
+| `RestoreSaveGame` | スナップショットのバイト列をスロットへ書き戻します。スロットに触れる前にスナップショットを確かめ、壊れていれば `ExecutionFailed`（理由 `SnapshotCorrupt`）です。`SlotName` と `UserIndex` はそれぞれ省略するとスナップショットに記録された値を使うため、省略すれば退避元のスロットへ戻ります。退避元と同じスロット・同じユーザー番号へ戻し（スロット名は大文字小文字を区別せずに比較）、バイト列のハッシュがスナップショットに記録したものから変わっていなければ、ヘッダの確認は自動的に省かれます（`ValidationSkipReason: "SameSourceSlot"`。追加の Capability は不要）。以前そこにあった中身を戻すだけなので、独自形式のセーブを使うゲームでもスナップショットを使えます。別のスロットへ戻す場合と、ハッシュが一致しない場合は通常どおり確かめるため、独自形式なら `SkipValidation: true` を指定しない限り失敗します。スナップショットは残るので、何度でも復元できます。応答のキーは `CopySaveGameSlot` と同じで、確認を省いたときの `ValidationSkipReason` は `SameSourceSlot` か `RequestedByCaller` です |
+| `DeleteSaveGameSnapshot` | 1 つのスナップショットを、そのバックアップと、中断された退避が残した一時ファイルとともに削除します。存在しないスナップショットは `NotFound` です。壊れたスナップショットも削除できます。スロットには触れないため、エディタでプレイ中でも `DisableSave` 下でも使えます。応答は `Deleted` |
+
+#### スロットの状態（Status）
+
+| `Status` | 意味 |
+|---|---|
+| `OK` | ヘッダを最後まで読め、すべての確認を通った |
+| `LegacyOrUnknown` | バイト列が SaveGame のヘッダで始まっていない（ゲーム独自の形式、または古いエンジンの形式）。報告されるクラス名は推定値（`ClassNameIsGuess: true`） |
+| `UnsupportedVersion` | ヘッダがこのエンジンより新しい形式、または意図的に読まない古い版（UE4・UE 5.0 など）を示している |
+| `Corrupt` | ヘッダが途中で切れている、形が崩れている、または範囲外の値を含む |
+| `TooLarge` | ファイルが `MaxSaveFileBytes` を超えており、読んでいない |
+| `Unreadable` | セーブの仕組みがスロットの読み込みに失敗した |
+
+**確かめるのはファイルの先頭部分だけ**なので、`OK` はファイルの残りを復元できることを保証しません。また、スロットの保存は不可分ではないため、ゲームがちょうど書いている最中のスロットは `Corrupt` と読めることがあります。安定した複製が必要なら、先にスナップショットを取ってください。
+
+**`PackageFileUEVersion` は数値ではなく文字列です。** `"UE4=<n>"`、またはヘッダが UE5 のバージョンも持つ場合は `"UE4=<n> UE5=<m>"` の形です。ヘッダの読み取りがそこまで届かなかった場合は省略されます。`StoppedAtStage` は読み取りが到達した段階（`ByteCount`・`Tag`・`FileVersion`・`EngineVersion`・`CustomVersionFormat`・`CustomVersions`・`ClassName`・`Completed`）を示し、`Corrupt` のヘッダをどこまで読めたかが分かります。
+
+**`SaveGameClassNameTruncated`。** クラス名はファイルから来るため、無害化したうえで 256 文字で切り詰めてから返します。切り詰めた場合は、その隣に `SaveGameClassNameTruncated: true` が付きます。対象は `GetSaveGameInfo`、`IncludeDetails` を指定した `ListSaveGameSlots`、`ListSaveGameSnapshots` です。切り詰めていなければこのキーは付きません。切り詰めた名前はクラスの本当のパスではないため、そのまま `SaveGameClass` に渡さないでください。
+
+#### DumpSaveGame の artifact とスナップショットはセーブをそのまま持つ
+
+> ⚠️ **`DumpSaveGame` の artifact は、セーブの中身をそのまま JSON にしたものです。** セーブファイルには個人情報（プレイヤー名・アカウントの識別子など、ゲームが保存するあらゆるもの）が入りうるうえ、ランタイムには**秘密の値を伏せる仕組みがありません**。実行時には、どの値が秘密かを判別する情報が無いためです。`RuntimeSaveGameContentRead` が既定で無効なのはこのためです。artifact は Artifact の自動 GC が消すまで artifact ストアに残り（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）、UAIP の作業ディレクトリを読める人なら誰でも読めます。
+>
+> **スナップショットも同じものを生のバイト列のまま持ち**、`DeleteSaveGameSnapshot` で削除するまで残ります。件数や合計サイズの上限は無く、自動では削除されません。不要になったスナップショットは削除してください。
+
+#### WriteSaveGame の Values
+
+- キーはプロパティ名と大文字小文字を区別せずに照合します（入れ子の構造体の中も同様）。存在しないキーや、一時的（Transient）・非推奨・保存対象外のプロパティは、無視せずに拒否します。
+- JSON は最大 49152 バイト、入れ子は 16 段、値は 4096 個までです。名前・列挙子名・参照パスは 1023 文字までです。
+- 数値はプロパティの型に収まる必要があります。64 ビット整数は ±2^53 まで受け付けます（JSON の数値で正確に表せる範囲です。それを超える値は丸まってしまうため拒否します）。浮動小数点数は文字列 `"NaN"`・`"Infinity"`・`"-Infinity"` も受け付けます。列挙型は列挙子名か宣言された値で指定します。
+- テキストは指定した文字列がそのまま保存されます。文字列テーブル参照の書式で書いても参照としては扱わず、文字列テーブルも読み込みません。
+- オブジェクト・クラス・ソフト参照は `/` で始まるフルパスで指定します（`DumpSaveGame` が出力する `Class'/Path.Obj'` の形もそのまま使えます）。ハード参照は読み込み済みのオブジェクトに解決できる必要があり、できなければ `NotFound` です。空文字列 `""` を渡すと参照は何も指さなくなります。
+- 構造体は文字列ではなく JSON オブジェクトで指定します。セットに同じ要素を、マップに同じキーを 2 回指定してはいけません。
+- 書けないもの: インターフェース・Lazy・デリゲート・フィールドパスのプロパティと、セーブが持つ入れ子のオブジェクト（`_ClassName` を持つオブジェクト）。作ると任意のクラスを読み込むことになるためです。
+- 拒否された値が 1 つでもあれば、リクエスト全体が `InvalidParams` で失敗します。失敗診断の artifact には、どこがなぜ拒否されたか（`RejectedValues`・`RejectedValueCount`）が入り、値そのものは入りません。
+
+> ⚠️ **`null` は片方向にしか通りません。** 何も指していない参照は `DumpSaveGame` では `null` として出力されますが、`WriteSaveGame` は `null` をどこでも拒否します。そのため、読み出した JSON をそのまま書き戻せないことがあります。参照を空にするには `""` を渡してください。`BaseSlotName` で一部書き換えをする場合は、そのキーを `Values` から外せば、元のスロットの値がそのまま残ります。
+
+> ⚠️ **大文字小文字だけが違うキーは、重複として拒否されません。** `Values` はキーの大文字小文字を区別せずに読むため、`{"Score": 1, "score": 2}` は受け付けられ、後に書いた方だけが残ります。文字列をキーにするマップも同じ結果になります。ゲーム側でもそのキーを大文字小文字を区別せずに扱うため、保存される結果は変わりません。送る前に、大文字小文字だけが違うキーが無いか確かめてください。
+
+**読み出した JSON をそのまま書き戻せない場合。** `null` のほかに、±2^53 を超える 64 ビット整数は `DumpSaveGame` の出力で丸まっており、ここでは拒否されます。テキストは単なる文字列として書かれます（文字列テーブル参照やローカライズ情報は残りません）。入れ子のオブジェクト（`_ClassName`）と、インターフェース・Lazy・デリゲート・フィールドパスのプロパティは書けません。
+
+**参照が失われるスロットの一部書き換え。** 元のスロットに、`DumpSaveGame` なら `UnresolvedReferences` か `ClearedSoftReferences` に挙がる参照が 1 件でもあれば、`WriteSaveGame` は `NotFound` で拒否し、失敗診断の artifact にそのパスを挙げます。そのまま保存すると、変えていない参照まで消えるためです。先に参照先のアセットを読み込んでください。
+
+#### 本体を読む前に拒否するもの
+
+`DumpSaveGame` と、`BaseSlotName` を指定した `WriteSaveGame` は、スロットをそのクラスのオブジェクトへ復元します。その前に保存されたプロパティの並びを走査し、読み込むとエディタが止まるスロットを `ExecutionFailed` で拒否します。エラーには該当したプロパティの位置と理由が入り、値は入りません。
+
+- クラス側で文字列でも文章（`FText`）でもない型に変わったプロパティ（配列・セット・マップの要素を含む）や、クラスから無くなったプロパティに、1024 文字以上の文字列が保存されている
+- クラス側で名前（`FName`）型に変わったプロパティに、文章が保存されている（長さを問わない）
+- クラス側でフィールドパス型に変わったプロパティに、オブジェクト参照が保存されている
+- 並びの構造が壊れている（値の大きさが範囲外、要素数が負など）
+
+ゲーム自身は、このうち一部（特に、無くなったプロパティに残った長い文字列）を問題なく読めることがあります。UAIP はこれらを読みません。独自の方法で直列化する構造体（`InstancedStruct` など）の内側までは確かめません — [残るリスク](safety.md#runtime-savegame-スロット) を参照してください。
+
+#### 上書きと ExpectedHash
+
+`CopySaveGameSlot`・`WriteSaveGame`・`RestoreSaveGame` と、既存のスナップショットに対する `SnapshotSaveGame` は、`Overwrite: true` を指定しない限り既にあるものを置き換えません（`NotAllowed`）。同じスロットへの一部書き換えには常に必要です。置き換えた場合、応答の `Overwritten` が `true` になります。
+
+`DeleteSaveGame`・`CopySaveGameSlot`・`WriteSaveGame`・`RestoreSaveGame` の `ExpectedHash` は、書き込む直前に**書き先のスロット**（複製元・一部書き換えの元・スナップショットではない）が持っているべき内容のハッシュです。16 進 40 桁で、大文字小文字を区別せずに比較し、`GetSaveGameInfo` が返す値をそのまま使えます。一致しない場合や、書き先が無い場合は `Conflict` で、何も書きません（`DeleteSaveGame` で対象が無い場合は `NotFound`）。`ExpectedHash` を渡すと書き先を全部読むため、読み取りの上限がかかります。渡さなければ書き先を読まないので、上限を超えるスロットでも置き換え・削除できます。確認は書き込む直前の 1 回だけです。確認と書き込みの間にゲームが非同期で保存したり、別のプロセスが書き込んだりすることまでは防げません。
+
+#### プレイ中と DisableSave 下
+
+`DeleteSaveGame`・`CopySaveGameSlot`・`WriteSaveGame`・`RestoreSaveGame` は、エディタでプレイ中は `NotAllowed` で拒否します。実行中のゲームが同じスロットを読んだり上書きしたりしうるためです。エラーには、許可する設定 `[UAIP.SaveGame]` の `bAllowWritesDuringPIE` の名前が入ります。プレイを止めてから再実行してください。`-game` 起動やパッケージ版ではこの拒否はありません（ゲームが後から同じスロットを上書きすることはあります）。同じ 4 つは、SafetyPolicy が `DisableSave` のとき `PolicyViolation` で拒否します。
+
+`ListSaveGameSlots`・`GetSaveGameInfo`・`DumpSaveGame`・`SnapshotSaveGame`・`ListSaveGameSnapshots`・`DeleteSaveGameSnapshot` は、どちらの場合も使えます。スロットを変える 4 つと `SnapshotSaveGame` の応答にある `PlayWorldActive` は、その時点でゲームが同じスロットへ書きうる状態だったか（エディタでプレイ中、または `-game` 起動やパッケージ版で動作中）を示します。
+
+**書き込みは不可分ではありません。** 書き込みの途中で失敗すると（ディスクの容量不足、ファイルのロックなど）、書き先のスロットが壊れることがあります。残したいスロットは、置き換える前にスナップショットを取ってください。スナップショットから戻せます。
+
+#### SkipValidation
+
+`CopySaveGameSlot` と `RestoreSaveGame` は `SkipValidation: true` を受け付けます。ヘッダの確認を省くため、ゲーム独自形式・壊れている・対応していない版・クラスが読み込まれていないスロットでも、任意のスロットへ複製・復元できます。`RuntimeSaveGameUnvalidatedWrite`（DefaultDenied）が必要で、無ければ `CapabilityNotAvailable` で失敗します。復元が `SameSourceSlot` に当たる場合でも同じです。応答は `ValidationSkipped: true` と `ValidationSkipReason: "RequestedByCaller"`（`SameSourceSlot` にも当たる場合は `"SameSourceSlot"`）です。サイズの上限は省けません。⚠️ **こうして書いたスロットは、それを読み込んだゲームを止めることがあります。**
+
+#### エラー
+
+| ErrorCode | 発生する場面 |
+|---|---|
+| `InvalidParams` | 名前・`UserIndex`・`MaxResults`・ハッシュ・クラスパス・値が正しくない。`SourceSlotName` と `TargetSlotName` が同じスロット。`WriteSaveGame` に `SaveGameClass` と `BaseSlotName` を両方指定した、またはどちらも指定しなかった。クラスが `USaveGame` の具象で現行のサブクラスではない |
+| `NotFound` | スロットやスナップショットが無い。SaveGame クラスや、値が参照するオブジェクトが読み込まれていない。一部書き換えの元のスロットに、失われる参照がある |
+| `NotAllowed` | 書き先があるのに `Overwrite` が `true` でない。エディタでプレイ中。ファイルが `MaxSaveFileBytes` を超えている（エラーに設定名が入る） |
+| `Conflict` | `ExpectedHash` が一致しない、または指定した書き先が無い |
+| `PolicyViolation` | SafetyPolicy が `DisableSave`（スロットの変更のみ） |
+| `CapabilityNotAvailable` | 必要な Capability（引数が追加で要求するものを含む）が無い。エラーにその名前が入る |
+| `ExecutionFailed` | ヘッダを扱えない、データが示すクラスを使えない、本体を読めない（上記の拒否を含む）、スナップショットが壊れている、スロットやスナップショットの読み書きに失敗した |
+| `UnsupportedOperation` | スロットの一覧に対応していないセーブの仕組みで `ListSaveGameSlots` を呼んだ |
+
+失敗したコマンドは失敗診断の artifact を付けます。中身は `Command`・`FailedStage`・`Reason`（原因。例: `SnapshotCorrupt`）・`ErrorMessage` と、失敗した段階が報告した内容です（扱えなかったヘッダの各項目、解決できない参照のパス、拒否した `Values` の `RejectedValues` / `RejectedValueCount` など）。セーブに保存された値が含まれることはありません。
 
 ---
 

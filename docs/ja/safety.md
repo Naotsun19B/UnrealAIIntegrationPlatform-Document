@@ -187,6 +187,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `RuntimeNiagaraInspect` 🧩 | PIE 中の Niagara コンポーネント状態読み取り — `GetUserVariables`、`GetVariable`（`Niagara` プラグイン必須） |
 | `SandboxObserve` 🧩 | アクティブな Sandbox の観測 — `GetSandboxStatus`、`GetSandboxChanges`（`FileSandbox` プラグイン必須） |
 | `RuntimeInsightsInspect` | Unreal Insights トレースの読み取り専用検査 — `ListTraceChannels`、`GetTraceStatus`、`ListTraceFiles`。トレースの開始・停止・変更は一切できません |
+| `RuntimeSaveGameInspect` | セーブスロットとスナップショットの読み取り専用の確認 — `ListSaveGameSlots`、`GetSaveGameInfo`、`ListSaveGameSnapshots`。名前・サイズ・日時・ヘッダのメタ情報・内容のハッシュを返します。スロットに保存された値は返さず、クラスも読み込みません。[Runtime SaveGame スロット](#runtime-savegame-スロット) を参照 |
 | `ArtifactContentRead` | セッションが生成した成果物の保存内容を読み出す — `UAIP.Core.Artifacts.GetArtifact`。他のセッションの成果物には届かない |
 | `PendingInteractionInspect` | 保留中の対話の状態照会・キャンセル — `GetPendingInteractionStatus`、`WaitForPendingInteraction`、`CancelPendingInteraction`。読み取り専用の照会のみで、対話の開始（`DrawPCGSpline` など）は対話型コマンド自身の Capability と `SafetyPolicy.AllowUserInteractionPrompt` によって別途ゲートされます |
 
@@ -519,6 +520,41 @@ ExternalTraceDirectory=D:/TraceDrop
 
 > **これはスコープの限定であり、構造的な保証ではありません。** `RunEditorPythonScript` からはエンジンのトレースシステムへ依然として到達できます。Python 実行は capability 層を迂回する既知の経路であり、本モジュールではなく当該コマンドが要求する Capability（`EditorExecution` と、DefaultDenied の `ScriptExecution`）の付与判断で管理されます。`GetTraceStatus` は `TracingToServer` のようなネットワーク宛先を報告しえますが、これは他者のトレースに対する可観測性であって、UAIP 自身が作り出せる状態ではありません。
 
+#### Runtime SaveGame スロット
+
+セーブスロットのコマンド（[`UAIP.Runtime.SaveGame`](commands.md#uaipruntimesavegame)）の Capability は、何を見せるか・何を変えるかで分かれています。スロットとスナップショットの一覧、スロットのメタ情報の取得は DefaultAllow（上記の `RuntimeSaveGameInspect`）です。以下の 3 つは既定で無効です。このモジュールはプラグインに依存しないため、どれにも 🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `RuntimeSaveGameContentRead` | スロットに保存されたプロパティの値の読み出し — `DumpSaveGame` と、`BaseSlotName` を指定した `WriteSaveGame`（一部書き換えは、先に元のスロットを読んで復元するため）。セーブファイルには個人情報が入りうるうえ、ランタイムには秘密の値を伏せる仕組みが無いため、既定で無効です。`WriteSaveGame` では `BaseSlotName` の有無で判定するため、そのコマンドの `RequiredCapabilities` には現れません |
+| `RuntimeSaveGameWrite` | スロットの削除・複製・書き込み・退避・復元と、スナップショットの削除 — `DeleteSaveGame`、`CopySaveGameSlot`、`WriteSaveGame`、`SnapshotSaveGame`、`RestoreSaveGame`、`DeleteSaveGameSnapshot`。どれもユーザーのデータを置き換える・消す、またはその生のバイト列を UAIP の作業ディレクトリへ複製するため、既定で無効です。削除したスロットは元に戻せません |
+| `RuntimeSaveGameUnvalidatedWrite` | 複製・復元で保存しようとするバイト列の、ヘッダの確認を省く — `CopySaveGameSlot` と `RestoreSaveGame` の `SkipValidation: true`。`RuntimeSaveGameWrite` に**加えて**必要です。引数の値で判定するため、どちらのコマンドの `RequiredCapabilities` にも現れません。スナップショットの変わっていないバイト列を退避元のスロットへ戻す場合は、確認が自動的に省かれるため不要です |
+
+> ⚠️ **`RuntimeSaveGameWrite` だけで、セーブの中身を取り出せます。** `SnapshotSaveGame` はスロットの生のバイト列を UAIP 作業ディレクトリの `SaveGameSnapshots` フォルダへ複製し、そのディレクトリを読める人なら誰でも読めます。エンジンの形式のセーブでは、そのバイト列の中にプロパティ名や文字列の値が読める形で入っています。`RuntimeSaveGameContentRead` を与えなければ `DumpSaveGame` でスロットを JSON にすることはできませんが、`RuntimeSaveGameWrite` を持つセッションがスナップショットのファイル経由で同じ中身に届くことは防げません。`RuntimeSaveGameWrite` は、セーブを読まれても構わない環境でだけ与えてください。
+
+> ⚠️ **ランタイムには秘密の値を伏せる仕組みがありません。** 実行時には、セーブのどの値が秘密かを判別する情報が無いため、`DumpSaveGame` はすべての値を保存されたとおりに返します。対処は、セーブを読まれてよい場合を除いて `RuntimeSaveGameContentRead` を無効のままにしておくことです。`DumpSaveGame` の artifact は Artifact の自動 GC が消すまで artifact ストアに残る（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）ため、呼び出しが終わった後も残ります。
+
+> **スナップショットは削除するまで残ります。** スナップショットはスロットの生のバイト列をそのまま持ち、`DeleteSaveGameSnapshot` で削除するまで UAIP の作業ディレクトリに残ります。件数や合計サイズの上限は無く、自動では削除されません。
+
+> ⚠️ **`SkipValidation` を使うと、ゲームを止めるスロットができることがあります。** 確認を省くと、ゲーム独自形式・壊れている・対応していない版・クラスが読み込まれていないスロットでも任意のスロットへ複製・復元でき、それを後で読み込んだゲームが止まることがあります。省けないのはサイズの上限だけです。
+
+**確かめる範囲と、残るリスク。** UAIP が書くスロットは、SaveGame のヘッダ（形式・バージョン・クラス）まで確かめるため、ゲームが読み込んだときにヘッダが原因で止まることはありません。本体の値は確かめません。ヘッダの確認も省くのは 2 つの場合です。スナップショットの変わっていないバイト列を退避元のスロットへ戻す場合（以前そこにあった中身を戻すだけ）と、`SkipValidation` の場合です。UAIP 自身がスロットの本体を読むとき（`DumpSaveGame` と、`BaseSlotName` を指定した `WriteSaveGame`）は、クラス側で型が変わったプロパティによってエンジンが止まる既知の経路を、読む前に拒否します — [コマンドリファレンス — 本体を読む前に拒否するもの](commands.md#本体を読む前に拒否するもの) を参照してください。ただし、独自の方法で直列化する構造体（`InstancedStruct` など）の内側までは**確かめません**。また、壊れた本体による読み込みの停止をすべて防ぐわけではありません。本体の中の範囲外の値（極端な要素数など）は、ゲーム自身が同じファイルを読む場合と同じリスクとして受け入れ、ファイルサイズの上限で緩和します。複製・復元で持ち込んだスロットも、本体が壊れていれば、それを読んだゲームが止まることがあります。
+
+**設定 — `[UAIP.SaveGame]`。** `Config/DefaultUAIP.ini` の 2 つの設定で、セーブスロットのコマンドを調整できます。
+
+```ini
+[UAIP.SaveGame]
+bAllowWritesDuringPIE=False
+MaxSaveFileBytes=67108864
+```
+
+| キー | 既定値 | 意味 |
+|---|---|---|
+| `bAllowWritesDuringPIE` | `False` | エディタでプレイ中（PIE）に `DeleteSaveGame`・`CopySaveGameSlot`・`WriteSaveGame`・`RestoreSaveGame` を実行してよいか。`False` では、実行中のゲームが同じスロットを読んだり上書きしたりしうるため、`NotAllowed` で拒否します。ゲームとこれらのコマンドがスロットを共有することを受け入れる場合に `True` にします。`-game` 起動やパッケージ版には影響しません（この理由で拒否されることはありません） |
+| `MaxSaveFileBytes` | `67108864`（64 MiB） | コマンドが読むセーブファイルの最大バイト数。範囲は `1048576`（1 MiB）〜`1073741824`（1 GiB）。超えるファイルは、`ListSaveGameSlots` と `GetSaveGameInfo` では `TooLarge` として報告し、それ以外のコマンドでは `NotAllowed` で拒否します（`SkipValidation` でも省けません）。`ExpectedHash` を渡さずにスロットを置き換える・削除する場合は、スロットを読まないためこの上限はかかりません |
+
+範囲外の値や数値として読めない値は、警告を出して無視し、既定値のままになります。どちらのキーもコマンドラインからは上書きできません。どちらもコマンドを実行するたびに読み込み済みの設定から読むため、設定を読み直した後（`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` が `DefaultUAIP.ini` を読み直します）またはエディタを再起動した後の次のコマンドから反映されます。
+
 #### オプショングラフエディタ
 
 以下の Capability はオプションプラグインへの依存があります。プラグインが有効になっていない環境では Capability が登録されません。
@@ -821,4 +857,4 @@ AllowUserInteractionPrompt=False
 
 ## その他の ini 設定
 
-このページが扱うのは `[UAIP.SafetyPolicy]` のみです。それ以外の ini セクション（`[UAIP.Session]`、`[UAIP.ArtifactGC]`、`[UAIP.CommandNotification]`、`[UAIP.PythonExtension]`）、`-uaip-*` 系の CLI 起動フラグ、MCP Bridge `config.json` は [設定リファレンス](config.md) を参照してください。
+このページが全体を扱うのは `[UAIP.SafetyPolicy]` だけです。`[UAIP.SaveGame]` は、関係する Capability とあわせて [Runtime SaveGame スロット](#runtime-savegame-スロット) で説明しています。それ以外の ini セクション（`[UAIP.Session]`、`[UAIP.ArtifactGC]`、`[UAIP.CommandNotification]`、`[UAIP.PythonExtension]`）、`-uaip-*` 系の CLI 起動フラグ、MCP Bridge `config.json` は [設定リファレンス](config.md) を参照してください。
