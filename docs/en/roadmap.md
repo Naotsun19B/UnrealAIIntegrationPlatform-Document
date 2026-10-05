@@ -100,9 +100,6 @@ Start and stop UE Trace sessions with channel selection, query frame stats and h
 ### GameplayMessage Subsystem
 Listen to and inject `UGameplayMessageSubsystem` messages for event-driven architectures — useful for testing decoupled gameplay systems.
 
-### SaveGame Operations
-List, load, save, and delete `USaveGame` slots — enables tests to start from a specific save state and reset to a known baseline.
-
 ---
 
 ## Infrastructure
