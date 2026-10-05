@@ -3419,7 +3419,7 @@ Every command in this domain except `QuitGame`, `ListPlayWorlds` and the two CVa
 | `TeleportActor` | Teleport an actor to a world-space location / rotation |
 | `PossessActor` | Have a player controller possess an actor |
 | `SetTimeScale` | Set the global time dilation of the active game world |
-| `QuitGame` | Request a graceful quit of the running game process |
+| `QuitGame` | Request a graceful quit of the running game process (requires `RuntimeActorManipulation`). During PIE it stops the PIE session. In an editor where no game is running it answers `ExecutionFailed` and the editor stays open — `QuitGame` quits the running game, not the editor; use [`ShutdownEditor`](#uaipeditorworkspace) (`UAIP.Editor.Workspace.ShutdownEditor`) to close the editor. It used to answer `Success: true` without doing anything in that case |
 | `ExecuteConsoleCommand` | Execute a console command in the active game world (requires `RuntimeExecCommand`) |
 | 🆓 `GetConsoleVariable` | Value, type and help text of a console variable; sensitive names report as not found (requires `RuntimeCVarRead`) |
 | 🆓 `SearchConsoleVariables` | Wildcard (`*`) search over registered console variables — `MaxResults` default 50, max 200; sensitive names are excluded |

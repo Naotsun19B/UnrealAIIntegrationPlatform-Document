@@ -3368,7 +3368,7 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | `TeleportActor` | アクターをワールド空間の指定位置 / 回転にテレポート |
 | `PossessActor` | プレイヤーコントローラーにアクターを憑依させる |
 | `SetTimeScale` | アクティブなゲームワールドのグローバル時間スケールを設定 |
-| `QuitGame` | 実行中のゲームプロセスの正常終了をリクエスト |
+| `QuitGame` | 実行中のゲームプロセスの正常終了をリクエスト（`RuntimeActorManipulation` 必要）。PIE 実行中は PIE セッションを停止します。ゲームを実行していないエディタでは `ExecutionFailed` を返し、エディタは閉じません — `QuitGame` が終了させるのは実行中のゲームであってエディタではありません。エディタを閉じるには [`ShutdownEditor`](#uaipeditorworkspace)（`UAIP.Editor.Workspace.ShutdownEditor`）を使ってください。この場合、以前は何もせずに `Success: true` を返していました |
 | `ExecuteConsoleCommand` | アクティブなゲームワールドでコンソールコマンドを実行（`RuntimeExecCommand` 必要） |
 | 🆓 `GetConsoleVariable` | コンソール変数の値・型・ヘルプテキストを取得。機微な名前は not found 扱い（`RuntimeCVarRead` 必要） |
 | 🆓 `SearchConsoleVariables` | ワイルドカード（`*`）でコンソール変数を検索。`MaxResults` は既定 50・最大 200、機微な名前は除外 |
