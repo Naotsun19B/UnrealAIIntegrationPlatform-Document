@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1235 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1656 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1241 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1662 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -151,6 +151,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | partial (3/11) |
 | Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
 | Runtime SaveGame | `UAIP.Runtime.SaveGame` | 10 | — | — |
+| Runtime AI | `UAIP.Runtime.AI` | 6 | — | partial (5/6) |
 
 ---
 
@@ -306,7 +307,7 @@ Component classes are gated the same way but by a rule of their own, described i
 
 ## Choosing which play world a Runtime command acts on
 
-A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 49 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
+A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 55 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
 
 | Parameter | Type | Meaning |
 |---|---|---|
@@ -346,6 +347,7 @@ Two limits worth knowing:
 | `UAIP.Runtime.Input` | `InjectInputKey`, `InjectEnhancedInputAction`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `AddMappingContext`, `RemoveMappingContext`, `SetInputMode`, `FlushInput`, `DumpInputState`, `GetEnhancedInputActionValue` |
 | `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses`, `GrantAbility`, `RemoveAbility`, `ClearGrantedAbilities`, `ApplyEffect`, `RemoveEffect`, `ClearActiveEffects`, `SetAttributeValue`, `ResetAttributesToBase`, `SendGameplayEvent` |
 | `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`, `GetVariable`, `SetVariable`, `SetSystem` |
+| `UAIP.Runtime.AI` | `DumpAIPerceptionState`, `GetPerceivedActors`, `GetActorPerceivers`, `DumpAIPerceptionSystemState`, `ExplainSightPerception`, `DumpAIPerceptionSenseConfigs` |
 
 `CheckpointCapture` is the one entry above that does not resolve a world of its own: it is composed of `CaptureViewportImage` and `DumpWorldState`, and hands whatever target you name to both of them. That is what keeps the screenshot and the state dump inside one checkpoint describing the same world, instead of two worlds the engine happened to pick separately.
 
@@ -3834,6 +3836,210 @@ The game itself may read some of these without trouble — notably a long string
 | `UnsupportedOperation` | `ListSaveGameSlots` on a save game system that cannot list its slots |
 
 A failed command attaches a failure diagnostics artifact carrying `Command`, `FailedStage`, `Reason` (the cause, e.g. `SnapshotCorrupt`), `ErrorMessage` and what the failing step reported — the header fields for a header that could not be used, the reference paths for references that do not resolve, `RejectedValues` / `RejectedValueCount` for refused `Values`. Values stored in a save are never part of it.
+
+---
+
+## UAIP.Runtime.AI
+
+Observe the AI perception system of a running game: what one AI currently senses, which AIs sense a given actor, the state of the perception system itself, why sight does or does not see a target, and the values of the sense configurations. Every command only reads — nothing here changes what an AI perceives. Works in the editor while PIE is running, and in `-game` and packaged builds; no plugin requirement. All six commands accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on).
+
+**Capabilities.** All six require `RuntimeInspect` (DefaultAllow). `DumpAIPerceptionSenseConfigs` also requires `AIPerceptionConfigDump` (DefaultDenied), because it writes out the values of every sense configuration, including those of a project's own sense classes. A missing one is `CapabilityNotAvailable`. See [Safety & Capabilities](safety.md#runtime-ai-perception).
+
+**Perception exists only on the server.** AI controllers and the perception system live in a standalone or server world. In a networked PIE session, point these commands at the server with `TargetNetRole: "Server"` or `TargetPIEInstance`. Observing a client world still succeeds, but reports `Availability.State: "Unavailable"` with `Reason: "ClientWorld"` and lists the server side play worlds to retry against — see [When the perception system is unavailable](#when-the-perception-system-is-unavailable).
+
+### Perception state (5) — requires `RuntimeInspect`
+
+| Command | Description |
+|---|---|
+| 🆓 `DumpAIPerceptionState` | Everything one AI's perception component holds. `ActorIdentifier` names a pawn, an AI controller or another actor carrying a perception component (see [Finding the perception component](#finding-the-perception-component)). The artifact holds the configured senses (`Senses[]`), the `ListenerId` (when registered), the `TeamId` (`255` means no team), the `DominantSense`, every perceived actor with its stimuli (`Targets[]`) and `AgeUnitNote`. `MaxTargets` 1–4096 (default 256). Expired stimuli are left out unless `IncludeInactiveStimuli: true`; an actor whose stimuli are all expired is then neither listed nor counted. The response carries `ListenerRegistered`, `TargetCount`, `TargetsTotalCount` and `TargetsTruncated` |
+| 🆓 `GetPerceivedActors` | The actors one AI senses right now (`Mode: "Current"`, the default) or senses and still remembers after losing them (`Mode: "Known"`), matched ignoring case. `Sense` restricts the result to one sense configured on the component, given by its short name (`Sight`, ignoring case) or its class path (exact); the state is then judged from that sense alone. A name that matches none of the configured senses, or more than one, is `InvalidParams`, and the message lists the senses that are configured. `HostileOnly: true` keeps only the actors the engine recorded as hostile. `MaxActors` 1–4096 (default 256). The response carries the first 50 entries of `Actors[]` (`Name`, `Label`, `Path`, `Senses[]`, `IsHostile`), `ActorsTotalCount`, `ActorsTruncated`, `Mode` and, when given, `Sense`; the artifact holds every actor. A returned `Name` can be passed back as `ActorIdentifier`, unless another actor's label happens to be the same string |
+| 🆓 `GetActorPerceivers` | The other way round: which AIs sense the actor `ActorIdentifier`. The actor needs no perception component of its own. `Perceivers[]` lists each perceiving component (`ComponentOwner`) with the stimuli it holds for this actor; expired stimuli are always left out. `Source` describes the actor as a stimulus source: `ConfiguredOnSourceComponent[]` (the stimuli source components on it, with `AutoRegister` and the senses they register as), `ObservedBySight[]` (per sight implementation running in the world, whether the actor is registered as a sight target; omitted while the perception system is unavailable) and `OtherSenses: "Unknown"` (whether the actor is registered with other senses is not readable). `MaxPerceivers` 1–4096 (default 256). The response carries the first 50 perceivers, `PerceiversTotalCount` and `PerceiversTruncated`; the artifact holds every one |
+| 🆓 `DumpAIPerceptionSystemState` | The perception system of the world as a whole. The response carries `HasBegunPlay`, `HasAuthGameMode`, `ComponentsWithValidListenerId` (an approximation: components that hold a listener id), `SightStatistics[]` (per sight implementation: `ObservedTargetCount`, `QueriesInRangeCount`, `QueriesOutOfRangeCount`, `QueriesPendingCount`), `ComponentCount`, `ComponentsTotalCount` and `ComponentsTruncated`. The artifact adds `PerceptionAgingRate`, `Senses[]` (each sense with `IsInstantiated` — configured senses that were never instantiated are listed too) and `Components[]` (each perception component with `ListenerRegistered` and `EnabledSenses[]`). `MaxComponents` 1–4096 (default 256) |
+| 🆓 `ExplainSightPerception` | Why sight does or does not see `TargetIdentifier` from `ObserverIdentifier`, as 14 ordered steps. The target needs no perception component. The response and the artifact carry the same object. The explanation is recomputed from the current state and is **not authoritative** — see [Reading ExplainSightPerception](#reading-explainsightperception) |
+
+### Sense configuration values (1) — requires `RuntimeInspect` and `AIPerceptionConfigDump`
+
+| Command | Description |
+|---|---|
+| `DumpAIPerceptionSenseConfigs` | The value of every property of every sense configuration on one AI's perception component, the configurations of a project's own sense classes included. The response carries `SenseCount` and `Truncated`; the values are in the artifact's `Senses[]` — see [Values in DumpAIPerceptionSenseConfigs](#values-in-dumpaiperceptionsenseconfigs). Not affected by whether the perception system is available. ⚠️ The artifact stays after `AIPerceptionConfigDump` is taken away — see [Safety & Capabilities](safety.md#runtime-ai-perception) |
+
+#### Parameters
+
+| Parameter | Commands | Meaning |
+|---|---|---|
+| `ActorIdentifier` (required) | `DumpAIPerceptionState`, `GetPerceivedActors`, `DumpAIPerceptionSenseConfigs` | Label or object name of the pawn, AI controller or other actor whose perception component is read |
+| `ActorIdentifier` (required) | `GetActorPerceivers` | Label or object name of the perceived actor |
+| `ObserverIdentifier`, `TargetIdentifier` (both required) | `ExplainSightPerception` | Label or object name of the observing actor (found like `ActorIdentifier`) and of the actor whose visibility is explained |
+| `MaxTargets` / `MaxActors` / `MaxPerceivers` / `MaxComponents` | one each | Upper bound on the main list. An integer from 1 to 4096; default 256 |
+| `IncludeInactiveStimuli` | `DumpAIPerceptionState` | Boolean, default `false`. `true` also lists expired stimuli |
+| `Mode` | `GetPerceivedActors` | `"Current"` (default) or `"Known"`, ignoring case |
+| `Sense` | `GetPerceivedActors` | Short name of a sense or its class path. Up to 256 characters from `A-Z`, `a-z`, `0-9` and `_ . / : -` |
+| `HostileOnly` | `GetPerceivedActors` | Boolean, default `false` |
+
+Identifiers are 1 to 256 characters without control characters. Booleans must be JSON booleans and the limits JSON integers; anything else, an unknown key, or a limit outside 1–4096 is `InvalidParams`. Parameters are checked before the play world is looked up, so a malformed request is refused even when PIE is not running.
+
+#### Finding the perception component
+
+`DumpAIPerceptionState`, `GetPerceivedActors`, `ExplainSightPerception` (observer) and `DumpAIPerceptionSenseConfigs` accept the pawn, its AI controller, or any other actor that carries a perception component. The component is looked for on the named actor and on the controller or pawn it is paired with; when both carry one, the controller's component is used. The response reports the one used in `ComponentOwner` (`Name`, `Path`, `ComponentPath`) and lists any others in `OtherComponentsFound[]`, with `OtherComponentsFoundTotalCount` and `OtherComponentsFoundTruncated`. An actor whose pair has no perception component at all is `NotFound`.
+
+#### Fields in every response
+
+| Field | Meaning |
+|---|---|
+| `CapturedAt` | When the state was read (ISO 8601, UTC) |
+| `Frame` | The engine frame number at that moment |
+| `NetMode` | Net mode of the observed world |
+| `WorldContext` | The world context the command read |
+| `PIEInstance` | PIE instance of the observed world; omitted outside PIE |
+| `Availability` | `State`: `Available` or `Unavailable`. When unavailable, `Reason`, and for `ClientWorld` also `ServerCandidates[]` (`PIEInstance`, `NetMode`, `MapName`, `IsPrimaryPIEInstance` of each server side play world) |
+| `DegradedSections[]` | Parts of the result that could not be filled, each with `Section` and `Cause` (`PerceptionSystemUnavailable` or `UnreadableField`). An empty array means nothing was left out |
+| `Limitations[]` | Caveats about what was returned, each with `Code` and sometimes `Detail` |
+
+`Limitations[].Code` takes one of:
+
+| `Code` | Meaning |
+|---|---|
+| `UnreadableField` | An engine value could not be read on this engine version. `Detail` names the field; the part that depends on it is left out |
+| `UnknownStimulusExcludedFromMode` | A stimulus whose state could not be classified exists; `GetPerceivedActors` never matches it to a `Mode` |
+| `StaleTargetsSkipped` | Entries for actors that no longer exist were skipped. `Detail` is the number skipped |
+| `CustomSightImplementation` | Sight is not implemented by the engine's own sight class. `Detail` names the class in use |
+| `RecomputedFromCurrentState` | `ExplainSightPerception` only, always present: the explanation is recomputed from the current state |
+
+#### When the perception system is unavailable
+
+A world without a usable perception system is not an error. The command succeeds, `Availability.State` is `Unavailable` and `Availability.Reason` says why:
+
+| `Reason` | Meaning |
+|---|---|
+| `ClientWorld` | The world is a client; AI exists only on the server. `ServerCandidates[]` lists the server side play worlds |
+| `AISystemDisabled` | The world settings disable AI, so the world has no AI system |
+| `CustomAISystem` | The world's AI system is not the engine's standard one, so its perception system cannot be reached |
+| `Unknown` | No AI system or no perception system, for a reason not listed above |
+
+The parts that need the perception system are then listed in `DegradedSections[]` and left out of the result:
+
+| Command | `Section` (cause `PerceptionSystemUnavailable`) | `Section` (cause `UnreadableField`) |
+|---|---|---|
+| `DumpAIPerceptionState` | `Targets`, `Senses` | `Targets` |
+| `GetPerceivedActors` | `Actors` | `Actors` |
+| `GetActorPerceivers` | `Perceivers`, `Source.ObservedBySight` | `Perceivers` |
+| `DumpAIPerceptionSystemState` | `Senses`, `SightStatistics`, `ComponentsWithValidListenerId` | — |
+| `ExplainSightPerception` | — (always empty; the first step fails instead) | — |
+| `DumpAIPerceptionSenseConfigs` | — (always empty; not affected) | — |
+
+`ListenerRegistered` and the `IsInstantiated` of each sense are written only while the perception system is available. The actor and component checks come first, so a missing actor is still `NotFound` in a world without a perception system.
+
+#### Lists, counts and missing values
+
+- **A value that is not there is left out, not written as `null`.** That includes the engine's "never" sentinels (for example a location that was never set) and non-finite numbers. The one `null` in this domain is `Diverged` in `ExplainSightPerception`.
+- **Lists are ordered** by `Name` (ignoring case) and then `Path`; components by owner name and then `ComponentPath`. Sense configurations keep the order they are configured in.
+- **Inner lists** (stimuli of a target, senses of an actor, other components and so on) hold at most 64 entries and come with `<Key>TotalCount` and `<Key>Truncated`.
+- **`<Key>Truncated` means the `Max*` limit cut the list**, nothing else. `GetPerceivedActors` and `GetActorPerceivers` return only the first 50 entries in the response even when nothing was cut; the artifact holds every captured entry. So `ActorsTruncated: false` with 50 entries in `Actors[]` and `ActorsTotalCount: 120` means: compare the count with the array length, and read the artifact for the rest.
+
+#### Stimuli
+
+Each stimulus carries `SenseClass` (and `SenseName` when the sense is instantiated), `StimulusState`, `Strength`, `Age`, `ExpirationAge`, `StimulusLocation`, `ReceiverLocation`, `Tag`, `WasSuccessfullySensed` and `IsExpired`, each left out when there is no value.
+
+| `StimulusState` | Meaning |
+|---|---|
+| `Sensing` | Sensed right now |
+| `LostButRemembered` | Lost, but not expired yet |
+| `Expired` | Past its maximum age. Listed only with `IncludeInactiveStimuli: true` |
+| `Unknown` | Could not be classified. Kept and counted, never matched by `Mode`, and flagged with `UnknownStimulusExcludedFromMode` |
+
+Things that look like bugs but are how the engine works:
+
+- **A sense that reports events (hearing, for example) stays `Sensing` until the stimulus expires.** Such a sense never reports "lost" on its own.
+- **A maximum age of 0 — the default for a sense configuration — never expires**, so the stimulus stays `LostButRemembered` indefinitely.
+- **Ages advance in steps.** The perception system ages stimuli once every `PerceptionAgingRate` seconds (0.3 by default), so `Age` and `ExpirationAge` (game time seconds) can lag the real time since the stimulus by up to that interval. `AgeUnitNote` in the artifact says the same.
+- **With the AI system's forget-stale-actors option enabled, `Expired` never appears**: the engine removes an actor whose stimuli have all expired instead of keeping it as expired.
+
+#### Reading ExplainSightPerception
+
+The response is built from **the current state**: steps 1–9 read what the engine holds now, and steps 10–14 recompute the sight checks from the current configuration, positions and teams. It is **not the engine's own decision log** and can differ from what the engine decided at its last update — when the observer has moved since then, when the query has not been re-evaluated yet, when the trace runs asynchronously, or when the configuration was changed at run time. It is a diagnosis aid, not a verdict. `Limitations` always carries `RecomputedFromCurrentState`.
+
+`AlgorithmRevision` (an integer, currently `1`) identifies the way the steps are evaluated. It goes up whenever their meaning changes, so compare explanations only when it is the same. `EvaluationBasis` is always `"CurrentState"`.
+
+Each entry of `Steps[]` carries `Step`, `Basis` (`EngineState` or `Recomputed`), `Result` and, sometimes, `Detail`. All 14 steps are always present, in this order:
+
+| # | `Step` | `Basis` | Checks |
+|---:|---|---|---|
+| 1 | `PerceptionSystemAvailable` | `EngineState` | The world has a usable perception system |
+| 2 | `ListenerRegistered` | `EngineState` | The observer's perception component is registered as a listener |
+| 3 | `SightConfigured` | `EngineState` | The component has a sight configuration |
+| 4 | `SightEnabled` | `EngineState` | Sight is enabled on the component |
+| 5 | `SightInstantiated` | `EngineState` | The sight sense exists in the perception system |
+| 6 | `TargetIsNotSelf` | `EngineState` | The target is not the observer itself |
+| 7 | `DigestAvailable` | `EngineState` | The sight sense holds the observer's digested configuration |
+| 8 | `ObservedBySight` | `EngineState` | The target is registered as a sight target |
+| 9 | `QueryExists` | `EngineState` | A sight query for this observer and target exists |
+| 10 | `Affiliation` | `Recomputed` | The team attitude allows sensing the target |
+| 11 | `AutoSuccess` | `Recomputed` | The target is within the auto-success range of where it was last seen |
+| 12 | `Distance` | `Recomputed` | The target is within sight range |
+| 13 | `PeripheralAngle` | `Recomputed` | The target is within the peripheral vision angle |
+| 14 | `Occlusion` | `Recomputed` | Nothing blocks the line of sight |
+
+`Result` is `Pass`, `Fail`, `Skipped` (not evaluated because of an earlier result), `NotApplied` (the step does not apply) or `Delegated` (the target decides for itself). How the steps depend on each other:
+
+- Steps 1–8 stop at the first `Fail`; every step after it is `Skipped`.
+- When `QueryExists` fails, only `Affiliation` is still evaluated, as a candidate reason (team attitude is the usual reason a query is never created); the rest are `Skipped`.
+- When `QueryExists` passes, `Affiliation` is `Skipped` — the query exists, so the team attitude already let it be created — and steps 11–14 are evaluated.
+- `AutoSuccess` never fails. `Pass` makes the remaining steps `Skipped`; otherwise it is `NotApplied` (always, with the default configuration).
+- `Distance` uses the lose-sight radius when the engine last saw the target, the sight radius otherwise.
+- A `Fail` in `Distance` or `PeripheralAngle` makes `Occlusion` `Skipped`.
+- A target that implements the sight target interface decides its own visibility, so `Occlusion` is `Delegated` and its visibility function is not called.
+
+`QueryExists` adds `QueryList` (`SightQueriesInRange`, `SightQueriesOutOfRange` or `SightQueriesPending`), `Pending`, `LastSeenLocation`, `LastResult` (only when the query is not pending) and `AsynchronousTrace`. `Affiliation` adds `TeamAgent` (`Owner`, `BodyActor` or `None` — whose team was used). `Occlusion` adds `HitActor` when something blocks the line.
+
+Which fields are present:
+
+| Field | Present |
+|---|---|
+| `Observer`, `Target` (`Name`, `Label`, `Path`), `ComponentOwner`, `OtherComponentsFound[]` | Always |
+| `EvaluationBasis`, `AlgorithmRevision`, `Steps[]` | Always |
+| `Diverged` | Always. `true` or `false` when the recomputed result can be compared with the engine's last result; `null` when it cannot — an engine state step failed, the query is pending, or `Occlusion` is `Delegated` |
+| `DivergenceCandidates[]` | Always; has items only when `Diverged` is `true`. Possible items: `StaleListenerLocation`, `QueryNotYetReevaluated`, `AsynchronousTrace`, `ConfigChangedAtRuntime`, `CustomSightImplementation` |
+| `ConfigDigestMismatch[]` | Always; one `{Field, FromConfig, Digested}` per value that differs between the sight configuration and what the sight sense digested from it (`SightRadiusSq`, `LoseSightRadiusSq`, `NearClippingRadiusSq`, `PeripheralVisionAngleCos`, `PointOfViewBackwardOffset`, `AutoSuccessRangeSqFromLastSeenLocation`, `AffiliationFlags`) |
+| `ListenerRegistered` | When `ListenerRegistered` was evaluated |
+| `FirstFailingStep` | When a step failed. After a failed `QueryExists` it is `QueryExists`, and `Affiliation` is the candidate reason |
+| `SightConfigUsed` (`ConfigClass`, `ImplementationClass`, `OtherSightConfigs[]`) | When `SightConfigured` passed. The first sight configuration is used; the others are listed |
+| `EngineLastResult` | When `QueryExists` passed and the query is not pending |
+| `EngineConeCheck` | When `DigestAvailable` passed |
+
+When sight is not implemented by the engine's own sight class, `Limitations` carries `CustomSightImplementation` and the recomputed steps are only indicative. **A target whose sight target interface completes a pending visibility check on another thread is not supported**; what this command reports for such a target is not guaranteed.
+
+#### Values in DumpAIPerceptionSenseConfigs
+
+Each entry of `Senses[]` carries `SenseName` (when instantiated), `SenseClass`, `ConfigClass`, `IsEnabled`, `IsInstantiated` (only while the perception system is available), `Properties[]` (`Name`, `Type`, `Value`) and `Truncated`. Base class properties come first, each class in declaration order; editor-only properties are never listed. A value is written as:
+
+| Property | Written as |
+|---|---|
+| Number, boolean | The value. Floats that are not finite become the strings `"NaN"`, `"Infinity"` or `"-Infinity"` |
+| Enum | The entry name; the number when the value has no name |
+| Name, string, text | A string, cut at 1024 characters |
+| Struct | An object, one level deep. A struct nested further, or a struct inside a container, becomes `{"Type": "<type>"}` |
+| Array, set, map, fixed-size array | `{"Value": [...], "TotalCount": N, "Truncated": bool}` holding the first 32 elements; a map element is `[key, value]`; sets and maps keep their storage order |
+| Object, class, soft, weak, lazy or interface reference | The path as a string, `"None"` when empty. Nothing is ever loaded |
+| Delegate and other unsupported types | `{"Unsupported": "<type>"}` |
+
+At most 64 senses, 64 KiB per sense and 256 KiB in total. A sense that reaches its own budget keeps what fits and reports `Truncated: true`; once the total budget is used, the remaining senses are written as `Omitted: true` with only their identity. `SenseCount` in the response is the number of sense entries written, omitted ones included, and `Truncated` is `true` when any of these limits cut the dump.
+
+`DumpAIPerceptionState` lists the same configurations in its `Senses[]` with less detail: the values of engine-declared properties are shown (also on a project's own configuration class derived from one), while a property the project declared shows only `Name` and `Type`, without the `Value` key. Use `DumpAIPerceptionSenseConfigs` for those values.
+
+#### Errors
+
+| ErrorCode | When |
+|---|---|
+| `InvalidParams` | A parameter is missing, of the wrong type, out of range or unknown; `Sense` matches no configured sense or more than one; `TargetNetRole` / `TargetPIEInstance` cannot be honoured |
+| `NotAllowed` | No play world is running (`PIE is not running.`), or none matches `TargetNetRole` / `TargetPIEInstance` |
+| `NotFound` | No actor matches the identifier; the actor and the controller or pawn it is paired with have no perception component ("The actor has no AI perception component, and neither does the controller or pawn it is paired with."). For `ExplainSightPerception` the message starts with `The observer actor could not be resolved.` or `The target actor could not be resolved.`, and the component message names the observer actor |
+| `ExecutionFailed` | More than one actor matches the identifier; the artifact could not be written |
+| `CapabilityNotAvailable` | `RuntimeInspect`, or for `DumpAIPerceptionSenseConfigs` `AIPerceptionConfigDump`, is not granted |
+| `PolicyViolation` | The capability is denied by the safety policy |
+
+When the observed world is a client, an error message after the world was found ends with a note that AI exists only on the server and names the server side play worlds to retry with `TargetPIEInstance`.
+
+Every successful call saves exactly one JSON artifact; a failed call saves none.
 
 ---
 

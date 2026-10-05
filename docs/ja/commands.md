@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1235 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1656 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1241 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1662 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -151,6 +151,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | 一部（3/11） |
 | Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
 | Runtime SaveGame | `UAIP.Runtime.SaveGame` | 10 | — | — |
+| Runtime AI | `UAIP.Runtime.AI` | 6 | — | 一部（5/6） |
 
 ---
 
@@ -306,7 +307,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ## 実行時コマンドの対象プレイワールドを指定する
 
-ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 49 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
+ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 55 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
 
 | パラメータ | 型 | 意味 |
 |---|---|---|
@@ -346,6 +347,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | `UAIP.Runtime.Input` | `InjectInputKey`、`InjectEnhancedInputAction`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`AddMappingContext`、`RemoveMappingContext`、`SetInputMode`、`FlushInput`、`DumpInputState`、`GetEnhancedInputActionValue` |
 | `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`、`GrantAbility`、`RemoveAbility`、`ClearGrantedAbilities`、`ApplyEffect`、`RemoveEffect`、`ClearActiveEffects`、`SetAttributeValue`、`ResetAttributesToBase`、`SendGameplayEvent` |
 | `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`、`GetVariable`、`SetVariable`、`SetSystem` |
+| `UAIP.Runtime.AI` | `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs` |
 
 上の一覧のうち `CheckpointCapture` だけは、自分でワールドを解決しません。`CaptureViewportImage` と `DumpWorldState` を組み合わせたコマンドであり、指定された対象をそのまま両方へ引き渡します。これにより、1 つのチェックポイントに含まれるスクリーンショットと状態ダンプが、エンジンが別々に選んだ 2 つのワールドではなく、常に同じワールドを指すようになります。
 
@@ -3837,6 +3839,210 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 | `UnsupportedOperation` | スロットの一覧に対応していないセーブの仕組みで `ListSaveGameSlots` を呼んだ |
 
 失敗したコマンドは失敗診断の artifact を付けます。中身は `Command`・`FailedStage`・`Reason`（原因。例: `SnapshotCorrupt`）・`ErrorMessage` と、失敗した段階が報告した内容です（扱えなかったヘッダの各項目、解決できない参照のパス、拒否した `Values` の `RejectedValues` / `RejectedValueCount` など）。セーブに保存された値が含まれることはありません。
+
+---
+
+## UAIP.Runtime.AI
+
+実行中のゲームの AI 感知システム（AI Perception）を観測するコマンド群です。1 体の AI がいま何を感知しているか、ある Actor をどの AI が感知しているか、感知システム自体の状態、視覚がなぜ対象を見る／見ないのか、感覚設定の値を返します。どのコマンドも読むだけで、AI の感知内容を変えることはありません。エディタでは PIE の実行中に、また `-game` 起動やパッケージ版でも動作し、プラグインの依存はありません。6 つすべてが [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。
+
+**Capability。** 6 つすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`DumpAIPerceptionSenseConfigs` は、プロジェクト独自の感覚クラスのものを含めて感覚設定の値をすべて書き出すため、`AIPerceptionConfigDump`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-ai-の感知) を参照してください。
+
+**感知はサーバーにしかありません。** AI コントローラーと感知システムが存在するのはスタンドアロンかサーバーのワールドだけです。ネットワークプレイの PIE では `TargetNetRole: "Server"` または `TargetPIEInstance` でサーバーを指定してください。クライアントのワールドを観測してもコマンドは成功しますが、`Availability.State: "Unavailable"`・`Reason: "ClientWorld"` を返し、再実行先となるサーバー側のプレイワールドを列挙します — [感知システムが使えないとき](#感知システムが使えないとき) を参照してください。
+
+### 感知の状態（5）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `DumpAIPerceptionState` | 1 体の AI の感知コンポーネントが持つ内容をすべて返します。`ActorIdentifier` には Pawn・AI コントローラー・その他の感知コンポーネントを持つ Actor を指定します（[感知コンポーネントの探し方](#感知コンポーネントの探し方) を参照）。artifact には設定された感覚（`Senses[]`）・`ListenerId`（登録済みのとき）・`TeamId`（`255` はチームなし）・`DominantSense`・感知中の Actor とその刺激（`Targets[]`）・`AgeUnitNote` が入ります。`MaxTargets` は 1〜4096（既定 256）。期限切れの刺激は `IncludeInactiveStimuli: true` を指定しない限り除外し、その場合は刺激がすべて期限切れの Actor は一覧にも件数にも含めません。応答には `ListenerRegistered`・`TargetCount`・`TargetsTotalCount`・`TargetsTruncated` が入ります |
+| 🆓 `GetPerceivedActors` | 1 体の AI がいま感知している Actor（`Mode: "Current"`、既定）か、感知を失ってもまだ覚えている Actor を含めたもの（`Mode: "Known"`）を返します。`Mode` の大文字小文字は区別しません。`Sense` を指定すると、コンポーネントに設定された感覚の 1 つに絞り込み、状態もその感覚だけで判定します。指定は短い名前（`Sight` など。大文字小文字を区別しない）かクラスパス（完全一致）です。設定された感覚のどれにも一致しない、または複数に一致する名前は `InvalidParams` で、メッセージに設定されている感覚を列挙します。`HostileOnly: true` はエンジンが敵対と記録した Actor だけを残します。`MaxActors` は 1〜4096（既定 256）。応答には `Actors[]`（`Name`・`Label`・`Path`・`Senses[]`・`IsHostile`）の先頭 50 件・`ActorsTotalCount`・`ActorsTruncated`・`Mode`、指定したときは `Sense` が入り、artifact には全件が入ります。返った `Name` はそのまま `ActorIdentifier` に渡せます。ただし別の Actor のラベルが同じ文字列の場合は除きます |
+| 🆓 `GetActorPerceivers` | 逆方向の問い合わせです。`ActorIdentifier` の Actor をどの AI が感知しているかを返します。この Actor 自身は感知コンポーネントを持っていなくて構いません。`Perceivers[]` には感知しているコンポーネント（`ComponentOwner`）ごとに、その Actor について持っている刺激が入ります。期限切れの刺激は常に除外します。`Source` は刺激の発生源としての Actor を表します。`ConfiguredOnSourceComponent[]`（Actor が持つ刺激源コンポーネントと、その `AutoRegister`・登録先の感覚）、`ObservedBySight[]`（ワールドで動いている視覚の実装ごとに、Actor が視覚の対象として登録されているか。感知システムが使えない間は省略）、`OtherSenses: "Unknown"`（他の感覚に登録されているかは読み取れません）です。`MaxPerceivers` は 1〜4096（既定 256）。応答には先頭 50 件・`PerceiversTotalCount`・`PerceiversTruncated` が入り、artifact には全件が入ります |
+| 🆓 `DumpAIPerceptionSystemState` | ワールド全体の感知システムを返します。応答には `HasBegunPlay`・`HasAuthGameMode`・`ComponentsWithValidListenerId`（近似値。リスナー ID を持つコンポーネントの数）・`SightStatistics[]`（視覚の実装ごとの `ObservedTargetCount`・`QueriesInRangeCount`・`QueriesOutOfRangeCount`・`QueriesPendingCount`）・`ComponentCount`・`ComponentsTotalCount`・`ComponentsTruncated` が入ります。artifact にはさらに `PerceptionAgingRate`・`Senses[]`（感覚ごとの `IsInstantiated`。設定されたが生成されていない感覚も含む）・`Components[]`（感知コンポーネントごとの `ListenerRegistered` と `EnabledSenses[]`）が入ります。`MaxComponents` は 1〜4096（既定 256） |
+| 🆓 `ExplainSightPerception` | `ObserverIdentifier` から見て `TargetIdentifier` が視覚で見える／見えない理由を、順序付きの 14 段階で返します。対象は感知コンポーネントを持っていなくて構いません。応答と artifact は同じオブジェクトです。説明は現在の状態から計算し直したもので、**エンジンの判定そのものではありません** — [ExplainSightPerception の読み方](#explainsightperception-の読み方) を参照してください |
+
+### 感覚設定の値（1）— `RuntimeInspect` と `AIPerceptionConfigDump` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `DumpAIPerceptionSenseConfigs` | 1 体の AI の感知コンポーネントにある感覚設定すべてについて、全プロパティの値を返します。プロジェクト独自の感覚クラスの設定も含みます。応答には `SenseCount` と `Truncated` が入り、値は artifact の `Senses[]` に入ります — [DumpAIPerceptionSenseConfigs の値](#dumpaiperceptionsenseconfigs-の値) を参照してください。感知システムが使えるかどうかの影響を受けません。⚠️ artifact は `AIPerceptionConfigDump` を外した後も残ります — [安全性と Capability](safety.md#runtime-ai-の感知) を参照してください |
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `ActorIdentifier`（必須） | `DumpAIPerceptionState`、`GetPerceivedActors`、`DumpAIPerceptionSenseConfigs` | 感知コンポーネントを読む Pawn・AI コントローラー・その他の Actor のラベルまたはオブジェクト名 |
+| `ActorIdentifier`（必須） | `GetActorPerceivers` | 感知される側の Actor のラベルまたはオブジェクト名 |
+| `ObserverIdentifier`、`TargetIdentifier`（どちらも必須） | `ExplainSightPerception` | 見る側の Actor（`ActorIdentifier` と同じ方法で探します）と、見えるかを説明する Actor のラベルまたはオブジェクト名 |
+| `MaxTargets` / `MaxActors` / `MaxPerceivers` / `MaxComponents` | それぞれ 1 つ | 主となる一覧の上限。1〜4096 の整数で、既定 256 |
+| `IncludeInactiveStimuli` | `DumpAIPerceptionState` | 真偽値、既定 `false`。`true` で期限切れの刺激も返します |
+| `Mode` | `GetPerceivedActors` | `"Current"`（既定）または `"Known"`。大文字小文字は区別しません |
+| `Sense` | `GetPerceivedActors` | 感覚の短い名前かクラスパス。`A-Z`・`a-z`・`0-9`・`_ . / : -` からなる 256 文字以内 |
+| `HostileOnly` | `GetPerceivedActors` | 真偽値、既定 `false` |
+
+識別子は制御文字を含まない 1〜256 文字です。真偽値は JSON の真偽値、上限値は JSON の整数でなければならず、それ以外の型・未知のキー・1〜4096 の範囲外の上限値は `InvalidParams` です。パラメータはプレイワールドを探す前に検査するため、PIE が動いていなくても不正な要求は拒否されます。
+
+#### 感知コンポーネントの探し方
+
+`DumpAIPerceptionState`・`GetPerceivedActors`・`ExplainSightPerception`（見る側）・`DumpAIPerceptionSenseConfigs` には、Pawn・その AI コントローラー・感知コンポーネントを持つその他の Actor のどれを指定しても構いません。コンポーネントは指定した Actor と、それと対になるコントローラーまたは Pawn から探し、両方が持っている場合はコントローラー側を使います。使ったコンポーネントは応答の `ComponentOwner`（`Name`・`Path`・`ComponentPath`）で示し、他に見つかったものは `OtherComponentsFound[]` に `OtherComponentsFoundTotalCount`・`OtherComponentsFoundTruncated` と共に挙げます。対のどちらも感知コンポーネントを持っていない場合は `NotFound` です。
+
+#### すべての応答に入るフィールド
+
+| フィールド | 意味 |
+|---|---|
+| `CapturedAt` | 状態を読んだ時刻（ISO 8601、UTC） |
+| `Frame` | そのときのエンジンのフレーム番号 |
+| `NetMode` | 観測したワールドのネットモード |
+| `WorldContext` | コマンドが読んだワールドコンテキスト |
+| `PIEInstance` | 観測したワールドの PIE インスタンス。PIE 以外では省略 |
+| `Availability` | `State` は `Available` か `Unavailable`。使えないときは `Reason` が付き、`ClientWorld` のときはさらに `ServerCandidates[]`（サーバー側プレイワールドごとの `PIEInstance`・`NetMode`・`MapName`・`IsPrimaryPIEInstance`）が付きます |
+| `DegradedSections[]` | 埋められなかった部分。各要素は `Section` と `Cause`（`PerceptionSystemUnavailable` または `UnreadableField`）を持ちます。空の配列なら欠けた部分はありません |
+| `Limitations[]` | 返した内容についての注意事項。各要素は `Code` と、場合によって `Detail` を持ちます |
+
+`Limitations[].Code` は次のいずれかです。
+
+| `Code` | 意味 |
+|---|---|
+| `UnreadableField` | このエンジンバージョンではエンジン側の値を読めませんでした。`Detail` がそのフィールドを示し、それに依存する部分は省きます |
+| `UnknownStimulusExcludedFromMode` | 状態を分類できない刺激があります。`GetPerceivedActors` はこれをどの `Mode` にも一致させません |
+| `StaleTargetsSkipped` | もう存在しない Actor の項目を飛ばしました。`Detail` は飛ばした件数です |
+| `CustomSightImplementation` | 視覚がエンジン標準の視覚クラスで実装されていません。`Detail` が使われているクラスを示します |
+| `RecomputedFromCurrentState` | `ExplainSightPerception` のみで、常に付きます。説明が現在の状態から計算し直したものであることを示します |
+
+#### 感知システムが使えないとき
+
+使える感知システムが無いワールドはエラーになりません。コマンドは成功し、`Availability.State` が `Unavailable`、`Availability.Reason` がその理由を示します。
+
+| `Reason` | 意味 |
+|---|---|
+| `ClientWorld` | クライアントのワールドです。AI はサーバーにしかありません。`ServerCandidates[]` がサーバー側のプレイワールドを列挙します |
+| `AISystemDisabled` | ワールド設定で AI が無効になっており、AI システムがありません |
+| `CustomAISystem` | ワールドの AI システムがエンジン標準のものではなく、その感知システムに届きません |
+| `Unknown` | 上記以外の理由で、AI システムまたは感知システムがありません |
+
+このとき感知システムに依存する部分は `DegradedSections[]` に挙げ、結果から省きます。
+
+| コマンド | `Section`（原因 `PerceptionSystemUnavailable`） | `Section`（原因 `UnreadableField`） |
+|---|---|---|
+| `DumpAIPerceptionState` | `Targets`、`Senses` | `Targets` |
+| `GetPerceivedActors` | `Actors` | `Actors` |
+| `GetActorPerceivers` | `Perceivers`、`Source.ObservedBySight` | `Perceivers` |
+| `DumpAIPerceptionSystemState` | `Senses`、`SightStatistics`、`ComponentsWithValidListenerId` | — |
+| `ExplainSightPerception` | —（常に空。代わりに最初の段階が失敗します） | — |
+| `DumpAIPerceptionSenseConfigs` | —（常に空。影響を受けません） | — |
+
+`ListenerRegistered` と各感覚の `IsInstantiated` は、感知システムが使えるときだけ書き出します。Actor とコンポーネントの確認が先に行われるため、感知システムの無いワールドでも、存在しない Actor は `NotFound` になります。
+
+#### 一覧・件数・値の無い項目
+
+- **値が無い項目は省略し、`null` にはしません。** エンジンの「未設定」を表す番兵値（一度も設定されていない位置など）や、有限でない数値も同様です。このドメインで `null` になるのは `ExplainSightPerception` の `Diverged` だけです。
+- **一覧の並び順**は `Name`（大文字小文字を区別しない）、次に `Path` です。コンポーネントは所有者の名前、次に `ComponentPath` の順です。感覚設定は設定された順のままです。
+- **内側の一覧**（対象ごとの刺激、Actor ごとの感覚、他に見つかったコンポーネントなど）は最大 64 件で、`<Key>TotalCount` と `<Key>Truncated` が付きます。
+- **`<Key>Truncated` は `Max*` の上限で一覧が切られたことだけを表します。** `GetPerceivedActors` と `GetActorPerceivers` は、何も切られていなくても応答には先頭 50 件しか入れません。取得した全件は artifact に入ります。たとえば `ActorsTruncated: false` で `Actors[]` が 50 件、`ActorsTotalCount: 120` なら、件数と配列の長さを比べ、残りは artifact から読んでください。
+
+#### 刺激
+
+刺激ごとに `SenseClass`（感覚が生成されていれば `SenseName` も）・`StimulusState`・`Strength`・`Age`・`ExpirationAge`・`StimulusLocation`・`ReceiverLocation`・`Tag`・`WasSuccessfullySensed`・`IsExpired` が入ります。値が無い項目は省略します。
+
+| `StimulusState` | 意味 |
+|---|---|
+| `Sensing` | いま感知している |
+| `LostButRemembered` | 感知を失ったが、まだ期限切れではない |
+| `Expired` | 最大経過時間を過ぎた。`IncludeInactiveStimuli: true` のときだけ返します |
+| `Unknown` | 分類できない。一覧と件数には含めますが、どの `Mode` にも一致させず、`UnknownStimulusExcludedFromMode` を付けます |
+
+不具合に見えるがエンジンの仕様どおりのもの:
+
+- **出来事を通知する感覚（聴覚など）は、刺激が期限切れになるまで `Sensing` のままです。** こうした感覚は自分から「失った」と通知しません。
+- **最大経過時間が 0（感覚設定の既定値）の刺激は期限切れになりません。** そのため `LostButRemembered` のまま残り続けます。
+- **経過時間は段階的に進みます。** 感知システムが刺激の経過時間を進めるのは `PerceptionAgingRate` 秒（既定 0.3 秒）ごとなので、`Age` と `ExpirationAge`（ゲーム時間の秒）は、刺激からの実際の経過時間より最大でその間隔ぶん遅れることがあります。artifact の `AgeUnitNote` も同じことを述べています。
+- **AI システムの「古い Actor を忘れる」設定が有効な場合、`Expired` は現れません。** エンジンは刺激がすべて期限切れになった Actor を、期限切れとして残さずに取り除きます。
+
+#### ExplainSightPerception の読み方
+
+応答は**現在の状態**から作ります。1〜9 段階はエンジンがいま持っている状態を読み、10〜14 段階は現在の設定・位置・チームから視覚の判定を計算し直します。これは**エンジン自身の判定記録ではなく**、エンジンが最後に更新したときの判定と食い違うことがあります — その後に見る側が動いた、クエリがまだ再評価されていない、トレースが非同期で走っている、実行中に設定が変わった、といった場合です。判定そのものではなく、診断の手掛かりとして使ってください。`Limitations` には常に `RecomputedFromCurrentState` が付きます。
+
+`AlgorithmRevision`（整数。現在は `1`）は段階の評価方法を識別します。段階の意味が変わるたびに上がるので、説明どうしを比べるのはこの値が同じときだけにしてください。`EvaluationBasis` は常に `"CurrentState"` です。
+
+`Steps[]` の各要素は `Step`・`Basis`（`EngineState` または `Recomputed`）・`Result`、場合によって `Detail` を持ちます。14 段階すべてが常にこの順で入ります。
+
+| # | `Step` | `Basis` | 確認する内容 |
+|---:|---|---|---|
+| 1 | `PerceptionSystemAvailable` | `EngineState` | ワールドに使える感知システムがある |
+| 2 | `ListenerRegistered` | `EngineState` | 見る側の感知コンポーネントがリスナーとして登録されている |
+| 3 | `SightConfigured` | `EngineState` | コンポーネントに視覚の設定がある |
+| 4 | `SightEnabled` | `EngineState` | コンポーネントで視覚が有効になっている |
+| 5 | `SightInstantiated` | `EngineState` | 感知システムに視覚の感覚が生成されている |
+| 6 | `TargetIsNotSelf` | `EngineState` | 対象が見る側自身ではない |
+| 7 | `DigestAvailable` | `EngineState` | 視覚の感覚が、見る側の設定を取り込んだもの（ダイジェスト）を持っている |
+| 8 | `ObservedBySight` | `EngineState` | 対象が視覚の対象として登録されている |
+| 9 | `QueryExists` | `EngineState` | この見る側と対象の組の視覚クエリがある |
+| 10 | `Affiliation` | `Recomputed` | チームの関係が対象の感知を許している |
+| 11 | `AutoSuccess` | `Recomputed` | 対象が最後に見えた位置からの自動成功範囲内にいる |
+| 12 | `Distance` | `Recomputed` | 対象が視覚の範囲内にいる |
+| 13 | `PeripheralAngle` | `Recomputed` | 対象が周辺視野角の内側にいる |
+| 14 | `Occlusion` | `Recomputed` | 視線を遮るものがない |
+
+`Result` は `Pass`・`Fail`・`Skipped`（前の段階の結果により評価しなかった）・`NotApplied`（その段階が当てはまらない）・`Delegated`（対象が自分で判断する）のいずれかです。段階どうしの関係は次のとおりです。
+
+- 1〜8 段階は最初の `Fail` で止まり、それ以降はすべて `Skipped` になります。
+- `QueryExists` が失敗した場合は、候補となる理由として `Affiliation` だけを評価し（クエリが作られない理由はたいていチームの関係です）、残りは `Skipped` です。
+- `QueryExists` が通った場合は、クエリがある時点でチームの関係はすでに作成を許しているので `Affiliation` は `Skipped` になり、11〜14 段階を評価します。
+- `AutoSuccess` は失敗しません。`Pass` なら残りの段階は `Skipped` になり、そうでなければ `NotApplied` です（既定の設定では常に `NotApplied`）。
+- `Distance` は、エンジンが前回対象を見ていた場合は視覚を失う半径を、そうでなければ視覚の半径を使います。
+- `Distance` か `PeripheralAngle` が `Fail` なら `Occlusion` は `Skipped` です。
+- 視覚対象のインターフェースを実装した対象は自分で見えるかを判断するため、`Occlusion` は `Delegated` になり、その判定関数は呼びません。
+
+`QueryExists` には `QueryList`（`SightQueriesInRange`・`SightQueriesOutOfRange`・`SightQueriesPending` のいずれか）・`Pending`・`LastSeenLocation`・`LastResult`（クエリが保留中でないときだけ）・`AsynchronousTrace` が付きます。`Affiliation` には `TeamAgent`（`Owner`・`BodyActor`・`None` のいずれか。どのチームを使ったか）が付きます。`Occlusion` には、視線を遮るものがあれば `HitActor` が付きます。
+
+各フィールドが入る条件:
+
+| フィールド | 入る条件 |
+|---|---|
+| `Observer`、`Target`（`Name`・`Label`・`Path`）、`ComponentOwner`、`OtherComponentsFound[]` | 常に |
+| `EvaluationBasis`、`AlgorithmRevision`、`Steps[]` | 常に |
+| `Diverged` | 常に。計算し直した結果をエンジンの前回の結果と比べられるときは `true` か `false`、比べられないとき（エンジン状態の段階が失敗した、クエリが保留中、`Occlusion` が `Delegated`）は `null` |
+| `DivergenceCandidates[]` | 常に。要素が入るのは `Diverged` が `true` のときだけです。入りうる要素: `StaleListenerLocation`・`QueryNotYetReevaluated`・`AsynchronousTrace`・`ConfigChangedAtRuntime`・`CustomSightImplementation` |
+| `ConfigDigestMismatch[]` | 常に。視覚の設定と、視覚の感覚がそれを取り込んだ値とで食い違う項目ごとに `{Field, FromConfig, Digested}` が 1 つ入ります（`SightRadiusSq`・`LoseSightRadiusSq`・`NearClippingRadiusSq`・`PeripheralVisionAngleCos`・`PointOfViewBackwardOffset`・`AutoSuccessRangeSqFromLastSeenLocation`・`AffiliationFlags`） |
+| `ListenerRegistered` | `ListenerRegistered` 段階を評価したとき |
+| `FirstFailingStep` | 失敗した段階があるとき。`QueryExists` が失敗した場合は `QueryExists` で、`Affiliation` がその候補となる理由です |
+| `SightConfigUsed`（`ConfigClass`・`ImplementationClass`・`OtherSightConfigs[]`） | `SightConfigured` が通ったとき。最初の視覚設定を使い、他は一覧に挙げます |
+| `EngineLastResult` | `QueryExists` が通り、クエリが保留中でないとき |
+| `EngineConeCheck` | `DigestAvailable` が通ったとき |
+
+視覚がエンジン標準の視覚クラスで実装されていない場合は、`Limitations` に `CustomSightImplementation` が付き、計算し直した段階は目安にとどまります。**視覚対象のインターフェースが、保留中の見え方の判定を別スレッドで完了させる対象には対応していません。** そのような対象についてこのコマンドが返す内容は保証されません。
+
+#### DumpAIPerceptionSenseConfigs の値
+
+`Senses[]` の各要素は `SenseName`（生成されているとき）・`SenseClass`・`ConfigClass`・`IsEnabled`・`IsInstantiated`（感知システムが使えるときだけ）・`Properties[]`（`Name`・`Type`・`Value`）・`Truncated` を持ちます。プロパティは基底クラスのものが先で、各クラス内は宣言順です。エディタ専用のプロパティは挙げません。値は次の形で書き出します。
+
+| プロパティ | 書き出し方 |
+|---|---|
+| 数値、真偽値 | 値そのもの。有限でない浮動小数点数は文字列 `"NaN"`・`"Infinity"`・`"-Infinity"` |
+| 列挙型 | 項目名。名前の無い値は数値 |
+| Name、文字列、テキスト | 文字列。1024 文字で切り詰め |
+| 構造体 | 1 階層だけ展開したオブジェクト。それより深い構造体や、コンテナ要素としての構造体は `{"Type": "<型>"}` |
+| 配列、Set、Map、固定長配列 | 先頭 32 要素を持つ `{"Value": [...], "TotalCount": N, "Truncated": bool}`。Map の要素は `[キー, 値]`、Set と Map は格納順 |
+| オブジェクト・クラス・ソフト・ウィーク・レイジー・インターフェースの参照 | パスの文字列。空なら `"None"`。何も読み込みません |
+| デリゲートなど対応しない型 | `{"Unsupported": "<型>"}` |
+
+上限は感覚 64 個、感覚ごとに 64 KiB、合計 256 KiB です。自分の上限に達した感覚は収まった分を残して `Truncated: true` を返し、合計の上限を使い切った後の感覚は識別情報だけを持つ `Omitted: true` として書き出します。応答の `SenseCount` は書き出した感覚の数（`Omitted` のものを含む）で、`Truncated` はこれらの上限のどれかでダンプが切られたときに `true` です。
+
+`DumpAIPerceptionState` も同じ設定を `Senses[]` に、より簡略な形で挙げます。エンジンが宣言したプロパティは値を示し（それを継承したプロジェクト独自の設定クラスでも同様）、プロジェクトが宣言したプロパティは `Name` と `Type` だけで `Value` キーを持ちません。その値は `DumpAIPerceptionSenseConfigs` で読んでください。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータが欠けている・型が違う・範囲外・未知のキー。`Sense` が設定された感覚のどれにも一致しない、または複数に一致する。`TargetNetRole` / `TargetPIEInstance` を満たせない |
+| `NotAllowed` | プレイワールドが動いていない（`PIE is not running.`）、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い |
+| `NotFound` | 識別子に一致する Actor が無い。Actor とそれと対になるコントローラーまたは Pawn のどれも感知コンポーネントを持っていない（"The actor has no AI perception component, and neither does the controller or pawn it is paired with."）。`ExplainSightPerception` ではメッセージが `The observer actor could not be resolved.` または `The target actor could not be resolved.` で始まり、コンポーネントのメッセージは見る側の Actor を指します |
+| `ExecutionFailed` | 識別子に一致する Actor が複数ある。artifact を書き出せなかった |
+| `CapabilityNotAvailable` | `RuntimeInspect`、または `DumpAIPerceptionSenseConfigs` の場合は `AIPerceptionConfigDump` が付与されていない |
+| `PolicyViolation` | Capability が安全ポリシーで拒否されている |
+
+観測したワールドがクライアントの場合、ワールドを見つけた後のエラーメッセージの末尾に、AI はサーバーにしかないことと、`TargetPIEInstance` で再実行する先のサーバー側プレイワールドが付きます。
+
+成功した呼び出しは JSON の artifact をちょうど 1 つ保存し、失敗した呼び出しは何も保存しません。
 
 ---
 

@@ -180,7 +180,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `AssetMutate` | 既存アセットのプロパティ変更 |
 | `AssetWindowControl` | アセットエディタの開閉 |
 | `PIEControl` | PIE セッション制御 — `StartPIE`、`StopPIE`、`PausePIE`、`ResumePIE`、`LoadMap` |
-| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot` |
+| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot`、および AI の感知を観測する 6 コマンド `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`（最後の 1 つは `AIPerceptionConfigDump` も必要。[Runtime AI の感知](#runtime-ai-の感知) を参照） |
 | `RuntimeCapture` | ランタイムキャプチャ — `CaptureViewportImage`、`CheckpointCapture` |
 | `RuntimeExecution` | PIE または Standalone での機能テスト・Automation Test の実行 |
 | `RuntimeGASInspect` 🧩 | PIE 中の GAS 状態読み取り — `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`（`GameplayAbilities` プラグイン必須） |
@@ -554,6 +554,29 @@ MaxSaveFileBytes=67108864
 | `MaxSaveFileBytes` | `67108864`（64 MiB） | コマンドが読むセーブファイルの最大バイト数。範囲は `1048576`（1 MiB）〜`1073741824`（1 GiB）。超えるファイルは、`ListSaveGameSlots` と `GetSaveGameInfo` では `TooLarge` として報告し、それ以外のコマンドでは `NotAllowed` で拒否します（`SkipValidation` でも省けません）。`ExpectedHash` を渡さずにスロットを置き換える・削除する場合は、スロットを読まないためこの上限はかかりません |
 
 範囲外の値や数値として読めない値は、警告を出して無視し、既定値のままになります。どちらのキーもコマンドラインからは上書きできません。どちらもコマンドを実行するたびに読み込み済みの設定から読むため、設定を読み直した後（`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` が `DefaultUAIP.ini` を読み直します）またはエディタを再起動した後の次のコマンドから反映されます。
+
+#### Runtime AI の感知
+
+AI の感知を観測するコマンド（[`UAIP.Runtime.AI`](commands.md#uaipruntimeai)）は読み取るだけで、AI が何を感知するかも、その設定も変えません。6 つのうち 5 つは DefaultAllow の `RuntimeInspect` だけで使えます。センス設定のダンプには、さらに以下の Capability が必要で、これは既定で無効です。このモジュールはプラグインに依存しないため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `AIPerceptionConfigDump` | AI のセンス設定の全プロパティを、**プロジェクトが定義したセンス設定クラスが宣言したプロパティも含めて**値までダンプする（C++ の派生クラスや、Blueprint 用のセンス設定を元にした Blueprint） — `DumpAIPerceptionSenseConfigs`。`RuntimeInspect` に**加えて**必要です。プロジェクトが定義したセンス設定には任意のプロジェクトのデータを持たせられ、その値が AI クライアントへ渡り artifact にも書かれるため、既定で無効です。この Capability が無くても、`DumpAIPerceptionState` はそれらのプロパティを名前と型で示し、エンジンが宣言したプロパティの値（たとえばプロジェクトが派生させた視覚の設定の視認距離）は返します |
+
+> ⚠️ **何が出るか。** `DumpAIPerceptionSenseConfigs` は、呼び出した時点の値をそのまま返し、秘密かもしれない値を伏せる仕組みはありません。上限があるのは量であって種類ではありません。構造体は 1 段だけ展開し、コンテナは先頭 32 要素まで、文字列は 1024 文字で切り、参照は参照先のパスだけを書きます（たどることも読み込むこともしません）。1 つのセンス設定が 64 KiB、全体が 256 KiB を超えると、残りを省いてそのことを示します。エディタ専用のプロパティは出しません。プロジェクトがセンス設定に持たせているものを AI クライアントに読まれてよい環境でだけ与えてください。
+
+> ⚠️ **一度作られた artifact は、Capability を外しても残ります。** 成功した呼び出しはどれも、結果の全体を JSON の artifact として保存します。`AIPerceptionConfigDump` を外すと新しいダンプは作れなくなりますが、作られたものは消えません。Artifact の自動 GC が消すまで artifact ストアに残り（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）、作ったセッションは `UAIP.Core.Artifacts.GetArtifact` で読み直せ、UAIP の作業ディレクトリを読める人なら誰でもファイルを読めます。値を残してはならない場合は、それらのファイルを自分で削除してください。
+
+**有効にする。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=AIPerceptionConfigDump
+```
+
+そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます（再起動なしで反映されます）。行を消してもう一度読み直せば外れます。与えられていない間、`DumpAIPerceptionSenseConfigs` は `AIPerceptionConfigDump` の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
+
+**明示的に拒否する。** `+DeniedCapabilities=AIPerceptionConfigDump` は、同じ Capability が許可されていても、`DumpAIPerceptionSenseConfigs` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、AI の感知を観測する **6 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。どちらの拒否でも artifact は作られません。
 
 #### オプショングラフエディタ
 

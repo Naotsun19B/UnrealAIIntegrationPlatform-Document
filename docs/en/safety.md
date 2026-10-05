@@ -180,7 +180,7 @@ These are active in every session without any configuration. They cover read-onl
 | `AssetMutate` | Modify existing asset properties |
 | `AssetWindowControl` | Open and close asset editors |
 | `PIEControl` | PIE session control — `StartPIE`, `StopPIE`, `PausePIE`, `ResumePIE`, `LoadMap` |
-| `RuntimeInspect` | Read-only inspection of runtime world state — `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `DumpRuntimeLog`, `CapturePerformanceSnapshot` |
+| `RuntimeInspect` | Read-only inspection of runtime world state — `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `DumpRuntimeLog`, `CapturePerformanceSnapshot`, and the six AI perception commands `DumpAIPerceptionState`, `GetPerceivedActors`, `GetActorPerceivers`, `DumpAIPerceptionSystemState`, `ExplainSightPerception` and `DumpAIPerceptionSenseConfigs` (the last one also requires `AIPerceptionConfigDump`; see [Runtime AI perception](#runtime-ai-perception)) |
 | `RuntimeCapture` | Runtime captures — `CaptureViewportImage`, `CheckpointCapture` |
 | `RuntimeExecution` | Run functional tests and automation tests in PIE or Standalone |
 | `RuntimeGASInspect` 🧩 | Read GAS state during PIE — `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses` (requires `GameplayAbilities` plugin) |
@@ -554,6 +554,29 @@ MaxSaveFileBytes=67108864
 | `MaxSaveFileBytes` | `67108864` (64 MiB) | Largest save file, in bytes, that a command reads. Accepted range `1048576` (1 MiB) to `1073741824` (1 GiB). A larger file is reported as `TooLarge` by `ListSaveGameSlots` and `GetSaveGameInfo`, and refused with `NotAllowed` by the other commands — `SkipValidation` does not lift it. The limit does not apply to replacing or deleting a slot without `ExpectedHash`, because the slot is then not read |
 
 A value outside the range, or one that cannot be read as a number, is ignored with a warning and the default stays. Neither key can be overridden from the command line. Both are read from the loaded configuration each time a command runs, so a change applies to the next command once the configuration has been reloaded — `UAIP.Core.ReloadCapabilities` re-reads `DefaultUAIP.ini` where `AllowCapabilityReload=True` — or the editor has been restarted.
+
+#### Runtime AI perception
+
+The AI perception commands ([`UAIP.Runtime.AI`](commands.md#uaipruntimeai)) only read: none of them changes what an AI perceives or how it is configured. Five of them need nothing beyond the DefaultAllow `RuntimeInspect`. The sense config dump also needs the capability below, which is denied by default. The module has no plugin requirement, so it carries no 🧩.
+
+| Capability | What it unlocks |
+|---|---|
+| `AIPerceptionConfigDump` | Dump the values of every property of an AI's sense configs, **including the properties a project-defined sense config class declares** (a C++ subclass, or a Blueprint built on the Blueprint sense config) — `DumpAIPerceptionSenseConfigs`, required in addition to `RuntimeInspect`. Denied by default because a sense config the project defines can hold arbitrary project data, and the values are handed to the AI client and written to an artifact. Without it, `DumpAIPerceptionState` still lists those properties by name and type, and still reports the values of every property the engine declares — the sight radius of a project-derived sight config, for example |
+
+> ⚠️ **What comes out.** `DumpAIPerceptionSenseConfigs` returns the values as they are at the moment of the call, with no masking of anything that might be secret. The amount is bounded, not the kind: a struct is expanded one level, a container keeps its first 32 elements, a string is cut at 1024 characters, a reference is written as the path of what it refers to (never followed or loaded), and once one sense config passes 64 KiB, or all of them together pass 256 KiB, the rest is left out and marked. Editor-only properties are never listed. Grant the capability only where the AI client may read whatever the project keeps in its sense configs.
+
+> ⚠️ **An artifact that was already produced stays after the capability is taken away.** Every successful call saves its full result as a JSON artifact. Removing `AIPerceptionConfigDump` again stops new dumps; it does not remove the ones already made. They stay in the artifact store until artifact garbage collection removes them (`[UAIP.ArtifactGC]` in [Configuration](config.md)), the session that produced one can read it back with `UAIP.Core.Artifacts.GetArtifact`, and anyone who can read the UAIP working directory can read the file. Delete those files yourself when the values must not remain.
+
+**Enabling it.** Add the capability to `[UAIP.SafetyPolicy]` in `Config/DefaultUAIP.ini`:
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=AIPerceptionConfigDump
+```
+
+Then restart the editor, or — where `AllowCapabilityReload=True` — call `UAIP.Core.ReloadCapabilities`, which applies it without a restart. Deleting the line and reloading again takes it away. While it is not granted, `DumpAIPerceptionSenseConfigs` fails with `CapabilityNotAvailable` naming `AIPerceptionConfigDump`; that check comes before the parameters or the play session are looked at, and no artifact is produced.
+
+**Denying it explicitly.** `+DeniedCapabilities=AIPerceptionConfigDump` refuses `DumpAIPerceptionSenseConfigs` with `PolicyViolation`, even when the same capability is also allowed (deny wins). `+DeniedCapabilities=RuntimeInspect` refuses **all six** AI perception commands with `PolicyViolation` — along with every other command that requires `RuntimeInspect`. Neither refusal produces an artifact.
 
 #### Optional graph editors
 
