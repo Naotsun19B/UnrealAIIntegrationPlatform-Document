@@ -151,7 +151,7 @@ CLI フラグ：なし。
 | `CloseDeadlineSeconds` | float | `60.0` | `[10.0, 600.0]` | 要求を受け付けてから、エディタが閉じるまでに許す秒数。この時間内に閉じられないと、試行は見送り（`Declined`、理由は `CloseTimedOut`）になり、エディタはそのまま動き続けます |
 
 - 範囲外の値や、数値として読めない値は、Output Log に Warning を出して無視し、既定の `60.0` を使います。
-- 人が操作する通常起動では、保存確認などのモーダルダイアログが開いている間は見送りません。
+- 人が操作する通常起動では、モーダルダイアログが開いている間は見送らず、閉じた後に期限を判定し直します。再起動そのものは保存確認を出さないので、これが効くのは、エディタが閉じるのを待っている間に他の処理がダイアログを開いた場合だけです。
 - 重い保存やシェーダーのコンパイルの直後に再起動することが多く、エディタが閉じ終わる前に見送られる場合は延ばしてください。
 - 値はエディタの起動時に読まれるので、変更は次の起動から効きます。
 
@@ -180,6 +180,24 @@ CloseDeadlineSeconds=120.0
 bAllowWritesDuringPIE=False
 MaxSaveFileBytes=67108864
 ```
+
+### `[UAIP.RuntimeObservation]` — `DumpHUDState` の HUD 描画統計
+
+`DumpHUDState`（[`UAIP.Runtime.Observation`](commands.md#uaipruntimeobservation)）がゲームビューポートの Canvas の描画バッチ統計を添えるのは、この設定をオンにしたときだけです。何かを許可するものではなく、どのコマンドの権限も変えません。オフの間は、結果が有効にする方法を示します。[安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) も参照してください。
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `EnableHUDCanvasStats` | bool | `False` | HUD の Canvas 統計を記録し、`DumpHUDState` の結果へ添えるかどうか |
+
+- 値は記録を始めるときに、起動時に 1 回だけ読まれるので、変更はエディタまたはゲームの再起動後に効きます。
+- 起動引数はありません。
+
+```ini
+[UAIP.RuntimeObservation]
+EnableHUDCanvasStats=True
+```
+
+**CLI での指定はできません。**
 
 ### `[UAIP.Build]` — テスト専用の型をビルドに含めるか
 
@@ -355,6 +373,7 @@ UnrealEditor-Cmd.exe MyProject.uproject \
 | `AllowKeyboardInput` | `-uaip-policy-allow-keyboard-input` |
 | `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input` |
 | `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write` |
+| `AllowRuntimePasswordFieldWrite` | `-uaip-policy-allow-runtime-password-field-write` |
 | `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass` |
 | `DisablePIEStart` | `-uaip-policy-disable-pie-start` |
 | `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write` |

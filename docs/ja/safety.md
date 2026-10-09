@@ -18,6 +18,8 @@ UAIP はコマンドごとの認可を 4 つの層で管理します。層を理
 
 Layer 1 は「セッション単位」**ではありません** — 起動時に確定し（または `ReloadCapabilities` でプロセス全体として再読込され）、すべてのセッションが共有する単一の Capability セットです。セッションごとに変わるのは Layer 1.5 だけです。役割（後述の [役割](#役割layer-15)）が設定されており、あるセッションがその役割に束縛されている場合、そのセッションに限って役割の deny リストが Layer 1 のセットと積を取られます。役割が束縛されていないセッションは、Layer 1 単独と全く同じ挙動をします。
 
+「必要な Capability が無いと `CapabilityNotAvailable`」には例外が 1 つあります。`CreateAsset` による MetaHuman キャラクター（`MetaHumanAssetCreate`）と Control Rig Blueprint（`ControlRigBlueprintCreate`）の作成です。この 2 つは作成を止めるインターセプターが判定するため、Capability が単に許可されていない場合も、`DeniedCapabilities` で拒否されている場合も `PolicyViolation` を返します（後者は、許可を足しても拒否は解けないため、許可を勧める文言は付きません）。`ControlRigBlueprintCreate` を拒否する役割に束縛されたセッションも、後述のとおり `PolicyViolation` で拒否されます。
+
 Layer 4 は Layer 1〜3 とは性質の異なるチェックであり、この区別ははっきりさせておく価値があります。Layer 1〜3 はどれも「このセッション・このプロセスに何が許可されているか」を判定するもので、そこでの拒否はすべて運用者がどこかのスイッチ（Capability、SafetyPolicy フラグ、起動フラグ）を切り替えれば直ります。Layer 4 は権限とは別に「ハンドラが今この場で実際に仕事をこなせるか」を判定するもので、失敗理由の大半（対応していないエンジンバージョン、対象を除外するビルド構成、必要なインフラが無い、エンジンや Toolset の転送先がその API をそもそも公開していない）には**それを直す ini フラグも Capability 付与も存在しません**。内訳の全体は [API リファレンス → `UnavailableDetail`](api.md#65-コマンド可用性フィールド) を参照してください。唯一の例外は、既定で無効な SafetyPolicy フラグでゲートされているハンドラ（`UnavailableDetail: SafetyPolicyDisabled`）です。これは Layer 2 の拒否と同じ形で、`Config/DefaultUAIP.ini` でフラグを設定して再起動すれば直ります。この 1 件だけが `AbilityUnavailable` ではなく `PolicyViolation` に写像される理由もここにあります。
 
 ```mermaid
@@ -180,8 +182,8 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `AssetMutate` | 既存アセットのプロパティ変更 |
 | `AssetWindowControl` | アセットエディタの開閉 |
 | `PIEControl` | PIE セッション制御 — `StartPIE`、`StopPIE`、`PausePIE`、`ResumePIE`、`LoadMap` |
-| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot`、および AI の感知を観測する 6 コマンド `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`（最後の 1 つは `AIPerceptionConfigDump` も必要。[Runtime AI の感知](#runtime-ai-の感知) を参照） |
-| `RuntimeCapture` | ランタイムキャプチャ — `CaptureViewportImage`、`CheckpointCapture` |
+| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot`、`SearchLoadedClasses`、および AI の感知を観測する 6 コマンド `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`（最後の 1 つは `AIPerceptionConfigDump` も必要。[Runtime AI の感知](#runtime-ai-の感知) を参照）、および Chaos 破壊の 8 コマンド `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`GetDestructionEventLog`、`StopDestructionCapture`、`CaptureGeometryCollectionStrain`、`EnableForcedDestructionNotify`（最後の 1 つは `ChaosDestructionForceNotify` も必要で、これはデモ版では提供されない。[Runtime Chaos 破壊](#runtime-chaos-破壊) を参照）、および読み取り専用のナビゲーション 7 コマンド `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`（`FindPath` と `IsLocationReachable` は、8192 を超える探索ノードでは `RuntimeNavigationExtendedSearch` も必要。[Runtime ナビゲーション](#runtime-ナビゲーション) を参照）、およびアニメーションの 7 コマンド `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState`（`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` も必要。[Runtime アニメーション](#runtime-アニメーション) を参照）、およびゲームビューポートの UI の 3 コマンド `DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpHUDState`（[Runtime ゲームビューポートの UI](#runtime-ゲームビューポートの-ui) を参照） |
+| `RuntimeCapture` | ランタイムキャプチャ — `CaptureViewportImage`、`CheckpointCapture`（後者は `RuntimeInspect` も必要） |
 | `RuntimeExecution` | PIE または Standalone での機能テスト・Automation Test の実行 |
 | `RuntimeGASInspect` 🧩 | PIE 中の GAS 状態読み取り — `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`（`GameplayAbilities` プラグイン必須） |
 | `RuntimeNiagaraInspect` 🧩 | PIE 中の Niagara コンポーネント状態読み取り — `GetUserVariables`、`GetVariable`（`Niagara` プラグイン必須） |
@@ -467,7 +469,7 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `RuntimeActorManipulation` | PIE 中のアクタースポーン・破棄・テレポート・Possess |
 | `RuntimeExecCommand` | `UWorld` 経由のランタイムコンソールコマンド実行 |
 | `RuntimeDataLayerControl` | 実行中のプレイワールドにおける World Partition Data Layer のランタイム状態変更 — `UAIP.Runtime.World.SetDataLayerRuntimeState` のみが要求します。状態の観測（`ListDataLayerRuntimeStates`、`GetDataLayerRuntimeState`）、ストリーミング完了の待機（`WaitForDataLayerStreaming`）、プレイワールドの列挙（`ListPlayWorlds`）には Capability は一切不要です。レベルアセット側の Data Layer を編集する `WorldPartitionEdit` / `DataLayerEdit` とは別に切り出しています — こちらは実行中セッションのロード状態だけを変更し、ディスクには何も保存しません |
-| `RuntimeInputInjection` | PIE へのキーボード / Enhanced Input / レガシー入力イベントの注入（`InjectInputKey`、`InjectEnhancedInputAction`、`AddMappingContext`、`SetInputMode`、`FlushInput` など） |
+| `RuntimeInputInjection` | PIE へのキーボード / Enhanced Input / レガシー入力イベントの注入（`InjectInputKey`、`InjectEnhancedInputAction`、`AddMappingContext`、`SetInputMode`、`FlushInput` など）実行中のゲームの UI を操作するのは別の Capability `RuntimeUIInputInjection` です（[Runtime ゲームビューポートの UI](#runtime-ゲームビューポートの-ui) を参照） |
 | `RuntimeNiagaraMutation` 🧩 | Runtime での Niagara ユーザー変数設定・Niagara システム差し替え（`SetVariable`、`SetSystem`；`Niagara` プラグイン必須） |
 | `GauntletExecution` | Gauntlet 自動テストセッションの起動 |
 | `GauntletUnrestrictedArguments` | `RunGauntletTest` で、テストの対象や子プロセスの動作を変える引数を許可します。テスト名に付ける括弧のテストごとのパラメータの構文、危険なキー、テスト名で始まるキー、絶対パス / UNC / URL などの値（`-` と英字で始まる値を含む）が対象です。外部プロセスのコマンドラインに安全に渡せない文字（空白・引用符・記号）は、この Capability でも解禁されません |
@@ -577,6 +579,113 @@ AI の感知を観測するコマンド（[`UAIP.Runtime.AI`](commands.md#uaipru
 そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます（再起動なしで反映されます）。行を消してもう一度読み直せば外れます。与えられていない間、`DumpAIPerceptionSenseConfigs` は `AIPerceptionConfigDump` の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
 
 **明示的に拒否する。** `+DeniedCapabilities=AIPerceptionConfigDump` は、同じ Capability が許可されていても、`DumpAIPerceptionSenseConfigs` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、AI の感知を観測する **6 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。どちらの拒否でも artifact は作られません。
+
+#### Runtime Chaos 破壊
+
+Chaos 破壊のコマンド（[`UAIP.Runtime.ChaosDestruction`](commands.md#uaipruntimechaosdestruction)）は、実行中のゲームを観測します。8 つのうち 7 つ（`ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`GetDestructionEventLog`、`StopDestructionCapture`、`CaptureGeometryCollectionStrain`）は読むだけで、DefaultAllow の `RuntimeInspect` 以外は要りません。残りの `EnableForcedDestructionNotify` はゲーム自身の設定を変えるので、既定で拒否される次の Capability も必要です。モジュールにプラグインの依存はないため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `ChaosDestructionForceNotify` | capture が追跡している Geometry Collection コンポーネントの破壊の通知を有効にする — `EnableForcedDestructionNotify`。`RuntimeInspect` に加えて必要です。実行中のゲームを変え、その変更の一部は以下のとおり元に戻せないため、既定で拒否されます |
+
+> ⚠️ **ゲームへの副作用。** 通知を強制している間は、ゲーム自身の破壊・衝突のリスナーにも、capture だけでなくそのイベントが届きます。また、エンジンは通知を有効にするたび、および元に戻すときに、コンポーネントの Chaos イベントをすべて登録解除して登録し直すので、別の経路で登録したリスナーに影響が出ることがあります。ゲームがそれを許容できる環境にだけ付与してください。
+
+> ⚠️ **一部は元に戻せません。** 通知を有効にすると、ソルバーのイベントフィルターが上がります。エンジンにはこれを下げる手段がありません。capture が止まり、通知そのものが元に戻った後も、プレイセッションが終わるまで、ソルバーはそのイベントデータを作り続けます。
+
+**何が元に戻るか。** 通知を強制した capture が止まる（`StopDestructionCapture`、時間切れ、置き換え、セッション終了）と、どの capture も強制しなくなった通知は、強制した値のままなら元に戻します。その間にゲームが切った通知はゲームが設定したままにします。ゲームが有効に書き戻した通知はこちらの設定と区別できないため、同じく元に戻します。プレイワールドが片付けられるときは、コンポーネントごと無くなるので何も戻しません。
+
+**デモ版では提供されません。** `EnableForcedDestructionNotify` と `ChaosDestructionForceNotify` はデモ版に含まれません。コマンドは存在せず（`CommandNotFound`）、Capability も登録されないので、ini に書いても効果はありません。読み取り専用の 7 コマンドは提供されます。
+
+**有効にする。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に Capability を追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=ChaosDestructionForceNotify
+```
+
+その後、エディタを再起動します。`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できます。行を削除して再度リロードすれば、また外れます。付与していない間、`EnableForcedDestructionNotify` は `ChaosDestructionForceNotify` を示して `CapabilityNotAvailable` で失敗し、通知は何も変わりません。Capability を外しても、すでに強制した通知は元に戻りません。その capture が止まるときに戻ります。
+
+**明示的に拒否する。** `+DeniedCapabilities=ChaosDestructionForceNotify` は、同じ Capability が許可されていても `EnableForcedDestructionNotify` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、`RuntimeInspect` を必要とする他のすべてのコマンドとともに、Chaos 破壊の **8 つすべて** を `PolicyViolation` で拒否します。
+
+#### Runtime ナビゲーション
+
+ナビゲーションのコマンド（[`UAIP.Runtime.Navigation`](commands.md#uaipruntimenavigation)）は、ワールドのナビゲーションメッシュと経路探索を観測します。8 つのうち 7 つ（`DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`）は読むだけで、DefaultAllow の `RuntimeInspect` 以外は要りません。残りの `RebuildNavigation` は、実行中のゲームのメッシュの再生成を予約するので、次の 1 つ目の Capability が必要です。既定より多い探索ノード数を求める経路クエリには、2 つ目も必要です。どちらも既定で拒否されます。モジュールにプラグインの依存はないため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `RuntimeNavigationRebuild` | プレイワールドのナビゲーションメッシュの再生成を、ワールド全体または 1 つの領域について予約する — `RebuildNavigation`。このコマンドでは `RuntimeInspect` の代わりに必要です。ワールド内のすべての AI が移動に使うナビゲーションデータを変え、予約した再生成は対象の範囲を作り終えるまでワーカースレッドで動き続けるため、既定で拒否されます |
+| `RuntimeNavigationExtendedSearch` | 8192 を超え 65534 までの探索ノードで経路クエリを実行する — `FindPath` と `IsLocationReachable` の `MaxSearchNodes`。`RuntimeInspect` に加えて必要です。ナビゲーションメッシュ上のすべてのクエリが共有するノードプールは、要求された最大の大きさまで広がり、縮まないこと、また大きな探索はゲームスレッドを長く占有することから、既定で拒否されます。付与されていなくても、8192 ノード以下の要求は通常どおり動きます |
+
+`RuntimeNavigationExtendedSearch` は、この 2 つのコマンドが宣言する `RequiredCapabilities` には含まれません。要求に必要な Capability が、指定された `MaxSearchNodes` で決まるためです。そのため要求の実行時に、パラメータの検証の後、プレイワールドを探す前に判定します。付与なしで 8192 を超える要求は、`RuntimeNavigationExtendedSearch` の名前を示した `CapabilityNotAvailable` で失敗します。65534 を超える要求は、何が付与されていても `InvalidParams` です。`MaxSearchNodes` を省いた場合は拒否されません。フィルタ自身の値が 8192 を超えるときは 8192 に下げ、応答がそのことを示します（`Limitations: SearchNodesClamped`）。`DumpNavigationSystemState` は `SearchLimits` に上限・Capability の名前・呼び出したセッションが持っているかを返すので、クライアントは事前に知ることができます。
+
+**提供しないものと、代わりに使うもの。** ナビゲーションメッシュの同期的な全体ビルドは、終わるまでゲームスレッドを止め、上限がなく、エディタブリッジは 30 秒応答しないエディタを停止と判定します。領域のタイルをいったん削除して入れ直す再生成は、先にタイルを捨てます。どちらも提供しません。代わりに `RebuildNavigation`（ワールド全体、または `Box`）を実行し、続けて `WaitForNavigationBuild` を使ってください。前者は再生成を予約してすぐ応答し、後者はナビゲーションシステムが静止するまで待ちます。
+
+**デモ版では提供されません。** `RebuildNavigation` と `RuntimeNavigationRebuild` はデモ版に含まれません。コマンドは存在せず（`CommandNotFound`）、Provider が Capability を申告しないため、使うコマンドが無く、ini に書いても効果はありません。Capability の既定ポリシー（Denied）の記録は残ります。読み取り専用の 7 コマンドは提供され、探索ノードの拡張の Capability も提供されます。
+
+**有効にする。** 必要な Capability を `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=RuntimeNavigationRebuild
++AllowedCapabilities=RuntimeNavigationExtendedSearch
+```
+
+その後、エディタを再起動します。`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できます。行を削除して再度リロードすれば、また外れます。付与していない間、`RebuildNavigation` は `RuntimeNavigationRebuild` を示して `CapabilityNotAvailable` で失敗し、何も予約されません。すでに予約した再生成は取り消されません。
+
+**明示的に拒否する。** `+DeniedCapabilities=RuntimeNavigationRebuild` は、同じ Capability が許可されていても `RebuildNavigation` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeNavigationExtendedSearch` は、8192 を超える探索ノードの要求を `PolicyViolation` で拒否し、`FindPath` と `IsLocationReachable` のそれ以外の使い方は動いたままです。`+DeniedCapabilities=RuntimeInspect` は、`RuntimeInspect` を必要とする他のすべてのコマンドとともに、読み取り専用のナビゲーション **7 コマンドすべて** を `PolicyViolation` で拒否します。
+
+#### Runtime アニメーション
+
+アニメーションを観測するコマンド（[`UAIP.Runtime.Animation`](commands.md#uaipruntimeanimation)）は読み取るだけで、アニメーションの挙動を変えません。7 つのうち 6 つは DefaultAllow の `RuntimeInspect` だけで使えます: `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`GetMotionMatchingState`（最後の 1 つは PoseSearch プラグインが有効なときだけ存在する 🧩 で、デモ版には含まれません）。変数のダンプには、さらに以下の Capability が必要で、これは既定で無効です。このモジュールはプラグインに依存しないため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `AnimInstanceVariableDump` | プロジェクトが持つ AnimInstance クラスが宣言した変数を値までダンプする — `DumpAnimInstanceVariables`。`RuntimeInspect` に**加えて**必要です。プロジェクトが持つクラスの変数には任意のプロジェクトのデータを持たせられ、その値が AI クライアントへ渡り artifact にも書かれるため、既定で無効です。ほかのコマンドが読むのはアニメーションシステム自身が定義する状態（ステートマシン・ウェイト・モンタージュ・カーブ）だけで、プロジェクトが宣言した変数は読みません |
+
+> ⚠️ **何が出るか。** `DumpAnimInstanceVariables` は、呼び出した時点の値をそのまま返し、秘密かもしれない値を伏せる仕組みはありません。**変数に入っている文字列やパスは、そのまま artifact に書かれます。** 実行時には変数が秘密かどうかを判別できないため、一部の値を伏せて既定で出す形ではなく、許可制にしています。上限があるのは量であって種類ではありません。コンテナは先頭 32 要素まで、文字列は 1024 文字で切り、構造体は 1 段だけ展開し、参照は参照先のパスだけを書きます（たどることも読み込むこともしません）。サイズの予算を使い切ると、変数や AnimInstance ごと省いてそのことを示します。ダンプされるのは、プロジェクトの Anim Blueprint と C++ クラス、およびプロジェクトの `Plugins/` に入れたプラグインが宣言した変数だけです。エンジン本体・エンジンに同梱されたプラグイン・エンジン側にある親クラスが宣言した変数や、ノードの内部構造は出しません。プロジェクトが AnimInstance の変数に持たせているものを AI クライアントに読まれてよい環境でだけ与えてください。
+
+> ⚠️ **一度作られた artifact は、Capability を外しても残ります。** 成功した呼び出しはどれも、結果の全体を JSON の artifact として保存します。`AnimInstanceVariableDump` を外すと新しいダンプは作れなくなりますが、作られたものは消えません。Artifact の自動 GC が消すまで artifact ストアに残り（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）、作ったセッションは `UAIP.Core.Artifacts.GetArtifact` で読み直せ、UAIP の作業ディレクトリを読める人なら誰でもファイルを読めます。値を残してはならない場合は、それらのファイルを自分で削除してください。
+
+**有効にする。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に追加します。
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=AnimInstanceVariableDump
+```
+
+そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます（再起動なしで反映されます）。行を消してもう一度読み直せば外れます。与えられていない間、`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
+
+**明示的に拒否する。** `+DeniedCapabilities=AnimInstanceVariableDump` は、同じ Capability が許可されていても、`DumpAnimInstanceVariables` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、アニメーションを観測する **7 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。どちらの拒否でも artifact は作られません。
+
+#### Runtime ゲームビューポートの UI
+
+ゲームビューポートの UI のコマンドは、AI が実行中のゲームの UI を読み取り、操作できるようにします（[`UAIP.Runtime.Observation`](commands.md#ゲームビューポートの-ui-と-hud4)・[`UAIP.Runtime.Input`](commands.md#ゲームビューポートの-ui-入力3)）。UI の構造を読むだけなら DefaultAllow で、`DumpGameViewportWidgets`・`FindGameViewportWidgets`・`DumpHUDState` は `RuntimeInspect` だけで使えます。以下はすべて既定で無効です。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `RuntimeUIInputInjection` | 実行中のゲームの UI を、その入力経路で操作する — `ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText`。**`RuntimeInputInjection` とは別**です。後者は入力をゲームへ直接注入するもので UI は操作できず、この Capability は `InjectInputKey` などを許可しません。要求を受け付けたときと、実際に送る直前に確かめます |
+| `RuntimeUIEditorReservedKeyInput` | エディタ内の PIE で、エディタが自身の PIE 用コマンドに割り当てている UI キー（既定では PIE を停止する Escape）を送る。`RuntimeUIInputInjection` に**加えて**必要です。ショートカットの割り当ては、その時点のものを読みます（割り当てを変えていればそれに従い、物理キーボードの修飾キーを押している間は、その修飾キー付きの割り当ても見ます）。割り当てを読めないときは、UI 用のキーをすべて拒否します。Standalone とパッケージ版では制限されません |
+| `RuntimeWidgetTextRead` | **すべての**テキスト Widget のテキストと、入力欄の値を、画面に出ているかを問わず読む — `DumpGameViewportWidgetTexts`。切り取られた・透明な・折りたたまれたテキストは画面キャプチャでは読めず、値は AI クライアントへ渡り artifact にも保存されるため、既定で無効です。通常のダンプ（`IncludeText` 付きの `DumpGameViewportWidgets`）が平文にするのは画面に出ているテキストだけで、入力欄は長さの区分しか返しません |
+| `RuntimeWidgetPasswordTextRead` | `DumpGameViewportWidgetTexts` の応答に、パスワード欄（またはパスワード欄かどうか判定できない欄）の平文を含める。`RuntimeWidgetTextRead` に**加えて**必要です。値は応答にだけ入り（最大 16 件・各 256 文字）、artifact にも完了通知にも監査記録にも書かれません |
+
+> ⚠️ **UI が処理しなかった入力はゲームに届きえます。** 人の入力と同じく、UI が消費しなかったクリックやキーはゲーム側の入力（移動・攻撃など）になることがあります。応答は入力がゲームまで届いたかを示し、各操作の応答にはこの注意書きが付きます。`Success` は人の入力と同じ経路で送り終えたという意味で、ボタンの処理が動いたことは保証しません。
+
+> ⚠️ **`DumpGameViewportWidgetTexts` の artifact に入るもの。** 表示されていないものを含め、ゲームの UI のすべてのテキストが artifact に書かれます。artifact は既定で 24 時間残り、既定の HTTP 設定では ID を知っていれば誰でも取得できます。Capability を外すと新しいダンプは止まりますが、すでに作られたものは消えません。AI クライアントが UI の持つすべての内容を読んでよい環境でだけ許可してください。
+
+**有効にする。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に Capability を追加します:
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=RuntimeUIInputInjection
+; +AllowedCapabilities=RuntimeUIEditorReservedKeyInput
+; +AllowedCapabilities=RuntimeWidgetTextRead
+; +AllowedCapabilities=RuntimeWidgetPasswordTextRead
+```
+
+その後エディタを再起動します。`AllowCapabilityReload=True` の環境では `UAIP.Core.ReloadCapabilities` を呼べば再起動なしで反映できます。許可されていない間、それを必要とするコマンドは、その名前を示した `CapabilityNotAvailable` で失敗します。これらに `+DeniedCapabilities=` を指定すると、同じ Capability が許可されていても `PolicyViolation` で拒否されます（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、上の DefaultAllow の 3 コマンドも拒否します。
+
+**パスワード欄への入力 — `AllowRuntimePasswordFieldWrite`。** `RuntimeUIInputInjection` が許可されていても、この安全設定がオンでない限り、`TypeGameViewportText` はパスワード欄と、パスワード欄かどうか判定できない欄への入力を `PolicyViolation` で拒否します。エディタ自身の UI（`FillForm`）を対象にする `AllowPasswordFieldWrite` とは独立です。`[UAIP.SafetyPolicy]` か、起動引数 `-uaip-policy-allow-runtime-password-field-write` で設定でき、`QueryCapabilities` は現在の状態を `OperationalConstraints.IsRuntimePasswordFieldWriteAllowed` で返します。打った文字列はログにも応答にも記録にも残りませんが、CLI（`-uaip-request=`、`-uaip-request-file=`）で渡した場合は、そのコマンドラインやファイルに残ります。
+
+**HUD の描画統計 — `EnableHUDCanvasStats`。** `DumpHUDState` がゲームビューポートの Canvas の描画統計を添えるのは、`DefaultUAIP.ini` の `[UAIP.RuntimeObservation]` で `EnableHUDCanvasStats=True` にしたときだけです。既定は `False` で、起動引数はなく、起動時に読むので、エディタまたはゲームの再起動後に効きます。何かを許可するものではなく、どのコマンドの権限も変えません。オフの間は、結果が有効にする方法を示します。
 
 #### オプショングラフエディタ
 
@@ -747,6 +856,8 @@ uaip_execute(CommandName="UAIP.Core.ReloadCapabilities")
 `PropertyStructuredEdit` の 2 つが該当）。行を削除すれば次の再読み込みで Capability は外れるため、
 「追加して・使って・削除する」という流れはどの名前でも同じように機能します。
 
+`DeniedCapabilities` に書かれた Capability は、それを要求するすべてのコマンドが `CapabilityNotAvailable` ではなく `PolicyViolation` で拒否します。ディスパッチの後にハンドラーが自分で行う判定（例: `CancelPendingInteraction`、プロパティ書き込み系コマンド、`AddLiveLinkPresetToClient`、`RunGauntletTest`、SaveGame 系コマンド）も同じです。同じ Capability が `AllowedCapabilities` にも書かれていても拒否が勝ちます。`ReloadCapabilities` で追加した拒否は即座に効きます。一方、エディタ起動時にすでに有効だった拒否は、その行を削除して再読み込みしても有効なままで、解除には再起動が必要です。
+
 `ReloadCapabilities` は 3 つの配列を返します。実際に変化した分の `AddedCapabilities` と
 `RemovedCapabilities`、そして ini に書かれていて **Capability として登録されていない**名前を返す
 **`UnknownCapabilities`** です。綴りを間違えた名前は 3 番目に現れるため、黙って無視されることはなく、
@@ -767,6 +878,7 @@ AllowContextMenuMutation=False
 AllowKeyboardInput=False
 AllowKeyboardModifierInput=False
 AllowPasswordFieldWrite=False
+AllowRuntimePasswordFieldWrite=False
 AllowInputModeBypass=False
 DisablePIEStart=False
 AllowCheatCVarWrite=False
@@ -800,6 +912,7 @@ AllowUserInteractionPrompt=False
 | `AllowKeyboardInput` | `False` | `PressKey` を許可（`EditorKeyboardInput` Capability も別途必要） |
 | `AllowKeyboardModifierInput` | `False` | `PressKey` 内の Ctrl/Alt/Shift 修飾キーを許可 |
 | `AllowPasswordFieldWrite` | `False` | `FillForm` でパスワードフィールドへの書き込みを許可 |
+| `AllowRuntimePasswordFieldWrite` | `False` | `TypeGameViewportText` による、実行中のゲームの UI のパスワード欄と、パスワード欄かどうか判定できない欄への入力を許可（`RuntimeUIInputInjection` も必要）。`AllowPasswordFieldWrite` とは独立。起動引数: `-uaip-policy-allow-runtime-password-field-write` |
 | `AllowInputModeBypass` | `False` | Inject 系コマンドの `BypassInputMode=true` を許可 |
 | `DisablePIEStart` | `False` | PIE 起動を拒否 |
 | `AllowCheatCVarWrite` | `False` | `SetConsoleVariable` / `ResetConsoleVariable` による `ECVF_Cheat` フラグ付き CVar への書き込みを許可（`RuntimeCVarWrite` も別途必要） |
@@ -871,6 +984,7 @@ AllowUserInteractionPrompt=False
 | `CapabilityNotAvailable` | プロセスに Capability がない | `ErrorMessage` の Capability 名を `AllowedCapabilities` に追加して再起動（または `ReloadCapabilities`） |
 | `CapabilityNotAvailable`（`ErrorMessage` に役割名が入る） | セッションの役割がこの Capability を拒否している（Layer 1.5） | 有効化すべき設定はない — 別の役割のセッションから操作するか、運用者にその役割の `DeniedCapabilities` を変更して再起動してもらう |
 | `PolicyViolation: ... denied by SafetyPolicy` | SafetyPolicy の ini フラグで拒否されている | `[UAIP.SafetyPolicy]` の対応するフラグを `True` にして再起動 |
+| `PolicyViolation: Capability '<name>' is denied by SafetyPolicy`（または `Capability is denied by SafetyPolicy: <name>`） | その Capability が `DeniedCapabilities` に書かれている（拒否はあらゆる付与とロールに優先する） | `[UAIP.SafetyPolicy]` の `DeniedCapabilities` から該当行を削除して再起動。ロールの変更や `AllowedCapabilities` の追記では解除されない |
 | `PolicyViolation: Scenario execution is not enabled` | シナリオルートのオプトイン不足 | `config.json` に `"enable_scenario": true` を追加 |
 | `PolicyViolation: Command is denied` | コマンドが `DeniedCommands` に入っている | ini から該当エントリを削除して再起動 |
 | `PolicyViolation: ... is not available (<UnavailableDetail>): ...` | `UnavailableDetail` で絞り込まれた `HandlerUnavailable` 拒否（上記参照） | 詳細による：`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` は変更できるものを指す。`EngineApiNotExported` / `DelegationTargetMissing` はそうではなく、別の経路を探す |

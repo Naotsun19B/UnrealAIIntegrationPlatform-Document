@@ -2,7 +2,7 @@
 
 # Demo Version Guide
 
-The UAIP demo binary is a free, feature-limited build distributed via GitHub Releases. It provides observation, PIE control, assertion, scenario execution, and UI automation, plus read-only inspection of assets, level actors, properties, plugins, settings, logs, console variables and Unreal Insights traces — enough to integrate an AI agent into your review and testing workflow without any cost.
+The UAIP demo binary is a free, feature-limited build distributed via GitHub Releases. It provides observation, PIE control, assertion, scenario execution, and UI automation, plus read-only inspection of assets, level actors, properties, plugins, settings, logs, console variables and Unreal Insights traces, and read-only observation of a running game's AI perception, Chaos destruction, navigation and input state — enough to integrate an AI agent into your review and testing workflow without any cost.
 
 > **License**: the demo is licensed for **personal use and evaluation only**. Commercial use is not covered — see the `EULA.txt` shipped with the release archive. For commercial use, please get the Pro version ([available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)).
 
@@ -23,7 +23,11 @@ The UAIP demo binary is a free, feature-limited build distributed via GitHub Rel
 | Editor observation (screenshots, dumps) | ✅ | ✅ |
 | Editor workspace (tab focus, graph framing, editor restart, …) | ✅ | ✅ |
 | PIE control (StartPIE, StopPIE, LoadMap, …) | ✅ | ✅ |
-| Runtime observation (viewport capture, world dump) | ✅ | ✅ |
+| Runtime observation (viewport capture, world dump, HUD and widget state) | ✅ | ✅ |
+| Runtime AI perception, Chaos destruction and navigation observation (read-only subset) | ✅ | ✅ |
+| Runtime animation observation (anim instance state, state machines, blend weights, montages, curves; read-only subset) | ✅ | ✅ |
+| Runtime input state observation (`DumpInputState`, `GetEnhancedInputActionValue`) | ✅ | ✅ |
+| Runtime input injection (`InjectInputKey`, `InjectEnhancedInputAction`, `ClickGameViewportWidget`, …) | — | ✅ |
 | Scenario execution (`uaip_run_scenario`) | ✅ | ✅ |
 | UI automation (ClickWidget, PressKey, FillForm, …) | ✅ | ✅ |
 | Runtime assertion (WaitSeconds, AssertActorProperty, …) | ✅ | ✅ |
@@ -147,6 +151,65 @@ Every command below is registered in the demo build. Where a namespace is marked
 | `UAIP.Runtime.Observation.CapturePerformanceSnapshot` | Capture FPS, memory, and other performance stats | |
 | `UAIP.Runtime.Observation.CheckpointCapture` | Screenshot + state dump combined (scenario primitive) | Watermarked |
 | `UAIP.Runtime.Observation.SearchLoadedClasses` | Search loaded classes | |
+| `UAIP.Runtime.Observation.DumpGameViewportWidgets` | JSON dump of the widget tree of the game viewport | |
+| `UAIP.Runtime.Observation.FindGameViewportWidgets` | Search the widget tree of the game viewport by class, name or owning player | |
+| `UAIP.Runtime.Observation.DumpGameViewportWidgetTexts` | JSON dump of the text of every text widget of the game viewport | `RuntimeWidgetTextRead` (the plain value of a password field also needs `RuntimeWidgetPasswordTextRead`) |
+| `UAIP.Runtime.Observation.DumpHUDState` | JSON dump of the HUD state of each local player | |
+
+### `UAIP.Runtime.Input.*` (read-only subset)
+
+| Command | Description |
+|---|---|
+| `UAIP.Runtime.Input.DumpInputState` | JSON dump of a player controller's input state (pressed keys, axis values, active Enhanced Input mapping contexts) |
+| `UAIP.Runtime.Input.GetEnhancedInputActionValue` | Return the current value of an Enhanced Input action |
+
+The commands that inject input exist only in Pro (see [Excluded commands](#excluded-commands)).
+
+### `UAIP.Runtime.AI.*`
+
+| Command | Description | Note |
+|---|---|---|
+| `UAIP.Runtime.AI.DumpAIPerceptionState` | Everything one AI's perception component holds | |
+| `UAIP.Runtime.AI.GetPerceivedActors` | The actors one AI senses right now, or still remembers | |
+| `UAIP.Runtime.AI.GetActorPerceivers` | Which AIs sense a given actor | |
+| `UAIP.Runtime.AI.DumpAIPerceptionSystemState` | The state of the perception system of the world as a whole | |
+| `UAIP.Runtime.AI.ExplainSightPerception` | Why sight does or does not see a target, as 14 ordered steps | |
+| `UAIP.Runtime.AI.DumpAIPerceptionSenseConfigs` | The value of every property of every sense configuration on one AI's perception component | `AIPerceptionConfigDump` (needed in addition to `RuntimeInspect`) |
+
+### `UAIP.Runtime.ChaosDestruction.*` (read-only subset)
+
+| Command | Description |
+|---|---|
+| `UAIP.Runtime.ChaosDestruction.ListGeometryCollections` | List the Geometry Collection components of the play world and how broken each one is |
+| `UAIP.Runtime.ChaosDestruction.DumpGeometryCollectionState` | State, location and velocity of the pieces of one Geometry Collection |
+| `UAIP.Runtime.ChaosDestruction.DumpChaosFieldState` | The physics fields that act on the world |
+| `UAIP.Runtime.ChaosDestruction.StartDestructionCapture` | Start recording destruction events into a capture owned by the calling session |
+| `UAIP.Runtime.ChaosDestruction.GetDestructionEventLog` | Read the events of a capture, oldest first (still readable for a while after the play session ended) |
+| `UAIP.Runtime.ChaosDestruction.StopDestructionCapture` | Stop a capture and return its final state |
+| `UAIP.Runtime.ChaosDestruction.CaptureGeometryCollectionStrain` | The strain each piece carries on the next physics step |
+
+### `UAIP.Runtime.Navigation.*` (read-only subset)
+
+| Command | Description | Note |
+|---|---|---|
+| `UAIP.Runtime.Navigation.DumpNavigationSystemState` | The setup and state of the navigation system | |
+| `UAIP.Runtime.Navigation.FindPath` | A path between two points and whether the end point can be reached | `RuntimeNavigationExtendedSearch`, only when `MaxSearchNodes` is above 8192 |
+| `UAIP.Runtime.Navigation.IsLocationReachable` | The same question as `FindPath`, answered without the path | Same as above |
+| `UAIP.Runtime.Navigation.DumpNavMeshTiles` | The tiles of one navigation mesh | |
+| `UAIP.Runtime.Navigation.QueryNavModifiers` | The navigation modifiers that touch a box, and how the polygons there are divided among areas | |
+| `UAIP.Runtime.Navigation.GetPathFollowingState` | What the path following component of one AI is doing (play world only) | |
+| `UAIP.Runtime.Navigation.WaitForNavigationBuild` | Wait until the navigation system has finished generating | |
+
+### `UAIP.Runtime.Animation.*`
+
+| Command | Description | Note |
+|---|---|---|
+| `UAIP.Runtime.Animation.DumpAnimInstanceState` | The update state, state machines, blend weights, montages and curves of one skeletal mesh component in one capture | |
+| `UAIP.Runtime.Animation.GetAnimStateMachineStates` | The active state of each state machine, the time spent in it and the transitions in progress | |
+| `UAIP.Runtime.Animation.GetAnimBlendWeights` | The final blend weight of the playing assets, blend spaces and layered blends | |
+| `UAIP.Runtime.Animation.GetActiveMontages` | The montages that are active, a montage that is blending out included | |
+| `UAIP.Runtime.Animation.GetAnimCurveValues` | The animation curves with their values and kinds | |
+| `UAIP.Runtime.Animation.DumpAnimInstanceVariables` | The values of the variables that the project's own anim instance classes declare | `AnimInstanceVariableDump` (needed in addition to `RuntimeInspect`; DefaultDenied in the demo too) |
 
 ### `UAIP.Runtime.Assertion.*`
 
@@ -318,6 +381,9 @@ Commands that exist in Pro but are not available in the demo:
 | Commands that change the editor in the included Assets, Level, Property, Engine and Insights namespaces (`CreateAsset`, `SaveAsset`, `PlaceActorInLevel`, `AddActorComponent`, `Set*Property`, `SetPluginEnabled`, `SetSettingsValues`, `SetConsoleVariable`, `StartTrace`, …) | The demo exposes only the read-only subset listed above — `CommandNotFound` |
 | `WaitForShaderCompilation`, `RecompileGlobalShaders` and the Live Coding commands in `UAIP.Editor.Workspace` | Shader and Live Coding development — Pro only — `CommandNotFound` |
 | Trace analysis (`UAIP.Runtime.Insights.Analysis.*`) | Compiled out of the demo — `CommandNotFound` |
+| Input injection in `UAIP.Runtime.Input` (`InjectInputKey`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `FlushInput`, `SetInputMode`, `InjectEnhancedInputAction`, `AddMappingContext`, `RemoveMappingContext`, `ClickGameViewportWidget`, `PressGameViewportUIKey`, `TypeGameViewportText`) | They send input to the running game — Pro only — `CommandNotFound` |
+| `UAIP.Runtime.ChaosDestruction.EnableForcedDestructionNotify` and `UAIP.Runtime.Navigation.RebuildNavigation` | They change the running game (destruction notifications, navigation mesh regeneration) — Pro only — `CommandNotFound` |
+| `UAIP.Runtime.Animation.GetMotionMatchingState` | It needs the PoseSearch plugin, which the demo does not include — Pro only — `CommandNotFound` |
 
 ### Where the demo loads
 

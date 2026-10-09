@@ -151,7 +151,7 @@ After `RestartEditor` accepts a request (see [Commands](commands.md)), the edito
 | `CloseDeadlineSeconds` | float | `60.0` | `[10.0, 600.0]` | Seconds the editor may take to close after a request has been accepted. If it has not closed by then, the attempt is declined (`Declined`, reason `CloseTimedOut`) and the editor keeps running |
 
 - A value outside the range, or one that cannot be read as a number, is ignored with a Warning in the Output Log, and the default of `60.0` stays.
-- In an editor started normally and operated by a person, the attempt is **not** declined while a modal dialog such as a save prompt is open.
+- In an editor started normally and operated by a person, the attempt is **not** declined while a modal dialog is open; the deadline is judged again once the dialog closes. The restart itself does not show a save prompt, so this only matters when something else opens a dialog while the editor is waiting to close.
 - Raise it if you often restart right after a heavy save or shader compilation and the attempt is declined before the editor finishes closing.
 - The value is read when the editor starts, so an edit takes effect the next time it starts.
 
@@ -180,6 +180,24 @@ Two settings for the save game slot commands ([`UAIP.Runtime.SaveGame`](commands
 bAllowWritesDuringPIE=False
 MaxSaveFileBytes=67108864
 ```
+
+### `[UAIP.RuntimeObservation]` — HUD draw statistics for `DumpHUDState`
+
+`DumpHUDState` ([`UAIP.Runtime.Observation`](commands.md#uaipruntimeobservation)) adds the canvas draw-batch statistics of the game viewport only when this setting is on. It grants nothing and changes no command's permission; while it is off, the result explains how to turn it on. See also [Safety & Capabilities](safety.md#runtime-game-viewport-ui).
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `EnableHUDCanvasStats` | bool | `False` | Whether the HUD canvas statistics are recorded and added to the `DumpHUDState` result |
+
+- The value is read when the recorder starts, once at startup, so an edit takes effect after the editor or game is restarted.
+- There is no launch flag.
+
+```ini
+[UAIP.RuntimeObservation]
+EnableHUDCanvasStats=True
+```
+
+No CLI equivalent.
 
 ### `[UAIP.Build]` — Compiling the test-only types
 
@@ -355,6 +373,7 @@ Every `[UAIP.SafetyPolicy]` bool flag has a matching `-uaip-policy-*` CLI flag (
 | `AllowKeyboardInput` | `-uaip-policy-allow-keyboard-input` |
 | `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input` |
 | `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write` |
+| `AllowRuntimePasswordFieldWrite` | `-uaip-policy-allow-runtime-password-field-write` |
 | `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass` |
 | `DisablePIEStart` | `-uaip-policy-disable-pie-start` |
 | `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write` |

@@ -2,7 +2,7 @@
 
 # デモ版ガイド
 
-UAIP のデモ版は GitHub Releases で無償配布している、機能を絞ったバイナリです。観測・PIE 制御・アサーション・シナリオ実行・UI 自動化に加えて、アセット・レベル上のアクター・プロパティ・プラグイン・設定・ログ・コンソール変数・Unreal Insights トレースの読み取り専用コマンドを利用できるので、AI エージェントをレビューやテストのワークフローに組み込むには十分な機能がそろっています。
+UAIP のデモ版は GitHub Releases で無償配布している、機能を絞ったバイナリです。観測・PIE 制御・アサーション・シナリオ実行・UI 自動化に加えて、アセット・レベル上のアクター・プロパティ・プラグイン・設定・ログ・コンソール変数・Unreal Insights トレースの読み取り専用コマンドと、実行中のゲームの AI 知覚・Chaos 破壊・ナビゲーション・入力状態の読み取り専用の観測コマンドを利用できるので、AI エージェントをレビューやテストのワークフローに組み込むには十分な機能がそろっています。
 
 > **ライセンス**：デモ版は **個人利用・評価目的のみ** での利用を許諾しています。商用利用は対象外で、リリースアーカイブ同梱の `EULA.txt` に従ってください。商用利用の場合は、製品版（[Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)）をご利用ください。
 
@@ -23,7 +23,11 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | Editor 観測（スクリーンショット・ダンプ） | ✅ | ✅ |
 | Editor ワークスペース操作（タブのフォーカス・グラフの表示調整・エディタ再起動など） | ✅ | ✅ |
 | PIE 制御（StartPIE、StopPIE、LoadMap など） | ✅ | ✅ |
-| Runtime 観測（ビューポートキャプチャ・ワールドダンプ） | ✅ | ✅ |
+| Runtime 観測（ビューポートキャプチャ・ワールドダンプ・HUD とウィジェットの状態） | ✅ | ✅ |
+| Runtime の AI 知覚・Chaos 破壊・ナビゲーションの観測（読み取り専用の一部） | ✅ | ✅ |
+| Runtime のアニメーション状態の観測（AnimInstance の状態・ステートマシン・ブレンドのウェイト・モンタージュ・カーブ。読み取り専用の一部） | ✅ | ✅ |
+| Runtime の入力状態の観測（`DumpInputState`、`GetEnhancedInputActionValue`） | ✅ | ✅ |
+| Runtime の入力注入（`InjectInputKey`、`InjectEnhancedInputAction`、`ClickGameViewportWidget` など） | — | ✅ |
 | シナリオ実行（`uaip_run_scenario`） | ✅ | ✅ |
 | UI 自動化（ClickWidget、PressKey、FillForm など） | ✅ | ✅ |
 | Runtime アサーション（WaitSeconds、AssertActorProperty など） | ✅ | ✅ |
@@ -147,6 +151,65 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Runtime.Observation.CapturePerformanceSnapshot` | FPS・メモリ等のパフォーマンス統計を取得する | |
 | `UAIP.Runtime.Observation.CheckpointCapture` | スクリーンショット＋状態ダンプの複合観測（シナリオ primitive） | 透かしあり |
 | `UAIP.Runtime.Observation.SearchLoadedClasses` | ロード済みクラスを検索する | |
+| `UAIP.Runtime.Observation.DumpGameViewportWidgets` | ゲームビューポートのウィジェットツリーを JSON で返す | |
+| `UAIP.Runtime.Observation.FindGameViewportWidgets` | ゲームビューポートのウィジェットツリーを、クラス・名前・所有プレイヤーで検索する | |
+| `UAIP.Runtime.Observation.DumpGameViewportWidgetTexts` | ゲームビューポートの全テキストウィジェットの文字列を JSON で返す | `RuntimeWidgetTextRead`（パスワード欄の平文は加えて `RuntimeWidgetPasswordTextRead` が必要） |
+| `UAIP.Runtime.Observation.DumpHUDState` | ローカルプレイヤーごとの HUD の状態を JSON で返す | |
+
+### `UAIP.Runtime.Input.*`（読み取り専用の一部）
+
+| コマンド | 説明 |
+|---|---|
+| `UAIP.Runtime.Input.DumpInputState` | プレイヤーコントローラーの入力状態（押下中のキー・軸の値・有効な Enhanced Input のマッピングコンテキスト）を JSON で返す |
+| `UAIP.Runtime.Input.GetEnhancedInputActionValue` | Enhanced Input アクションの現在値を返す |
+
+入力を注入するコマンドは製品版のみです（[除外コマンド](#除外コマンド) を参照）。
+
+### `UAIP.Runtime.AI.*`
+
+| コマンド | 説明 | 備考 |
+|---|---|---|
+| `UAIP.Runtime.AI.DumpAIPerceptionState` | 1 体の AI の知覚コンポーネントが持つ状態をすべて返す | |
+| `UAIP.Runtime.AI.GetPerceivedActors` | 1 体の AI が現在知覚している（または記憶している）アクターを返す | |
+| `UAIP.Runtime.AI.GetActorPerceivers` | 指定したアクターを知覚している AI を返す | |
+| `UAIP.Runtime.AI.DumpAIPerceptionSystemState` | ワールドの知覚システム全体の状態を返す | |
+| `UAIP.Runtime.AI.ExplainSightPerception` | 視覚が対象を捉える（捉えない）理由を、順序のある 14 段階で説明する | |
+| `UAIP.Runtime.AI.DumpAIPerceptionSenseConfigs` | 1 体の AI の知覚コンポーネントにある全 Sense 設定の、全プロパティの値を返す | `AIPerceptionConfigDump`（`RuntimeInspect` に加えて必要） |
+
+### `UAIP.Runtime.ChaosDestruction.*`（読み取り専用の一部）
+
+| コマンド | 説明 |
+|---|---|
+| `UAIP.Runtime.ChaosDestruction.ListGeometryCollections` | プレイワールドの Geometry Collection コンポーネントと、それぞれの壊れ具合を返す |
+| `UAIP.Runtime.ChaosDestruction.DumpGeometryCollectionState` | 1 つの Geometry Collection の破片ごとの状態・位置・速度を返す |
+| `UAIP.Runtime.ChaosDestruction.DumpChaosFieldState` | ワールドに作用する物理フィールドを返す |
+| `UAIP.Runtime.ChaosDestruction.StartDestructionCapture` | 破壊イベントを、呼び出したセッションが所有するキャプチャへ記録し始める |
+| `UAIP.Runtime.ChaosDestruction.GetDestructionEventLog` | キャプチャのイベントを古い順に読む（プレイ終了後もしばらく読める） |
+| `UAIP.Runtime.ChaosDestruction.StopDestructionCapture` | キャプチャを止めて最終状態を返す |
+| `UAIP.Runtime.ChaosDestruction.CaptureGeometryCollectionStrain` | 各破片が次の物理ステップで負うひずみを返す |
+
+### `UAIP.Runtime.Navigation.*`（読み取り専用の一部）
+
+| コマンド | 説明 | 備考 |
+|---|---|---|
+| `UAIP.Runtime.Navigation.DumpNavigationSystemState` | ナビゲーションシステムの設定と状態を返す | |
+| `UAIP.Runtime.Navigation.FindPath` | 2 点間の経路と、終点に到達できるかどうかを返す | `MaxSearchNodes` が 8192 を超える場合のみ `RuntimeNavigationExtendedSearch` |
+| `UAIP.Runtime.Navigation.IsLocationReachable` | `FindPath` と同じ問いに、経路を付けずに答える | 同上 |
+| `UAIP.Runtime.Navigation.DumpNavMeshTiles` | 1 つのナビメッシュのタイルを返す | |
+| `UAIP.Runtime.Navigation.QueryNavModifiers` | 指定した範囲に触れるナビゲーションモディファイアと、そこのポリゴンのエリア別の内訳を返す | |
+| `UAIP.Runtime.Navigation.GetPathFollowingState` | 1 体の AI の経路追従コンポーネントの状態を返す（プレイワールドのみ） | |
+| `UAIP.Runtime.Navigation.WaitForNavigationBuild` | ナビゲーションの生成が終わるまで待つ | |
+
+### `UAIP.Runtime.Animation.*`
+
+| コマンド | 説明 | 備考 |
+|---|---|---|
+| `UAIP.Runtime.Animation.DumpAnimInstanceState` | 1 つのスケルタルメッシュコンポーネントの更新状態・ステートマシン・ブレンドのウェイト・モンタージュ・カーブを、1 回の読み取りでまとめて返す | |
+| `UAIP.Runtime.Animation.GetAnimStateMachineStates` | ステートマシンごとのアクティブな State・その State にいる経過時間・進行中の遷移を返す | |
+| `UAIP.Runtime.Animation.GetAnimBlendWeights` | 再生中のアセット・ブレンドスペース・レイヤードブレンドの最終ブレンドウェイトを返す | |
+| `UAIP.Runtime.Animation.GetActiveMontages` | 有効なモンタージュ（ブレンドアウト中を含む）を返す | |
+| `UAIP.Runtime.Animation.GetAnimCurveValues` | アニメーションカーブの値と種別を返す | |
+| `UAIP.Runtime.Animation.DumpAnimInstanceVariables` | プロジェクト自身の AnimInstance クラスが宣言した変数の値を返す | `AnimInstanceVariableDump`（`RuntimeInspect` に加えて必要。デモ版でも DefaultDenied） |
 
 ### `UAIP.Runtime.Assertion.*`
 
@@ -318,6 +381,9 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | デモ版に含まれる Assets・Level・Property・Engine・Insights の名前空間のうち、エディタを変更するコマンド（`CreateAsset`、`SaveAsset`、`PlaceActorInLevel`、`AddActorComponent`、`Set*Property`、`SetPluginEnabled`、`SetSettingsValues`、`SetConsoleVariable`、`StartTrace` など） | デモ版は上に挙げた読み取り専用の一部だけを提供する。`CommandNotFound` を返す |
 | `UAIP.Editor.Workspace` の `WaitForShaderCompilation`・`RecompileGlobalShaders` と Live Coding 系コマンド | シェーダー・Live Coding の開発操作は製品版のみ。`CommandNotFound` を返す |
 | トレース解析（`UAIP.Runtime.Insights.Analysis.*`） | デモ版ではコンパイル対象外。`CommandNotFound` を返す |
+| `UAIP.Runtime.Input` の入力注入（`InjectInputKey`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`FlushInput`、`SetInputMode`、`InjectEnhancedInputAction`、`AddMappingContext`、`RemoveMappingContext`、`ClickGameViewportWidget`、`PressGameViewportUIKey`、`TypeGameViewportText`） | 実行中のゲームへ入力を送るため製品版のみ。`CommandNotFound` を返す |
+| `UAIP.Runtime.ChaosDestruction.EnableForcedDestructionNotify` と `UAIP.Runtime.Navigation.RebuildNavigation` | 実行中のゲーム（破壊通知・ナビメッシュの再生成）を変更するため製品版のみ。`CommandNotFound` を返す |
+| `UAIP.Runtime.Animation.GetMotionMatchingState` | PoseSearch プラグインが必要で、デモ版には含まれないため製品版のみ。`CommandNotFound` を返す |
 
 ### ロード対象
 

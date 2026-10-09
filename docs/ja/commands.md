@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1241 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1662 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1271 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1692 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -87,7 +87,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
 | Editor Assets | `UAIP.Editor.Assets` | 51 | 6 | 一部（29/51） |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
-| Editor Level | `UAIP.Editor.Level` | 22 | 8 | 一部（8/22） |
+| Editor Level | `UAIP.Editor.Level` | 22 | 8 | 一部（9/22） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
@@ -137,10 +137,10 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor LiveLink 🧩 | `UAIP.Editor.LiveLink` | 11 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 14 | 1 | — |
-| Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
+| Runtime Observation | `UAIP.Runtime.Observation` | 12 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
-| Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
+| Runtime Input | `UAIP.Runtime.Input` | 14 | — | 一部（2/14） |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 17 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
 | Runtime LiveLink | `UAIP.Runtime.LiveLink` | 14 | — | — |
@@ -151,7 +151,10 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | 一部（3/11） |
 | Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
 | Runtime SaveGame | `UAIP.Runtime.SaveGame` | 10 | — | — |
-| Runtime AI | `UAIP.Runtime.AI` | 6 | — | 一部（5/6） |
+| Runtime AI | `UAIP.Runtime.AI` | 6 | — | ✅ |
+| Runtime Chaos Destruction | `UAIP.Runtime.ChaosDestruction` | 8 | — | 一部（7/8） |
+| Runtime Navigation | `UAIP.Runtime.Navigation` | 8 | — | 一部（7/8） |
+| Runtime Animation | `UAIP.Runtime.Animation` | 7 | — | 一部（6/7） |
 
 ---
 
@@ -307,7 +310,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ## 実行時コマンドの対象プレイワールドを指定する
 
-ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 55 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
+ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 82 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
 
 | パラメータ | 型 | 意味 |
 |---|---|---|
@@ -341,17 +344,48 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | ドメイン | コマンド |
 |---|---|
 | `UAIP.Runtime.World` | `SpawnActor`、`DestroyActor`、`TeleportActor`、`PossessActor`、`SetTimeScale`、`ExecuteConsoleCommand`、`SetDataLayerRuntimeState`、`GetDataLayerRuntimeState`、`ListDataLayerRuntimeStates`、`WaitForDataLayerStreaming` |
-| `UAIP.Runtime.Observation` | `CaptureViewportImage`、`DumpWorldState`、`DumpActorState`、`DumpComponentState`、`CheckpointCapture` |
+| `UAIP.Runtime.Observation` | `CaptureViewportImage`、`DumpWorldState`、`DumpActorState`、`DumpComponentState`、`CheckpointCapture`、`DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpGameViewportWidgetTexts`、`DumpHUDState` |
 | `UAIP.Runtime.Execution` | `RunFunctionalTest`、`RunRuntimeAutomationTest` |
 | `UAIP.Runtime.Assertion` | `WaitForCondition`、`AssertActorProperty`、`AssertWorldState` |
-| `UAIP.Runtime.Input` | `InjectInputKey`、`InjectEnhancedInputAction`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`AddMappingContext`、`RemoveMappingContext`、`SetInputMode`、`FlushInput`、`DumpInputState`、`GetEnhancedInputActionValue` |
+| `UAIP.Runtime.Input` | `InjectInputKey`、`InjectEnhancedInputAction`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`AddMappingContext`、`RemoveMappingContext`、`SetInputMode`、`FlushInput`、`DumpInputState`、`GetEnhancedInputActionValue`、`ClickGameViewportWidget`、`PressGameViewportUIKey`、`TypeGameViewportText` |
 | `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`、`GrantAbility`、`RemoveAbility`、`ClearGrantedAbilities`、`ApplyEffect`、`RemoveEffect`、`ClearActiveEffects`、`SetAttributeValue`、`ResetAttributesToBase`、`SendGameplayEvent` |
 | `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`、`GetVariable`、`SetVariable`、`SetSystem` |
 | `UAIP.Runtime.AI` | `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs` |
+| `UAIP.Runtime.ChaosDestruction` | `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`CaptureGeometryCollectionStrain` |
+| `UAIP.Runtime.Navigation` | `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`、`RebuildNavigation` |
+| `UAIP.Runtime.Animation` | `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState` |
 
 上の一覧のうち `CheckpointCapture` だけは、自分でワールドを解決しません。`CaptureViewportImage` と `DumpWorldState` を組み合わせたコマンドであり、指定された対象をそのまま両方へ引き渡します。これにより、1 つのチェックポイントに含まれるスクリーンショットと状態ダンプが、エンジンが別々に選んだ 2 つのワールドではなく、常に同じワールドを指すようになります。
 
 `QuitGame` と `ListPlayWorlds`、および CVar 系コマンドはどちらのパラメータも受け付けません。前 2 つは単一のワールドに宛てた操作ではなく、CVar はワールド単位ではなくエンジン全体のものだからです。
+
+### 互換性: すでにあったコマンドで変わったこと
+
+ゲームビューポートの UI のコマンド（[`UAIP.Runtime.Observation`](#uaipruntimeobservation)・[`UAIP.Runtime.Input`](#uaipruntimeinput)）の追加にあわせて、既存の実行時コマンドがプレイワールドが無いことを報告する方法を揃えました。プレイワールドがあるあいだは何も変わりません。以下の違いが現れるのは、プレイワールドが無いとき、または Capability を拒否しているときだけです。
+
+**プレイワールドが無いとき: エラーコードは `NotAllowed` になります。** プレイワールドを必要とする実行時コマンドは、共通の 1 つの対応表を通して、同じ `NotAllowed` で拒否するようになりました。シナリオがステップを自動で再試行するのは `ExecutionFailed` と `PreconditionFailed` の後だけなので、**これらのコマンドは、プレイワールドが無いときに再試行されなくなります**。PIE の起動を再試行で待っていたシナリオは、明示的に待つ形へ書き換えてください。
+
+| モジュール | コマンド | 変更前 | 変更後 |
+|---|---|---|---|
+| Observation | `DumpWorldState`・`DumpActorState`・`DumpComponentState`・`CaptureViewportImage`・`CheckpointCapture` | `ExecutionFailed` | `NotAllowed` |
+| Input | 既存の 11 コマンド | `ExecutionFailed` | `NotAllowed` |
+| World | `SpawnActor`・`DestroyActor`（ほかの 8 コマンドは以前から `NotAllowed`） | `ExecutionFailed` | `NotAllowed` |
+| GAS 🧩 | 14 コマンドすべて | `ExecutionFailed` | `NotAllowed` |
+| Assertion | `AssertActorProperty`・`AssertWorldState`・`WaitForCondition` | `ExecutionFailed` | `NotAllowed` |
+| Execution | `RunFunctionalTest`・`RunRuntimeAutomationTest` | `ExecutionFailed` | `NotAllowed` |
+| Niagara 🧩 — **向きが逆です** | `GetUserVariables`・`GetVariable`・`SetSystem`・`SetVariable`（Toolset ブリッジ経由も同じ） | `PreconditionFailed` | `NotAllowed` |
+
+- GAS の読み取り系 5 コマンド（`GetActiveEffects`・`GetActiveTags`・`GetAttributeValues`・`GetGrantedAbilities`・`FindAttributeSetClasses`）は、**ワールドを指定しなければ**（`TargetNetRole` / `TargetPIEInstance` を渡さなければ）、プレイワールドが無いとき、これまでどおり編集中のレベルを読みます。`NotAllowed` になるのは、ワールドを指定したのにそれが動いていない場合だけです。
+- `WaitForCondition` は、待機の最初の判定でプレイワールドが無ければ `NotAllowed` になります。一度ワールドが見つかった後、待機の途中で消えた場合は、これまでどおり `ExecutionFailed` で終わり、シナリオは再試行します。
+- `RunFunctionalTest` / `RunRuntimeAutomationTest` の実行の**途中で**プレイワールドが消えた場合は、これまでどおり `NotAllowed` ではなく、タイムアウトまたはテストの失敗として返ります。
+
+**Capability。** `DumpWorldState`・`DumpActorState`・`DumpComponentState`・`DumpRuntimeLog`・`CapturePerformanceSnapshot`・`SearchLoadedClasses` は `RuntimeInspect` を、`CaptureViewportImage` は `RuntimeCapture` を必要とするようになりました。`CheckpointCapture` は内部でワールドの状態を書き出すため、これまでの Capability に加えて `RuntimeInspect` も必要です。どれも DefaultAllow なので、影響があるのは `DeniedCapabilities` でそれらを拒否している構成だけです。その場合、要求の受け付け時に `PolicyViolation` で拒否され、artifact は作られません。許可されていないだけの場合は `CapabilityNotAvailable` です。
+
+**読み取り専用。** 上のコマンドと `CaptureViewportImage` は読み取り専用として扱われるようになり、安全ポリシーが `ReadOnly` のときもモーダルが開いている間も動きます。
+
+**`CaptureViewportImage` は選んだワールドを撮ります。** `TargetNetRole` / `TargetPIEInstance` で選んだワールドのゲームビューポートを撮るようになり、複数の PIE があるときに別のインスタンスの画面を撮ることはなくなりました。
+
+**`PlayerIndex` の意味はコマンドによって違います。** 既存の入力コマンド（`InjectInputKey` など）は**プレイヤーコントローラー**の番号を取ります。`PressGameViewportUIKey`・`TypeGameViewportText`・`DumpHUDState` は、ゲームインスタンスの**ローカルプレイヤー**の一覧の番号を取ります。どちらかはパラメータの説明に書かれています。
 
 ---
 
@@ -372,7 +406,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `ListIntegrations` | UAIP が把握しているすべてのオプション統合（実行時に無効・不在になりうるプラグインを必要とする UAIP モジュール、またはその一部）の状態を返す。各エントリは `Name`・`State`（`Pending` / `Loading` / `Loaded` / `CompiledOut` / `PluginDisabled` / `PluginNotInstalled` / `DependencyNotLoaded` / `NotApplicable` / `LoadFailed`。無償のデモ版では、製品版にだけ含まれる統合を示す `NotInThisEdition` も加わる）・`RequiredPlugins`・`MissingPlugins`・`DependsOn`・`CommandMatchers`・平易な文の `Remedy`（そのコマンドの `CommandNotFound` ヒントと同じ文言）を持ち、`State` が `LoadFailed` のときだけ `FailureKind` / `FailureReason` も持つ。任意の `State` パラメータで返す `Integrations` 配列をその状態だけに絞り込めるが、`IntegrationCount` / `LoadedCount` / `NotLoadedCount` は絞り込みに関係なく常に全体の数を返す。未知の `State` 値は `InvalidParams` で拒否される。Capability は不要 |
 | 🆓 `GetPendingInteractionStatus` | 保留中の対話 1 件の状態 — `State`・`Cause`・`ElapsedSeconds`・`Prompt`・`Reason`・`Result` — を、変化を待たずに報告する。対話（`DrawPCGSpline` などの対話型コマンド）を開始したときと同じ `SessionId` を明示的に指定する必要があり、未知・期限切れ・他セッション所有はすべて同じ `NotFound` として扱われる |
 | 🆓 `WaitForPendingInteraction` | 対話が `AwaitingUser` を離れるか、この呼び出し自身の `TimeoutSeconds` 上限（デフォルト 30、範囲 [1, 600]）に達するまでブロックする。タイムアウトしても対話自体には影響せず、人間の応答を待ち続ける。同じ対話を同時に監視できる呼び出しは最大 4 件までだが、2 件目以降には `[UAIP.Transport] AllowConcurrentPassiveWaits` が必要（[設定](config.md) 参照） |
-| 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックする |
+| 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックし、もう保有していないものは `CapabilityNotAvailable` で、運用者が `DeniedCapabilities` で明示的に拒否しているものは `PolicyViolation` で拒否する |
 
 ---
 
@@ -423,7 +457,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 > - **`GetRestartStatus` の `Data`**: `AttemptId`・`State`・`RequestedAt`・`ElapsedSeconds`・`CloseDeadlineSeconds`・`ProcessId`。`State` は `Scheduled`、`CloseRetrying`（保存や読み込みで忙しく、閉じるのを再試行中）、`Declined`、`ExitStarted` のいずれかです。`Declined` の試行には、さらに `DeclineReason`・`DeclineDetail`・`Remedy`・`OutcomeErrorCode`（`ExecutionFailed`）・`OutcomeErrorMessage`・`RestoredDirtyPackageCount`・`LostDirtyPackageCount` が入ります。
 > - **受付前に断られる場合（保存も破棄もせず、何も変えない）**: ライティングビルド（`LightingBuildRunning`）・Interchange のインポート（`InterchangeActive`）・メインウィンドウの作り直し（`MainFrameRecreating`）の最中、またはモーダルダイアログが開いている間（`ModalWindowOpen`。人が操作する通常起動のときだけで、Bridge が起動する無人のエディタは対象外）は `PreconditionFailed` です。`Data` に `DeclineReason` と `Remedy` が入り、メッセージの末尾にも対処が付きます。エディタが既に終了処理に入っていれば `NotAllowed`。別の試行が進行中なら `Conflict`（`Data.AttemptId` が進行中の試行を示します。上の条件より先に判定します）。保存を指定して一部のパッケージが保存できなかったときは `ExecutionFailed`（`Data.FailedPackages` に一覧）で、再起動しません。
 > - **受付後に見送られる場合**: エディタはログに警告を出し、再起動のために変えた設定を元に戻し、破棄しかけた未保存の変更を未保存の状態に戻します（件数は `RestoredDirtyPackageCount` / `LostDirtyPackageCount`）。`DeclineReason` は `LightingBuildRunning`・`InterchangeActive`・`CloseRequestDeclined`・`CloseTimedOut`・`SupersededByShutdown` のいずれかです。エディタはそのまま動き続けます。
-> - **閉じる期限**: 受付から `CloseDeadlineSeconds`（既定 60 秒）以内に閉じられないと、試行は `CloseTimedOut` で見送られます。人が操作する通常起動では、保存確認などのダイアログが開いている間は見送りません。`DefaultUAIP.ini` の `[UAIP.EditorRestart]` の `CloseDeadlineSeconds`（10〜600。[Configuration](config.md#uaipeditorrestart--restarteditor-の閉じる期限) を参照）で変更できます。重い保存やシェーダーのコンパイルの直後に再起動することが多い場合は延ばしてください。
+> - **閉じる期限**: 受付から `CloseDeadlineSeconds`（既定 60 秒）以内に閉じられないと、試行は `CloseTimedOut` で見送られます。人が操作する通常起動では、モーダルダイアログが開いている間は見送りません（再起動そのものは保存確認を出さないので、そのダイアログは他の処理が開いたものです）。`DefaultUAIP.ini` の `[UAIP.EditorRestart]` の `CloseDeadlineSeconds`（10〜600。[Configuration](config.md#uaipeditorrestart--restarteditor-の閉じる期限) を参照）で変更できます。重い保存やシェーダーのコンパイルの直後に再起動することが多い場合は延ばしてください。
 > - **試行の途中での終了**: `ShutdownEditor`、または `QuitGame` が結果としてエディタ自体の終了を要求した場合は、試行を取り消し、新しいエディタを起動せずに終了します。安全ポリシーに拒否された（`PolicyViolation`）`ShutdownEditor` は何も取り消しません。エディタが終了する前に照会すると、その試行は `SupersededByShutdown` の `Declined` になっています。人がウィンドウを閉じた場合や、UAIP 以外の経路での終了は、試行の期間中なら再起動になります。
 > - **古い組み合わせ**: 古い MCP Bridge は今までどおり受付の時点で応答を返し、古いエディタは `AttemptId` を返しません。新しい Bridge は今までどおりに振る舞います。どちらの場合も、受付後に見送られた再起動は、新しいエディタの `GetRestartStatus` でしか分かりません。
 
@@ -674,6 +708,10 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 >
 > **`WaitForWidget`** は `WidgetRef`（必須）と `ExpectedState`（必須。`Exists` / `Absent` / `Visible` / `Hidden` / `Enabled` / `Disabled` / `Focused` のいずれか）を受け取ります。`WaitTimeoutSeconds` は任意です（既定 5.0、30 以下）。`PollIntervalSeconds`（既定 0.1、0.05 以上）と `ConfirmTickCount`（既定 3、10 以下）も任意です。
 
+> **Note — 入力経路と `PartialDelivery`**: `ClickWidget`・`HoverWidget`・`PressKey`・`AcceptDialog`・`CancelDialog`・`SetComboSelection`・`FillForm` は、実行時の UI コマンド（[`ClickGameViewportWidget`](#ゲームビューポートの-ui-入力3) など）と同じ作り方で入力を作るようになりました。パラメータ・エラー・拒否される条件（メニュー・モーダル）は変わらず、`HoverWidget` も従来どおり成功を返します（送った後にホバーが立ったかを確かめ、結果はログに残すだけです）。ホバー・コンボ操作・キー押下が本物のマウス・キーボードと同じユーザー番号で届くようになるため、ユーザー番号で入力を振り分ける UI では、以前は効かなかった操作が効くようになることがあります。`SetComboSelection` / `FillForm` のコンボ操作は、カーソルを動かしてから押し、対象（またはその中身）にカーソルが乗ったことを確かめるようになりました。他の UI に覆われているなど乗らなかった場合は、押す前にその欄の失敗として返ります。
+>
+> 挙動が変わるのは 1 点です。`ClickWidget`・`AcceptDialog`・`CancelDialog` で、押した操作そのものでモーダルが開いた場合、以前は離す操作がモーダルを閉じた後（応答を返した後）に届いていました。これからは離す操作を送らず、応答は押下を送ったこととして `ModalOpened` と `PartialDelivery: DownOnly` を添えて返ります（ゲームビューポートの UI のクリックと同じです）。
+
 > **Note**: `SnapshotUI` は任意の走査範囲を指定できます。起点には `RootWidgetRef` または `RootWidgetPath`（互いに排他。どちらも `WindowTitle` とは併用不可）、走査量には `MaxDepth`（既定 30）と `MaxNodes`（既定 50000。1 回の呼び出しで訪れる全ルートで共有される単一予算）、絞り込みには `WidgetTypes` + `WidgetTypeMode`（`"Add"` は既定の対象に追加、`"Only"` は指定した型だけに限定）と `LabelContains`、既定で外れるウィジェットを拾うには `bIncludeInvisible` / `bIncludeUnclassified` を使います。応答には常に `EmittedCount`・`FilteredCount`・`FilteredReasons`（0 件でも常に存在する 6 つの理由キー — `InvisibleSubtreeRoot` / `StructuralContainer` / `TypeFilterMismatch` / `LabelFilterMismatch` / `Unclassified` / `RegistrationFailed`）・`UnclassifiedTypes`（`Type` + `Count` を件数降順・同数なら型名昇順で最大 200 件。各 `Type` はそのまま `WidgetTypes` に渡せる）・`Traversal`（`Complete` / `NodeLimitReached` / `DepthLimitReached` / `VisitedNodeCount`）・`MatchedRootCount`・`EffectiveParams`（クランプ・正規化後に実際に適用された値）が含まれます。
 >
 > 応答が答えられるのは常に「現在のフィルタを通過した集合に無い」までです。これを「UI 上のどこにも存在しない」と読み替えてよいのは、次のすべてが成り立つときに限ります: 走査が打ち切られていない（`Traversal.Complete == true`）、未分類型の一覧が全件かつ名指し可能（`UnclassifiedTypesComplete == true` かつ `UnaddressableUnclassifiedCount == 0`）、不可視ウィジェットを刈り取っていない（`FilteredReasons.InvisibleSubtreeRoot == 0`、または `bIncludeInvisible` を指定済み）、`WidgetTypeMode` が `"Add"`（型で絞り込んでいない）、`LabelContains` が空、Ref の登録に失敗したウィジェットが無い（`FilteredReasons.RegistrationFailed == 0`）、`WindowTitle` / `RootWidgetRef` / `RootWidgetPath` のいずれでも呼び出しを絞り込んでいない（絞り込んでいる場合はその範囲内でしか結論が成り立たない）。これらすべてを満たしていても、**構造コンテナ**型（後述）は `Widgets` にも `UnclassifiedTypes` にも現れません — `WidgetTypes` で名指しして確認してください。
@@ -846,6 +884,8 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 | `SetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントへプロパティ値を書き込む。指定方法は `GetActorComponentProperty` と同じで、1 つの Undo ステップとして記録される。値は UE インポートテキストとして `Value`、または JSON として `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` で値全体の置換ではなくコンテナの要素 1 つだけを操作できる — これらのパラメータと、参照・複合値の書き込みに追加で必要な Capability（先に `GetActorComponentProperty` を呼べば分かる）については [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。`ExpectedComponentClass` は上と同様に必須。コンポーネントの `Origin` が `UserConstructionScript` の場合は拒否される — そのスクリプトが次回実行されると書き込みが失われるため。`ActorComponentEdit` が必要。PIE 中は拒否 |
 
 > **Note — インスタンス側専用です。** この 6 コマンドが対象とするのは、**レベルに配置済みのアクター**が持つコンポーネントです（`GetActorComponentProperty` は、コンストラクションスクリプトが所有するものを含め、どの `Origin` のコンポーネントも読み取れる — 書き込みだけが拒否される）。アクターの Blueprint 側に宣言されたコンポーネントは [UAIP.Editor.Blueprint — コンポーネント — SCS](#コンポーネント--scs8) を使ってください。インスタンス側にリネームと複製に相当する操作はありません（望む名前を指定して追加し直してください）。
+
+> **Note — GeometryCollection コンポーネントの `RestCollection` の書き込み。** `SetActorComponentProperty` が GeometryCollection コンポーネントの `RestCollection` を書き、値が実際に変わった場合、書き込みは単純なプロパティ代入ではなくエンジンの `SetRestCollection` を通して確定されます。そのため、アセットの既定値（ダメージ設定など）がコンポーネントに取り込まれます。順序が重要です。`RestCollection` を先に書いてからダメージ設定を書く順なら、書いた設定が残ります。逆の順だと、ダメージ設定はアセットの値で上書きされます。値が変わらない書き込み（同じアセットの書き直し）では、既定値の取り込みは起きません。
 
 ### Toolset ブリッジ — Level（8 件）🧩
 
@@ -3423,6 +3463,64 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | 🆓 `CapturePerformanceSnapshot` | CPU / GPU パフォーマンススナップショット（FPS・メモリ・ドローコール） |
 | 🆓 `CheckpointCapture` | スクリーンショット + 状態ダンプの複合（シナリオ primitive） |
 | 🆓 `SearchLoadedClasses` | ロード済みクラスを検索（ランタイム内省用） |
+| 🆓 `DumpGameViewportWidgets` | プレイワールドのゲームビューポートの Widget ツリーを返します。ゲーム自身の UI だけで、エディタのツールバーやタブは混ざりません。ツリー全体は JSON artifact に保存し、応答にはノード数、`MaxDepth` / `MaxNodes` で走査が途中で止まったか・どこで止まったか、上位のユーザー Widget の先頭 50 件、各ローカルプレイヤーのキーボード / ゲームパッドのフォーカスと画面領域、`Limitations` が入ります。各ノードは Slate の型、UMG の名前とクラス、矩形、実際に見えているか、どのレイヤーにあるかを持ちます。テキストは `IncludeText: true` のときだけ読みます。[ゲームビューポートの UI と HUD](#ゲームビューポートの-ui-と-hud4) を参照 |
+| 🆓 `FindGameViewportWidgets` | 同じツリーから、指定した条件をすべて満たすノードを探します（`WidgetClass`・`SlateType`・`WidgetName` / `WidgetNameContains`・`OwningPlayerIndex`。1 つ以上が必須）。一致には、`ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText` に渡し直す `TypePath` と `Fingerprint` が付きます。何も見つからなくても成功です。一覧を切ったか、走査が途中で止まったかは `ResultLimitReached` と `SearchIncomplete` の limitation で分かります。テキストは読みません |
+| 🆓 `DumpGameViewportWidgetTexts` | ゲームビューポートの**すべての**テキスト Widget のテキストと、入力欄の値を、画面に出ているかどうかを問わず JSON artifact として返します。各エントリに、そのテキストが画面に出ているかの印が付きます。`RuntimeWidgetTextRead`（DefaultDenied）が必要です。パスワード欄の平文は artifact には書かれず、セッションが `RuntimeWidgetPasswordTextRead` も持つときだけ応答（`PasswordFieldValues`）に入ります |
+| 🆓 `DumpHUDState` | 各ローカルプレイヤーの HUD の状態を JSON artifact として返します: HUD のクラス、表示フラグ、`ShowDebug` の状態、デバッグテキスト、ヒットボックスの名前、HUD が参照している Widget、プレイヤーコントローラーが画面に出している Widget。HUD が描いた内容（線・文字・ボックス）とヒットボックスの位置は読めず、`Limitations` で報告します |
+
+### ゲームビューポートの UI と HUD（4）
+
+実行中のゲームの UI を読み取ります: ゲームビューポートにどの Widget があるか、どこにあるか、見えているか、HUD が何を表示する状態か。返るのはゲーム自身の UI だけで、エディタのツールバーやタブは混ざりません。エディタ全体を対象にする `DumpSlateTree` との違いはここです。PIE でも `-game` 起動でもパッケージ版でも、同じコマンドで使えます。4 つとも [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付け、読み取り専用です: 安全ポリシーが `ReadOnly` のときもモーダルが開いている間も動きます。ゲームビューポートを持たないワールド（サーバーのワールド）は `NotAllowed` で拒否され、選び直せるクライアント側のプレイワールドが応答に添えられます。
+
+**Capability。** `DumpGameViewportWidgets`・`FindGameViewportWidgets`・`DumpHUDState` は `RuntimeInspect`（DefaultAllow）が必要です。`DumpGameViewportWidgetTexts` は `RuntimeWidgetTextRead`（DefaultDenied）が必要で、応答にパスワード欄の平文を入れるには、さらに `RuntimeWidgetPasswordTextRead`（DefaultDenied）が必要です。足りない場合は、その名前を示した `CapabilityNotAvailable` になります。`DeniedCapabilities` で明示的に拒否している場合は `PolicyViolation` です。詳細は [安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) を参照してください。
+
+**見つけた Widget を操作するには**、一致の `TypePath` と `Fingerprint` を [`ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText`](#ゲームビューポートの-ui-入力3) に渡し、効果はもう一度ツリーを読んで確かめます。
+
+#### 読み取りが表すもの
+
+- **矩形**は、ゲームビューポート左上を原点とした物理ピクセルで、直前に描いたフレームの位置です。操作の直後は古い位置のことがあります。描画しない環境（`-nullrhi`）ではツリーは取れても矩形は取れず、`Limitations` に理由が出ます。
+- **テキスト。** `DumpGameViewportWidgets` を `IncludeText: true` で呼んだとき平文になるのは、**画面に出ている**テキストだけです。256 文字で切り詰め、制御文字は除きます。次のものは画面に出ていないとみなします: 非表示、UI の不透明度・色の設定で完全に透明（マテリアルなど色以外の手段で透明にしたものは判定できません）、スクロールの外やビューポートの外などで切り取られている・大きさが 0、描画できない環境。他の Widget に**覆われている**かどうかは判定しません。覆われたテキストも平文になり、その旨が注記されます。入力欄は、長さの区分 — `Empty`、`NonEmpty`（1〜127 文字）、`Long`（128 文字以上）— と、パスワード欄かどうかだけを返します。パスワード欄かどうか判定できない欄は、パスワード欄として扱います。
+- **`DumpGameViewportWidgetTexts` はすべてを返します。** 画面に出ているかを問わず、各エントリに出ているかの印が付きます。結果は artifact に保存され、既定では 24 時間残り、既定の HTTP 設定では ID を知っていれば誰でも取得できます。パスワード欄の平文は artifact には書かれず、`RuntimeWidgetPasswordTextRead` があるときだけ応答の `PasswordFieldValues`（最大 16 件・各 256 文字。残りは件数だけ）に入ります。無いときは `PasswordTextWithheld` の limitation が、伏せた欄の数を示します。
+- **Blueprint のバインディングが呼ばれることがあります。** Widget が何を表示するかを求める過程で、ゲームの Blueprint のバインディング関数が呼ばれることがあります。Widget の観測の応答は、常に `Limitations` でそれを知らせます。
+- **`FindGameViewportWidgets` は既定で見えている Widget だけを探します**（`VisibleOnly: true`）。ここでの「見えている」は、自分と親の表示の設定で非表示になっていないことです。不透明度が 0 の Widget や画面の外にある Widget も含むので、テキストの「画面に出ている」より広い意味です。何も見つからなくても成功です。応答は、一覧を切ったか（`ResultLimitReached`）、走査が途中で止まったか（`SearchIncomplete`）、見えている Widget だけを探した結果の 0 件か、を示すので、「無い」と「見ていない」を区別できます。
+- **開いているドロップダウン**（ゲーム自身のメニュー）の中身もツリーに含まれます。
+- **フォーカス。** 応答は、各ローカルプレイヤーのフォーカスが UI にあるか、ゲームビューポートそのものにあるか、ゲームビューポートの外にあるか、どこにも無いかを返します。
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `MaxDepth` | `DumpGameViewportWidgets`・`FindGameViewportWidgets`・`DumpGameViewportWidgetTexts` | 走査する最大の深さ。1〜128（ルートが 0）。既定 64。範囲外は切り詰めずに `InvalidParams` で拒否されます |
+| `MaxNodes` | 同じ 3 つ | 走査するノード数の上限。1〜20000。既定 5000。範囲外は拒否されます |
+| `IncludeDebugLayer` | 同じ 3 つ | ウィンドウのオーバーレイより下のデバッグ層も走査します。既定 `false` |
+| `IncludeCollapsed` | 同じ 3 つ | 自身の表示が `Collapsed` の枝も走査します。既定 `true` |
+| `IncludeText` | `DumpGameViewportWidgets` | 画面に出ているテキストを含めます（上記）。既定 `false` |
+| `WidgetClass` | `FindGameViewportWidgets` | UMG Widget のクラス名（大文字小文字を区別しない）。クラスはロードしないため、親クラスでの一致はすでにロード済みのクラスに限られます |
+| `IncludeSubclasses` | `FindGameViewportWidgets` | UMG Widget の親クラスも `WidgetClass` と比べます。既定 `true` |
+| `SlateType` | `FindGameViewportWidgets` | Slate の型名。完全一致（例: `STextBlock`） |
+| `WidgetName`・`WidgetNameContains` | `FindGameViewportWidgets` | UMG Widget の名前の完全一致 / 部分一致（大文字小文字を区別しない）。同時には指定できません |
+| `OwningPlayerIndex` | `FindGameViewportWidgets` | そのノードが属するユーザー Widget を持つ**ローカルプレイヤー**の番号（0 以上）。何も持たない、またはいないプレイヤーは一致 0 件で、成功です |
+| `VisibleOnly` | `FindGameViewportWidgets` | 実際に見えている Widget だけを対象にします。既定 `true` |
+| `MaxResults` | `FindGameViewportWidgets` | 返す一致の上限。1〜500。既定 50。超えた分は数えるだけで返しません |
+| `RootTypePath` | `DumpGameViewportWidgetTexts` | サブツリーをダンプする Widget の `TypePath`。ゲーム層の全体を走査することに変わりはないので、`MaxDepth` / `MaxNodes` はゲーム層のルートから数えます。Widget に至らない経路は `NotFound`。既定はゲーム層全体 |
+| `PlayerIndex` | `DumpHUDState` | 調べる**ローカルプレイヤー**の番号（0 が 1 人目）。省略すると全ローカルプレイヤー。いない番号は `NotFound` |
+| `TargetNetRole`・`TargetPIEInstance` | 4 つすべて | どのプレイワールドか。[対象プレイワールドを指定する](#実行時コマンドの対象プレイワールドを指定する) を参照 |
+
+`FindGameViewportWidgets` は、`WidgetClass`・`SlateType`・`WidgetName`・`WidgetNameContains`・`OwningPlayerIndex` のうち 1 つ以上を必要とします。1 つも無い場合や、`WidgetName` と `WidgetNameContains` を同時に指定した場合は `InvalidParams` です。
+
+#### 拒否される場合
+
+| 状況 | 結果 |
+|---|---|
+| プレイワールドが無い、`TargetPIEInstance` に合うワールドが無い、サーバーのワールド | `NotAllowed`（サーバーのワールドには選び直せるクライアント側の候補が添えられます） |
+| `TargetNetRole` と `TargetPIEInstance` が矛盾する、または複数のワールドに当てはまる | `InvalidParams` |
+| ゲーム層がまだ無い（起動直後） | `PreconditionFailed`。少し待って再試行します（シナリオでは自動で再試行されます） |
+| ゲーム層の場所を特定できない（プロジェクトが標準の UI 層を置き換えている） | `NotAllowed`。対応するのは標準のゲーム層だけです |
+| `DumpHUDState` の `PlayerIndex` がいないプレイヤーを指す | `NotFound` |
+
+#### HUD
+
+`DumpHUDState` は、ローカルプレイヤーごとに、HUD のクラスと表示フラグ、`ShowDebug` の状態、デバッグテキスト（HUD が描かれていないときも返り、その場合は結果にそう注記されます）、ヒットボックスの名前、HUD が参照している Widget（最大 64 件）、プレイヤーが画面に出している Widget を返します。これらの一覧にはそれぞれ件数の上限があり、切ったときはそう注記されます。エンジンの版が提供しない欄は、理由とともに省かれます。ゲームビューポートの Canvas の描画統計（描画のまとまりの数）は、`DefaultUAIP.ini` の `[UAIP.RuntimeObservation]` で `EnableHUDCanvasStats=True` にしたときだけ添えられます（起動時に読むので、再起動が必要です）。無効のときは、`Limitations` が有効にする方法を示します。統計は、そのゲームビューポートに HUD が描かれた直近のフレームの値で、フレームをまたいで足し上がりません。分割画面では、そのフレームにそのビューポートへ描いた全 HUD の合計になります。まだ HUD が一度も描かれていないゲームビューポートには統計が無く、結果にそう注記されます。[安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) を参照してください。
 
 ---
 
@@ -3465,7 +3563,7 @@ PIE / Standalone でのテスト実行。
 >
 > パラメータの値と、テスト単位のパラメータリストの中身は、ログ・エラー・成果物のどこにも残りません。パラメータリストは `(<redacted>)` と表示され、記録されるのはパラメータのキーだけです。
 >
-> エラー: 引数の拒否は `InvalidParams`、`GauntletUnrestrictedArguments` が要るのに持っていない場合は `CapabilityNotAvailable`、起動できなかった場合（別の Gauntlet テストが実行中、RunUAT やシェルが見つからない、RunUAT.bat が運べないパス、プロセスの起動失敗）は `ExecutionFailed` です。
+> エラー: 引数の拒否は `InvalidParams`、`GauntletUnrestrictedArguments` が要るのに持っていない場合は `CapabilityNotAvailable`（その Capability が `DeniedCapabilities` で明示的に拒否されているなら `PolicyViolation`）、起動できなかった場合（別の Gauntlet テストが実行中、RunUAT やシェルが見つからない、RunUAT.bat が運べないパス、プロセスの起動失敗）は `ExecutionFailed` です。
 
 ---
 
@@ -3532,12 +3630,89 @@ Runtime での入力注入と Enhanced Input 状態検査。PIE 必須。
 | `RemoveMappingContext` | ローカルプレイヤーから Input Mapping Context を削除 |
 | `SetInputMode` | 入力モードを設定（GameOnly / UIOnly / GameAndUI） |
 | `FlushInput` | テスト終了時の押下中キー状態をフラッシュ |
-| `DumpInputState` | 現在の入力状態（押下中キー・軸値・優先度付きの有効 Mapping Context、`IncludeActionStates=true` 指定時はアクション単位の Trigger 状態も含む）をダンプ |
-| `GetEnhancedInputActionValue` | Enhanced Input Action の現在値を取得 |
+| 🆓 `DumpInputState` | 現在の入力状態（押下中キー・軸値・優先度付きの有効 Mapping Context、`IncludeActionStates=true` 指定時はアクション単位の Trigger 状態も含む）をダンプ |
+| 🆓 `GetEnhancedInputActionValue` | Enhanced Input Action の現在値を取得 |
+| `ClickGameViewportWidget` | 実行中のゲームの UI の Widget をマウスでクリックします。押す位置へポインターを動かし、カーソルの真下にあるのが対象（またはその中身）であることを確かめてから、ボタンを押して離します。対象は UMG の `WidgetPath`、`ViewportPosition`、または `FindGameViewportWidgets` が返した `TypePath` と `Fingerprint` で指定します。`RuntimeUIInputInjection` が必要です。[ゲームビューポートの UI 入力](#ゲームビューポートの-ui-入力3) を参照 |
+| `PressGameViewportUIKey` | ローカルプレイヤーの Slate ユーザーとして、UI 用のキー（矢印・Tab・Enter・Space・Escape・ゲームパッドのボタン）を押します: キーを押す → 安全の再確認 → キーを離す。対象を指定しないと、そのプレイヤーのフォーカスがある Widget に届き、指定すると先にフォーカスをそこへ移します。`RuntimeUIInputInjection` が必要です |
+| `TypeGameViewportText` | 実行中のゲームの UI の入力欄へ、ローカルプレイヤーの Slate ユーザーとして 1 文字ずつ文字を打ちます。確定はしません（確定には `PressGameViewportUIKey` で Enter を送ります）。欄の値を直接書き換えることもしません。打った文字列はログにも応答にも記録にも残りません。`RuntimeUIInputInjection` が必要で、パスワード欄に打つには安全設定 `AllowRuntimePasswordFieldWrite` も要ります |
 
 ---
 
 > **Note**: `DumpInputState` は常に `ActiveMappingContexts`（`Priority` 降順・同値は `Path` 昇順でソート）と `EnhancedInputState`（`"Available"` / `"Unavailable"`。「取得できて 0 件」と「そもそも取得できない」を区別する）を返します。`IncludeActionStates=true` を渡すと、有効な Mapping Context から到達できるアクションごとに `ActionStates[]` が追加されます。各エントリは `Trigger`（`ETriggerEvent` の全 6 値のいずれか。発火していないアクションを表す `"None"` を含む）、`ValueX`/`ValueY`/`ValueZ`、`SourceContexts[]`（どの有効 Context がそのアクションを設定しているか）、`ConfiguredKeys[]`（重複排除・ソート済み）を持ち、`ActionStatesTotalCount` と `ActionStatesTruncated`（`ActionPath` 昇順で最大 256 件に打ち切り）も併せて返されます。`IncludeActionStates` を既定の `false` のままにすると呼び出しは軽量なままです — このパラメータが opt-in なのは、コストがロード済み Mapping Context 数ではなくマッピング済みアクション数に比例して増えるためです。
+
+### ゲームビューポートの UI 入力（3）
+
+実行中のゲームの UI を、人と同じ入力経路で操作します。ポインターを対象の上へ動かし、押下は Slate の入力ルーティングを通り、フォーカスはゲーム自身の UI が動かす規則どおりに動きます。ボタンの処理を直接呼ぶことも、入力欄の値を直接書き換えることもしないので、ゲームの入力処理（CommonUI やプロジェクト独自の入力処理）も関与します。OS のカーソルは動かず、Unreal Editor が背面にあっても動きます。PIE でも `-game` 起動でもパッケージ版でも動作します（パッケージ版で HTTP を使うには `-uaip-http-enable` が必要です）。3 つとも [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付け、選んだワールドのゲームビューポートの中にだけ送ります。
+
+**Capability。** 3 つとも `RuntimeUIInputInjection`（DefaultDenied）が必要です。これは **`RuntimeInputInjection` とは別**で、後者を許可しても UI は操作できません。エディタ内の PIE では、エディタが PIE 用のショートカットに割り当てているキー（既定では PIE を停止する Escape）を送るには、さらに `RuntimeUIEditorReservedKeyInput`（DefaultDenied）が必要です。Standalone とパッケージ版では制限されません。Capability は、要求を受け付けたときと、実際に送る直前の 2 回確かめます。詳細は [安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) を参照してください。
+
+#### 対象の指定
+
+`ClickGameViewportWidget` は対象をちょうど 1 つ指定します。`PressGameViewportUIKey` と `TypeGameViewportText` は省略でき、その場合はそのプレイヤーのフォーカスがある Widget に届きます。
+
+| パラメータ | 意味 |
+|---|---|
+| `WidgetPath` | 画面に出ている UMG Widget のオブジェクトパス。名前のある Widget ではこれが最も確実です |
+| `ViewportPosition` | ゲームビューポート左上からの物理ピクセルでの `{X, Y}`。その位置の最前面の Widget が対象になります |
+| `TypePath` + `Fingerprint` | `FindGameViewportWidgets` が一致に付けて返した値。`TypePath` にある Widget が Fingerprint の示すものと違う場合（画面が作り直された）は `Conflict` で拒否されます。検索し直してください。名前も Tag も無い同じ型の Widget が並んでいると、入れ替わりを見分けられないことがあります |
+| `LocalX` + `LocalY` | `ClickGameViewportWidget` のみ。対象の矩形の左上からのオフセットで押す位置を指定します。両方を同時に、矩形の内側で、`ViewportPosition` とは併用しません。省略時は中央 |
+| `MouseButton` | `ClickGameViewportWidget` のみ。`Left`（既定）または `Right` |
+| `Key`（必須） | `PressGameViewportUIKey` のみ。UI 用の許可リストのキー: 矢印キー、`Tab`、`Enter`、`SpaceBar`、`Escape`、ゲームパッドの十字キー・フェイスボタン・ショルダー・トリガー・特殊ボタン、`Virtual_Gamepad_Accept` / `Virtual_Gamepad_Back`。それ以外のキー（修飾キーはすべて）は、許可される名前を `AllowedKeys` に添えて拒否されます。修飾キーが付くことはありません |
+| `Text`（必須） | `TypeGameViewportText` のみ。1〜1024 コードポイント（結合した絵文字や国旗は複数と数えます）。制御文字は不可で、改行は打てません |
+| `PlayerIndex` | `PressGameViewportUIKey` と `TypeGameViewportText`。操作するプレイヤーの**ローカルプレイヤー**の番号。既定 0 |
+
+**`PlayerIndex` はプレイヤーコントローラーの番号ではありません。** 既存の入力コマンド（`InjectInputKey` など）はワールドの**プレイヤーコントローラー**の番号を取ります。この 2 つはゲームインスタンスの**ローカルプレイヤー**の一覧の番号（0 が 1 人目）を取ります。負の数は `InvalidParams`、いないローカルプレイヤーの番号は `NotFound` です。クリックは常にマウスを持つユーザー（通常は 1 人目のローカルプレイヤー）として送られるため、他のローカルプレイヤーの画面の UI も押せます。その場合は応答に注意書きが付きます。
+
+#### 操作の流れ
+
+1. **クリック。** ポインターを押す位置へ動かし、カーソルの真下にあるのが対象（またはその中身）であることを確かめます。違えば何も押さず（`ExecutionFailed`、最前面の Widget を添える）、合っていればボタンを押して離します。
+2. **キー。** 対象を指定した場合は、先にフォーカスを移して移ったことを確かめます。キーを押し、安全の再確認をしてから離します。`ReachedGameViewport` は、UI が処理せずにキーがゲーム側へ届いたかを示します: `True`・`False`・`Unknown`。
+3. **文字。** 対象を指定した場合は、先にフォーカスを移します。文字は人がキーボードで打つのと同じ形で 1 文字ずつ送ります（IME の変換は送りません）。1 文字ごとに、フォーカスが同じ欄にあること、パスワード欄かどうかが変わっていないことを確かめ、変わっていれば止めます。パスワード欄かどうかは送る時点で判定し、判定できない欄はパスワード欄として扱います。
+
+応答は、入力を送り終えてから返ります。何に当たったか（`HitWidget`・`HitWidgetIsTarget`）、操作後のフォーカス（`FocusAfter`）、入力がゲームまで届いたか（`ReachedGameViewport`）、モーダルが開いたか（`ModalOpened`）、`Limitations` が入ります。`TypeGameViewportText` はさらに、送った文字数（`CharactersDelivered`）、止まった理由、操作の前後の入力欄の長さの区分（`Empty`・`NonEmpty`・`Long`）を返します。文字列そのものは返しません。
+
+#### `Success` の意味
+
+`Success` は**人の入力と同じ経路で入力を送り終えた**という意味です。ボタンの処理が実際に動いたことや、画面が変わったことは保証しません。途中にある処理（CommonUI、プロジェクト独自の入力処理、エディタの入力の監視）は、人の入力と同じく入力を消費・変換しうるためです。効果はもう一度ツリー（`DumpGameViewportWidgets`）を読んで確かめてください。UI が処理しなかった入力は、人の操作と同じくゲーム側の入力（移動・攻撃など）になることがあります。各操作の応答にはその旨が必ず付きます。要求を受け付けてから送るまでの間に、呼び出し側がまだ待っていること、およびワールド・セッション・Capability・対象が変わっていないことを確かめます。呼び出し側が待つのをやめていた場合は何も送りません。二重押しは減りますが、確かめた直後のタイムアウトとの行き違いまでは防げません。
+
+#### 拒否される場合
+
+特に書かない限り、どの場合も何も送られません。
+
+| 状況 | 結果 |
+|---|---|
+| プレイワールドが無い、サーバーのワールド、指定に合うワールドが無い | `NotAllowed`（サーバーのワールドには選び直せるクライアント側の候補が添えられます）。指定が矛盾・曖昧な場合は `InvalidParams`。専用サーバーのプロセスでは、これらのコマンドは使えず、拒否の文が理由を示します |
+| ゲーム層がまだ無い | `PreconditionFailed`（再試行）。場所を特定できない場合は `NotAllowed` |
+| Capability が許可されていない | 名前を示した `CapabilityNotAvailable`（エディタ用に予約されたキーでは、当たったショートカットの名前と、ゲームパッドの「戻る」を使う案内も添えられます）。明示的に拒否している場合は `PolicyViolation` |
+| クリックでゲームビューポートがマウスを掴んでいる（入力モードがゲーム専用）、対象なしのキー・文字でフォーカスがゲームビューポートそのものにある、ドラッグ中、モーダルがどれか開いている、ゲームビューポートの外のメニューが開いている | `NotAllowed`。フォーカスとマウスキャプチャの状態が添えられます。入力モードは勝手に変えません（`SetInputMode` を使ってください）。ゲーム自身の UI のドロップダウンが開いているだけなら妨げになりません |
+| ウィンドウが最小化されている | `PreconditionFailed` |
+| 対象が無い、またはビューポートに追加されていない | `NotFound` |
+| 検索の後で画面が作り直された | `Conflict`（検索し直す） |
+| 対象が非表示または無効 | `NotAllowed` |
+| 対象の前に別の Widget がある（エディタ内の PIE では、エディタのビューポート用のツールバーやメッセージも含む） | 最前面の Widget を示した `ExecutionFailed`。ツールチップなどホバーによる反応は起きています |
+| 座標で指定した位置の最前面がエディタの表示や別のウィンドウ、キー・文字の送り先のフォーカスがゲームビューポートの外 | `NotAllowed` |
+| 対象なしのキー・文字で、そのプレイヤーのフォーカスがどこにも無い | `NotFound` |
+| フォーカスを対象へ移せなかった | `NotAllowed`（移した後のフォーカスを添える） |
+| 押してから離すまでの間に状況が変わった（画面・ワールド・モーダル） | `PartialDelivery`（クリックは `DownOnly`、キーは `KeyDownOnly`）を添えた `NotAllowed`。離す操作は送らず、押下状態を解除します |
+| 押した操作そのものでモーダルが開いた | `ModalOpened` と `PartialDelivery` を添えた**成功**。離す操作は送りません |
+| パスワード欄、またはパスワード欄かどうか判定できない欄に、`AllowRuntimePasswordFieldWrite` なしで文字を打つ | フォーカスを移す前に `PolicyViolation`。拒否の文が、どちらだったかを区別します |
+| 入力欄ではない、読み取り専用、または無効なものに文字を打つ | `NotAllowed` |
+| 文字入力の途中で止まった（フォーカスが移った、パスワード欄かどうかが変わった、アプリの状態が変わった） | 1 文字以上送っていれば、送った文字数を `CharactersDelivered` に入れた `NotAllowed`。まだ 1 文字も送っていなければ、上の該当する状況の拒否。2 つに分けて送る文字（絵文字など）の途中で止まった場合は、その旨が返ります。送った文字でモーダルが開いた場合は**成功**で、`ModalOpened` と送った文字数を添え、入力欄の操作後の長さの区分は返しません |
+| `PlayerIndex` のローカルプレイヤーがいない | `NotFound` |
+| 許可リストに無いキー、空または長すぎる文字列、制御文字、対象の外を指す位置、`LocalX` / `LocalY` の片方だけ、`LocalX` / `LocalY` と `ViewportPosition` の併用、クリックで対象が無い・2 つ以上ある、`Fingerprint` の無い `TypePath`、負の `PlayerIndex` | 違反した項目と許される範囲を示した `InvalidParams` |
+| Unreal Engine が終了処理に入った | `ExecutionFailed`（終了による取り消し） |
+
+シナリオが自動で再試行するのは、`ExecutionFailed` と `PreconditionFailed` の後だけです。途中まで届いた場合を `NotAllowed` にしているのはこのためで、再試行されると二度押しや文字の重複になるからです。
+
+キーを押し、ゲーム側がその押下を見た後で止まった場合は、そのプレイヤーのゲーム側の押下状態も解除します。このとき、利用者が実際にキーボードで押しているキーの状態も一緒に消えます。ゲーム側が押下を見たか判定できない場合と、プレイヤーがもういない場合は解除せず、応答にそう注記されます。
+
+#### 知っておくこと
+
+- **分割画面。** ツリーとフォーカスは、各ローカルプレイヤーの画面領域を報告します。キーと文字は指定したプレイヤーとして、クリックは常にマウスを持つユーザーとして送られます。
+- **同じプロセスの複数の PIE。** 入力は選んだワールドのビューポートの中にだけ送られますが、入力の通り道の一部（CommonUI の全体処理）は PIE 同士で共有されます。「ゲームパッドを 2 つ目のウィンドウへ送る」が有効だと、ゲームパッドのキーが別の PIE に届くことがあり、そのとき `ReachedGameViewport` は `Unknown` です。別々の PIE で同時にゲーム内のメニューが開いていると、どちらのメニューかを見分けられないことがあります。
+- **描画しない環境（`-nullrhi`）。** ツリーに矩形が無く、操作は `NotAllowed` で拒否されます（待っても通りません）。起動直後でまだ何も描かれていないだけなら `PreconditionFailed` です。
+- **機微な値。** `DescribeCommand` は、完了通知・監査記録で伏せるパラメータ（`SensitiveParams`。`TypeGameViewportText` は `Text`）と、同様に伏せる応答の項目（`SensitiveResponseData`。`DumpGameViewportWidgetTexts` はパスワード欄の平文）を示します。購読者・監査記録には、長さも載らない `"<redacted>"` が渡ります。伏せる対象を確かめられないときは、パラメータ全体が伏せられます。シナリオで、前のステップの応答から取ったこうした値を後のステップに埋め込むと、そのステップと、その応答を受け取る後続のステップは丸ごと伏せられます。対象のコマンドが結果として保存するファイルは対象外です。
+- **CLI では入力が残ります。** コマンドライン（`-uaip-request=`）やリクエストファイル（`-uaip-request-file=`）に渡した文字列、および応答ファイルは、そこに残ります。呼び出し側が選んだコマンドラインやファイルは UAIP では伏せられません。秘密はそこに渡さないか、HTTP / MCP を使ってください。
 
 ## UAIP.Runtime.Niagara 🧩
 
@@ -3823,7 +3998,7 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 
 #### SkipValidation
 
-`CopySaveGameSlot` と `RestoreSaveGame` は `SkipValidation: true` を受け付けます。ヘッダの確認を省くため、ゲーム独自形式・壊れている・対応していない版・クラスが読み込まれていないスロットでも、任意のスロットへ複製・復元できます。`RuntimeSaveGameUnvalidatedWrite`（DefaultDenied）が必要で、無ければ `CapabilityNotAvailable` で失敗します。復元が `SameSourceSlot` に当たる場合でも同じです。応答は `ValidationSkipped: true` と `ValidationSkipReason: "RequestedByCaller"`（`SameSourceSlot` にも当たる場合は `"SameSourceSlot"`）です。サイズの上限は省けません。⚠️ **こうして書いたスロットは、それを読み込んだゲームを止めることがあります。**
+`CopySaveGameSlot` と `RestoreSaveGame` は `SkipValidation: true` を受け付けます。ヘッダの確認を省くため、ゲーム独自形式・壊れている・対応していない版・クラスが読み込まれていないスロットでも、任意のスロットへ複製・復元できます。`RuntimeSaveGameUnvalidatedWrite`（DefaultDenied）が必要で、無ければ `CapabilityNotAvailable`（`DeniedCapabilities` で明示的に拒否されていれば `PolicyViolation`）で失敗します。復元が `SameSourceSlot` に当たる場合でも同じです。応答は `ValidationSkipped: true` と `ValidationSkipReason: "RequestedByCaller"`（`SameSourceSlot` にも当たる場合は `"SameSourceSlot"`）です。サイズの上限は省けません。⚠️ **こうして書いたスロットは、それを読み込んだゲームを止めることがあります。**
 
 #### エラー
 
@@ -3833,7 +4008,7 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 | `NotFound` | スロットやスナップショットが無い。SaveGame クラスや、値が参照するオブジェクトが読み込まれていない。一部書き換えの元のスロットに、失われる参照がある |
 | `NotAllowed` | 書き先があるのに `Overwrite` が `true` でない。エディタでプレイ中。ファイルが `MaxSaveFileBytes` を超えている（エラーに設定名が入る） |
 | `Conflict` | `ExpectedHash` が一致しない、または指定した書き先が無い |
-| `PolicyViolation` | SafetyPolicy が `DisableSave`（スロットの変更のみ） |
+| `PolicyViolation` | SafetyPolicy が `DisableSave`（スロットの変更のみ）、または必要な Capability が `DeniedCapabilities` で明示的に拒否されている（`CapabilityNotAvailable` より先に判定されるため、こちらが優先） |
 | `CapabilityNotAvailable` | 必要な Capability（引数が追加で要求するものを含む）が無い。エラーにその名前が入る |
 | `ExecutionFailed` | ヘッダを扱えない、データが示すクラスを使えない、本体を読めない（上記の拒否を含む）、スナップショットが壊れている、スロットやスナップショットの読み書きに失敗した |
 | `UnsupportedOperation` | スロットの一覧に対応していないセーブの仕組みで `ListSaveGameSlots` を呼んだ |
@@ -4043,6 +4218,301 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 観測したワールドがクライアントの場合、ワールドを見つけた後のエラーメッセージの末尾に、AI はサーバーにしかないことと、`TargetPIEInstance` で再実行する先のサーバー側プレイワールドが付きます。
 
 成功した呼び出しは JSON の artifact をちょうど 1 つ保存し、失敗した呼び出しは何も保存しません。
+
+---
+
+## UAIP.Runtime.ChaosDestruction
+
+実行中のゲームの Chaos 破壊を観測するコマンド群です。ワールドにどの Geometry Collection コンポーネントがあってどれだけ壊れているか、ピースごとの状態、ワールドに作用する物理 Field、破壊イベントの時系列、各ピースが抱えるひずみを返します。破壊そのものを変えることはありません。観測コマンドは読むだけで、ゲームの通知を有効にする唯一のコマンド（`EnableForcedDestructionNotify`）は後述のとおり別扱いです。エディタでは PIE の実行中に、また `-game` 起動やパッケージ版でも動作し、プラグインの依存はありません。
+
+**Capability。** すべてのコマンドが `RuntimeInspect`（DefaultAllow）を必要とします。`EnableForcedDestructionNotify` は `ChaosDestructionForceNotify`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-chaos-destruction) を参照してください。
+
+**デモ版。** `EnableForcedDestructionNotify` と Capability `ChaosDestructionForceNotify` はデモ版では提供されません。残りの 7 コマンドは提供されます。デモ版ではこのコマンドは存在せず、`CommandNotFound` を返します。
+
+**プレイワールド。** `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`CaptureGeometryCollectionStrain` は [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。`CaptureId` を取る 3 つの記録コマンド（`GetDestructionEventLog`、`StopDestructionCapture`、`EnableForcedDestructionNotify`）の宛先はワールドではなく記録です。
+
+**ゲーム側で破壊の通知が無効のことがあります。** Geometry Collection コンポーネントは、ゲームが対応する通知を有効にしたときだけ破壊・崩壊・衝突・除去を通知し、エンジンの既定は無効です。状態を返すコマンド（`ListGeometryCollections`、`DumpGeometryCollectionState`）はピースを直接読むので影響を受けません。記録（capture）は、サンプリングで検出できるピース単位のイベントは記録し、記録できた種類とできなかった種類、その理由を各応答の `Coverage` で報告します。ゲームを変えずにエンジン自身のイベントデータを記録したいときは `EnableForcedDestructionNotify` を参照してください。
+
+### 現在の状態（3）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `ListGeometryCollections` | 対象プレイワールドの Geometry Collection コンポーネントを、アクターパス、続いてコンポーネント名の順に 1 コンポーネント 1 エントリで列挙します。各エントリは、アクター、コンポーネント、レストコレクションのアセット、トランスフォーム数、ルートが壊れたか・どれだけ前か、状態別のピース数、ゲームが設定した通知フラグ、コンポーネントが読めるかどうかを持ちます。`StartIndex`（既定 0）と `MaxEntries` 1〜4096（既定 256）でページを選び、`IncludeClassification: false` でピース数を省けます（既定 `true`）。Data には当該ページの先頭 50 件、成果物にはページ全体が入り、続きのコンポーネントがあるうちは `NextStartIndex` がその次を指します。1 コマンドで分類するトランスフォームは最大 262144 個で、それを超えるコンポーネントは `ClassificationSkipped` を付けて数なしで列挙します。物理状態を持たないコンポーネントは、エラーではなく読めない理由つきで列挙します |
+| 🆓 `DumpGeometryCollectionState` | 1 つの Geometry Collection コンポーネントをダンプします。同じアクターの他のコンポーネントを含むコンポーネントの概要、階層レベルごとのピース数、ピースごとの状態（Active、Broken、Decayed、ClusterReleased）・動的状態・位置・回転・速度、ダメージ設定、アセットがアンカーしているトランスフォーム、コンポーネントを初期化する Field を返します。`ActorIdentifier`（必須）でアクターをラベルかオブジェクト名で指定し、アクターに複数ある場合は `ComponentName` でコンポーネントを指定します。`Indices`（トランスフォームインデックス 1〜4096 個）と `States`（`Sleeping`、`Kinematic`、`Static`、`Dynamic`、`Broken`、`Decayed`、`ClusterReleased`、`Active`、`Inactive` のいずれか。大文字小文字は区別しません）でピースを絞り、`StartIndex` と `MaxEntries` 1〜4096（既定 256）でページを選び、`IncludeTransforms` と `IncludeVelocities`（既定 `true`）で位置・回転、または速度を省けます。Data には当該ページの先頭 50 ピース、成果物にはページ全体が入り、続きのピースがあるうちは `NextStartIndex` がその次を指します。ピースがキネマティックや静的である理由（アセット・Field・スクリプト）は区別できません。物理状態を持たないコンポーネントは、エラーではなく読めない理由つきでダンプします |
+| 🆓 `DumpChaosFieldState` | 対象プレイワールドに作用する Field をダンプします。ワールドの物理 Field が持つ永続・構築時・直近 tick の一時コマンドについて、物理タイプ、対象属性、発生元アクター名、範囲、大きさ、中心、メタデータ、ノードツリーを返し、レベルに置かれた Field System アクターとそれが持つコマンドも返します。種類ごとに `MaxEntries` 1〜4096（既定 256）で個別に上限をかけ、総数と切り詰めの有無を併記します。`IncludeNodeTrees: false` でノードツリーを省けます（既定 `true`）。Data には各リストの先頭 50 件、成果物には `MaxEntries` が許す分がすべて入ります。物理 Field が無効なワールドは、空のコマンドリストと理由つきで成功し、Field System アクターは列挙します。GPU 上にしかない Field は観測できません |
+
+### イベントの記録（3）— `RuntimeInspect` が必要
+
+記録（capture）はそれを開始したセッションのものです。他のセッションがその ID を指定すると、存在するかどうかを教えずに `NotFound` になります。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `StartDestructionCapture` | 対象プレイワールドの破壊を、呼び出したセッションが持つ記録へ書き始め、その `CaptureId` を返します。`Targets`（1〜64 個のオブジェクト。各 `ActorIdentifier` と任意の `ComponentName`）で指定した Geometry Collection コンポーネントを、`Targets` を省略したときはワールドのすべてのコンポーネント（後から現れるものも含む）を、`StopDestructionCapture` が呼ばれる、実時間で `MaxDurationSeconds`（1〜600、既定 120）が経つ、またはプレイセッションが終わるまで記録します。`Kinds` で記録するイベントの種類を `RootBroken`、`ClusterReleased`、`PieceBrokenOff`、`PieceDecayed`、`AnchorReleased`、`PieceStateChanged`、`CollectionReset`、`Break`、`Crumble`、`Removal`、`Collision`、`FieldApplied` から選びます。既定は `PieceStateChanged` 以外のすべてです。`BufferCapacity`（64〜16384、既定 4096）は保持するイベント数で、超えると古いものから捨て、その数を数えます。1 つのワールドが持てる記録中の capture は全セッション合わせて 8 件、追跡するトランスフォームは 65536 個までで、1 つのセッションがワールドごとに持てる記録中の capture は 1 件です。`ReplaceExisting: true` なら、その capture を止めて新しく始めます（既定 `false`。開始を拒否し、その capture を示します）。トランスフォームの上限を超えるコレクションは追跡されず、`Coverage` と `Limitations` で報告します。ワールドに物理シーンやソルバーが無いときは `PreconditionFailed` で失敗します |
+| 🆓 `GetDestructionEventLog` | 記録のイベントを、`SinceSequence`（既定 0）以降、古い順に読みます。`CaptureId`（必須）は `StartDestructionCapture` が返した ID です。プレイセッションが終わった後も使えます。停止した記録はイベントを 30 分保持し、1 セッションは直近の停止済み 4 件を保持します。`MaxEntries` 1〜4096（既定 256）で読むイベント数に上限をかけます。Data には読んだ分の先頭 50 件、成果物にはその全件が入り、`NextSequence` は成果物の最後のイベントの次から続けるための `SinceSequence` です。`SinceSequence` 以降のイベントが読まれる前に捨てられていたときは `Gap` が true になります。応答には、記録の状態、止まった理由、追跡しているコレクションとトランスフォーム、サンプルしたフレーム、記録した秒数、イベントの種類ごとのカバレッジも入ります。異なる発生源のイベントの順序が因果の順であるとは限りません。未知・失効・他人の `CaptureId` は、どれかを教えずに `NotFound` で失敗します |
+| 🆓 `StopDestructionCapture` | 記録を止め、最終状態を返します。止まった理由、追跡したコレクションとトランスフォーム、サンプルしたフレーム、記録した秒数、シーケンスの管理情報、イベントの種類ごとのカバレッジを含みます。すでに止まっている記録を止めても成功し、最初に止まった理由（`Stopped`、`DurationLimit`、`WorldTornDown`、`Replaced`）を保ちます。プレイセッションが終わった後も使えます。停止した記録はイベントを 30 分保持し、その間は `GetDestructionEventLog` で読めます。未知・失効・他人の `CaptureId` は、どれかを教えずに `NotFound` で失敗します |
+
+止め忘れた記録は、`MaxDurationSeconds` に達したとき、またはプレイワールドが片付けられたときに自動で止まります。
+
+### ひずみのスナップショット（1）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `CaptureGeometryCollectionStrain` | 1 つの Geometry Collection コンポーネントのピースが抱えるひずみを、次の物理ステップで取得します。ピースごとに、内部ひずみ（親から外れるまでに残っている強度。外れないものは `Unbreakable`）、前ステップの衝突インパルス（または `ForcedBreakMarker`）、外部ひずみ、適用された最大値、余裕、壊れるかどうかを、コンポーネントのダメージ設定とともに返します。`ActorIdentifier`（必須）と `ComponentName` は `DumpGeometryCollectionState` と同じ指定で、`Indices`（1〜4096 個）、`StartIndex`、`MaxEntries` 1〜4096（既定 256）でピースを選びます。物理ステップを最大 `TimeoutSeconds`（0 より大きく 60 まで、既定 5）まで、`PollIntervalSeconds`（0.05〜1、既定 0.05）ごとに確認しながら待ち、ゲームがポーズ中は `NotAllowed` で拒否します。Data には当該ページの先頭 50 ピース、成果物にはページ全体が入ります。トランスフォームインデックスを持たない内部クラスターは報告しません。物理プロキシが無い、または既定以外のソルバーで動くコンポーネントは、エラーではなく理由とダメージ設定つきで報告します。タイムアウトしたときは、`Executed` が false の `Result` とゲームがポーズ中だったかを返します |
+
+### 破壊の通知を強制的に有効にする（1）— `RuntimeInspect` と `ChaosDestructionForceNotify` が必要
+
+デモ版では提供されません。
+
+| コマンド | 説明 |
+|---|---|
+| `EnableForcedDestructionNotify` | `Kinds`（`Breaks`、`Crumblings`、`Collisions`、`Removals`。大文字小文字は区別せず、各 1 回まで）で指定した破壊の通知を、呼び出したセッションの記録中の capture が既定の物理ソルバー上で追跡している Geometry Collection コンポーネント（capture が後から追跡し始めるものを含む）で、その capture が止まるまで有効にします。`CaptureId`（必須）で capture を指定します。その通知で得られるイベント（壊れたピースの質量・速度・範囲、崩壊が解放した子、衝突の相手とインパルスなど）は、その capture だけが記録します。同じワールドの他の capture には、ゲーム自身の設定のままに見えます。強制できるのは、capture が記録するイベントの種類に対応する通知だけです（`Breaks` は `Break`、`Crumblings` は `Crumble`、`Collisions` は `Collision`、`Removals` は `Removal`）。それ以外は `InvalidParams` で拒否し、何も強制しません。同じ capture に再度呼ぶと種類が追加されます。ゲームがすでに有効にしている通知には触れません。capture の状態を返します。この capture が強制したセルは `Coverage` に `ForcedByUAIP` が付き、`Limitations` に `ForceNotifySideEffects` が入ります。読み取り専用モードでは拒否されます。未知・失効・他人の `CaptureId` は `NotFound`、すでに停止した capture は `NotAllowed` で失敗します。⚠️ 副作用と戻せない点は [強制した破壊の通知](#強制した破壊の通知) を参照してください |
+
+#### 強制した破壊の通知
+
+- **ゲーム自身のリスナーにもイベントが届きます。** 通知を強制している間は、ゲームがその通知に登録したリスナーにも、capture だけでなくイベントが届きます。エンジンは、通知を有効にするたび、および元に戻すときに、コンポーネントの Chaos イベントをすべて登録解除して登録し直すので、別の経路で登録したリスナーに影響が出ることがあります。
+- **戻せない部分があります。** 通知を有効にすると、ソルバーのイベントフィルターが上がります。エンジンにはこれを下げる手段がありません。capture が止まった後も、プレイセッションが終わるまで、ソルバーはそのイベントデータを作り続けます。
+- **復元。** capture が止まる（`StopDestructionCapture`、時間切れ、置き換え、セッション終了）と、どの capture も強制しなくなった通知は、強制した値のままなら元に戻します。その間にゲームが切った通知はゲームが設定したままにします。ゲームが有効に書き戻した通知は区別できないので、同じく元に戻します。プレイワールドが片付けられるときは何も戻しません。
+- **独自の衝突プロファイルを持つコンポーネントでは、衝突の通知を強制しません。** パーツごと・レベルごとの衝突プロファイル、またはレプリケートするコンポーネントの Abandoned 用プロファイルを設定している場合です。強制するとそれらのプロファイルが物理状態を作り直すまで上書きされるため、そのコンポーネントでは `Collisions` を受け付けてもカバレッジが `NotGenerated`（`ForceNotSupported`）になり、衝突の設定はそのまま残ります。同じ記録の他のコンポーネントと、他の種類の通知は強制されます。
+
+Capability の付与方法は [安全性と Capability](safety.md#runtime-chaos-destruction) を参照してください。
+
+#### すべての応答に含まれるフィールド
+
+各応答には、いつ・どこを読んだか（観測した capture やプレイワールド、フレーム、時刻）が入ります。埋められなかった部分は黙って省かず、`Limitations[]` に（`Code` つきで）返ったものの注意点を載せ、記録系の応答は `Coverage[]`（イベントの種類とコレクションごとの 1 セル）で、その種類のイベントを記録できたかどうかを示します。
+
+パラメーターはプレイワールドを探す前に検証するので、PIE が動いていなくても、不正なリクエストは `InvalidParams` で拒否されます。未知のキー、JSON の型違い、範囲外の値、空の配列は `InvalidParams` です。
+
+成功した呼び出しは必ず JSON の成果物を 1 つ保存し、失敗した呼び出しは何も保存しません。
+
+---
+
+## UAIP.Runtime.Navigation
+
+ワールドの NavMesh と経路探索を観測するコマンド群です。ナビゲーションシステムがあるか・どう設定されているか、ある地点から別の地点へ行けるか・行けないならなぜか、経路そのものとエリアごとのコスト、メッシュのタイル、メッシュを形作るモディファイア、AI が経路上で何をしているか、メッシュの再生成が落ち着いたか、を返します。7 つのコマンドは観測だけを行い、8 つ目の `RebuildNavigation` はメッシュの再生成を予約します（下で別に説明します）。エディタ（PIE の有無を問わない）でも、`-game` 起動やパッケージ版でも動作し、プラグインの依存はありません。
+
+**Capability。** 7 つのコマンドは `RuntimeInspect`（DefaultAllow）を必要とします。`RebuildNavigation` は `RuntimeNavigationRebuild`（DefaultDenied）を必要とします。`FindPath` と `IsLocationReachable` は、`MaxSearchNodes` が 8192 を超えるとき**だけ**、さらに `RuntimeNavigationExtendedSearch`（DefaultDenied）を必要とします。この Capability は要求ごとに判定するため、コマンドが宣言する `RequiredCapabilities` には現れません。足りない場合は、その名前を示した `CapabilityNotAvailable` になります。詳細は [安全性と Capability](safety.md#runtime-ナビゲーション) を参照してください。
+
+**デモ版。** `RebuildNavigation` と `RuntimeNavigationRebuild` Capability はデモ版に含まれません。ほかの 7 コマンドは提供されます。デモ版ではこのコマンドは存在せず、`CommandNotFound` を返します。
+
+**どのワールドを読むか。** `DumpNavigationSystemState`・`FindPath`・`IsLocationReachable`・`DumpNavMeshTiles`・`QueryNavModifiers`・`WaitForNavigationBuild` は、プレイワールドが動いていればそれを、動いていなければエディタワールドを読みます — NavMesh はエディタで生成・保存されるため、PIE を起動せずに確かめられます。`GetPathFollowingState`（AI コントローラーはプレイワールドにしか存在しません）と `RebuildNavigation`（エディタのレベルは変更しません）は、プレイワールドだけを対象にします。8 つすべてが [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。存在しないプレイワールドを指定すると `NotAllowed` になり、エディタワールドへ切り替わることはありません。
+
+### 観測（6）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `DumpNavigationSystemState` | 対象ワールドのナビゲーションシステムの状態を返します。プレイワールド選択子以外のパラメータはありません。応答には `NavDataCount` と `NavData[]`（最大 64 件。`Name`・`IsMain`・`IsRecast`・`HasValidNavMesh`・`AgentName`・`AgentRadius`・`AgentHeight`・`StepHeight`・`MaxSlopeDegrees`・`RuntimeGeneration`（`Static` / `DynamicModifiersOnly` / `Dynamic`）・`ActiveTilesOnly`・`TileCount`・`TilePoolCapacity`、および `CellSize`・`CellHeight`・`TileSizeUU`・`TilePoolSize` などの `GenerationParameters`）、3 種類の境界 — `NavigationBounds[]`（システムに登録されたボリューム。最大 256 件）・`NavigableBounds`（各ナビゲーションデータが対象とする範囲）・`NavMeshBounds`（生成されたメッシュが実際に覆う範囲）—、`Areas[]`（最大 64 件。`DefaultCost` と `FixedAreaEnteringCost`）、`BuildState`、`SearchLimits` が入ります。`SearchLimits` は経路探索がどこまで探せるかを示します: `DefaultCeiling`（8192）・`ExtendedCeiling`（65534）・`ExtendedSearchCapability`（上限を引き上げる Capability の名前）・`ExtendedSearchGranted`（呼び出したセッションがそれを持っているか）・`EngineDefaultMaxSearchNodes`。artifact には全項目が入ります |
+| 🆓 `FindPath` | 2 点間の経路と、終点に到達できるかを返します。各点は座標（`StartLocation` / `EndLocation`）かアクター（`StartActor` / `EndActor`）で指定します。`AgentActor`（Pawn またはそのコントローラー）は、クエリに Owner・ナビゲーションデータ・既定フィルタを貸し、省略された始点の代わりにもなります。応答には `Reachable`（`true`・`false`、判定できないときは `null`）、`Reason`（[到達判定の読み方](#到達判定の読み方) を参照）、`Result`、`QueryConditions`（クエリが実際に使った条件: `Owner`・`NavData`・`Filter{Class, Source, QuerierPresent}`・`StartSource`・`EndSource`・`RequireNavigableEndLocation`・`AllowPartialPath`・`MaxSearchNodes{Value, Source, Ceiling}`）が入り、経路が得られる `Reason` では `IsPartial`・`Length`・`Cost`・先頭 50 件の `PathPoints` と `PathPointsTotalCount`・`AreaBreakdown[]`（経路上の各エリアが占めるコストと長さ。除外されたエリアは `Traversable: false` と `ExclusionSource`）も入ります。点をメッシュへ投影できなかったときは、`StartProjection` / `EndProjection` がどちらが失敗したかを示し、`TileExistsAtLocation` にその地点にタイルがあるかを入れます。artifact には最大 `MaxPathPoints` 個の点とコリドーが入ります |
+| 🆓 `IsLocationReachable` | `FindPath` と同じ問いを、同じパラメータ（`MaxPathPoints` を除く）で行い、`Reachable`・`Reason`・`QueryConditions`・着地に失敗した点の投影結果は同じものを返します。経路・長さ・コスト・エリア内訳は返しません |
+| 🆓 `DumpNavMeshTiles` | 1 つのナビゲーションメッシュのタイルを (X, Y, Layer) の順に返します。各タイルの `X`・`Y`・`Layer`・`Bounds`・`Resolution`・`PolygonCount` が入ります。`Box` を指定するとそれに重なるタイルだけに絞り、`NavDataName` でナビゲーションデータを選び（既定はメインのもの）、`MaxTiles` は 1〜4096（既定 256）です。応答には先頭 50 件の `Tiles[]` と `TotalCount`（`MaxTiles` を適用する前に数えた正確な件数）が入り、artifact には一覧に載せた全タイルが入ります。ポリゴン数は一覧に載せるタイルについてだけ読みます |
+| 🆓 `QueryNavModifiers` | 必須の `Box` に触れるナビゲーションモディファイアと、その領域のメッシュのポリゴンがエリアにどう分かれているかを返します。各モディファイアには発生源（`Name`・`Path`・`Label`）・`Bounds`・エリアクラス・置き換え対象のエリアクラス・`Shape`・`ApplyMode` が入ります。エンジンがまだ収集していないモディファイアは `PendingLazyGathering` が付き、コンポーネントが宣言している `DeclaredAreaClass` を添えます。`AreaBreakdown` はエリアごとのポリゴン数で、`MaxPolygons`（1〜16384、既定 4096）まで数えます。`AreaBreakdown.CountComplete: false` は件数が下限であることを示します。`MaxModifiers` は 1〜4096（既定 256）です。応答には先頭 50 件のモディファイアと `TotalCount` が入り、artifact には捕捉した全モディファイアが入ります |
+| 🆓 `GetPathFollowingState` | 1 体の AI の PathFollowingComponent がいま何をしているかを返します（プレイワールドのみ）。`Status`（`Idle`・`Waiting`・`Paused`・`Moving`）・`HasPath`・`RequestId`・目標（`GoalLocation` はたどっている経路の終点で、`PathPoints` が打ち切られても経路の終点を返し、経路が無いときは省きます。`MoveGoal` はアクターへ向かうときのそのアクターです）・いま向かっている区間の終点（`CurrentTargetLocation`）・いまの区間（`CurrentPathIndex`・`NextPathIndex`）・`AcceptanceRadius`・`HasPartialPath`・経路を作ったナビゲーションデータ（`NavDataUsed`）・先頭 50 件の `PathPoints`・経路の `AreaBreakdown[]` が入ります。`ActorIdentifier`（必須）には Pawn かその AI コントローラーを指定します。`MaxPathPoints` は 1〜4096（既定 256）で、artifact に書く点数の上限です。ナビゲーションシステムやメッシュが使えない間も追従状態は返し、エリア内訳だけを省きます |
+
+### 待機（1）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `WaitForNavigationBuild` | 対象ワールドのナビゲーションシステムが静止するまで待ちます。静止とは、残っている生成タスクが無く、処理待ちの dirty area も無い状態です。このコマンドは観測だけを行い（ポーリングするだけで、ワールドは進めません）、受動待機なのでトランスポートの単一コマンド枠を占有しません。`TimeoutSeconds` は 0 より大きく 60 以下（既定 30）、`PollIntervalSeconds` は 0.05〜1.0（既定 0.1）です。`WaitOutcome` は `NotApplicable`（ナビゲーションシステムが無い、または有効なナビゲーションデータが無い）・`AlreadyQuiescent`（何も生成していなかった）・`Quiescent`（待つ間に落ち着いた）のいずれかで、先に `TimeoutSeconds` が過ぎたときは `Timeout` で失敗し、結果と artifact は返します。応答には `CompletionScope: "NavigationSystemQuiescent"`・`ElapsedSeconds`・`BuildStateAtStart`・`BuildStateAtEnd`・`World` が入ります。**待機の完了が保証するのは**ナビゲーションシステム全体の静止であって、特定の領域の完了ではありません。エンジンが観測できない形で保留している更新もあり（`Limitations: UnobservablePendingUpdates`）、確認の直後に生成が始まることがあります |
+
+### 再生成の予約（1）— `RuntimeNavigationRebuild` が必要
+
+デモ版では提供されません。
+
+| コマンド | 説明 |
+|---|---|
+| `RebuildNavigation` | 対象の**プレイ**ワールドのナビゲーションメッシュの再生成を予約し、待たずにすぐ応答します（`IsReadOnly` は false）。`Box` を省くと登録済みの全ナビゲーション範囲を、指定するとその領域だけを予約します。応答には `Queued`・`Scope`（`Full` / `Box`）・`QueuedAreaCount`・`NextStep: "WaitForNavigationBuild"`（その後にこのコマンドを実行し、静止したと返ってから改めて問い合わせてください）・`BuildState` が入り、ナビゲーションデータごとに `Eligible`（再生成の対象か）・`GeometryRebuild`（ジオメトリまで作り直すか。`DynamicModifiersOnly` はモディファイアの再適用だけ）・`ActiveTilesOnly`（Invoker や読み込み済みの World Partition セルの周りのタイルに限って作り直すか）を返します。ワールドにナビゲーションシステムが無い、生成する先が無い、ゲーム中に再生成するナビゲーションデータが無い（`Static`）ときは、何も予約せず `PreconditionFailed` で失敗します。`ErrorMessage` は理由（`NavigationSystemMissing`・`NothingToBuild`・`NoRuntimeGeneration`）で始まり、その説明が続きます。失敗応答に `Data` はありません。ビルドロック・一時停止中のワールド・どの範囲にも入らない領域・生成状態に現れない予約は、失敗ではなく `Limitations[]` で知らせます。artifact は応答と同じ内容で、保存に失敗してもコマンドは成功のままです |
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `StartLocation` / `EndLocation` | `FindPath`、`IsLocationReachable` | `{X, Y, Z}` のワールド座標。それぞれ `StartActor` / `EndActor` とは排他です。座標は有限で ±2097152 以内でなければなりません |
+| `StartActor` / `EndActor` | `FindPath`、`IsLocationReachable` | 経路の始点・終点にするアクターのラベルまたはオブジェクト名（1〜256 文字、制御文字なし）。ナビゲーションエージェントならその足元の位置、そうでなければアクターの位置を使います |
+| `AgentActor` | `FindPath`、`IsLocationReachable` | Pawn かそのコントローラーのラベルまたはオブジェクト名。クエリに Owner・ナビゲーションデータ・既定フィルタを貸し、`StartLocation` / `StartActor` が無いときは始点の代わりになります。`NavDataName` とは排他です。Pawn を持たないコントローラーや、ナビゲーションエージェントでない Pawn は `InvalidParams` です |
+| `NavDataName` | `FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers` | 使うナビゲーションデータのオブジェクト名（1〜256 文字）。省略するとメインのナビゲーションデータを使います。どれにも一致しない名前は `InvalidParams` で、存在する名前を列挙します |
+| `FilterClass` | `FindPath`、`IsLocationReachable` | ナビゲーションクエリフィルタのクラスパス（例: `/Script/MyGame.MyQueryFilter`）。すでに読み込まれているクラスだけを受け付け、何も読み込みません。省略するとエージェント（またはナビゲーションデータ）の既定フィルタを使います |
+| `RequireNavigableEndLocation` | `FindPath`、`IsLocationReachable` | 真偽値、既定 `true`。メッシュ外の終点でクエリを失敗させるか |
+| `AllowPartialPath` | `FindPath`、`IsLocationReachable` | 真偽値、既定 `true`。終点の手前で止まる経路を受け付けるか |
+| `MaxSearchNodes` | `FindPath`、`IsLocationReachable` | 4〜65534 の整数。省略するとフィルタ自身の値を使い、`RuntimeNavigationExtendedSearch` が無ければ 8192 を上限に丸め、4 未満なら 4 に引き上げます（どちらも `Limitations: SearchNodesClamped`）。8192 を超える値には Capability が必要で、65534 を超える値や 4 未満の値は、セッションの権限に関わらず `InvalidParams` です。4 ノード未満では、ナビゲーションメッシュが探索ノードプールの範囲外へ書き込むためです。`QueryConditions.MaxSearchNodes.Value` には、クエリが実際に使ったノード数が入ります |
+| `MaxPathPoints` | `FindPath`、`GetPathFollowingState` | 1〜4096 の整数、既定 256。artifact に書く経路の点数 |
+| `Box` | `DumpNavMeshTiles`（任意）、`QueryNavModifiers`（必須）、`RebuildNavigation`（任意） | `{Min: {X, Y, Z}, Max: {X, Y, Z}}`。どの軸でも `Min` は `Max` を超えてはならず（角を入れ替えることはしません）、X と Y には幅が必要です。高さが 0 なのは許されます |
+| `MaxTiles` | `DumpNavMeshTiles` | 1〜4096 の整数、既定 256 |
+| `MaxModifiers` | `QueryNavModifiers` | 1〜4096 の整数、既定 256 |
+| `MaxPolygons` | `QueryNavModifiers` | 1〜16384 の整数、既定 4096。エリア内訳のために数えるポリゴン数 |
+| `ActorIdentifier`（必須） | `GetPathFollowingState` | Pawn または AI コントローラーのラベルまたはオブジェクト名 |
+| `TimeoutSeconds` / `PollIntervalSeconds` | `WaitForNavigationBuild` | 数値。上のコマンドの説明を参照 |
+
+始点は `StartLocation`・`StartActor`・（どちらも無いとき）`AgentActor` の Pawn のうちちょうど 1 つ、終点は `EndLocation` と `EndActor` のうちちょうど 1 つです（`AgentActor` は終点の代わりにはなりません）。1 つの点に両方の形を指定する、どれも指定しない、`AgentActor` と `NavDataName` を両方指定する、のいずれも `InvalidParams` です。真偽値は JSON の真偽値、上限値は JSON の整数でなければならず、それ以外の型・未知のキー・範囲外の値は `InvalidParams` です。パラメータはプレイワールドを探す前に検査するため、PIE が動いていなくても不正な要求は拒否されます。
+
+#### すべての応答に入る項目
+
+| 項目 | 意味 |
+|---|---|
+| `CapturedAt` / `Frame` | 状態を読んだ時刻（ISO 8601、UTC）と、その時点のエンジンのフレーム番号 |
+| `NetMode` / `WorldContext` / `PIEInstance` | 読んだワールド。`WorldContext` は `PIE`・`Editor`・`Game` のいずれかで、PIE 以外では `PIEInstance` は省かれます |
+| `WorldPartitioned` | 観測したワールドが World Partition を使っているか |
+| `Availability` | `State`: `Available`・`Degraded`・`Unavailable`。`Reason` は `NavigationSystemMissing`（`Detail` は `ClientWorld`（再実行先のサーバー側プレイワールドを `ServerCandidates[]` に列挙）・`NoNavigationSystemConfig`・`Unknown`）・`NoNavigationData`・`NoNavigationDataForAgent`・`NavMeshNotBuilt` のいずれか、または — `DumpNavigationSystemState` だけで、一部のナビゲーションデータにだけメッシュがあるとき — `SomeNavDataNotBuilt`（`Degraded`） |
+| `BuildState` | `RemainingTasks`・`RunningTasks`・`DirtyAreasQueued`・`Locks[]`（`NoUpdateInEditor`・`NoUpdateInPIE`・`InitialLock`・`Custom`、UE 5.8 では `AsyncLoadLock`）・`AutoUpdateEnabled`・`WorldPaused`・`Quiescent`。ナビゲーションシステムが無いときは省かれます |
+| `DegradedSections[]` | 埋められなかった部分。それぞれ `Section` と `Cause`（`NavigationUnavailable`・`SomeNavDataNotBuilt`・`UnreadableField`） |
+| `Limitations[]` | 返した内容に関する注意。それぞれ `Code` と `Detail` を持ちます（下を参照） |
+
+ナビゲーションシステムが無いワールドや、ナビゲーションデータにメッシュが生成されていないワールドは、観測コマンドにとって**エラーではありません**。コマンドは成功し、ナビゲーションシステム由来の項目を省いて、理由を `Availability` で示します。このとき `NavDataName` や `FilterClass` の名前は何とも照合されず（`Limitations: SelectionNotEvaluated`）、入力の誤りとして報告されることはありません。判定できない値は、既定値で埋めずに省きます。
+
+#### 到達判定の読み方
+
+`Reachable` は三値で、`null` は「到達できない」ではありません。`SearchLimitReached`・`Unknown`・`NavigationUnavailable`・`NavMeshNotBuilt` は、問いに決着がつかなかったことを意味します。`Reason` は、当てはまる最初の行です。
+
+| `Reason` | `Reachable` | 意味 |
+|---|---|---|
+| `NavigationUnavailable` | `null` | ワールドにナビゲーションシステムが無い、または有効なナビゲーションデータが無い。経路は計算していない |
+| `NavMeshNotBuilt` | `null` | 選んだナビゲーションデータにメッシュが生成されていない。経路は計算していない |
+| `StartNotOnNavMesh` | `false` | 始点をメッシュへ投影できなかった |
+| `EndNotOnNavMesh` | `false` | 終点をメッシュへ投影できなかった（`RequireNavigableEndLocation: false` のときは起きない） |
+| `Reachable` | `true` | 完全な経路がある。始点と終点がほぼ同じ点のときは、長さ 0 の 1 点の経路になる |
+| `SearchLimitReached` | `null` | 探索ノードを使い切った。`IsPartial` は true で、経路は探索できたところまで。`MaxSearchNodes` を上げる（8192 超には `RuntimeNavigationExtendedSearch` が必要） |
+| `PartialPathOnly` | `false` | 手前で止まる経路しかなく、`AllowPartialPath` は true。部分経路を返す |
+| `NoPath` | `false` | 経路が無い、または `AllowPartialPath` が false で部分経路しかない。経路は返さない |
+| `Unknown` | `null` | 経路探索の答えが上のどれにも当てはまらない |
+
+`StartNotOnNavMesh` / `EndNotOnNavMesh` では、`StartProjection` / `EndProjection` がどちらの点が失敗したか（`Projected: false`）を示し、`TileExistsAtLocation` がその地点にタイルがあるかを示します — タイルが無いときは、座標の誤りよりも、World Partition の未読み込みの範囲を疑ってください。
+
+`AgentActor` を指定しないクエリには Querier が無いため、ナビゲーションデータの既定以外のフィルタは Querier なしで初期化され、メタフィルタは解決されません。その場合、応答に `Limitations: QuerierlessFilter` が付きます。AI と同じ結果を見るには `AgentActor` を指定してください。AI が入れないエリアは、巨大なコストではなく `Traversable: false` と `ExclusionSource`（`AreaCost`・`AreaFlags`・`NullArea`）で示します。
+
+#### Limitations のコード
+
+| コード | 意味 |
+|---|---|
+| `UnreadableField` | 項目をエンジンから読めなかったので省いた |
+| `CountIncomplete` | `TotalCount` が下限である（`CountComplete` が false） |
+| `SelectionNotEvaluated` | ナビゲーションシステムやそのデータが使えないため、`NavDataName` / `FilterClass` を何とも照合しなかった |
+| `NonRecastNavData` | Recast メッシュでないナビゲーションデータがあり、メッシュ固有の項目を省いた |
+| `DefaultAgentNameUnreadable` | エンジンの既定エージェント名を読めなかったので、それを条件にせずメインのナビゲーションデータを選んだ |
+| `QuerierlessFilter` | フィルタが Querier なしで初期化された（上を参照） |
+| `SearchNodesClamped` | フィルタ自身の探索ノード数が 8192 を超えていたので下げた、または 4 未満だったので引き上げた。`Detail` にフィルタの値と実際に使った値、下げたときは上限とそれを引き上げる Capability が入る |
+| `ActivePathRegistered` | エディタワールドでは、クエリの経路がナビゲーションデータへ登録され、そこでは掃除されない |
+| `StaleCorridor` | 経路のコリドーの一部が、その後に再生成されたタイルを指している。該当する項目は `Valid: false` になる |
+| `DeclaredAreaUnreadable` | モディファイアのコンポーネントが宣言するエリアを読めなかった |
+| `UnobservablePendingUpdates` | エンジンが観測できない更新を保留しているため、静止と答えた直後に生成が始まることがある |
+| `NavMeshNotBuiltAtQuiescence` | 静止したが、メッシュが無いナビゲーションデータが残っている。`Detail` にその名前が入る |
+| `BuildLocked` | ビルドロックが掛かっている。`Detail` にそのロックが入る。予約した範囲はロックの解除後に処理される |
+| `WorldPaused` | ワールドが一時停止している。その間、予約した範囲は処理されないことがある |
+| `AutoUpdateDisabled` | エディタワールドで自動更新が無効。dirty area が捨てられ、何も生成しないまま静止に見えることがある |
+| `OutsideNavigationBounds` | `RebuildNavigation`: `Box` がどの登録済みナビゲーション範囲の外にある |
+| `ModifiersOnlyRebuild` | `RebuildNavigation`: モディファイアの再適用だけを行うナビゲーションデータがある（`DynamicModifiersOnly`） |
+| `ActiveTilesGenerationOnly` | `RebuildNavigation`: アクティブなタイルに限って再生成するナビゲーションデータがある |
+| `QueueNotObserved` | `RebuildNavigation`: 予約の直後に読んだ生成状態に予約中の範囲が現れず、エンジンが要求を捨てた可能性がある。`Detail` に予約した範囲の数が入る |
+
+#### 出力の上限
+
+`Data` に直接載せる一覧は先頭 50 件までで、捕捉した全件は artifact に入ります。件数の上限は、タイルとモディファイアが 4096、経路の点が 4096、ナビゲーションデータが 64、登録済みの範囲が 256、エリアが 64 です。上限で切った一覧は `TotalCount` を併記し、内側の配列は 64 件で切って `Truncated` を付けます。1 回の要求の作業量にも上限があります: 処理するポリゴン数（`MaxPolygons`）と探索ノード数（8192。`RuntimeNavigationExtendedSearch` があれば 65534）です。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータが欠けている・型が違う・範囲外・未知のキー。上の排他の組み合わせ。どれにも一致しない `NavDataName`（メッセージに存在する名前を列挙）。読み込まれていない、またはナビゲーションクエリフィルタでない `FilterClass`。65534 を超える、または 4 未満の `MaxSearchNodes`。`TargetNetRole` / `TargetPIEInstance` を満たせない |
+| `CapabilityNotAvailable` | `RuntimeInspect`、（`RebuildNavigation` では）`RuntimeNavigationRebuild`、（`MaxSearchNodes` が 8192 を超えるときは）`RuntimeNavigationExtendedSearch` が付与されていない。メッセージにその名前が入る |
+| `PolicyViolation` | その Capability が安全ポリシーで明示的に拒否されている |
+| `NotAllowed` | プレイワールドを必要とするコマンドでプレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い |
+| `NotFound` | `StartActor`・`EndActor`・`AgentActor`・`ActorIdentifier` に一致するアクターが無い。`GetPathFollowingState` では、アクターが AI コントローラーに動かされていない場合と、AI コントローラーに PathFollowingComponent が無い場合（それぞれ別のメッセージ） |
+| `ExecutionFailed` | 識別子に複数のアクターが一致する。フィルタを解決できなかった。観測コマンドの artifact を書けなかった。`WaitForNavigationBuild` の待機中にワールドが破棄された |
+| `PreconditionFailed` | `RebuildNavigation` のみ: ワールドにナビゲーションシステムが無い、生成する先が無い、またはゲーム中に再生成するナビゲーションデータが無いため、何も予約しなかった |
+| `Timeout` | `WaitForNavigationBuild` のみ: `TimeoutSeconds` 以内に静止しなかった。結果と artifact は返す |
+
+観測コマンドは、成功した呼び出しごとにちょうど 1 つの JSON artifact を保存し、失敗した呼び出しは何も保存しません。
+
+---
+
+## UAIP.Runtime.Animation
+
+実行中のゲームでキャラクターのアニメーション状態を観測するコマンド群です。ステートマシンごとのアクティブな State、ブレンドのウェイト、再生中のモンタージュ、アニメーションカーブの値、アニメーションがそもそも更新されているか、AnimInstance の変数の値、そして Motion Matching では直近の検索がどのポーズを選んだか、を返します。どのコマンドも読むだけで、アニメーションの挙動を変えることはありません。エディタでは PIE の実行中に、また `-game` 起動やパッケージ版でも動作します。7 つすべてが [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。ステートマシン名と State 名は Anim Blueprint エディタと同じ綴りで返るため、ここで見た State をエディタ側で名前から探せます。
+
+**Capability。** 7 つすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`DumpAnimInstanceVariables` は、さらに `AnimInstanceVariableDump`（DefaultDenied）を必要とします。プロジェクト自身の AnimInstance クラスが宣言した変数の値を書き出し、それにはプロジェクトの任意のデータが入りうるためです。足りない場合は、その名前を示した `CapabilityNotAvailable` になります。詳細は [安全性と Capability](safety.md#runtime-アニメーション) を参照してください。
+
+**オプションのプラグイン。** `GetMotionMatchingState` 🧩 は、PoseSearch プラグインが有効なときだけ登録されます。無効なときはこのコマンドが存在せず（必要なプラグインを示す案内付きの `CommandNotFound`）、ほかの 6 コマンドは影響を受けません。デモ版には含まれません。
+
+**読み取りが表すもの。** 値は呼び出した瞬間のものです。履歴は返しません。モンタージュがいつブレンドアウトに入ったかは分からず、ブレンドアウトが終わったモンタージュは残っていません。応答の識別子（`InstanceId`、`MachineId`、`NodeId`、`MontageInstanceId`）は、その応答の中で項目を区別するためのものです。Anim Blueprint の再コンパイルや別のプレイセッションをまたいでは保たれないので、保存して後の照合に使わず、次に調べるときはステートマシン名・State 名で絞り込んでください。
+
+### 観測（5）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `DumpAnimInstanceState` | 以下のすべてを 1 回の読み取りでまとめて返すので、各節が同じフレームを表します。1 つのスケルタルメッシュコンポーネントの本体・Linked・Post Process の AnimInstance について、更新状態・ステートマシン・ブレンドのウェイト・モンタージュ・カーブです。ステートマシン（`StateMachineName`）とカーブ（`CurveType`、`CurveNameContains`）を絞り込めます。Motion Matching と変数は含みません — それぞれ `GetMotionMatchingState` と `DumpAnimInstanceVariables` を使ってください。応答には要約と各一覧の先頭の項目が載り、成果物には残した項目がすべて入ります |
+| 🆓 `GetAnimStateMachineStates` | ステートマシンの状態です。マシンごとに、アクティブな State（`ActiveState`）とその State にいる経過時間（`ActiveStateElapsedSeconds`）、ウェイトを持つ State（`StateWeights`）、進行中の遷移（`ActiveTransitions`: `PreviousState` → `NextState` と `NextStateWeight`）、マシン自体のウェイトを返します。アクティブと報告される State には、ブレンドアウト中の State も含まれます。遷移には名前も経過時間もなく、進み具合は遷移先の State のウェイトで示します。まだ動き出していないマシンは、ウェイトも遷移も無い `Uninitialized` として返ります。`StateMachineName` で絞り込め、同じ名前のマシンはすべて返ります |
+| 🆓 `GetAnimBlendWeights` | 再生中のアセットとその最終ブレンドウェイト（`Players`。ブレンドスペースは座標とサンプルのウェイト付き）、ブレンドスペースのプレイヤーノード（`BlendSpaceNodes`）、レイヤードブレンドのノードと各ブレンドポーズのウェイト（`LayeredBlends`）、単一ノードの AnimInstance では再生中のアセット（`SingleNode`）を返します。ブレンドアウト中のモンタージュも有効として数えるため、そのブレンドはブレンドアウトが終わるまでウェイトに含まれます。絞り込みはありません |
+| 🆓 `GetActiveMontages` | 有効なモンタージュ（ブレンドアウト中を含む）です。モンタージュのインスタンスごとに、`State`（`BlendingIn`、`Playing`、`BlendingDown`、`BlendingOut`、`Stopped`、`HoldingAtEnd`、`Paused`、`Unknown`）、`PositionSeconds` と `PlayLengthSeconds`、`PlayRate`、現在と次のセクション、`Weight` と `DesiredWeight`、グループ、再生しているスロットとそのウェイトを返します。本体のモンタージュのデータを使う Linked の AnimInstance は、繰り返さずに `SharedWithMain` の印を付けます。絞り込みはありません |
+| 🆓 `GetAnimCurveValues` | アニメーションカーブを名前順に、名前・値・種別（`Types`）で返します。すべてのカーブは `Attribute` で、マテリアルパラメータやモーフターゲットも駆動するカーブには、さらに `Material` または `MorphTarget` が付きます。`CurveType` で絞り込めます（`Material` か `MorphTarget`。`All` と `Attribute` はすべてのカーブを残します）。`CurveNameContains` は名前に指定の文字列を含むカーブを残します。`TotalCount` はフィルターを通ったカーブの数、`UnfilteredCount` は通す前の数です。値は最後に完了した評価のもので、更新レートの最適化で評価を省いた箇所では補間された値か直前の値です。カーブの一覧は `MaxEntries` で変えない限り 1024 件で切ります。Linked の AnimInstance と、本体があるときの Post Process の AnimInstance は、カーブを繰り返さずに `SharedWithMain` の印を付けます |
+
+### 変数の値の観測（1）— `RuntimeInspect` と `AnimInstanceVariableDump` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `DumpAnimInstanceVariables` | プロジェクトが持つ AnimInstance クラスが宣言した変数の値を、本体と、`InstanceScope` が `Main` でなければ Linked・Post Process の AnimInstance について、それぞれ自分の値で返します。変数ごとに名前・宣言したクラス・型・値を返します。**プロジェクトが持つ**とは、プロジェクトの Anim Blueprint と C++ クラス、およびプロジェクトの `Plugins/` に入れたプラグインのものです。エンジン本体・エンジンに同梱されたプラグイン・エンジン側にある親クラスが宣言した変数は出ません（親がエンジン側のクラスであるプロジェクトの Anim Blueprint でも、親が宣言した変数は出ません）。ノードの内部構造も出しません。オブジェクト参照は参照先のパスで書き、辿りません。大きな値は切り詰めます: 配列は 32 要素、文字列は 1024 文字、構造体は 1 段まで展開します。サイズの予算を使い切ったときは、変数や AnimInstance ごと省き、省いたことを示す印を付けます。`VariableNameContains` は名前に指定の文字列を含む変数を残します。応答には AnimInstance ごとに先頭 50 個の変数が載り、成果物には残した変数がすべて入ります。⚠️ **この Capability を解禁すると、変数に入っている文字列やパスがそのまま成果物に出ます** — [安全性と Capability](safety.md#runtime-アニメーション) を参照してください |
+
+### Motion Matching（1）🧩 — `RuntimeInspect` が必要
+
+デモ版には含まれません。PoseSearch プラグインが有効なときだけ登録されます。
+
+| コマンド | 説明 |
+|---|---|
+| `GetMotionMatchingState` | 直近のポーズ検索が Motion Matching のノードごとに残した状態です。選ばれたアニメーション（`SelectedAnimationPath`）とその中の時刻（`SelectedTimeSeconds`）、ミラーかどうか（`Mirrored`）、ブレンドスペースの座標（`BlendParameters`）、選ばれた元のポーズ検索データベース（`SelectedDatabasePath`）、合計コスト（`SearchCost`）、検索が再生中のポーズを継続したか（`IsContinuingPoseSearch`）、検索が望む再生速度（`WantedPlayRate`）、最後にポーズが切り替わってからの秒数（`ElapsedPoseSearchTimeSeconds`）を返します。まだ何も選んでいないノードは `HasSearchResult: false` で、選択に関する項目はすべて `null` です。AnimInstance ごとに自分のエントリで読み、ノードはその `MotionMatching` の下に入ります。Motion Matching を使っていないキャラクターは、失敗ではなく空の一覧と制限事項 `NoMotionMatchingNode` を返す成功です — ただし、対象のすべての AnimInstance を読めたときだけ言います。読めなかった AnimInstance があれば、その理由だけを示します。ノードは `MaxEntries` まで並べ、切った後ろのノードは数えないため、一覧を切ったときの `TotalCount` は `null` です。コストの内訳・候補ポーズ・検索したデータベースの一覧・ポーズの番号は返しません |
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `ActorIdentifier`（必須） | すべて | 観測するスケルタルメッシュコンポーネントを持つアクターのラベルまたは名前（1〜256 文字） |
+| `ComponentName` | すべて | スケルタルメッシュコンポーネントの名前。大文字小文字を区別しない完全一致（1〜256 文字）。省略したときは [読むメッシュの選び方](#読むメッシュの選び方) に従って選びます |
+| `InstanceScope` | すべて | `Main`（本体の AnimInstance だけ）または `All`（本体と Linked・Post Process）。既定は `All` |
+| `MaxEntries` | すべて | カーブを含むすべての一覧の件数の上限。1〜4096 の整数。既定はカーブ以外が 256、カーブが 1024。値はすべての一覧に効くため、`300` を指定するとカーブの上限も 1024 から 300 になります |
+| `StateMachineName` | `GetAnimStateMachineStates`、`DumpAnimInstanceState` | 返すステートマシンの名前。大文字小文字を区別しない完全一致（1〜256 文字）。同じ名前のマシンはすべて返ります |
+| `CurveType` | `GetAnimCurveValues`、`DumpAnimInstanceState` | `All`（既定）、`Attribute`、`Material`、`MorphTarget` |
+| `CurveNameContains` | `GetAnimCurveValues`、`DumpAnimInstanceState` | カーブ名に含まれるべき文字列。大文字小文字を区別しない部分一致（1〜256 文字） |
+| `VariableNameContains` | `DumpAnimInstanceVariables` | 変数名に含まれるべき文字列。大文字小文字を区別しない部分一致（1〜256 文字） |
+| `TargetNetRole` / `TargetPIEInstance` | すべて | [実行時コマンドの対象プレイワールドを指定する](#実行時コマンドの対象プレイワールドを指定する) を参照 |
+
+絞り込みのパラメータは、対応するコマンドだけが受け付けます。それ以外のコマンドに渡す、知らないキー、空の文字列、256 文字を超える名前、1〜4096 の外の件数、知らない種別は `InvalidParams` です。パラメータはプレイワールドを探す前に検査されるため、PIE が動いていなくても不正な要求は拒否されます。
+
+#### 読むメッシュの選び方
+
+`ComponentName` を省略したときは、次の順で選びます。アニメーションを持つスケルタルメッシュコンポーネントが 1 つだけならそれ。複数あるときは、キャラクター本体のメッシュ（持つアクターの場合）。アニメーションを持つものが 1 つも無く、メッシュが 1 つだけならそのメッシュです。応答には、どう選んだか（`ByName`、`OnlyAnimated`、`CharacterMesh`、`OnlyMesh`）と、ほかの候補の一覧が載ります。どの規則でも 1 つに絞れないときは、候補の一覧付きの `InvalidParams` で失敗するので、名前を選んで指定し直してください。MetaHuman のように顔が別のメッシュのキャラクターでは、既定では体のメッシュを読みます。顔のメッシュを読むには、その名前を指定します。
+
+AnimInstance を持たないメッシュはエラーではありません。アニメーションの節を空にし、`NoAnimInstance` と、メッシュのアニメーションの設定（Anim Blueprint を使う / 単一アセット / なし）を示す成功になります。`ComponentName` で名前を指定した、本体に追従するだけのメッシュでも同じです。
+
+#### すべての応答に含まれるフィールド
+
+| フィールド | 意味 |
+|---|---|
+| `CapturedAt` / `Frame` | 状態を読んだ時刻（ISO 8601、UTC）と、そのときのエンジンのフレーム番号 |
+| `NetMode` / `WorldContext` / `PIEInstance` | 読んだワールド。`PIEInstance` は PIE 以外では省略されます |
+| `Actor` / `Component` / `ComponentSelection` / `Candidates[]` | 読んだアクターとメッシュコンポーネント、メッシュの選び方、アクターのほかのスケルタルメッシュコンポーネント |
+| `Instances[]` | AnimInstance ごとに 1 項目。本体 → Linked → Post Process の順です: `InstanceId`、`Role`（`Main`、`Linked`、`PostProcess`）、`ClassPath`、`IsAnimBlueprintClass`、`Initialized`、`SharedWithMain`、そのコマンドが読む節。1 つのメッシュで読む AnimInstance は 64 個までで、超えた分は「省いた」と示されます |
+| `UpdateState` | アニメーションが更新されているか。止まっているときは `Details` にその理由が並びます: `AnimationDisabled`、`AnimationPaused`、`SkeletonUpdateDisabled`、`ComponentTickDisabled`、`WorldPaused`、`NotRendered`。更新レートの最適化の状態も併記されます。更新レートの最適化で今回のフレームだけ更新を飛ばしている場合は、止まっているとは扱わず `UpdateSkippedByURO` で示します |
+| `ValueBasis` | 値がどの時点のものかに依存する項目で、その基準を示します: `NodeLastUpdate`、`RecordedReadBuffer`、`InstanceCurrent`、`LastCompletedEvaluation` |
+| `DegradedSections[]` / `Limitations[]` | 埋められなかった部分とその理由、および返した内容に関する注意。それぞれ `Code` と、場合により `Detail` を持ちます。同じ理由が何度も出るときは 1 つにまとめて `Count` を付けます |
+
+読めない節があるときは、その部分だけを省いて理由を示し、コマンド自体は成功します。例: 初期化されていない AnimInstance は中身を読まずに列挙します（`AnimInstanceNotInitialized`）。動き出していないステートマシンは `Uninitialized` です。アニメーションが無効のメッシュでは、マシンのウェイトだけを省きます。非数や無限大の数値は `null` にします。Anim Blueprint を使わない AnimInstance（C++ だけのもの、単一アセットの再生）はステートマシンもノードも持たず、その理由を示します（`NativeAnimInstance`、`SingleNodeInstance`）。モンタージュ・カーブ・再生中のアセットは読めますが、C++ だけの AnimInstance では再生中のアセットの位置が空になることがあります。単一アセットの再生でモンタージュを再生しているときは、`SingleNode` が `null` になり、モンタージュとして返ります。モンタージュ以外を再生していて別のモンタージュが有効なときは、位置がモンタージュのものである可能性があります（`SingleNodePositionFromMontage`）。
+
+#### 出力の上限
+
+一覧は `MaxEntries`（既定は 256、カーブは 1024、最大 4096）で、決まった順序で打ち切り、`TotalCount` を報告します。入れ子の一覧（ブレンドスペースのサンプル、モンタージュのスロット、メッシュの候補）は 64 件までです。1 つのコマンドの量は全体でも上限があり、達したらそれより後ろの一覧は読まずに「省いた」と示すため、空だった一覧と省いた一覧を区別できます。応答には各一覧の先頭 50 件が載り、成果物には上限の範囲で読めたものがすべて入ります。
+
+#### Linked Anim Layer と Post Process
+
+既定では、本体・Linked・Post Process のすべての AnimInstance を、本体を先頭にして返します。Linked のカーブは本体の複製なので繰り返しません。Post Process のカーブも、本体があるあいだは繰り返しません。Linked のモンタージュは、本体のモンタージュのデータを使う設定のときは繰り返しません。変数はすべての AnimInstance について、それぞれ自分の値を返します。Linked Anim Layer を差し替えた直後の 1 回は、再生位置に 1 フレーム古い値が混じることがあります。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータの型の誤り・空・長すぎる・範囲外・未知。対応しないコマンドに絞り込みを渡した。メッシュを 1 つに絞れない（メッセージに候補の一覧が付く）。`TargetNetRole` / `TargetPIEInstance` を満たせない |
+| `CapabilityNotAvailable` | `RuntimeInspect`、または `DumpAnimInstanceVariables` の `AnimInstanceVariableDump` が許可されていない。メッセージに名前が付く |
+| `PolicyViolation` | 安全ポリシーでその Capability が明示的に拒否されている |
+| `NotAllowed` | プレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い |
+| `NotFound` | アクターが見つからない、スケルタルメッシュコンポーネントを持たない、または `ComponentName` の名前のコンポーネントが無い（メッセージに候補の一覧が付く） |
+| `PreconditionFailed` | 呼び出した瞬間に、メッシュのアニメーションがワーカースレッドで評価中だった。何も読まず、成果物も保存しません。待つと観測のせいでゲームのイベントが早まって発火するため、待ちません。もう一度呼んでください |
+| `ExecutionFailed` | 識別子に一致するアクターが複数ある、または成果物を保存できなかった |
+
+成功した呼び出しは必ず JSON の成果物を 1 つ保存します。失敗した呼び出しは何も保存しません。
 
 ---
 

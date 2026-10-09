@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1241 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1662 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1271 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1692 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -87,7 +87,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
 | Editor Assets | `UAIP.Editor.Assets` | 51 | 6 | partial (29/51) |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
-| Editor Level | `UAIP.Editor.Level` | 22 | 8 | partial (8/22) |
+| Editor Level | `UAIP.Editor.Level` | 22 | 8 | partial (9/22) |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | partial (6/12) |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
@@ -141,17 +141,20 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | partial (1/2) |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 14 | 1 | — |
-| Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
+| Runtime Observation | `UAIP.Runtime.Observation` | 12 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
-| Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
+| Runtime Input | `UAIP.Runtime.Input` | 14 | — | partial (2/14) |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 17 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
 | Runtime LiveLink | `UAIP.Runtime.LiveLink` | 14 | — | — |
 | Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | partial (3/11) |
 | Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
 | Runtime SaveGame | `UAIP.Runtime.SaveGame` | 10 | — | — |
-| Runtime AI | `UAIP.Runtime.AI` | 6 | — | partial (5/6) |
+| Runtime AI | `UAIP.Runtime.AI` | 6 | — | ✅ |
+| Runtime Chaos Destruction | `UAIP.Runtime.ChaosDestruction` | 8 | — | partial (7/8) |
+| Runtime Navigation | `UAIP.Runtime.Navigation` | 8 | — | partial (7/8) |
+| Runtime Animation | `UAIP.Runtime.Animation` | 7 | — | partial (6/7) |
 
 ---
 
@@ -307,7 +310,7 @@ Component classes are gated the same way but by a rule of their own, described i
 
 ## Choosing which play world a Runtime command acts on
 
-A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 55 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
+A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 82 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
 
 | Parameter | Type | Meaning |
 |---|---|---|
@@ -341,17 +344,48 @@ Two limits worth knowing:
 | Domain | Commands |
 |---|---|
 | `UAIP.Runtime.World` | `SpawnActor`, `DestroyActor`, `TeleportActor`, `PossessActor`, `SetTimeScale`, `ExecuteConsoleCommand`, `SetDataLayerRuntimeState`, `GetDataLayerRuntimeState`, `ListDataLayerRuntimeStates`, `WaitForDataLayerStreaming` |
-| `UAIP.Runtime.Observation` | `CaptureViewportImage`, `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `CheckpointCapture` |
+| `UAIP.Runtime.Observation` | `CaptureViewportImage`, `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `CheckpointCapture`, `DumpGameViewportWidgets`, `FindGameViewportWidgets`, `DumpGameViewportWidgetTexts`, `DumpHUDState` |
 | `UAIP.Runtime.Execution` | `RunFunctionalTest`, `RunRuntimeAutomationTest` |
 | `UAIP.Runtime.Assertion` | `WaitForCondition`, `AssertActorProperty`, `AssertWorldState` |
-| `UAIP.Runtime.Input` | `InjectInputKey`, `InjectEnhancedInputAction`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `AddMappingContext`, `RemoveMappingContext`, `SetInputMode`, `FlushInput`, `DumpInputState`, `GetEnhancedInputActionValue` |
+| `UAIP.Runtime.Input` | `InjectInputKey`, `InjectEnhancedInputAction`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `AddMappingContext`, `RemoveMappingContext`, `SetInputMode`, `FlushInput`, `DumpInputState`, `GetEnhancedInputActionValue`, `ClickGameViewportWidget`, `PressGameViewportUIKey`, `TypeGameViewportText` |
 | `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses`, `GrantAbility`, `RemoveAbility`, `ClearGrantedAbilities`, `ApplyEffect`, `RemoveEffect`, `ClearActiveEffects`, `SetAttributeValue`, `ResetAttributesToBase`, `SendGameplayEvent` |
 | `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`, `GetVariable`, `SetVariable`, `SetSystem` |
 | `UAIP.Runtime.AI` | `DumpAIPerceptionState`, `GetPerceivedActors`, `GetActorPerceivers`, `DumpAIPerceptionSystemState`, `ExplainSightPerception`, `DumpAIPerceptionSenseConfigs` |
+| `UAIP.Runtime.ChaosDestruction` | `ListGeometryCollections`, `DumpGeometryCollectionState`, `DumpChaosFieldState`, `StartDestructionCapture`, `CaptureGeometryCollectionStrain` |
+| `UAIP.Runtime.Navigation` | `DumpNavigationSystemState`, `FindPath`, `IsLocationReachable`, `DumpNavMeshTiles`, `QueryNavModifiers`, `GetPathFollowingState`, `WaitForNavigationBuild`, `RebuildNavigation` |
+| `UAIP.Runtime.Animation` | `DumpAnimInstanceState`, `GetAnimStateMachineStates`, `GetAnimBlendWeights`, `GetActiveMontages`, `GetAnimCurveValues`, `DumpAnimInstanceVariables`, `GetMotionMatchingState` |
 
 `CheckpointCapture` is the one entry above that does not resolve a world of its own: it is composed of `CaptureViewportImage` and `DumpWorldState`, and hands whatever target you name to both of them. That is what keeps the screenshot and the state dump inside one checkpoint describing the same world, instead of two worlds the engine happened to pick separately.
 
 `QuitGame`, `ListPlayWorlds` and the CVar commands take neither: the first two are not addressed to a single world, and CVars are engine-global rather than per-world.
+
+### Compatibility: what changed for commands that already existed
+
+The game viewport UI commands ([`UAIP.Runtime.Observation`](#uaipruntimeobservation), [`UAIP.Runtime.Input`](#uaipruntimeinput)) came with a clean-up of how the existing Runtime commands report that there is no play world. While a play world exists nothing changes; the differences below show only when none does, or when a capability is denied.
+
+**No play world: the error code is now `NotAllowed`.** Every Runtime command that needs a play world now refuses with the same `NotAllowed`, through one shared mapping. A scenario retries a step by itself only after `ExecutionFailed` or `PreconditionFailed`, so **these commands are no longer retried when there is no play world**. A scenario that relied on retries to wait for PIE to start must wait explicitly instead.
+
+| Module | Commands | Before | Now |
+|---|---|---|---|
+| Observation | `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `CaptureViewportImage`, `CheckpointCapture` | `ExecutionFailed` | `NotAllowed` |
+| Input | the 11 existing commands | `ExecutionFailed` | `NotAllowed` |
+| World | `SpawnActor`, `DestroyActor` (the other eight World commands already returned `NotAllowed`) | `ExecutionFailed` | `NotAllowed` |
+| GAS 🧩 | all 14 commands | `ExecutionFailed` | `NotAllowed` |
+| Assertion | `AssertActorProperty`, `AssertWorldState`, `WaitForCondition` | `ExecutionFailed` | `NotAllowed` |
+| Execution | `RunFunctionalTest`, `RunRuntimeAutomationTest` | `ExecutionFailed` | `NotAllowed` |
+| Niagara 🧩 — **the other way round** | `GetUserVariables`, `GetVariable`, `SetSystem`, `SetVariable`, also through the Toolset bridge | `PreconditionFailed` | `NotAllowed` |
+
+- The five read commands of GAS (`GetActiveEffects`, `GetActiveTags`, `GetAttributeValues`, `GetGrantedAbilities`, `FindAttributeSetClasses`) still read the level being edited when no play world exists, **as long as you name no world** (`TargetNetRole` / `TargetPIEInstance` omitted). `NotAllowed` comes only when you named a world and none is running.
+- `WaitForCondition` returns `NotAllowed` when there is no play world at its first check. If the world is found and then disappears while it waits, it still ends with `ExecutionFailed`, which a scenario retries.
+- If the play world disappears **during** `RunFunctionalTest` or `RunRuntimeAutomationTest`, the result is still a timeout or a test failure, not `NotAllowed`.
+
+**Capabilities.** `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `DumpRuntimeLog`, `CapturePerformanceSnapshot` and `SearchLoadedClasses` now require `RuntimeInspect`; `CaptureViewportImage` requires `RuntimeCapture`; `CheckpointCapture` requires `RuntimeInspect` in addition to what it required before, because it dumps the world state internally. All are DefaultAllow, so only a configuration that denies one of them in `DeniedCapabilities` notices: the command is then refused with `PolicyViolation` when the request is accepted, and no artifact is produced. A capability that is merely not granted is `CapabilityNotAvailable`.
+
+**Read-only.** Those commands and `CaptureViewportImage` now count as read-only: they run when the safety policy sets `ReadOnly`, and while a modal dialog is open.
+
+**`CaptureViewportImage` captures the chosen world.** It now captures the game viewport of the world that `TargetNetRole` / `TargetPIEInstance` select, so with several PIE instances it no longer captures another instance's screen.
+
+**`PlayerIndex` does not mean the same in every command.** The existing input commands (`InjectInputKey` and the others) take the number of the **player controller**. `PressGameViewportUIKey`, `TypeGameViewportText` and `DumpHUDState` take the number of the **local player** in the game instance's list. The parameter descriptions say which.
 
 ---
 
@@ -372,7 +406,7 @@ System-level commands for discovery, health, and session management.
 | 🆓 `ListIntegrations` | Reports every optional-plugin integration UAIP knows about — a UAIP module (or part of one) that needs a plugin which can be disabled or absent at run time. Each entry carries `Name`, `State` (`Pending` / `Loading` / `Loaded` / `CompiledOut` / `PluginDisabled` / `PluginNotInstalled` / `DependencyNotLoaded` / `NotApplicable` / `LoadFailed`, plus `NotInThisEdition` in the free demo build for an integration only the Pro edition includes), `RequiredPlugins`, `MissingPlugins`, `DependsOn`, `CommandMatchers`, a plain-language `Remedy` — the same wording a `CommandNotFound` hint gives for one of its commands — and, only when `State` is `LoadFailed`, `FailureKind` / `FailureReason`. An optional `State` parameter narrows the returned `Integrations` array to that state; `IntegrationCount` / `LoadedCount` / `NotLoadedCount` always cover every integration regardless of the filter. An unrecognised `State` value is refused with `InvalidParams`. Requires no capability |
 | 🆓 `GetPendingInteractionStatus` | Reports where one pending interaction stands — `State`, `Cause`, `ElapsedSeconds`, `Prompt`, `Reason`, `Result` — without waiting for it to change. Requires the same explicitly given `SessionId` that started the interaction (an interactive command such as `DrawPCGSpline`); unknown, expired, and other-session all report `NotFound` identically |
 | 🆓 `WaitForPendingInteraction` | Blocks until a pending interaction leaves `AwaitingUser`, or until this call's own `TimeoutSeconds` ceiling is reached (default 30, range [1, 600]), whichever comes first; on timeout the interaction itself is unaffected and keeps waiting for the human. Up to 4 concurrent calls may watch the same interaction, but reaching more than one requires `[UAIP.Transport] AllowConcurrentPassiveWaits` — see [Configuration](config.md) |
-| 🆓 `CancelPendingInteraction` | Cancels a pending interaction the calling session started, without waiting for the human to act. An interaction already `Completed` is answered with `Success` rather than an error; the capabilities the starting command declared are re-checked against the session's current capability set |
+| 🆓 `CancelPendingInteraction` | Cancels a pending interaction the calling session started, without waiting for the human to act. An interaction already `Completed` is answered with `Success` rather than an error; the capabilities the starting command declared are re-checked against the session's current capability set; one the session no longer holds is refused with `CapabilityNotAvailable`, or with `PolicyViolation` when the operator has denied it explicitly in `DeniedCapabilities` |
 
 ---
 
@@ -423,7 +457,7 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 > - **`GetRestartStatus` data**: `AttemptId`, `State`, `RequestedAt`, `ElapsedSeconds`, `CloseDeadlineSeconds`, `ProcessId`. `State` is `Scheduled`, `CloseRetrying` (the editor is busy saving or loading and keeps trying to close), `Declined` or `ExitStarted`. A `Declined` attempt also carries `DeclineReason`, `DeclineDetail`, `Remedy`, `OutcomeErrorCode` (`ExecutionFailed`), `OutcomeErrorMessage`, `RestoredDirtyPackageCount` and `LostDirtyPackageCount`.
 > - **Refused up front (nothing is saved, discarded or changed)**: `PreconditionFailed` while a lighting build (`LightingBuildRunning`), an Interchange import (`InterchangeActive`) or a main window recreation (`MainFrameRecreating`) is running, or while a modal dialog is open (`ModalWindowOpen`; only in an editor a person operates, not in the unattended editor the bridge launches) — `Data` carries `DeclineReason` and `Remedy`, and the message ends with the remedy. `NotAllowed` when the editor is already exiting. `Conflict` while another attempt is in progress (`Data.AttemptId` names it; this is decided before the conditions above). `ExecutionFailed` when saving was requested and some packages failed to save (`Data.FailedPackages` lists them); the editor does not restart.
 > - **Declined after acceptance**: the editor logs a warning, restores the settings it changed for the restart, and puts unsaved changes it was about to discard back into the unsaved state (`RestoredDirtyPackageCount` / `LostDirtyPackageCount` give the counts). `DeclineReason` is one of `LightingBuildRunning`, `InterchangeActive`, `CloseRequestDeclined`, `CloseTimedOut` or `SupersededByShutdown`. The editor keeps running.
-> - **Close deadline**: if the editor cannot close within `CloseDeadlineSeconds` (default 60) of acceptance, the attempt is declined with `CloseTimedOut`; in an editor a person operates, it is not declined while a dialog such as a save prompt is open. Change it in `DefaultUAIP.ini` with `[UAIP.EditorRestart]` `CloseDeadlineSeconds` (10 to 600; see [Configuration](config.md#uaipeditorrestart--closing-deadline-for-restarteditor)) — raise it if you often restart right after a heavy save or shader compilation.
+> - **Close deadline**: if the editor cannot close within `CloseDeadlineSeconds` (default 60) of acceptance, the attempt is declined with `CloseTimedOut`; in an editor a person operates, it is not declined while a modal dialog is open (the restart itself does not show a save prompt; such a dialog comes from something else). Change it in `DefaultUAIP.ini` with `[UAIP.EditorRestart]` `CloseDeadlineSeconds` (10 to 600; see [Configuration](config.md#uaipeditorrestart--closing-deadline-for-restarteditor)) — raise it if you often restart right after a heavy save or shader compilation.
 > - **Shutting down during an attempt**: `ShutdownEditor`, or `QuitGame` when it ends up asking the editor itself to exit, cancels the attempt and the editor exits without starting a new one. A `ShutdownEditor` refused by the safety policy (`PolicyViolation`) cancels nothing. Before the editor exits, `GetRestartStatus` reports the attempt as `Declined` with `SupersededByShutdown`. A person closing the window, or an exit that does not come from UAIP, during an attempt still ends in a restart.
 > - **Older components**: an older MCP Bridge still returns at acceptance, and an older editor returns no `AttemptId`, so a newer bridge behaves as before. Either way, a restart declined after acceptance is only visible through `GetRestartStatus` on a newer editor.
 
@@ -674,6 +708,11 @@ Drive the editor UI — click, type, select, drag.
 >
 > **`WaitForWidget`** takes `WidgetRef` (required) and `ExpectedState` (required; one of `Exists`, `Absent`, `Visible`, `Hidden`, `Enabled`, `Disabled`, `Focused`). `WaitTimeoutSeconds` is optional (default 5.0, at most 30). `PollIntervalSeconds` (default 0.1, at least 0.05) and `ConfirmTickCount` (default 3, at most 10) are also optional.
 
+> **Note — input path and `PartialDelivery`.** `ClickWidget`, `HoverWidget`, `PressKey`, `AcceptDialog`, `CancelDialog`, `SetComboSelection` and `FillForm` now build their input the same way the runtime UI commands ([`ClickGameViewportWidget`](#game-viewport-ui-input-3) and the others) do. Their parameters, errors and refusal conditions (menus, modals) are unchanged, and `HoverWidget` still succeeds as before: it checks afterwards that the hover took hold and only logs the result. Because the hover, combo and key input now reach the widget as the real mouse and keyboard user, a UI that sorts input by user number may respond where it did not before. The combo operation of `SetComboSelection` and `FillForm` now moves the cursor first and checks that the target (or something inside it) is under the cursor before pressing; if something covers it, that field fails before anything is pressed.
+>
+> One behaviour changes. When the press of `ClickWidget`, `AcceptDialog` or `CancelDialog` itself opens a modal window, the release used to be delivered after the modal had been closed, after the response was sent. It is no longer sent: the response reports the press as delivered with `ModalOpened` and `PartialDelivery: DownOnly`, the same as a click on the game viewport UI.
+>
+
 > **Note**: `SnapshotUI` takes an optional scope — `RootWidgetRef` or `RootWidgetPath` (mutually exclusive; neither combines with `WindowTitle`) to pick a starting widget, `MaxDepth` (default 30) and `MaxNodes` (default 50000, shared across every root the call visits) to bound the walk, `WidgetTypes` + `WidgetTypeMode` (`"Add"` layers extra types on top of the usual roster, `"Only"` restricts to just the listed types) and `LabelContains` to filter, and `bIncludeInvisible` / `bIncludeUnclassified` to opt into widgets the default scan skips. The response always carries `EmittedCount`, `FilteredCount`, `FilteredReasons` (six reason keys present even at zero — `InvisibleSubtreeRoot`, `StructuralContainer`, `TypeFilterMismatch`, `LabelFilterMismatch`, `Unclassified`, `RegistrationFailed`), `UnclassifiedTypes` (up to 200 entries of `Type` + `Count`, sorted by count then name — each `Type` can be passed straight back into `WidgetTypes`), `Traversal` (`Complete` / `NodeLimitReached` / `DepthLimitReached` / `VisitedNodeCount`), `MatchedRootCount`, and `EffectiveParams` (the clamped/normalized values actually applied).
 >
 > A response can only ever say "not in the set that passed the current filters." Reading that as "does not exist anywhere in the UI" requires all of: the walk was not cut off (`Traversal.Complete == true`); the unclassified-type list is complete and every entry is addressable (`UnclassifiedTypesComplete == true` and `UnaddressableUnclassifiedCount == 0`); invisible widgets were not pruned (`FilteredReasons.InvisibleSubtreeRoot == 0`, or `bIncludeInvisible` was set); `WidgetTypeMode` was `"Add"` (no type restriction); `LabelContains` was empty; no widget failed ref registration (`FilteredReasons.RegistrationFailed == 0`); and no `WindowTitle` / `RootWidgetRef` / `RootWidgetPath` scoped the call (otherwise the conclusion only holds within that scope). Even when all of those hold, a **structural container** type (below) never appears in `Widgets` or `UnclassifiedTypes` — name it explicitly via `WidgetTypes` to check for one.
@@ -846,6 +885,8 @@ Editor-side actor placement, transforms, and level loading.
 | `SetActorComponentProperty` | Write a property value onto a component of an actor placed in the level, addressed the same way as `GetActorComponentProperty`, as one undo step. The value arrives as UE import text in `Value` or as JSON in `ValueJson`, and `Operation` / `ElementIndex` / `ElementKeyJson` address a single container element instead of replacing the whole value — see [Writing references, structs and containers](#writing-references-structs-and-containers) for those parameters and the capabilities a reference or composite value additionally needs (call `GetActorComponentProperty` first to find out which). `ExpectedComponentClass` is required, same as above. Refused when the component's `Origin` is `UserConstructionScript`, since the next run of that script would discard the write. Requires `ActorComponentEdit`. Refused during PIE |
 
 > **Note — instance components only.** These six commands operate on components of an actor **placed in the level** (`GetActorComponentProperty` can also read a component of any `Origin`, including one owned by the Blueprint's construction script — only writing to that one is refused). Components declared on the actor's Blueprint go through [UAIP.Editor.Blueprint — Components — SCS](#components--scs-8) instead. Renaming and duplicating an instance component have no counterpart here; add the component again under the name you want.
+
+> **Note — writing `RestCollection` on a GeometryCollection component.** When `SetActorComponentProperty` writes `RestCollection` on a GeometryCollection component and the value actually changes, the write is committed through the engine's `SetRestCollection`, not by a plain property assignment. The asset's own defaults (damage settings and the like) are therefore taken into the component. Order matters: write `RestCollection` first and the damage settings after, and the settings you wrote stay; write them in the other order and the damage settings are overwritten by the asset's values. A write that does not change the value (writing the same asset again) does not take the defaults in.
 
 ### Toolset bridges — Level (8) 🧩
 
@@ -3474,6 +3515,64 @@ Runtime captures and state dumps.
 | 🆓 `CapturePerformanceSnapshot` | CPU / GPU performance snapshot (FPS, memory, draw calls) |
 | 🆓 `CheckpointCapture` | Combined screenshot + state dump (scenario primitive) |
 | 🆓 `SearchLoadedClasses` | Search loaded classes (used for runtime introspection) |
+| 🆓 `DumpGameViewportWidgets` | The widget tree of the game viewport of the play world — the game's own UI, with none of the editor's toolbars or tabs. The whole tree is saved as a JSON artifact; the response carries the node count, whether and where the walk was cut by `MaxDepth` / `MaxNodes`, the first 50 top level user widgets, the keyboard and gamepad focus and the screen area of each local player, and `Limitations`. Each node gives its Slate type, the UMG name and class, its rectangle, whether it is effectively visible and which layer it sits in. Text is read only with `IncludeText: true`. See [Game viewport UI and HUD](#game-viewport-ui-and-hud-4) |
+| 🆓 `FindGameViewportWidgets` | Searches the same tree for the nodes that meet every condition given (`WidgetClass`, `SlateType`, `WidgetName` / `WidgetNameContains`, `OwningPlayerIndex`; at least one is required). Each match carries the `TypePath` and the `Fingerprint` that `ClickGameViewportWidget`, `PressGameViewportUIKey` and `TypeGameViewportText` take back. A search that finds nothing is a success; `ResultLimitReached` and the `SearchIncomplete` limitation say whether the list was cut or the walk stopped early. Text is never read |
+| 🆓 `DumpGameViewportWidgetTexts` | The text of **every** text widget of the game viewport, on screen or not, and editable text with its value, as a JSON artifact. Each entry says whether its text is on screen. Requires `RuntimeWidgetTextRead` (DefaultDenied). The plain value of a password field is never written to the artifact; it appears in the response (`PasswordFieldValues`) only when the session also holds `RuntimeWidgetPasswordTextRead` |
+| 🆓 `DumpHUDState` | The HUD state of each local player as a JSON artifact: the HUD class, the display flags, the `ShowDebug` state, the debug texts, the names of the hit boxes, the widgets the HUD references and the widgets the player controller keeps on screen. What the HUD drew (lines, text, boxes) and hit box positions cannot be read and are reported in `Limitations` |
+
+### Game viewport UI and HUD (4)
+
+Read the UI of a running game: which widgets are in the game viewport, where they are, whether they can be seen, and what the HUD shows. Only the game's own UI is returned — the editor's toolbars and tabs are not mixed in, which is what separates these commands from the editor-wide `DumpSlateTree`. The same commands work in PIE and in `-game` and packaged builds. All four accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on) and are read-only: they run when the safety policy sets `ReadOnly` and while a modal dialog is open. A world with no game viewport (a server world) is refused with `NotAllowed`, and the response lists the client play worlds to retry against.
+
+**Capabilities.** `DumpGameViewportWidgets`, `FindGameViewportWidgets` and `DumpHUDState` require `RuntimeInspect` (DefaultAllow). `DumpGameViewportWidgetTexts` requires `RuntimeWidgetTextRead` (DefaultDenied), and the plain value of a password field in its response additionally requires `RuntimeWidgetPasswordTextRead` (DefaultDenied). A missing capability is `CapabilityNotAvailable` naming it; one denied explicitly in `DeniedCapabilities` is `PolicyViolation`. See [Safety & Capabilities](safety.md#runtime-game-viewport-ui).
+
+**To operate what you found**, take the `TypePath` and `Fingerprint` of a match to [`ClickGameViewportWidget`, `PressGameViewportUIKey` or `TypeGameViewportText`](#game-viewport-ui-input-3), then read the tree again to see the effect.
+
+#### What a reading is
+
+- **Rectangles** are in physical pixels from the top left corner of the game viewport, as of the last frame that was drawn. Right after an operation they can still be the old positions. In an environment that does not render (`-nullrhi`) the tree is returned without rectangles and `Limitations` says why.
+- **Text.** `DumpGameViewportWidgets` with `IncludeText: true` gives the plain text only of text that is **on screen**, cut at 256 characters with control characters removed. A text is treated as not on screen when it is hidden, fully transparent through the UI opacity or colour settings (a text made transparent by a material or another non-colour means is not detected), clipped out of view (outside a scroll area or the viewport, or of size zero), or when the environment cannot render. Whether another widget **covers** a text is not judged: a covered text is given as plain text, and a note says so. An editable text reports only a length class — `Empty`, `NonEmpty` (1 to 127 characters) or `Long` (128 or more) — and whether it is a password field. A field whose password state cannot be determined counts as a password field.
+- **`DumpGameViewportWidgetTexts` returns everything**, on screen or not, each entry marked with whether it is on screen. Its result is saved as an artifact, which by default is kept for 24 hours and, with the default HTTP settings, can be fetched by anyone who knows its ID. A password field's plain value is never written to the artifact; it is in the response only, as `PasswordFieldValues` (at most 16 values of at most 256 characters, the rest counted), and only with `RuntimeWidgetPasswordTextRead`. Without it, the `PasswordTextWithheld` limitation says how many fields were withheld.
+- **Blueprint bindings may run.** Working out what a widget shows can call the game's Blueprint binding functions. Every widget observation says so in `Limitations`.
+- **`FindGameViewportWidgets` looks at visible widgets by default** (`VisibleOnly: true`). "Visible" here means the visibility settings of the widget and its parents do not hide it; a widget with opacity 0 or outside the screen still counts, which is wider than "on screen" for text. A search that finds nothing is a success; the response says whether the list was cut (`ResultLimitReached`), whether the walk stopped early (`SearchIncomplete`) or whether the visibility filter produced the empty result, so "none exists" and "not looked at" can be told apart.
+- **The open drop-downs** of the game's own menus are part of the tree.
+- **Focus.** The response gives, for each local player, where the focus is: on the UI, on the game viewport itself, outside the game viewport, or nowhere.
+
+#### Parameters
+
+| Parameter | Commands | Meaning |
+|---|---|---|
+| `MaxDepth` | `DumpGameViewportWidgets`, `FindGameViewportWidgets`, `DumpGameViewportWidgetTexts` | Deepest level walked, 1 to 128 (the root is level 0). Default 64. A value out of range is refused with `InvalidParams`, not clamped |
+| `MaxNodes` | the same three | Budget of nodes walked, 1 to 20000. Default 5000. Refused when out of range |
+| `IncludeDebugLayer` | the same three | Also walk the debug layer below the window overlay. Default `false` |
+| `IncludeCollapsed` | the same three | Also walk branches whose own visibility is `Collapsed`. Default `true` |
+| `IncludeText` | `DumpGameViewportWidgets` | Include the text that is on screen (see above). Default `false` |
+| `WidgetClass` | `FindGameViewportWidgets` | Class name of the UMG widget, compared ignoring case. Classes are never loaded, so a match through a parent class works only for classes that are already loaded |
+| `IncludeSubclasses` | `FindGameViewportWidgets` | Also compare the parent classes of the UMG widget with `WidgetClass`. Default `true` |
+| `SlateType` | `FindGameViewportWidgets` | Slate type name, compared exactly (for example `STextBlock`) |
+| `WidgetName`, `WidgetNameContains` | `FindGameViewportWidgets` | Name of the UMG widget, whole or in part, ignoring case. Cannot be given together |
+| `OwningPlayerIndex` | `FindGameViewportWidgets` | Local player number (0 or more) that owns the user widget the node belongs to. A player who owns none, or does not exist, gives no match — still a success |
+| `VisibleOnly` | `FindGameViewportWidgets` | Match only widgets that are effectively visible. Default `true` |
+| `MaxResults` | `FindGameViewportWidgets` | Most matches returned, 1 to 500. Default 50. The rest are counted, not returned |
+| `RootTypePath` | `DumpGameViewportWidgetTexts` | `TypePath` of the widget whose subtree is dumped. The whole game layer is walked all the same, so `MaxDepth` and `MaxNodes` count from its root. A path that leads to no widget is `NotFound`. Default: the whole game layer |
+| `PlayerIndex` | `DumpHUDState` | Number of the **local player** to inspect (0 is the first local player). Omit for every local player. A number no local player has is `NotFound` |
+| `TargetNetRole`, `TargetPIEInstance` | all four | Which play world; see [Choosing which play world](#choosing-which-play-world-a-runtime-command-acts-on) |
+
+At least one of `WidgetClass`, `SlateType`, `WidgetName`, `WidgetNameContains` and `OwningPlayerIndex` is required by `FindGameViewportWidgets`; none at all, or `WidgetName` together with `WidgetNameContains`, is `InvalidParams`.
+
+#### Refusals
+
+| Situation | Result |
+|---|---|
+| No play world, no world matching `TargetPIEInstance`, or a server world | `NotAllowed` (a server world comes with the client worlds to choose from) |
+| `TargetNetRole` / `TargetPIEInstance` contradict each other or match several worlds | `InvalidParams` |
+| The game layer does not exist yet (just after start) | `PreconditionFailed`; retry shortly (a scenario retries by itself) |
+| The game layer cannot be located (a project replaced the standard UI layer) | `NotAllowed`. Only the standard game layer is supported |
+| `PlayerIndex` of `DumpHUDState` names a player who is not there | `NotFound` |
+
+#### The HUD
+
+`DumpHUDState` returns, per local player, the HUD class and display flags, the `ShowDebug` state, the debug texts (also when the HUD is not being drawn, which the result then says), the names of the hit boxes, the widgets the HUD references (at most 64) and the widgets the player has on screen. Each of those lists has a limit, and a cut list says so. Fields the engine version cannot provide are left out with the reason. Canvas draw-batch statistics for the game viewport are added only when `EnableHUDCanvasStats=True` under `[UAIP.RuntimeObservation]` in `DefaultUAIP.ini` (read at startup, so a restart is required); otherwise `Limitations` explains how to enable it. The statistics describe the most recent frame in which a HUD was drawn into that game viewport and do not add up across frames; with split screen they cover every HUD that drew into the viewport in that frame. A game viewport that has not drawn a HUD yet has no statistics, and the result says so. See [Safety & Capabilities](safety.md#runtime-game-viewport-ui).
 
 ---
 
@@ -3516,7 +3615,7 @@ Test execution in PIE / Standalone.
 >
 > Parameter values and the contents of a per-test parameter list never appear in logs, errors or artifacts. A parameter list is shown as `(<redacted>)`; only parameter keys are recorded.
 >
-> Errors: a refused argument is `InvalidParams`; a request that needs `GauntletUnrestrictedArguments` without holding it is `CapabilityNotAvailable`; a launch that could not start (another Gauntlet test is running, RunUAT or the shell was not found, a path RunUAT.bat cannot carry, or the process failed to start) is `ExecutionFailed`.
+> Errors: a refused argument is `InvalidParams`; a request that needs `GauntletUnrestrictedArguments` without holding it is `CapabilityNotAvailable` (`PolicyViolation` when that capability is denied explicitly in `DeniedCapabilities`); a launch that could not start (another Gauntlet test is running, RunUAT or the shell was not found, a path RunUAT.bat cannot carry, or the process failed to start) is `ExecutionFailed`.
 
 ---
 
@@ -3583,12 +3682,89 @@ Runtime input injection and Enhanced Input state inspection. PIE required.
 | `RemoveMappingContext` | Remove an Input Mapping Context from the local player |
 | `SetInputMode` | Set the input mode (GameOnly / UIOnly / GameAndUI) |
 | `FlushInput` | Flush pressed-key state at the end of a test |
-| `DumpInputState` | Dump current input state (pressed keys, axis values, active mapping contexts with priority, and — with `IncludeActionStates=true` — per-action trigger state) |
-| `GetEnhancedInputActionValue` | Get the current value of an Enhanced Input Action |
+| 🆓 `DumpInputState` | Dump current input state (pressed keys, axis values, active mapping contexts with priority, and — with `IncludeActionStates=true` — per-action trigger state) |
+| 🆓 `GetEnhancedInputActionValue` | Get the current value of an Enhanced Input Action |
+| `ClickGameViewportWidget` | Click a widget of the UI of a running game with the mouse: moves the pointer to the press point, confirms that the widget under it is the target or inside it, then presses and releases the button. The target is given as a UMG `WidgetPath`, a `ViewportPosition`, or a `TypePath` with its `Fingerprint` from `FindGameViewportWidgets`. Requires `RuntimeUIInputInjection`. See [Game viewport UI input](#game-viewport-ui-input-3) |
+| `PressGameViewportUIKey` | Press a UI key (arrows, Tab, Enter, Space, Escape, the gamepad buttons) as the Slate user of a local player: key down, a safety re-check, key up. Without a target the key goes to the widget that has the player's focus; with one, the focus is moved to it first. Requires `RuntimeUIInputInjection` |
+| `TypeGameViewportText` | Type text into an input field of the UI of a running game, one character event at a time, as the Slate user of a local player. Does not confirm the text (send Enter with `PressGameViewportUIKey`) and never sets the field's value directly. The text is not logged, returned or recorded. Requires `RuntimeUIInputInjection`; a password field also needs the `AllowRuntimePasswordFieldWrite` safety setting |
 
 ---
 
 > **Note**: `DumpInputState` always reports `ActiveMappingContexts` (sorted by `Priority` descending, then `Path` ascending) and `EnhancedInputState` (`"Available"` / `"Unavailable"`, telling apart "queried and found none" from "could not query"). Pass `IncludeActionStates=true` to additionally get `ActionStates[]` — one entry per action reachable from the active mapping contexts, each carrying `Trigger` (one of the six `ETriggerEvent` values, including `"None"` for an action that was evaluated but is not currently firing), `ValueX`/`ValueY`/`ValueZ`, `SourceContexts[]` (which active context configured it) and `ConfiguredKeys[]` (deduplicated, sorted) — plus `ActionStatesTotalCount` and `ActionStatesTruncated` (capped at 256, sorted by `ActionPath`). Leaving `IncludeActionStates` at its default `false` keeps the call cheap; the flag is opt-in specifically because its cost scales with the number of mapped actions rather than the number of loaded mapping contexts.
+
+### Game viewport UI input (3)
+
+Operate the UI of a running game by the same input path a person uses. The pointer moves over the target, the press goes through Slate's input routing, and the focus moves the way the game's own UI moves it; nothing calls a button's handler and nothing sets a field's value directly, so the game's input handling (CommonUI, a project's own input processing) takes part. The operating system's cursor does not move, and Unreal Editor may be in the background. Works in PIE and in `-game` and packaged builds (a packaged build needs `-uaip-http-enable` to use HTTP). All three accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on) and send only into the game viewport of the world they select.
+
+**Capabilities.** All three require `RuntimeUIInputInjection` (DefaultDenied). It is **separate from `RuntimeInputInjection`**: allowing the latter does not let you operate the UI. In PIE inside the editor, a key that the editor binds to its own PIE shortcuts (by default Escape, which stops PIE) additionally requires `RuntimeUIEditorReservedKeyInput` (DefaultDenied); Standalone and packaged builds are not restricted. The capability is checked when the request is accepted and again just before the input is sent. See [Safety & Capabilities](safety.md#runtime-game-viewport-ui).
+
+#### Naming the target
+
+`ClickGameViewportWidget` needs exactly one target; `PressGameViewportUIKey` and `TypeGameViewportText` may omit it (the input then goes to whatever widget the player's focus is on).
+
+| Parameter | Meaning |
+|---|---|
+| `WidgetPath` | Object path of a UMG widget that is on screen. The most reliable way when the widget has a name |
+| `ViewportPosition` | `{X, Y}` in physical pixels from the top left corner of the game viewport. The target is the widget in front at that point |
+| `TypePath` + `Fingerprint` | The values `FindGameViewportWidgets` returned for a match. If the widget at `TypePath` is no longer the one the fingerprint describes (the screen was rebuilt), the command is refused with `Conflict` — search again. Widgets of the same type with no name and no tag cannot always be told apart after a swap |
+| `LocalX` + `LocalY` | `ClickGameViewportWidget` only. Where to press, as an offset from the top left of the target's rectangle; both or neither, inside the rectangle, not with `ViewportPosition`. Default: the centre |
+| `MouseButton` | `ClickGameViewportWidget` only. `Left` (default) or `Right` |
+| `Key` (required) | `PressGameViewportUIKey` only. One of the UI allow list: the arrow keys, `Tab`, `Enter`, `SpaceBar`, `Escape`, the gamepad directional pad, face buttons, shoulders, triggers and special buttons, and `Virtual_Gamepad_Accept` / `Virtual_Gamepad_Back`. Any other key, every modifier key included, is refused with the allowed names in `AllowedKeys`. No modifier key is ever added |
+| `Text` (required) | `TypeGameViewportText` only. 1 to 1024 code points (a combined emoji or flag is several), with no control characters — a line break cannot be typed |
+| `PlayerIndex` | `PressGameViewportUIKey` and `TypeGameViewportText`. Number of the **local player** to act as; default 0 |
+
+**`PlayerIndex` is not the player controller number.** The existing input commands (`InjectInputKey` and the others) number the **player controllers** of the world; these two number the **local players** of the game instance (0 is the first). A negative number is `InvalidParams`; a number no local player has is `NotFound`. A click is always sent as the user that owns the mouse (normally the first local player), so it can press the UI of another local player's screen; the response notes it.
+
+#### How an operation goes
+
+1. **Click.** The pointer is moved onto the press point and the command checks that the widget directly under it is the target or inside it — if not, nothing is pressed (`ExecutionFailed`, naming the widget in front). Then the button is pressed and released.
+2. **Key.** With a target, the focus is moved there first and the move is checked. The key goes down, a safety re-check runs, then it goes up. `ReachedGameViewport` tells whether the UI let the key through to the game: `True`, `False` or `Unknown`.
+3. **Text.** With a target, the focus is moved to it first. Characters are sent one at a time as a person typing would; no IME composition is sent. Before each character the command checks that the focus is still on the same field and that its password state has not changed, and stops if not. Whether the field is a password field is judged at the time of sending; one that cannot be judged counts as a password field.
+
+The response is sent after the input has been delivered. It reports what was hit (`HitWidget`, `HitWidgetIsTarget`), where the focus is afterwards (`FocusAfter`), whether the input reached the game (`ReachedGameViewport`), whether a modal window opened (`ModalOpened`) and `Limitations`; `TypeGameViewportText` reports `CharactersDelivered`, the reason it stopped, and the length class of the field before and after (`Empty`, `NonEmpty`, `Long`) — never the text.
+
+#### What `Success` means
+
+`Success` means **the input was delivered by the path a person's input takes**. It does not promise that the button's handler ran or that the screen changed: input on the way (CommonUI, a project's own handling, the editor's input monitoring) may consume or change it, as it may a person's. Read the tree again (`DumpGameViewportWidgets`) to confirm the effect. An input the UI did not handle can become game input (movement, attack) — as with a person — and every operation's response says so. Between accepting a request and sending it the command checks that the caller is still waiting and that the world, session, capability and target are unchanged; a caller that has given up gets nothing sent, which reduces double presses but cannot rule out a timeout that lands just after the check.
+
+#### Refusals
+
+Nothing is sent in any of these unless stated.
+
+| Situation | Result |
+|---|---|
+| No play world, a server world, or no world matching the selector | `NotAllowed` (a server world comes with the client worlds to choose from). A contradictory or ambiguous selector is `InvalidParams`. In a dedicated server process these commands are not available at all, and the refusal names the reason |
+| Game layer does not exist yet | `PreconditionFailed`; retry. A layer that cannot be located: `NotAllowed` |
+| Capability not granted | `CapabilityNotAvailable` naming it (for an editor-reserved key, also the shortcut that matched, with a hint to use the gamepad Back button). Denied explicitly: `PolicyViolation` |
+| The game viewport holds the mouse (input mode is game only) for a click; the focus is on the game viewport itself for a key or text with no target; a drag is in progress; any modal window or a menu outside the game viewport is open | `NotAllowed`, with the focus and mouse capture state. The input mode is never changed for you — use `SetInputMode`. A drop-down that is part of the game's own UI does not block |
+| The window is minimized | `PreconditionFailed` |
+| Target missing or not added to the viewport | `NotFound` |
+| The screen was rebuilt after the search | `Conflict` — search again |
+| Target hidden or disabled | `NotAllowed` |
+| Another widget is in front of the target (also the editor's viewport toolbar or messages in PIE) | `ExecutionFailed` naming the widget in front; hover reactions such as tooltips have already happened |
+| A coordinate target whose front-most widget belongs to the editor or another window; a key or text whose focus is outside the game viewport | `NotAllowed` |
+| A key or text with no target when no widget of that player has focus at all | `NotFound` |
+| The focus could not be moved to the target | `NotAllowed`, with the focus afterwards |
+| The state changed between press and release (the screen, the world or a modal changed) | `NotAllowed` with `PartialDelivery` (`DownOnly` for a click, `KeyDownOnly` for a key). The release is not sent and the pressed state is cleared |
+| The press itself opened a modal window | **Success** with `ModalOpened` and `PartialDelivery`; the release is not sent |
+| Text into a password field, or a field whose password state cannot be determined, without `AllowRuntimePasswordFieldWrite` | `PolicyViolation`, before the focus is moved. The message says which of the two it was |
+| Text into something that is not an input field, or is read-only or disabled | `NotAllowed` |
+| Text interrupted (focus moved, password state changed, the application state changed) | `NotAllowed` with the number of characters already sent in `CharactersDelivered` when at least one was; when none was sent yet, the refusal of the matching situation above. A character that would be split (an emoji sent as two halves) reports it. If a character opens a modal window the call **succeeds** with `ModalOpened` and the count, and the field's length class after is not reported |
+| `PlayerIndex` names no local player | `NotFound` |
+| A key outside the allow list, an empty or too long text, a control character, a position outside the target, one of `LocalX` / `LocalY` alone, `LocalX` / `LocalY` with `ViewportPosition`, no target or more than one for a click, a `TypePath` without a `Fingerprint`, a negative `PlayerIndex` | `InvalidParams` naming the field and the allowed range |
+| Unreal Engine began shutting down | `ExecutionFailed` (cancelled by shutdown) |
+
+A scenario retries a step by itself only after `ExecutionFailed` or `PreconditionFailed`. The partially delivered cases return `NotAllowed` for that reason: a retry would otherwise press twice or repeat characters.
+
+When a key was pressed and the game saw it go down before the press stopped, the game-side pressed state of that player is cleared too, which also clears keys the person at the keyboard is physically holding. If it cannot be told whether the game saw the key, or the player is gone, nothing is cleared and the response notes it.
+
+#### Things to know
+
+- **Split screen.** The tree and the focus report the screen area of each local player. Keys and text go as the player you name; clicks always go as the mouse user.
+- **Several PIE instances in one process.** The input is sent only into the selected world's viewport, but part of the input path (CommonUI's global handling) is shared across PIE instances. With "route gamepad to second window" on, a gamepad key can reach another PIE; `ReachedGameViewport` is then `Unknown`. Two game menus open in different PIE instances at once may not be told apart.
+- **No rendering (`-nullrhi`).** The tree has no rectangles and operations are refused with `NotAllowed` (waiting does not help); right after start, before anything has been drawn, it is `PreconditionFailed`.
+- **Sensitive values.** `DescribeCommand` lists the parameters that are masked in notifications and audit records (`SensitiveParams`; `Text` for `TypeGameViewportText`) and the response fields masked likewise (`SensitiveResponseData`; the password field values of `DumpGameViewportWidgetTexts`). Subscribers and audit records receive `"<redacted>"`, without even the length; if the masked set cannot be determined, the whole parameter set is masked. In a scenario, a step that embeds such a value taken from an earlier step's response is masked in full, and so are the steps it is passed on to; a file the target command saves as its result is not covered.
+- **The CLI keeps what you pass it.** A text given on the command line (`-uaip-request=`) or in a request file (`-uaip-request-file=`), and a response file, stays there: UAIP does not mask a file or command line that the caller chose. Keep secrets out of those, or use HTTP / MCP.
 
 ## UAIP.Runtime.Niagara 🧩
 
@@ -3820,7 +3996,7 @@ The game itself may read some of these without trouble — notably a long string
 
 #### SkipValidation
 
-`CopySaveGameSlot` and `RestoreSaveGame` accept `SkipValidation: true`, which skips the header check so that a slot in a game's own format, a damaged one, one of an unsupported version or one whose class is not loaded can be copied or restored to any slot. It requires `RuntimeSaveGameUnvalidatedWrite` (DefaultDenied); without it the request fails with `CapabilityNotAvailable`, even when a restore would have qualified for `SameSourceSlot`. The response reports `ValidationSkipped: true` with `ValidationSkipReason: "RequestedByCaller"`, or `"SameSourceSlot"` when that also applies. The size limit still applies. ⚠️ **A slot written this way can stop the game that loads it.**
+`CopySaveGameSlot` and `RestoreSaveGame` accept `SkipValidation: true`, which skips the header check so that a slot in a game's own format, a damaged one, one of an unsupported version or one whose class is not loaded can be copied or restored to any slot. It requires `RuntimeSaveGameUnvalidatedWrite` (DefaultDenied); without it the request fails with `CapabilityNotAvailable` (`PolicyViolation` when it is denied explicitly in `DeniedCapabilities`), even when a restore would have qualified for `SameSourceSlot`. The response reports `ValidationSkipped: true` with `ValidationSkipReason: "RequestedByCaller"`, or `"SameSourceSlot"` when that also applies. The size limit still applies. ⚠️ **A slot written this way can stop the game that loads it.**
 
 #### Errors
 
@@ -3830,7 +4006,7 @@ The game itself may read some of these without trouble — notably a long string
 | `NotFound` | The slot or the snapshot does not exist; the SaveGame class or an object a value refers to is not loaded; the base slot of a patch holds references that would be lost |
 | `NotAllowed` | The target exists and `Overwrite` is not `true`; the editor is playing; the file is larger than `MaxSaveFileBytes` (the message names the setting) |
 | `Conflict` | `ExpectedHash` does not match, or the target it was given for does not exist |
-| `PolicyViolation` | The safety policy sets `DisableSave` (slot changes only) |
+| `PolicyViolation` | The safety policy sets `DisableSave` (slot changes only); or a required capability is denied explicitly in `DeniedCapabilities` (checked before `CapabilityNotAvailable`, so it wins) |
 | `CapabilityNotAvailable` | A required capability — including one an argument adds — is not granted; the message names it |
 | `ExecutionFailed` | The header cannot be used, the class named by the data cannot be used, the body could not be read (including the refusals above), the snapshot is damaged, or reading or writing a slot or a snapshot failed |
 | `UnsupportedOperation` | `ListSaveGameSlots` on a save game system that cannot list its slots |
@@ -4038,6 +4214,301 @@ At most 64 senses, 64 KiB per sense and 256 KiB in total. A sense that reaches i
 | `PolicyViolation` | The capability is denied by the safety policy |
 
 When the observed world is a client, an error message after the world was found ends with a note that AI exists only on the server and names the server side play worlds to retry with `TargetPIEInstance`.
+
+Every successful call saves exactly one JSON artifact; a failed call saves none.
+
+---
+
+## UAIP.Runtime.ChaosDestruction
+
+Observe the Chaos destruction of a running game: which Geometry Collection components the world holds and how broken each one is, the state of every piece, the physics fields that act on the world, a time series of destruction events, and the strain each piece carries. Nothing here changes what is destroyed: the observation commands only read, and the one command that turns a game notification on (`EnableForcedDestructionNotify`) is described separately below. Works in the editor while PIE is running, and in `-game` and packaged builds; no plugin requirement.
+
+**Capabilities.** All commands require `RuntimeInspect` (DefaultAllow). `EnableForcedDestructionNotify` also requires `ChaosDestructionForceNotify` (DefaultDenied). A missing one is `CapabilityNotAvailable`. See [Safety & Capabilities](safety.md#runtime-chaos-destruction).
+
+**Demo build.** `EnableForcedDestructionNotify` and the `ChaosDestructionForceNotify` capability are not provided in the demo binary; the other seven commands are. In the demo the command is absent and returns `CommandNotFound`.
+
+**Play world.** `ListGeometryCollections`, `DumpGeometryCollectionState`, `DumpChaosFieldState`, `StartDestructionCapture` and `CaptureGeometryCollectionStrain` accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on). The three capture commands that take a `CaptureId` (`GetDestructionEventLog`, `StopDestructionCapture`, `EnableForcedDestructionNotify`) address a capture, not a world.
+
+**A destruction notification may be off in the game.** Geometry Collection components report breaks, crumblings, collisions and removals only when the game turned the matching notification on, and the engine default is off. The state commands (`ListGeometryCollections`, `DumpGeometryCollectionState`) read the pieces directly and are not affected. A capture still records the piece-level events it detects by sampling, and reports in each response's `Coverage` which event kinds it could and could not record and why. To record the engine's own event data without changing the game, see `EnableForcedDestructionNotify`.
+
+### Current state (3) — requires `RuntimeInspect`
+
+| Command | Description |
+|---|---|
+| 🆓 `ListGeometryCollections` | Lists the Geometry Collection components of the target play world, one entry per component, ordered by actor path and then component name. Each entry holds the actor, the component, the rest collection asset, the number of transforms, whether the root broke and for how long, the piece counts per state, the notification flags as the game set them and the availability of the component. `StartIndex` (default 0) and `MaxEntries` 1–4096 (default 256) select the page; `IncludeClassification: false` leaves the piece counts out (default `true`). Data holds the first 50 entries of the page; the artifact holds the whole page, and `NextStartIndex` points past it while more components remain. At most 262144 transforms are classified per command; components beyond that are listed with `ClassificationSkipped` and no counts. A component without a physics state is listed with the reason it cannot be read, not as an error |
+| 🆓 `DumpGeometryCollectionState` | Dumps one Geometry Collection component: the component summary with the other components of the same actor, the piece counts per hierarchy level, the pieces with state (Active, Broken, Decayed, ClusterReleased), dynamic state, location, rotation and velocity, the damage settings, the transforms the asset anchors and the fields that initialize the component. `ActorIdentifier` (required) names the actor by label or object name, and `ComponentName` the component when the actor holds more than one. `Indices` (1–4096 transform indices) and `States` (any of `Sleeping`, `Kinematic`, `Static`, `Dynamic`, `Broken`, `Decayed`, `ClusterReleased`, `Active`, `Inactive`, ignoring case) restrict the pieces; `StartIndex` and `MaxEntries` 1–4096 (default 256) select the page; `IncludeTransforms` and `IncludeVelocities` (default `true`) leave the location and rotation, or the velocities, out. Data holds the first 50 pieces of the page; the artifact holds the whole page, and `NextStartIndex` points past it while more pieces remain. Why a piece is kinematic or static (asset, field or script) cannot be told apart. A component without a physics state is dumped with the reason it cannot be read, not as an error |
+| 🆓 `DumpChaosFieldState` | Dumps the fields that act on the target play world: the persistent, construction and last-tick transient commands of the world's physics field with their physics type, target attribute, source actor name, bounds, magnitude, center, meta data and node tree, and the field system actors placed in the level with the commands they hold. Each kind is bounded by `MaxEntries` 1–4096 (default 256) on its own and reported with its total count and whether it was cut; `IncludeNodeTrees: false` leaves the node trees out (default `true`). Data holds the first 50 entries of each list and the artifact holds all that `MaxEntries` allows. A world whose physics field is disabled returns success with empty command lists and the reason, and still lists the field system actors. Fields that exist only on the GPU are not observable |
+
+### Event capture (3) — requires `RuntimeInspect`
+
+A capture belongs to the session that started it: another session sees `NotFound` for its id, without being told whether it exists.
+
+| Command | Description |
+|---|---|
+| 🆓 `StartDestructionCapture` | Starts recording the destruction of the target play world into a capture owned by the calling session, and returns its `CaptureId`. The capture records the Geometry Collection components named in `Targets` (1–64 objects, each with `ActorIdentifier` and optionally `ComponentName`), or every component of the world — including the ones that appear later — when `Targets` is left out, until `StopDestructionCapture` is called, `MaxDurationSeconds` of wall clock time pass (1–600, default 120), or the play session ends. `Kinds` picks the event kinds to record, from `RootBroken`, `ClusterReleased`, `PieceBrokenOff`, `PieceDecayed`, `AnchorReleased`, `PieceStateChanged`, `CollectionReset`, `Break`, `Crumble`, `Removal`, `Collision` and `FieldApplied`; the default is every kind except `PieceStateChanged`. `BufferCapacity` (64–16384, default 4096) is the number of events kept before the oldest are dropped and counted. A world holds at most 8 recording captures and 65536 tracked transforms across all sessions, and a session records at most one capture per world; `ReplaceExisting: true` stops that capture and starts a new one (default `false`, which refuses the start and names the capture). Collections beyond the transform budget are left untracked and reported in `Coverage` and `Limitations`. Fails with `PreconditionFailed` when the world has no physics scene or solver |
+| 🆓 `GetDestructionEventLog` | Reads the events of a capture, oldest first, from `SinceSequence` on (default 0). `CaptureId` (required) is the id `StartDestructionCapture` returned. Works after the play session ended: a stopped capture keeps its events for 30 minutes, and a session keeps its four most recent stopped captures. `MaxEntries` 1–4096 (default 256) bounds the events read. Data holds the first 50 events of the read; the artifact holds every event of it, and `NextSequence` is the `SinceSequence` that continues after the artifact's last event. `Gap` is true when events at or after `SinceSequence` were dropped before they could be read. The response also carries the state of the capture, why it stopped, the tracked collections and transforms, the sampled frames, the recording seconds and the coverage of each event kind. Events from different sources are not guaranteed to be in causal order. Fails with `NotFound` for an unknown, expired or foreign `CaptureId`, without telling which |
+| 🆓 `StopDestructionCapture` | Stops a capture and returns its final state: why it stopped, the tracked collections and transforms, the sampled frames, the recording seconds, the sequence bookkeeping and the coverage of each event kind. Stopping a capture that already stopped succeeds and keeps the reason it first stopped with (`Stopped`, `DurationLimit`, `WorldTornDown` or `Replaced`). Works after the play session ended; the stopped capture keeps its events for 30 minutes, during which `GetDestructionEventLog` can still read them. Fails with `NotFound` for an unknown, expired or foreign `CaptureId`, without telling which |
+
+A capture that is left running stops by itself at `MaxDurationSeconds`, and when the play world is torn down.
+
+### Strain snapshot (1) — requires `RuntimeInspect`
+
+| Command | Description |
+|---|---|
+| 🆓 `CaptureGeometryCollectionStrain` | Captures the strain of the pieces of one Geometry Collection component on the next physics step: for each piece, the internal strain (the strength it has left before it breaks off its parent, or `Unbreakable`), the collision impulse of the previous step (or `ForcedBreakMarker`), the external strain, the largest applied value, the margin and whether the piece would break, next to the damage settings of the component. `ActorIdentifier` (required) and `ComponentName` name the component as in `DumpGeometryCollectionState`; `Indices` (1–4096), `StartIndex` and `MaxEntries` 1–4096 (default 256) select the pieces. The command waits for the physics step for up to `TimeoutSeconds` (above 0, up to 60, default 5), checking every `PollIntervalSeconds` (0.05–1, default 0.05), and is refused with `NotAllowed` while the game is paused. Data holds the first 50 pieces of the page; the artifact holds the whole page. Internal clusters, which have no transform index, are not reported. A component that has no physics proxy or simulates in a solver other than the default one is reported with the reason and its damage settings, not as an error. On timeout the response carries `Result` with `Executed` false and whether the game was paused |
+
+### Forcing a destruction notification on (1) — requires `RuntimeInspect` and `ChaosDestructionForceNotify`
+
+Not provided in the demo build.
+
+| Command | Description |
+|---|---|
+| `EnableForcedDestructionNotify` | Turns on the destruction notifications named in `Kinds` (`Breaks`, `Crumblings`, `Collisions`, `Removals`; ignoring case; each at most once) of the Geometry Collection components that a recording capture of the calling session tracks on the default physics solver, including the components the capture starts tracking later, until that capture stops. `CaptureId` (required) names the capture. The events those notifications produce (mass, velocity and bounds of broken pieces, the children a crumbling released, collision partners and impulses) are recorded by that capture only; other captures of the same world see the game's own settings. Only a notification whose event kind the capture records can be forced (`Breaks` as `Break`, `Crumblings` as `Crumble`, `Collisions` as `Collision`, `Removals` as `Removal`); any other is refused with `InvalidParams` and nothing is forced. Calling it again for the same capture adds kinds. A notification the game already has on is left untouched. Returns the capture's status: `Coverage` marks the cells this capture forced with `ForcedByUAIP`, and `Limitations` carry `ForceNotifySideEffects`. Refused in read-only mode. Fails with `NotFound` for an unknown, expired or foreign `CaptureId`, and with `NotAllowed` for a capture that already stopped. ⚠️ Side effects and what cannot be undone — see [Forced destruction notifications](#forced-destruction-notifications) |
+
+#### Forced destruction notifications
+
+- **The game's own listeners receive the events too.** While a notification is forced, every listener the game registered for it gets its events, not only the capture. The engine also unregisters and re-registers every Chaos event of the component each time a notification is turned on and when it is restored, so a listener registered through a different path can be affected.
+- **Part of it cannot be undone.** Turning a notification on raises the solver's event filters, which the engine has no way to lower. The solver keeps producing that event data until the play session ends, even after the capture stops.
+- **Restoring.** When the capture stops (by `StopDestructionCapture`, its duration limit, a replacement or the end of the session), each notification no capture forces any more is restored if it still carries the forced value. A notification the game turned off in the meantime is left as the game set it; one the game wrote back on cannot be told apart and is restored as well. Nothing is restored when the play world is torn down.
+- **Collisions are not forced on components with collision profiles of their own** (per-particle or per-level collision profiles, or the abandoned-particle profile of a replicated component). Forcing would overwrite those profiles until the physics state is recreated, so for such a component `Collisions` is accepted but its coverage reads `NotGenerated` with `ForceNotSupported`, and its collision setup is left alone. Other components of the same capture, and the other notification kinds, are still forced.
+
+See [Safety & Capabilities](safety.md#runtime-chaos-destruction) for how the capability is granted.
+
+#### Fields in every response
+
+Each response says when and where it was read: the capture or play world that was observed, the frame and the time. Anything that could not be filled is listed rather than left out silently: `Limitations[]` carries caveats about what was returned, each with a `Code`, and capture responses carry `Coverage[]`, one cell per event kind and collection, saying whether the events of that kind could be recorded.
+
+Parameters are checked before the play world is looked up, so a malformed request is refused with `InvalidParams` even when PIE is not running. An unknown key, a wrong JSON type, an out-of-range value or an empty array is `InvalidParams`.
+
+Every successful call saves exactly one JSON artifact; a failed call saves none.
+
+---
+
+## UAIP.Runtime.Navigation
+
+Observe the navigation mesh and path finding of a world: whether the navigation system exists and how it is set up, whether one point can be reached from another and why not, the path itself with its cost per area, the tiles of the mesh, the modifiers that shape it, what an AI is doing on its path, and whether a rebuild of the mesh has settled. Seven commands only observe; the eighth (`RebuildNavigation`) queues a regeneration of the mesh and is described separately below. Works in the editor (with or without PIE running), and in `-game` and packaged builds; no plugin requirement.
+
+**Capabilities.** Seven commands require `RuntimeInspect` (DefaultAllow). `RebuildNavigation` requires `RuntimeNavigationRebuild` (DefaultDenied). `FindPath` and `IsLocationReachable` additionally need `RuntimeNavigationExtendedSearch` (DefaultDenied) **only when `MaxSearchNodes` is above 8192**; that capability is checked per request and does not appear in the command's declared `RequiredCapabilities`. A missing one is `CapabilityNotAvailable` naming it. See [Safety & Capabilities](safety.md#runtime-navigation).
+
+**Demo build.** `RebuildNavigation` and the `RuntimeNavigationRebuild` capability are not provided in the demo binary; the other seven commands are. In the demo the command is absent and returns `CommandNotFound`.
+
+**Which world is read.** `DumpNavigationSystemState`, `FindPath`, `IsLocationReachable`, `DumpNavMeshTiles`, `QueryNavModifiers` and `WaitForNavigationBuild` read the play world when one is running and the editor world otherwise — a navigation mesh is generated and saved in the editor, so it can be checked without starting PIE. `GetPathFollowingState` (AI controllers exist only in a play world) and `RebuildNavigation` (it never changes the editor level) act on a play world only. All eight accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on); naming a play world that does not exist is `NotAllowed`, it never falls back to the editor world.
+
+### Observation (6) — requires `RuntimeInspect`
+
+| Command | Description |
+|---|---|
+| 🆓 `DumpNavigationSystemState` | The state of the navigation system of the target world. Takes no parameters besides the play world selector. The response carries `NavDataCount` and `NavData[]` (at most 64: `Name`, `IsMain`, `IsRecast`, `HasValidNavMesh`, `AgentName`, `AgentRadius`, `AgentHeight`, `StepHeight`, `MaxSlopeDegrees`, `RuntimeGeneration` (`Static`, `DynamicModifiersOnly` or `Dynamic`), `ActiveTilesOnly`, `TileCount`, `TilePoolCapacity` and `GenerationParameters` such as `CellSize`, `CellHeight`, `TileSizeUU`, `TilePoolSize`), the three kinds of bounds — `NavigationBounds[]` (the volumes registered with the system, at most 256), `NavigableBounds` (what each navigation data is meant to cover) and `NavMeshBounds` (what the generated mesh covers) —, `Areas[]` (at most 64, with `DefaultCost` and `FixedAreaEnteringCost`), `BuildState` and `SearchLimits`. `SearchLimits` tells how far a path query may search: `DefaultCeiling` (8192), `ExtendedCeiling` (65534), `ExtendedSearchCapability` (the name of the capability that raises the ceiling), `ExtendedSearchGranted` (whether the calling session holds it) and `EngineDefaultMaxSearchNodes`. The artifact holds every item |
+| 🆓 `FindPath` | A path between two points and whether the end point can be reached. Each point is a location (`StartLocation` / `EndLocation`) or an actor (`StartActor` / `EndActor`); `AgentActor` (a pawn or its controller) lends the query its owner, its navigation data and its default filter, and stands in for a missing start point. The response carries `Reachable` (`true`, `false`, or `null` when it cannot be told), `Reason` (see [Reading a reachability answer](#reading-a-reachability-answer)), `Result`, `QueryConditions` (what the query actually used: `Owner`, `NavData`, `Filter{Class, Source, QuerierPresent}`, `StartSource`, `EndSource`, `RequireNavigableEndLocation`, `AllowPartialPath`, `MaxSearchNodes{Value, Source, Ceiling}`), and, for the reasons that produce a path, `IsPartial`, `Length`, `Cost`, the first 50 `PathPoints` with `PathPointsTotalCount`, and `AreaBreakdown[]` (cost and length contributed by each area along the path, `Traversable: false` with an `ExclusionSource` for an area that is excluded). When a point could not be projected onto the mesh, `StartProjection` / `EndProjection` say which one failed and, in `TileExistsAtLocation`, whether a tile exists there. The artifact holds up to `MaxPathPoints` points and the corridor |
+| 🆓 `IsLocationReachable` | The same question as `FindPath` with the same parameters (except `MaxPathPoints`) and the same answer for `Reachable`, `Reason`, `QueryConditions` and the projection of a point that failed to land, but without the path, its length, cost and area breakdown |
+| 🆓 `DumpNavMeshTiles` | The tiles of one navigation mesh in (X, Y, Layer) order: `X`, `Y`, `Layer`, `Bounds`, `Resolution` and `PolygonCount` of each. `Box` limits the list to the tiles that overlap it; `NavDataName` picks the navigation data (default: the main one); `MaxTiles` is 1–4096 (default 256). The response carries the first 50 `Tiles[]` and `TotalCount` (exact, counted before `MaxTiles` was applied); the artifact holds every listed tile. The polygon count is read only for the tiles that are listed |
+| 🆓 `QueryNavModifiers` | The navigation modifiers that touch the required `Box`, and how the polygons of the mesh in that region are divided among areas. Each modifier carries its source (`Name`, `Path`, `Label`), its `Bounds`, its area class, the area class it replaces, its `Shape` and `ApplyMode`; a modifier the engine has not gathered yet is marked `PendingLazyGathering` and carries the `DeclaredAreaClass` its component declares. `AreaBreakdown` counts polygons per area, up to `MaxPolygons` (1–16384, default 4096); `AreaBreakdown.CountComplete: false` means the counts are lower bounds. `MaxModifiers` is 1–4096 (default 256). The response carries the first 50 modifiers and `TotalCount`; the artifact holds every captured modifier |
+| 🆓 `GetPathFollowingState` | What the path following component of one AI is doing, in a play world only: `Status` (`Idle`, `Waiting`, `Paused` or `Moving`), `HasPath`, `RequestId`, the goal (`GoalLocation` is the end of the path it follows, even when `PathPoints` is cut short, and is left out when it holds no path; `MoveGoal` is the actor it moves to, when it moves to one), the end of the segment it is heading to (`CurrentTargetLocation`), the segment it is on (`CurrentPathIndex`, `NextPathIndex`), `AcceptanceRadius`, `HasPartialPath`, the navigation data the path was made with (`NavDataUsed`), the first 50 `PathPoints` and the `AreaBreakdown[]` of the path. `ActorIdentifier` (required) names the pawn or its AI controller. `MaxPathPoints` is 1–4096 (default 256) and bounds the points written to the artifact. While the navigation system or the mesh is unavailable the follow state is still returned and only the area breakdown is left out |
+
+### Waiting (1) — requires `RuntimeInspect`
+
+| Command | Description |
+|---|---|
+| 🆓 `WaitForNavigationBuild` | Waits until the navigation system of the target world is quiescent: no generation task remains and no dirty area waits to be processed. The command only observes — it polls and never drives the world — and it is a passive wait, so it does not hold the transport's single command slot. `TimeoutSeconds` is greater than 0 and at most 60 (default 30); `PollIntervalSeconds` is 0.05–1.0 (default 0.1). `WaitOutcome` is `NotApplicable` (the world has no navigation system or no valid navigation data), `AlreadyQuiescent` (nothing was being built), or `Quiescent` (it settled while waiting); when `TimeoutSeconds` passes first the command fails with `Timeout` and still returns the result and the artifact. The response carries `CompletionScope: "NavigationSystemQuiescent"`, `ElapsedSeconds`, `BuildStateAtStart`, `BuildStateAtEnd` and `World`. **What a finished wait guarantees** is that the whole navigation system is quiescent, never that a particular region is finished; the engine also holds back some updates that cannot be observed (`Limitations: UnobservablePendingUpdates`), so generation may start right after the check |
+
+### Queuing a rebuild (1) — requires `RuntimeNavigationRebuild`
+
+Not provided in the demo build.
+
+| Command | Description |
+|---|---|
+| `RebuildNavigation` | Queues a regeneration of the navigation mesh of the target **play** world and answers at once, without waiting for it (`IsReadOnly` is false). Without `Box` every registered navigation bounds is queued; with `Box` only that region is. The response carries `Queued`, `Scope` (`Full` or `Box`), `QueuedAreaCount`, `NextStep: "WaitForNavigationBuild"` — run that command afterwards and query again once it reports the system quiescent —, `BuildState` and, for every navigation data, `Eligible` (whether the rebuild covers it), `GeometryRebuild` (whether its geometry is rebuilt; `DynamicModifiersOnly` reapplies the modifiers only) and `ActiveTilesOnly` (whether only the active tiles around invokers or loaded World Partition cells are rebuilt). Fails with `PreconditionFailed`, queuing nothing, when the world has no navigation system, has nowhere to build, or has no navigation data that regenerates while the game runs (`Static`); the `ErrorMessage` starts with the reason (`NavigationSystemMissing`, `NothingToBuild` or `NoRuntimeGeneration`) and explains it, and the failure carries no `Data`. A build lock, a paused world, a region outside every navigation bounds and a queue the build state does not show are reported in `Limitations[]`, not as failures. The artifact repeats the response; a failed save leaves the command successful |
+
+#### Parameters
+
+| Parameter | Commands | Meaning |
+|---|---|---|
+| `StartLocation` / `EndLocation` | `FindPath`, `IsLocationReachable` | `{X, Y, Z}` world location. Exclusive with `StartActor` / `EndActor` respectively. Coordinates must be finite and within ±2097152 |
+| `StartActor` / `EndActor` | `FindPath`, `IsLocationReachable` | Label or object name of the actor the path starts or ends at (1–256 characters, no control characters): its navigation agent location when it is a navigation agent, its location otherwise |
+| `AgentActor` | `FindPath`, `IsLocationReachable` | Label or object name of a pawn, or the controller of one. Lends the query its owner, its navigation data and its default filter, and stands in for a missing `StartLocation` / `StartActor`. Exclusive with `NavDataName`. A controller without a pawn, or a pawn that is not a navigation agent, is `InvalidParams` |
+| `NavDataName` | `FindPath`, `IsLocationReachable`, `DumpNavMeshTiles`, `QueryNavModifiers` | Object name of the navigation data to use (1–256 characters). Left out, the main navigation data is used. A name that matches none is `InvalidParams` and lists the names that exist |
+| `FilterClass` | `FindPath`, `IsLocationReachable` | Full class path of the navigation query filter, for example `/Script/MyGame.MyQueryFilter`. Only an already loaded class is accepted; nothing is loaded. Left out, the default filter of the agent (or of the navigation data) is used |
+| `RequireNavigableEndLocation` | `FindPath`, `IsLocationReachable` | Boolean, default `true`. Whether an end point outside the mesh fails the query |
+| `AllowPartialPath` | `FindPath`, `IsLocationReachable` | Boolean, default `true`. Whether a path that stops short of the end point is accepted |
+| `MaxSearchNodes` | `FindPath`, `IsLocationReachable` | Integer 4–65534. Left out, the filter's own count is used, capped at 8192 without `RuntimeNavigationExtendedSearch` and raised to 4 when it is lower (both reported as `Limitations: SearchNodesClamped`). A value above 8192 needs the capability; a value above 65534, or below 4, is `InvalidParams` whatever the session holds. Fewer than 4 nodes would make the navigation mesh write outside its search node pool. `QueryConditions.MaxSearchNodes.Value` reports the count the query actually ran with |
+| `MaxPathPoints` | `FindPath`, `GetPathFollowingState` | Integer 1–4096, default 256. Path points written to the artifact |
+| `Box` | `DumpNavMeshTiles` (optional), `QueryNavModifiers` (required), `RebuildNavigation` (optional) | `{Min: {X, Y, Z}, Max: {X, Y, Z}}`. `Min` must not exceed `Max` on any axis (the corners are never swapped for you) and the box needs a width on X and Y; a zero height is allowed |
+| `MaxTiles` | `DumpNavMeshTiles` | Integer 1–4096, default 256 |
+| `MaxModifiers` | `QueryNavModifiers` | Integer 1–4096, default 256 |
+| `MaxPolygons` | `QueryNavModifiers` | Integer 1–16384, default 4096. Polygons counted for the area breakdown |
+| `ActorIdentifier` (required) | `GetPathFollowingState` | Label or object name of the pawn or AI controller |
+| `TimeoutSeconds` / `PollIntervalSeconds` | `WaitForNavigationBuild` | Numbers; see the command above |
+
+A start point is exactly one of `StartLocation`, `StartActor`, or — when neither is given — the pawn of `AgentActor`; an end point is exactly one of `EndLocation` and `EndActor` (`AgentActor` never stands in for it). Giving both forms of a point, none at all, or both `AgentActor` and `NavDataName` is `InvalidParams`. Booleans must be JSON booleans, limits JSON integers; anything else, an unknown key or a value out of range is `InvalidParams`. Parameters are checked before the play world is looked up, so a malformed request is refused even when PIE is not running.
+
+#### Fields in every response
+
+| Field | Meaning |
+|---|---|
+| `CapturedAt` / `Frame` | When the state was read (ISO 8601, UTC) and the engine frame number at that moment |
+| `NetMode` / `WorldContext` / `PIEInstance` | The world that was read. `WorldContext` is `PIE`, `Editor` or `Game`; `PIEInstance` is omitted outside PIE |
+| `WorldPartitioned` | Whether the observed world uses World Partition |
+| `Availability` | `State`: `Available`, `Degraded` or `Unavailable`. `Reason` is one of `NavigationSystemMissing` (with `Detail`: `ClientWorld` and the server side play worlds in `ServerCandidates[]` to retry against, `NoNavigationSystemConfig`, or `Unknown`), `NoNavigationData`, `NoNavigationDataForAgent`, `NavMeshNotBuilt`, or — `DumpNavigationSystemState` only, when some but not all navigation data has a mesh — `SomeNavDataNotBuilt` (`Degraded`) |
+| `BuildState` | `RemainingTasks`, `RunningTasks`, `DirtyAreasQueued`, `Locks[]` (`NoUpdateInEditor`, `NoUpdateInPIE`, `InitialLock`, `Custom`, and `AsyncLoadLock` on UE 5.8), `AutoUpdateEnabled`, `WorldPaused`, `Quiescent`. Left out when there is no navigation system |
+| `DegradedSections[]` | Parts of the result that could not be filled, each with `Section` and `Cause` (`NavigationUnavailable`, `SomeNavDataNotBuilt` or `UnreadableField`) |
+| `Limitations[]` | Caveats about what was returned, each with a `Code` and a `Detail` (see below) |
+
+A world without a navigation system, or whose navigation data has no generated mesh, is **not** an error for the observation commands: they succeed, leave out the items that come from the navigation system and say why in `Availability`. A name given in `NavDataName` or `FilterClass` is then not compared with anything (`Limitations: SelectionNotEvaluated`), so it is never reported as wrong input there. A value that cannot be determined is left out rather than filled with a default.
+
+#### Reading a reachability answer
+
+`Reachable` is three-valued, and `null` is not "no": `SearchLimitReached`, `Unknown`, `NavigationUnavailable` and `NavMeshNotBuilt` mean the question could not be settled. `Reason` is the first row that applies:
+
+| `Reason` | `Reachable` | Meaning |
+|---|---|---|
+| `NavigationUnavailable` | `null` | The world has no navigation system or no valid navigation data. No path was computed |
+| `NavMeshNotBuilt` | `null` | The selected navigation data has no generated mesh. No path was computed |
+| `StartNotOnNavMesh` | `false` | The start point could not be projected onto the mesh |
+| `EndNotOnNavMesh` | `false` | The end point could not be projected onto the mesh (not with `RequireNavigableEndLocation: false`) |
+| `Reachable` | `true` | A complete path exists. When start and end are almost the same point the path is one point of length 0 |
+| `SearchLimitReached` | `null` | The search ran out of nodes. `IsPartial` is true and the path is what was explored; raise `MaxSearchNodes` (needs `RuntimeNavigationExtendedSearch` above 8192) |
+| `PartialPathOnly` | `false` | Only a path that stops short exists and `AllowPartialPath` is true. The partial path is returned |
+| `NoPath` | `false` | No path, or only a partial one while `AllowPartialPath` is false. No path is returned |
+| `Unknown` | `null` | The path finder gave an answer that fits none of the above |
+
+`StartNotOnNavMesh` / `EndNotOnNavMesh` report in `StartProjection` / `EndProjection` which point failed (`Projected: false`) and, in `TileExistsAtLocation`, whether a tile exists there — a missing tile points at a World Partition region that is not loaded rather than at a bad coordinate.
+
+Without `AgentActor` the query has no querier, so a filter other than the default of the navigation data is initialised without one and meta filters are not resolved; the response then carries `Limitations: QuerierlessFilter`. Pass `AgentActor` to see the result an AI would get. An area an AI cannot enter is shown as `Traversable: false` with `ExclusionSource` `AreaCost`, `AreaFlags` or `NullArea`, never as a huge cost.
+
+#### Limitations codes
+
+| Code | Meaning |
+|---|---|
+| `UnreadableField` | A field could not be read from the engine and was left out |
+| `CountIncomplete` | A `TotalCount` is a lower bound (its `CountComplete` is false) |
+| `SelectionNotEvaluated` | The navigation system or its data is unavailable, so `NavDataName` / `FilterClass` was not compared with anything |
+| `NonRecastNavData` | A navigation data is not a Recast mesh; mesh-specific items are left out |
+| `DefaultAgentNameUnreadable` | The engine's default agent name could not be read, so the main navigation data was chosen without it |
+| `QuerierlessFilter` | The filter was initialised without a querier (see above) |
+| `SearchNodesClamped` | The filter's own search node count was above 8192 and was lowered, or below 4 and was raised; `Detail` holds the filter's value and the count used, plus, when lowered, the ceiling and the capability that lifts it |
+| `ActivePathRegistered` | In the editor world the query registered its path with the navigation data, which is not cleaned up there |
+| `StaleCorridor` | Part of the path corridor refers to a tile that has been rebuilt since; those entries are marked `Valid: false` |
+| `DeclaredAreaUnreadable` | The area a modifier component declares could not be read |
+| `UnobservablePendingUpdates` | The engine holds back updates that cannot be observed, so generation may start right after a quiescent answer |
+| `NavMeshNotBuiltAtQuiescence` | The system is quiescent but a navigation data still has no mesh; `Detail` names it |
+| `BuildLocked` | A build lock is set; `Detail` names it. Queued areas are processed after it is released |
+| `WorldPaused` | The world is paused; queued areas may not be processed meanwhile |
+| `AutoUpdateDisabled` | Automatic updates are off in the editor world; dirty areas may be discarded and the system can look quiescent without having generated anything |
+| `OutsideNavigationBounds` | `RebuildNavigation`: the `Box` lies outside every registered navigation bounds |
+| `ModifiersOnlyRebuild` | `RebuildNavigation`: a navigation data reapplies modifiers only (`DynamicModifiersOnly`) |
+| `ActiveTilesGenerationOnly` | `RebuildNavigation`: a navigation data regenerates only the tiles that are active |
+| `QueueNotObserved` | `RebuildNavigation`: the build state read right after queuing showed no queued area, so the engine may have discarded the request; `Detail` holds the number of areas queued |
+
+#### Bounds on the output
+
+`Data` carries at most the first 50 entries of a list; the artifact holds the whole captured list. Counts are bounded as follows: tiles and modifiers 4096, path points 4096, navigation data 64, registered bounds 256, areas 64. A list cut by its bound reports its `TotalCount`; inner arrays are cut at 64 entries with `Truncated`. The cost of a request is bounded as well: polygons processed (`MaxPolygons`) and search nodes (8192, or 65534 with `RuntimeNavigationExtendedSearch`).
+
+#### Errors
+
+| ErrorCode | When |
+|---|---|
+| `InvalidParams` | A parameter is missing, of the wrong type, out of range or unknown; the exclusive combinations above; a `NavDataName` that matches none (the message lists the names that exist); a `FilterClass` that is not loaded or not a navigation query filter; `MaxSearchNodes` above 65534 or below 4; `TargetNetRole` / `TargetPIEInstance` cannot be honoured |
+| `CapabilityNotAvailable` | `RuntimeInspect`, `RuntimeNavigationRebuild` (for `RebuildNavigation`) or, for `MaxSearchNodes` above 8192, `RuntimeNavigationExtendedSearch` is not granted. The message names it |
+| `PolicyViolation` | The capability is denied explicitly in the safety policy |
+| `NotAllowed` | No play world is running for a command that needs one, or none matches `TargetNetRole` / `TargetPIEInstance` |
+| `NotFound` | `StartActor`, `EndActor`, `AgentActor` or `ActorIdentifier` matches no actor; for `GetPathFollowingState`, the actor is not driven by an AI controller, or its AI controller has no path following component (each with its own message) |
+| `ExecutionFailed` | More than one actor matches an identifier; the filter could not be resolved; the artifact of an observation command could not be written; the world was destroyed while `WaitForNavigationBuild` was waiting |
+| `PreconditionFailed` | `RebuildNavigation` only: nothing was queued because the world has no navigation system, nowhere to build, or no navigation data that regenerates while the game runs |
+| `Timeout` | `WaitForNavigationBuild` only: the system had not settled within `TimeoutSeconds`; the result and the artifact are still returned |
+
+Every successful observation call saves exactly one JSON artifact; a failed call saves none.
+
+---
+
+## UAIP.Runtime.Animation
+
+Observe the animation state of a character in a running game: which state each state machine is in, how the blends are weighted, which montages are playing, the values of the animation curves, whether the animation is advancing at all, the values of an anim instance's variables and, for Motion Matching, which pose the last search chose. Every command only reads — nothing here changes what an animation does. Works in the editor while PIE is running, and in `-game` and packaged builds. All seven commands accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on). The state machine and state names are spelled as in the Anim Blueprint editor, so a state seen here can be looked up there by name.
+
+**Capabilities.** All seven commands require `RuntimeInspect` (DefaultAllow). `DumpAnimInstanceVariables` also requires `AnimInstanceVariableDump` (DefaultDenied), because it writes out the values of the variables a project's own anim instance classes declare, and those can hold any project data. A missing capability is `CapabilityNotAvailable` naming it. See [Safety & Capabilities](safety.md#runtime-animation).
+
+**Optional plugin.** `GetMotionMatchingState` 🧩 is registered only while the PoseSearch plugin is enabled; without it the command is not there (`CommandNotFound`, with a note naming the plugin) and the other six are unaffected. It is not part of the demo build.
+
+**What a reading is.** The values are those of one moment: the command reads the state as it is when the call arrives and reports no history. It cannot tell when a montage started to blend out, and a montage whose blend out has finished is no longer there. Identifiers in a response (`InstanceId`, `MachineId`, `NodeId`, `MontageInstanceId`) tell the entries of that response apart; they are not kept across a recompile of the Anim Blueprint or a new play session, so do not store them — filter by state machine name and state name the next time.
+
+### Observation (5) — requires `RuntimeInspect`
+
+| Command | Description |
+|---|---|
+| 🆓 `DumpAnimInstanceState` | Everything below in one capture, so the sections describe the same frame: the update state, the state machines, the blend weights, the montages and the curves of the main, linked and post process anim instances of one skeletal mesh component. It filters its state machines (`StateMachineName`) and its curves (`CurveType`, `CurveNameContains`). Motion Matching and variables are not part of it — use `GetMotionMatchingState` and `DumpAnimInstanceVariables`. The response carries the summary and the leading entries of every list; the artifact holds everything that was kept |
+| 🆓 `GetAnimStateMachineStates` | The state machines: for each machine the active state (`ActiveState`) and the time spent in it (`ActiveStateElapsedSeconds`), the states that carry weight (`StateWeights`), the transitions in progress (`ActiveTransitions`: `PreviousState` → `NextState` with the `NextStateWeight`) and the machine's own weight. A state reported as active includes a state that is blending out. A transition has no name and no elapsed time; its progress is the weight of the state it leads to. A machine that has not started yet is reported as `Uninitialized` without weights or transitions. `StateMachineName` narrows the list; every machine with that name is returned |
+| 🆓 `GetAnimBlendWeights` | The assets that are playing with their final blend weight (`Players`, with the coordinates and sample weights of a blend space), the blend space player nodes (`BlendSpaceNodes`), the layered bone blend nodes with the weight of each blend pose (`LayeredBlends`) and, for a single node instance, the asset it plays (`SingleNode`). A montage that is blending out still counts, so its blend is part of the weights until the blend out ends. Takes no filter |
+| 🆓 `GetActiveMontages` | The montages that are active, a montage that is blending out included. Each montage instance reports its `State` (`BlendingIn`, `Playing`, `BlendingDown`, `BlendingOut`, `Stopped`, `HoldingAtEnd`, `Paused` or `Unknown`), `PositionSeconds` and `PlayLengthSeconds`, `PlayRate`, the current and next section, `Weight` and `DesiredWeight`, the group and the slots it plays on with their weights. A linked anim instance that uses the montage data of the main instance is marked `SharedWithMain` instead of repeating it. Takes no filter |
+| 🆓 `GetAnimCurveValues` | The animation curves in name order: name, value and kinds (`Types`). Every curve is an `Attribute` curve; one that also drives a material parameter or a morph target additionally lists `Material` or `MorphTarget`. `CurveType` narrows the list (`Material` or `MorphTarget`; `All` and `Attribute` keep every curve) and `CurveNameContains` keeps the curves whose name contains the text. `TotalCount` counts the curves that passed the filters and `UnfilteredCount` those before them. The values are those of the last completed evaluation; where the update rate optimization skipped the evaluation they are interpolated or the previous ones. The curve list is cut at 1024 entries unless `MaxEntries` says otherwise. A linked instance — and a post process instance while the main instance exists — is marked `SharedWithMain` instead of repeating the curves |
+
+### Observation of variable values (1) — requires `RuntimeInspect` and `AnimInstanceVariableDump`
+
+| Command | Description |
+|---|---|
+| `DumpAnimInstanceVariables` | The value of every variable that the project's own anim instance classes declare, for the main instance and, unless `InstanceScope` is `Main`, the linked and post process instances, each with its own values. A variable carries its name, the class that declared it, its type and its value. **Project-owned** means the project's Anim Blueprints and C++ classes and the plugins under the project's `Plugins/` folder: variables declared by the engine, by plugins installed in the engine, and by a parent class that lives on the engine side are not dumped (so a project Anim Blueprint whose parent is an engine class does not show what that parent declares), and neither are node internals. An object reference is written as the path of what it refers to and never followed. Large values are cut: arrays at 32 elements, strings at 1024 characters, structs after one level. When the size budget runs out, variables or whole instances are left out with a marker saying so. `VariableNameContains` keeps the variables whose name contains the text. The response carries the first 50 variables of each instance; the artifact holds every variable the capture kept. ⚠️ **Granting the capability writes the strings and paths held in the variables into the artifact as they are** — see [Safety & Capabilities](safety.md#runtime-animation) |
+
+### Motion Matching (1) 🧩 — requires `RuntimeInspect`
+
+Not provided in the demo build. Registered only while the PoseSearch plugin is enabled.
+
+| Command | Description |
+|---|---|
+| `GetMotionMatchingState` | What the last pose search left in each Motion Matching node: the selected animation (`SelectedAnimationPath`) and the time inside it (`SelectedTimeSeconds`), whether the pose is mirrored (`Mirrored`), its blend space coordinates (`BlendParameters`), the pose search database it came from (`SelectedDatabasePath`), its total cost (`SearchCost`), whether the search kept the pose that was already playing (`IsContinuingPoseSearch`), the play rate the search wants (`WantedPlayRate`) and the seconds since the last pose jump (`ElapsedPoseSearchTimeSeconds`). A node that has not selected anything yet reports `HasSearchResult: false` with every field of the selection `null`. Each anim instance is read in its own entry, with its nodes under `MotionMatching`. A character that does not use Motion Matching is a success with an empty list and the limitation `NoMotionMatchingNode` — said only when every anim instance in scope could be read; an instance that could not be read is reported with its own reason instead. Nodes are listed up to `MaxEntries`; nodes past the cut are not counted, so `TotalCount` is `null` when the list is cut. It does not return the breakdown of the cost, the candidate poses, the databases that were searched or pose indices |
+
+#### Parameters
+
+| Parameter | Commands | Meaning |
+|---|---|---|
+| `ActorIdentifier` (required) | all | Label or name of the actor whose skeletal mesh component is observed, 1 to 256 characters |
+| `ComponentName` | all | Name of the skeletal mesh component, matched exactly but ignoring case, 1 to 256 characters. Left out, the mesh is chosen as described under [Which mesh is read](#which-mesh-is-read) |
+| `InstanceScope` | all | `Main` (the main anim instance only) or `All` (the main instance plus the linked and post process instances). Default `All` |
+| `MaxEntries` | all | Upper bound on the entries of every list, curves included: an integer from 1 to 4096. Default 256 for every list except curves, which default to 1024. The value applies to every list, so `300` also lowers the curve limit from 1024 to 300 |
+| `StateMachineName` | `GetAnimStateMachineStates`, `DumpAnimInstanceState` | Name of the state machines to return, matched exactly but ignoring case, 1 to 256 characters. Every machine with that name is returned |
+| `CurveType` | `GetAnimCurveValues`, `DumpAnimInstanceState` | `All` (default), `Attribute`, `Material` or `MorphTarget` |
+| `CurveNameContains` | `GetAnimCurveValues`, `DumpAnimInstanceState` | Text a curve name has to contain, ignoring case, 1 to 256 characters |
+| `VariableNameContains` | `DumpAnimInstanceVariables` | Text a variable name has to contain, ignoring case, 1 to 256 characters |
+| `TargetNetRole` / `TargetPIEInstance` | all | See [Choosing which play world a Runtime command acts on](#choosing-which-play-world-a-runtime-command-acts-on) |
+
+A filter is accepted only by the commands listed for it. Passing it to any other command, an unknown key, an empty string, a name longer than 256 characters, a limit outside 1–4096 or an unknown kind is `InvalidParams`. Parameters are checked before the play world is looked up, so a malformed request is refused even when PIE is not running.
+
+#### Which mesh is read
+
+Without `ComponentName`, the mesh is chosen in this order: the only skeletal mesh component that has an anim instance; else the character's own mesh (for an actor that has one) among several that do; else the only mesh when none has an anim instance. The response says which way the mesh was chosen (`ByName`, `OnlyAnimated`, `CharacterMesh` or `OnlyMesh`) and lists the other candidates. When no rule singles one out the command fails with `InvalidParams` and lists the candidates, so pick one and send its name. A character whose face is a separate mesh (a MetaHuman, for example) reads the body mesh by default; name the face mesh to read it.
+
+A mesh without an anim instance is not an error. The command succeeds with empty animation sections, `NoAnimInstance`, and the mesh's animation mode (Anim Blueprint, single asset, none). This also holds for a mesh named in `ComponentName` that only follows another mesh.
+
+#### Fields in every response
+
+| Field | Meaning |
+|---|---|
+| `CapturedAt` / `Frame` | When the state was read (ISO 8601, UTC) and the engine frame number at that moment |
+| `NetMode` / `WorldContext` / `PIEInstance` | The world that was read. `PIEInstance` is omitted outside PIE |
+| `Actor` / `Component` / `ComponentSelection` / `Candidates[]` | The actor and mesh component that were read, how the mesh was chosen, and the other skeletal mesh components of the actor |
+| `Instances[]` | One entry per anim instance, main first, then linked, then post process: `InstanceId`, `Role` (`Main`, `Linked` or `PostProcess`), `ClassPath`, `IsAnimBlueprintClass`, `Initialized`, `SharedWithMain` and the sections the command reads. At most 64 anim instances of one mesh are read; the rest are marked as left out |
+| `UpdateState` | Whether the animation is advancing at all. When it is not, `Details` lists why: `AnimationDisabled`, `AnimationPaused`, `SkeletonUpdateDisabled`, `ComponentTickDisabled`, `WorldPaused` or `NotRendered`, together with the update rate optimization state. A frame that update rate optimization only skips is reported as `UpdateSkippedByURO`, not as stopped |
+| `ValueBasis` | On the values that depend on it, which moment the value belongs to: `NodeLastUpdate`, `RecordedReadBuffer`, `InstanceCurrent` or `LastCompletedEvaluation` |
+| `DegradedSections[]` / `Limitations[]` | Parts of the result that could not be filled, each with its reason, and caveats about what was returned, each with a `Code` and sometimes a `Detail`. A reason that repeats is merged into one entry with a `Count` |
+
+When a section cannot be read, only that part is left out and the reason is given; the command still succeeds. Examples: an anim instance that is not initialized yet is listed without being read (`AnimInstanceNotInitialized`); a state machine that has not started is `Uninitialized`; a mesh whose animation is disabled leaves out only the machine weight; a non-finite number is replaced by `null`. An anim instance without an Anim Blueprint (a C++-only anim instance, or a single asset playback) has no state machines or nodes and says why (`NativeAnimInstance`, `SingleNodeInstance`); montages, curves and the assets being played can still be read, though the position of a played asset can be empty for a C++-only instance. For a single asset playback that is playing a montage, `SingleNode` is `null` and the montage is reported as a montage; when it plays something else while another montage is active, the position may be the montage's (`SingleNodePositionFromMontage`).
+
+#### Bounds on the output
+
+A list is cut at `MaxEntries` (default 256, curves 1024, at most 4096), in a fixed order, and reports its `TotalCount`. Inner lists (blend space samples, montage slots, mesh candidates) are cut at 64. The size of one command is bounded as a whole: when it is reached, the lists after that point are not read and are marked as left out, so an empty list and a list that was left out can be told apart. The response holds the first 50 entries of every list; the artifact holds everything that was read within the bounds.
+
+#### Linked anim layers and post process
+
+By default the main, linked and post process anim instances are all returned, main first. Linked curves are a copy of the main ones and are not repeated; post process curves are not repeated either while the main instance exists. A linked instance's montages are not repeated when it uses the main instance's montage data. Variables are returned for every instance with its own values. Right after a linked anim layer was swapped, the first reading can mix in a playback position that is one frame old.
+
+#### Errors
+
+| ErrorCode | When |
+|---|---|
+| `InvalidParams` | A parameter is of the wrong type, empty, too long, out of range or unknown; a filter passed to a command that does not accept it; the mesh cannot be singled out (the message lists the candidates); `TargetNetRole` / `TargetPIEInstance` cannot be honoured |
+| `CapabilityNotAvailable` | `RuntimeInspect`, or `AnimInstanceVariableDump` for `DumpAnimInstanceVariables`, is not granted. The message names it |
+| `PolicyViolation` | The capability is denied explicitly in the safety policy |
+| `NotAllowed` | No play world is running, or none matches `TargetNetRole` / `TargetPIEInstance` |
+| `NotFound` | The actor matches nothing, has no skeletal mesh component, or has none named `ComponentName` (the message lists the candidates) |
+| `PreconditionFailed` | The animation of the mesh was being evaluated on a worker thread when the command arrived. Nothing is read and no artifact is saved. Waiting would make game events fire earlier because of the observation, so the command does not wait: call it again |
+| `ExecutionFailed` | More than one actor matches the identifier, or the artifact could not be saved |
 
 Every successful call saves exactly one JSON artifact; a failed call saves none.
 

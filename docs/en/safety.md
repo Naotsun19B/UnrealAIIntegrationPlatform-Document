@@ -18,6 +18,8 @@ UAIP applies per-command authorization in four layers. Understanding the layers 
 
 Layer 1 is **not** per-session — it is one capability set that every session shares, fixed at startup (or refreshed process-wide by `ReloadCapabilities`). Layer 1.5 is the only layer that varies per session: when the editor is configured with roles (see [Roles](#roles-layer-15) below) and a session is bound to one, that role's deny list is intersected with Layer 1's set for that session only. A session with no role bound behaves exactly like Layer 1 alone.
 
+There is one exception to "a missing required capability returns `CapabilityNotAvailable`": creating a MetaHuman character (`MetaHumanAssetCreate`) or a Control Rig Blueprint (`ControlRigBlueprintCreate`) through `CreateAsset`. Those two are judged by an interceptor that stops the creation, so they return `PolicyViolation` both when the capability is merely not granted and when it is denied through `DeniedCapabilities` (the latter without advice to grant it, since a grant would not lift a denial). A role that denies `ControlRigBlueprintCreate` is refused with `PolicyViolation` as well, as described below.
+
 Layer 4 is a different kind of check from Layers 1–3, and it's worth keeping that distinction clear: Layers 1–3 all gate on **what this session or process is allowed to do**, and every one of their rejections is fixed by an operator flipping a switch (a capability, a SafetyPolicy flag, a launch flag). Layer 4 gates on **whether the handler can do its job at all right now**, independent of permission — most of the reasons it fails (wrong engine version, a build configuration that excludes the command, missing infrastructure, an API the engine or a Toolset target never exposed) have **no ini flag or capability grant that fixes them**; see [API Reference → `UnavailableDetail`](api.md#65-command-availability-fields) for the full breakdown. The one exception is a handler gated behind a deny-by-default SafetyPolicy flag (`UnavailableDetail: SafetyPolicyDisabled`) — that one *is* fixed the same way a Layer 2 rejection is, by setting the flag in `Config/DefaultUAIP.ini` and restarting, which is why it alone maps to `PolicyViolation` rather than `AbilityUnavailable`.
 
 ```mermaid
@@ -180,8 +182,8 @@ These are active in every session without any configuration. They cover read-onl
 | `AssetMutate` | Modify existing asset properties |
 | `AssetWindowControl` | Open and close asset editors |
 | `PIEControl` | PIE session control — `StartPIE`, `StopPIE`, `PausePIE`, `ResumePIE`, `LoadMap` |
-| `RuntimeInspect` | Read-only inspection of runtime world state — `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `DumpRuntimeLog`, `CapturePerformanceSnapshot`, and the six AI perception commands `DumpAIPerceptionState`, `GetPerceivedActors`, `GetActorPerceivers`, `DumpAIPerceptionSystemState`, `ExplainSightPerception` and `DumpAIPerceptionSenseConfigs` (the last one also requires `AIPerceptionConfigDump`; see [Runtime AI perception](#runtime-ai-perception)) |
-| `RuntimeCapture` | Runtime captures — `CaptureViewportImage`, `CheckpointCapture` |
+| `RuntimeInspect` | Read-only inspection of runtime world state — `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `DumpRuntimeLog`, `CapturePerformanceSnapshot`, `SearchLoadedClasses`, and the six AI perception commands `DumpAIPerceptionState`, `GetPerceivedActors`, `GetActorPerceivers`, `DumpAIPerceptionSystemState`, `ExplainSightPerception` and `DumpAIPerceptionSenseConfigs` (the last one also requires `AIPerceptionConfigDump`; see [Runtime AI perception](#runtime-ai-perception)), and the eight Chaos destruction commands `ListGeometryCollections`, `DumpGeometryCollectionState`, `DumpChaosFieldState`, `StartDestructionCapture`, `GetDestructionEventLog`, `StopDestructionCapture`, `CaptureGeometryCollectionStrain` and `EnableForcedDestructionNotify` (the last one also requires `ChaosDestructionForceNotify`, which the demo build does not provide; see [Runtime Chaos destruction](#runtime-chaos-destruction)), and the seven read-only navigation commands `DumpNavigationSystemState`, `FindPath`, `IsLocationReachable`, `DumpNavMeshTiles`, `QueryNavModifiers`, `GetPathFollowingState` and `WaitForNavigationBuild` (`FindPath` and `IsLocationReachable` also require `RuntimeNavigationExtendedSearch` above 8192 search nodes; see [Runtime Navigation](#runtime-navigation)), and the seven animation commands `DumpAnimInstanceState`, `GetAnimStateMachineStates`, `GetAnimBlendWeights`, `GetActiveMontages`, `GetAnimCurveValues`, `DumpAnimInstanceVariables` and `GetMotionMatchingState` (`DumpAnimInstanceVariables` also requires `AnimInstanceVariableDump`; see [Runtime Animation](#runtime-animation)), and the three game viewport UI commands `DumpGameViewportWidgets`, `FindGameViewportWidgets` and `DumpHUDState` (see [Runtime game viewport UI](#runtime-game-viewport-ui)) |
+| `RuntimeCapture` | Runtime captures — `CaptureViewportImage`, `CheckpointCapture` (the latter also requires `RuntimeInspect`) |
 | `RuntimeExecution` | Run functional tests and automation tests in PIE or Standalone |
 | `RuntimeGASInspect` 🧩 | Read GAS state during PIE — `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses` (requires `GameplayAbilities` plugin) |
 | `RuntimeNiagaraInspect` 🧩 | Read Niagara component state during PIE — `GetUserVariables`, `GetVariable` (requires `Niagara` plugin) |
@@ -467,7 +469,7 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `RuntimeActorManipulation` | Spawn, destroy, teleport, and possess actors during PIE |
 | `RuntimeExecCommand` | Execute console commands at runtime via `UWorld` |
 | `RuntimeDataLayerControl` | Change the runtime state of a World Partition Data Layer in a running play world — `UAIP.Runtime.World.SetDataLayerRuntimeState`, and that command alone. Observing that state (`ListDataLayerRuntimeStates`, `GetDataLayerRuntimeState`), waiting for streaming to settle (`WaitForDataLayerStreaming`) and enumerating play worlds (`ListPlayWorlds`) need no capability at all. Held apart from `WorldPartitionEdit` / `DataLayerEdit`, which author Data Layers in the level asset: this one changes only what a running session has loaded, and changes nothing that is saved to disk |
-| `RuntimeInputInjection` | Inject keyboard / Enhanced Input / legacy input events into PIE (`InjectInputKey`, `InjectEnhancedInputAction`, `AddMappingContext`, `SetInputMode`, `FlushInput`, …) |
+| `RuntimeInputInjection` | Inject keyboard / Enhanced Input / legacy input events into PIE (`InjectInputKey`, `InjectEnhancedInputAction`, `AddMappingContext`, `SetInputMode`, `FlushInput`, …)Operating the UI of a running game is a separate capability, `RuntimeUIInputInjection` (see [Runtime game viewport UI](#runtime-game-viewport-ui)) |
 | `RuntimeNiagaraMutation` 🧩 | Set Niagara user variables / replace Niagara system at runtime (`SetVariable`, `SetSystem`; requires `Niagara` plugin) |
 | `GauntletExecution` | Launch Gauntlet automated test sessions |
 | `GauntletUnrestrictedArguments` | In `RunGauntletTest`, allow arguments that change what the test targets or how the child process behaves: the parenthesized per-test parameter syntax on a test name, dangerous keys, keys that start with the test name, and values such as absolute paths, UNC paths and URLs (also values that start with `-` and a letter). Characters that cannot be passed safely on an external process command line (spaces, quotes, symbols) are **not** unlocked by this capability either |
@@ -577,6 +579,114 @@ The AI perception commands ([`UAIP.Runtime.AI`](commands.md#uaipruntimeai)) only
 Then restart the editor, or — where `AllowCapabilityReload=True` — call `UAIP.Core.ReloadCapabilities`, which applies it without a restart. Deleting the line and reloading again takes it away. While it is not granted, `DumpAIPerceptionSenseConfigs` fails with `CapabilityNotAvailable` naming `AIPerceptionConfigDump`; that check comes before the parameters or the play session are looked at, and no artifact is produced.
 
 **Denying it explicitly.** `+DeniedCapabilities=AIPerceptionConfigDump` refuses `DumpAIPerceptionSenseConfigs` with `PolicyViolation`, even when the same capability is also allowed (deny wins). `+DeniedCapabilities=RuntimeInspect` refuses **all six** AI perception commands with `PolicyViolation` — along with every other command that requires `RuntimeInspect`. Neither refusal produces an artifact.
+
+#### Runtime Chaos destruction
+
+The Chaos destruction commands ([`UAIP.Runtime.ChaosDestruction`](commands.md#uaipruntimechaosdestruction)) observe a running game. Seven of them only read and need nothing beyond the DefaultAllow `RuntimeInspect`: `ListGeometryCollections`, `DumpGeometryCollectionState`, `DumpChaosFieldState`, `StartDestructionCapture`, `GetDestructionEventLog`, `StopDestructionCapture` and `CaptureGeometryCollectionStrain`. The eighth, `EnableForcedDestructionNotify`, changes the game's own settings and also needs the capability below, which is denied by default. The module has no plugin requirement, so it carries no 🧩.
+
+| Capability | What it unlocks |
+|---|---|
+| `ChaosDestructionForceNotify` | Turn a destruction notification on for the Geometry Collection components a capture tracks — `EnableForcedDestructionNotify`, required in addition to `RuntimeInspect`. Denied by default because it changes the running game and part of the change cannot be undone, as described below |
+
+> ⚠️ **Side effects on the game.** While a notification is forced, the game's own destruction and collision listeners receive its events too, not only the capture. The engine also unregisters and re-registers every Chaos event of the component each time a notification is turned on and when it is restored, so a listener registered through another path can be affected. Grant the capability only where the game tolerates that.
+
+> ⚠️ **Part of it cannot be undone.** Turning a notification on raises the solver's event filters, and the engine has no way to lower them. The solver keeps producing that event data until the play session ends, even after the capture stops and the notification itself has been restored.
+
+**What is restored.** When the capture that forced a notification stops (`StopDestructionCapture`, its duration limit, a replacement or the end of the session), each notification no capture forces any more is put back if it still carries the forced value. A notification the game turned off in the meantime is left as the game set it. One the game wrote back on cannot be told apart from ours and is restored as well. Nothing is restored when the play world is torn down, because the components go with it.
+
+**Not provided in the demo build.** `EnableForcedDestructionNotify` and `ChaosDestructionForceNotify` are not part of the demo binary: the command is absent (`CommandNotFound`) and the capability is not registered, so naming it in the ini has no effect there. The seven read-only commands are provided.
+
+**Enabling it.** Add the capability to `[UAIP.SafetyPolicy]` in `Config/DefaultUAIP.ini`:
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=ChaosDestructionForceNotify
+```
+
+Then restart the editor, or — where `AllowCapabilityReload=True` — call `UAIP.Core.ReloadCapabilities`, which applies it without a restart. Deleting the line and reloading again takes it away. While it is not granted, `EnableForcedDestructionNotify` fails with `CapabilityNotAvailable` naming `ChaosDestructionForceNotify`; no notification is changed. Taking the capability away does not undo a notification that is already forced: it is restored when its capture stops.
+
+**Denying it explicitly.** `+DeniedCapabilities=ChaosDestructionForceNotify` refuses `EnableForcedDestructionNotify` with `PolicyViolation`, even when the same capability is also allowed (deny wins). `+DeniedCapabilities=RuntimeInspect` refuses **all eight** Chaos destruction commands with `PolicyViolation` — along with every other command that requires `RuntimeInspect`.
+
+#### Runtime Navigation
+
+The navigation commands ([`UAIP.Runtime.Navigation`](commands.md#uaipruntimenavigation)) observe the navigation mesh and path finding of a world. Seven of them only read and need nothing beyond the DefaultAllow `RuntimeInspect`: `DumpNavigationSystemState`, `FindPath`, `IsLocationReachable`, `DumpNavMeshTiles`, `QueryNavModifiers`, `GetPathFollowingState` and `WaitForNavigationBuild`. The eighth, `RebuildNavigation`, queues a regeneration of the mesh of a running game and needs the first capability below. A path query that asks for more search nodes than the default also needs the second. Both are denied by default. The module has no plugin requirement, so it carries no 🧩.
+
+| Capability | What it unlocks |
+|---|---|
+| `RuntimeNavigationRebuild` | Queue a regeneration of the navigation mesh of a play world, for the whole world or one region — `RebuildNavigation`, required instead of `RuntimeInspect` for that command. Denied by default because it changes the navigation data that every AI in the world moves on, and the regeneration it queues runs on worker threads for as long as the queued area takes to build |
+| `RuntimeNavigationExtendedSearch` | Run a path query with more than 8192 search nodes, up to 65534 — `MaxSearchNodes` of `FindPath` and `IsLocationReachable`, required in addition to `RuntimeInspect`. Denied by default because the node pool that every query on a navigation mesh shares grows to the largest size ever asked for and never shrinks, and a larger search keeps the game thread busy for longer. Without it a request for 8192 nodes or fewer works as usual |
+
+`RuntimeNavigationExtendedSearch` is not part of the declared `RequiredCapabilities` of the two commands: which capability a request needs depends on the `MaxSearchNodes` it names, so it is checked when the request runs, after the parameters are validated and before the play world is looked up. A request above 8192 without the capability fails with `CapabilityNotAvailable` naming `RuntimeNavigationExtendedSearch`; a request above 65534 is `InvalidParams` whatever is granted. A `MaxSearchNodes` left out is never refused: a filter whose own count is above 8192 is lowered to 8192 and the response says so (`Limitations: SearchNodesClamped`). `DumpNavigationSystemState` reports the ceilings, the name of the capability and whether the calling session holds it in `SearchLimits`, so a client can tell beforehand.
+
+**What is not offered, and what to use.** A synchronous full build of the navigation mesh holds the game thread until it finishes, with no upper bound, and the editor bridge treats an editor that does not answer for 30 seconds as stopped. Regenerating a region by deleting its tiles and re-adding them discards the tiles first. Neither is offered. Use `RebuildNavigation` (the whole world, or a `Box`) followed by `WaitForNavigationBuild`: the first queues the regeneration and answers at once, the second waits until the navigation system is quiescent.
+
+**Not provided in the demo build.** `RebuildNavigation` and `RuntimeNavigationRebuild` are not part of the demo binary: the command is absent (`CommandNotFound`) and the provider does not declare the capability, so no command uses it and naming it in the ini has no effect there. The capability is still recorded as Denied by default. The seven read-only commands are provided, and so is the extended search capability.
+
+**Enabling it.** Add the capabilities you need to `[UAIP.SafetyPolicy]` in `Config/DefaultUAIP.ini`:
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=RuntimeNavigationRebuild
++AllowedCapabilities=RuntimeNavigationExtendedSearch
+```
+
+Then restart the editor, or — where `AllowCapabilityReload=True` — call `UAIP.Core.ReloadCapabilities`, which applies it without a restart. Deleting the line and reloading again takes it away. While it is not granted, `RebuildNavigation` fails with `CapabilityNotAvailable` naming `RuntimeNavigationRebuild` and nothing is queued; a regeneration that was already queued is not undone.
+
+**Denying them explicitly.** `+DeniedCapabilities=RuntimeNavigationRebuild` refuses `RebuildNavigation` with `PolicyViolation`, even when the same capability is also allowed (deny wins). `+DeniedCapabilities=RuntimeNavigationExtendedSearch` refuses a request above 8192 search nodes with `PolicyViolation` and leaves the rest of `FindPath` and `IsLocationReachable` working. `+DeniedCapabilities=RuntimeInspect` refuses **all seven** read-only navigation commands with `PolicyViolation` — along with every other command that requires `RuntimeInspect`.
+
+#### Runtime Animation
+
+The animation commands ([`UAIP.Runtime.Animation`](commands.md#uaipruntimeanimation)) only read: none of them changes what an animation does. Six of them need nothing beyond the DefaultAllow `RuntimeInspect`: `DumpAnimInstanceState`, `GetAnimStateMachineStates`, `GetAnimBlendWeights`, `GetActiveMontages`, `GetAnimCurveValues` and `GetMotionMatchingState` (the last one 🧩 only while the PoseSearch plugin is enabled, and not part of the demo build). The variable dump also needs the capability below, which is denied by default. The module has no plugin requirement, so it carries no 🧩.
+
+| Capability | What it unlocks |
+|---|---|
+| `AnimInstanceVariableDump` | Dump the values of the variables that the project's own anim instance classes declare — `DumpAnimInstanceVariables`, required in addition to `RuntimeInspect`. Denied by default because a variable of a project-owned class can hold arbitrary project data, and the values are handed to the AI client and written to an artifact. The other commands read only the state the animation system itself defines (state machines, weights, montages, curves), never a variable the project declared |
+
+> ⚠️ **What comes out.** `DumpAnimInstanceVariables` returns the values as they are at the moment of the call, with no masking of anything that might be secret: **the strings and paths held in the variables are written into the artifact as they are**. A variable is not recognised as secret at run time, which is why the capability is opt-in rather than a default with some values hidden. The amount is bounded, not the kind: a container keeps its first 32 elements, a string is cut at 1024 characters, a struct is expanded one level, a reference is written as the path of what it refers to (never followed or loaded), and once the size budget runs out, variables or whole anim instances are left out and marked. Only variables declared by the project's own Anim Blueprints and C++ classes, and by plugins under the project's `Plugins/` folder, are dumped — never those declared by the engine, by plugins installed in the engine, or by a parent class that lives on the engine side, and never node internals. Grant the capability only where the AI client may read whatever the project keeps in its anim instance variables.
+
+> ⚠️ **An artifact that was already produced stays after the capability is taken away.** Every successful call saves its full result as a JSON artifact. Removing `AnimInstanceVariableDump` again stops new dumps; it does not remove the ones already made. They stay in the artifact store until artifact garbage collection removes them (`[UAIP.ArtifactGC]` in [Configuration](config.md)), the session that produced one can read it back with `UAIP.Core.Artifacts.GetArtifact`, and anyone who can read the UAIP working directory can read the file. Delete those files yourself when the values must not remain.
+
+**Enabling it.** Add the capability to `[UAIP.SafetyPolicy]` in `Config/DefaultUAIP.ini`:
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=AnimInstanceVariableDump
+```
+
+Then restart the editor, or — where `AllowCapabilityReload=True` — call `UAIP.Core.ReloadCapabilities`, which applies it without a restart. Deleting the line and reloading again takes it away. While it is not granted, `DumpAnimInstanceVariables` fails with `CapabilityNotAvailable` naming `AnimInstanceVariableDump`; that check comes before the parameters or the play session are looked at, and no artifact is produced.
+
+**Denying it explicitly.** `+DeniedCapabilities=AnimInstanceVariableDump` refuses `DumpAnimInstanceVariables` with `PolicyViolation`, even when the same capability is also allowed (deny wins). `+DeniedCapabilities=RuntimeInspect` refuses **all seven** animation commands with `PolicyViolation` — along with every other command that requires `RuntimeInspect`. Neither refusal produces an artifact.
+
+#### Runtime game viewport UI
+
+The game viewport UI commands let an AI read and operate the UI of a running game ([`UAIP.Runtime.Observation`](commands.md#game-viewport-ui-and-hud-4) and [`UAIP.Runtime.Input`](commands.md#game-viewport-ui-input-3)). Reading the structure of the UI is DefaultAllow: `DumpGameViewportWidgets`, `FindGameViewportWidgets` and `DumpHUDState` need only `RuntimeInspect`. Everything below is denied by default.
+
+| Capability | What it unlocks |
+|---|---|
+| `RuntimeUIInputInjection` | Operate the UI of a running game through its input path — `ClickGameViewportWidget`, `PressGameViewportUIKey`, `TypeGameViewportText`. **Separate from `RuntimeInputInjection`**: that one injects input straight into the game and does not let you operate the UI, and this one does not allow `InjectInputKey` and the others. Checked when the request is accepted and again just before the input is sent |
+| `RuntimeUIEditorReservedKeyInput` | In PIE inside the editor, send a UI key that the editor binds to its own PIE commands — by default Escape, which stops PIE. Required in addition to `RuntimeUIInputInjection`. The shortcut bindings are read as they are at that moment (a rebinding is followed; while a physical modifier key is held, bindings with that modifier are checked too), and if the bindings cannot be read, every UI key is refused. Standalone and packaged builds are not restricted |
+| `RuntimeWidgetTextRead` | Read the text of **every** text widget and the value of every editable text, whether it is on screen or not — `DumpGameViewportWidgetTexts`. Denied by default because text that is clipped, transparent or collapsed cannot be seen in a screen capture, and the values are handed to the AI client and saved in an artifact. The ordinary dump (`DumpGameViewportWidgets` with `IncludeText`) gives plain text only for text that is on screen, and only a length class for editable text |
+| `RuntimeWidgetPasswordTextRead` | Include the plain value of a password field (or of a field whose password state cannot be determined) in the response of `DumpGameViewportWidgetTexts`. Required in addition to `RuntimeWidgetTextRead`. The value is in the response only — up to 16 values of 256 characters — and never in the artifact, the completion notification or the audit record |
+
+> ⚠️ **An input the UI did not handle can reach the game.** As with a person's input, a click or key the UI does not consume can become game input (movement, attack). The response says whether the input reached the game, and every operation's response carries the warning. `Success` means the input was delivered by the path a person's input takes; it does not promise that the button's handler ran.
+
+> ⚠️ **What an artifact of `DumpGameViewportWidgetTexts` holds.** All the text of the game's UI, including text that is not visible, is written to an artifact. By default an artifact is kept for 24 hours and, with the default HTTP settings, can be fetched by anyone who knows its ID. Removing the capability stops new dumps; it does not remove the ones already made. Grant it only where the AI client may read everything the UI holds.
+
+**Enabling them.** Add the capabilities to `[UAIP.SafetyPolicy]` in `Config/DefaultUAIP.ini`:
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=RuntimeUIInputInjection
+; +AllowedCapabilities=RuntimeUIEditorReservedKeyInput
+; +AllowedCapabilities=RuntimeWidgetTextRead
+; +AllowedCapabilities=RuntimeWidgetPasswordTextRead
+```
+
+Then restart the editor, or — where `AllowCapabilityReload=True` — call `UAIP.Core.ReloadCapabilities`. While one is not granted, the command that needs it fails with `CapabilityNotAvailable` naming it. `+DeniedCapabilities=` on any of them refuses the command with `PolicyViolation`, even when the same capability is also allowed (deny wins); `+DeniedCapabilities=RuntimeInspect` also refuses the three DefaultAllow commands above.
+
+**Typing into a password field — `AllowRuntimePasswordFieldWrite`.** `TypeGameViewportText` refuses a password field, and a field whose password state cannot be determined, with `PolicyViolation` unless this safety setting is on, even when `RuntimeUIInputInjection` is granted. It is independent of `AllowPasswordFieldWrite`, which covers the editor's own UI (`FillForm`). Set it in `[UAIP.SafetyPolicy]` or with the launch flag `-uaip-policy-allow-runtime-password-field-write`; `QueryCapabilities` reports the current state as `OperationalConstraints.IsRuntimePasswordFieldWriteAllowed`. The text itself is never logged, returned or recorded, but a text passed through the CLI (`-uaip-request=`, `-uaip-request-file=`) stays in that command line or file.
+
+**HUD draw statistics — `EnableHUDCanvasStats`.** `DumpHUDState` adds the canvas draw-batch statistics of the game viewport only when `EnableHUDCanvasStats=True` under `[UAIP.RuntimeObservation]` in `DefaultUAIP.ini`. The default is `False`, there is no launch flag, and the setting is read at startup, so it takes effect after the editor or game is restarted. It grants nothing and changes no command's permission: while it is off the result explains how to turn it on.
 
 #### Optional graph editors
 
@@ -747,6 +857,8 @@ Any registered capability can be named here, including one that no command decla
 `PropertyDefaultsOnlyEdit` and `PropertyStructuredEdit` are the two of those. Deleting a line takes the
 capability away again on the next reload, so the add–use–delete cycle works for every name.
 
+A capability named in `DeniedCapabilities` is refused with `PolicyViolation` by every command that requires it, including a check a handler makes on its own after dispatch (for example `CancelPendingInteraction`, the property-write commands, `AddLiveLinkPresetToClient`, `RunGauntletTest`, the SaveGame commands) — not with `CapabilityNotAvailable`, and not even when `AllowedCapabilities` also names it (deny wins). A denial added by `ReloadCapabilities` takes effect immediately; a denial that was already in force when the editor started stays in force even after the line is removed and the configuration reloaded — lifting it takes a restart.
+
 `ReloadCapabilities` reports three arrays: `AddedCapabilities` and `RemovedCapabilities` for what the
 reload actually changed, and **`UnknownCapabilities`** for names the ini states that are not registered
 capabilities at all. A misspelled name lands in the third array rather than silently doing nothing, which
@@ -767,6 +879,7 @@ AllowContextMenuMutation=False
 AllowKeyboardInput=False
 AllowKeyboardModifierInput=False
 AllowPasswordFieldWrite=False
+AllowRuntimePasswordFieldWrite=False
 AllowInputModeBypass=False
 DisablePIEStart=False
 AllowCheatCVarWrite=False
@@ -800,6 +913,7 @@ AllowUserInteractionPrompt=False
 | `AllowKeyboardInput` | `False` | Allow `PressKey` (also requires `EditorKeyboardInput` capability) |
 | `AllowKeyboardModifierInput` | `False` | Allow Ctrl/Alt/Shift modifier keys inside `PressKey` |
 | `AllowPasswordFieldWrite` | `False` | Allow `FillForm` to write into password fields |
+| `AllowRuntimePasswordFieldWrite` | `False` | Allow `TypeGameViewportText` to type into password fields of a running game's UI, and into fields whose password state cannot be determined (also requires `RuntimeUIInputInjection`). Independent of `AllowPasswordFieldWrite`. CLI flag: `-uaip-policy-allow-runtime-password-field-write` |
 | `AllowInputModeBypass` | `False` | Allow `BypassInputMode=true` in Inject commands |
 | `DisablePIEStart` | `False` | Reject PIE startup |
 | `AllowCheatCVarWrite` | `False` | Allow `SetConsoleVariable` / `ResetConsoleVariable` to write `ECVF_Cheat`-flagged CVars (also requires `RuntimeCVarWrite`) |
@@ -871,6 +985,7 @@ Three concrete examples, all from [Commands Reference](commands.md#unavailablede
 | `CapabilityNotAvailable` | Process lacks the capability | Read the name from `ErrorMessage`; add it to `AllowedCapabilities` in the ini and restart (or call `ReloadCapabilities`) |
 | `CapabilityNotAvailable` with a role name in `ErrorMessage` | The session's role denies this capability (Layer 1.5) | Nothing to enable — perform the operation from a session bound to a different role, or ask the operator to change the role's `DeniedCapabilities` and restart |
 | `PolicyViolation: ... denied by SafetyPolicy` | SafetyPolicy ini flag is blocking | Set the corresponding flag to `True` in `[UAIP.SafetyPolicy]` and restart |
+| `PolicyViolation: Capability '<name>' is denied by SafetyPolicy` (or `Capability is denied by SafetyPolicy: <name>`) | The capability is listed in `DeniedCapabilities` (deny wins over any grant, and over a role) | Remove the line from `DeniedCapabilities` in `[UAIP.SafetyPolicy]` and restart — a role change or an `AllowedCapabilities` line does not lift it |
 | `PolicyViolation: Scenario execution is not enabled` | Scenario route opt-in missing | Add `"enable_scenario": true` to `config.json` |
 | `PolicyViolation: Command is denied` | Command is in `DeniedCommands` | Remove it from `DeniedCommands` in the ini |
 | `PolicyViolation: ... is not available (<UnavailableDetail>): ...` | A `HandlerUnavailable` refusal narrowed by `UnavailableDetail` (see above) | Depends on the detail: `EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` name something you can change; `EngineApiNotExported` / `DelegationTargetMissing` do not — look for a different code path |
