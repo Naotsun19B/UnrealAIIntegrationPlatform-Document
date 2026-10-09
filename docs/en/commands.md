@@ -141,7 +141,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | partial (1/2) |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 14 | 1 | — |
-| Runtime Observation | `UAIP.Runtime.Observation` | 12 | — | ✅ |
+| Runtime Observation | `UAIP.Runtime.Observation` | 14 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
 | Runtime Input | `UAIP.Runtime.Input` | 14 | — | partial (2/14) |
@@ -344,7 +344,7 @@ Two limits worth knowing:
 | Domain | Commands |
 |---|---|
 | `UAIP.Runtime.World` | `SpawnActor`, `DestroyActor`, `TeleportActor`, `PossessActor`, `SetTimeScale`, `ExecuteConsoleCommand`, `SetDataLayerRuntimeState`, `GetDataLayerRuntimeState`, `ListDataLayerRuntimeStates`, `WaitForDataLayerStreaming` |
-| `UAIP.Runtime.Observation` | `CaptureViewportImage`, `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `CheckpointCapture`, `DumpGameViewportWidgets`, `FindGameViewportWidgets`, `DumpGameViewportWidgetTexts`, `DumpHUDState` |
+| `UAIP.Runtime.Observation` | `CaptureViewportImage`, `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `CheckpointCapture`, `DumpGameViewportWidgets`, `FindGameViewportWidgets`, `DumpGameViewportWidgetTexts`, `DumpHUDState`, `ListSubsystems`, `DumpSubsystemState` |
 | `UAIP.Runtime.Execution` | `RunFunctionalTest`, `RunRuntimeAutomationTest` |
 | `UAIP.Runtime.Assertion` | `WaitForCondition`, `AssertActorProperty`, `AssertWorldState` |
 | `UAIP.Runtime.Input` | `InjectInputKey`, `InjectEnhancedInputAction`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `AddMappingContext`, `RemoveMappingContext`, `SetInputMode`, `FlushInput`, `DumpInputState`, `GetEnhancedInputActionValue`, `ClickGameViewportWidget`, `PressGameViewportUIKey`, `TypeGameViewportText` |
@@ -3509,8 +3509,8 @@ Runtime captures and state dumps.
 |---|---|
 | 🆓 `CaptureViewportImage` | PNG screenshot of a specified player's game viewport |
 | 🆓 `DumpWorldState` | Snapshot of all actors / components in the active PIE world (JSON) |
-| 🆓 `DumpActorState` | State of a specified actor (optionally including components) |
-| 🆓 `DumpComponentState` | State of a specified actor component |
+| 🆓 `DumpActorState` | State of a specified actor (optionally including components). An actor that cannot be found is `NotFound`, not `ExecutionFailed`, so a scenario's `RetryCount` no longer retries it |
+| 🆓 `DumpComponentState` | State of a specified actor component. A component that cannot be found is `NotFound`, not `ExecutionFailed`, so a scenario's `RetryCount` no longer retries it |
 | 🆓 `DumpRuntimeLog` | Buffered runtime log as a text artifact |
 | 🆓 `CapturePerformanceSnapshot` | CPU / GPU performance snapshot (FPS, memory, draw calls) |
 | 🆓 `CheckpointCapture` | Combined screenshot + state dump (scenario primitive) |
@@ -3519,6 +3519,8 @@ Runtime captures and state dumps.
 | 🆓 `FindGameViewportWidgets` | Searches the same tree for the nodes that meet every condition given (`WidgetClass`, `SlateType`, `WidgetName` / `WidgetNameContains`, `OwningPlayerIndex`; at least one is required). Each match carries the `TypePath` and the `Fingerprint` that `ClickGameViewportWidget`, `PressGameViewportUIKey` and `TypeGameViewportText` take back. A search that finds nothing is a success; `ResultLimitReached` and the `SearchIncomplete` limitation say whether the list was cut or the walk stopped early. Text is never read |
 | 🆓 `DumpGameViewportWidgetTexts` | The text of **every** text widget of the game viewport, on screen or not, and editable text with its value, as a JSON artifact. Each entry says whether its text is on screen. Requires `RuntimeWidgetTextRead` (DefaultDenied). The plain value of a password field is never written to the artifact; it appears in the response (`PasswordFieldValues`) only when the session also holds `RuntimeWidgetPasswordTextRead` |
 | 🆓 `DumpHUDState` | The HUD state of each local player as a JSON artifact: the HUD class, the display flags, the `ShowDebug` state, the debug texts, the names of the hit boxes, the widgets the HUD references and the widgets the player controller keeps on screen. What the HUD drew (lines, text, boxes) and hit box positions cannot be read and are reported in `Limitations` |
+| 🆓 `ListSubsystems` | The subsystems alive in the engine, the game instance, the play world and the local players, one row per instance (class, class path, object path, owner, status), sorted into one fixed order and cut into pages with `StartIndex` / `MaxEntries`. With `IncludeNotCreated: true` the loaded classes that have no instance under an owner are listed too. The `Engine` scope alone works without a play world. No property value is read |
+| 🆓 `DumpSubsystemState` | The property values of one subsystem instance, saved as a JSON artifact. Requires `RuntimeInspect` and `SubsystemStateDump` (DefaultDenied). The response carries only a summary; the values are in the artifact. ⚠️ The artifact stays after `SubsystemStateDump` is taken away — see [Safety & Capabilities](safety.md#runtime-subsystems) |
 
 ### Game viewport UI and HUD (4)
 
@@ -3573,6 +3575,65 @@ At least one of `WidgetClass`, `SlateType`, `WidgetName`, `WidgetNameContains` a
 #### The HUD
 
 `DumpHUDState` returns, per local player, the HUD class and display flags, the `ShowDebug` state, the debug texts (also when the HUD is not being drawn, which the result then says), the names of the hit boxes, the widgets the HUD references (at most 64) and the widgets the player has on screen. Each of those lists has a limit, and a cut list says so. Fields the engine version cannot provide are left out with the reason. Canvas draw-batch statistics for the game viewport are added only when `EnableHUDCanvasStats=True` under `[UAIP.RuntimeObservation]` in `DefaultUAIP.ini` (read at startup, so a restart is required); otherwise `Limitations` explains how to enable it. The statistics describe the most recent frame in which a HUD was drawn into that game viewport and do not add up across frames; with split screen they cover every HUD that drew into the viewport in that frame. A game viewport that has not drawn a HUD yet has no statistics, and the result says so. See [Safety & Capabilities](safety.md#runtime-game-viewport-ui).
+
+### Subsystems (2)
+
+Read the subsystems of a running game: which ones are alive under which owner and — when you allow it — the values inside one of them. A subsystem lives under one of four kinds of owner: `Engine`, `GameInstance`, `World` (the play world) or `LocalPlayer`. Both commands only read: they run when the safety policy sets `ReadOnly`.
+
+**Capabilities.** `ListSubsystems` requires `RuntimeInspect` (DefaultAllow). `DumpSubsystemState` requires `RuntimeInspect` and `SubsystemStateDump` (DefaultDenied), because the values are whatever the project stores, secrets included. A missing capability is `CapabilityNotAvailable` naming it; one denied explicitly in `DeniedCapabilities` is `PolicyViolation`. See [Safety & Capabilities](safety.md#runtime-subsystems).
+
+**Play world.** A request for the `Engine` scope alone needs no play world and takes neither `TargetNetRole` nor `TargetPIEInstance`; its response carries no world information (net mode, PIE instance). Every other scope needs a play world, which [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on) choose. With no play world such a request is `NotAllowed` — the `Engine` result is not returned in its place.
+
+**Demo build.** Both commands are in the demo binary. `SubsystemStateDump` is not granted by the demo's default configuration; add `+AllowedCapabilities=SubsystemStateDump` yourself to use `DumpSubsystemState`.
+
+#### What a reading is
+
+- **A row** of `ListSubsystems` gives `Scope`, `ClassName`, `ClassPath`, `ObjectPath`, `Owner` (the parts the owner has: `PIEInstance`, `PlayerIndex`), `Status` and `IsTickableWorldSubsystem`. `Status` is `Created` (a live instance), `NonAuthoritativeClass` (a live instance whose class was replaced by a newer version through hot reload, Live Coding or a Blueprint recompile, and which still carries the renamed old class) or `NotCreated` (a loaded class with no instance under the owner; only with `IncludeNotCreated: true`).
+- **Order.** Rows are sorted by scope (`Engine`, `GameInstance`, `World`, `LocalPlayer`), PIE instance, player index, status, class path and object path, so the same state always gives the same rows in the same order.
+- **Pages.** The response carries the first 50 rows of the page; the JSON artifact carries the whole page. `Truncated: true` means more pages follow: call again with `NextStartIndex` as `StartIndex` (`NextStartIndex` is left out when nothing remains). `DataEntriesTruncated` says the response holds fewer rows than the page. A `StartIndex` at or beyond the total gives an empty page, which is a success.
+- **Counts.** `TotalCount`, `CreatedCount`, `NonAuthoritativeCount` and `NotCreatedCount` are counted after `ClassNameContains` and before paging. `Scopes[]` has one entry per requested scope with `Scope`, `Availability` (`Available` or `Unavailable`), `Count` and, when unavailable, `Reason`.
+- **`IncludeNotCreated`** compares the loaded classes with the instances under each owner. A class that is not loaded is never listed, the `Engine` scope has no `NotCreated` rows, and the reason a subsystem was not created is not returned. An owner that has not created its subsystems yet (just after a game instance or a player is added) simply has no rows. `Limitations` says which of these apply to the result.
+- **`DumpSubsystemState`** selects exactly the class you name; naming a base class does not select an instance of a derived class. The response Data holds the identity (`Scope`, `ClassName`, `ClassPath`, `ObjectPath`), `Owner`, `Status`, `PropertyCount`, `IncludedCount`, `Truncated`, `StopReason` (only when the dump stopped) and `Limitations`. The properties are in the artifact only, in `Properties[]`, each with `Name`, `DeclaredBy`, `Type`, `Flags` (those of Transient, Config, BlueprintVisible, BlueprintReadOnly, Net and SaveGame that are set) and `Value`, base class first in declaration order. The properties of the common subsystem base class and editor-only properties are not listed.
+- **Size.** A dump is cut at about 256 KiB: it still succeeds, with `Truncated: true` and a `StopReason` (in practice `TotalBudget`), and `PropertyCount` still counts the properties that were left out. A container keeps its first 32 elements, a string is cut at 1024 characters, a struct is expanded one level, and a reference is written as the path of what it refers to, never followed.
+- **After a reload.** A subsystem left over from before a hot reload or Live Coding shows in the list as `NonAuthoritativeClass` under its renamed class name; to dump it, give that renamed name or its path. When the current class has no instance but an old one remains under the same owner, the `NotFound` result lists the renamed class names in `Candidates` (at most 16).
+
+#### Parameters
+
+| Parameter | Commands | Meaning |
+|---|---|---|
+| `Scopes` | `ListSubsystems` | One to four distinct names out of `Engine`, `GameInstance`, `World` and `LocalPlayer`, compared ignoring case. Default: all four. Only `Engine` works without a play world |
+| `PlayerIndex` | both | Number of the **local player** (0 is the first local player of the game instance). For `ListSubsystems`, allowed only when `Scopes` includes `LocalPlayer`; omit it to list every local player. For `DumpSubsystemState`, only with `Scope: LocalPlayer`, and it may be omitted only while exactly one local player exists |
+| `ClassNameContains` | `ListSubsystems` | Text the class name must contain, 1 to 256 characters, ignoring case. Applied while the rows are collected |
+| `IncludeNotCreated` | `ListSubsystems` | Also list loaded classes that have no instance under an owner, with status `NotCreated`. Default `false`. Does not apply to the `Engine` scope |
+| `StartIndex` | `ListSubsystems` | Index of the first row of the page in the sorted list, 0 or more. Default 0 |
+| `MaxEntries` | `ListSubsystems` | Most rows one page holds, 1 to 4096. Default 256. A value out of range is refused with `InvalidParams`, not clamped |
+| `Scope` (required) | `DumpSubsystemState` | `Engine`, `GameInstance`, `World` or `LocalPlayer`, ignoring case |
+| `SubsystemClass` (required) | `DumpSubsystemState` | Class of the subsystem, 1 to 1024 characters of `A-Z a-z 0-9 _ . / : -`. A value with a slash is a class path; otherwise it is a short class name compared exactly with the object name of the class, ignoring case. A leading `U` of a C++ type name may be left off or kept. A Blueprint class needs its `_C` name. Only classes that are already loaded can be targeted |
+| `TargetNetRole`, `TargetPIEInstance` | both | Which play world; see [Choosing which play world](#choosing-which-play-world-a-runtime-command-acts-on). Not accepted when only the `Engine` scope is asked for |
+
+#### Errors
+
+| ErrorCode | When |
+|---|---|
+| `InvalidParams` | A parameter is missing, of the wrong type, out of range or unknown; an unknown or repeated scope; `PlayerIndex` with a scope other than `LocalPlayer`; a play world selector with the `Engine` scope only; `TargetNetRole` / `TargetPIEInstance` contradict each other or match several worlds. For `ListSubsystems`, a request that still matches more than 65536 rows after `ClassNameContains` (drop `IncludeNotCreated` or narrow the request). For `DumpSubsystemState`, a short `SubsystemClass` that matches classes in more than one place (the class paths are in `Candidates`; repeat the request with one of them), and `Scope: LocalPlayer` without `PlayerIndex` while more than one local player exists |
+| `NotAllowed` | A scope other than `Engine` was asked for and no play world is running, or none matches `TargetNetRole` / `TargetPIEInstance` |
+| `NotFound` | `DumpSubsystemState`: the target does not exist; the `Reason` in the result says why (below). `ListSubsystems`: a `PlayerIndex` that no local player has (`Reason` is `PlayerNotFound`, or `NoGameInstance` when the play world has no game instance) |
+| `CapabilityNotAvailable` | `RuntimeInspect`, or for `DumpSubsystemState` `SubsystemStateDump`, is not granted |
+| `PolicyViolation` | The capability is denied by the safety policy |
+
+`NotFound` carries a machine readable `Reason` in its result:
+
+| `Reason` | Meaning |
+|---|---|
+| `NotInstantiated` | The class is loaded, but the scope and owner hold no instance of it. `Candidates` may name renamed instances left from before a reload |
+| `ClassNotFound` | No loaded class matches the name or path. `Candidates` lists class names that exist under that scope and owner (at most 16). A class that is not loaded cannot be targeted |
+| `NoGameInstance` | The play world has no game instance, so neither the game instance nor any local player exists |
+| `NoLocalPlayer` | The game instance has no local player (a dedicated server, for example) and no `PlayerIndex` was given |
+| `PlayerNotFound` | A `PlayerIndex` was given and no local player has it |
+
+The same five values appear as `Reason` in a `Scopes[]` entry of `ListSubsystems` that is `Unavailable`. A `ListSubsystems` request without `PlayerIndex` does not fail for these: that scope is reported `Unavailable` with the reason, and the other scopes are returned as usual.
+
+Every successful call saves exactly one JSON artifact; a failed call saves none.
 
 ---
 

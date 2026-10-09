@@ -26,6 +26,7 @@ The UAIP demo binary is a free, feature-limited build distributed via GitHub Rel
 | Runtime observation (viewport capture, world dump, HUD and widget state) | ✅ | ✅ |
 | Runtime AI perception, Chaos destruction and navigation observation (read-only subset) | ✅ | ✅ |
 | Runtime animation observation (anim instance state, state machines, blend weights, montages, curves; read-only subset) | ✅ | ✅ |
+| Runtime subsystem observation (`ListSubsystems`; `DumpSubsystemState` also needs `SubsystemStateDump`, which you allow yourself) | ✅ | ✅ |
 | Runtime input state observation (`DumpInputState`, `GetEnhancedInputActionValue`) | ✅ | ✅ |
 | Runtime input injection (`InjectInputKey`, `InjectEnhancedInputAction`, `ClickGameViewportWidget`, …) | — | ✅ |
 | Scenario execution (`uaip_run_scenario`) | ✅ | ✅ |
@@ -155,6 +156,8 @@ Every command below is registered in the demo build. Where a namespace is marked
 | `UAIP.Runtime.Observation.FindGameViewportWidgets` | Search the widget tree of the game viewport by class, name or owning player | |
 | `UAIP.Runtime.Observation.DumpGameViewportWidgetTexts` | JSON dump of the text of every text widget of the game viewport | `RuntimeWidgetTextRead` (the plain value of a password field also needs `RuntimeWidgetPasswordTextRead`) |
 | `UAIP.Runtime.Observation.DumpHUDState` | JSON dump of the HUD state of each local player | |
+| `UAIP.Runtime.Observation.ListSubsystems` | The subsystems alive in the engine, the game instance, the play world and the local players, one row per instance | |
+| `UAIP.Runtime.Observation.DumpSubsystemState` | JSON dump of the property values of one subsystem instance | `SubsystemStateDump` (needed in addition to `RuntimeInspect`; DefaultDenied in the demo too — you allow it yourself with `+AllowedCapabilities=SubsystemStateDump`) |
 
 ### `UAIP.Runtime.Input.*` (read-only subset)
 

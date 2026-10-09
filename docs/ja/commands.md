@@ -137,7 +137,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor LiveLink 🧩 | `UAIP.Editor.LiveLink` | 11 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 14 | 1 | — |
-| Runtime Observation | `UAIP.Runtime.Observation` | 12 | — | ✅ |
+| Runtime Observation | `UAIP.Runtime.Observation` | 14 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
 | Runtime Input | `UAIP.Runtime.Input` | 14 | — | 一部（2/14） |
@@ -344,7 +344,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | ドメイン | コマンド |
 |---|---|
 | `UAIP.Runtime.World` | `SpawnActor`、`DestroyActor`、`TeleportActor`、`PossessActor`、`SetTimeScale`、`ExecuteConsoleCommand`、`SetDataLayerRuntimeState`、`GetDataLayerRuntimeState`、`ListDataLayerRuntimeStates`、`WaitForDataLayerStreaming` |
-| `UAIP.Runtime.Observation` | `CaptureViewportImage`、`DumpWorldState`、`DumpActorState`、`DumpComponentState`、`CheckpointCapture`、`DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpGameViewportWidgetTexts`、`DumpHUDState` |
+| `UAIP.Runtime.Observation` | `CaptureViewportImage`、`DumpWorldState`、`DumpActorState`、`DumpComponentState`、`CheckpointCapture`、`DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpGameViewportWidgetTexts`、`DumpHUDState`、`ListSubsystems`、`DumpSubsystemState` |
 | `UAIP.Runtime.Execution` | `RunFunctionalTest`、`RunRuntimeAutomationTest` |
 | `UAIP.Runtime.Assertion` | `WaitForCondition`、`AssertActorProperty`、`AssertWorldState` |
 | `UAIP.Runtime.Input` | `InjectInputKey`、`InjectEnhancedInputAction`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`AddMappingContext`、`RemoveMappingContext`、`SetInputMode`、`FlushInput`、`DumpInputState`、`GetEnhancedInputActionValue`、`ClickGameViewportWidget`、`PressGameViewportUIKey`、`TypeGameViewportText` |
@@ -3457,8 +3457,8 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 |---|---|
 | 🆓 `CaptureViewportImage` | 指定プレイヤーのゲームビューポートを PNG キャプチャ |
 | 🆓 `DumpWorldState` | アクティブな PIE ワールドの全アクター / コンポーネントのスナップショット（JSON） |
-| 🆓 `DumpActorState` | 指定アクターの状態（任意でコンポーネント含む） |
-| 🆓 `DumpComponentState` | 指定アクターコンポーネントの状態 |
+| 🆓 `DumpActorState` | 指定アクターの状態（任意でコンポーネント含む）。見つからないアクターは `ExecutionFailed` ではなく `NotFound` になるため、シナリオの `RetryCount` では再試行されません |
+| 🆓 `DumpComponentState` | 指定アクターコンポーネントの状態。見つからないコンポーネントは `ExecutionFailed` ではなく `NotFound` になるため、シナリオの `RetryCount` では再試行されません |
 | 🆓 `DumpRuntimeLog` | バッファリングされた Runtime ログ（テキスト Artifact） |
 | 🆓 `CapturePerformanceSnapshot` | CPU / GPU パフォーマンススナップショット（FPS・メモリ・ドローコール） |
 | 🆓 `CheckpointCapture` | スクリーンショット + 状態ダンプの複合（シナリオ primitive） |
@@ -3467,6 +3467,8 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | 🆓 `FindGameViewportWidgets` | 同じツリーから、指定した条件をすべて満たすノードを探します（`WidgetClass`・`SlateType`・`WidgetName` / `WidgetNameContains`・`OwningPlayerIndex`。1 つ以上が必須）。一致には、`ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText` に渡し直す `TypePath` と `Fingerprint` が付きます。何も見つからなくても成功です。一覧を切ったか、走査が途中で止まったかは `ResultLimitReached` と `SearchIncomplete` の limitation で分かります。テキストは読みません |
 | 🆓 `DumpGameViewportWidgetTexts` | ゲームビューポートの**すべての**テキスト Widget のテキストと、入力欄の値を、画面に出ているかどうかを問わず JSON artifact として返します。各エントリに、そのテキストが画面に出ているかの印が付きます。`RuntimeWidgetTextRead`（DefaultDenied）が必要です。パスワード欄の平文は artifact には書かれず、セッションが `RuntimeWidgetPasswordTextRead` も持つときだけ応答（`PasswordFieldValues`）に入ります |
 | 🆓 `DumpHUDState` | 各ローカルプレイヤーの HUD の状態を JSON artifact として返します: HUD のクラス、表示フラグ、`ShowDebug` の状態、デバッグテキスト、ヒットボックスの名前、HUD が参照している Widget、プレイヤーコントローラーが画面に出している Widget。HUD が描いた内容（線・文字・ボックス）とヒットボックスの位置は読めず、`Limitations` で報告します |
+| 🆓 `ListSubsystems` | エンジン・GameInstance・プレイワールド・ローカルプレイヤーの下で生きている Subsystem を、実体ごとに 1 行（クラス・クラスパス・実体のパス・所有者・状態）で返します。行は決まった 1 つの順に並び、`StartIndex` / `MaxEntries` でページに区切られます。`IncludeNotCreated: true` を付けると、ロード済みで所有者の下に実体が無いクラスも載ります。`Engine` 種別だけの要求ならプレイワールド無しで動きます。プロパティの値は読みません |
+| 🆓 `DumpSubsystemState` | 1 つの Subsystem の実体のプロパティの値を JSON artifact として返します。`RuntimeInspect` と `SubsystemStateDump`（DefaultDenied）が必要です。応答には要約だけが載り、値は artifact に入ります。⚠️ `SubsystemStateDump` を外しても、すでに作られた artifact は残ります — [Safety & Capabilities](safety.md#runtime-subsystem) を参照 |
 
 ### ゲームビューポートの UI と HUD（4）
 
@@ -3521,6 +3523,65 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 #### HUD
 
 `DumpHUDState` は、ローカルプレイヤーごとに、HUD のクラスと表示フラグ、`ShowDebug` の状態、デバッグテキスト（HUD が描かれていないときも返り、その場合は結果にそう注記されます）、ヒットボックスの名前、HUD が参照している Widget（最大 64 件）、プレイヤーが画面に出している Widget を返します。これらの一覧にはそれぞれ件数の上限があり、切ったときはそう注記されます。エンジンの版が提供しない欄は、理由とともに省かれます。ゲームビューポートの Canvas の描画統計（描画のまとまりの数）は、`DefaultUAIP.ini` の `[UAIP.RuntimeObservation]` で `EnableHUDCanvasStats=True` にしたときだけ添えられます（起動時に読むので、再起動が必要です）。無効のときは、`Limitations` が有効にする方法を示します。統計は、そのゲームビューポートに HUD が描かれた直近のフレームの値で、フレームをまたいで足し上がりません。分割画面では、そのフレームにそのビューポートへ描いた全 HUD の合計になります。まだ HUD が一度も描かれていないゲームビューポートには統計が無く、結果にそう注記されます。[安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) を参照してください。
+
+### Subsystem（2）
+
+実行中のゲームの Subsystem を読み取ります: どの Subsystem がどの所有者の下で生きているか、そして（許可した場合に）その 1 つの中身の値です。Subsystem は 4 種類の所有者のいずれかの下にあります: `Engine`、`GameInstance`、`World`（プレイワールド）、`LocalPlayer`。どちらのコマンドも読み取り専用で、安全ポリシーが `ReadOnly` のときも実行できます。
+
+**Capability。** `ListSubsystems` は `RuntimeInspect`（DefaultAllow）を必要とします。`DumpSubsystemState` は `RuntimeInspect` に加えて `SubsystemStateDump`（DefaultDenied）を必要とします。値はプロジェクトが保持しているものそのままで、秘密が含まれることもあるためです。足りない Capability は、その名前を示した `CapabilityNotAvailable` になります。`DeniedCapabilities` で明示的に拒否している場合は `PolicyViolation` です。[Safety & Capabilities](safety.md#runtime-subsystem) を参照してください。
+
+**プレイワールド。** `Engine` 種別だけの要求はプレイワールドを必要とせず、`TargetNetRole` も `TargetPIEInstance` も受け付けません。応答にもワールドの情報（ネットモード・PIE インスタンス）は載りません。それ以外の種別はプレイワールドが必要で、対象は [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) で選びます。プレイワールドが無いときはそのような要求は `NotAllowed` になり、代わりに `Engine` の結果を返すことはしません。
+
+**デモ版。** 2 つのコマンドはどちらもデモ版に含まれます。デモ版の既定の設定は `SubsystemStateDump` を許可していません。`DumpSubsystemState` を使うには、自分で `+AllowedCapabilities=SubsystemStateDump` を追加してください。
+
+#### 読み取りの内容
+
+- `ListSubsystems` の **行** には、`Scope`・`ClassName`・`ClassPath`・`ObjectPath`・`Owner`（所有者が持つ部分だけ: `PIEInstance`・`PlayerIndex`）・`Status`・`IsTickableWorldSubsystem` が載ります。`Status` は `Created`（生きている実体）、`NonAuthoritativeClass`（ホットリロード・Live Coding・Blueprint の再コンパイルでクラスが新しい版に置き換わった後も残っている、改名された旧クラスの実体）、`NotCreated`（ロード済みで所有者の下に実体が無いクラス。`IncludeNotCreated: true` のときだけ）のいずれかです。
+- **並び順。** 行は種別（`Engine`・`GameInstance`・`World`・`LocalPlayer`）、PIE インスタンス、プレイヤー番号、状態、クラスパス、実体のパスの順に並びます。同じ状態なら、いつ呼んでも同じ行が同じ順で返ります。
+- **ページ。** 応答にはそのページの先頭 50 行が載り、JSON artifact にはページ全体が入ります。`Truncated: true` は続きのページがあることを示します。`NextStartIndex` を `StartIndex` に指定して呼び直してください（残りが無いときは `NextStartIndex` は省かれます）。`DataEntriesTruncated` は、応答の行数がページより少ないことを示します。`StartIndex` が全件数以上なら空のページが返り、これは成功です。
+- **件数。** `TotalCount`・`CreatedCount`・`NonAuthoritativeCount`・`NotCreatedCount` は、`ClassNameContains` で絞った後、ページに区切る前の件数です。`Scopes[]` は要求した種別ごとに 1 件で、`Scope`・`Availability`（`Available` または `Unavailable`）・`Count`、利用できないときは `Reason` が載ります。
+- **`IncludeNotCreated`** は、ロード済みのクラスと各所有者の下の実体を突き合わせます。ロードされていないクラスは載りません。`Engine` 種別には `NotCreated` の行は出ません。作られなかった理由は返りません。まだ Subsystem を作っていない所有者（GameInstance やプレイヤーを追加した直後など）は、行が 0 件になるだけです。どれが当てはまるかは `Limitations` に書かれます。
+- **`DumpSubsystemState`** が選ぶのは、指定したクラスそのものだけです。基底クラスを指定しても、派生クラスの実体は選ばれません。応答の Data には、識別（`Scope`・`ClassName`・`ClassPath`・`ObjectPath`）、`Owner`、`Status`、`PropertyCount`、`IncludedCount`、`Truncated`、`StopReason`（ダンプが途中で止まったときだけ）、`Limitations` が載ります。プロパティは artifact の `Properties[]` にだけ入り、それぞれ `Name`・`DeclaredBy`・`Type`・`Flags`（Transient・Config・BlueprintVisible・BlueprintReadOnly・Net・SaveGame のうち立っているもの）・`Value` を持ち、基底クラス側から宣言順に並びます。Subsystem の共通の基底クラスが持つプロパティと、エディタ専用のプロパティは載りません。
+- **大きさ。** ダンプは約 256 KiB で打ち切られます。それでも成功で、`Truncated: true` と `StopReason`（実際には `TotalBudget`）が付き、`PropertyCount` には省かれたプロパティも数えられます。コンテナは先頭 32 要素、文字列は 1024 文字で切られ、構造体は 1 段だけ展開され、参照は参照先のパスで書かれます（辿りません）。
+- **リロードの後。** ホットリロードや Live Coding の前から残っている Subsystem は、改名後のクラス名で `NonAuthoritativeClass` として一覧に出ます。ダンプするには、その改名後の名前かパスを指定します。現行のクラスに実体が無く、同じ所有者に古い実体が残っているときは、`NotFound` の結果の `Candidates` に改名後のクラス名が並びます（最大 16 件）。
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `Scopes` | `ListSubsystems` | `Engine`・`GameInstance`・`World`・`LocalPlayer` のうち、重複しない 1〜4 個の名前（大文字小文字は区別しません）。既定は 4 種類すべて。プレイワールド無しで動くのは `Engine` だけです |
+| `PlayerIndex` | 両方 | **ローカルプレイヤー**の番号（0 は GameInstance の最初のローカルプレイヤー）。`ListSubsystems` では `Scopes` に `LocalPlayer` を含むときだけ指定でき、省くと全ローカルプレイヤーを一覧します。`DumpSubsystemState` では `Scope: LocalPlayer` のときだけ指定でき、ローカルプレイヤーがちょうど 1 人のあいだに限り省けます |
+| `ClassNameContains` | `ListSubsystems` | クラス名に含まれていなければならない文字列。1〜256 文字、大文字小文字は区別しません。行を集める段階で適用されます |
+| `IncludeNotCreated` | `ListSubsystems` | 所有者の下に実体が無いロード済みのクラスも、状態 `NotCreated` で一覧に加えます。既定は `false`。`Engine` 種別には適用されません |
+| `StartIndex` | `ListSubsystems` | 並べ替えた一覧の中で、ページの最初の行の位置。0 以上、既定は 0 |
+| `MaxEntries` | `ListSubsystems` | 1 ページの行数の上限。1〜4096、既定は 256。範囲外の値は丸められず `InvalidParams` で拒否されます |
+| `Scope`（必須） | `DumpSubsystemState` | `Engine`・`GameInstance`・`World`・`LocalPlayer`（大文字小文字は区別しません） |
+| `SubsystemClass`（必須） | `DumpSubsystemState` | Subsystem のクラス。`A-Z a-z 0-9 _ . / : -` の 1〜1024 文字。スラッシュを含む値はクラスパス、それ以外はクラスのオブジェクト名と完全一致で（大文字小文字は区別せず）比べる短いクラス名です。C++ の型名の頭の `U` は付けても外してもかまいません。Blueprint のクラスは `_C` 付きの名前が必要です。対象にできるのはロード済みのクラスだけです |
+| `TargetNetRole`、`TargetPIEInstance` | 両方 | どのプレイワールドか。[対象プレイワールドの指定](#実行時コマンドの対象プレイワールドを指定する)を参照してください。`Engine` 種別だけを指定した要求では受け付けません |
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータが欠けている・型が違う・範囲外・未知のキー。未知または重複した種別。`LocalPlayer` 以外の種別に付けた `PlayerIndex`。`Engine` 種別だけの要求に付けたプレイワールドの指定。`TargetNetRole` / `TargetPIEInstance` が互いに矛盾する、または複数のワールドに一致する。`ListSubsystems` では、`ClassNameContains` で絞った後も 65536 行を超える要求（`IncludeNotCreated` を外すか、要求を絞ってください）。`DumpSubsystemState` では、複数の場所のクラスに一致する短い `SubsystemClass`（クラスパスが `Candidates` に入ります。そのうち 1 つを指定して呼び直してください）と、ローカルプレイヤーが 2 人以上いるのに `PlayerIndex` を省いた `Scope: LocalPlayer` |
+| `NotAllowed` | `Engine` 以外の種別を指定したのにプレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い |
+| `NotFound` | `DumpSubsystemState`: 対象が存在しない。結果の `Reason` が理由を示す（下記）。`ListSubsystems`: どのローカルプレイヤーも持たない `PlayerIndex`（`Reason` は `PlayerNotFound`。プレイワールドに GameInstance が無いときは `NoGameInstance`） |
+| `CapabilityNotAvailable` | `RuntimeInspect`、`DumpSubsystemState` では `SubsystemStateDump` も、許可されていない |
+| `PolicyViolation` | Capability が安全ポリシーで拒否されている |
+
+`NotFound` の結果には、機械で読める `Reason` が付きます。
+
+| `Reason` | 意味 |
+|---|---|
+| `NotInstantiated` | クラスはロード済みだが、その種別・所有者の下に実体が無い。`Candidates` には、リロード前から残っている改名後の実体が載ることがあります |
+| `ClassNotFound` | 名前やパスに一致するロード済みのクラスが無い。`Candidates` には、その種別・所有者の下に実在するクラス名が載ります（最大 16 件）。ロードされていないクラスは対象にできません |
+| `NoGameInstance` | プレイワールドに GameInstance が無いため、GameInstance もローカルプレイヤーも存在しない |
+| `NoLocalPlayer` | GameInstance にローカルプレイヤーがおらず（専用サーバーなど）、`PlayerIndex` も指定されていない |
+| `PlayerNotFound` | `PlayerIndex` を指定したが、その番号のローカルプレイヤーがいない |
+
+同じ 5 つの値は、`Unavailable` になった `ListSubsystems` の `Scopes[]` の `Reason` にも現れます。`PlayerIndex` を指定しない `ListSubsystems` はこれらの理由では失敗せず、その種別が理由付きで `Unavailable` と報告され、他の種別は通常どおり返ります。
+
+成功した呼び出しは必ず JSON artifact を 1 つ保存します。失敗した呼び出しは保存しません。
 
 ---
 

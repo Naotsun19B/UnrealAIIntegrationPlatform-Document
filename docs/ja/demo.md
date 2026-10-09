@@ -26,6 +26,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | Runtime 観測（ビューポートキャプチャ・ワールドダンプ・HUD とウィジェットの状態） | ✅ | ✅ |
 | Runtime の AI 知覚・Chaos 破壊・ナビゲーションの観測（読み取り専用の一部） | ✅ | ✅ |
 | Runtime のアニメーション状態の観測（AnimInstance の状態・ステートマシン・ブレンドのウェイト・モンタージュ・カーブ。読み取り専用の一部） | ✅ | ✅ |
+| Runtime の Subsystem の観測（`ListSubsystems`。`DumpSubsystemState` は利用者が許可する `SubsystemStateDump` も必要） | ✅ | ✅ |
 | Runtime の入力状態の観測（`DumpInputState`、`GetEnhancedInputActionValue`） | ✅ | ✅ |
 | Runtime の入力注入（`InjectInputKey`、`InjectEnhancedInputAction`、`ClickGameViewportWidget` など） | — | ✅ |
 | シナリオ実行（`uaip_run_scenario`） | ✅ | ✅ |
@@ -155,6 +156,8 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Runtime.Observation.FindGameViewportWidgets` | ゲームビューポートのウィジェットツリーを、クラス・名前・所有プレイヤーで検索する | |
 | `UAIP.Runtime.Observation.DumpGameViewportWidgetTexts` | ゲームビューポートの全テキストウィジェットの文字列を JSON で返す | `RuntimeWidgetTextRead`（パスワード欄の平文は加えて `RuntimeWidgetPasswordTextRead` が必要） |
 | `UAIP.Runtime.Observation.DumpHUDState` | ローカルプレイヤーごとの HUD の状態を JSON で返す | |
+| `UAIP.Runtime.Observation.ListSubsystems` | エンジン・GameInstance・プレイワールド・ローカルプレイヤーの下で生きている Subsystem を、実体ごとに 1 行で返す | |
+| `UAIP.Runtime.Observation.DumpSubsystemState` | 1 つの Subsystem の実体のプロパティの値を JSON で返す | `SubsystemStateDump`（`RuntimeInspect` に加えて必要。デモ版でも DefaultDenied で、利用者が `+AllowedCapabilities=SubsystemStateDump` を追加して許可する） |
 
 ### `UAIP.Runtime.Input.*`（読み取り専用の一部）
 

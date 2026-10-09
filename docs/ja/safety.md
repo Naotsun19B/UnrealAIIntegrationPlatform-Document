@@ -182,7 +182,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `AssetMutate` | 既存アセットのプロパティ変更 |
 | `AssetWindowControl` | アセットエディタの開閉 |
 | `PIEControl` | PIE セッション制御 — `StartPIE`、`StopPIE`、`PausePIE`、`ResumePIE`、`LoadMap` |
-| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot`、`SearchLoadedClasses`、および AI の感知を観測する 6 コマンド `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`（最後の 1 つは `AIPerceptionConfigDump` も必要。[Runtime AI の感知](#runtime-ai-の感知) を参照）、および Chaos 破壊の 8 コマンド `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`GetDestructionEventLog`、`StopDestructionCapture`、`CaptureGeometryCollectionStrain`、`EnableForcedDestructionNotify`（最後の 1 つは `ChaosDestructionForceNotify` も必要で、これはデモ版では提供されない。[Runtime Chaos 破壊](#runtime-chaos-破壊) を参照）、および読み取り専用のナビゲーション 7 コマンド `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`（`FindPath` と `IsLocationReachable` は、8192 を超える探索ノードでは `RuntimeNavigationExtendedSearch` も必要。[Runtime ナビゲーション](#runtime-ナビゲーション) を参照）、およびアニメーションの 7 コマンド `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState`（`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` も必要。[Runtime アニメーション](#runtime-アニメーション) を参照）、およびゲームビューポートの UI の 3 コマンド `DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpHUDState`（[Runtime ゲームビューポートの UI](#runtime-ゲームビューポートの-ui) を参照） |
+| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot`、`SearchLoadedClasses`、および AI の感知を観測する 6 コマンド `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`（最後の 1 つは `AIPerceptionConfigDump` も必要。[Runtime AI の感知](#runtime-ai-の感知) を参照）、および Chaos 破壊の 8 コマンド `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`GetDestructionEventLog`、`StopDestructionCapture`、`CaptureGeometryCollectionStrain`、`EnableForcedDestructionNotify`（最後の 1 つは `ChaosDestructionForceNotify` も必要で、これはデモ版では提供されない。[Runtime Chaos 破壊](#runtime-chaos-破壊) を参照）、および読み取り専用のナビゲーション 7 コマンド `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`（`FindPath` と `IsLocationReachable` は、8192 を超える探索ノードでは `RuntimeNavigationExtendedSearch` も必要。[Runtime ナビゲーション](#runtime-ナビゲーション) を参照）、およびアニメーションの 7 コマンド `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState`（`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` も必要。[Runtime アニメーション](#runtime-アニメーション) を参照）、および Subsystem の 2 コマンド `ListSubsystems`、`DumpSubsystemState`（後者は `SubsystemStateDump` も必要。[Runtime Subsystem](#runtime-subsystem) を参照）、およびゲームビューポートの UI の 3 コマンド `DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpHUDState`（[Runtime ゲームビューポートの UI](#runtime-ゲームビューポートの-ui) を参照） |
 | `RuntimeCapture` | ランタイムキャプチャ — `CaptureViewportImage`、`CheckpointCapture`（後者は `RuntimeInspect` も必要） |
 | `RuntimeExecution` | PIE または Standalone での機能テスト・Automation Test の実行 |
 | `RuntimeGASInspect` 🧩 | PIE 中の GAS 状態読み取り — `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`（`GameplayAbilities` プラグイン必須） |
@@ -655,6 +655,31 @@ Chaos 破壊のコマンド（[`UAIP.Runtime.ChaosDestruction`](commands.md#uaip
 そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます（再起動なしで反映されます）。行を消してもう一度読み直せば外れます。与えられていない間、`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
 
 **明示的に拒否する。** `+DeniedCapabilities=AnimInstanceVariableDump` は、同じ Capability が許可されていても、`DumpAnimInstanceVariables` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、アニメーションを観測する **7 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。どちらの拒否でも artifact は作られません。
+
+#### Runtime Subsystem
+
+Subsystem のコマンド（[`UAIP.Runtime.Observation`](commands.md#subsystem2)）は読み取るだけで、Subsystem を変更することも、その関数を呼ぶこともありません。`ListSubsystems` は DefaultAllow の `RuntimeInspect` だけで使え、プロパティの値は読みません。`DumpSubsystemState` は、既定で拒否されている下の Capability も必要とします。このモジュールにはプラグインの要件が無いため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `SubsystemStateDump` | 1 つの Subsystem の実体（Engine・GameInstance・World・LocalPlayer）のすべてのプロパティの値を出力します。**プロジェクトが独自に定義した Subsystem が宣言するプロパティも含みます** — `DumpSubsystemState`。`RuntimeInspect` に加えて必要です。値はプロジェクトが保持しているものそのままで、どれが秘密かをゲーム側では判別できず、AI クライアントへ渡され、artifact にそのまま書き出されるため、既定では拒否されています |
+
+> ⚠️ **何が出力されるか。** `DumpSubsystemState` は、呼び出した時点の値をそのまま返します。秘密かもしれないものを隠すことはしません — Subsystem がトークン・キー・アカウント情報などを持っていれば、それも出ます。制限されるのは量であって種類ではありません: 構造体は 1 段だけ展開され、コンテナは先頭 32 要素、文字列は 1024 文字で切られ、参照は参照先のパスで書かれ（辿ることもロードすることもしません）、デリゲートは生きている束縛の数で書かれ、1 回の要求のプロパティが合計 256 KiB を超えると残りは省かれて印が付きます。エディタ専用のプロパティと、Subsystem の共通の基底クラスが持つプロパティは出力されません。プロジェクトが Subsystem に保持しているものを AI クライアントが読んでよい環境でだけ、この Capability を許可してください。
+
+> ⚠️ **ワーカースレッドが書き換え中の値は、安全に読めません。** Subsystem のプロパティを、読み取る瞬間にワーカースレッドが書き換えているかどうかを、UAIP は判別できません。書き換えられている場合、読み取りは安全ではなく、中途半端な値を返すことがあり、最悪の場合はエディタやゲームがクラッシュします。UAIP にはそれを事前に検出する手段がありません。`SubsystemStateDump` を許可するかどうかは、プロジェクトの Subsystem を踏まえて判断してください。ワーカースレッドから書き込まれていると分かっている Subsystem は、それが動いているあいだにダンプしないでください。
+
+> ⚠️ **すでに作られた artifact は、Capability を外しても残ります。** 成功した呼び出しは、結果の全体を JSON artifact として保存します。`SubsystemStateDump` を外すと新しいダンプは止まりますが、すでに作られたものは消えません。artifact のガベージコレクション（[設定](config.md) の `[UAIP.ArtifactGC]`）が消すまで artifact ストアに残り、作ったセッションは `UAIP.Core.Artifacts.GetArtifact` で読み戻せ、UAIP の作業ディレクトリを読める人ならファイルを読めます。値を残したくないときは、そのファイルを自分で削除してください。
+
+**許可する。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に Capability を追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=SubsystemStateDump
+```
+
+その後、エディタを再起動するか、`AllowCapabilityReload=True` の環境では `UAIP.Core.ReloadCapabilities` を呼べば、再起動せずに反映されます。行を削除してもう一度リロードすれば外せます。デモ版の既定の設定もこれを許可していないので、デモ版でも同じ行が必要です。許可されていないあいだ、`DumpSubsystemState` は `SubsystemStateDump` の名前を示した `CapabilityNotAvailable` で失敗します。この確認はパラメータやプレイセッションを調べるより前に行われ、artifact は作られません。
+
+**明示的に拒否する。** `+DeniedCapabilities=SubsystemStateDump` は、同じ Capability が許可されていても、`DumpSubsystemState` を `PolicyViolation` で拒否します（拒否が優先されます）。`+DeniedCapabilities=RuntimeInspect` は、`RuntimeInspect` を必要とする他のすべてのコマンドと一緒に、Subsystem の**両方の**コマンドを `PolicyViolation` で拒否します。どちらの拒否でも artifact は作られません。
 
 #### Runtime ゲームビューポートの UI
 
