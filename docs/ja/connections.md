@@ -48,7 +48,7 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 
 ### 前提条件
 
-- `Plugins/UnrealAIIntegrationPlatform` フォルダがプロジェクトの `Plugins` 配下に配置されている
+- UAIP プラグインがプロジェクトの `Plugins` 配下（またはエンジンの `Engine/Plugins` 配下）に配置されている。インストーラは `UnrealAIIntegrationPlatform.uplugin` というファイルで検出するため、それを含むフォルダの名前は問わない
 - UE プロジェクトで **UnrealAIIntegrationPlatform** プラグインが有効になっている
 - Python 3.10 以降がインストールされ `PATH` に通っている
 - 対応 AI クライアントのいずれか（Claude Code・Codex CLI・Claude Desktop・Cursor・Windsurf・GitHub Copilot）
@@ -56,6 +56,8 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 ### ステップ 1 — Bridge zip をダウンロードして展開
 
 ドキュメントリポジトリの [Releases](../../../releases) から `UAIP-MCPBridge-<version>.zip` をダウンロードし、任意の場所（例：`Downloads/UAIPMCPBridge/`）に展開してください。展開先は **インストーラの実行元** であり、最終的なデプロイ先ではありません。
+
+> **zip はデプロイ先の外に展開してください。** `Downloads` などのフォルダを使い、プロジェクトやエンジンの `Plugins` フォルダには展開しません。zip のトップフォルダは `UAIPMCPBridge/` なので、`Plugins` に展開するとデプロイ先そのものに置くことになります。詳しくは下の「[デプロイ先の中でインストーラを実行したとき](#デプロイ先の中でインストーラを実行したとき)」を参照してください。
 
 ### ステップ 2 — インストーラを実行
 
@@ -79,11 +81,19 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 .\install\install.ps1 -EnginePath  "F:\Epic Games\UE_5.8"
 ```
 
+インストーラは `UnrealAIIntegrationPlatform.uplugin` を `<Project>/Plugins`（プロジェクトインストール）または `<Engine>/Engine/Plugins`（エンジンインストール）から探します。プラグインが別の場所にある場合（例：`AdditionalPluginDirectories` に挙げたディレクトリ配下）や、複数見つかった場合は、そのファイルを直接含むフォルダを指定してください。Bridge はそのフォルダの隣、`<folder>/../UAIPMCPBridge/` にデプロイされます：
+
+```powershell
+.\install\install.ps1 -UAIPPluginDir "F:\MyProjects\MyGame\Plugins\UnrealAIIntegrationPlatform"
+```
+
+macOS / Linux（および Git Bash）の `install.sh` では代わりに `--uaip-plugin-dir "<folder>"` を使います。
+
 インストーラの動作：
 
 | ステップ | アクション |
 |---|---|
-| 1 | UAIP プラグインを探索し、デプロイ先を解決 |
+| 1 | UAIP プラグインを探索（`UnrealAIIntegrationPlatform.uplugin` で検出するのでフォルダ名は問わない。`-UAIPPluginDir` を渡したときはそのフォルダ）し、デプロイ先を解決 |
 | 2 | Bridge ファイルを `<UAIP-parent>/UAIPMCPBridge/` にコピー |
 | 3 | Python 3.10+ の存在を確認 |
 | 4 | `<bridge-root>/.venv/` に Python 仮想環境を作成 |
@@ -93,7 +103,23 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 
 完了後、Bridge は `<UAIP-parent>/UAIPMCPBridge/`（`UnrealAIIntegrationPlatform/` と同階層）に配置され、venv Python は `<bridge-root>/.venv/Scripts/python.exe`（Windows）または `<bridge-root>/.venv/bin/python`（macOS / Linux）に作成されます。
 
-> **既存インストールを手動で更新する場合の注意**：ステップ 6（新しく追加された `config.json` キーの補完と、旧インストーラが残した値の新既定値への移行）はインストーラスクリプト経由でのみ実行されます。`install.ps1` / `install.sh` を再実行せず、新しいファイルを既存のデプロイ先へ手動でコピーして更新した場合、`config.json` はそのまま手つかずになります — 新規キーは追加されず、移行も走りません。`config.json` を最新の状態にするには、インストーラを再実行する（繰り返し実行しても安全です。上の「[ステップ 2](#ステップ-2--インストーラを実行)」を参照）か、`config.json.example` と手動で見比べてください。
+インストーラが「The deployment was refused (exit N)」と表示してデプロイを拒否した場合、何も削除されていません。終了コードごとの対処は [トラブルシューティング](troubleshooting.md) を参照してください。
+
+#### デプロイ先の中でインストーラを実行したとき
+
+どこのインストーラを実行するかで、結果が更新になるか修復になるかが分かれます：
+
+| 実行するもの | 結果 |
+|---|---|
+| **新しく展開した zip の、デプロイ先の外**にあるインストーラ | デプロイ、つまり**更新**。Bridge のファイルがその zip のものに置き換わる |
+| すでに**デプロイ済み**の `<bridge-root>/install/` にあるインストーラ（1.3.0 以降） | **修復**。「Repair mode: ...」と表示し、デプロイ済みのファイルは残して `.venv/` と `config.json` だけを作り直す（既存の設定は残る）。Bridge は更新されない |
+| `Plugins` の中に展開した zip のインストーラで、パッケージとデプロイ先が互いを含んでいる場合 | 拒否される（終了コード 15）。zip をデプロイ先の外に展開し直し、そこから実行する |
+
+新しいリリースに移るときは、必ず新しい zip をデプロイ先の外に展開し、そのインストーラを実行してください。デプロイ済みの Bridge の上に新しい zip を展開しないでください。古いリリースのファイルが残り、venv も作り直されません。
+
+> **1.2.0 のインストーラの注意**：この保護がありません。デプロイ先の中から実行すると自分自身のファイルを削除します。1.2.0 のインストーラは必ず外から実行してください。
+
+> **既存インストールを手動で更新する場合の注意**：ステップ 6（新しく追加された `config.json` キーの補完と、旧インストーラが残した値の新既定値への移行）はインストーラスクリプト経由でのみ実行されます。`install.ps1` / `install.sh` を再実行せず、新しいファイルを既存のデプロイ先へ手動でコピーして更新した場合、`config.json` はそのまま手つかずになります — 新規キーは追加されず、移行も走りません。`config.json` を最新の状態にするには、新しいリリースの zip をデプロイ先の外に展開してそのインストーラを実行する（上の「[ステップ 2](#ステップ-2--インストーラを実行)」を参照）か、`config.json.example` と手動で見比べてください。Bridge の中にデプロイ済みのインストーラを再実行するのは更新ではなく修復です。デプロイ済みのファイルと `config.json` の設定は残ります。
 
 ### ステップ 3 — MCP サーバーキーを決定
 
@@ -322,10 +348,10 @@ uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\
 | 症状 | 原因 | 対処 |
 |---|---|---|
 | `install.ps1` が実行ポリシーでブロック | PowerShell 実行ポリシー | `install.cmd` を使うか、`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` を実行して再試行 |
-| インストーラが UAIP プラグインを見つけられない | `.uproject` / エンジンパスが誤り | 正しい `-ProjectPath` / `-EnginePath` を指定して再実行 |
+| インストーラが UAIP プラグインを見つけられない、または複数見つける | `.uproject` / エンジンパスが誤り、プラグインが `Plugins` の外にある、コピーが複数ある | 正しい `-ProjectPath` / `-EnginePath` を指定して再実行するか、`UnrealAIIntegrationPlatform.uplugin` を含むフォルダを `-UAIPPluginDir` で指定。拒否ごとの対処は [トラブルシューティング](troubleshooting.md) にあります |
 | AI クライアントでツールが見つからない | MCP サーバ未接続 | スニペット内のキーと `thin_proxy.py` のパスを確認し、クライアントを再起動 |
 | 初回コマンドで 120 秒タイムアウト | エディタ起動失敗 | MCP `env` の `UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH` を確認 |
-| Python 起動エラー | venv 内の依存不足 | インストーラを再実行（venv が再作成される） |
+| Python 起動エラー | venv 内の依存不足 | Bridge の中にデプロイ済みのインストーラ（`<bridge-root>/install/install.ps1`）を実行する。これは修復（1.3.0 以降）で、venv を作り直し、`config.json` の設定は残す。Bridge は更新されない |
 | `PolicyViolation` が返る | Capability 未付与 / SafetyPolicy フラグ OFF | [Safety & Capabilities](safety.md) を参照 |
 | `CommandNotFound` | コマンド名の間違い | `uaip_list_commands(ProviderPrefix="UAIP.Core")` で確認 |
 | Bridge がそもそも起動しない（ツールが一つも使えるようにならない） | `config.json` は存在するが解析できない（JSON が壊れている・エンコーディングが不正・1 MiB のサイズ上限超過）— 誰も選んでいない既定値へ黙ってフォールバックする代わりに、Bridge は起動そのものを拒否し、どの MCP ツール呼び出しも可能になる前に終了する | AI のコンテキストではなく **MCP クライアントのサーバーログ** を確認する — Bridge は正確なパスと理由を stderr に出力して終了コード 2 で終了する。ツール呼び出しに一度も応答しないため `uaip_get_editor_status` でこれを読み取ることはできない |

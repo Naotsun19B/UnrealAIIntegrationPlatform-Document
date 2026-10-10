@@ -114,6 +114,22 @@ A progress bar (slow task) is different: nothing is answered there even with the
 4. If MCP itself is unresponsive (not just the editor), restart only the bridge process; the editor can stay running.
 5. Only as an absolute last resort, manually `Stop-Process` the specific editor PID after closing the AI client — and only after `uaip_get_editor_status` has ruled out `UNRESPONSIVE`.
 
+### "The MCP Bridge installer says 'The deployment was refused (exit N)'"
+
+Nothing was deleted. The reason is printed just above that line. Find the exit code below.
+
+| Exit | Meaning | Fix |
+|---|---|---|
+| 13 | The UAIP plugin was not found | Place it under the `Plugins` folder shown, or pass `-UAIPPluginDir` / `--uaip-plugin-dir` with the folder that directly contains `UnrealAIIntegrationPlatform.uplugin` |
+| 14 | Two or more UAIP copies were found | Move the copies you do not use out of `Plugins`, or pass `-UAIPPluginDir` / `--uaip-plugin-dir` with one of the listed paths |
+| 15 | The extracted package and the deploy target contain one another | Extract the release zip outside the deploy target (for example into Downloads) and run the installer from there |
+| 16 | The deploy target would fall outside the search root (the plugin sits directly in `Plugins`, or directly under a drive root) | Move the plugin files into their own folder under `Plugins`, or place the plugin folder at least one level below the drive root |
+| 17 | A folder could not be read while searching | Fix the access to that folder, or pass `-UAIPPluginDir` / `--uaip-plugin-dir` to skip the search |
+| 18 | The existing deploy target is not a directory or does not look like a bridge | Check what is in that folder and move it away, then run the installer again |
+| 19 | The deploy target cannot be used safely (it is a link, overlaps the plugin, search root or project folder, or its path has unsupported characters) | If it is a link, remove only the link and run again: `cmd /c rmdir "<path>"` from PowerShell, `cmd //c rmdir "<path>"` from Git Bash, `rm "<path>"` (no trailing slash) on macOS / Linux. Do not use PowerShell's `rmdir`, which is `Remove-Item` |
+
+`-UAIPPluginDir` belongs to `install.ps1` / `install.cmd`; `--uaip-plugin-dir` belongs to `install.sh`. See [Connection Methods → MCP Bridge](connections.md#mcp-bridge).
+
 ---
 
 ## Performance & resource usage

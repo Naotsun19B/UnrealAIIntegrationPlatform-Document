@@ -40,12 +40,14 @@
 
 ## 3. MCP Bridge をインストールする（1 分）
 
-Bridge は AI クライアントと UE Editor をつなぐ薄い Python プロキシです。エディタが起動していなければ自動で立ち上げる役割も担います。**Bridge はプラグイン本体とは別配布** — このリポジトリの [Releases](../../../releases) から `UAIP-MCPBridge-<version>.zip`（UE バージョン非依存の単一 zip）をダウンロードして任意の場所に展開し、インストーラを実行してください：
+Bridge は AI クライアントと UE Editor をつなぐ薄い Python プロキシです。エディタが起動していなければ自動で立ち上げる役割も担います。**Bridge はプラグイン本体とは別配布** — このリポジトリの [Releases](../../../releases) から `UAIP-MCPBridge-<version>.zip`（UE バージョン非依存の単一 zip）をダウンロードしてプロジェクトやエンジンの `Plugins` フォルダの**外**（例：`Downloads`）に展開し、インストーラを実行してください：
 
 ```powershell
 cd <展開先>/UAIPMCPBridge
 ./install/install.ps1
 ```
+
+> **zip を `Plugins` に展開しないでください。** zip のトップフォルダは `UAIPMCPBridge/` なので、そこに展開するとデプロイ先そのものに置くことになります。後で更新するときも、新しい zip を `Plugins` の外に展開してそのインストーラを実行します。`Plugins` にデプロイ済みのインストーラを実行しても、修復（1.3.0 以降）として venv と `config.json` を作り直すだけです。
 
 > **対応プラットフォーム**：v1.0 は **Windows (Win64) のみ** が対象です。macOS / Linux 対応は将来検討項目です。
 

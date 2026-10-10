@@ -48,7 +48,7 @@ If you only want the shortest path to a working setup, see [Quickstart](quicksta
 
 ### Prerequisites
 
-- The `Plugins/UnrealAIIntegrationPlatform` folder is placed in your project's `Plugins` folder
+- The UAIP plugin is placed under your project's `Plugins` folder (or the engine's `Engine/Plugins` folder). The installer finds it by the file `UnrealAIIntegrationPlatform.uplugin`, so the name of the folder that contains it does not matter
 - The **UnrealAIIntegrationPlatform** plugin is enabled in the UE project
 - Python 3.10 or newer is installed and available on `PATH`
 - One of the supported AI clients (Claude Code, Codex CLI, Claude Desktop, Cursor, Windsurf, GitHub Copilot)
@@ -56,6 +56,8 @@ If you only want the shortest path to a working setup, see [Quickstart](quicksta
 ### Step 1 — Download and extract the Bridge zip
 
 Download `UAIP-MCPBridge-<version>.zip` from the documentation repository's [Releases](../../../releases) page and extract it anywhere — for example, a temporary `Downloads/UAIPMCPBridge/` folder. The extracted layout is the **installer source**, not the final deployment location.
+
+> **Extract the zip outside the deploy target.** Use a folder such as `Downloads`, not the project's or the engine's `Plugins` folder. The zip's top-level folder is `UAIPMCPBridge/`, so extracting it into `Plugins` places it exactly on the deploy target. See [Running the installer from the deploy target](#running-the-installer-from-the-deploy-target) below.
 
 ### Step 2 — Run the installer
 
@@ -79,11 +81,19 @@ You can skip the prompts by passing the path directly:
 .\install\install.ps1 -EnginePath  "F:\Epic Games\UE_5.8"
 ```
 
+The installer searches `<Project>/Plugins` (project install) or `<Engine>/Engine/Plugins` (engine install) for `UnrealAIIntegrationPlatform.uplugin`. If the plugin lives elsewhere (for example under a directory listed in `AdditionalPluginDirectories`), or if more than one copy is found, pass the folder that directly contains that file. The bridge is then deployed next to that folder, as `<folder>/../UAIPMCPBridge/`:
+
+```powershell
+.\install\install.ps1 -UAIPPluginDir "F:\MyProjects\MyGame\Plugins\UnrealAIIntegrationPlatform"
+```
+
+On macOS / Linux (and Git Bash), `install.sh` takes `--uaip-plugin-dir "<folder>"` instead.
+
 What the installer does:
 
 | Step | Action |
 |---|---|
-| 1 | Locate the UAIP plugin and resolve the deploy target |
+| 1 | Locate the UAIP plugin (by `UnrealAIIntegrationPlatform.uplugin`, whatever the folder is called; or the folder you passed with `-UAIPPluginDir`) and resolve the deploy target |
 | 2 | Copy bridge files into `<UAIP-parent>/UAIPMCPBridge/` |
 | 3 | Verify Python 3.10+ is available |
 | 4 | Create a Python virtual environment at `<bridge-root>/.venv/` |
@@ -93,7 +103,23 @@ What the installer does:
 
 Once finished, the bridge lives at `<UAIP-parent>/UAIPMCPBridge/` (sibling to `UnrealAIIntegrationPlatform/`) and the venv Python is at `<bridge-root>/.venv/Scripts/python.exe` (Windows) or `<bridge-root>/.venv/bin/python` (macOS / Linux).
 
-> **Updating an existing install by hand?** Step 6 — adding newly introduced `config.json` keys and migrating values a previous installer left behind — only runs through the installer script. If you update the bridge by manually copying the new files over an existing deployment instead of re-running `install.ps1` / `install.sh`, `config.json` is left exactly as it was: new keys are not added and nothing is migrated. Re-run the installer (safe to run repeatedly — see [Step 2](#step-2--run-the-installer) above) to bring `config.json` up to date, or diff it against `config.json.example` by hand.
+If the installer refuses to deploy ("The deployment was refused (exit N)"), nothing was deleted; see [Troubleshooting](troubleshooting.md) for each exit code.
+
+#### Running the installer from the deploy target
+
+Which installer you run decides whether the result is an update or a repair:
+
+| What you run | Result |
+|---|---|
+| The installer from a **freshly extracted zip, outside** the deploy target | A deploy or an **update**: the bridge files are replaced with the ones in that zip |
+| The installer already **deployed** at `<bridge-root>/install/` (1.3.0 and later) | A **repair**. It prints "Repair mode: ...", keeps the deployed files, and rebuilds only `.venv/` and `config.json` (existing settings are kept). It does not update the bridge |
+| An installer from a zip extracted **inside** `Plugins`, so that the package and the deploy target contain one another | Refused (exit 15). Extract the zip outside the deploy target and run it from there |
+
+To move to a newer release, always extract the new zip outside the deploy target and run its installer. Do not extract a new zip over the deployed bridge: that leaves files of the old release behind and never rebuilds the venv.
+
+> **Warning for the 1.2.0 installer**: it has no such protection. Run from inside the deploy target, it deletes its own files. Always run the 1.2.0 installer from outside.
+
+> **Updating an existing install by hand?** Step 6 — adding newly introduced `config.json` keys and migrating values a previous installer left behind — only runs through the installer script. If you update the bridge by manually copying the new files over an existing deployment instead of re-running `install.ps1` / `install.sh`, `config.json` is left exactly as it was: new keys are not added and nothing is migrated. To bring `config.json` up to date, extract the new release zip outside the deploy target and run its installer (see [Step 2](#step-2--run-the-installer) above), or diff it against `config.json.example` by hand. Re-running the installer that is already deployed inside the bridge is a repair, not an update: it keeps the deployed files and your `config.json` settings.
 
 ### Step 3 — Pick an MCP server key
 
@@ -322,10 +348,10 @@ See [Configuration → Reloading config at runtime](config.md#reloading-config-a
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `install.ps1` is blocked by execution policy | PowerShell execution policy | Use `install.cmd`, or run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` then re-run |
-| Installer cannot find the UAIP plugin | Wrong `.uproject` / engine path | Re-run and pass the correct `-ProjectPath` / `-EnginePath` |
+| Installer cannot find the UAIP plugin, or finds more than one | Wrong `.uproject` / engine path, the plugin is outside `Plugins`, or several copies exist | Re-run with the correct `-ProjectPath` / `-EnginePath`, or pass `-UAIPPluginDir` with the folder that contains `UnrealAIIntegrationPlatform.uplugin`. Each refusal is listed in [Troubleshooting](troubleshooting.md) |
 | Tool not found in AI client | MCP server not connected | Check the key and the `thin_proxy.py` path in the snippet; restart the client |
 | Timeout after ~120 s on first command | Editor failed to start | Verify `UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH` in the MCP `env` block |
-| Python error on startup | Missing dependencies in venv | Re-run the installer (the venv is recreated) |
+| Python error on startup | Missing dependencies in venv | Run the installer deployed inside the bridge (`<bridge-root>/install/install.ps1`). This is a repair (1.3.0 and later): it rebuilds the venv and keeps `config.json` settings. It does not update the bridge |
 | `PolicyViolation` on a command | Capability not granted, or SafetyPolicy flag off | See [Safety & Capabilities](safety.md) |
 | `CommandNotFound` | Wrong command name | `uaip_list_commands(ProviderPrefix="UAIP.Core")` |
 | Bridge does not start at all (no tools ever become available) | `config.json` exists but cannot be parsed (bad JSON, wrong encoding, over the 1 MiB size limit) — the bridge refuses to start on a config nobody chose rather than silently falling back to defaults, and exits before any MCP tool call is possible | Check your MCP client's **server log**, not the AI's context — the bridge prints the exact path and reason to stderr and exits with code 2 before it can answer any tool call, so there is no `uaip_get_editor_status` response to read this from |

@@ -116,6 +116,22 @@ UE 5.7 のエンジンの欠陥で、UE 5.8 では修正されています。Dat
 4. MCP 自体（エディタではなく）が応答しない場合は、Bridge プロセスだけを再起動してください（エディタは生かしたままで OK）。
 5. 最終手段として、`uaip_get_editor_status` で `UNRESPONSIVE` ではないことを確認した上でのみ、AI クライアントを閉じてから対象エディタの PID を狙って `Stop-Process` を呼んでください。
 
+### 「MCP Bridge のインストーラが 'The deployment was refused (exit N)' と表示する」
+
+何も削除されていません。理由はその行のすぐ上に表示されています。下の表で終了コードを探してください。
+
+| 終了コード | 意味 | 対処 |
+|---|---|---|
+| 13 | UAIP プラグインが見つからない | 表示された `Plugins` フォルダの下に置くか、`UnrealAIIntegrationPlatform.uplugin` を直接含むフォルダを `-UAIPPluginDir` / `--uaip-plugin-dir` で渡す |
+| 14 | UAIP のコピーが 2 つ以上見つかった | 使わないコピーを `Plugins` の外へ移すか、表示されたパスのうち 1 つを `-UAIPPluginDir` / `--uaip-plugin-dir` で渡す |
+| 15 | 展開したパッケージとデプロイ先が互いを含んでいる | リリース zip をデプロイ先の外（例：Downloads）に展開し、そこからインストーラを実行する |
+| 16 | デプロイ先が探索の起点の外に出てしまう（プラグインが `Plugins` の直下、またはドライブルートの直下にある） | プラグインのファイルを `Plugins` の下の専用フォルダに移すか、プラグインのフォルダをドライブルートより 1 階層以上下に置く |
+| 17 | 探索中にフォルダを読めなかった | そのフォルダへのアクセスを直すか、`-UAIPPluginDir` / `--uaip-plugin-dir` を渡して探索を省く |
+| 18 | 既存のデプロイ先がディレクトリでない、または Bridge に見えない | そのフォルダの中身を確認して退避し、インストーラをもう一度実行する |
+| 19 | デプロイ先を安全に使えない（リンクである、プラグイン・探索の起点・プロジェクトフォルダと重なる、パスに未対応の文字がある） | リンクなら、リンクだけを外してから再実行する：PowerShell では `cmd /c rmdir "<path>"`、Git Bash では `cmd //c rmdir "<path>"`、macOS / Linux では `rm "<path>"`（末尾にスラッシュを付けない）。PowerShell の `rmdir` は `Remove-Item` なので使わない |
+
+`-UAIPPluginDir` は `install.ps1` / `install.cmd` の引数、`--uaip-plugin-dir` は `install.sh` の引数です。[接続方法 → MCP Bridge](connections.md#mcp-bridge) を参照してください。
+
 ---
 
 ## パフォーマンスとリソース

@@ -40,12 +40,14 @@ For the demo, also copy `Config/DefaultUAIP.ini` from the release zip into your 
 
 ## 3. Install the MCP Bridge (1 min)
 
-The bridge is a thin Python proxy that connects your AI client to the UE Editor. It also handles starting the editor when it isn't running yet. **The bridge is distributed separately from the plugin** — download `UAIP-MCPBridge-<version>.zip` from this repository's [Releases](../../../releases) (one zip works for every UE version) and extract it anywhere, then run the installer:
+The bridge is a thin Python proxy that connects your AI client to the UE Editor. It also handles starting the editor when it isn't running yet. **The bridge is distributed separately from the plugin** — download `UAIP-MCPBridge-<version>.zip` from this repository's [Releases](../../../releases) (one zip works for every UE version) and extract it **outside** your project's or engine's `Plugins` folder (for example into `Downloads`), then run the installer:
 
 ```powershell
 cd <wherever-you-extracted>/UAIPMCPBridge
 ./install/install.ps1
 ```
+
+> **Do not extract the zip into `Plugins`.** Its top-level folder is `UAIPMCPBridge/`, so extracting it there places it exactly on the deploy target. To update later, extract the new zip outside `Plugins` again and run its installer; running the installer already deployed in `Plugins` only repairs the venv and `config.json` (1.3.0 and later).
 
 > **Supported platform**: UAIP v1.0 targets **Windows (Win64) only**. macOS / Linux support is a future consideration.
 

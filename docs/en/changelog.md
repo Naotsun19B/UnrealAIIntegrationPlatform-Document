@@ -131,9 +131,21 @@ Changes that have shipped in the plugin repository but are not yet released on F
 
 The bridge is versioned and released independently of the plugin; see the version numbering above.
 
+**Added**
+
+- **Repair mode: running the installer that is already deployed inside the bridge now rebuilds only what is broken.** When the installer finds that it is running from the deploy target itself, it prints "Repair mode: ...", keeps the deployed files, and rebuilds only `.venv/`, `config.json` (existing settings are kept) and the registration snippet. A repair is not an update: to move to a newer release, extract the new zip outside the deploy target and run its installer.
+- **`-UAIPPluginDir` (`install.ps1` / `install.cmd`) and `--uaip-plugin-dir` (`install.sh`) name the folder that directly contains `UnrealAIIntegrationPlatform.uplugin`.** Use them when the plugin lives outside `Plugins` (for example under an `AdditionalPluginDirectories` entry) or when more than one copy is found. The bridge is deployed next to that folder.
+- **The installer now refuses an unsafe deployment with a reason and an exit code (13 to 19), and deletes nothing when it does.** Each refusal is listed in [Troubleshooting](troubleshooting.md).
+
+**Fixed**
+
+- **The installer no longer deletes its own files when it is run from inside the deploy target.** The 1.2.0 installer, run from the bridge it had deployed (for example after extracting the zip into `Plugins`), removed the very files it was running from. If you still use the 1.2.0 installer, run it from outside the deploy target.
+- **The installer finds the UAIP plugin by the file `UnrealAIIntegrationPlatform.uplugin`, not by a fixed folder name.** A plugin folder with any other name used to be missed.
+
 **Changed**
 
 - **`uaip_execute` of `RestartEditor` now returns when the outcome is known, not when the restart is accepted.** When the editor returns an `AttemptId`, the bridge keeps sending progress to the client and polls `GetRestartStatus` while it waits, then answers once it has connected to the new editor, or the restart was declined (the editor's reason and remedy come back as the error), or the outcome could not be confirmed within the limit (until the editor closes: the editor's `CloseDeadlineSeconds` plus about 30 seconds, and up to 60 more once shutdown has begun; after it closes: `http_startup_timeout_seconds`). It verifies the identity of the new editor before reporting success. With an older editor that returns no `AttemptId`, or when the status command is unavailable or denied, the bridge behaves as before and returns at acceptance. A `RestartEditor` issued while the bridge is already waiting for a new editor is refused with an error instead of restarting the current one. The minimum plugin version is unchanged.
+- **When the engine install path holds more than one UAIP plugin copy, the installer now refuses instead of picking one.** `install.sh` used to pick one without even a warning. Pass `--uaip-plugin-dir` / `-UAIPPluginDir` with the copy you want, or move the others out of `Engine/Plugins`.
 
 
 ### UAIP Plugin 1.2.0 — 2026-09-29
