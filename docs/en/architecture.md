@@ -79,7 +79,7 @@ The hard rule: **dependencies only flow downward**. The Transport layer doesn't 
 | Layer | Modules | Role |
 |---|---|---|
 | **Core** | `UAIPCore` | Session, capability, policy, command registry, artifact manager. Loaded in every configuration |
-| **Shared** | `UAIPEditorShared`, `UAIPRuntimeShared`, `UAIPExecutionShared`, `UAIPArtifacts`, `UAIPBuildSupport`, `UAIPWatchdogSupport` | Cross-domain utilities — no commands directly |
+| **Shared** | `UAIPEditorShared`, `UAIPRuntimeShared`, `UAIPExecutionShared`, `UAIPArtifacts`, `UAIPWatchdogSupport` | Cross-domain utilities — no commands directly |
 | **Transports** | `UAIPTransportHTTP`, `UAIPTransportWS`, `UAIPTransportCLI` | Per-transport listeners; MCP is external to the editor (Python bridge) |
 | **Editor domain** | `UAIPEditor*` (Workspace, Observation, Execution, UIAutomation, Assets, Level, Property, Blueprint, UMG, Material, GameplayTags, GameFeatures, Niagara, Physics, Dataflow, Skeleton, DataTable, AnimBlueprint, SoundCue, BehaviorTree, MetaSound, EQS, Sequencer, StateTree, Curve, PCG, WorldConditions, Conversation, ControlRig, EnhancedInput, GAS, Foliage, WorldPartition, MVVM, Sound, ChaosClothAsset, DataRegistry, EngineManagement, Sandbox, Debugger, PythonExtension) | Editor-side semantic commands. Loaded in `EditorNoCommandlet` phase |
 | **Runtime domain** | `UAIPRuntimePIE`, `UAIPRuntimeObservation`, `UAIPRuntimeExecution`, `UAIPRuntimeAssertion`, `UAIPRuntimeWorld`, `UAIPRuntimeGAS`, `UAIPRuntimeInput`, `UAIPRuntimeNiagara`, `UAIPRuntimeEngineManagement` | Runtime / PIE-side commands. Some opt-in to packaged builds for Gauntlet |

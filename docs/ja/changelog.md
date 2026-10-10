@@ -126,6 +126,7 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 - **`CreateGameFeaturePlugin` が、エンジンが本物の GameFeature として扱うプラグインを作るようになりました**（`UAIPEditorGameFeatures` モジュール）。以前は `Plugins/` の直下に作られ、GameFeature として登録されず、応答のパスも実際の作成先と違っていました。今は、プロジェクトの `Plugins/GameFeatures/` の下に作り（その外の `OutputPath` は `InvalidParams` で拒否）、GameFeature データのアセットを作り、同じセッションのうちに登録して `InitialState`（既定 `Active`）まで進めます。再起動後も登録されます。応答には、実際の `PluginPath`・`PluginUrl`・到達した `State`・`Warnings`（たとえば、パッケージ版でデータが含まれない恐れのあるアセット管理設定の不足）が入ります。途中で失敗したときは、失敗の応答にどこまで進んだかが入ります。**⚠️ 旧版が `Plugins/` の直下に作ったプラグインは GameFeature ではなく、`DeleteGameFeaturePlugin` は拒否するので、そのフォルダは手で削除してください。**
 - **`RestartEditor` が、成功を返したのに黙って再起動しない、ということがなくなりました**。そうなっていたケースは、受付前に断られるか、理由付きで見送られた試行として報告されます。MCP Bridge は結果が出るまで待ちます（下の MCP Bridge の項を参照）。
 - **CLI が、`-uaip-response-file=` のパスを何かを実行する前に検査するようになりました**（`UAIPTransportCLI` モジュール）: `Saved/UAIP/Responses/` の外のパスは、コマンド（またはシナリオ）を実行した後で初めて拒否されていたため、拒否と報告された要求でエディタが変更されていることがありました。今後は先に拒否し、stdout に `InvalidParams` を出して終了コード 2 で終わり、何も実行しません。パスは許可されているが書き込めないレスポンスファイルは、従来どおりコマンドの実行後の失敗で、コマンドが成功していても stdout に `InternalError` を出して終了コード 2 になります。
+- **BuildPlugin でプラグインのパッケージを作るとき、ビルドルールの C# の型の重複の警告（CS0436）が大量に出なくなりました**: プラグインのビルドルールをビルドすると、この警告が大量に表示されていました。今後は表示されません。
 
 #### MCP Bridge 1.3.0 — 未リリース
 
