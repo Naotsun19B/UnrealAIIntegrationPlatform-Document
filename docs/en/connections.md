@@ -285,7 +285,8 @@ Typical uses:
   "Status": "Loaded",
   "KeyCount": 7,
   "Keys": ["editor_path", "uproject_path", "http_port", "command_timeout_seconds", "log_level", "enable_scenario", "inline_artifacts"],
-  "LastReloadError": ""
+  "LastReloadError": "",
+  "EditorExtraArgs": []
 }
 ```
 
@@ -296,6 +297,7 @@ Typical uses:
 | `KeyCount` | How many top-level keys `config.json` actually contained. |
 | `Keys` | The **names** of those keys only — never their values. This block is a diagnostic surface, not a way to read secrets like `role_token` back out of the running bridge. |
 | `LastReloadError` | Empty when the most recent `uaip_reload_config` call (if any) succeeded, or when none has been made yet. Non-empty when the last reload attempt failed to parse its `config.json` — the message names the file and the reason, and the bridge kept running on the configuration it already had (a failed reload never tears down the current session). See [Reload config without restarting the MCP client](#reload-config-without-restarting-the-mcp-client) above. |
+| `EditorExtraArgs` | The extra command-line arguments the bridge will add the next time it launches the editor — empty when there are none. Unlike `Keys`, this is a value: it never comes from `config.json`, only from the `UAIP_EDITOR_EXTRA_ARGS` environment variable or a `uaip_reload_config(EditorExtraArgs=[...])` call. They stay in effect until replaced, including for a relaunch after a crash, so check here before assuming the editor runs with its usual command line. See [Configuration → Reloading config at runtime](config.md#reloading-config-at-runtime-uaip_reload_config). |
 
 `RecommendedAction` (above) also gets an extra sentence appended when `Config` has something worth flagging — a `Status` of `"Absent"`, or a non-empty `LastReloadError` — so a caller that only ever parses `RecommendedAction` still learns about it without having to read `Data.Config` on every call.
 

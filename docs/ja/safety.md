@@ -142,7 +142,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 
 各コマンドは必要な Capability を宣言しています。プロセスが必要な Capability をすべて持っており（Layer 1）、かつセッションが役割に束縛されている場合はその役割がいずれも拒否していないとき（Layer 1.5）だけコマンドを実行できます。Capability には **DefaultAllow**（自動付与）と **DefaultDenied**（`Config/DefaultUAIP.ini` で明示的に有効化が必要）の 2 種類があります。
 
-🧩 付きの Capability はオプションプラグインへの依存があります。エディタビルド（ソースビルドでも Fab 配布の製品版バイナリでも同じ）では、**利用しているエンジンにそのプラグインが存在する限り** Capability は登録されます — プロジェクトの `.uproject` での明示宣言もリビルドも不要です。問題になるのはそのプラグインが**有効かどうか**だけです。無効なら Capability は登録されず、必要とするコマンドは `CommandNotFound` を返します — プラグインを有効にしてエディタを再起動すれば読み込まれます。プラグイン自体がこのエンジン版に存在しない場合は有効化のしようがなく、`CommandNotFound` はその旨を案内します。いずれの場合も `UAIP.Core.ListIntegrations` を呼べば、すべてのオプション統合の状態と対処が一度に分かり、該当コマンドの `CommandNotFound` 応答にも統合名と対処が直接付きます。
+🧩 付きの Capability はオプションプラグインへの依存があります。エディタビルド（ソースビルドでも Fab 配布の製品版バイナリでも同じ）では、**利用しているエンジンにそのプラグインが存在する限り** Capability は登録されます — プロジェクトの `.uproject` での明示宣言もリビルドも不要です。問題になるのはそのプラグインが**有効かどうか**だけです。無効なら Capability は登録されず、必要とするコマンドは `CommandNotFound` を返します — プラグインを有効にしてエディタを再起動すれば読み込まれます。プラグイン自体がこのエンジン版に存在しない場合は有効化のしようがなく、`CommandNotFound` はその旨を案内します。`CompiledOut` の統合は、コードがバイナリに組み込まれていない統合です。ビルド時に統合先のプラグインが有効と判定されなかったか、エンジン版が統合の対応版より古い場合で、後者では `MissingPlugins` が空になり、`Remedy` に必要な最小エンジン版が書かれます。エンジンにインストールした Fab 配布版の UAIP からパッケージしたゲームでは、これらの統合は組み込まれません。UAIP をプロジェクトの `Plugins` フォルダーに置き、プロジェクトと一緒にコンパイルしてください。いずれの場合も `UAIP.Core.ListIntegrations` を呼べば、すべてのオプション統合の状態と対処が一度に分かり、該当コマンドの `CommandNotFound` 応答にも統合名と対処が直接付きます。
 
 ### どんな Capability が存在するかを調べる
 
@@ -182,7 +182,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `AssetMutate` | 既存アセットのプロパティ変更 |
 | `AssetWindowControl` | アセットエディタの開閉 |
 | `PIEControl` | PIE セッション制御 — `StartPIE`、`StopPIE`、`PausePIE`、`ResumePIE`、`LoadMap` |
-| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot`、`SearchLoadedClasses`、および AI の感知を観測する 6 コマンド `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`（最後の 1 つは `AIPerceptionConfigDump` も必要。[Runtime AI の感知](#runtime-ai-の感知) を参照）、および Chaos 破壊の 8 コマンド `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`GetDestructionEventLog`、`StopDestructionCapture`、`CaptureGeometryCollectionStrain`、`EnableForcedDestructionNotify`（最後の 1 つは `ChaosDestructionForceNotify` も必要で、これはデモ版では提供されない。[Runtime Chaos 破壊](#runtime-chaos-破壊) を参照）、および読み取り専用のナビゲーション 7 コマンド `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`（`FindPath` と `IsLocationReachable` は、8192 を超える探索ノードでは `RuntimeNavigationExtendedSearch` も必要。[Runtime ナビゲーション](#runtime-ナビゲーション) を参照）、およびアニメーションの 7 コマンド `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState`（`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` も必要。[Runtime アニメーション](#runtime-アニメーション) を参照）、およびネットワークの 5 コマンド `GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`、`DumpReplicatedPropertyValues`、`CompareReplicatedProperties`（後ろの 2 つは `RuntimeReplicatedPropertyValueRead` も、`IncludeRemoteAddress` を指定した `ListNetConnections` は `RuntimeNetConnectionAddressRead` も必要。[Runtime ネットワークとレプリケーション](#runtime-ネットワークとレプリケーション) を参照）、および Subsystem の 2 コマンド `ListSubsystems`、`DumpSubsystemState`（後者は `SubsystemStateDump` も必要。[Runtime Subsystem](#runtime-subsystem) を参照）、およびゲームビューポートの UI の 3 コマンド `DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpHUDState`（[Runtime ゲームビューポートの UI](#runtime-ゲームビューポートの-ui) を参照） |
+| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot`、`SearchLoadedClasses`、および AI の感知を観測する 6 コマンド `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`（最後の 1 つは `AIPerceptionConfigDump` も必要。[Runtime AI の感知](#runtime-ai-の感知) を参照）、BehaviorTree・Blackboard・StateTree の 15 コマンド `ListBehaviorTreeAgents`・`GetActiveBehaviorTreeNode`・`DumpBehaviorTreeState`・`GetBlackboardValues`・`DescribeBehaviorTreeWithProjectCode`・`StartBehaviorTreeCapture`・`GetBehaviorTreeEventLog`・`StopBehaviorTreeCapture`・`ListStateTreeComponents`・`GetActiveStateTreeState`・`DumpStateTreeState`・`DumpStateTreeInstanceData`・`StartStateTreeCapture`・`GetStateTreeEventLog`・`StopStateTreeCapture`（`GetBlackboardValues` は `BlackboardValueRead` も、`DescribeBehaviorTreeWithProjectCode` は `BlackboardValueRead` と `AIBehaviorProjectCodeExecution` も、`DumpStateTreeInstanceData` は `StateTreeInstanceDataDump` も必要。[Runtime AI のビヘイビアツリーと Blackboard](#runtime-ai-のビヘイビアツリーと-blackboard) と [Runtime StateTree の観測](#runtime-statetree-の観測) を参照）、および Chaos 破壊の 8 コマンド `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`GetDestructionEventLog`、`StopDestructionCapture`、`CaptureGeometryCollectionStrain`、`EnableForcedDestructionNotify`（最後の 1 つは `ChaosDestructionForceNotify` も必要で、これはデモ版では提供されない。[Runtime Chaos 破壊](#runtime-chaos-破壊) を参照）、および読み取り専用のナビゲーション 7 コマンド `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`（`FindPath` と `IsLocationReachable` は、8192 を超える探索ノードでは `RuntimeNavigationExtendedSearch` も必要。[Runtime ナビゲーション](#runtime-ナビゲーション) を参照）、およびアニメーションの 7 コマンド `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState`（`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` も必要。[Runtime アニメーション](#runtime-アニメーション) を参照）、およびネットワークの 5 コマンド `GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`、`DumpReplicatedPropertyValues`、`CompareReplicatedProperties`（後ろの 2 つは `RuntimeReplicatedPropertyValueRead` も、`IncludeRemoteAddress` を指定した `ListNetConnections` は `RuntimeNetConnectionAddressRead` も必要。[Runtime ネットワークとレプリケーション](#runtime-ネットワークとレプリケーション) を参照）、および Subsystem の 2 コマンド `ListSubsystems`、`DumpSubsystemState`（後者は `SubsystemStateDump` も必要。[Runtime Subsystem](#runtime-subsystem) を参照）、およびゲームビューポートの UI の 3 コマンド `DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpHUDState`（[Runtime ゲームビューポートの UI](#runtime-ゲームビューポートの-ui) を参照） |
 | `RuntimeCapture` | ランタイムキャプチャ — `CaptureViewportImage`、`CheckpointCapture`（後者は `RuntimeInspect` も必要） |
 | `RuntimeExecution` | PIE または Standalone での機能テスト・Automation Test の実行 |
 | `RuntimeGASInspect` 🧩 | PIE 中の GAS 状態読み取り — `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`（`GameplayAbilities` プラグイン必須） |
@@ -579,6 +579,66 @@ AI の感知を観測するコマンド（[`UAIP.Runtime.AI`](commands.md#uaipru
 そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます（再起動なしで反映されます）。行を消してもう一度読み直せば外れます。与えられていない間、`DumpAIPerceptionSenseConfigs` は `AIPerceptionConfigDump` の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
 
 **明示的に拒否する。** `+DeniedCapabilities=AIPerceptionConfigDump` は、同じ Capability が許可されていても、`DumpAIPerceptionSenseConfigs` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、AI の感知を観測する **6 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。どちらの拒否でも artifact は作られません。
+
+#### Runtime AI のビヘイビアツリーと Blackboard
+
+BehaviorTree と Blackboard のコマンド（[`UAIP.Runtime.AI`](commands.md#behaviortree-と-blackboard-の観測)）は、AI が実行している BehaviorTree を観測します。8 つのうち 7 つは読むだけで、🧩 のプラグイン要件はありません。6 つは DefaultAllow の `RuntimeInspect` だけで使えます — `ListBehaviorTreeAgents`・`GetActiveBehaviorTreeNode`・`DumpBehaviorTreeState`・`StartBehaviorTreeCapture`・`GetBehaviorTreeEventLog`・`StopBehaviorTreeCapture`。`GetBlackboardValues` はさらに `BlackboardValueRead` が必要で、プロジェクトのコードを実行する `DescribeBehaviorTreeWithProjectCode` は `BlackboardValueRead` と `AIBehaviorProjectCodeExecution` が必要です。この 2 つの Capability はどちらも既定で無効です。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `BlackboardValueRead` | Blackboard の値を読む — `GetBlackboardValues` と `DescribeBehaviorTreeWithProjectCode`。`RuntimeInspect` に**加えて**必要です。Blackboard の値を表示するエンジンのノードの説明文や、Blackboard キーに結び付けたパラメータを持つノードの説明文もこの Capability の対象です。Blackboard の値はプロジェクトのデータで、AI クライアントに渡され、artifact に書き込まれるため、既定で無効です。これが無くても `DumpBehaviorTreeState` は、Blackboard のキー定義（名前・型・設定済みかどうか — 下記）と、既定の観測が出してよい説明を返し、省いたものとその理由を示します |
+| `AIBehaviorProjectCodeExecution` | プロジェクトのコードを実行して BehaviorTree を説明する — `DescribeBehaviorTreeWithProjectCode`。`RuntimeInspect` と `BlackboardValueRead` に**加えて**必要です。このコマンドは、プロジェクトや Blueprint が定義したノードの説明関数、プロジェクトのコードに届くエンジンの Decorator の判定関数、プロジェクトが派生させた BehaviorTree コンポーネントクラスの説明・判定関数、プロジェクトが定義した Blackboard キー型の値の関数を呼びます。そのコードは UAIP のものではなく、実行中にツリーを変えることを含め、ゲームのコードにできることは何でもできるため、既定で無効です。このドメインの他のコマンドと違い、このコマンドは読み取り専用ではありません |
+
+> ⚠️ **`GetBlackboardValues` で出てくるもの。** 値は呼び出した時点のものがそのまま返り、秘密かもしれない値を伏せる仕組みはありません。上限があるのは量であって種類ではありません。構造体はフィールドごとに書き出して入れ子の構造体をさらに 1 段だけ展開し、その中のコンテナは先頭 32 要素まで、文字列は 1024 文字で切り、参照は参照先のパスだけを書きます（たどることも読み込むこともしません）。1 つのキーが 64 KiB を超えるか、全体が 256 KiB を超えると、残りは省かれてその旨の印が付きます。AI クライアントがプロジェクトの Blackboard に入れているものを読んでよい場合にだけ、この Capability を付与してください。
+
+> ⚠️ **`DescribeBehaviorTreeWithProjectCode` はプロジェクトのコードを実行します。** UAIP は呼び出しの前にそのつどツリーを確かめ直し、ツリーや Blackboard が変わったら `TreeChangedDuringProjectCode` で打ち切り、確かめていないエンジンのノードは呼びません。しかし、任意のプロジェクトのコードを安全にすることはできません。そのコードはゲーム自身のコードにできることをできます。読み取り専用ではないので、安全ポリシーの読み取り専用モードでは `PolicyViolation` で拒否され、読み取り専用でないコマンドと同様に、モーダルダイアログや長い処理がゲームループを止めている間は `NotAllowed` で拒否されます。運用者の starved tick 許可リストでその間も実行できるようにしていても、何も読まず `NotAtSafePoint` を返します。
+
+> ⚠️ **一度作られた artifact は、Capability を外しても残ります。** 成功した呼び出しはどれも、結果の全体を JSON の artifact として保存します。`BlackboardValueRead` や `AIBehaviorProjectCodeExecution` を外すと新しい読み取りはできなくなりますが、作られたものは消えません。Artifact の自動 GC が消すまで artifact ストアに残り（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）、作ったセッションは `UAIP.Core.Artifacts.GetArtifact` で読み戻せ、UAIP の作業ディレクトリを読める人ならそのファイルを読めます。値を残したくない場合は、そのファイルを自分で削除してください。
+
+**既定で許可されたコマンドが、それでも明かすもの。** これらの Capability を与えないことは、Blackboard の値そのものを読ませないことであって、`RuntimeInspect` だけで使えるコマンドがそれを一切知り得ないようにするものではありません。AI の判断を診断するのに必要な最小限の情報として、次を許容します。
+
+1. **Blackboard キーが設定済みかどうか。** `Vector`・`Rotator`・`Object`・`Class` のキーに限り、`IsSet` が `true`・`false`・`null`（不明）で出ます。`Object` / `Class` では、空の参照も、破棄済みのオブジェクトを指す参照も `false` で、その違いは出ません。
+2. **Decorator の判定結果**（`Passed` / `Failed`）。プラグインが既定の経路で評価してよいと分類した Decorator のうち、アクティブノードからルートまでの経路上のものと、有効な補助ノードのものだけです。判定結果と、アセットに書かれた比較条件（Editor のコマンドで読める）を組み合わせると、Blackboard の値について 1 ビットずつ推測できます。
+3. **実行経路そのもの** — アクティブなノード、有効な補助ノード、記録の遷移。条件の評価結果を反映しているので、ツリーの構造と合わせれば Blackboard の値を推測できます。これらの観測こそがコマンドの目的であり、塞げません。
+
+**有効にする。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に、必要な Capability を追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=BlackboardValueRead
++AllowedCapabilities=AIBehaviorProjectCodeExecution
+```
+
+そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます（再起動なしで反映されます）。行を消してもう一度読み直せば外れます。与えられていない間、それを要するコマンドは、足りない Capability の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
+
+**デモ版には含まれません。** `DescribeBehaviorTreeWithProjectCode` と `AIBehaviorProjectCodeExecution` はデモバイナリに含まれません。コマンドは存在せず（`CommandNotFound`）、Capability も登録されないため、ini に書いても効果がありません。残りの 7 コマンドは含まれます。`BlackboardValueRead` はデモにも登録されていますが、デモの ini が付与するのは `RuntimeCVarRead` だけなので、デモ版でも `GetBlackboardValues` には上の `+AllowedCapabilities=BlackboardValueRead` の行が要ります。
+
+**明示的に拒否する。** `+DeniedCapabilities=BlackboardValueRead` は、同じ Capability が許可されていても、`GetBlackboardValues` と `DescribeBehaviorTreeWithProjectCode` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=AIBehaviorProjectCodeExecution` は `DescribeBehaviorTreeWithProjectCode` だけを拒否します。`+DeniedCapabilities=RuntimeInspect` は、BehaviorTree の **8 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。どの拒否でも artifact は作られません。
+
+#### Runtime StateTree の観測
+
+StateTree のコマンド（[`UAIP.Runtime.StateTree`](commands.md#uaipruntimestatetree-)）🧩 は、AI が実行している StateTree を観測します。`StateTree` と `GameplayStateTree` の両プラグインが必要で、どちらかが無効だとコマンドは登録されず、呼ぶとプラグイン名を添えた `CommandNotFound` を返します（状態は `UAIP.Core.ListIntegrations` で分かります）。デモバイナリには含まれません。7 つすべてが読むだけです。6 つは DefaultAllow の `RuntimeInspect` だけで使えます。`DumpStateTreeInstanceData` には、さらに以下の Capability が必要で、これは既定で無効です。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `StateTreeInstanceDataDump` 🧩 | StateTree が持つ値 — ツリーのパラメータ、各アクティブな状態のパラメータ、各アクティブなノードのインスタンスデータ — を読む — `DumpStateTreeInstanceData`。`RuntimeInspect` に**加えて**必要です。これらの値はプロジェクトのデータで、AI クライアントに渡され、artifact に書き込まれるため、既定で無効です。ツリーの構造（状態・タスク・遷移・実行状態）は対象外です。この Capability は、StateTree のコマンドを含むビルドでだけ登録されます |
+
+> ⚠️ **何が出るか。** `DumpStateTreeInstanceData` は、呼び出した時点の値をそのまま返し、伏せる仕組みはありません。値はリフレクションで読み、ノードやその他のプロジェクトの型の関数は実行しません。上限があるのは量であって種類ではありません。構造体は 1 段展開し、コンテナは先頭の要素を残し、文字列は切り、参照はパスで書き、バイト予算に収まらないものは切るか省いてその旨の印を付けます。ツリーに送られたイベントの中身は記録にも Dump にも出さず、型名だけを出します。AI クライアントがプロジェクトの StateTree に入れているものを読んでよい場合にだけ、この Capability を付与してください。
+
+> ⚠️ **一度作られた artifact は、Capability を外しても残ります** — [Runtime AI のビヘイビアツリーと Blackboard](#runtime-ai-のビヘイビアツリーと-blackboard) の注意書きを参照してください。
+
+そこに挙げた「既定で許可されたコマンドが、それでも明かすもの」の 3 つは StateTree にも当てはまります。アクティブな状態と記録の遷移は実行経路であり、条件の評価結果を反映しているので、ツリーの構造と合わせれば Capability が守る値を推測できます。同じ理由で許容します。
+
+**有効にする。**
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=StateTreeInstanceDataDump
+```
+
+そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます。行を消してもう一度読み直せば外れます。与えられていない間、`DumpStateTreeInstanceData` は `StateTreeInstanceDataDump` の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
+
+**明示的に拒否する。** `+DeniedCapabilities=StateTreeInstanceDataDump` は、同じ Capability が許可されていても、`DumpStateTreeInstanceData` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、StateTree の **7 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。
 
 #### Runtime Chaos 破壊
 
@@ -1024,7 +1084,7 @@ AllowUserInteractionPrompt=False
 | `EngineVersion` | 現在動作しているものとは異なるエンジンバージョンを必要とする（特定のリリースで導入された、または特定のリリースまでしか存在しない API など） | エンジンバージョンを上げる、または下げる |
 | `BuildConfiguration` | このプロセスがビルドされていないビルド構成を必要とする（Developer Tools・Editor ターゲットなど） | 必要な構成でリビルドする |
 | `ExecutionEnvironment` | この実行環境が提供していないインフラを必要とする（レンダーハードウェアインターフェース、対話セッション、オプションの Runtime プラグインが登録するモジュラー機能クライアントなど） | 別の実行環境で動かす |
-| `OptionalPluginDisabled` | このバイナリには、依存先のオプションプラグインへの対応が一切コンパイルされていない — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します。プラグインが単に無効なだけで存在はしている場合、この値にはなりません — その場合は代わりに（ヒント付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。上記の [Capability リファレンス](#capability-リファレンス) と `UAIP.Core.ListIntegrations` を参照 |
+| `OptionalPluginDisabled` | このバイナリには、依存先のオプションプラグインへの対応が一切コンパイルされていない — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します。UAIP をエンジンにインストールしている場合（Fab 配布版など）、事前ビルド済みのゲーム用バイナリにはその統合を含められません。UAIP をプロジェクトの `Plugins` フォルダーへ移し、プロジェクトと一緒にコンパイルしてください。プラグインが単に無効なだけで存在はしている場合、この値にはなりません — その場合は代わりに（ヒント付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。上記の [Capability リファレンス](#capability-リファレンス) と `UAIP.Core.ListIntegrations` を参照 |
 | `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | エンジンバージョンの変更やプラグインの切り替えでは解決しない — 別の経路（例: エディタスクリプティング経由で同じ効果に到達する Toolset ブリッジコマンド）を探す |
 | `DelegationTargetMissing` | 委譲先の外部サーフェス（Toolset ブリッジのターゲット）に、サポート対象のどのエンジンバージョンも実際には宣言していない関数を呼び出しており、実装へ到達する手段がそもそも存在しない | これも解決しない — そのサーフェスを持つプラグイン自体はすでに有効になっている場合がある。同じ操作を行うネイティブコマンドがあれば、それを使う |
 | `SafetyPolicyDisabled` | 環境にもビルドにも欠けているものは無い — 既定で無効な SafetyPolicy フラグでゲートされており、そのフラグがこのプロセスでオフになっている | `Config/DefaultUAIP.ini` でそのフラグを設定して再起動する（`ErrorMessage` がフラグ名を名指しする）。`AllowCapabilityReload=True` の環境なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できる |
@@ -1048,7 +1108,7 @@ AllowUserInteractionPrompt=False
 | `PolicyViolation: Scenario execution is not enabled` | シナリオルートのオプトイン不足 | `config.json` に `"enable_scenario": true` を追加 |
 | `PolicyViolation: Command is denied` | コマンドが `DeniedCommands` に入っている | ini から該当エントリを削除して再起動 |
 | `PolicyViolation: ... is not available (<UnavailableDetail>): ...` | `UnavailableDetail` で絞り込まれた `HandlerUnavailable` 拒否（上記参照） | 詳細による：`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` は変更できるものを指す。`EngineApiNotExported` / `DelegationTargetMissing` はそうではなく、別の経路を探す |
-| 🧩 コマンドで `CommandNotFound` | オプションプラグインが無効、または（エディタビルドでは）このエンジン版に存在しない | `ErrorMessage` を読む — 統合名・状態・具体的な対処が書かれている。多くの場合はプラグインを有効化してエディタを再起動するだけでよい。このエンジン版にそもそもプラグインが無い場合は、どの設定でも解決しない。`UAIP.Core.ListIntegrations` ですべての統合の状態を一度に確認できる |
+| 🧩 コマンドで `CommandNotFound` | オプションプラグインが無効、このエンジン版に存在しない、または（状態が `CompiledOut` の場合）ビルド時に有効と判定されなかった・エンジン版が古いためこのバイナリに組み込まれていない | `ErrorMessage` を読む — 統合名・状態・具体的な対処が書かれている。多くの場合はプラグインを有効化してエディタを再起動するだけでよい。このエンジン版にそもそもプラグインが無い場合は、どの設定でも解決しない。`UAIP.Core.ListIntegrations` ですべての統合の状態を一度に確認できる |
 
 ---
 

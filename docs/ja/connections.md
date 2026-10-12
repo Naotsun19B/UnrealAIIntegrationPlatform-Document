@@ -285,7 +285,8 @@ uaip_get_editor_status()
   "Status": "Loaded",
   "KeyCount": 7,
   "Keys": ["editor_path", "uproject_path", "http_port", "command_timeout_seconds", "log_level", "enable_scenario", "inline_artifacts"],
-  "LastReloadError": ""
+  "LastReloadError": "",
+  "EditorExtraArgs": []
 }
 ```
 
@@ -296,6 +297,7 @@ uaip_get_editor_status()
 | `KeyCount` | `config.json` に実際に含まれていたトップレベルキーの数。 |
 | `Keys` | それらキーの**名前のみ** — 値は一切含まれない。この項目は診断用のサーフェスであり、稼働中の Bridge から `role_token` のようなシークレットを読み出す手段ではない。 |
 | `LastReloadError` | 直近の `uaip_reload_config` 呼び出し（あれば）が成功した場合、またはまだ一度も呼ばれていない場合は空文字列。直近のリロード試行が `config.json` の解析に失敗した場合は非空になり、メッセージにファイルと理由が記される — このとき Bridge は既に持っていた設定のまま動作を続ける（リロード失敗が現在のセッションを止めることはない）。上記「[MCP クライアントを再起動せずに config をリロード](#mcp-クライアントを再起動せずに-config-をリロード)」を参照。 |
+| `EditorExtraArgs` | Bridge が次にエディタを起動するときに追加するコマンドライン引数。無ければ空配列。`Keys` と違いこれは値そのもので、`config.json` からは読まれず、環境変数 `UAIP_EDITOR_EXTRA_ARGS` か `uaip_reload_config(EditorExtraArgs=[...])` の呼び出しだけが設定する。置き換えるまで有効なまま残り、クラッシュ後の再起動にも引き継がれるため、エディタが普段どおりのコマンドラインで動いていると決めつける前にここを確認する。「[設定 → 実行時の config リロード](config.md#実行時の-config-リロードuaip_reload_config)」を参照。 |
 
 上記の `RecommendedAction` にも、`Config` に報告すべき事項がある場合 — `Status` が `"Absent"` か、`LastReloadError` が非空 — は追加の一文が付与されます。`RecommendedAction` しか読まない呼び出し側でも、毎回 `Data.Config` を読まなくてもこの事実に気づける仕組みです。
 

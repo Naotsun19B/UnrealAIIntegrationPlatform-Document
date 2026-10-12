@@ -463,6 +463,15 @@ uaip_reload_config()
 |---|---|
 | `EditorPath` | Switch engine version at runtime without editing `config.json` |
 | `UProjectPath` | Point at a different `.uproject` for this session |
+| `EditorExtraArgs` | Extra editor command-line arguments as a string array — e.g. `["-stomp2malloc", "-MallocStomp2MinSize=65", "-MallocStomp2MaxSize=80"]` to hunt a memory corruption |
+
+`EditorExtraArgs` behaves differently from the other two:
+
+- It **replaces** the extra arguments, and `[]` removes them. Omitting it keeps the ones in effect. The initial value comes from the `UAIP_EDITOR_EXTRA_ARGS` environment variable (whitespace-separated, double quotes group a value containing spaces); there is no `config.json` key for it.
+- It applies **the next time the bridge launches the editor**, never to an editor that is already running, and changing it alone does not shut the editor down (`EditorRestartScheduled` stays `false`). To apply it now, run `UAIP.Editor.Workspace.ShutdownEditor`; the next tool call launches the editor with the new arguments. A guest-mode (`attach_only`) bridge never launches the editor, so the arguments never apply there.
+- The arguments stay in effect until replaced — a relaunch after a crash carries them too. Clear them with `EditorExtraArgs=[]` once they are no longer needed. The response's `Data.EditorExtraArgs` and `uaip_get_editor_status`'s `Data.Config.EditorExtraArgs` both show the list in effect.
+- One argument per element, without surrounding quotes: `"-abslog=C:\\My Logs\\Editor.log"`.
+- Refused with `InvalidParams`, leaving the configuration unchanged: flags starting with `-uaip-` (the bridge manages the port, MCP mode and the scenario route itself), `-unattended` (use `launch_attended` instead), `-nopause` (always passed already), empty elements, and elements containing control characters. The same values in `UAIP_EDITOR_EXTRA_ARGS` make the bridge refuse to start.
 
 Typical flow after editing `config.json`:
 

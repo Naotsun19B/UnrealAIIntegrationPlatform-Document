@@ -463,6 +463,15 @@ uaip_reload_config()
 |---|---|
 | `EditorPath` | `config.json` を編集せずに実行時でエンジンバージョンを切り替える |
 | `UProjectPath` | このセッション限り別の `.uproject` を使用する |
+| `EditorExtraArgs` | エディタに追加するコマンドライン引数を文字列配列で指定する — 例: メモリ破壊の調査に `["-stomp2malloc", "-MallocStomp2MinSize=65", "-MallocStomp2MaxSize=80"]` |
+
+`EditorExtraArgs` は他の 2 つと振る舞いが異なります：
+
+- 追加引数を**丸ごと置き換え**、`[]` で消します。省略すると現在の値を**保ちます**。初期値は環境変数 `UAIP_EDITOR_EXTRA_ARGS`（空白区切り。空白を含む値はダブルクォートでまとめる）から読み、`config.json` に対応するキーはありません。
+- 効くのは **Bridge が次にエディタを起動するとき**で、起動中のエディタには効きません。これだけを変えてもエディタは終了しません（`EditorRestartScheduled` は `false` のまま）。すぐ反映するには `UAIP.Editor.Workspace.ShutdownEditor` を実行してください。次のツール呼び出しで新しい引数のエディタが起動します。ゲストモード（`attach_only`）の Bridge はエディタを起動しないため、引数が使われることはありません。
+- 置き換えるまで有効なまま残り、クラッシュ後の再起動にも引き継がれます。不要になったら `EditorExtraArgs=[]` で消してください。現在の値は、応答の `Data.EditorExtraArgs` と `uaip_get_editor_status` の `Data.Config.EditorExtraArgs` のどちらでも確認できます。
+- 1 要素に 1 引数を、外側のクォート無しで書きます：`"-abslog=C:\\My Logs\\Editor.log"`。
+- 次の値は `InvalidParams` で拒否され、設定は変わりません：`-uaip-` で始まるフラグ（ポート・MCP モード・シナリオルートは Bridge 自身が管理する）、`-unattended`（代わりに `launch_attended` を使う）、`-nopause`（常に渡している）、空の要素、制御文字を含む要素。`UAIP_EDITOR_EXTRA_ARGS` に同じ値があると Bridge は起動を拒否します。
 
 `config.json` 編集後の典型的な手順：
 

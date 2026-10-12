@@ -432,7 +432,7 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
 | `ExecutionEnvironment` | この実行環境が提供していないインフラを要求している（例：レンダーハードウェアインタフェース、対話的セッション） | 別の実行環境で実行する |
 | `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | **エンジン側では何をしても解決しない** — たいていは Toolset bridge に代替手段がある。ただし断定する前に両方を確認する |
 | `DelegationTargetMissing` | これは Toolset ブリッジコマンドで、委譲先の Toolset が、サポート対象のどのエンジンバージョンでもこのコマンド名に一致する関数を宣言していない——転送された呼び出しの行き先が無い | **エンジン側では何をしても解決しない** — 同名のネイティブコマンドを探す。そちらも利用不可なら、このプラグインにはこの操作の動く経路が無い |
-| `OptionalPluginDisabled` | 依存先の Optional プラグインへの対応が、このバイナリには**一切コンパイルされていない** — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」という案内はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します。プラグインが単に**無効**なだけで存在はしている場合、この値にはなりません — その場合は代わりに（対処付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。[`UAIP.Core.ListIntegrations`](commands.md#uaipcore) を参照 |
+| `OptionalPluginDisabled` | 依存先の Optional プラグインへの対応が、このバイナリには**一切コンパイルされていない** — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」という案内はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します。UAIP をエンジンにインストールしている場合（Fab 配布版など）、事前ビルド済みのゲーム用バイナリにはその統合を含められません。UAIP をプロジェクトの `Plugins` フォルダーへ移し、プロジェクトと一緒にコンパイルしてください。プラグインが単に**無効**なだけで存在はしている場合、この値にはなりません — その場合は代わりに（対処付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。[`UAIP.Core.ListIntegrations`](commands.md#uaipcore) を参照 |
 | `SafetyPolicyDisabled` | 既定で無効な SafetyPolicy フラグがこのプロセスで無効になっていることが原因。上記の他の値と異なり、環境やビルドで実際に欠けているものは無い | `Config/DefaultUAIP.ini` で該当フラグを設定してエディタを再起動する（`AllowCapabilityReload` が既に有効なら `UAIP.Core.ReloadCapabilities` を呼ぶ） |
 
 `OptionalPluginDisabled` と `EngineApiNotExported` は似て見えますが対処の方向が逆です。`OptionalPluginDisabled` は型を提供するプラグイン自体は存在し、有効化すれば解決することを意味し、`EngineApiNotExported` はエンジン自身がその API をどのプラグインへも渡さないため、プラグインの状態を変えても何も解決しないことを意味します。`DelegationTargetMissing` は `EngineApiNotExported` と、何が欠けているかが異なります。`EngineApiNotExported` は**エンジン自身**がそのコマンドに必要な API をどのプラグインへも export しないことを意味し、`DelegationTargetMissing` は、あるブリッジコマンドが委譲する先の **Toolset** がそもそも一致する関数を宣言していない——つまりそのコマンドが最初から何にも結び付いていない——ことを意味します。どちらも ini フラグや Capability 付与では解決しない点は共通で、違いが意味を持つのは「どこに代替手段を探しに行くか」を判断するときだけです。まれに、ブリッジコマンドとその対応ネイティブコマンドの**両方**がこのどちらかの値を返すことがあり、その場合はこのプラグインにその操作の動く経路が 1 つも無いことを意味します（実例は [コマンド — UAIP.Editor.Niagara](commands.md#uaipeditorniagara-) を参照）。
@@ -578,13 +578,12 @@ NaN / Inf は `Number` フィールドで拒否 — ディスパッチャが `In
 
 プログラム的用途（ツール作成・コード生成・LLM 側バリデーション）には、全コマンドの完全スキーマを単一 JSON で取得します。
 
-### 9.1 3 つの入手先
+### 9.1 2 つの入手先
 
 | 入手元 | 使い所 | 注意 |
 |---|---|---|
 | Runtime に `UAIP.Core.DescribeCommand` | 1 コマンドずつ、起動中エディタの実状反映 | 起動中エディタが必要 |
-| 事前生成済み `commands-schema.json`（リリース同梱） | ビルド時ツール、オフラインコード生成 | 既知 UAIP バージョンの安定スナップショット |
-| `docs/scripts/generate_command_schema.py` でローカル生成 | `ICommandProvider` で登録したプロジェクト固有コマンドも含む | 起動中エディタ + HTTP transport が必要 |
+| `docs/scripts/generate_command_schema.py`（本ドキュメントのリポジトリにあります）で `commands-schema.json` を自分で生成 | ビルド時ツール、オフラインコード生成。`ICommandProvider` で登録したプロジェクト固有コマンドも含む。実行したエディタのスナップショットになる | 起動中エディタ + HTTP transport が必要で、設定が `UAIP.Core.ListCommands` / `UAIP.Core.DescribeCommand` を拒否していないこと。このファイルはリリースのパッケージには含まれません。使っている UAIP のバージョンとエンジンで生成してください |
 
 ### 9.2 ローカル生成
 
@@ -599,7 +598,7 @@ python docs/scripts/generate_command_schema.py `
 
 `-uaip-http-no-auth` 起動時は `--no-auth` を追加。Provider 毎の JSON も欲しい場合は `--split-by-provider` を追加（`by-provider/` 配下に出力）。
 
-実行時間は登録済みコマンド数に比例する。オプションプラグインをすべて有効にした場合で最大約 1640 コマンド、無効な構成ではそれより少ない。
+実行時間は登録済みコマンド数に比例する。オプションプラグインをすべて有効にした場合で最大約 1710 コマンド、無効な構成ではそれより少ない。
 
 ### 9.3 出力形状
 

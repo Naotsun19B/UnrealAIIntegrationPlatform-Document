@@ -2,11 +2,11 @@
 
 # コマンドリファレンス
 
-UAIP は 1271 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1692 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1295 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1716 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
-- 各コマンドの完全なパラメータスキーマは `uaip_describe_command(CommandName="...")` で取得できます
+- 各コマンドの完全なパラメータスキーマは `{"Command": "UAIP.Core.DescribeCommand", "Params": {"Name": "<コマンド名>"}}`（HTTP / WebSocket / CLI）または `uaip_describe_command(CommandName="<コマンド名>")`（MCP）（引数名は前者が `Name`、後者が `CommandName` で異なります） で取得できます
 - 実行時にドメインでフィルタするには `uaip_list_commands(ProviderPrefix="UAIP.Editor")` を使用します
 - 各コマンドに必要な Capability については [Safety & Capabilities](safety.md) を参照してください
 - 次のコマンドはディスク上のファイルを削除・移動・リネームするため、安全ポリシーで `DisableSave` が有効なときは、他の何よりも先に（PIE 中かどうかの判定よりも先に）`PolicyViolation` で拒否します（"Disk write operations are disabled by the current safety policy."）: `DeleteAsset`・`DeleteFolder`・`ForceDeleteFolder`・`RenameAsset`・`MoveAsset`・`MoveFolder`・`FixAssetRedirectors`・`FixUpRedirectorsInFolder`・`DeleteInputAction`・`DeleteMappingContext`・`DeleteDataLayerAsset`・`DeleteHLODs`・`DeleteGameFeaturePlugin`。以前から `DisableSave` で拒否していたコマンドは変わりません。詳細は [Safety & Capabilities](safety.md#disablesave-と削除移動リネームのコマンド) を参照してください
@@ -37,7 +37,7 @@ UAIP では 2 種類のコマンドを公開しています：
 
 **これは「たまたま動いていた」呼び出しにとっての破壊的変更です**。余計なキーや綴り間違いのキーを送っても従来は黙って受理される（無視される、またはエンジン内部まで転送されて拒否される）だけでしたが、移行済みのコマンドでは、その場で問題のキー名を名指しした `InvalidParams` として拒否されるようになります。
 
-`Toolset.Editor.Niagara.*` の 5 コマンド（`DuplicateEmitter` / `GetScriptAssets` / `MoveModule` / `SetEmitterEnabled` / `SetEmitterName`）は、本更新時点でもまだ引数を宣言していませんが、**これはもう未確定ではありません**。5 件とも、このプラグインが対応するどの Niagara toolset にも一致する関数が無いため、スキーマへ移行する代わりに、5 件すべてが `Available: false`（`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "DelegationTargetMissing"`）を返すようになりました——スキーマが説明すべき対象がそもそも無いということです。それぞれが何を理由に拒否するか、どれに動くネイティブ代替があるかは [UAIP.Editor.Niagara → Toolset ブリッジ](#uaipeditorniagara-) の注記を参照してください。「委譲先の toolset に一致する関数が無い」という同じ形は `Toolset.Editor.GameFeatures.ListGameFeatures` と `Toolset.Editor.Niagara.GetNiagaraParameterCollections` にも当てはまりますが、この 2 件はもともと正しい空のスキーマを宣言済みだったため、上記の 5 件には数えられていません——[UAIP.Editor.GameFeatures → Toolset ブリッジ](#uaipeditorgamefeatures-) を参照してください。**本更新で、この状態にあるコマンドの全件が分かりました。** ブリッジコマンド 413 件すべてについて、委譲先の (toolset 名, tool 名) の組がエンジン側に実在するかを静的に突き合わせた結果、**398 件が到達し、15 件が到達しません**。15 件はすべて `Available: false` と `UnavailableDetail: "DelegationTargetMissing"` を返します（内訳: Niagara 7 件 / GameFeatures 4 件 / SlateInspector 2 件 / UMG 2 件）。あわせて、**委譲先の綴りが誤っていた 16 件が実際に到達するようになりました**（Dataflow 7 件 / SlateInspector 8 件 / Niagara 1 件）——それまでは、このリファレンスが動作すると書いていながら実行時に失敗していました。個別のコマンドの現在の状態は、引き続き `uaip_describe_command` で確認できます。
+`Toolset.Editor.Niagara.*` の 5 コマンド（`DuplicateEmitter` / `GetScriptAssets` / `MoveModule` / `SetEmitterEnabled` / `SetEmitterName`）は、本更新時点でもまだ引数を宣言していませんが、**これはもう未確定ではありません**。5 件とも、このプラグインが対応するどの Niagara toolset にも一致する関数が無いため、スキーマへ移行する代わりに、5 件すべてが `Available: false`（`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "DelegationTargetMissing"`）を返すようになりました——スキーマが説明すべき対象がそもそも無いということです。それぞれが何を理由に拒否するか、どれに動くネイティブ代替があるかは [UAIP.Editor.Niagara → Toolset ブリッジ](#uaipeditorniagara-) の注記を参照してください。「委譲先の toolset に一致する関数が無い」という同じ形は `Toolset.Editor.GameFeatures.ListGameFeatures` と `Toolset.Editor.Niagara.GetNiagaraParameterCollections` にも当てはまりますが、この 2 件はもともと正しい空のスキーマを宣言済みだったため、上記の 5 件には数えられていません——[UAIP.Editor.GameFeatures → Toolset ブリッジ](#uaipeditorgamefeatures-) を参照してください。**本更新で、この状態にあるコマンドの全件が分かりました。** ブリッジコマンド 421 件のうち、共通のブリッジハンドラで作られた 419 件について、委譲先の (toolset 名, tool 名) の組がエンジン側に実在するかを静的に突き合わせた結果、**404 件が到達し、15 件が到達しません**。残る 2 件（`CompileLiveCoding` と `DrawPCGSpline`）はこのハンドラで作られておらず、この突き合わせの対象外です。15 件はすべて `Available: false` と `UnavailableDetail: "DelegationTargetMissing"` を返します（内訳: Niagara 7 件 / GameFeatures 4 件 / SlateInspector 2 件 / UMG 2 件）。あわせて、**委譲先の綴りが誤っていた 16 件が実際に到達するようになりました**（Dataflow 7 件 / SlateInspector 8 件 / Niagara 1 件）——それまでは、このリファレンスが動作すると書いていながら実行時に失敗していました。個別のコマンドの現在の状態は、引き続き `uaip_describe_command` で確認できます。
 
 ---
 
@@ -79,7 +79,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor Workspace | `UAIP.Editor.Workspace` | 23 | 1 | 一部（18/23） |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
-| Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
+| Editor Engine CVar 🧩 | `Toolset.Editor.Toolset.EngineManagement` | — | 1 | — |
 | Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | 一部（5/8） |
 | Editor Engine Toolset 🧩 | `UAIP.Editor.Engine.Toolset` | 1 | — | — |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ |
@@ -151,7 +151,8 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | 一部（3/11） |
 | Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
 | Runtime SaveGame | `UAIP.Runtime.SaveGame` | 10 | — | — |
-| Runtime AI | `UAIP.Runtime.AI` | 6 | — | ✅ |
+| Runtime AI | `UAIP.Runtime.AI` | 14 | — | 一部（13/14） |
+| Runtime StateTree 🧩 | `UAIP.Runtime.StateTree` | 7 | — | — |
 | Runtime Chaos Destruction | `UAIP.Runtime.ChaosDestruction` | 8 | — | 一部（7/8） |
 | Runtime Navigation | `UAIP.Runtime.Navigation` | 8 | — | 一部（7/8） |
 | Runtime Animation | `UAIP.Runtime.Animation` | 7 | — | 一部（6/7） |
@@ -311,7 +312,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ## 実行時コマンドの対象プレイワールドを指定する
 
-ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 82 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
+ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 102 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
 
 | パラメータ | 型 | 意味 |
 |---|---|---|
@@ -351,7 +352,8 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | `UAIP.Runtime.Input` | `InjectInputKey`、`InjectEnhancedInputAction`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`AddMappingContext`、`RemoveMappingContext`、`SetInputMode`、`FlushInput`、`DumpInputState`、`GetEnhancedInputActionValue`、`ClickGameViewportWidget`、`PressGameViewportUIKey`、`TypeGameViewportText` |
 | `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`、`GrantAbility`、`RemoveAbility`、`ClearGrantedAbilities`、`ApplyEffect`、`RemoveEffect`、`ClearActiveEffects`、`SetAttributeValue`、`ResetAttributesToBase`、`SendGameplayEvent` |
 | `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`、`GetVariable`、`SetVariable`、`SetSystem` |
-| `UAIP.Runtime.AI` | `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs` |
+| `UAIP.Runtime.AI` | `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`、`DumpBehaviorTreeState`、`GetActiveBehaviorTreeNode`、`ListBehaviorTreeAgents`、`GetBlackboardValues`、`DescribeBehaviorTreeWithProjectCode`、`StartBehaviorTreeCapture` |
+| `UAIP.Runtime.StateTree` 🧩 | `DumpStateTreeState`、`GetActiveStateTreeState`、`ListStateTreeComponents`、`DumpStateTreeInstanceData`、`StartStateTreeCapture` |
 | `UAIP.Runtime.ChaosDestruction` | `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`CaptureGeometryCollectionStrain` |
 | `UAIP.Runtime.Navigation` | `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`、`RebuildNavigation` |
 | `UAIP.Runtime.Animation` | `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState` |
@@ -405,7 +407,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
 | 🆓 `EndSession` | セッションを明示的に終了しサーバー側リソースを解放する（成果物は GC 対象になる） |
 | 🆓 `ReloadCapabilities` | エディタを再起動せずに `Config/DefaultUAIP.ini` から Capability セットを再読み込みする。`AllowCapabilityReload=True` になるまでは `ListCommands` の既定応答から隠れ、`Available: false`（設定すべき ini キー名を含む `UnavailableDetail: "SafetyPolicyDisabled"`）を返す — [UnavailableDetail](#unavailabledetail--handlerunavailable-の8つの詳細理由) 参照 |
-| 🆓 `ListIntegrations` | UAIP が把握しているすべてのオプション統合（実行時に無効・不在になりうるプラグインを必要とする UAIP モジュール、またはその一部）の状態を返す。各エントリは `Name`・`State`（`Pending` / `Loading` / `Loaded` / `CompiledOut` / `PluginDisabled` / `PluginNotInstalled` / `DependencyNotLoaded` / `NotApplicable` / `LoadFailed`。無償のデモ版では、製品版にだけ含まれる統合を示す `NotInThisEdition` も加わる）・`RequiredPlugins`・`MissingPlugins`・`DependsOn`・`CommandMatchers`・平易な文の `Remedy`（そのコマンドの `CommandNotFound` ヒントと同じ文言）を持ち、`State` が `LoadFailed` のときだけ `FailureKind` / `FailureReason` も持つ。任意の `State` パラメータで返す `Integrations` 配列をその状態だけに絞り込めるが、`IntegrationCount` / `LoadedCount` / `NotLoadedCount` は絞り込みに関係なく常に全体の数を返す。未知の `State` 値は `InvalidParams` で拒否される。Capability は不要 |
+| 🆓 `ListIntegrations` | UAIP が把握しているすべてのオプション統合（実行時に無効・不在になりうるプラグインを必要とする UAIP モジュール、またはその一部）の状態を返す。各エントリは `Name`・`State`（`Pending` / `Loading` / `Loaded` / `CompiledOut` / `PluginDisabled` / `PluginNotInstalled` / `DependencyNotLoaded` / `NotApplicable` / `LoadFailed`。無償のデモ版では、製品版にだけ含まれる統合を示す `NotInThisEdition` も加わる）・`RequiredPlugins`・`MissingPlugins`・`DependsOn`・`CommandMatchers`・平易な文の `Remedy`（そのコマンドの `CommandNotFound` ヒントと同じ文言）を持ち、`State` が `LoadFailed` のときだけ `FailureKind` / `FailureReason` も持つ。`CompiledOut` は、その統合のコードがこのバイナリに組み込まれていないことを示す。ビルド時に統合先のプラグインが有効と判定されなかった、またはエンジン版が統合の対応版より古い場合である。`MissingPlugins` はビルド時に有効と判定されなかったプラグインの一覧で、理由がエンジン版の場合（`Remedy` に必要な最小エンジン版が書かれる）と `NotInThisEdition` の場合は空になる。統合が必要とするプラグインは常に `RequiredPlugins` で確認できる。エンジンにインストールした Fab 配布版の UAIP からパッケージしたゲームには、これらの統合を含められない。UAIP をプロジェクトの `Plugins` フォルダーに置き、プロジェクトと一緒にコンパイルすれば使える。任意の `State` パラメータで返す `Integrations` 配列をその状態だけに絞り込めるが、`IntegrationCount` / `LoadedCount` / `NotLoadedCount` は絞り込みに関係なく常に全体の数を返す。未知の `State` 値は `InvalidParams` で拒否される。Capability は不要 |
 | 🆓 `GetPendingInteractionStatus` | 保留中の対話 1 件の状態 — `State`・`Cause`・`ElapsedSeconds`・`Prompt`・`Reason`・`Result` — を、変化を待たずに報告する。対話（`DrawPCGSpline` などの対話型コマンド）を開始したときと同じ `SessionId` を明示的に指定する必要があり、未知・期限切れ・他セッション所有はすべて同じ `NotFound` として扱われる |
 | 🆓 `WaitForPendingInteraction` | 対話が `AwaitingUser` を離れるか、この呼び出し自身の `TimeoutSeconds` 上限（デフォルト 30、範囲 [1, 600]）に達するまでブロックする。タイムアウトしても対話自体には影響せず、人間の応答を待ち続ける。同じ対話を同時に監視できる呼び出しは最大 4 件までだが、2 件目以降には `[UAIP.Transport] AllowConcurrentPassiveWaits` が必要（[設定](config.md) 参照） |
 | 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックし、もう保有していないものは `CapabilityNotAvailable` で、運用者が `DeniedCapabilities` で明示的に拒否しているものは `PolicyViolation` で拒否する |
@@ -513,7 +515,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ### Toolset ブリッジ — CVar（1 件）🧩
 
-EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.EngineManagement.*`。
+EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.EngineManagement.*`。
 
 | コマンド | 説明 |
 |---|---|
@@ -1853,8 +1855,8 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 
 | コマンド | 説明 |
 |---|---|
-| `GetBehaviorTreeNodeList` | 全ノードのフラットな一覧 — `NodeGuid`・`NodeClass`・`DisplayName`・`Depth`（0 = ルート Composite）・`ParentNodeGuid` |
-| `GetBehaviorTreeSubtree` | `NodeGuid` を起点としたサブツリー（Composite / Task / Decorator / Service）を再帰 JSON で返す（`MaxDepth` 1〜32） |
+| `GetBehaviorTreeNodeList` | 全ノードのフラットな一覧 — `NodeGuid`・`NodeClass`・`DisplayName`・`Depth`（0 = ルート Composite）・`ParentNodeGuid`。各ノードに `ExecutionIndex`（そのアセットをトップレベルのツリーとして実行したときのノードの番号で、実行時の応答が返す番号と同じ）も付く。付けられないノードは `null` と `ExecutionIndexUnavailableReason`。[実行時のノードをエディタのアセットと突き合わせる](#実行時のノードをエディタのアセットと突き合わせる) を参照 |
+| `GetBehaviorTreeSubtree` | `NodeGuid` を起点としたサブツリー（Composite / Task / Decorator / Service）を再帰 JSON で返す（`MaxDepth` 1〜32）。各ノードに `ExecutionIndex`（そのアセットをトップレベルのツリーとして実行したときのノードの番号で、実行時の応答が返す番号と同じ）も付く。付けられないノードは `null` と `ExecutionIndexUnavailableReason`。[実行時のノードをエディタのアセットと突き合わせる](#実行時のノードをエディタのアセットと突き合わせる) を参照 |
 | `GetAvailableBTCompositeClasses` | `UBTCompositeNode` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeCompositeNode` に渡す。各エントリは追加コマンドと同じ policy から得た `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を併記するようになりました。このドメインが出荷しているモジュールでの絞り込みは廃止しています。`ClassPath` 昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200 件）を報告します。`SchemaVersion` は `2` になりました — 下の Note を参照してください |
 | `GetAvailableBTTaskClasses` | `UBTTaskNode` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeTaskNode` に渡す。上と同じ Admission・件数フィールドを報告します |
 | `GetAvailableBTDecoratorClasses` | `UBTDecorator` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeDecoratorNode` に渡す。上と同じ Admission・件数フィールドを報告します |
@@ -1864,7 +1866,7 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 | `AddBehaviorTreeDecoratorNode` | 親ノードに Decorator を附加 — 確認内容は上と同じ |
 | `AddBehaviorTreeServiceNode` | 親 Composite ノードに Service を附加 — 確認内容は上と同じ |
 | `RemoveBehaviorTreeNode` | NodeId 指定でノードを削除 — そのノードのクラスが要求する Capability が同じく必要です |
-| `GetBehaviorTreeNodeProperties` | ノードの `NodeInstance` が宣言する全プロパティ — `PropertyName`・`PropertyType`（C++ の型名）・`SetBehaviorTreeNodeProperty` がそのまま書き戻せる形の `PropertyValue`・入れ子の `WriteRequirements` オブジェクトを返す。`FBlackboardKeySelector` プロパティはベアなキー名として報告され、書き込みコマンド側の特別扱いと一致する。読み取り専用、PIE 中も許可（縮退モード）。要 `EditorInspect` |
+| `GetBehaviorTreeNodeProperties` | ノードの `NodeInstance` が宣言する全プロパティ — `PropertyName`・`PropertyType`（C++ の型名）・`SetBehaviorTreeNodeProperty` がそのまま書き戻せる形の `PropertyValue`・入れ子の `WriteRequirements` オブジェクトを返す。`FBlackboardKeySelector` プロパティはベアなキー名として報告され、書き込みコマンド側の特別扱いと一致する。列挙される `ExecutionIndex` プロパティはアセットに保存されない一時的なエンジンの値で、BehaviorTree エディタで開いた後にだけ値が入り、アセットを読み込んだ直後は 0 のままのため、実行時の応答と突き合わせるには代わりに `GetBehaviorTreeNodeList` / `GetBehaviorTreeSubtree` の `ExecutionIndex` を使う。読み取り専用、PIE 中も許可（縮退モード）。要 `EditorInspect` |
 | `SetBehaviorTreeNodeProperty` | ノードプロパティを設定（FBlackboardKeySelector / 汎用 ImportText_Direct）。書き込み対象ノードのクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です。ツリーに Blackboard アセットが設定されていない場合、キーセレクタへの書き込みは拒否されるようになりました — Blackboard が無いとキー名の妥当性を確認できず、従来は名前と種類が食い違った状態が残ることがありました。拒否された書き込みはアセットを dirty にせず、空の undo エントリも残しません |
 | `ListBlackboardKeys` | Blackboard アセットのキー一覧（PIE 中も許可） |
 | `AddBlackboardKey` | キーを追加（重複名チェック）。`/Script/AIModule` 以外のキー型と、書き込み側が指す先を選べる 2 種のキー型には、それぞれ Capability が要ります — 下の Note を参照してください |
@@ -4095,9 +4097,11 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 
 ## UAIP.Runtime.AI
 
-実行中のゲームの AI 感知システム（AI Perception）を観測するコマンド群です。1 体の AI がいま何を感知しているか、ある Actor をどの AI が感知しているか、感知システム自体の状態、視覚がなぜ対象を見る／見ないのか、感覚設定の値を返します。どのコマンドも読むだけで、AI の感知内容を変えることはありません。エディタでは PIE の実行中に、また `-game` 起動やパッケージ版でも動作し、プラグインの依存はありません。6 つすべてが [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。
+このドメインは、実行中のゲームの AI を観測します。AI 感知システムのほか、BehaviorTree と Blackboard も観測します（下の [BehaviorTree と Blackboard の観測](#behaviortree-と-blackboard-の観測) を参照）。そのセクションの手前までは、感知の 6 コマンドの説明です。
 
-**Capability。** 6 つすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`DumpAIPerceptionSenseConfigs` は、プロジェクト独自の感覚クラスのものを含めて感覚設定の値をすべて書き出すため、`AIPerceptionConfigDump`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-ai-の感知) を参照してください。
+実行中のゲームの AI 感知システム（AI Perception）を観測するコマンド群です。1 体の AI がいま何を感知しているか、ある Actor をどの AI が感知しているか、感知システム自体の状態、視覚がなぜ対象を見る／見ないのか、感覚設定の値を返します。感知のコマンドはどれも読むだけで、AI の感知内容を変えることはありません。エディタでは PIE の実行中に、また `-game` 起動やパッケージ版でも動作し、プラグインの依存はありません。感知の 6 コマンドすべてが [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。
+
+**Capability。** 感知の 6 コマンドすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`DumpAIPerceptionSenseConfigs` は、プロジェクト独自の感覚クラスのものを含めて感覚設定の値をすべて書き出すため、`AIPerceptionConfigDump`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-ai-の感知) を参照してください。
 
 **感知はサーバーにしかありません。** AI コントローラーと感知システムが存在するのはスタンドアロンかサーバーのワールドだけです。ネットワークプレイの PIE では `TargetNetRole: "Server"` または `TargetPIEInstance` でサーバーを指定してください。クライアントのワールドを観測してもコマンドは成功しますが、`Availability.State: "Unavailable"`・`Reason: "ClientWorld"` を返し、再実行先となるサーバー側のプレイワールドを列挙します — [感知システムが使えないとき](#感知システムが使えないとき) を参照してください。
 
@@ -4294,6 +4298,203 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 観測したワールドがクライアントの場合、ワールドを見つけた後のエラーメッセージの末尾に、AI はサーバーにしかないことと、`TargetPIEInstance` で再実行する先のサーバー側プレイワールドが付きます。
 
 成功した呼び出しは JSON の artifact をちょうど 1 つ保存し、失敗した呼び出しは何も保存しません。
+
+### BehaviorTree と Blackboard の観測
+
+AI が実行している BehaviorTree と、それが読む Blackboard を観測します。どのノードがアクティブか、どの Decorator が通るか、Blackboard が何を持っているか、ツリーが時間とともにどう動いたかが分かります。8 つのうち 7 つは読むだけです。`DescribeBehaviorTreeWithProjectCode` だけは例外で、プロジェクトのコードを実行するため、下で別に説明します。コマンドは、プレイワールドの 1 つのアクターを対象にし（検証しているのは PIE で、`-game` 起動とパッケージ版は未検証）、[`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。ただし `GetBehaviorTreeEventLog` と `StopBehaviorTreeCapture` は `CaptureId` を受け取り、プレイワールドを解決しないので、プレイセッションの終了後も使えます。アクターは `ActorIdentifier` に、AI コントローラー・その Pawn・コンポーネントを持つ任意のアクターのラベルまたはオブジェクト名で指定します。名前が分からないときは `ListBehaviorTreeAgents` が使うべき名前を返します。
+
+**Capability。** 8 つすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`GetBlackboardValues` は、Blackboard の値がプロジェクトのデータであるため、`BlackboardValueRead`（DefaultDenied）も必要です。`DescribeBehaviorTreeWithProjectCode` はさらに `AIBehaviorProjectCodeExecution`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-ai-のビヘイビアツリーと-blackboard) を参照してください。
+
+**デモ版。** `DescribeBehaviorTreeWithProjectCode` と Capability `AIBehaviorProjectCodeExecution` はデモバイナリに含まれません。コマンドは存在せず `CommandNotFound` を返します。残りの 7 コマンドは含まれます。`BlackboardValueRead` はデモにも登録されていますが、デモの ini はこれを付与しないため、値を読むには利用者自身の ini 追記が要ります。製品版の応答が、省いた説明を読むのに必要な許可として `AIBehaviorProjectCodeExecution` を挙げる箇所で、デモ版は代わりに `NotInThisEdition` を返します。
+
+#### 現在の状態（3）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `ListBehaviorTreeAgents` | 対象のプレイワールドで BehaviorTree を実行しているアクターを、それぞれの BehaviorTree コンポーネントと、ツリーが一時停止中かどうかとともに列挙します。一時停止中のツリーは含まれ、停止済みのツリーや一度も開始されていないツリーは含まれません。`MaxEntries` は 1〜4096（既定 256）。応答には `AgentCount`・`AgentsTotalCount`・`AgentsTruncated` が入り、artifact に全件が入ります。クライアント側のプレイワールドのように AI システムが無いワールドでは空の一覧を返します。エンジンの状態が更新の途中かもしれない間（モーダルダイアログや長い処理がゲームループを止めている、またはワールドが Tick の途中）は何も読まず、`Availability` は `NotAtSafePoint` です。返った名前を、ほかのコマンドの `ActorIdentifier` に使います |
+| 🆓 `GetActiveBehaviorTreeNode` | 1 つのアクターの BehaviorTree のアクティブなノードと、そこからルートまでの経路を、`IsRunning` と `IsPaused` とともに返します。`DumpBehaviorTreeState` の軽量版で、説明も判定も Blackboard も読まず、返しません。応答と artifact は同じ結果を持ちます |
+| 🆓 `DumpBehaviorTreeState` | 既定の観測が答えてよい範囲の、1 つのアクターの BehaviorTree の全体像。`IsRunning`・`IsPaused`・`IsRestartPending`・`IsAbortPending`、ツリーインスタンスのスタック（サブツリーは別のインスタンス）— 各インスタンスの `TreeAsset`、アクティブなノードとルートまでの経路、`ActiveNodeType`（`Composite`・`ActiveTask`・`AbortingTask`・`InactiveTask`）、有効な補助ノード（Decorator と Service）、並列タスクとその `Status` — を返します。Blackboard のキー定義は、Blackboard に届く限り、ツリーが動いていなくても返ります。各ノードは `InstanceIndex`・`TreeAsset`・`ExecutionIndex`・`NodeName`・`ClassPath`・`NodeRole` を持ちます。既定の観測で説明してよいノードには `StaticDescription` と `RuntimeDescription` を付け、アクティブノードからルートまでの経路上の Decorator と有効な補助 Decorator には `Verdict`（`Passed`・`Failed`・`Unknown`）を付けます。それ以外のノードには、省いた理由（`DescriptionOmittedReason` / `VerdictUnknownReason`）と、それを出せる Capability（`RequiresCapabilities[]`）を返します — [既定の観測が省くもの](#既定の観測が省くもの) を参照してください。`MaxEntries`（1〜4096、既定 256）が説明するノード数の上限です。応答には各一覧の先頭の項目が入り、artifact に全件が入ります。ツリーが開始されていない（`Availability: NotRunning`）、またはエンジンの状態が更新の途中かもしれず読まなかった（`NotAtSafePoint`）場合は、エラーではなく縮退した結果を返します |
+
+#### Blackboard の値（1）— `RuntimeInspect` と `BlackboardValueRead` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `GetBlackboardValues` | 1 つのアクターの Blackboard の全キーの値と、実行中のノードのうち Blackboard の値を表示する説明文の全文を返します。標準のキー型は型付きの値で返ります（`Bool`・`Int`・`Float`・`Name`・`String`・`Vector`・`Rotator`・`Enum`・`NativeEnum`・`Object`・`Class`・`Struct`）。`Object` / `Class` キーは、空の参照（`Empty`）、生きている参照（`Live`）、破棄済みの参照（`Destroyed`）を区別します。`Struct` キーは、構造体の書き出し関数を呼ばず、決まった上限の中でフィールドごとに書き出します。プロジェクトが定義した型のキーは型名だけを返し、`RequiresCapabilities: ["AIBehaviorProjectCodeExecution"]` を付けます（デモ版は `NotInThisEdition`）。ここで説明文を作れないノードは、理由と、それを出せる Capability とともに列挙します。`MaxEntries`（1〜4096、既定 256）がキー数の上限です。Blackboard アセットが未設定の Blackboard コンポーネントは、キー無しと `BlackboardAvailability: NoAsset` を返します。Blackboard コンポーネントが無いアクターは `NotFound` です。[Blackboard の値の読み方](#blackboard-の値の読み方) を参照してください |
+
+#### プロジェクトのコード（1）— `RuntimeInspect`・`BlackboardValueRead`・`AIBehaviorProjectCodeExecution` が必要
+
+デモ版には含まれません。
+
+| コマンド | 説明 |
+|---|---|
+| `DescribeBehaviorTreeWithProjectCode` | 他のコマンドが、作るのにプロジェクトのコードを実行するため省いたものを、1 つのアクターについて説明します。プロジェクトのノードと Blueprint ノードの静的・実行時の説明、プロジェクトのコードに届くエンジンの Decorator の判定、プロジェクトが派生させた BehaviorTree コンポーネントクラスの実行時の説明と判定、プロジェクトが定義した型の Blackboard キーの値です。これらのいずれかが当てはまる実行中のノードだけを列挙します。裏にあるエンジンのコードを確かめていないため、どのコマンドも作らない出力は、呼ばずに理由（`EngineCallNotVerified`）とともに列挙します。`MaxEntries`（1〜4096、既定 256）が説明するノード数の上限で、上限を超えたノードは呼びません。⚠️ **プロジェクトのコードを実行するため、実行中にツリーが変わることがあります。** 呼び出しの前にそのつど、ツリーを確かめ直します。実行中でなくなったノードは省いて `NodeDeactivatedDuringProjectCode` で報告し、ツリーや Blackboard が変わった場合（ツリーが停止した、Blackboard アセットが差し替えられた、キーの型が変わった、アクターを指すキーの指す先が変わった）は `TreeChangedDuringProjectCode` で説明を打ち切り、それまでに作った結果を返します。Blackboard の値が書き換えられただけでは打ち切らず、以降の説明は書き換え後の値で作ります。読み取り専用ではありません。安全ポリシーの読み取り専用モードでは `PolicyViolation`、モーダルダイアログや長い処理がゲームループを止めている間は `NotAllowed` で拒否されます（運用者の starved tick 許可リストでその間も実行できるようにしていても、何も読まず `NotAtSafePoint` を返します）。BehaviorTree コンポーネントが無いアクターは `NotFound` です |
+
+#### 記録（3）— `RuntimeInspect` が必要
+
+記録は、開始したセッションのものです。ほかのセッションからはその ID が `NotFound` になり、存在するかどうかも分かりません。記録は、ワールドの Tick ごとに、全アクターの Tick が終わった後でツリーを 1 回読み、変化したものを保存します。Blackboard の値は記録しません。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `StartBehaviorTreeCapture` | 1 つのアクターの BehaviorTree が時間とともにどう変わるかを、呼び出したセッションが所有する記録として開始し、その `CaptureId` を返します。ツリーが停止中・未開始でも始められ、開始されたときにその開始が記録されます。`MaxDurationSeconds`（1〜600、既定 120）、`BufferCapacity`（64〜16384、既定 4096。古いものを捨てて数えるまでに保持するエントリ数）、`ReplaceExisting`（既定 `false`。同じコンポーネントの 2 本目の記録を拒否して最初のものを示す。`true` ならその記録を止めて新しく始める）。1 セッションが同時に記録できる BehaviorTree は 8 本、1 ワールドの記録中の capture は全セッション合計で 32 本までで、停止した capture は 30 分保持されます。最初のエントリは開始時点の状態を表す `Baseline` です。その時点でエンジンの状態が更新の途中かもしれない場合も記録は始まり、Baseline はゲームが進んだ後の最初の読み取りで取られ、応答は `BaselinePending: true` を返します。記録は、`MaxDurationSeconds` に達したとき、プレイセッションが終わったとき、コンポーネントが破棄されたときに自動で止まります。アクターに BehaviorTree コンポーネントが無ければ `NotFound` です |
+| 🆓 `GetBehaviorTreeEventLog` | capture のエントリを、古いものから、`SinceSequence`（既定 0）以降について読みます。`CaptureId`（必須）は `StartBehaviorTreeCapture` が返した ID です。`MaxEntries` は 1〜4096（既定 256）。応答には読んだ分の先頭 50 件が入り、artifact にはその読み取りの全エントリが入ります。`NextSequence` は artifact の最後のエントリの続きを読むための `SinceSequence` です。`SinceSequence` 以降のエントリが読まれる前に捨てられた場合は `bGap` が true になり、`DroppedCount` は capture の容量、または 1 回のツリー読み取りが生むエントリ数の上限のために捨てられた件数を数えます。応答には capture の `State`、停止した理由（`EndReason`）、`OldestAvailableSequence`、`BaselinePending`、`RecordingSeconds`、`Limitations[]` も入ります。プレイセッションの終了後も使えます。未知・期限切れ・他人の `CaptureId` は、どれなのかを明かさず `NotFound` です |
+| 🆓 `StopBehaviorTreeCapture` | capture を止め、その最終状態 — 止まった理由、Baseline が取れたか、記録時間、連番の管理 — を返します。すでに止まっている capture の停止は成功し、最初の終了理由（`Stopped`・`DurationLimit`・`WorldTornDown`・`Replaced`・`TargetDestroyed`）を保ちます。プレイセッションの終了後も使えます。1 セッションが保持する停止済み capture は最大 4 本で、古いものから捨てられます。未知・期限切れ・他人の `CaptureId` は、どれなのかを明かさず `NotFound` です |
+
+#### 既定の観測が省くもの
+
+`DumpBehaviorTreeState` と記録は、安全だと確かめられたノードだけを説明します。ノードのクラスがプラグインの確認済みのもので、参照する Blackboard キーがすべて標準の型であることが条件です。それ以外のノードは、説明が空、判定は `Unknown` になり、応答に理由と、それを出せる許可が入ります。
+
+| 理由（`DescriptionOmittedReason` / `VerdictUnknownReason`） | 意味 | 読む方法 |
+|---|---|---|
+| `BlackboardValueReadRequired` | 説明が Blackboard の値を表示してしまう — キーの値を表示するエンジンのノードや、Blackboard キーに結び付けたパラメータ（残り時間などが値から導かれる） | `GetBlackboardValues`（`BlackboardValueRead` が必要） |
+| `ProjectCodeExecutionRequired` | 作るのにプロジェクトのコードを実行する — プロジェクトや Blueprint が定義したノード、プロジェクトが定義した型・構造体・列挙型のキーを参照するノード、判定がプロジェクト側のオブジェクトを呼ぶエンジンの Decorator（たとえば Blackboard キーが指すアクターのゲームプレイタグを調べるもの） | `DescribeBehaviorTreeWithProjectCode`（`AIBehaviorProjectCodeExecution` が必要） |
+| `ProjectDerivedComponent` | プロジェクトが派生させた BehaviorTree コンポーネントクラスで動いていて、その実行時の説明と判定をエンジンのものと同じとは扱えない | `DescribeBehaviorTreeWithProjectCode` |
+| `EngineCallNotVerified` | 説明や判定を呼んで安全か確かめていない、または安全でないと分かっているエンジンのノード（たとえばループ Decorator の実行時の説明）。どのコマンドも呼ばない | なし |
+| `NodeMemoryUnavailable` | ノードが実行中のツリーのために持つメモリに届かなかったため、そのノードに問い合わせなかった | なし |
+
+Blackboard キーに結び付いたノードでも、キーの型を確かめられない場合 — BehaviorTree コンポーネントに Blackboard アセットが無い、キーがアセットに無い、ノードが期待する型がキーの型と食い違う — は、許可を与えても読めるようにならないため、許可の理由ではなく `EngineCallNotVerified` になります。デモ版では `RequiresCapabilities` に `AIBehaviorProjectCodeExecution` は現れず、`NotInThisEdition` になります。
+
+#### Blackboard の値の読み方
+
+- **キー定義の `IsSet`**（`DumpBehaviorTreeState`・`GetBlackboardValues`）は、`Vector`・`Rotator`・`Object`・`Class` のキーでは `true` / `false`、それ以外の型では `null`（不明）です。ゼロや空の値と未設定を区別できないためです。`Object` / `Class` では、破棄済みのオブジェクトを指す参照も未設定として数えます。`GetBlackboardValues` は、空の参照と破棄済みの参照を区別して返します。`Limitations` の `IsSetNotDeterminable` がこれを示します。
+- **構造体のキー**は、フィールドごとに書き出します。入れ子の構造体はさらに 1 段だけ展開し、それより深いものは型名で書きます。構造体の中の、実行時に種類が決まる構造体（インスタンス化された構造体やプロパティバッグ）は展開せず、`NestedInstancedStructNotExpanded` が示します。
+- **列挙型のキー**は、数値と列挙子の名前を返します。Blueprint で定義した列挙型では、名前はエディタで付けた表示名ではなく内部名です（`UserDefinedEnumNamesAreInternal`）。エンジンで非推奨のネイティブ列挙型キーは値の領域を持たないため、値の代わりに `ValueOmittedReason` で読めない理由を返します。
+- **上限。** 構造体キーの中のコンテナは先頭 32 要素まで、文字列は 1024 文字で切り、1 つのキーの値は 64 KiB、1 回の応答は 256 KiB までです。収まらないものは切るか省き、その旨の印を付けます。参照はパスとして書き、たどりません。
+- **アセットが無い Blackboard コンポーネント**は、キー無しの `BlackboardAvailability: NoAsset` を返します。**Blackboard コンポーネントが無い**場合、`DumpBehaviorTreeState` は `NoComponent`、`GetBlackboardValues` は `NotFound` です。
+
+#### 実行時のノードをエディタのアセットと突き合わせる
+
+実行時の応答のノードは、`TreeAsset` と `ExecutionIndex` の組で識別されます。同じ番号を Editor コマンドの `GetBehaviorTreeNodeList` と `GetBehaviorTreeSubtree`（[`UAIP.Editor.BehaviorTree`](#uaipeditorbehaviortree)）が、そのアセットをトップレベルのツリーとして実行したときの番号として、PIE を開かず、アセットを保存せずに返します。実行時の組をそこで探せば、アセット上のノードが分かります。`GetBehaviorTreeNodeProperties` に出る番号は別の値で、突き合わせには使えません。
+
+番号を付けられないノードは `ExecutionIndex: null` と `ExecutionIndexUnavailableReason` を返します。理由は次のどれかです。
+
+| `ExecutionIndexUnavailableReason` | 意味 |
+|---|---|
+| `ContextDependentInjectedDecorator` | アセットの根に付いた Decorator。別のツリーから呼ばれたときにだけ働き、番号は呼ぶ側のツリーで決まるので、呼ぶ側のアセットで探します |
+| `NotInCompiledTree` | グラフにはあるが、アセットが実行するツリーにはまだ入っていないノード（追加した直後など） |
+
+#### BehaviorTree の応答に共通のフィールド
+
+| フィールド | 意味 |
+|---|---|
+| `CapturedAt`・`Frame`・`NetMode`・`WorldContext`・`PIEInstance`・`WorldTimeSeconds` | 状態をいつ・どこで読んだか: ISO 8601 の UTC 時刻、エンジンのフレーム番号、ネットモードとワールドコンテキスト、PIE インスタンス（PIE 外では省略）、ワールドの時間 |
+| `Actor`・`Component` | 観測したアクターと BehaviorTree コンポーネント |
+| `Availability` | `Running`、`NotRunning`（ツリーが未開始、または停止済み。インスタンスとノードは空、Blackboard のキー定義は返る）、`NotAtSafePoint`（エンジンの状態が更新の途中かもしれず、何も読まなかった。ダイアログや読み込みが終わってから呼び直す）。一時停止中のツリーは `IsPaused: true` の `Running` です。`AvailabilityReason` に理由が文章で入ります |
+| `BlackboardAvailability` | `Available`・`NoAsset`・`NoComponent`・`NotAtSafePoint` |
+| `Limitations[]` | 返した内容についての注意。`Code` と、場合によって `Detail` を持つ |
+
+`Limitations[].Code` は次のいずれかです。
+
+| `Code` | 意味 |
+|---|---|
+| `InstanceWithoutTasksNotVisible` | タスクを 1 つも含まないツリーインスタンス（サブツリーの段）は見えない。検出できたときに報告され、検出できない並び方もある |
+| `SubTickTransitionsNotVisible` | 記録は Tick ごとに 1 回ツリーを読むので、1 フレームの中でツリーが何度も動いても最後の状態しか見えない |
+| `ReasonNotRecorded` | 記録は何が変わったかを残すが、なぜ変わったかは残さない |
+| `NotPolledWhileWorldPaused` | ゲームの一時停止中は記録を読まない。その間の変化は再開後にまとめて現れる |
+| `BaselineNotTaken` | 最初の読み取りの前に記録が止まったため、`Baseline` エントリが無い |
+| `NodeDeactivatedDuringProjectCode` | プロジェクトのコードの実行中に実行中でなくなったノードを、`DescribeBehaviorTreeWithProjectCode` が省いた |
+| `TreeChangedDuringProjectCode` | プロジェクトのコードがツリーや Blackboard を変えたため、`DescribeBehaviorTreeWithProjectCode` が打ち切った。応答にはそれまでの結果が入る |
+| `NotAtSafePoint` | エンジンの状態が更新の途中かもしれなかったため、読まなかった |
+| `NestedInstancedStructNotExpanded` | 構造体の値の中の、実行時に種類が決まる構造体は展開されない |
+| `IsSetNotDeterminable` | 未設定とゼロ値を区別できないキー型では `IsSet` が `null` |
+| `UserDefinedEnumNamesAreInternal` | Blueprint で定義した列挙型の列挙子の名前は内部名 |
+
+記録のエントリは `Sequence`・フレーム・時刻と `Kind` を持ちます。`Kind` は `Baseline`・`TreeStarted`・`TreeStopped`・`Paused`・`Resumed`・`InstancePushed`・`InstancePopped`・`ActiveNodeChanged`・`ActiveNodeTypeChanged`・`AuxNodeActivated`・`AuxNodeDeactivated`・`ParallelTaskChanged`・`RestartPendingChanged`・`AbortPendingChanged` です。`Baseline` エントリはツリーの状態を `Snapshot` に持ち、開始時ではなく開始後の最初の読み取りで取った `Baseline` には `Deferred` が付きます。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータが欠けている・型が違う・範囲外・未知のキー。`TargetNetRole` / `TargetPIEInstance` を満たせない。範囲外の記録時間・容量・上限は丸めずに拒否 |
+| `NotAllowed` | プレイワールドが動いていない（`PIE is not running.`）、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い。記録の上限（セッション単位・ワールド単位）に達した、またはコンポーネントがすでに記録中で `ReplaceExisting` が無い。モーダルダイアログや長い処理がゲームループを止めている間の `DescribeBehaviorTreeWithProjectCode` |
+| `NotFound` | 識別子に一致するアクターが無い（クライアント側のワールドでは、サーバー側の候補をメッセージに添える）。アクターとそれと対になるコントローラーまたは Pawn のどれも BehaviorTree / Blackboard コンポーネントを持っていない。未知・期限切れ・形式不正・他人の `CaptureId` |
+| `ExecutionFailed` | 識別子に一致するアクターが複数ある。artifact を書き出せなかった（`StartBehaviorTreeCapture` と `StopBehaviorTreeCapture` では、保存先そのものを解決できない場合に限る） |
+| `CapabilityNotAvailable` | `RuntimeInspect`・`BlackboardValueRead`・`AIBehaviorProjectCodeExecution` のいずれかが付与されていない。メッセージに足りないものの名前が入る |
+| `PolicyViolation` | 必要な Capability が安全ポリシーで拒否されている、または `DescribeBehaviorTreeWithProjectCode` を読み取り専用モードで呼んだ |
+
+成功した呼び出しは JSON の artifact をちょうど 1 つ保存します（記録の `StartBehaviorTreeCapture` と `StopBehaviorTreeCapture` は補助の artifact を保存します）。失敗した呼び出しは何も保存しません。
+
+---
+
+## UAIP.Runtime.StateTree 🧩
+
+AI が実行している StateTree を観測するコマンド群です。どの状態がアクティブか、どのタスクが動いているか、どの遅延遷移が待っているか、ツリーが時間とともにどう動いたか、そして許可すれば保持している値が分かります。`StateTree` と `GameplayStateTree` の両プラグインが必要です。どちらかが無効だとコマンドは登録されず、呼ぶとプラグイン名を添えた `CommandNotFound` を返します（状態は `UAIP.Core.ListIntegrations` で分かります）。デモ版には含まれません。どのコマンドも読むだけです。コマンドは、プレイワールドのアクターの `UStateTreeComponent` 系（`UStateTreeAIComponent` を含む）を対象にし、[`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。ただし `GetStateTreeEventLog` と `StopStateTreeCapture` は `CaptureId` を受け取り、プレイワールドを解決しないので、プレイセッションの終了後も使えます。
+
+**Capability。** 7 つすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`DumpStateTreeInstanceData` は、ツリーのパラメータやノードの値がプロジェクトのデータであるため、`StateTreeInstanceDataDump`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-statetree-の観測) を参照してください。
+
+**コンポーネントの探し方。** `ActorIdentifier` はアクターのラベルまたはオブジェクト名です。コンポーネントはまずそのアクターから探し、無ければ、Pawn なら AI コントローラーから、AI コントローラーならその Pawn から探します（`UStateTreeAIComponent` は AI コントローラーに、`UStateTreeComponent` は Pawn に付くことが多いためです）。複数見つかった場合は `ComponentName`（コンポーネントのオブジェクト名）で 1 つを選ぶ必要があります。省略すると `InvalidParams` で失敗して候補を列挙し、どの候補にも一致しない名前は候補付きの `NotFound` です。`ListStateTreeComponents` が使うべき名前を返します。
+
+**プロジェクトが派生させたコンポーネントクラスは読みません。** そのクラスがエンジンのコンポーネントと同じ方法でツリーを動かしているかを確かめる手段がエンジンに無く、誤って読むとエンジン自身の検証機能を止めてしまうためです。観測のコマンドは読まずに成功し、その旨を返します（`Availability: ProjectDerivedComponent` と、`Limitations` の `ProjectDerivedComponentNotVerified`）。`ListStateTreeComponents` は `RunStatus: null` と理由付きでそれを列挙します。`StartStateTreeCapture` は記録を始められますが、そのクラスが別の Owner や Tree の組でツリーを動かしていると何も記録されません。
+
+#### 現在の状態（3）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `ListStateTreeComponents` 🧩 | 対象のプレイワールドのアクターの StateTree コンポーネントを、アクター・コンポーネント・クラス・実行するよう設定されたツリーアセット・`RunStatus` とともに列挙します。読まないコンポーネント（プロジェクトが派生させたクラス、リンクされていないツリー）の実行状態は `null` で、`RunStatusUnavailableReason` が付きます。`MaxEntries` は 1〜4096（既定 256）。応答には先頭のコンポーネントが入り、artifact に全件が入ります。エンジンの状態が更新の途中かもしれない間（モーダルダイアログや長い処理がゲームループを止めている、またはワールドが Tick の途中）はアクターを走査せず、一覧も返さず、`Availability` は `NotAtSafePoint` です |
+| `GetActiveStateTreeState` 🧩 | 1 つのコンポーネントの StateTree のアクティブな状態を返します。`RunStatus` と、アクティブなフレームスタックのフレームごとに、ツリーアセットとルートから各アクティブ状態までの経路です。`DumpStateTreeState` の軽量版で、タスク・遅延遷移・次の Tick は含みません。応答と artifact は同じ内容です |
+| `DumpStateTreeState` 🧩 | 1 つのコンポーネントの StateTree の全体像。`RunStatus`（`Running`・`Stopped`・`Succeeded`・`Failed`・`Unset`）と `LastTickStatus`、アクティブなフレームスタックの `Frames[]`（各フレームのツリーアセットと、アクティブな状態の名前・タグ・`StateType`（`State`・`Group`・`Linked`・`LinkedAsset`・`Subtree`）・経路）、アクティブな状態のタスクとその `Status`、待機中の遅延遷移（遷移先の状態と `RemainingSeconds`）、`NextScheduledTickSeconds` を返します。応答には先頭のフレームが入り、artifact に全件が入ります。ツリーが開始されていない、コンポーネントにツリーが無い・実行の準備ができていない、プロジェクトが派生させたクラスである、またはエンジンの状態が更新の途中かもしれず読まなかった場合は、エラーではなく縮退した結果を返します |
+
+#### インスタンスデータ（1）— `RuntimeInspect` と `StateTreeInstanceDataDump` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `DumpStateTreeInstanceData` 🧩 | 1 つのコンポーネントが持つ値 — ツリーのパラメータ、各アクティブな状態のパラメータ、各アクティブなノードのインスタンスデータ — を、値を持つプロパティのブロック（`Blocks[]`。それぞれ `BlockKind` を持つ）として返します。値はリフレクションで読み、ノードやその他のプロジェクトの型の関数は実行しません。構造体は 1 段展開し、配列・セット・マップは先頭の要素を残し、長い文字列は切り、バイト予算に収まらない値は切るか省きます（`bOmitted`）。切ったものは元の件数とともに報告します。構造体の中の、実行時に種類が決まる構造体は展開しません（`NestedInstancedStructNotExpanded`）。`MaxEntries`（1〜4096、既定 256）がブロック数の上限です。応答には先頭のブロックが入り、artifact に全件が入ります。縮退の仕方は `DumpStateTreeState` と同じです。出てくるものについては [安全性と Capability](safety.md#runtime-statetree-の観測) を参照してください |
+
+#### 記録（3）— `RuntimeInspect` が必要
+
+記録は、開始したセッションのものです。ほかのセッションからはその ID が `NotFound` になり、存在するかどうかも分かりません。
+
+| コマンド | 説明 |
+|---|---|
+| `StartStateTreeCapture` 🧩 | 1 つのコンポーネントの StateTree が時間とともに何をするかを、呼び出したセッションが所有する記録として開始し、その `CaptureId` を返します。記録はエンジンの StateTree のデバッグ通知から作られます。`Kinds` で記録するエントリの種類を絞れます（既定は全種類。空の一覧や未知の種類は `InvalidParams`）。種類は `StateEntered`・`StateExited`・`StateCompleted`・`StateSelected`・`Transition`・`EventSent` です。`MaxDurationSeconds`（1〜600、既定 120）、`BufferCapacity`（64〜16384、既定 4096）、`ReplaceExisting`（既定 `false`）は `StartBehaviorTreeCapture` と同じです。1 セッションが同時に記録できる StateTree コンポーネントは 8 本、1 ワールドの記録中の capture は全セッション合計で 32 本までで、停止した capture は 30 分保持されます。未開始のツリーや、インスタンスデータが未初期化のツリーも記録でき、開始された後の動きが記録されます。記録は、`MaxDurationSeconds` に達したとき、プレイセッションが終わったとき、コンポーネントが破棄されたとき、コンポーネントが別のツリーを実行するよう設定されたとき（`TargetChanged`）に自動で止まります。**次の場合は `NotAllowed` で失敗します** — 安全な地点でない瞬間（ダイアログや読み込みが終わってから呼び直す）、コンポーネントに StateTree が設定されていないとき（設定してから開始し直す）、エンジンが StateTree のデバッグ通知を提供しない構成のビルド（開発用のエディタビルド（Development または DebugGame）を使う。ほかのコマンドは影響を受けない）。アクターに StateTree コンポーネントが無ければ `NotFound` です |
+| `GetStateTreeEventLog` 🧩 | capture のエントリを、古いものから、`SinceSequence`（既定 0）以降について読みます。`CaptureId`（必須）は `StartStateTreeCapture` が返した ID です。`MaxEntries` は 1〜4096（既定 256）。応答には読んだ分の先頭 50 件が入り、artifact にはその読み取りの全エントリが入ります。`NextSequence` は artifact の最後のエントリの続きを読むための `SinceSequence` です。`bGap` と `DroppedCount` は `GetBehaviorTreeEventLog` と同じです。応答には capture の状態、停止した理由、記録時間、`Limitations[]` も入ります。プレイセッションの終了後や、エンジンがデバッグ通知を提供しない構成のビルドでも使えます。未知・期限切れ・他人の `CaptureId` は、どれなのかを明かさず `NotFound` です |
+| `StopStateTreeCapture` 🧩 | capture を止め、その最終状態 — 止まった理由、記録時間、連番の管理 — を返します。すでに止まっている capture の停止は成功し、最初の終了理由（`Stopped`・`DurationLimit`・`WorldTornDown`・`Replaced`・`TargetDestroyed`・`TargetChanged`）を保ちます。プレイセッションの終了後も使えます。1 セッションが保持する停止済み capture は最大 4 本で、古いものから捨てられます。未知・期限切れ・他人の `CaptureId` は、どれなのかを明かさず `NotFound` です |
+
+エントリの種類の意味。名前から受ける印象と違うものがあります。
+
+| `Kind` | 意味 |
+|---|---|
+| `StateEntered` / `StateExited` | 状態に入った・出た。同じ状態が選び直されて実際には何も変わらないときにも記録される |
+| `StateCompleted` | 状態が完了した。1 回の完了で、アクティブな経路上のすべての状態について記録される |
+| `StateSelected` | 状態が選ばれた。選択を試みた時点の通知で、その選択が後で取り消されることがある。状態の名前は、選ばれた状態が属するフレームのツリーから引く。そのツリーを確実に特定できないとき、または記録が登録していないリンク先アセットのときは、名前を付けず状態の番号だけを記録する |
+| `Transition` | 遷移が起きた: 遷移元の状態（分かる場合。`SourceState`）、遷移先の状態、きっかけの種類 `Trigger`（`OnStateCompleted`・`OnStateSucceeded`・`OnStateFailed`・`OnTick`・`OnEvent`・`OnDelegate`）、遷移が待つよう設定された `RequiredEventTag`、`Priority`、`DelaySeconds`、遷移の出どころ `SourceType`（`Asset`・`ExternalRequest`・`Internal`）。ツリーの開始・停止や強制的な遷移による状態の変化は遷移として記録されず、入った・出たのエントリだけが残る |
+| `EventSent` | ツリーにイベントが送られた: `EventTag` と、中身の型名（`EventPayloadType`）。中身の値は記録しない |
+
+状態に入ってからの経過時間はどこにも保持されていません。その状態の `StateEntered` エントリの時刻から計算してください。
+
+#### StateTree の応答に共通のフィールド
+
+| フィールド | 意味 |
+|---|---|
+| `CapturedAt`・`Frame`・`NetMode`・`WorldContext`・`PIEInstance`・`WorldTimeSeconds` | 状態をいつ・どこで読んだか。BehaviorTree のコマンドと同じ |
+| `Actor`・`Component`・`TreeAssetPath` | 観測したアクター・StateTree コンポーネント・ツリーアセット |
+| `Availability` | `Running`、`NotRunning`（ツリーが未開始）、`NoTree`（コンポーネントにツリーが無い）、`NotInitialized`（インスタンスデータが未初期化）、`Unreadable`（コンポーネントを読めなかった — 所有者がいない、破棄中、エンジンの更新で読み取りに必要な内部の項目が見つからない。`NotInitialized` とは別）、`ProjectDerivedComponent`、`NotAtSafePoint`。`AvailabilityReason` に理由が文章で入ります |
+| `Limitations[]` | 返した内容についての注意。`Code` と、場合によって `Detail` を持つ |
+
+`Limitations[].Code` は次のいずれかです。
+
+| `Code` | 意味 |
+|---|---|
+| `ProjectDerivedComponentNotVerified` | コンポーネントクラスをプロジェクトが派生させている。観測では状態を読まなかった。記録では、そのクラスが別の Owner や Tree でツリーを動かしていると何も記録されないことがある |
+| `NotAtSafePoint` | エンジンの状態が更新の途中かもしれなかったため、読まなかった |
+| `EventSentMatchedByOwnerAndTree` | イベントは Owner と Tree だけで記録に結び付けるため、同じ Owner の上で同じツリーの別の実行（コンポーネントが複数ある、BehaviorTree のタスクの中で同じツリーが動いている）に送られたイベントも記録される |
+| `TriggeringEventNotRecorded` | 遷移を実際に発火させたイベントは記録されない。遷移には、それが待つよう設定されたイベントだけが書かれる。直前の `EventSent` エントリが手がかりになる |
+| `NestedInstancedStructNotExpanded` | 構造体の値の中の、実行時に種類が決まる構造体は展開されない |
+| `TreeNotStarted` | ツリーが開始されていないので、報告する状態が無い |
+
+StateTree の記録中は、プロセス内のすべての StateTree のデバッグ通知にわずかな処理が入るため、その分 StateTree の実行が遅れ、複数のスレッドで動く StateTree の通知は 1 本ずつ順に処理されます。必要なものだけを記録し、終わったら止めてください。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータが欠けている・型が違う・範囲外・未知のキー。`Kinds` が空、または未知の種類を指している。アクターに StateTree コンポーネントが複数あるのに `ComponentName` が無い（候補を列挙する） |
+| `NotAllowed` | プレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い。`StartStateTreeCapture` が、安全な地点でない瞬間・ツリーが無いコンポーネント・StateTree のデバッグ通知が無い構成のビルドで呼ばれた。記録の上限に達した、またはコンポーネントがすでに記録中で `ReplaceExisting` が無い |
+| `NotFound` | 識別子に一致するアクターが無い。アクターとそれと対になるコントローラーまたは Pawn のどれも StateTree コンポーネントを持っていない。`ComponentName` がどの候補にも一致しない。未知・期限切れ・形式不正・他人の `CaptureId` |
+| `ExecutionFailed` | 識別子に一致するアクターが複数ある。artifact を書き出せなかった |
+| `CapabilityNotAvailable` | `RuntimeInspect`、または `DumpStateTreeInstanceData` の場合は `StateTreeInstanceDataDump` が付与されていない |
+| `PolicyViolation` | 必要な Capability が安全ポリシーで拒否されている |
+
+成功した呼び出しは JSON の artifact をちょうど 1 つ保存します（記録の `StartStateTreeCapture` と `StopStateTreeCapture` は補助の artifact を保存します）。失敗した呼び出しは何も保存しません。
 
 ---
 
@@ -4752,4 +4953,4 @@ AnimInstance を持たないメッシュはエラーではありません。ア�
 
 ---
 
-> スキーマやパラメータの詳細は本ページでは意図的に省略しています。任意のコマンドの完全スキーマは `uaip_describe_command(CommandName="...")` で取得してください。
+> スキーマやパラメータの詳細は本ページでは意図的に省略しています。任意のコマンドの完全スキーマは `{"Command": "UAIP.Core.DescribeCommand", "Params": {"Name": "<コマンド名>"}}`（HTTP / WebSocket / CLI）または `uaip_describe_command(CommandName="<コマンド名>")`（MCP）（引数名は前者が `Name`、後者が `CommandName` で異なります） で取得してください。

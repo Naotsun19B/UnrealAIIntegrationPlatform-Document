@@ -2,11 +2,11 @@
 
 # Commands Reference
 
-UAIP exposes 1271 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1692 commands organized by domain. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1295 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1716 commands organized by domain. These totals count every command the plugin defines for the UE 5.8 editor on Win64, including commands listed with `Available: false` because a plugin they need is disabled. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
-- Use `uaip_describe_command(CommandName="...")` to get the full parameter schema for a command
+- Get the full parameter schema for a command with `{"Command": "UAIP.Core.DescribeCommand", "Params": {"Name": "<command name>"}}` over HTTP / WebSocket / CLI, or `uaip_describe_command(CommandName="<command name>")` over MCP (the argument is `Name` in the first form and `CommandName` in the second)
 - Use `uaip_list_commands(ProviderPrefix="UAIP.Editor")` to filter by domain at runtime
 - For the required Capability per command, see [Safety & Capabilities](safety.md)
 - These commands delete, move or rename files on disk, so they are refused with `PolicyViolation` — before anything else is checked, PIE included — when the safety policy sets `DisableSave` ("Disk write operations are disabled by the current safety policy."): `DeleteAsset`, `DeleteFolder`, `ForceDeleteFolder`, `RenameAsset`, `MoveAsset`, `MoveFolder`, `FixAssetRedirectors`, `FixUpRedirectorsInFolder`, `DeleteInputAction`, `DeleteMappingContext`, `DeleteDataLayerAsset`, `DeleteHLODs` and `DeleteGameFeaturePlugin`. Commands that already refused under `DisableSave` are unchanged. See [Safety & Capabilities](safety.md#disablesave-and-the-commands-that-delete-move-or-rename)
@@ -37,7 +37,7 @@ This is being migrated one command at a time to a declared, strictly-validated s
 
 **This is a breaking change for calls that previously "worked by accident"**: a call that sent an extra or misspelled key used to be silently accepted (and simply ignored, or forwarded and rejected deep inside the engine) — on a migrated command it is now refused up front with `InvalidParams`, naming the offending key.
 
-Five `Toolset.Editor.Niagara.*` commands (`DuplicateEmitter`, `GetScriptAssets`, `MoveModule`, `SetEmitterEnabled`, `SetEmitterName`) still declare no parameters as of this update, and that is no longer an open question: none of the five has a matching function in any Niagara toolset this plugin supports, so instead of being migrated to a real schema, all five now report `Available: false` (`UnavailableReason: "HandlerUnavailable"`, `UnavailableDetail: "DelegationTargetMissing"`) — there is nothing left for a schema to describe. See the note under [UAIP.Editor.Niagara → Toolset bridges](#uaipeditorniagara-) for what each one refuses with and which ones have a working native alternative. The same "the toolset declares no matching function" shape also applies to `Toolset.Editor.GameFeatures.ListGameFeatures` and `Toolset.Editor.Niagara.GetNiagaraParameterCollections`, which were already declaring a proper empty schema and so are not counted among these five — see [UAIP.Editor.GameFeatures → Toolset bridges](#uaipeditorgamefeatures-). **This update establishes the full set of commands in this state.** Every one of the 413 bridge commands has had its delegation pair — (toolset name, tool name) — checked statically against what the engine actually registers: **398 reach a target and 15 do not**. All 15 report `Available: false` with `UnavailableDetail: "DelegationTargetMissing"` (7 in Niagara, 4 in GameFeatures, 2 in SlateInspector, 2 in UMG). The same pass also found **16 commands whose delegation target was misspelled, which now reach it** (7 in Dataflow, 8 in SlateInspector, 1 in Niagara) — until now this reference described them as working while they failed at run time. `uaip_describe_command` remains the authoritative answer for any specific command.
+Five `Toolset.Editor.Niagara.*` commands (`DuplicateEmitter`, `GetScriptAssets`, `MoveModule`, `SetEmitterEnabled`, `SetEmitterName`) still declare no parameters as of this update, and that is no longer an open question: none of the five has a matching function in any Niagara toolset this plugin supports, so instead of being migrated to a real schema, all five now report `Available: false` (`UnavailableReason: "HandlerUnavailable"`, `UnavailableDetail: "DelegationTargetMissing"`) — there is nothing left for a schema to describe. See the note under [UAIP.Editor.Niagara → Toolset bridges](#uaipeditorniagara-) for what each one refuses with and which ones have a working native alternative. The same "the toolset declares no matching function" shape also applies to `Toolset.Editor.GameFeatures.ListGameFeatures` and `Toolset.Editor.Niagara.GetNiagaraParameterCollections`, which were already declaring a proper empty schema and so are not counted among these five — see [UAIP.Editor.GameFeatures → Toolset bridges](#uaipeditorgamefeatures-). **This update establishes the full set of commands in this state.** Of the 421 bridge commands, the 419 built on the shared bridge handler have had their delegation pair — (toolset name, tool name) — checked statically against what the engine actually registers: **404 reach a target and 15 do not**. The other two (`CompileLiveCoding` and `DrawPCGSpline`) are not built on that handler and are outside this check. All 15 report `Available: false` with `UnavailableDetail: "DelegationTargetMissing"` (7 in Niagara, 4 in GameFeatures, 2 in SlateInspector, 2 in UMG). The same pass also found **16 commands whose delegation target was misspelled, which now reach it** (7 in Dataflow, 8 in SlateInspector, 1 in Niagara) — until now this reference described them as working while they failed at run time. `uaip_describe_command` remains the authoritative answer for any specific command.
 
 ---
 
@@ -79,7 +79,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Editor Workspace | `UAIP.Editor.Workspace` | 23 | 1 | partial (18/23) |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin | `UAIP.Editor.Engine.Plugin` | 9 | 15 | partial (5/9) |
-| Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
+| Editor Engine CVar 🧩 | `Toolset.Editor.Toolset.EngineManagement` | — | 1 | — |
 | Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | partial (5/8) |
 | Editor Engine Toolset 🧩 | `UAIP.Editor.Engine.Toolset` | 1 | — | — |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ |
@@ -151,7 +151,8 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | partial (3/11) |
 | Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
 | Runtime SaveGame | `UAIP.Runtime.SaveGame` | 10 | — | — |
-| Runtime AI | `UAIP.Runtime.AI` | 6 | — | ✅ |
+| Runtime AI | `UAIP.Runtime.AI` | 14 | — | partial (13/14) |
+| Runtime StateTree 🧩 | `UAIP.Runtime.StateTree` | 7 | — | — |
 | Runtime Chaos Destruction | `UAIP.Runtime.ChaosDestruction` | 8 | — | partial (7/8) |
 | Runtime Navigation | `UAIP.Runtime.Navigation` | 8 | — | partial (7/8) |
 | Runtime Animation | `UAIP.Runtime.Animation` | 7 | — | partial (6/7) |
@@ -311,7 +312,7 @@ Component classes are gated the same way but by a rule of their own, described i
 
 ## Choosing which play world a Runtime command acts on
 
-A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 82 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
+A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 102 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
 
 | Parameter | Type | Meaning |
 |---|---|---|
@@ -351,7 +352,8 @@ Two limits worth knowing:
 | `UAIP.Runtime.Input` | `InjectInputKey`, `InjectEnhancedInputAction`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `AddMappingContext`, `RemoveMappingContext`, `SetInputMode`, `FlushInput`, `DumpInputState`, `GetEnhancedInputActionValue`, `ClickGameViewportWidget`, `PressGameViewportUIKey`, `TypeGameViewportText` |
 | `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses`, `GrantAbility`, `RemoveAbility`, `ClearGrantedAbilities`, `ApplyEffect`, `RemoveEffect`, `ClearActiveEffects`, `SetAttributeValue`, `ResetAttributesToBase`, `SendGameplayEvent` |
 | `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`, `GetVariable`, `SetVariable`, `SetSystem` |
-| `UAIP.Runtime.AI` | `DumpAIPerceptionState`, `GetPerceivedActors`, `GetActorPerceivers`, `DumpAIPerceptionSystemState`, `ExplainSightPerception`, `DumpAIPerceptionSenseConfigs` |
+| `UAIP.Runtime.AI` | `DumpAIPerceptionState`, `GetPerceivedActors`, `GetActorPerceivers`, `DumpAIPerceptionSystemState`, `ExplainSightPerception`, `DumpAIPerceptionSenseConfigs`, `DumpBehaviorTreeState`, `GetActiveBehaviorTreeNode`, `ListBehaviorTreeAgents`, `GetBlackboardValues`, `DescribeBehaviorTreeWithProjectCode`, `StartBehaviorTreeCapture` |
+| `UAIP.Runtime.StateTree` 🧩 | `DumpStateTreeState`, `GetActiveStateTreeState`, `ListStateTreeComponents`, `DumpStateTreeInstanceData`, `StartStateTreeCapture` |
 | `UAIP.Runtime.ChaosDestruction` | `ListGeometryCollections`, `DumpGeometryCollectionState`, `DumpChaosFieldState`, `StartDestructionCapture`, `CaptureGeometryCollectionStrain` |
 | `UAIP.Runtime.Navigation` | `DumpNavigationSystemState`, `FindPath`, `IsLocationReachable`, `DumpNavMeshTiles`, `QueryNavModifiers`, `GetPathFollowingState`, `WaitForNavigationBuild`, `RebuildNavigation` |
 | `UAIP.Runtime.Animation` | `DumpAnimInstanceState`, `GetAnimStateMachineStates`, `GetAnimBlendWeights`, `GetActiveMontages`, `GetAnimCurveValues`, `DumpAnimInstanceVariables`, `GetMotionMatchingState` |
@@ -405,7 +407,7 @@ System-level commands for discovery, health, and session management.
 | 🆓 `ListPlugins` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.Plugin.ListPlugins` instead. List installed plugins and their enabled state (JSON) |
 | 🆓 `EndSession` | End a session explicitly and release its server-side resources; its artifacts become GC candidates |
 | 🆓 `ReloadCapabilities` | Reload the capability set from `Config/DefaultUAIP.ini` without restarting the editor. Hidden from the default `ListCommands` response, and reports `Available: false` with `UnavailableDetail: "SafetyPolicyDisabled"` naming the ini key to set, until `AllowCapabilityReload=True` — see [UnavailableDetail](#unavailabledetail--the-eight-reasons-behind-a-handlerunavailable-refusal) |
-| 🆓 `ListIntegrations` | Reports every optional-plugin integration UAIP knows about — a UAIP module (or part of one) that needs a plugin which can be disabled or absent at run time. Each entry carries `Name`, `State` (`Pending` / `Loading` / `Loaded` / `CompiledOut` / `PluginDisabled` / `PluginNotInstalled` / `DependencyNotLoaded` / `NotApplicable` / `LoadFailed`, plus `NotInThisEdition` in the free demo build for an integration only the Pro edition includes), `RequiredPlugins`, `MissingPlugins`, `DependsOn`, `CommandMatchers`, a plain-language `Remedy` — the same wording a `CommandNotFound` hint gives for one of its commands — and, only when `State` is `LoadFailed`, `FailureKind` / `FailureReason`. An optional `State` parameter narrows the returned `Integrations` array to that state; `IntegrationCount` / `LoadedCount` / `NotLoadedCount` always cover every integration regardless of the filter. An unrecognised `State` value is refused with `InvalidParams`. Requires no capability |
+| 🆓 `ListIntegrations` | Reports every optional-plugin integration UAIP knows about — a UAIP module (or part of one) that needs a plugin which can be disabled or absent at run time. Each entry carries `Name`, `State` (`Pending` / `Loading` / `Loaded` / `CompiledOut` / `PluginDisabled` / `PluginNotInstalled` / `DependencyNotLoaded` / `NotApplicable` / `LoadFailed`, plus `NotInThisEdition` in the free demo build for an integration only the Pro edition includes), `RequiredPlugins`, `MissingPlugins`, `DependsOn`, `CommandMatchers`, a plain-language `Remedy` — the same wording a `CommandNotFound` hint gives for one of its commands — and, only when `State` is `LoadFailed`, `FailureKind` / `FailureReason`. `CompiledOut` means the integration's code is not built into this binary: the build did not find the plugins it integrates with enabled, or the engine version is older than the integration supports. `MissingPlugins` lists the plugins the build did not find enabled; it is empty when the reason is the engine version (the `Remedy` then names the minimum engine version) and for `NotInThisEdition`. The plugins an integration needs are always listed in `RequiredPlugins`. Packaged games built from a Fab-distributed UAIP installed in the engine cannot include these integrations; place UAIP in the project's `Plugins` folder so it is compiled with the project. An optional `State` parameter narrows the returned `Integrations` array to that state; `IntegrationCount` / `LoadedCount` / `NotLoadedCount` always cover every integration regardless of the filter. An unrecognised `State` value is refused with `InvalidParams`. Requires no capability |
 | 🆓 `GetPendingInteractionStatus` | Reports where one pending interaction stands — `State`, `Cause`, `ElapsedSeconds`, `Prompt`, `Reason`, `Result` — without waiting for it to change. Requires the same explicitly given `SessionId` that started the interaction (an interactive command such as `DrawPCGSpline`); unknown, expired, and other-session all report `NotFound` identically |
 | 🆓 `WaitForPendingInteraction` | Blocks until a pending interaction leaves `AwaitingUser`, or until this call's own `TimeoutSeconds` ceiling is reached (default 30, range [1, 600]), whichever comes first; on timeout the interaction itself is unaffected and keeps waiting for the human. Up to 4 concurrent calls may watch the same interaction, but reaching more than one requires `[UAIP.Transport] AllowConcurrentPassiveWaits` — see [Configuration](config.md) |
 | 🆓 `CancelPendingInteraction` | Cancels a pending interaction the calling session started, without waiting for the human to act. An interaction already `Completed` is answered with `Success` rather than an error; the capabilities the starting command declared are re-checked against the session's current capability set; one the session no longer holds is refused with `CapabilityNotAvailable`, or with `PolicyViolation` when the operator has denied it explicitly in `DeniedCapabilities` |
@@ -513,7 +515,7 @@ Bridge commands via the `LogsToolset` (UE 5.8+, EditorToolset plugin). Provider:
 
 ### Toolset bridges — CVar (1) 🧩
 
-Bridge commands via the EditorToolset plugin (UE 5.8+). Provider: `Toolset.Editor.EngineManagement.*`.
+Bridge commands via the EditorToolset plugin (UE 5.8+). Provider: `Toolset.Editor.Toolset.EngineManagement.*`.
 
 | Command | Description |
 |---|---|
@@ -1854,8 +1856,8 @@ Behavior Tree graph editing and Blackboard key management.
 
 | Command | Description |
 |---|---|
-| `GetBehaviorTreeNodeList` | Flat list of every node — `NodeGuid`, `NodeClass`, `DisplayName`, `Depth` (0 = root composite), `ParentNodeGuid` |
-| `GetBehaviorTreeSubtree` | Recursive subtree (Composite / Task / Decorator / Service) rooted at a `NodeGuid`, `MaxDepth` 1–32 |
+| `GetBehaviorTreeNodeList` | Flat list of every node — `NodeGuid`, `NodeClass`, `DisplayName`, `Depth` (0 = root composite), `ParentNodeGuid`. Every node now also carries `ExecutionIndex` (the number the node has when the asset runs as the top-level tree, the same number a runtime response reports for it), or `null` with `ExecutionIndexUnavailableReason`. See [Matching a runtime node to the editor asset](#matching-a-runtime-node-to-the-editor-asset) |
+| `GetBehaviorTreeSubtree` | Recursive subtree (Composite / Task / Decorator / Service) rooted at a `NodeGuid`, `MaxDepth` 1–32. Every node now also carries `ExecutionIndex` (the number the node has when the asset runs as the top-level tree, the same number a runtime response reports for it), or `null` with `ExecutionIndexUnavailableReason`. See [Matching a runtime node to the editor asset](#matching-a-runtime-node-to-the-editor-asset) |
 | `GetAvailableBTCompositeClasses` | List `UBTCompositeNode` subclasses — feed `ClassPath` to `AddBehaviorTreeCompositeNode`. Each entry now carries `Admission` (`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`) plus `RequiredCapabilities` / `MissingCapabilities`, from the same policy the add command validates against. No longer filtered to the modules this domain ships. Ordered by `ClassPath`; reports `TotalCount`, `ReturnedCount`, `Truncated` (max 200). `SchemaVersion` is now `2` — see the note below |
 | `GetAvailableBTTaskClasses` | List `UBTTaskNode` subclasses — feed `ClassPath` to `AddBehaviorTreeTaskNode`. Reports the same admission and count fields as above |
 | `GetAvailableBTDecoratorClasses` | List `UBTDecorator` subclasses — feed `ClassPath` to `AddBehaviorTreeDecoratorNode`. Reports the same admission and count fields as above |
@@ -1865,7 +1867,7 @@ Behavior Tree graph editing and Blackboard key management.
 | `AddBehaviorTreeDecoratorNode` | Attach a Decorator to a parent node — same checks as above |
 | `AddBehaviorTreeServiceNode` | Attach a Service to a parent Composite node — same checks as above |
 | `RemoveBehaviorTreeNode` | Remove a node by NodeId — needs the same capabilities the node's own class asks for |
-| `GetBehaviorTreeNodeProperties` | Every property a node's `NodeInstance` declares — `PropertyName`, `PropertyType` (the C++ type name), `PropertyValue` in the exact form `SetBehaviorTreeNodeProperty` accepts back for it, and a nested `WriteRequirements` object. A `FBlackboardKeySelector` property is reported as the bare key name, matching the write command's special-cased handling of it. Read-only; permitted during PIE (degraded mode). Requires `EditorInspect` |
+| `GetBehaviorTreeNodeProperties` | Every property a node's `NodeInstance` declares — `PropertyName`, `PropertyType` (the C++ type name), `PropertyValue` in the exact form `SetBehaviorTreeNodeProperty` accepts back for it, and a nested `WriteRequirements` object. A `FBlackboardKeySelector` property is reported as the bare key name, matching the write command's special-cased handling of it. The `ExecutionIndex` property it lists is a transient engine value that is never saved with the asset: it is filled in only after the tree has been opened in the BehaviorTree editor and reads 0 right after the asset is loaded, so to match runtime responses use the `ExecutionIndex` of `GetBehaviorTreeNodeList` / `GetBehaviorTreeSubtree` instead. Read-only; permitted during PIE (degraded mode). Requires `EditorInspect` |
 | `SetBehaviorTreeNodeProperty` | Set a node property (FBlackboardKeySelector / generic ImportText_Direct). Needs the capabilities asked for by the class of the node being written **and** by the class that declares the property. A key-selector write is now refused when the tree has no Blackboard asset assigned — the key name cannot be validated without one, and the write used to leave a name and a type that did not match. A refused write no longer marks the asset dirty or leaves an empty undo entry |
 | `ListBlackboardKeys` | List Blackboard asset keys (allowed during PIE) |
 | `AddBlackboardKey` | Add a key (duplicate-name check). A key type outside `/Script/AIModule`, and the two key kinds that hold a reference the writer chooses, each need a capability — see the note below |
@@ -4093,9 +4095,11 @@ A failed command attaches a failure diagnostics artifact carrying `Command`, `Fa
 
 ## UAIP.Runtime.AI
 
-Observe the AI perception system of a running game: what one AI currently senses, which AIs sense a given actor, the state of the perception system itself, why sight does or does not see a target, and the values of the sense configurations. Every command only reads — nothing here changes what an AI perceives. Works in the editor while PIE is running, and in `-game` and packaged builds; no plugin requirement. All six commands accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on).
+This domain observes the AI of a running game: its perception system, and its behavior trees and Blackboards (see [Behavior tree and Blackboard observation](#behavior-tree-and-blackboard-observation) further down). The text up to that section is about the six perception commands.
 
-**Capabilities.** All six require `RuntimeInspect` (DefaultAllow). `DumpAIPerceptionSenseConfigs` also requires `AIPerceptionConfigDump` (DefaultDenied), because it writes out the values of every sense configuration, including those of a project's own sense classes. A missing one is `CapabilityNotAvailable`. See [Safety & Capabilities](safety.md#runtime-ai-perception).
+Observe the AI perception system of a running game: what one AI currently senses, which AIs sense a given actor, the state of the perception system itself, why sight does or does not see a target, and the values of the sense configurations. Every perception command only reads — nothing here changes what an AI perceives. Works in the editor while PIE is running, and in `-game` and packaged builds; no plugin requirement. All six perception commands accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on).
+
+**Capabilities.** All six perception commands require `RuntimeInspect` (DefaultAllow). `DumpAIPerceptionSenseConfigs` also requires `AIPerceptionConfigDump` (DefaultDenied), because it writes out the values of every sense configuration, including those of a project's own sense classes. A missing one is `CapabilityNotAvailable`. See [Safety & Capabilities](safety.md#runtime-ai-perception).
 
 **Perception exists only on the server.** AI controllers and the perception system live in a standalone or server world. In a networked PIE session, point these commands at the server with `TargetNetRole: "Server"` or `TargetPIEInstance`. Observing a client world still succeeds, but reports `Availability.State: "Unavailable"` with `Reason: "ClientWorld"` and lists the server side play worlds to retry against — see [When the perception system is unavailable](#when-the-perception-system-is-unavailable).
 
@@ -4292,6 +4296,203 @@ At most 64 senses, 64 KiB per sense and 256 KiB in total. A sense that reaches i
 When the observed world is a client, an error message after the world was found ends with a note that AI exists only on the server and names the server side play worlds to retry with `TargetPIEInstance`.
 
 Every successful call saves exactly one JSON artifact; a failed call saves none.
+
+### Behavior tree and Blackboard observation
+
+Observe the behavior tree an AI runs and the Blackboard it reads: which node is active, which decorators pass, what the Blackboard holds, and how the tree moved over time. Seven of the eight commands only read. `DescribeBehaviorTreeWithProjectCode` is the exception: it runs project code, and is described separately below. The commands act on one actor of a play world (PIE is what is verified; `-game` and packaged builds are not) and accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on) — except `GetBehaviorTreeEventLog` and `StopBehaviorTreeCapture`, which take a `CaptureId` instead and never look up a play world, so they still work after the play session ended. The actor is given as `ActorIdentifier`: the label or object name of the AI controller, its pawn, or any other actor that owns the component. When a name is not known, `ListBehaviorTreeAgents` returns the names to use.
+
+**Capabilities.** All eight require `RuntimeInspect` (DefaultAllow). `GetBlackboardValues` also requires `BlackboardValueRead` (DefaultDenied), because Blackboard values are project data. `DescribeBehaviorTreeWithProjectCode` requires `BlackboardValueRead` and `AIBehaviorProjectCodeExecution` (DefaultDenied) in addition. A missing one is `CapabilityNotAvailable`. See [Safety & Capabilities](safety.md#runtime-ai-behavior-trees-and-blackboards).
+
+**Demo build.** `DescribeBehaviorTreeWithProjectCode` and the `AIBehaviorProjectCodeExecution` capability are not provided in the demo binary: the command is absent and returns `CommandNotFound`. The other seven commands are provided. `BlackboardValueRead` is registered in the demo too, but the demo's ini does not grant it, so reading values there needs an ini line of your own. Where a response of the demo would name `AIBehaviorProjectCodeExecution` as the permission an omitted description needs, it says `NotInThisEdition` instead.
+
+#### Current state (3) — requires `RuntimeInspect`
+
+| Command | Description |
+|---|---|
+| 🆓 `ListBehaviorTreeAgents` | Lists the actors of the target play world that are running a behavior tree, with the behavior tree component of each and whether its tree is paused. A paused tree is listed; a tree that was stopped or never started is not. `MaxEntries` 1–4096 (default 256). The response carries `AgentCount`, `AgentsTotalCount` and `AgentsTruncated`; the artifact holds every agent. A world with no AI system, such as a client side play world, answers with an empty list. While the engine state may be half updated (a modal dialog or a long running task holds the game loop, or the world is in the middle of its tick) nothing is read and `Availability` is `NotAtSafePoint`. Use the names it returns as `ActorIdentifier` of the other commands |
+| 🆓 `GetActiveBehaviorTreeNode` | The active node of one actor's behavior tree and the path from it to the root, with `IsRunning` and `IsPaused`. The light form of `DumpBehaviorTreeState`: no description, no verdict and no Blackboard is read or returned. The response and the artifact hold the same result |
+| 🆓 `DumpBehaviorTreeState` | Everything the default observation may say about one actor's behavior tree. `IsRunning`, `IsPaused`, `IsRestartPending` and `IsAbortPending`; the stack of tree instances (a subtree is a further instance), each with its `TreeAsset`, the active node and its path to the root, `ActiveNodeType` (`Composite`, `ActiveTask`, `AbortingTask` or `InactiveTask`), the active auxiliary nodes (decorators and services) and the parallel tasks with their `Status`; and the Blackboard key definitions, which are returned whenever the Blackboard can be reached, also when the tree is not running. Every node carries `InstanceIndex`, `TreeAsset`, `ExecutionIndex`, `NodeName`, `ClassPath` and `NodeRole`. For a node the default observation may describe it adds `StaticDescription`, `RuntimeDescription` and, for a decorator on the path from the active node to the root and for an active auxiliary decorator, `Verdict` (`Passed`, `Failed` or `Unknown`). For every other node it says why they are left out — `DescriptionOmittedReason` / `VerdictUnknownReason` — and which capabilities would produce them (`RequiresCapabilities[]`); see [What the default observation leaves out](#what-the-default-observation-leaves-out). `MaxEntries` 1–4096 (default 256) bounds the described nodes. Data holds the leading entries of each list and the artifact holds all of them. Returns a degraded result, not an error, when the tree has not been started (`Availability: NotRunning`) or the engine state may be half updated and was not read (`NotAtSafePoint`) |
+
+#### Blackboard values (1) — requires `RuntimeInspect` and `BlackboardValueRead`
+
+| Command | Description |
+|---|---|
+| 🆓 `GetBlackboardValues` | The value of every key of one actor's Blackboard, together with the full descriptions of the running nodes that print Blackboard values. Standard key types come back as typed values (`Bool`, `Int`, `Float`, `Name`, `String`, `Vector`, `Rotator`, `Enum`, `NativeEnum`, `Object`, `Class`, `Struct`); an `Object` or `Class` key tells an empty reference (`Empty`) from a live one (`Live`) and a destroyed one (`Destroyed`); a `Struct` key is rendered field by field within fixed bounds, without calling any export function of the struct. A key of a type the project defines is reported by type name only, with `RequiresCapabilities: ["AIBehaviorProjectCodeExecution"]` (`NotInThisEdition` in the demo). A node whose description cannot be produced here is listed with the reason and the capability that would produce it. `MaxEntries` 1–4096 (default 256) bounds the keys. A Blackboard component that runs with no Blackboard asset answers with no keys and `BlackboardAvailability: NoAsset`; an actor with no Blackboard component is `NotFound`. See [Reading Blackboard values](#reading-blackboard-values) |
+
+#### Project code (1) — requires `RuntimeInspect`, `BlackboardValueRead` and `AIBehaviorProjectCodeExecution`
+
+Not provided in the demo build.
+
+| Command | Description |
+|---|---|
+| `DescribeBehaviorTreeWithProjectCode` | Describes what the other commands leave out because producing it runs project code, for one actor: the static and runtime descriptions of project and Blueprint nodes, the verdicts of engine decorators that reach project code, the runtime descriptions and verdicts of a behavior tree component class the project derived, and the values of the Blackboard keys whose type the project defines. Only running nodes that one of those outputs applies to are listed. Outputs that no command produces, because the engine code behind them has not been verified, are never called and are listed with the reason (`EngineCallNotVerified`). `MaxEntries` 1–4096 (default 256) bounds the described nodes; a node past the bound is not called. ⚠️ **It runs project code, which may change the tree while it runs.** The tree is checked again before every call; a node that stops running is skipped and reported with `NodeDeactivatedDuringProjectCode`, and a tree or Blackboard that changes (the tree is stopped, the Blackboard asset is replaced, a key is retyped, an actor key now points at another actor) stops the description with `TreeChangedDuringProjectCode`, returning what was produced until then. A Blackboard value that is merely rewritten does not stop it; the descriptions that follow use the new value. Not read-only: it is refused with `PolicyViolation` under the safety policy's read-only mode, and with `NotAllowed` while a modal dialog or a long running task holds the game loop (if the operator's starved-tick allow list lets it run then anyway, it reads nothing and reports `NotAtSafePoint`). An actor with no behavior tree component is `NotFound` |
+
+#### Recording (3) — requires `RuntimeInspect`
+
+A recording belongs to the session that started it: another session sees `NotFound` for its id, without being told whether it exists. A recording reads the tree once per world tick, after every actor has ticked, and keeps what changed — not Blackboard values.
+
+| Command | Description |
+|---|---|
+| 🆓 `StartBehaviorTreeCapture` | Starts recording how one actor's behavior tree changes over time, into a capture owned by the calling session, and returns its `CaptureId`. The tree may be stopped or not started yet: its start is recorded when it happens. `MaxDurationSeconds` (1–600, default 120), `BufferCapacity` (64–16384, default 4096; the number of entries kept before the oldest are dropped and counted) and `ReplaceExisting` (default `false`, which refuses a second recording of the same component and names the first; `true` stops that capture and starts a new one). A session records at most 8 behavior trees at once, a world holds at most 32 recording captures across all sessions, and a stopped capture is kept for 30 minutes. The first entry is the `Baseline`, the state when the recording started. If the engine state may be half updated at that moment, the recording still starts, the Baseline is taken at the first read after the game ticks and the response says `BaselinePending: true`. A recording stops by itself at `MaxDurationSeconds`, when the play session ends or when the component is destroyed. Fails with `NotFound` when the actor has no behavior tree component |
+| 🆓 `GetBehaviorTreeEventLog` | Reads the entries of a capture, oldest first, from `SinceSequence` on (default 0). `CaptureId` (required) is the id `StartBehaviorTreeCapture` returned. `MaxEntries` 1–4096 (default 256). Data holds the first 50 entries of the read; the artifact holds every entry of it, and `NextSequence` is the `SinceSequence` that continues after the artifact's last entry. `bGap` is true when entries at or after `SinceSequence` were dropped before they could be read; `DroppedCount` counts the entries dropped by the capacity of the capture or by the bound on the entries one read of the tree may produce. The response also carries the capture's `State`, why it stopped (`EndReason`), `OldestAvailableSequence`, `BaselinePending`, `RecordingSeconds` and `Limitations[]`. Works after the play session ended. Fails with `NotFound` for an unknown, expired or foreign `CaptureId`, without telling which |
+| 🆓 `StopBehaviorTreeCapture` | Stops a capture and returns its final state: why it stopped, whether the Baseline was taken, the recording seconds and the sequence bookkeeping. Stopping a capture that already stopped succeeds and keeps the reason it first stopped with (`Stopped`, `DurationLimit`, `WorldTornDown`, `Replaced` or `TargetDestroyed`). Works after the play session ended; a session keeps at most 4 stopped captures and drops the oldest first. Fails with `NotFound` for an unknown, expired or foreign `CaptureId`, without telling which |
+
+#### What the default observation leaves out
+
+`DumpBehaviorTreeState` and the recording describe a node only when it is known to be safe: the node class must be one the plugin has checked, and every Blackboard key it refers to must be of a standard type. For every other node the description is left empty, its verdict is `Unknown`, and the response gives the reason and the permission that would produce it:
+
+| Reason (`DescriptionOmittedReason` / `VerdictUnknownReason`) | Meaning | Where to read it |
+|---|---|---|
+| `BlackboardValueReadRequired` | The description would print a Blackboard value — an engine node that shows a key's value, or a parameter bound to a Blackboard key whose remaining time or similar is derived from the value | `GetBlackboardValues` (needs `BlackboardValueRead`) |
+| `ProjectCodeExecutionRequired` | Producing it runs project code — a node the project or a Blueprint defined; a node that refers to a key of a project-defined type, struct or enum; an engine decorator whose verdict calls into a project object (for example one that asks the actor a Blackboard key points at for its gameplay tags) | `DescribeBehaviorTreeWithProjectCode` (needs `AIBehaviorProjectCodeExecution`) |
+| `ProjectDerivedComponent` | The tree runs in a behavior tree component class the project derived, whose runtime descriptions and verdicts cannot be trusted to be the engine's | `DescribeBehaviorTreeWithProjectCode` |
+| `EngineCallNotVerified` | An engine node whose description or verdict has not been checked to be safe to call, or is known to be unsafe (for example the runtime description of a loop decorator). No command calls it | None |
+| `NodeMemoryUnavailable` | The memory the node keeps for the running tree could not be reached, so the node was not asked | None |
+
+A node bound to a Blackboard key whose type cannot be confirmed — the behavior tree component has no Blackboard asset, the key is missing from the asset, or the type the node expects differs from the key's type — is `EngineCallNotVerified` rather than a permission reason, because granting a permission would not make it readable. In the demo build, `RequiresCapabilities` never names `AIBehaviorProjectCodeExecution`; it says `NotInThisEdition`.
+
+#### Reading Blackboard values
+
+- **`IsSet` in the key definitions** (`DumpBehaviorTreeState`, `GetBlackboardValues`) is `true` or `false` for `Vector`, `Rotator`, `Object` and `Class` keys, and `null` (unknown) for every other type, because a zero or empty value cannot be told from an unset one. For `Object` and `Class`, a reference that points at a destroyed object counts as not set; `GetBlackboardValues` tells an empty reference from a destroyed one. The `Limitations` entry `IsSetNotDeterminable` says so.
+- **Struct keys** are rendered field by field. A nested struct is expanded one level further; a deeper one is written as its type name. A struct of a kind chosen at run time (an instanced struct or property bag) nested in a struct is not expanded, and `NestedInstancedStructNotExpanded` says so.
+- **Enum keys** carry the number and the name of the entry. For an enum defined in Blueprint, the name is the internal name, not the display name set in the editor (`UserDefinedEnumNamesAreInternal`). An obsolete native enum key (deprecated by the engine) holds no value area, so it is reported with a `ValueOmittedReason` instead of a value.
+- **Bounds.** A container inside a struct key keeps its first 32 elements, a string is cut at 1024 characters, a key's value is limited to 64 KiB and one response to 256 KiB; what does not fit is cut or left out and marked. A reference is written as a path and never followed.
+- **A Blackboard component with no asset** answers `BlackboardAvailability: NoAsset` with no keys; **no Blackboard component** is `NoComponent` in `DumpBehaviorTreeState` and `NotFound` in `GetBlackboardValues`.
+
+#### Matching a runtime node to the editor asset
+
+A node in a runtime response is identified by its `TreeAsset` and its `ExecutionIndex`. The same number is reported by the Editor commands `GetBehaviorTreeNodeList` and `GetBehaviorTreeSubtree` ([`UAIP.Editor.BehaviorTree`](#uaipeditorbehaviortree)), for the asset as it would run as a top-level tree, without opening PIE and without saving the asset. Look the runtime pair up there to find the node in the asset. The number of `GetBehaviorTreeNodeProperties` is a different value and is not for matching.
+
+A node without a number carries `ExecutionIndex: null` and `ExecutionIndexUnavailableReason`, which is one of:
+
+| `ExecutionIndexUnavailableReason` | Meaning |
+|---|---|
+| `ContextDependentInjectedDecorator` | A decorator on the root of the asset. It runs only when another tree calls this one, and its number depends on the calling tree, so look it up on the calling asset instead |
+| `NotInCompiledTree` | The node is in the graph but not yet in the tree the asset runs, for example right after it was added |
+
+#### Fields in every behavior tree response
+
+| Field | Meaning |
+|---|---|
+| `CapturedAt`, `Frame`, `NetMode`, `WorldContext`, `PIEInstance`, `WorldTimeSeconds` | When and where the state was read: ISO 8601 UTC time, the engine frame number, the net mode and world context, the PIE instance (omitted outside PIE) and the world time |
+| `Actor`, `Component` | The actor and the behavior tree component that were observed |
+| `Availability` | `Running`, `NotRunning` (the tree has not been started or was stopped; the instances and nodes are empty, the Blackboard key definitions are still returned) or `NotAtSafePoint` (the engine state may be half updated, so nothing was read; call again once dialogs and loading have finished). A paused tree is `Running` with `IsPaused: true`. `AvailabilityReason` says why in words |
+| `BlackboardAvailability` | `Available`, `NoAsset`, `NoComponent` or `NotAtSafePoint` |
+| `Limitations[]` | Caveats about what was returned, each with `Code` and sometimes `Detail` |
+
+`Limitations[].Code` takes one of:
+
+| `Code` | Meaning |
+|---|---|
+| `InstanceWithoutTasksNotVisible` | A tree instance (subtree level) that holds no task is not visible. Reported when it can be detected; not every such arrangement can |
+| `SubTickTransitionsNotVisible` | A recording reads the tree once per tick, so when the tree moves several times within one frame only the last state is seen |
+| `ReasonNotRecorded` | A recording says what changed, not why |
+| `NotPolledWhileWorldPaused` | A recording is not read while the game is paused; what changed meanwhile shows up together after it resumes |
+| `BaselineNotTaken` | The recording stopped before its first read, so it has no `Baseline` entry |
+| `NodeDeactivatedDuringProjectCode` | `DescribeBehaviorTreeWithProjectCode` skipped a node that stopped running while project code ran |
+| `TreeChangedDuringProjectCode` | `DescribeBehaviorTreeWithProjectCode` stopped because project code changed the tree or the Blackboard; the response holds what was produced until then |
+| `NotAtSafePoint` | The engine state may have been half updated, so it was not read |
+| `NestedInstancedStructNotExpanded` | A struct of a kind chosen at run time inside a struct value is not expanded |
+| `IsSetNotDeterminable` | `IsSet` is `null` for key types whose unset state cannot be told from a zero value |
+| `UserDefinedEnumNamesAreInternal` | The name of a Blueprint-defined enum entry is its internal name |
+
+A recording entry carries `Sequence`, the frame, the time and a `Kind`: `Baseline`, `TreeStarted`, `TreeStopped`, `Paused`, `Resumed`, `InstancePushed`, `InstancePopped`, `ActiveNodeChanged`, `ActiveNodeTypeChanged`, `AuxNodeActivated`, `AuxNodeDeactivated`, `ParallelTaskChanged`, `RestartPendingChanged` and `AbortPendingChanged`. A `Baseline` entry holds the tree state in `Snapshot`; a `Baseline` taken at the first read after the start, rather than at the start itself, is marked `Deferred`.
+
+#### Errors
+
+| ErrorCode | When |
+|---|---|
+| `InvalidParams` | A parameter is missing, of the wrong type, out of range or unknown; `TargetNetRole` / `TargetPIEInstance` cannot be honoured. Out-of-range recording durations, capacities and limits are refused, never rounded |
+| `NotAllowed` | No play world is running (`PIE is not running.`), or none matches `TargetNetRole` / `TargetPIEInstance`; a recording limit (per session or per world) is reached, or the component is already recorded and `ReplaceExisting` is not set; `DescribeBehaviorTreeWithProjectCode` while a modal dialog or a long running task holds the game loop |
+| `NotFound` | No actor matches the identifier (in a client side world, the server candidates are named in the message); the actor and the controller or pawn it is paired with have no behavior tree or Blackboard component; an unknown, expired, malformed or foreign `CaptureId` |
+| `ExecutionFailed` | More than one actor matches the identifier; the artifact could not be written (for `StartBehaviorTreeCapture` and `StopBehaviorTreeCapture` only when the save location itself cannot be resolved) |
+| `CapabilityNotAvailable` | `RuntimeInspect`, `BlackboardValueRead` or `AIBehaviorProjectCodeExecution` is not granted. The message names the missing ones |
+| `PolicyViolation` | A required capability is denied by the safety policy, or `DescribeBehaviorTreeWithProjectCode` is called in read-only mode |
+
+Every successful call saves exactly one JSON artifact (the recording commands `StartBehaviorTreeCapture` and `StopBehaviorTreeCapture` save a supporting one); a failed call saves none.
+
+---
+
+## UAIP.Runtime.StateTree 🧩
+
+Observe the StateTree an AI runs: which states are active, which tasks run, which delayed transitions are waiting, how the tree moved over time and — when you allow it — the values it holds. Requires the `StateTree` and `GameplayStateTree` plugins. If either is disabled the commands are not registered, and calling one returns `CommandNotFound` naming the plugin; `UAIP.Core.ListIntegrations` reports the state. Not provided in the demo build. Every command only reads. The commands act on the `UStateTreeComponent` family (including `UStateTreeAIComponent`) of an actor in a play world and accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on) — except `GetStateTreeEventLog` and `StopStateTreeCapture`, which take a `CaptureId` and never look up a play world, so they still work after the play session ended.
+
+**Capabilities.** All seven require `RuntimeInspect` (DefaultAllow). `DumpStateTreeInstanceData` also requires `StateTreeInstanceDataDump` (DefaultDenied), because the values of a tree's parameters and nodes are project data. A missing one is `CapabilityNotAvailable`. See [Safety & Capabilities](safety.md#runtime-statetree-observation).
+
+**Finding the component.** `ActorIdentifier` is the label or object name of the actor. The component is looked for on that actor; if it has none, on the AI controller of a pawn, or the pawn of an AI controller (a `UStateTreeAIComponent` usually sits on the controller and a `UStateTreeComponent` on the pawn). When several components are found, `ComponentName` (the component's object name) must choose one: without it the command fails with `InvalidParams` and lists the candidates, and a name that matches none is `NotFound` with the candidates. `ListStateTreeComponents` returns the names to use.
+
+**A component class the project derived is not read.** The engine offers no way to verify that such a class runs its tree the way the engine component does, and reading it wrongly would switch off the engine's own validation. The observation commands succeed without reading it and say so (`Availability: ProjectDerivedComponent`, and `ProjectDerivedComponentNotVerified` in `Limitations`); `ListStateTreeComponents` lists it with `RunStatus: null` and the reason. `StartStateTreeCapture` can record it, but if the class runs the tree under another owner or tree, nothing is recorded.
+
+#### Current state (3) — requires `RuntimeInspect`
+
+| Command | Description |
+|---|---|
+| `ListStateTreeComponents` 🧩 | Lists the StateTree components of the actors of the target play world: the actor, the component, its class, the tree asset it is set to run and its `RunStatus`. The run status of a component that is not read (a class the project derived, or a tree that is not linked) is `null`, with `RunStatusUnavailableReason`. `MaxEntries` 1–4096 (default 256). Data holds the leading components and the artifact holds all of them. While the engine state may be half updated (a modal dialog or a long running task holds the game loop, or the world is in the middle of its tick) the actors are not walked at all, no list is returned and `Availability` is `NotAtSafePoint` |
+| `GetActiveStateTreeState` 🧩 | The active states of one component's StateTree: the `RunStatus` and, for each frame of the active frame stack, the tree asset and the path from the root to each active state. The light form of `DumpStateTreeState`: no tasks, delayed transitions or next tick. Data and the artifact hold the same content |
+| `DumpStateTreeState` 🧩 | One component's StateTree in full: `RunStatus` (`Running`, `Stopped`, `Succeeded`, `Failed` or `Unset`) and `LastTickStatus`; the `Frames[]` of the active frame stack, each with the tree asset and the active states (name, tag, `StateType` — `State`, `Group`, `Linked`, `LinkedAsset` or `Subtree` — and path); the tasks of the active states with their `Status`; the delayed transitions that are waiting, with the target state and the `RemainingSeconds`; and `NextScheduledTickSeconds`. Data holds the leading frames and the artifact holds all of them. Returns a degraded result, not an error, when the tree has not been started, the component has no tree or is not ready to run, the component is of a class the project derived, or the engine state may be half updated and was not read |
+
+#### Instance data (1) — requires `RuntimeInspect` and `StateTreeInstanceDataDump`
+
+| Command | Description |
+|---|---|
+| `DumpStateTreeInstanceData` 🧩 | The values one component holds: the parameters of the tree, the parameters of each active state and the instance data of each active node, as blocks of properties with their values (`Blocks[]`, each with a `BlockKind`). The values are read by reflection and no function of a node or other project type runs. A struct is expanded one level, an array, set or map keeps its leading elements, a long string is cut and a value that does not fit the byte budgets is cut or left out (`bOmitted`); each cut is reported beside the count before it. A struct of a kind chosen at run time nested in a struct is not expanded (`NestedInstancedStructNotExpanded`). `MaxEntries` 1–4096 (default 256) bounds the blocks. Data holds the leading blocks and the artifact holds all of them. Degrades like `DumpStateTreeState`. See [Safety & Capabilities](safety.md#runtime-statetree-observation) for what comes out |
+
+#### Recording (3) — requires `RuntimeInspect`
+
+A recording belongs to the session that started it: another session sees `NotFound` for its id, without being told whether it exists.
+
+| Command | Description |
+|---|---|
+| `StartStateTreeCapture` 🧩 | Starts recording what one component's StateTree does over time, into a capture owned by the calling session, and returns its `CaptureId`. A recording is made from the engine's StateTree debug notifications. `Kinds` keeps only some of the entry kinds (default: all; an empty list or an unknown kind is `InvalidParams`); the kinds are `StateEntered`, `StateExited`, `StateCompleted`, `StateSelected`, `Transition` and `EventSent`. `MaxDurationSeconds` (1–600, default 120), `BufferCapacity` (64–16384, default 4096) and `ReplaceExisting` (default `false`) work as in `StartBehaviorTreeCapture`; a session records at most 8 StateTree components at once, a world holds at most 32 recording captures across all sessions, and a stopped capture is kept for 30 minutes. A tree that has not been started, or whose instance data is not initialized yet, can be recorded, and what it does once it starts is recorded. A recording stops by itself at `MaxDurationSeconds`, when the play session ends, when the component is destroyed or when it is set to run another tree (`TargetChanged`). **Fails with `NotAllowed`** at a moment that is not a safe point (call again once dialogs and loading have finished), when the component has no StateTree set (set one, then start again), and in a build whose engine provides no StateTree debug notifications (use an editor build, Development or DebugGame; the other commands are not affected). Fails with `NotFound` when the actor has no StateTree component |
+| `GetStateTreeEventLog` 🧩 | Reads the entries of a capture, oldest first, from `SinceSequence` on (default 0). `CaptureId` (required) is the id `StartStateTreeCapture` returned. `MaxEntries` 1–4096 (default 256). Data holds the first 50 entries of the read; the artifact holds every entry of it, and `NextSequence` is the `SinceSequence` that continues after the artifact's last entry. `bGap` and `DroppedCount` work as in `GetBehaviorTreeEventLog`. The response also carries the capture's state, why it stopped, the recording seconds and `Limitations[]`. Works after the play session ended, and in a build whose engine provides no debug notifications. Fails with `NotFound` for an unknown, expired or foreign `CaptureId`, without telling which |
+| `StopStateTreeCapture` 🧩 | Stops a capture and returns its final state: why it stopped, the recording seconds and the sequence bookkeeping. Stopping a capture that already stopped succeeds and keeps the reason it first stopped with (`Stopped`, `DurationLimit`, `WorldTornDown`, `Replaced`, `TargetDestroyed` or `TargetChanged`). Works after the play session ended; a session keeps at most 4 stopped captures and drops the oldest first. Fails with `NotFound` for an unknown, expired or foreign `CaptureId`, without telling which |
+
+What the entry kinds mean — some differ from what their names suggest:
+
+| `Kind` | Meaning |
+|---|---|
+| `StateEntered` / `StateExited` | A state was entered or left. Also recorded when the same state is selected again and nothing actually changes |
+| `StateCompleted` | A state completed. One completion is recorded for every state on the active path |
+| `StateSelected` | A state was selected. This is the notification at the time the selection was tried, and the selection may be cancelled afterwards. The state is named from the tree of the frame it was selected in; when that tree cannot be told for certain, or is a linked asset the recording did not register, the entry carries only the state's number and no name |
+| `Transition` | A transition was taken: the source state (when known, `SourceState`), the target state, the `Trigger` kind (`OnStateCompleted`, `OnStateSucceeded`, `OnStateFailed`, `OnTick`, `OnEvent` or `OnDelegate`), the `RequiredEventTag` the transition is set up to wait for, the `Priority`, the `DelaySeconds`, and the `SourceType` (`Asset`, `ExternalRequest` or `Internal`). Starting or stopping the tree and a forced transition change the state without being recorded as a transition; only the entered and exited entries remain |
+| `EventSent` | An event was sent to the tree: its `EventTag` and the type name of its payload (`EventPayloadType`). The payload value is never recorded |
+
+The time a state has been active is not stored anywhere; compute it from the time of its `StateEntered` entry.
+
+#### Fields in every StateTree response
+
+| Field | Meaning |
+|---|---|
+| `CapturedAt`, `Frame`, `NetMode`, `WorldContext`, `PIEInstance`, `WorldTimeSeconds` | When and where the state was read, as for the behavior tree commands |
+| `Actor`, `Component`, `TreeAssetPath` | The actor, the StateTree component and the tree asset that were observed |
+| `Availability` | `Running`, `NotRunning` (the tree has not been started), `NoTree` (the component has no tree), `NotInitialized` (the instance data is not initialized), `Unreadable` (the component could not be read — no owner, being destroyed, or an internal engine item that is no longer there; not the same as `NotInitialized`), `ProjectDerivedComponent` or `NotAtSafePoint`. `AvailabilityReason` says why in words |
+| `Limitations[]` | Caveats about what was returned, each with `Code` and sometimes `Detail` |
+
+`Limitations[].Code` takes one of:
+
+| `Code` | Meaning |
+|---|---|
+| `ProjectDerivedComponentNotVerified` | The component class is derived by the project. For an observation the state was not read; for a recording, nothing may be recorded if the class runs its tree under another owner or tree |
+| `NotAtSafePoint` | The engine state may have been half updated, so it was not read |
+| `EventSentMatchedByOwnerAndTree` | An event is matched to a recording by its owner and tree only, so an event sent to another run of the same tree on the same owner (several components, or the same tree run inside a behavior tree task) is recorded as well |
+| `TriggeringEventNotRecorded` | The event that actually fired a transition is not recorded; a transition names only the event it is set up to wait for. The `EventSent` entry just before it is the clue |
+| `NestedInstancedStructNotExpanded` | A struct of a kind chosen at run time inside a struct value is not expanded |
+| `TreeNotStarted` | The tree has not been started, so there is no state to report |
+
+While a StateTree recording runs, every StateTree debug notification in the process costs a small amount of work, so the StateTree runs that much slower, and the notifications of StateTrees running on several threads are handled one at a time. Record only what you need and stop the recording when it is done.
+
+#### Errors
+
+| ErrorCode | When |
+|---|---|
+| `InvalidParams` | A parameter is missing, of the wrong type, out of range or unknown; `Kinds` is empty or names an unknown kind; the actor has several StateTree components and `ComponentName` is missing (the candidates are listed) |
+| `NotAllowed` | No play world is running, or none matches `TargetNetRole` / `TargetPIEInstance`; `StartStateTreeCapture` at a moment that is not a safe point, on a component with no tree, or in a build without StateTree debug notifications; a recording limit is reached, or the component is already recorded and `ReplaceExisting` is not set |
+| `NotFound` | No actor matches the identifier; the actor and the controller or pawn it is paired with have no StateTree component; `ComponentName` matches none of the candidates; an unknown, expired, malformed or foreign `CaptureId` |
+| `ExecutionFailed` | More than one actor matches the identifier; the artifact could not be written |
+| `CapabilityNotAvailable` | `RuntimeInspect` or, for `DumpStateTreeInstanceData`, `StateTreeInstanceDataDump` is not granted |
+| `PolicyViolation` | A required capability is denied by the safety policy |
+
+Every successful call saves exactly one JSON artifact (the recording commands `StartStateTreeCapture` and `StopStateTreeCapture` save a supporting one); a failed call saves none.
 
 ---
 
@@ -4750,4 +4951,4 @@ Any step in a scenario is dispatched through the same `CommandDispatcher` as `ua
 
 ---
 
-> Schemas and parameter details are intentionally omitted from this page. Use `uaip_describe_command(CommandName="...")` to get the full schema for any command.
+> Schemas and parameter details are intentionally omitted from this page. Get the full schema for any command with `{"Command": "UAIP.Core.DescribeCommand", "Params": {"Name": "<command name>"}}` over HTTP / WebSocket / CLI, or `uaip_describe_command(CommandName="<command name>")` over MCP (the argument is `Name` in the first form and `CommandName` in the second).
