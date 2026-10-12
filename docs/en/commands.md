@@ -155,6 +155,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Runtime Chaos Destruction | `UAIP.Runtime.ChaosDestruction` | 8 | — | partial (7/8) |
 | Runtime Navigation | `UAIP.Runtime.Navigation` | 8 | — | partial (7/8) |
 | Runtime Animation | `UAIP.Runtime.Animation` | 7 | — | partial (6/7) |
+| Runtime Network | `UAIP.Runtime.Network` | 7 | — | partial (3/7) |
 
 ---
 
@@ -354,6 +355,7 @@ Two limits worth knowing:
 | `UAIP.Runtime.ChaosDestruction` | `ListGeometryCollections`, `DumpGeometryCollectionState`, `DumpChaosFieldState`, `StartDestructionCapture`, `CaptureGeometryCollectionStrain` |
 | `UAIP.Runtime.Navigation` | `DumpNavigationSystemState`, `FindPath`, `IsLocationReachable`, `DumpNavMeshTiles`, `QueryNavModifiers`, `GetPathFollowingState`, `WaitForNavigationBuild`, `RebuildNavigation` |
 | `UAIP.Runtime.Animation` | `DumpAnimInstanceState`, `GetAnimStateMachineStates`, `GetAnimBlendWeights`, `GetActiveMontages`, `GetAnimCurveValues`, `DumpAnimInstanceVariables`, `GetMotionMatchingState` |
+| `UAIP.Runtime.Network` | `GetNetDriverState`, `ListNetConnections`, `DumpActorReplication`, `DumpReplicatedPropertyValues`, `CompareReplicatedProperties`, `SetNetworkEmulation`, `ResetNetworkEmulation` |
 
 `CheckpointCapture` is the one entry above that does not resolve a world of its own: it is composed of `CaptureViewportImage` and `DumpWorldState`, and hands whatever target you name to both of them. That is what keeps the screenshot and the state dump inside one checkpoint describing the same world, instead of two worlds the engine happened to pick separately.
 
@@ -407,6 +409,19 @@ System-level commands for discovery, health, and session management.
 | 🆓 `GetPendingInteractionStatus` | Reports where one pending interaction stands — `State`, `Cause`, `ElapsedSeconds`, `Prompt`, `Reason`, `Result` — without waiting for it to change. Requires the same explicitly given `SessionId` that started the interaction (an interactive command such as `DrawPCGSpline`); unknown, expired, and other-session all report `NotFound` identically |
 | 🆓 `WaitForPendingInteraction` | Blocks until a pending interaction leaves `AwaitingUser`, or until this call's own `TimeoutSeconds` ceiling is reached (default 30, range [1, 600]), whichever comes first; on timeout the interaction itself is unaffected and keeps waiting for the human. Up to 4 concurrent calls may watch the same interaction, but reaching more than one requires `[UAIP.Transport] AllowConcurrentPassiveWaits` — see [Configuration](config.md) |
 | 🆓 `CancelPendingInteraction` | Cancels a pending interaction the calling session started, without waiting for the human to act. An interaction already `Completed` is answered with `Success` rather than an error; the capabilities the starting command declared are re-checked against the session's current capability set; one the session no longer holds is refused with `CapabilityNotAvailable`, or with `PolicyViolation` when the operator has denied it explicitly in `DeniedCapabilities` |
+
+### Sensitive values and where they are masked
+
+`DescribeCommand` reports, for each command, the values UAIP keeps out of its own records:
+
+- `SensitiveParams` — top-level parameter names, for example `Text` for `TypeGameViewportText`.
+- `SensitiveResponseData` — positions in the response `Data`, written as dot paths in which `[]` stands for every element of an array: `PasswordFieldValues` (a top-level field of `DumpGameViewportWidgetTexts`), `Connections[].RemoteAddress` (`ListNetConnections`), and `Properties[].Value` and `Components[].Properties[].Value` (`DumpReplicatedPropertyValues`). A plain name is a top-level field, so a list written before nested paths existed reads the same.
+
+**Path syntax.** Segments are separated by `.`; each segment is a non-empty field name followed by zero or more `[]`. A field name may not contain `.`, `[` or `]`, and there is no index syntax (`[0]`). Field names are matched ignoring case. A path that reaches a field the response does not have, a `null`, or an empty array masks nothing there and adds nothing.
+
+**Where values are masked.** In the completion notification the editor raises after every command, which the editor's own notifications and any code that records commands (audit records, logs) receive. Each value at a declared position becomes the string `"<redacted>"`, whatever its type (`null`, an object or an array included) and without its length. When the response does not have the shape the path describes, the value is masked rather than skipped: something other than an array (and not `null`) at a `[]` position, or something other than an object (and not `null`) where the path reads a field — for example a string or an array at `A` of `A.B` — is masked whole. When the declaration cannot be relied on, the whole `Data` is masked instead, keeping the top-level field names: when a declared path is malformed (the editor also logs an error when the command is registered), and when the command cannot be resolved at all (an unknown name, or a command unregistered while it ran). In a [scenario](scenario.md), a step that takes a masked value — or the array or object holding it — from an earlier step's response with a `${...}` template is recorded with all of its parameters and response `Data` masked, and so is every step that value is passed on to; the step itself still receives the real value.
+
+**Where values are not masked.** The response returned to the caller (MCP, HTTP, WebSocket, CLI, and each step of a scenario result) and the artifacts a command saves keep the original values: the caller asked for them, behind whatever capability the command requires. An artifact stays on disk until artifact garbage collection removes it.
 
 ---
 
@@ -3824,7 +3839,7 @@ When a key was pressed and the game saw it go down before the press stopped, the
 - **Split screen.** The tree and the focus report the screen area of each local player. Keys and text go as the player you name; clicks always go as the mouse user.
 - **Several PIE instances in one process.** The input is sent only into the selected world's viewport, but part of the input path (CommonUI's global handling) is shared across PIE instances. With "route gamepad to second window" on, a gamepad key can reach another PIE; `ReachedGameViewport` is then `Unknown`. Two game menus open in different PIE instances at once may not be told apart.
 - **No rendering (`-nullrhi`).** The tree has no rectangles and operations are refused with `NotAllowed` (waiting does not help); right after start, before anything has been drawn, it is `PreconditionFailed`.
-- **Sensitive values.** `DescribeCommand` lists the parameters that are masked in notifications and audit records (`SensitiveParams`; `Text` for `TypeGameViewportText`) and the response fields masked likewise (`SensitiveResponseData`; the password field values of `DumpGameViewportWidgetTexts`). Subscribers and audit records receive `"<redacted>"`, without even the length; if the masked set cannot be determined, the whole parameter set is masked. In a scenario, a step that embeds such a value taken from an earlier step's response is masked in full, and so are the steps it is passed on to; a file the target command saves as its result is not covered.
+- **Sensitive values.** `DescribeCommand` lists the parameters that are masked in notifications and audit records (`SensitiveParams`; `Text` for `TypeGameViewportText`) and the response fields masked likewise (`SensitiveResponseData`; the password field values of `DumpGameViewportWidgetTexts`). Subscribers and audit records receive `"<redacted>"`, without even the length; if the parameters to mask cannot be determined, the whole parameter set is masked, and if the response fields to mask cannot be determined, the whole response `Data` is masked, keeping its top-level field names. In a scenario, a step that embeds such a value taken from an earlier step's response is masked in full, and so are the steps it is passed on to; a file the target command saves as its result is not covered. See [Sensitive values and where they are masked](#sensitive-values-and-where-they-are-masked).
 - **The CLI keeps what you pass it.** A text given on the command line (`-uaip-request=`) or in a request file (`-uaip-request-file=`), and a response file, stays there: UAIP does not mask a file or command line that the caller chose. Keep secrets out of those, or use HTTP / MCP.
 
 ## UAIP.Runtime.Niagara 🧩
@@ -4572,6 +4587,151 @@ By default the main, linked and post process anim instances are all returned, ma
 | `ExecutionFailed` | More than one actor matches the identifier, or the artifact could not be saved |
 
 Every successful call saves exactly one JSON artifact; a failed call saves none.
+
+---
+
+## UAIP.Runtime.Network
+
+Observe the network of a running game: the net drivers of a world and their totals, the connections a net driver holds with their round trip time, loss and traffic, and how an actor is set up to replicate together with what the server knows about sending it. Beyond observation, read the values of replicated properties, compare them between the server and a client, and change the packet emulation that delays, drops, duplicates or reorders packets to reproduce a poor connection. Works while PIE is running, and in `-game` and packaged builds. All seven commands accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on), which pick the server world or one of the client worlds of a networked Play-in-Editor session.
+
+**Capabilities.** `GetNetDriverState`, `ListNetConnections`, `DumpActorReplication`, `DumpReplicatedPropertyValues` and `CompareReplicatedProperties` require `RuntimeInspect` (DefaultAllow). `DumpReplicatedPropertyValues` and `CompareReplicatedProperties` also require `RuntimeReplicatedPropertyValueRead` (DefaultDenied), because the values can include the platform account identifier of a player (the replicated `UniqueId` of a `PlayerState`) and the names of players. `ListNetConnections` additionally needs `RuntimeNetConnectionAddressRead` (DefaultDenied) **only when `IncludeRemoteAddress` is `true`**; that capability is checked per request and does not appear in the command's declared `RequiredCapabilities`. `SetNetworkEmulation` and `ResetNetworkEmulation` require `RuntimeNetworkEmulationControl` (DefaultDenied); they are not read-only, so they are refused while the safety policy is in read-only mode. A missing capability is `CapabilityNotAvailable` naming it. See [Safety & Capabilities](safety.md#runtime-network-and-replication).
+
+**Demo build.** `GetNetDriverState`, `ListNetConnections` and `DumpActorReplication` are provided in the demo binary, together with `RuntimeNetConnectionAddressRead`. `DumpReplicatedPropertyValues`, `CompareReplicatedProperties`, `SetNetworkEmulation`, `ResetNetworkEmulation` and their capabilities (`RuntimeReplicatedPropertyValueRead`, `RuntimeNetworkEmulationControl`) are not; in the demo those commands are absent and return `CommandNotFound`.
+
+**Shipping builds.** `SetNetworkEmulation`, `ResetNetworkEmulation` and `RuntimeNetworkEmulationControl` are registered only in builds that can use the engine's packet emulation. A Shipping build does not register them (`CommandNotFound`).
+
+**What a reading is.** An observation reads the state as it is when the call arrives and keeps no history, and no command waits for a connection to be made. To wait until clients have joined, call `GetNetDriverState` repeatedly and watch `LoggedInConnectionCount` on the server or `Availability` on a client. A connection number (`ConnectionIndex`) is the position of the connection in its net driver as `ListNetConnections` lists it: a server lists its client connections in the order the net driver keeps them, and a client lists its one connection to the server. A closed connection keeps its number until the net driver drops it, so the numbers can shift afterwards; list the connections again before using a number later. The connections of split-screen players beyond the first are not listed. A net driver name (`NetDriverName`) is matched ignoring case.
+
+**Iris.** Under the Iris replication system some items are read from structures that only the generic replication system has. They are returned as `null` and the response carries `Limitations: IrisReplicationActive`: `ActorChannelCount` of `ListNetConnections`, `Connections` and `NetworkObjectInfo` of `DumpActorReplication`, and, in `CompareReplicatedProperties`, the properties whose condition can change at run time, which become `NotComparable`. `GetNetDriverState` carries the same limitation when any of its net drivers uses Iris.
+
+### Observation (3) — requires `RuntimeInspect`
+
+| Command | Description |
+|---|---|
+| 🆓 `GetNetDriverState` | The net drivers of the target world. Takes no parameters besides the play world selector. `Availability.State` is `Available`, `Connecting` (a client still joining, `Reason: PendingNetGame`) or `Unavailable` (`Reason: NoNetDriver`: the world has no game net driver); `Reason` is left out while available. `RunAsDedicated` and `HasGameViewport` tell what kind of process the world runs in. Each entry of `NetDrivers[]` carries `NetDriverName`, `NetDriverDefinition`, `IsServer`, `ReplicationSystem` (`Generic` or `Iris`), `ConnectionCount`, `LoggedInConnectionCount`, `MaxClientRate`, `MaxInternetClientRate`, `MaxNetTickRate`, `NetServerMaxTickRate`, `ConnectionTimeoutSeconds`, `Totals` over its connections (`InBytesPerSecond`, `OutBytesPerSecond`, `InPacketsPerSecond`, `OutPacketsPerSecond`, `InLossRatioWeighted` / `OutLossRatioWeighted` weighted by the packets per second, `InLossRatioMax` / `OutLossRatioMax` of the worst connection, and `StatsReadyConnectionCount`, the connections whose statistics went into the sums), `MaxPlayers` / `MaxSpectators` (only for a server with a game session; left out otherwise), the net driver's `PacketSimulation` settings, `EmulationModifiedByUAIP` (whether `SetNetworkEmulation` holds saved settings of the net driver or one of its connections) and `EmulationDisabledByConfig` (whether the net driver ignores emulation settings by configuration). A world without a game net driver is a success: the other net drivers are still listed and `Availability` says why. The response and the artifact hold the same content |
+| 🆓 `ListNetConnections` | The connections of one net driver (`NetDriverName`, default `GameNetDriver`), a page at a time (`StartIndex`, `MaxEntries`). Each entry carries `ConnectionIndex`, `Direction` (`ToClient` or `ToServer`), `ConnectionState`, `ClientLoginState`, `LoggedIn`, `PlayerController`, `PlayerState`, `ConnectedSeconds`, `LastReceiveAgeSeconds`, `StatsReady`, `RttMs`, `RawPingMs`, `PlayerPingMs`, `JitterMs`, `InLossRatio`, `OutLossRatio`, `InLossRatioAvg`, `OutLossRatioAvg`, `InBytesPerSecond`, `OutBytesPerSecond`, `InPacketsPerSecond`, `OutPacketsPerSecond`, the cumulative `InTotalBytes`, `OutTotalBytes`, `InTotalPackets`, `OutTotalPackets`, `InTotalPacketsLost`, `OutTotalPacketsLost`, `CurrentNetSpeedBytesPerSecond`, `QueuedBits`, `IsNetReady`, `OpenChannelCount`, `ActorChannelCount`, the effective `PacketSimulation` of the connection and `AddressKind` (`Loopback`, `Private`, `Public`, or `Unknown` when the address is not 4 or 16 raw bytes). `RemoteAddress`, the raw IP address and port, is written only when `IncludeRemoteAddress` is `true`. While `StatsReady` is false the round trip time, the jitter, the four loss ratios and the four per-second values are `null`. `RttMs` is the average of the last statistics period, and the previous value is kept until the next period ends. The cumulative counters are 32-bit integers in the engine and can wrap around on a long session. The artifact holds the whole page with `TotalCount`, `ReturnedCount` and, while more connections remain, `NextStartIndex`; the response holds the same fields with the first 50 connections of the page and `Truncated: true` when the page holds more. A world without the game net driver is a success with an empty list when `NetDriverName` is left out, and `Availability` says why |
+| 🆓 `DumpActorReplication` | How one actor (`ActorIdentifier`) is set up to replicate and what the server knows about sending it. `Actor` carries `Name`, `Path` and `Class`. `Replication` carries `Replicates`, `LocalRole`, `RemoteRole`, `NetOwner`, `HasOwningConnection`, `NetDormancy`, `NetUpdateFrequency`, `MinNetUpdateFrequency`, `NetCullDistance` (the distance, not its square), `NetPriority`, `AlwaysRelevant`, `OnlyRelevantToOwner`, `IsNetStartupActor` and `ReplicateMovement`. `Properties[]` lists the replicated properties of the actor, and `Components[]` those of each replicated component, each with `Name`, `Type`, `DeclaredBy`, `ArrayDim`, `DeclaredCondition` (the condition name without the `COND_` prefix), `DeclaredRepNotifyCondition` (`OnChanged` or `Always`), `RepNotifyFunction` (`null` when there is none) and `PushBased`. On a server, `Connections[]` tells for each connection whether an actor channel is open (`ActorChannelOpen`), whether a change has been found and not sent yet (`HasUnsentComparedChanges`), which of the actor's own properties are inactive (`InactiveProperties`, `null` until the engine has evaluated them) and whether the last update was empty (`LastUpdateEmpty`), and `NetworkObjectInfo` carries `NextUpdateTime`, `LastNetReplicateTime`, `PendingNetUpdate` and `DormantConnectionCount`. `Connections` and `NetworkObjectInfo` are `null` on a client, under Iris, and in a world without a net driver (`Availability` says why). `HasUnsentComparedChanges: false` does not mean the client is in sync. A replicated property missing from the lifetime properties has `DeclaredCondition: null` and the response carries `Limitations: PropertyMissingFromLifetimeProps`. `MaxProperties` bounds the actor's and the components' properties together and `MaxConnections` the connections; a cut list reports `PropertiesTruncated` / `TotalPropertyCount` or `ConnectionsTruncated` / `TotalConnectionCount`. There is no paging. The response and the artifact hold the same content |
+
+### Observation of property values (2) — requires `RuntimeInspect` and `RuntimeReplicatedPropertyValueRead`
+
+Not provided in the demo build.
+
+| Command | Description |
+|---|---|
+| `DumpReplicatedPropertyValues` | The values of the replicated properties (only properties marked for replication) of one actor (`ActorIdentifier`) and of each of its replicated components, in the selected world. On a client world the values are those the client received, so calling it on the server world and on a client world lets the two be set side by side. `Actor` carries `Name`, `Path` and `Class`; the actor's properties sit in `Properties[]` (`Name`, `Type`, `Value`) and those of each component in its entry of `Components[]` (`Name` and the same fields). Long strings, large containers and nested structs are cut. Each object reports `PropertiesTruncated`, `PropertiesOmitted`, `TotalPropertyCount` and, when a size budget stopped it, `StopReason` (`PerObjectBudget`, `TotalBudget` or `ExternalBudget`); the top-level `Truncated` is `true` when any object was cut or had properties left out. A 64-bit integer is written as a string only when its magnitude is beyond 2^53, which a JSON number cannot hold exactly; ±2^53 itself is still a number. The values are returned even when the world has no net driver, with `Availability.State: Unavailable` (`Reason: NoNetDriver`). The response and the artifact hold the same content. ⚠️ **The values can include the replicated `UniqueId` of a `PlayerState` (a platform account identifier) and the names of players** — see [Safety & Capabilities](safety.md#runtime-network-and-replication) |
+| `CompareReplicatedProperties` | Compares the replicated properties of an actor in the server world with the same actor as one client received it, and reports for each property of the actor and its replicated components `Equal`, `Different` or `NotComparable` with a `Reason`. No value is returned. The play world selector names the **client** world; `ActorIdentifier` names the actor in the **server** world, which must be the only listen or dedicated server in this process (Play-in-Editor with **Run Under One Process**). See [Reading a comparison](#reading-a-comparison) below |
+
+### Packet emulation (2) — requires `RuntimeNetworkEmulationControl`
+
+Not provided in the demo build or in Shipping builds.
+
+| Command | Description |
+|---|---|
+| `SetNetworkEmulation` | Changes the packet emulation settings (latency, loss, jitter, duplication, reordering) of a net driver of the target play world, or of one of its connections when `ConnectionIndex` is given. Only the items given change; the others keep their current values. Without `ConnectionIndex` the settings of the whole net driver are changed and copied to every connection. The settings that were there before the first change are saved, so `ResetNetworkEmulation` can put them back. The change stays until it is reset or the net driver is destroyed (when the play session ends, or when a client reconnects after travelling to another map). The response carries `Availability`, `Target` (`PIEInstance`, `NetDriverName` and, when given, `ConnectionIndex`), `Before` and `After` (every item of the engine settings, including the read-only `PktFrameDelay`, `PktBufferBloatInMS`, `PktIncomingFrameDelay`, `PktIncomingBufferBloatInMS`, `PktLossMinSize` and `PktLossMaxSize`) and `Limitations[]`. See [Packet emulation](#packet-emulation) below |
+| `ResetNetworkEmulation` | Puts a net driver (`NetDriverName`, default `GameNetDriver`) and all its connections back to the settings saved before the first `SetNetworkEmulation` change, unconditionally: a change made afterwards from the console is lost as well. There is no reset of a single connection. The response carries `Availability`, `NetDriverName`, `Restored[]` (the net driver first, then the connections; each with `Scope` `Driver` or `Connection`, the `ConnectionIndex` of a connection — `null` when it is no longer numbered — and `After`), `Discarded` (the number of saved entries dropped because the net driver or connection no longer exists; an earlier call may already have dropped them) and `Limitations[]` (`ForcedPacketSettingsRemains` when the net driver itself was restored). Nothing to restore is a success with an empty `Restored`: a world without a game net driver when `NetDriverName` is left out, a net driver that was never changed, or settings saved in a play session that has already ended |
+
+#### Parameters
+
+| Parameter | Commands | Meaning |
+|---|---|---|
+| `NetDriverName` | `ListNetConnections`, `SetNetworkEmulation`, `ResetNetworkEmulation` | Name of the net driver as `GetNetDriverState` lists it, 1 to 256 characters, matched ignoring case. Default `GameNetDriver`. A name given explicitly that the world does not hold is `NotFound`, and the message lists the net drivers of the world |
+| `StartIndex` | `ListNetConnections` | Integer from 0 to the int32 maximum, default 0. The first connection of the page. A value at or beyond the number of connections returns an empty page |
+| `MaxEntries` | `ListNetConnections` | Integer 1–500, default 50. Connections in the page |
+| `IncludeRemoteAddress` | `ListNetConnections` | Boolean, default `false`. Writes `RemoteAddress`. `true` needs `RuntimeNetConnectionAddressRead`, checked before the play world is looked up |
+| `ActorIdentifier` (required) | `DumpActorReplication`, `DumpReplicatedPropertyValues`, `CompareReplicatedProperties` | Label or object name of the actor, 1 to 256 characters. See [Which actor is read](#which-actor-is-read) |
+| `MaxProperties` | `DumpActorReplication`, `CompareReplicatedProperties` | Integer 1–1024, default 256. In `DumpActorReplication` it bounds the properties of the actor and its components together; in `CompareReplicatedProperties` it bounds the `Properties` list only, while the comparison and `Summary` cover every property |
+| `MaxConnections` | `DumpActorReplication` | Integer 1–256, default 16 |
+| `ConnectionIndex` | `SetNetworkEmulation` | Integer from 0 to the int32 maximum, numbered as `ListNetConnections` numbers the connections. Left out, the whole net driver is changed. A number the net driver does not have is `NotFound` |
+| `PktLag`, `PktLagVariance`, `PktLagMin`, `PktLagMax`, `PktIncomingLagMin`, `PktIncomingLagMax`, `PktJitter` | `SetNetworkEmulation` | Integers in milliseconds, 0–10000 |
+| `PktLoss`, `PktIncomingLoss`, `PktDup` | `SetNetworkEmulation` | Integers in percent, 0–100 |
+| `PktOrder` | `SetNetworkEmulation` | Boolean. Reorders outgoing packets |
+| `TargetNetRole` / `TargetPIEInstance` | all | See [Choosing which play world a Runtime command acts on](#choosing-which-play-world-a-runtime-command-acts-on). For `CompareReplicatedProperties` they name the client world |
+
+`SetNetworkEmulation` needs at least one emulation item. A minimum above its maximum (`PktLagMin` / `PktLagMax`, `PktIncomingLagMin` / `PktIncomingLagMax`) is `InvalidParams`, and when only one side is given it is checked against the current value of the other. Booleans must be JSON booleans and limits JSON integers; anything else, an empty string, an unknown key or a value out of range is `InvalidParams`, and nothing is changed.
+
+#### Which actor is read
+
+`ActorIdentifier` matches an actor whose label (in editor builds) or object name is exactly the text, ignoring case. A partial match is not accepted: when nothing matches exactly, the command fails with `NotFound` and the message suggests up to 10 actors whose name or label contains the text. When more than one actor matches exactly, the command fails with `ExecutionFailed`; pass an identifier that matches only one actor.
+
+#### Fields in every response
+
+| Field | Meaning |
+|---|---|
+| `CapturedAt` / `Frame` | When the state was read (ISO 8601, UTC) and the engine frame number at that moment |
+| `NetMode` / `WorldContext` / `PIEInstance` | The world that was read. For `CompareReplicatedProperties` this is the client world; the server world is in `ServerWorld` |
+| `Availability` | Every command except `CompareReplicatedProperties`: `State` (`Available`, `Connecting` or `Unavailable`) and, unless available, `Reason` (`PendingNetGame` or `NoNetDriver`) |
+| `Limitations[]` | Codes of the caveats about what was returned (see below). `DumpReplicatedPropertyValues` has none |
+
+#### Limitations codes
+
+| Code | Commands | Meaning |
+|---|---|---|
+| `IrisReplicationActive` | `GetNetDriverState`, `ListNetConnections`, `DumpActorReplication`, `CompareReplicatedProperties` | Iris is in use; the items described under **Iris** above are `null` or not comparable |
+| `NetTestDisabledInBuild` | `GetNetDriverState`, `ListNetConnections` | The build has no packet emulation support, so `PacketSimulation` (and `EmulationDisabledByConfig`) are `null` |
+| `LossRatioDenominatorsDiffer` | `GetNetDriverState` (always) | The incoming loss ratio is taken over the packets received plus those lost, the outgoing one over the packets acknowledged. Do not compare the two directly |
+| `PropertyMissingFromLifetimeProps` | `DumpActorReplication`, `CompareReplicatedProperties` | A property is marked for replication but missing from the lifetime properties, so its condition is unknown. The engine does not send such a property |
+| `CustomActiveStateNotObserved` | `CompareReplicatedProperties` (always) | The game can stop sending a property through a custom active state, which is not observed, so such a property can still be reported as `Different` |
+| `DriverWideChangeOverwritesConnection` | `SetNetworkEmulation` | The change was made to one connection. A later change to the whole net driver, by this command or from the console (`Net PktLag=...` and the like), overwrites it |
+| `ForcedPacketSettingsRemains` | `SetNetworkEmulation`, `ResetNetworkEmulation` | The whole net driver was changed or restored. The engine no longer reloads its settings from the project configuration until the net driver is destroyed, even after a reset |
+| `PacketLagSettingIgnored` | `SetNetworkEmulation` | A latency item in `After` is not zero but the engine ignores it, because another item takes precedence (see below) |
+
+#### Reading a comparison
+
+`CompareReplicatedProperties` first finds the client's copy of the actor. `Counterpart.Status` is `Resolved` when it was found; otherwise the command succeeds and compares nothing, and the status says why: `NotReplicated` (the server has no network identifier for the actor), `NotReached` (the client does not know it yet), `Pending` (the client is still loading it), `Broken` (the client marked it as broken), `Destroyed` (the client's copy is no longer valid), or `ConnectionNotFound` (no server connection could be matched to the client world, for example before login). `Pending` and `Broken` occur with the generic replication system only. Each entry of `Components[]` carries its own `Counterpart.Status`.
+
+The response carries `ServerWorld` (`PIEInstance`, `NetMode`), `ClientWorld` (`PIEInstance`), `Actor` (`Name`, `ServerPath`), `ReplicationSystem`, `Counterpart` (`Status`, `ClientPath`), `Summary` (`Equal`, `Different` and `NotComparable` counts over every property), `Properties[]` (`Name`, `Owner`, `Result`, and `Reason` for `NotComparable`) ordered `Different`, `NotComparable`, `Equal`, `PropertiesTruncated`, `TotalPropertyCount` and `Limitations[]`. The response and the artifact hold the same content.
+
+⚠️ **The comparison never says the actor is "in sync".** Only properties that can be evaluated are compared, and `Equal` says only that the two values were the same at the moment of the call. `Different` does not prove a bug either: values legitimately lag while in flight, under the update frequency and under dormancy, and a property the game stops sending through a custom active state is reported as `Different` (`Limitations` always carries `CustomActiveStateNotObserved`). A struct type with its own net serialization is `NotComparable` only when the property itself is of that type; an array whose elements are such a type — for example `TArray<FVector_NetQuantize>` — is compared value by value and can be reported as `Different` because of legitimate quantization.
+
+A property that cannot be evaluated is `NotComparable` with one of these reasons:
+
+| `Reason` | Meaning |
+|---|---|
+| `InitialOnly` | The property is replicated only once, when the object is created |
+| `ConditionUnknown` | The condition is decided at run time (custom or dynamic) and the engine has not evaluated it for this connection. This is always the case for the properties of a component, and under Iris |
+| `ConditionNotApplicable` | The condition does not apply to this client, so the property is not sent to it. This includes a property missing from the lifetime properties (`Limitations: PropertyMissingFromLifetimeProps`) |
+| `DeltaSerialized` | The property is serialized as a delta (a fast array), which has no whole value to compare |
+| `ObjectReference` | The property is an object reference whose target could not be matched between the two worlds |
+| `NestedObjectReference` | The property holds an object reference inside a container or struct |
+| `CustomNetSerialization` | The property is of a type with its own net serialization, which may round the value legitimately, and the values differ. Equal values are reported as `Equal` |
+| `ClassMismatch` | The server object and the client object are of different classes |
+
+**Refusals.** The command is refused with `NotAllowed`, saving nothing, when the client is still connecting (`Connecting`), the selected world has no net driver (`NoNetDriver`) or is not a client (`TargetIsNotClient`), or the process has no server world (`NoServerWorld`) or more than one (`MultipleServerWorlds`; the message lists up to 8 play worlds). The `ErrorMessage` starts with that reason, followed by `nothing was compared`. A server world without a game net driver is `ExecutionFailed`.
+
+#### Packet emulation
+
+The engine reads the outgoing latency items in this order of precedence, and `SetNetworkEmulation` reports `PacketLagSettingIgnored` when an item it would ignore is not zero:
+
+1. When `PktFrameDelay` (read-only here) is above 0 or `PktOrder` is on, `PktLag`, `PktLagVariance`, `PktLagMin`, `PktLagMax` and `PktJitter` are ignored.
+2. Otherwise, when `PktJitter` is not 0, the latency is taken from `PktLagMin`, widened by the jitter and the variance; `PktLag` and `PktLagMax` are ignored.
+3. Otherwise, when `PktLag` is not 0, it is used with `PktLagVariance`; `PktLagMin` and `PktLagMax` are ignored.
+4. Otherwise the latency is drawn between `PktLagMin` and `PktLagMax`, and `PktLagVariance` is ignored.
+
+The incoming items (`PktIncomingLagMin`, `PktIncomingLagMax`, `PktIncomingLoss`) are independent of these.
+
+A setting made on one connection is overwritten by any later change to the whole net driver, made by this command or from the console (`DriverWideChangeOverwritesConnection`). After a change to the whole net driver the engine stops reloading the settings from the project configuration until the net driver is destroyed, even after `ResetNetworkEmulation` (`ForcedPacketSettingsRemains`).
+
+⚠️ **Call `ResetNetworkEmulation` before the `RuntimeNetworkEmulationControl` grant is withdrawn.** Restoring needs the same capability, so once it is withdrawn the change stays until the net driver is destroyed.
+
+**Saving the artifact.** The change (or the restoration) is already made when the artifact is saved, so a failed save leaves `SetNetworkEmulation` and `ResetNetworkEmulation` successful, without an artifact. The one exception is an artifact that was written but whose location cannot be resolved: the command then fails with `ExecutionFailed`, and the message says that the settings were already changed and that `ResetNetworkEmulation` restores them (or, for `ResetNetworkEmulation`, that the saved settings were already restored and forgotten).
+
+#### What completion notifications and audit records hide
+
+The raw addresses and the property values are returned to the caller as they are, and saved in the artifact as they are. The copy of the response that goes to the editor's completion notification — which the editor's own notifications and any code that records commands (audit records, logs) receive — hides them: every `RemoteAddress` in `Connections[]` of `ListNetConnections`, and every `Value` in `Properties[]` and in `Components[].Properties[]` of `DumpReplicatedPropertyValues`, becomes `"<redacted>"`. The other fields are kept. A `ListNetConnections` call without `IncludeRemoteAddress` has no address to hide, so its copy is unchanged. `CompareReplicatedProperties` returns no value, so nothing is hidden. In a scenario, a step that takes an address or a value from an earlier step's response is recorded with its parameters and response `Data` masked. `DescribeCommand` lists these positions under `SensitiveResponseData`; see [Sensitive values and where they are masked](#sensitive-values-and-where-they-are-masked).
+
+#### Errors
+
+| ErrorCode | When |
+|---|---|
+| `InvalidParams` | A parameter is of the wrong type, empty, too long, out of range or unknown; `SetNetworkEmulation` without any emulation item, or with a minimum above its maximum; `TargetNetRole` / `TargetPIEInstance` cannot be honoured |
+| `CapabilityNotAvailable` | `RuntimeInspect`, `RuntimeReplicatedPropertyValueRead`, `RuntimeNetworkEmulationControl`, or — for `IncludeRemoteAddress: true` — `RuntimeNetConnectionAddressRead` is not granted. The message names it |
+| `PolicyViolation` | The capability is denied explicitly in the safety policy, or `SetNetworkEmulation` / `ResetNetworkEmulation` is called in read-only mode |
+| `NotAllowed` | No play world is running, or none matches `TargetNetRole` / `TargetPIEInstance`; a refusal of `CompareReplicatedProperties` (see above); `SetNetworkEmulation` on a net driver whose configuration forbids emulation (`EmulationDisabledByConfig`) |
+| `NotFound` | `ActorIdentifier` matches no actor (the message suggests candidates); a `NetDriverName` given explicitly that the world does not hold (the message lists the net drivers); `SetNetworkEmulation` in a world without a game net driver when `NetDriverName` is left out (a standalone game), or a `ConnectionIndex` the net driver does not have |
+| `ExecutionFailed` | More than one actor matches the identifier; the artifact of an observation command could not be saved; the server world of `CompareReplicatedProperties` has no game net driver; the artifact of `SetNetworkEmulation` / `ResetNetworkEmulation` was written but its location cannot be resolved |
+| `CommandNotFound` | A command that the build does not provide: the value, comparison and emulation commands in the demo build, and the emulation commands in a Shipping build |
+
+Every successful observation call saves exactly one JSON artifact; a failed call saves none, and a refused request saves nothing.
 
 ---
 

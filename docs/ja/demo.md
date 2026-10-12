@@ -26,6 +26,8 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | Runtime 観測（ビューポートキャプチャ・ワールドダンプ・HUD とウィジェットの状態） | ✅ | ✅ |
 | Runtime の AI 知覚・Chaos 破壊・ナビゲーションの観測（読み取り専用の一部） | ✅ | ✅ |
 | Runtime のアニメーション状態の観測（AnimInstance の状態・ステートマシン・ブレンドのウェイト・モンタージュ・カーブ。読み取り専用の一部） | ✅ | ✅ |
+| Runtime のネットワークの観測（NetDriver・コネクション・アクターのレプリケーション設定。読み取り専用の一部。`ListNetConnections` が生のアドレスを書くのは、利用者が許可する `RuntimeNetConnectionAddressRead` があるときだけ） | ✅ | ✅ |
+| Runtime のレプリケートされるプロパティの値と比較、パケットエミュレーション（`DumpReplicatedPropertyValues`、`CompareReplicatedProperties`、`SetNetworkEmulation`、`ResetNetworkEmulation`） | — | ✅ |
 | Runtime の Subsystem の観測（`ListSubsystems`。`DumpSubsystemState` は利用者が許可する `SubsystemStateDump` も必要） | ✅ | ✅ |
 | Runtime の入力状態の観測（`DumpInputState`、`GetEnhancedInputActionValue`） | ✅ | ✅ |
 | Runtime の入力注入（`InjectInputKey`、`InjectEnhancedInputAction`、`ClickGameViewportWidget` など） | — | ✅ |
@@ -214,6 +216,14 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Runtime.Animation.GetAnimCurveValues` | アニメーションカーブの値と種別を返す | |
 | `UAIP.Runtime.Animation.DumpAnimInstanceVariables` | プロジェクト自身の AnimInstance クラスが宣言した変数の値を返す | `AnimInstanceVariableDump`（`RuntimeInspect` に加えて必要。デモ版でも DefaultDenied） |
 
+### `UAIP.Runtime.Network.*`（読み取り専用の一部）
+
+| コマンド | 説明 | 備考 |
+|---|---|---|
+| `UAIP.Runtime.Network.GetNetDriverState` | ワールドの NetDriver とその設定・通信量の合計を返す | |
+| `UAIP.Runtime.Network.ListNetConnections` | 1 つの NetDriver のコネクションと、それぞれの往復時間・損失・通信量を返す | `IncludeRemoteAddress` が `true` の場合のみ `RuntimeNetConnectionAddressRead`（デモ版でも DefaultDenied） |
+| `UAIP.Runtime.Network.DumpActorReplication` | 1 つのアクターのレプリケーション設定と、その送信についてサーバーが把握している状態を返す | |
+
 ### `UAIP.Runtime.Assertion.*`
 
 | コマンド | 説明 |
@@ -387,6 +397,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Runtime.Input` の入力注入（`InjectInputKey`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`FlushInput`、`SetInputMode`、`InjectEnhancedInputAction`、`AddMappingContext`、`RemoveMappingContext`、`ClickGameViewportWidget`、`PressGameViewportUIKey`、`TypeGameViewportText`） | 実行中のゲームへ入力を送るため製品版のみ。`CommandNotFound` を返す |
 | `UAIP.Runtime.ChaosDestruction.EnableForcedDestructionNotify` と `UAIP.Runtime.Navigation.RebuildNavigation` | 実行中のゲーム（破壊通知・ナビメッシュの再生成）を変更するため製品版のみ。`CommandNotFound` を返す |
 | `UAIP.Runtime.Animation.GetMotionMatchingState` | PoseSearch プラグインが必要で、デモ版には含まれないため製品版のみ。`CommandNotFound` を返す |
+| `UAIP.Runtime.Network.DumpReplicatedPropertyValues`・`UAIP.Runtime.Network.CompareReplicatedProperties`・`UAIP.Runtime.Network.SetNetworkEmulation`・`UAIP.Runtime.Network.ResetNetworkEmulation` | プレイヤーのアカウント識別子や名前が入りうるレプリケートされるプロパティの値を読む、または実行中のゲームのパケットエミュレーションを変更するため製品版のみ。`CommandNotFound` を返す |
 
 ### ロード対象
 

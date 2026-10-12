@@ -182,7 +182,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `AssetMutate` | 既存アセットのプロパティ変更 |
 | `AssetWindowControl` | アセットエディタの開閉 |
 | `PIEControl` | PIE セッション制御 — `StartPIE`、`StopPIE`、`PausePIE`、`ResumePIE`、`LoadMap` |
-| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot`、`SearchLoadedClasses`、および AI の感知を観測する 6 コマンド `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`（最後の 1 つは `AIPerceptionConfigDump` も必要。[Runtime AI の感知](#runtime-ai-の感知) を参照）、および Chaos 破壊の 8 コマンド `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`GetDestructionEventLog`、`StopDestructionCapture`、`CaptureGeometryCollectionStrain`、`EnableForcedDestructionNotify`（最後の 1 つは `ChaosDestructionForceNotify` も必要で、これはデモ版では提供されない。[Runtime Chaos 破壊](#runtime-chaos-破壊) を参照）、および読み取り専用のナビゲーション 7 コマンド `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`（`FindPath` と `IsLocationReachable` は、8192 を超える探索ノードでは `RuntimeNavigationExtendedSearch` も必要。[Runtime ナビゲーション](#runtime-ナビゲーション) を参照）、およびアニメーションの 7 コマンド `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState`（`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` も必要。[Runtime アニメーション](#runtime-アニメーション) を参照）、および Subsystem の 2 コマンド `ListSubsystems`、`DumpSubsystemState`（後者は `SubsystemStateDump` も必要。[Runtime Subsystem](#runtime-subsystem) を参照）、およびゲームビューポートの UI の 3 コマンド `DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpHUDState`（[Runtime ゲームビューポートの UI](#runtime-ゲームビューポートの-ui) を参照） |
+| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot`、`SearchLoadedClasses`、および AI の感知を観測する 6 コマンド `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`（最後の 1 つは `AIPerceptionConfigDump` も必要。[Runtime AI の感知](#runtime-ai-の感知) を参照）、および Chaos 破壊の 8 コマンド `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`GetDestructionEventLog`、`StopDestructionCapture`、`CaptureGeometryCollectionStrain`、`EnableForcedDestructionNotify`（最後の 1 つは `ChaosDestructionForceNotify` も必要で、これはデモ版では提供されない。[Runtime Chaos 破壊](#runtime-chaos-破壊) を参照）、および読み取り専用のナビゲーション 7 コマンド `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`（`FindPath` と `IsLocationReachable` は、8192 を超える探索ノードでは `RuntimeNavigationExtendedSearch` も必要。[Runtime ナビゲーション](#runtime-ナビゲーション) を参照）、およびアニメーションの 7 コマンド `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState`（`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` も必要。[Runtime アニメーション](#runtime-アニメーション) を参照）、およびネットワークの 5 コマンド `GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`、`DumpReplicatedPropertyValues`、`CompareReplicatedProperties`（後ろの 2 つは `RuntimeReplicatedPropertyValueRead` も、`IncludeRemoteAddress` を指定した `ListNetConnections` は `RuntimeNetConnectionAddressRead` も必要。[Runtime ネットワークとレプリケーション](#runtime-ネットワークとレプリケーション) を参照）、および Subsystem の 2 コマンド `ListSubsystems`、`DumpSubsystemState`（後者は `SubsystemStateDump` も必要。[Runtime Subsystem](#runtime-subsystem) を参照）、およびゲームビューポートの UI の 3 コマンド `DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpHUDState`（[Runtime ゲームビューポートの UI](#runtime-ゲームビューポートの-ui) を参照） |
 | `RuntimeCapture` | ランタイムキャプチャ — `CaptureViewportImage`、`CheckpointCapture`（後者は `RuntimeInspect` も必要） |
 | `RuntimeExecution` | PIE または Standalone での機能テスト・Automation Test の実行 |
 | `RuntimeGASInspect` 🧩 | PIE 中の GAS 状態読み取り — `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`（`GameplayAbilities` プラグイン必須） |
@@ -655,6 +655,41 @@ Chaos 破壊のコマンド（[`UAIP.Runtime.ChaosDestruction`](commands.md#uaip
 そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます（再起動なしで反映されます）。行を消してもう一度読み直せば外れます。与えられていない間、`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
 
 **明示的に拒否する。** `+DeniedCapabilities=AnimInstanceVariableDump` は、同じ Capability が許可されていても、`DumpAnimInstanceVariables` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、アニメーションを観測する **7 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。どちらの拒否でも artifact は作られません。
+
+#### Runtime ネットワークとレプリケーション
+
+ネットワークのコマンド（[`UAIP.Runtime.Network`](commands.md#uaipruntimenetwork)）は、実行中のゲームの NetDriver・コネクション・レプリケーションを観測し、パケットエミュレーションを変更できます。7 つのうち 3 つ（`GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`）は読むだけで、DefaultAllow の `RuntimeInspect` 以外は要りません。コネクションの生のアドレスを読む、レプリケートされるプロパティの値を読む・比べる、パケットエミュレーションを変更する、にはそれぞれ次の Capability のどれかが必要です。3 つとも既定で拒否されます。モジュールにプラグインの依存はないため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `RuntimeNetConnectionAddressRead` | 各コネクションの生のリモートアドレス（IP アドレスとポート）を書く — `IncludeRemoteAddress: true` を指定した `ListNetConnections`。`RuntimeInspect` に**加えて**必要です。IP アドレスは多くの法域で個人データに当たるため、既定で拒否されます。付与されていなくても `ListNetConnections` は通常どおり動き、アドレスの種類（`AddressKind`: `Loopback`・`Private`・`Public`・`Unknown`）だけを返します |
+| `RuntimeReplicatedPropertyValueRead` | アクターとそのコンポーネントのレプリケートされるプロパティの値を読み、サーバーとクライアントの間で比べる — `DumpReplicatedPropertyValues` と `CompareReplicatedProperties`。`RuntimeInspect` に**加えて**必要です。値はそのまま AI クライアントへ渡り artifact にも書かれ、下に書くとおり個人データが入りうるため、既定で拒否されます。比較が返す一致・不一致もその値から導かれるので、この Capability で保護します |
+| `RuntimeNetworkEmulationControl` | 実行中のゲームの NetDriver とそのコネクションのパケットエミュレーション設定（遅延・損失・ジッター・重複・順序入れ替え）を変更し、元に戻す — `SetNetworkEmulation` と `ResetNetworkEmulation`。これらのコマンドでは `RuntimeInspect` の代わりに必要です。変更すると、戻すまでコネクションの品質が落ちるため、既定で拒否されます |
+
+`RuntimeNetConnectionAddressRead` は、`ListNetConnections` が宣言する `RequiredCapabilities` には含まれません。要求に必要かどうかが `IncludeRemoteAddress` で決まるためです。そのため要求の実行時に、プレイワールドを探す前に判定します。付与なしで `IncludeRemoteAddress: true` を指定した要求は、`RuntimeNetConnectionAddressRead` の名前を示した `CapabilityNotAvailable` で失敗します。この Capability はデモ版を含むすべてのビルドで登録されます。
+
+> ⚠️ **値に何が入りうるか。** `DumpReplicatedPropertyValues` が返すレプリケートされる値には、プロジェクトがレプリケートするほかのものと並んで、**`PlayerState` のレプリケートされる `UniqueId`（プレイヤーのプラットフォームアカウント識別子）やプレイヤー名**が入りえます。それを AI クライアントに読まれてよい環境でだけ `RuntimeReplicatedPropertyValueRead` を与えてください。
+
+> ⚠️ **一度作られた artifact は、Capability を外しても残ります。** これは `RuntimeNetConnectionAddressRead` と `RuntimeReplicatedPropertyValueRead` のどちらにも当てはまります。成功した呼び出しはどれも、結果の全体を JSON の artifact として保存します。Capability を外すと新しい読み取りはできなくなりますが、作られた artifact は消えません。Artifact の自動 GC が消すまで artifact ストアに残り（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）、作ったセッションは `UAIP.Core.Artifacts.GetArtifact` で読み直せ、UAIP の作業ディレクトリを読める人なら誰でもファイルを読めます。アドレスや値を残してはならない場合は、それらのファイルを自分で削除してください。
+
+> **完了通知ではアドレスと値を伏せますが、応答と artifact では伏せません。** エディタの完了通知に流す応答の写し（エディタ自身の通知と、コマンドを記録するコード — 監査記録・ログ — が読むもの）では、`ListNetConnections` の各 `RemoteAddress` と `DumpReplicatedPropertyValues` の各プロパティの `Value` が `"<redacted>"` になります。AI クライアントが受け取る応答と artifact には元の値が残るので、誰が読めるかを決めるのは引き続き上の Capability です。[コマンド — 完了通知と監査記録で伏せるもの](commands.md#完了通知と監査記録で伏せるもの) を参照してください。
+
+> ⚠️ **`RuntimeNetworkEmulationControl` を外す前に、パケットエミュレーションを元に戻してください。** 変更は、戻すか NetDriver が破棄される — PIE セッションの終了時、またはクライアントが別のマップへ移動して再接続したとき — まで残ります。`ResetNetworkEmulation` にも同じ Capability が必要なので、外す前に呼んでください。外した後は UAIP から設定を戻せず、NetDriver が破棄されるまで変更が残ります。また、NetDriver 全体を変更すると、エンジンはその NetDriver が破棄されるまで、戻した後も、プロジェクト設定から設定を読み直さなくなります。
+
+**デモ版と Shipping ビルドでは提供されません。** `DumpReplicatedPropertyValues`・`CompareReplicatedProperties`・`RuntimeReplicatedPropertyValueRead` はデモ版に含まれません。`SetNetworkEmulation`・`ResetNetworkEmulation`・`RuntimeNetworkEmulationControl` は、エンジンのパケットエミュレーションを使えるビルドでだけ登録されるため、デモ版にも Shipping ビルドにもありません。存在しない環境では、コマンドは `CommandNotFound` を返し、Capability は登録されないため、ini に書いても効果はありません。読み取り専用の 3 コマンドと `RuntimeNetConnectionAddressRead` はデモ版でも提供されます。
+
+**有効にする。** 必要な Capability を `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=RuntimeNetConnectionAddressRead
++AllowedCapabilities=RuntimeReplicatedPropertyValueRead
++AllowedCapabilities=RuntimeNetworkEmulationControl
+```
+
+その後、エディタを再起動します。`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できます。行を削除して再度リロードすれば、また外れます。付与していない間、それを必要とするコマンドは、その名前を示した `CapabilityNotAvailable` で失敗し、artifact は作られません。`SetNetworkEmulation` と `ResetNetworkEmulation` は読み取り専用ではないため、安全ポリシーが読み取り専用モードのときも `PolicyViolation` で拒否されます。
+
+**明示的に拒否する。** 3 つのどれかに `+DeniedCapabilities=` を指定すると、同じ Capability が許可されていても、それを必要とするコマンドを `PolicyViolation` で拒否します（拒否が優先）。`RuntimeNetConnectionAddressRead` の場合に拒否されるのは `IncludeRemoteAddress: true` の要求だけで、`ListNetConnections` のそれ以外の使い方は動いたままです。`+DeniedCapabilities=RuntimeInspect` は、`RuntimeInspect` を必要とする他のすべてのコマンドとともに、それを必要とする 5 コマンド — `GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`、`DumpReplicatedPropertyValues`、`CompareReplicatedProperties` — を `PolicyViolation` で拒否します。どの拒否でも artifact は作られません。
 
 #### Runtime Subsystem
 

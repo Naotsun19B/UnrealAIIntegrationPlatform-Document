@@ -155,6 +155,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Chaos Destruction | `UAIP.Runtime.ChaosDestruction` | 8 | — | 一部（7/8） |
 | Runtime Navigation | `UAIP.Runtime.Navigation` | 8 | — | 一部（7/8） |
 | Runtime Animation | `UAIP.Runtime.Animation` | 7 | — | 一部（6/7） |
+| Runtime Network | `UAIP.Runtime.Network` | 7 | — | 一部（3/7） |
 
 ---
 
@@ -354,6 +355,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | `UAIP.Runtime.ChaosDestruction` | `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`CaptureGeometryCollectionStrain` |
 | `UAIP.Runtime.Navigation` | `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`、`RebuildNavigation` |
 | `UAIP.Runtime.Animation` | `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState` |
+| `UAIP.Runtime.Network` | `GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`、`DumpReplicatedPropertyValues`、`CompareReplicatedProperties`、`SetNetworkEmulation`、`ResetNetworkEmulation` |
 
 上の一覧のうち `CheckpointCapture` だけは、自分でワールドを解決しません。`CaptureViewportImage` と `DumpWorldState` を組み合わせたコマンドであり、指定された対象をそのまま両方へ引き渡します。これにより、1 つのチェックポイントに含まれるスクリーンショットと状態ダンプが、エンジンが別々に選んだ 2 つのワールドではなく、常に同じワールドを指すようになります。
 
@@ -407,6 +409,19 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `GetPendingInteractionStatus` | 保留中の対話 1 件の状態 — `State`・`Cause`・`ElapsedSeconds`・`Prompt`・`Reason`・`Result` — を、変化を待たずに報告する。対話（`DrawPCGSpline` などの対話型コマンド）を開始したときと同じ `SessionId` を明示的に指定する必要があり、未知・期限切れ・他セッション所有はすべて同じ `NotFound` として扱われる |
 | 🆓 `WaitForPendingInteraction` | 対話が `AwaitingUser` を離れるか、この呼び出し自身の `TimeoutSeconds` 上限（デフォルト 30、範囲 [1, 600]）に達するまでブロックする。タイムアウトしても対話自体には影響せず、人間の応答を待ち続ける。同じ対話を同時に監視できる呼び出しは最大 4 件までだが、2 件目以降には `[UAIP.Transport] AllowConcurrentPassiveWaits` が必要（[設定](config.md) 参照） |
 | 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックし、もう保有していないものは `CapabilityNotAvailable` で、運用者が `DeniedCapabilities` で明示的に拒否しているものは `PolicyViolation` で拒否する |
+
+### 機微な値と伏せる場所
+
+`DescribeCommand` は、UAIP が自身の記録に残さない値を、コマンドごとに示します。
+
+- `SensitiveParams` — パラメータのトップレベルの名前。例: `TypeGameViewportText` の `Text`
+- `SensitiveResponseData` — 応答の `Data` の中の位置。`[]` が「配列の全要素」を表すドット区切りのパスで書きます: `PasswordFieldValues`（`DumpGameViewportWidgetTexts` のトップレベルの項目）、`Connections[].RemoteAddress`（`ListNetConnections`）、`Properties[].Value` と `Components[].Properties[].Value`（`DumpReplicatedPropertyValues`）。名前だけのパスはトップレベルの項目なので、入れ子のパスが入る前に書かれた一覧もそのまま同じ意味で読めます
+
+**パスの書き方。** `.` で区切り、各セグメントは空でない項目名と、その後ろの 0 個以上の `[]` です。項目名に `.`・`[`・`]` は使えず、添字の指定（`[0]`）はありません。項目名は大文字小文字を区別せずに照合します。応答に無い項目・`null`・空の配列に至るパスは、そこでは何も伏せず、何も足しません。
+
+**伏せる場所。** コマンドのたびにエディタが出す完了通知です。エディタ自身の通知と、コマンドを記録するコード（監査記録・ログ）がこれを受け取ります。宣言した位置の値は、型にかかわらず（`null`・オブジェクト・配列も）長さも載らない文字列 `"<redacted>"` になります。応答の形がパスの示す形と違うときは、飛ばさずに伏せます。`[]` の位置にある値が配列でも `null` でもないとき、また項目を読む位置にある値がオブジェクトでも `null` でもないとき（例: `A.B` の `A` が文字列や配列）は、その値ごと伏せます。宣言を頼れないときは、トップレベルの項目名を残して `Data` 全体を伏せます。宣言したパスが不正なとき（コマンドの登録時にエディタがエラーをログに出します）と、コマンドを引けないとき（未知の名前、または実行中に登録が解除されたコマンド）です。[シナリオ](scenario.md) で、前のステップの応答から伏せる値（またはそれを含む配列やオブジェクト）を `${...}` のテンプレートで取ったステップは、パラメータと応答の `Data` の全体を伏せて記録されます。その値を受け取った後続のステップも同じです。ステップ自身には元の値が届きます。
+
+**伏せない場所。** 呼び出し元に返す応答（MCP・HTTP・WebSocket・CLI、およびシナリオの結果の各ステップ）と、コマンドが保存する成果物は元の値のままです。その値は、コマンドが求める Capability のもとで呼び出し元自身が求めたものだからです。成果物は、Artifact の自動 GC が消すまでディスクに残ります。
 
 ---
 
@@ -3772,7 +3787,7 @@ Runtime での入力注入と Enhanced Input 状態検査。PIE 必須。
 - **分割画面。** ツリーとフォーカスは、各ローカルプレイヤーの画面領域を報告します。キーと文字は指定したプレイヤーとして、クリックは常にマウスを持つユーザーとして送られます。
 - **同じプロセスの複数の PIE。** 入力は選んだワールドのビューポートの中にだけ送られますが、入力の通り道の一部（CommonUI の全体処理）は PIE 同士で共有されます。「ゲームパッドを 2 つ目のウィンドウへ送る」が有効だと、ゲームパッドのキーが別の PIE に届くことがあり、そのとき `ReachedGameViewport` は `Unknown` です。別々の PIE で同時にゲーム内のメニューが開いていると、どちらのメニューかを見分けられないことがあります。
 - **描画しない環境（`-nullrhi`）。** ツリーに矩形が無く、操作は `NotAllowed` で拒否されます（待っても通りません）。起動直後でまだ何も描かれていないだけなら `PreconditionFailed` です。
-- **機微な値。** `DescribeCommand` は、完了通知・監査記録で伏せるパラメータ（`SensitiveParams`。`TypeGameViewportText` は `Text`）と、同様に伏せる応答の項目（`SensitiveResponseData`。`DumpGameViewportWidgetTexts` はパスワード欄の平文）を示します。購読者・監査記録には、長さも載らない `"<redacted>"` が渡ります。伏せる対象を確かめられないときは、パラメータ全体が伏せられます。シナリオで、前のステップの応答から取ったこうした値を後のステップに埋め込むと、そのステップと、その応答を受け取る後続のステップは丸ごと伏せられます。対象のコマンドが結果として保存するファイルは対象外です。
+- **機微な値。** `DescribeCommand` は、完了通知・監査記録で伏せるパラメータ（`SensitiveParams`。`TypeGameViewportText` は `Text`）と、同様に伏せる応答の項目（`SensitiveResponseData`。`DumpGameViewportWidgetTexts` はパスワード欄の平文）を示します。購読者・監査記録には、長さも載らない `"<redacted>"` が渡ります。伏せるパラメータを確かめられないときはパラメータ全体が、伏せる応答の項目を確かめられないときはトップレベルの項目名を残して応答の `Data` 全体が伏せられます。シナリオで、前のステップの応答から取ったこうした値を後のステップに埋め込むと、そのステップと、その応答を受け取る後続のステップは丸ごと伏せられます。対象のコマンドが結果として保存するファイルは対象外です。[機微な値と伏せる場所](#機微な値と伏せる場所) を参照してください。
 - **CLI では入力が残ります。** コマンドライン（`-uaip-request=`）やリクエストファイル（`-uaip-request-file=`）に渡した文字列、および応答ファイルは、そこに残ります。呼び出し側が選んだコマンドラインやファイルは UAIP では伏せられません。秘密はそこに渡さないか、HTTP / MCP を使ってください。
 
 ## UAIP.Runtime.Niagara 🧩
@@ -4574,6 +4589,151 @@ AnimInstance を持たないメッシュはエラーではありません。ア�
 | `ExecutionFailed` | 識別子に一致するアクターが複数ある、または成果物を保存できなかった |
 
 成功した呼び出しは必ず JSON の成果物を 1 つ保存します。失敗した呼び出しは何も保存しません。
+
+---
+
+## UAIP.Runtime.Network
+
+実行中のゲームのネットワークを観測するコマンド群です。ワールドの NetDriver とその合計値、NetDriver が持つコネクションとそれぞれの往復時間・損失・通信量、アクターのレプリケーション設定と、その送信についてサーバーが把握している状態を返します。観測に加えて、レプリケートされるプロパティの値を読み、サーバーとクライアントの間でその値を比べ、パケットを遅延・損失・重複・順序入れ替えさせて回線の悪い状態を再現するパケットエミュレーションを変更できます。エディタでは PIE の実行中に、また `-game` 起動やパッケージ版でも動作します。7 つすべてが [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付け、ネットワークを使う Play-in-Editor セッションのサーバーワールドか、クライアントワールドの 1 つを選べます。
+
+**Capability。** `GetNetDriverState`・`ListNetConnections`・`DumpActorReplication`・`DumpReplicatedPropertyValues`・`CompareReplicatedProperties` は `RuntimeInspect`（DefaultAllow）を必要とします。`DumpReplicatedPropertyValues` と `CompareReplicatedProperties` は、さらに `RuntimeReplicatedPropertyValueRead`（DefaultDenied）を必要とします。値にはプレイヤーのプラットフォームアカウント識別子（`PlayerState` のレプリケートされる `UniqueId`）やプレイヤー名が入りうるためです。`ListNetConnections` は、`IncludeRemoteAddress` が `true` のとき**だけ**、さらに `RuntimeNetConnectionAddressRead`（DefaultDenied）を必要とします。この Capability は要求ごとに判定するため、コマンドが宣言する `RequiredCapabilities` には現れません。`SetNetworkEmulation` と `ResetNetworkEmulation` は `RuntimeNetworkEmulationControl`（DefaultDenied）を必要とし、読み取り専用ではないため、安全ポリシーが読み取り専用モードのときは拒否されます。足りない場合は、その名前を示した `CapabilityNotAvailable` になります。詳細は [安全性と Capability](safety.md#runtime-ネットワークとレプリケーション) を参照してください。
+
+**デモ版。** `GetNetDriverState`・`ListNetConnections`・`DumpActorReplication` と `RuntimeNetConnectionAddressRead` はデモ版でも提供されます。`DumpReplicatedPropertyValues`・`CompareReplicatedProperties`・`SetNetworkEmulation`・`ResetNetworkEmulation` とその Capability（`RuntimeReplicatedPropertyValueRead`、`RuntimeNetworkEmulationControl`）は含まれず、デモ版ではこれらのコマンドは存在せず `CommandNotFound` を返します。
+
+**Shipping ビルド。** `SetNetworkEmulation`・`ResetNetworkEmulation`・`RuntimeNetworkEmulationControl` は、エンジンのパケットエミュレーションを使えるビルドでだけ登録されます。Shipping ビルドでは登録されません（`CommandNotFound`）。
+
+**読み取りが表すもの。** 観測は呼び出した瞬間の状態を読み、履歴は持ちません。どのコマンドもコネクションの確立を待ちません。クライアントの参加を待つには、`GetNetDriverState` を繰り返し呼び、サーバーでは `LoggedInConnectionCount`、クライアントでは `Availability` を見てください。コネクション番号（`ConnectionIndex`）は、`ListNetConnections` が並べる NetDriver 内での位置です。サーバーはクライアントとのコネクションを NetDriver が保持する順に並べ、クライアントはサーバーとの 1 本のコネクションを並べます。閉じたコネクションも NetDriver が手放すまでは番号を保つため、その後に番号がずれることがあります。後で番号を使う前に、もう一度一覧を取り直してください。分割画面の 2 人目以降のプレイヤーのコネクションは並びません。NetDriver 名（`NetDriverName`）は大文字小文字を区別せずに照合します。
+
+**Iris。** Iris レプリケーションシステムでは、汎用のレプリケーションシステムにしか無い構造から読む項目があります。それらは `null` で返り、応答に `Limitations: IrisReplicationActive` が付きます: `ListNetConnections` の `ActorChannelCount`、`DumpActorReplication` の `Connections` と `NetworkObjectInfo`、そして `CompareReplicatedProperties` では、実行時に条件が変わりうるプロパティが `NotComparable` になります。`GetNetDriverState` は、NetDriver のどれかが Iris を使っているときに同じ制限事項を付けます。
+
+### 観測（3）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `GetNetDriverState` | 対象ワールドの NetDriver を返します。プレイワールド選択子以外のパラメータはありません。`Availability.State` は `Available`・`Connecting`（クライアントが参加中。`Reason: PendingNetGame`）・`Unavailable`（`Reason: NoNetDriver`: ワールドにゲーム用の NetDriver が無い）のいずれかで、`Available` のときは `Reason` を省きます。`RunAsDedicated` と `HasGameViewport` は、ワールドがどんな種類のプロセスで動いているかを示します。`NetDrivers[]` の各項目には、`NetDriverName`・`NetDriverDefinition`・`IsServer`・`ReplicationSystem`（`Generic` / `Iris`）・`ConnectionCount`・`LoggedInConnectionCount`・`MaxClientRate`・`MaxInternetClientRate`・`MaxNetTickRate`・`NetServerMaxTickRate`・`ConnectionTimeoutSeconds`・コネクション全体の `Totals`（`InBytesPerSecond`・`OutBytesPerSecond`・`InPacketsPerSecond`・`OutPacketsPerSecond`、毎秒のパケット数で重み付けした `InLossRatioWeighted` / `OutLossRatioWeighted`、最も悪いコネクションの `InLossRatioMax` / `OutLossRatioMax`、合計に含めた統計の準備ができたコネクションの数 `StatsReadyConnectionCount`）・`MaxPlayers` / `MaxSpectators`（ゲームセッションを持つサーバーのときだけ。それ以外は省きます）・NetDriver の `PacketSimulation` 設定・`EmulationModifiedByUAIP`（`SetNetworkEmulation` がこの NetDriver かそのコネクションの元の設定を保存しているか）・`EmulationDisabledByConfig`（NetDriver が設定でエミュレーションを無視するか）が入ります。ゲーム用の NetDriver が無いワールドも成功で、ほかの NetDriver は並び、理由を `Availability` で示します。応答と成果物は同じ内容です |
+| 🆓 `ListNetConnections` | 1 つの NetDriver（`NetDriverName`、既定 `GameNetDriver`）のコネクションを、ページ単位（`StartIndex`、`MaxEntries`）で返します。各項目には、`ConnectionIndex`・`Direction`（`ToClient` / `ToServer`）・`ConnectionState`・`ClientLoginState`・`LoggedIn`・`PlayerController`・`PlayerState`・`ConnectedSeconds`・`LastReceiveAgeSeconds`・`StatsReady`・`RttMs`・`RawPingMs`・`PlayerPingMs`・`JitterMs`・`InLossRatio`・`OutLossRatio`・`InLossRatioAvg`・`OutLossRatioAvg`・`InBytesPerSecond`・`OutBytesPerSecond`・`InPacketsPerSecond`・`OutPacketsPerSecond`・累計の `InTotalBytes`・`OutTotalBytes`・`InTotalPackets`・`OutTotalPackets`・`InTotalPacketsLost`・`OutTotalPacketsLost`・`CurrentNetSpeedBytesPerSecond`・`QueuedBits`・`IsNetReady`・`OpenChannelCount`・`ActorChannelCount`・コネクションに実際に効いている `PacketSimulation`・`AddressKind`（`Loopback`・`Private`・`Public`、アドレスが 4 バイトでも 16 バイトでもないときは `Unknown`）が入ります。生の IP アドレスとポートである `RemoteAddress` は、`IncludeRemoteAddress` が `true` のときだけ書きます。`StatsReady` が false のあいだは、往復時間・ジッター・4 つの損失率・4 つの毎秒の値が `null` です。`RttMs` は直近の統計期間の平均で、次の期間が終わるまでは前の値を保ちます。累計のカウンターはエンジン内で 32 ビット整数のため、長いセッションでは一周することがあります。成果物には、ページ全体と `TotalCount`・`ReturnedCount`、残りがあるあいだは `NextStartIndex` が入ります。応答には同じ項目とページの先頭 50 件のコネクションが入り、ページにそれより多く入っているときは `Truncated: true` です。ゲーム用の NetDriver が無いワールドでは、`NetDriverName` を省いたときは空の一覧で成功し、理由を `Availability` で示します |
+| 🆓 `DumpActorReplication` | 1 つのアクター（`ActorIdentifier`）のレプリケーション設定と、その送信についてサーバーが把握している状態を返します。`Actor` には `Name`・`Path`・`Class` が入ります。`Replication` には `Replicates`・`LocalRole`・`RemoteRole`・`NetOwner`・`HasOwningConnection`・`NetDormancy`・`NetUpdateFrequency`・`MinNetUpdateFrequency`・`NetCullDistance`（二乗ではなく距離そのもの）・`NetPriority`・`AlwaysRelevant`・`OnlyRelevantToOwner`・`IsNetStartupActor`・`ReplicateMovement` が入ります。`Properties[]` にアクターの、`Components[]` にレプリケートされる各コンポーネントの、レプリケートされるプロパティが並び、それぞれ `Name`・`Type`・`DeclaredBy`・`ArrayDim`・`DeclaredCondition`（`COND_` を除いた条件名）・`DeclaredRepNotifyCondition`（`OnChanged` / `Always`）・`RepNotifyFunction`（無いときは `null`）・`PushBased` を持ちます。サーバーでは、`Connections[]` がコネクションごとに、アクターチャンネルが開いているか（`ActorChannelOpen`）、見つかった変更をまだ送っていないか（`HasUnsentComparedChanges`）、アクター自身のどのプロパティが非アクティブか（`InactiveProperties`。エンジンが評価するまでは `null`）、直前の更新が空だったか（`LastUpdateEmpty`）を示し、`NetworkObjectInfo` に `NextUpdateTime`・`LastNetReplicateTime`・`PendingNetUpdate`・`DormantConnectionCount` が入ります。`Connections` と `NetworkObjectInfo` は、クライアント、Iris、NetDriver の無いワールド（理由は `Availability`）では `null` です。`HasUnsentComparedChanges: false` は、クライアントが同期していることを意味しません。ライフタイムプロパティに登録されていないレプリケート対象のプロパティは `DeclaredCondition: null` で、応答に `Limitations: PropertyMissingFromLifetimeProps` が付きます。`MaxProperties` はアクターとコンポーネントのプロパティを合わせた件数を、`MaxConnections` はコネクションの件数を制限し、切った一覧は `PropertiesTruncated` / `TotalPropertyCount` または `ConnectionsTruncated` / `TotalConnectionCount` を報告します。ページングはありません。応答と成果物は同じ内容です |
+
+### プロパティの値の観測（2）— `RuntimeInspect` と `RuntimeReplicatedPropertyValueRead` が必要
+
+デモ版では提供されません。
+
+| コマンド | 説明 |
+|---|---|
+| `DumpReplicatedPropertyValues` | 選んだワールドで、1 つのアクター（`ActorIdentifier`）とレプリケートされる各コンポーネントの、レプリケートされるプロパティ（レプリケーション指定のあるプロパティだけ）の値を返します。クライアントワールドではクライアントが受け取った値なので、サーバーワールドとクライアントワールドで呼べば両者を並べて見られます。`Actor` には `Name`・`Path`・`Class` が入り、アクターのプロパティは `Properties[]`（`Name`・`Type`・`Value`）に、各コンポーネントのプロパティは `Components[]` のその項目（`Name` と同じ項目）に入ります。長い文字列・大きなコンテナ・入れ子の構造体は切り詰めます。各オブジェクトは `PropertiesTruncated`・`PropertiesOmitted`・`TotalPropertyCount` と、サイズの予算で止まったときは `StopReason`（`PerObjectBudget`・`TotalBudget`・`ExternalBudget`）を報告し、どれかのオブジェクトを切った、またはプロパティを省いたときは最上位の `Truncated` が `true` です。64 ビット整数は、絶対値が 2^53 を超えて JSON の数値では正確に表せないときだけ文字列で書きます。±2^53 ちょうどは数値のままです。ワールドに NetDriver が無くても、`Availability.State: Unavailable`（`Reason: NoNetDriver`）を添えて値を返します。応答と成果物は同じ内容です。⚠️ **値には `PlayerState` のレプリケートされる `UniqueId`（プラットフォームのアカウント識別子）やプレイヤー名が入りえます** — [安全性と Capability](safety.md#runtime-ネットワークとレプリケーション) を参照してください |
+| `CompareReplicatedProperties` | サーバーワールドのアクターのレプリケートされるプロパティを、1 つのクライアントが受け取った同じアクターと比べ、アクターとレプリケートされるコンポーネントのプロパティごとに `Equal`・`Different`・`NotComparable`（理由 `Reason` 付き）を返します。値は返しません。プレイワールド選択子は**クライアント**ワールドを、`ActorIdentifier` は**サーバー**ワールドのアクターを指します。サーバーワールドは、このプロセス内でただ 1 つのリッスンサーバーまたは専用サーバーでなければなりません（Play-in-Editor の **Run Under One Process**）。下の [比較結果の読み方](#比較結果の読み方) を参照してください |
+
+### パケットエミュレーション（2）— `RuntimeNetworkEmulationControl` が必要
+
+デモ版と Shipping ビルドでは提供されません。
+
+| コマンド | 説明 |
+|---|---|
+| `SetNetworkEmulation` | 対象プレイワールドの NetDriver の、または `ConnectionIndex` を指定したときはそのコネクションの、パケットエミュレーション設定（遅延・損失・ジッター・重複・順序入れ替え）を変更します。変わるのは指定した項目だけで、ほかの項目は今の値を保ちます。`ConnectionIndex` を省くと NetDriver 全体の設定を変え、すべてのコネクションへ写します。最初の変更の前にあった設定は保存され、`ResetNetworkEmulation` で戻せます。変更は、戻すか NetDriver が破棄される（プレイセッションの終了時、またはクライアントが別のマップへ移動して再接続したとき）まで残ります。応答には `Availability`・`Target`（`PIEInstance`・`NetDriverName`、指定したときは `ConnectionIndex`）・`Before` と `After`（読み取り専用の `PktFrameDelay`・`PktBufferBloatInMS`・`PktIncomingFrameDelay`・`PktIncomingBufferBloatInMS`・`PktLossMinSize`・`PktLossMaxSize` を含む、エンジンの設定の全項目）・`Limitations[]` が入ります。下の [パケットエミュレーション](#パケットエミュレーション) を参照してください |
+| `ResetNetworkEmulation` | NetDriver（`NetDriverName`、既定 `GameNetDriver`）とそのすべてのコネクションを、最初の `SetNetworkEmulation` の変更の前に保存した設定へ無条件に戻します。その後にコンソールから行った変更も失われます。1 つのコネクションだけを戻す方法はありません。応答には `Availability`・`NetDriverName`・`Restored[]`（NetDriver が先頭で、続いてコネクション。それぞれ `Scope`（`Driver` / `Connection`）、コネクションの `ConnectionIndex`（もう番号が付いていないときは `null`）、`After`）・`Discarded`（NetDriver やコネクションがもう無いために捨てた保存項目の数。以前の呼び出しがすでに捨てていることもあります）・`Limitations[]`（NetDriver そのものを戻したときは `ForcedPacketSettingsRemains`）が入ります。戻すものが無いときは、空の `Restored` で成功します: `NetDriverName` を省いた、ゲーム用の NetDriver が無いワールド、一度も変更していない NetDriver、すでに終わったプレイセッションで保存した設定、のいずれかです |
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `NetDriverName` | `ListNetConnections`、`SetNetworkEmulation`、`ResetNetworkEmulation` | `GetNetDriverState` が並べる NetDriver の名前。1〜256 文字で、大文字小文字を区別せずに照合します。既定 `GameNetDriver`。明示した名前をワールドが持たないときは `NotFound` で、メッセージにワールドの NetDriver を列挙します |
+| `StartIndex` | `ListNetConnections` | 0 から int32 の最大値までの整数、既定 0。ページの最初のコネクション。コネクションの数以上の値は空のページを返します |
+| `MaxEntries` | `ListNetConnections` | 1〜500 の整数、既定 50。ページに入れるコネクションの数 |
+| `IncludeRemoteAddress` | `ListNetConnections` | 真偽値、既定 `false`。`RemoteAddress` を書くか。`true` には `RuntimeNetConnectionAddressRead` が必要で、プレイワールドを探す前に判定します |
+| `ActorIdentifier`（必須） | `DumpActorReplication`、`DumpReplicatedPropertyValues`、`CompareReplicatedProperties` | アクターのラベルまたはオブジェクト名（1〜256 文字）。[読むアクターの選び方](#読むアクターの選び方) を参照 |
+| `MaxProperties` | `DumpActorReplication`、`CompareReplicatedProperties` | 1〜1024 の整数、既定 256。`DumpActorReplication` ではアクターとコンポーネントのプロパティを合わせた件数を、`CompareReplicatedProperties` では `Properties` の一覧だけを制限し、比較と `Summary` はすべてのプロパティを対象にします |
+| `MaxConnections` | `DumpActorReplication` | 1〜256 の整数、既定 16 |
+| `ConnectionIndex` | `SetNetworkEmulation` | 0 から int32 の最大値までの整数で、`ListNetConnections` と同じ番号付け。省くと NetDriver 全体を変更します。NetDriver が持たない番号は `NotFound` です |
+| `PktLag`、`PktLagVariance`、`PktLagMin`、`PktLagMax`、`PktIncomingLagMin`、`PktIncomingLagMax`、`PktJitter` | `SetNetworkEmulation` | ミリ秒単位の整数、0〜10000 |
+| `PktLoss`、`PktIncomingLoss`、`PktDup` | `SetNetworkEmulation` | パーセント単位の整数、0〜100 |
+| `PktOrder` | `SetNetworkEmulation` | 真偽値。送信するパケットの順序を入れ替えます |
+| `TargetNetRole` / `TargetPIEInstance` | すべて | [実行時コマンドの対象プレイワールドを指定する](#実行時コマンドの対象プレイワールドを指定する) を参照。`CompareReplicatedProperties` ではクライアントワールドを指します |
+
+`SetNetworkEmulation` には、エミュレーションの項目が少なくとも 1 つ必要です。最小値が最大値を超える（`PktLagMin` / `PktLagMax`、`PktIncomingLagMin` / `PktIncomingLagMax`）と `InvalidParams` で、片方だけを指定したときはもう片方の今の値と比べます。真偽値は JSON の真偽値、上限値は JSON の整数でなければならず、それ以外の型・空の文字列・未知のキー・範囲外の値は `InvalidParams` で、何も変更しません。
+
+#### 読むアクターの選び方
+
+`ActorIdentifier` は、ラベル（エディタビルドのとき）またはオブジェクト名が文字列と大文字小文字を区別せずに完全一致するアクターに一致します。部分一致は受け付けません。完全一致するものが無いときは `NotFound` で失敗し、名前かラベルにその文字列を含むアクターを最大 10 件、メッセージで候補として示します。完全一致するアクターが複数あるときは `ExecutionFailed` で失敗します。1 つのアクターだけに一致する識別子を指定してください。
+
+#### すべての応答に含まれるフィールド
+
+| フィールド | 意味 |
+|---|---|
+| `CapturedAt` / `Frame` | 状態を読んだ時刻（ISO 8601、UTC）と、そのときのエンジンのフレーム番号 |
+| `NetMode` / `WorldContext` / `PIEInstance` | 読んだワールド。`CompareReplicatedProperties` ではクライアントワールドで、サーバーワールドは `ServerWorld` に入ります |
+| `Availability` | `CompareReplicatedProperties` 以外のすべて: `State`（`Available`・`Connecting`・`Unavailable`）と、`Available` 以外のときは `Reason`（`PendingNetGame`・`NoNetDriver`） |
+| `Limitations[]` | 返した内容に関する注意のコード（下を参照）。`DumpReplicatedPropertyValues` にはありません |
+
+#### Limitations のコード
+
+| コード | コマンド | 意味 |
+|---|---|---|
+| `IrisReplicationActive` | `GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`、`CompareReplicatedProperties` | Iris を使っている。上の **Iris** で挙げた項目が `null` または比較不能になる |
+| `NetTestDisabledInBuild` | `GetNetDriverState`、`ListNetConnections` | ビルドにパケットエミュレーションの機能が無いため、`PacketSimulation`（と `EmulationDisabledByConfig`）が `null` |
+| `LossRatioDenominatorsDiffer` | `GetNetDriverState`（常に） | 受信の損失率は受信したパケットと失ったパケットの合計を、送信の損失率は確認応答を受けたパケットを分母にしている。両者を直接比べないこと |
+| `PropertyMissingFromLifetimeProps` | `DumpActorReplication`、`CompareReplicatedProperties` | レプリケーション指定があるのにライフタイムプロパティに登録されていないプロパティがあり、その条件が分からない。エンジンはこのプロパティを送らない |
+| `CustomActiveStateNotObserved` | `CompareReplicatedProperties`（常に） | ゲームはカスタムのアクティブ状態でプロパティの送信を止められるが、それは観測していないため、そうしたプロパティも `Different` と報告されうる |
+| `DriverWideChangeOverwritesConnection` | `SetNetworkEmulation` | 1 つのコネクションに対して変更した。その後の NetDriver 全体への変更（このコマンドでも、コンソールの `Net PktLag=...` などでも）で上書きされる |
+| `ForcedPacketSettingsRemains` | `SetNetworkEmulation`、`ResetNetworkEmulation` | NetDriver 全体を変更した、または戻した。エンジンは NetDriver が破棄されるまで、戻した後も、プロジェクト設定から設定を読み直さなくなる |
+| `PacketLagSettingIgnored` | `SetNetworkEmulation` | `After` の遅延の項目が 0 ではないが、ほかの項目が優先されるためエンジンはそれを無視する（下を参照） |
+
+#### 比較結果の読み方
+
+`CompareReplicatedProperties` は、まずクライアント側のアクターの複製を探します。見つかれば `Counterpart.Status` は `Resolved` です。見つからないときはコマンドは成功して何も比べず、ステータスで理由を示します: `NotReplicated`（サーバーがアクターのネットワーク識別子を持たない）、`NotReached`（クライアントがまだその識別子を知らない）、`Pending`（クライアントがまだ読み込み中）、`Broken`（クライアントが壊れていると印を付けた）、`Destroyed`（クライアント側の複製がもう有効でない）、`ConnectionNotFound`（ログイン前など、クライアントワールドに対応するサーバー側のコネクションが見つからない）。`Pending` と `Broken` は汎用のレプリケーションシステムでだけ起きます。`Components[]` の各項目は、それぞれ自分の `Counterpart.Status` を持ちます。
+
+応答には `ServerWorld`（`PIEInstance`、`NetMode`）・`ClientWorld`（`PIEInstance`）・`Actor`（`Name`、`ServerPath`）・`ReplicationSystem`・`Counterpart`（`Status`、`ClientPath`）・`Summary`（すべてのプロパティについての `Equal`・`Different`・`NotComparable` の件数）・`Different`・`NotComparable`・`Equal` の順に並べた `Properties[]`（`Name`・`Owner`・`Result`、`NotComparable` のときは `Reason`）・`PropertiesTruncated`・`TotalPropertyCount`・`Limitations[]` が入ります。応答と成果物は同じ内容です。
+
+⚠️ **比較結果は、アクターが「同期している」とは決して言いません。** 比べるのは評価できるプロパティだけで、`Equal` は呼び出した瞬間に 2 つの値が同じだったことしか示しません。`Different` もバグの証明ではありません。値は送信中や、更新頻度・休眠のために正当に遅れますし、ゲームがカスタムのアクティブ状態で送信を止めたプロパティは `Different` と報告されます（`Limitations` には常に `CustomActiveStateNotObserved` が付きます）。独自のネットワークシリアライズを持つ型が `NotComparable` になるのは、プロパティそのものがその型のときだけです。要素がそうした型の配列 — たとえば `TArray<FVector_NetQuantize>` — は値ごとに比べるため、量子化による正当な丸めでも `Different` と報告されることがあります。
+
+評価できないプロパティは、次のいずれかの理由付きで `NotComparable` になります。
+
+| `Reason` | 意味 |
+|---|---|
+| `InitialOnly` | オブジェクトの生成時に 1 回だけレプリケートされるプロパティ |
+| `ConditionUnknown` | 条件が実行時に決まる（カスタムまたはダイナミック）もので、エンジンがこのコネクションについてまだ評価していない。コンポーネントのプロパティと、Iris のときは常にこれになる |
+| `ConditionNotApplicable` | 条件がこのクライアントに当てはまらず、プロパティが送られない。ライフタイムプロパティに登録されていないプロパティ（`Limitations: PropertyMissingFromLifetimeProps`）も含む |
+| `DeltaSerialized` | 差分でシリアライズされる（Fast Array）ため、比べられる値全体が無い |
+| `ObjectReference` | オブジェクト参照で、参照先を 2 つのワールドの間で対応付けられなかった |
+| `NestedObjectReference` | コンテナや構造体の中にオブジェクト参照を持つ |
+| `CustomNetSerialization` | 独自のネットワークシリアライズを持つ型で、値を正当に丸めることがあり、値が一致しなかった。一致したものは `Equal` になる |
+| `ClassMismatch` | サーバー側とクライアント側のオブジェクトのクラスが違う |
+
+**拒否。** クライアントがまだ接続中（`Connecting`）、選んだワールドに NetDriver が無い（`NoNetDriver`）またはクライアントでない（`TargetIsNotClient`）、プロセスにサーバーワールドが無い（`NoServerWorld`）または複数ある（`MultipleServerWorlds`。メッセージにプレイワールドを最大 8 件列挙）ときは、何も保存せず `NotAllowed` で拒否します。`ErrorMessage` はその理由で始まり、`nothing was compared` が続きます。ゲーム用の NetDriver を持たないサーバーワールドは `ExecutionFailed` です。
+
+#### パケットエミュレーション
+
+エンジンは送信側の遅延の項目を次の優先順で読みます。`SetNetworkEmulation` は、無視される項目が 0 でないときに `PacketLagSettingIgnored` を付けます。
+
+1. `PktFrameDelay`（ここでは読み取り専用）が 0 より大きい、または `PktOrder` が有効なときは、`PktLag`・`PktLagVariance`・`PktLagMin`・`PktLagMax`・`PktJitter` を無視します。
+2. そうでなく `PktJitter` が 0 でないときは、`PktLagMin` を基準にジッターと揺らぎで広げた遅延を使い、`PktLag` と `PktLagMax` を無視します。
+3. そうでなく `PktLag` が 0 でないときは、それを `PktLagVariance` とともに使い、`PktLagMin` と `PktLagMax` を無視します。
+4. それ以外は `PktLagMin` から `PktLagMax` の間で遅延を決め、`PktLagVariance` を無視します。
+
+受信側の項目（`PktIncomingLagMin`・`PktIncomingLagMax`・`PktIncomingLoss`）は、これとは独立です。
+
+1 つのコネクションに対する設定は、その後の NetDriver 全体への変更（このコマンドでも、コンソールからでも）で上書きされます（`DriverWideChangeOverwritesConnection`）。NetDriver 全体を変更すると、エンジンはその NetDriver が破棄されるまで、`ResetNetworkEmulation` の後も、プロジェクト設定から設定を読み直さなくなります（`ForcedPacketSettingsRemains`）。
+
+⚠️ **`RuntimeNetworkEmulationControl` の解禁を取り消す前に `ResetNetworkEmulation` を呼んでください。** 戻すにも同じ Capability が必要なため、取り消した後は NetDriver が破棄されるまで変更が残ります。
+
+**成果物の保存。** 成果物を保存する時点では、変更（または復元）はすでに済んでいます。そのため保存に失敗しても、`SetNetworkEmulation` と `ResetNetworkEmulation` は成果物なしで成功します。唯一の例外は、成果物は書けたもののその場所を解決できなかった場合で、このときコマンドは `ExecutionFailed` で失敗し、メッセージに、設定はすでに変更済みで `ResetNetworkEmulation` で戻せること（`ResetNetworkEmulation` では、保存していた設定はすでに戻して破棄したこと）が入ります。
+
+#### 完了通知と監査記録で伏せるもの
+
+生のアドレスとプロパティの値は、呼び出し元にはそのまま返り、成果物にもそのまま保存されます。エディタの完了通知に流す応答の写し（エディタ自身の通知と、コマンドを記録するコード — 監査記録・ログ — が受け取るもの）では伏せます。`ListNetConnections` の `Connections[]` の各 `RemoteAddress` と、`DumpReplicatedPropertyValues` の `Properties[]` と `Components[].Properties[]` の各 `Value` が `"<redacted>"` になります。ほかの項目はそのままです。`IncludeRemoteAddress` を指定しない `ListNetConnections` には伏せるアドレスが無いので、写しは元と同じです。`CompareReplicatedProperties` は値を返さないので、伏せるものはありません。シナリオで、前のステップの応答からアドレスや値を取ったステップは、パラメータと応答の `Data` を伏せて記録されます。`DescribeCommand` はこれらの位置を `SensitiveResponseData` に示します。[機微な値と伏せる場所](#機微な値と伏せる場所) を参照してください。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータの型の誤り・空・長すぎる・範囲外・未知。エミュレーションの項目を 1 つも指定しない、または最小値が最大値を超える `SetNetworkEmulation`。`TargetNetRole` / `TargetPIEInstance` を満たせない |
+| `CapabilityNotAvailable` | `RuntimeInspect`・`RuntimeReplicatedPropertyValueRead`・`RuntimeNetworkEmulationControl`、または（`IncludeRemoteAddress: true` のときは）`RuntimeNetConnectionAddressRead` が許可されていない。メッセージに名前が付く |
+| `PolicyViolation` | 安全ポリシーでその Capability が明示的に拒否されている、または読み取り専用モードで `SetNetworkEmulation` / `ResetNetworkEmulation` を呼んだ |
+| `NotAllowed` | プレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い。`CompareReplicatedProperties` の拒否（上を参照）。設定でエミュレーションを禁じている NetDriver への `SetNetworkEmulation`（`EmulationDisabledByConfig`） |
+| `NotFound` | `ActorIdentifier` に一致するアクターが無い（メッセージに候補が付く）。明示した `NetDriverName` をワールドが持たない（メッセージに NetDriver の一覧が付く）。`NetDriverName` を省いた `SetNetworkEmulation` で、ワールドにゲーム用の NetDriver が無い（スタンドアロンのゲーム）、または NetDriver が持たない `ConnectionIndex` |
+| `ExecutionFailed` | 識別子に一致するアクターが複数ある。観測コマンドの成果物を保存できなかった。`CompareReplicatedProperties` のサーバーワールドにゲーム用の NetDriver が無い。`SetNetworkEmulation` / `ResetNetworkEmulation` の成果物は書けたが、その場所を解決できなかった |
+| `CommandNotFound` | ビルドが提供していないコマンド: デモ版での値の読み取り・比較・エミュレーションのコマンドと、Shipping ビルドでのエミュレーションのコマンド |
+
+観測コマンドは、成功した呼び出しごとにちょうど 1 つの JSON 成果物を保存し、失敗した呼び出しは何も保存しません。拒否された要求も何も保存しません。
 
 ---
 

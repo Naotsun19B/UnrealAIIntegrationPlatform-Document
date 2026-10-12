@@ -252,6 +252,10 @@ UAIP は、本体をフォークしなくてもプロジェクト独自のコマ
 
 この組み合わせを使えば、AI 側の呼び出し方法（`uaip_execute`・スキーマ取得・Capability 判定・Artifact 返却など）は標準コマンドとまったく同じ形式で公開できます。プロジェクト独自のアセットや社内ツールを AI から扱えるようにする際は、まずこの 2 つを実装するところから始めるのが定番です。
 
+**機微な値を記録に残さない。** ハンドラは、呼び出し元には返しつつ UAIP の記録（完了通知・監査記録・ログ）には渡さない値を指定できます。`GetSensitiveParamKeys()` はパラメータのトップレベルの名前を、`GetSensitiveResponseDataPaths()` は応答の `Data` の中の位置を、`[]` が「配列の全要素」を表すドット区切りのパスで返します（`Token`、`Items[].Secret`）。どちらも固定の一覧を返してください。書き方と規則は [機微な値と伏せる場所](commands.md#機微な値と伏せる場所) を参照してください。
+
+> ⚠️ **破壊的変更 — `GetSensitiveResponseDataKeys()` は `GetSensitiveResponseDataPaths()` に改名されました**（[変更履歴](changelog.md) を参照）。override の関数名を変え、返す値はそのままで構いません（トップレベルの項目名はそのまま正しいパスです）。**`override` を付けずに旧名 `GetSensitiveResponseDataKeys()` のまま残した関数は、エラーにならずにコンパイルされることがあり、その場合は呼ばれなくなって、宣言していたものが伏せられなくなります。** 旧名をコンパイラに報告させるため、すべての override に `override` を付けてください。
+
 その他の拡張フック：
 
 - **Python `@uaip_command`** — Python の関数を UAIP のコマンドとして登録できます（`PythonScriptPlugin` と `PythonExtensionReload` Capability が必要）

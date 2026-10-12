@@ -252,6 +252,10 @@ UAIP exposes extension hooks so projects can publish their own commands to AI ag
 
 With these two, custom commands appear to AI clients exactly like built-in ones: same `uaip_execute` invocation, same schema discovery, same capability check, same artifact contract. Whenever you want to make a project-specific asset or in-house tool accessible to AI, implementing these two interfaces is the standard starting point.
 
+**Keeping sensitive values out of records.** A handler can name the values UAIP must not pass to its records — the completion notification, audit records and logs — while the caller still receives them: `GetSensitiveParamKeys()` returns top-level parameter names, and `GetSensitiveResponseDataPaths()` returns positions in the response `Data` as dot paths in which `[]` stands for every element of an array (`Token`, `Items[].Secret`). Both must return a fixed list. See [Sensitive values and where they are masked](commands.md#sensitive-values-and-where-they-are-masked) for the syntax and the rules.
+
+> ⚠️ **Breaking change — `GetSensitiveResponseDataKeys()` was renamed `GetSensitiveResponseDataPaths()`** (see the [Changelog](changelog.md)). Rename your override and keep the values: a top-level field name is a valid path as it is. **A function still named `GetSensitiveResponseDataKeys()` that is not marked `override` can compile without an error and is then never called, so nothing it declared is masked any more.** Mark every override with `override` so that the compiler reports the old name.
+
 Other hooks:
 
 - **Python `@uaip_command`** — register a Python function as a UAIP command (requires `PythonScriptPlugin` + `PythonExtensionReload` capability)

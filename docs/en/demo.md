@@ -26,6 +26,8 @@ The UAIP demo binary is a free, feature-limited build distributed via GitHub Rel
 | Runtime observation (viewport capture, world dump, HUD and widget state) | ✅ | ✅ |
 | Runtime AI perception, Chaos destruction and navigation observation (read-only subset) | ✅ | ✅ |
 | Runtime animation observation (anim instance state, state machines, blend weights, montages, curves; read-only subset) | ✅ | ✅ |
+| Runtime network observation (net drivers, connections, actor replication setup; read-only subset — `ListNetConnections` writes raw addresses only with `RuntimeNetConnectionAddressRead`, which you allow yourself) | ✅ | ✅ |
+| Runtime replicated property values and comparison, packet emulation (`DumpReplicatedPropertyValues`, `CompareReplicatedProperties`, `SetNetworkEmulation`, `ResetNetworkEmulation`) | — | ✅ |
 | Runtime subsystem observation (`ListSubsystems`; `DumpSubsystemState` also needs `SubsystemStateDump`, which you allow yourself) | ✅ | ✅ |
 | Runtime input state observation (`DumpInputState`, `GetEnhancedInputActionValue`) | ✅ | ✅ |
 | Runtime input injection (`InjectInputKey`, `InjectEnhancedInputAction`, `ClickGameViewportWidget`, …) | — | ✅ |
@@ -214,6 +216,14 @@ The commands that inject input exist only in Pro (see [Excluded commands](#exclu
 | `UAIP.Runtime.Animation.GetAnimCurveValues` | The animation curves with their values and kinds | |
 | `UAIP.Runtime.Animation.DumpAnimInstanceVariables` | The values of the variables that the project's own anim instance classes declare | `AnimInstanceVariableDump` (needed in addition to `RuntimeInspect`; DefaultDenied in the demo too) |
 
+### `UAIP.Runtime.Network.*` (read-only subset)
+
+| Command | Description | Note |
+|---|---|---|
+| `UAIP.Runtime.Network.GetNetDriverState` | The net drivers of a world with their settings and traffic totals | |
+| `UAIP.Runtime.Network.ListNetConnections` | The connections of one net driver with their round trip time, loss and traffic | `RuntimeNetConnectionAddressRead`, only when `IncludeRemoteAddress` is `true` (DefaultDenied in the demo too) |
+| `UAIP.Runtime.Network.DumpActorReplication` | How one actor is set up to replicate and what the server knows about sending it | |
+
 ### `UAIP.Runtime.Assertion.*`
 
 | Command | Description |
@@ -387,6 +397,7 @@ Commands that exist in Pro but are not available in the demo:
 | Input injection in `UAIP.Runtime.Input` (`InjectInputKey`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `FlushInput`, `SetInputMode`, `InjectEnhancedInputAction`, `AddMappingContext`, `RemoveMappingContext`, `ClickGameViewportWidget`, `PressGameViewportUIKey`, `TypeGameViewportText`) | They send input to the running game — Pro only — `CommandNotFound` |
 | `UAIP.Runtime.ChaosDestruction.EnableForcedDestructionNotify` and `UAIP.Runtime.Navigation.RebuildNavigation` | They change the running game (destruction notifications, navigation mesh regeneration) — Pro only — `CommandNotFound` |
 | `UAIP.Runtime.Animation.GetMotionMatchingState` | It needs the PoseSearch plugin, which the demo does not include — Pro only — `CommandNotFound` |
+| `UAIP.Runtime.Network.DumpReplicatedPropertyValues`, `UAIP.Runtime.Network.CompareReplicatedProperties`, `UAIP.Runtime.Network.SetNetworkEmulation` and `UAIP.Runtime.Network.ResetNetworkEmulation` | They read the values of replicated properties, which can include the account identifiers and names of players, or change the packet emulation of the running game — Pro only — `CommandNotFound` |
 
 ### Where the demo loads
 
