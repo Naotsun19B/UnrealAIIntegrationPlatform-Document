@@ -602,6 +602,8 @@ UnrealEditor.exe MyProject.uproject -uaip-scenario-file="Saved/UAIP/Requests/sce
 
 Request and scenario files are read only from under `Saved/UAIP/Requests/`, and the response file is written only under `Saved/UAIP/Responses/`. Each path may be relative to the project root or absolute, as long as it falls under that directory. The command name goes under the key `Command` (the MCP tool argument `CommandName` is not accepted here).
 
+**Large requests.** The operating system limits the whole command line to 16,383 characters, so a request passed inline with `-uaip-request=` or `-uaip-scenario=` has to fit in that. Pass a large request as a file with `-uaip-request-file=` or `-uaip-scenario-file=` instead. A request is also limited in size on every path (inline, file, stdin, stream): 1 MiB (1,048,576 bytes), counted as UTF-8 bytes, not characters. Non-ASCII text such as Japanese takes 3 bytes per character, so it reaches the limit sooner than the character count suggests.
+
 When the CLI refuses a request before running anything, it returns a failed response and exits with code 2. The `ErrorCode` tells the kind of mistake: `InvalidParams` for a bad request (a path outside the allowed directories, including the response file path, malformed JSON, an unreadable or oversized file, conflicting flags), `NotFound` for a `SessionId` that does not exist, and `PolicyViolation` when the role gate blocks this transport. A refused response file path is rejected before the command or scenario runs, and the response goes to stdout. A one-shot command that does not finish within 120 seconds returns `Timeout` with exit code 1. `InternalError` is kept for server-side faults. One of them happens after the command ran: if the response file path is allowed but the file cannot be written, the response goes to stdout with `InternalError` and the exit code is 2, even if the command succeeded.
 
 ### Stream mode
@@ -627,6 +629,8 @@ sequenceDiagram
 ```
 
 The markers (`__UAIP_*__`) make it possible to mix request/response with normal UE log output on stdout.
+
+Each request is one line. A line longer than 1 MiB (1,048,576 bytes, counted as UTF-8) is rejected with `InvalidParams` (`Request line exceeds maximum size of 1048576 bytes.`). That rejection response carries no `SessionId`, because the line never reached session assignment. The stream keeps running and the next line is read as usual.
 
 ```
 UnrealEditor.exe MyProject.uproject -uaip-stdin-stream
@@ -656,5 +660,6 @@ UnrealEditor.exe MyProject.uproject -uaip-stdin-stream
 
 | Item | Limit |
 |---|---|
-| Max request body | 1 MiB |
+| Max request size | 1 MiB (1,048,576 bytes, counted as UTF-8) |
+| Max command line length (`-uaip-request=` / `-uaip-scenario=`) | 16,383 characters (operating system limit) |
 | Command timeout | 120 s |
