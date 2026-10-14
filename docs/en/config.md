@@ -181,19 +181,23 @@ bAllowWritesDuringPIE=False
 MaxSaveFileBytes=67108864
 ```
 
-### `[UAIP.RuntimeObservation]` — HUD draw statistics for `DumpHUDState`
+### `[UAIP.RuntimeObservation]` — window size message log and HUD draw statistics
 
-`DumpHUDState` ([`UAIP.Runtime.Observation`](commands.md#uaipruntimeobservation)) adds the canvas draw-batch statistics of the game viewport only when this setting is on. It grants nothing and changes no command's permission; while it is off, the result explains how to turn it on. See also [Safety & Capabilities](safety.md#runtime-game-viewport-ui).
+`RecordWindowMessages` controls a short log of the window size messages the operating system sends (`WM_SIZE`, `WM_WINDOWPOSCHANGED`, `WM_NCCALCSIZE`). It only records and never consumes a message, keeps the last 64 messages of each regular Slate window (the main window, floating tabs and asset editors in their own windows, modal dialogs; up to 8 windows) and the last 64 of all other windows together, such as notification toasts and menus, and is shown in the `WindowMessageRecording` field of `DumpEditorState` (see [Capture refusals](commands.md#capture-refusals)). It exists to find out why a window kept drawing at an old size after it was restored from the minimized state. It grants nothing and changes no command's permission. With `False` the handler is not registered at all and `RecordingStatus` reads `Disabled`.
+
+`DumpHUDState` ([`UAIP.Runtime.Observation`](commands.md#uaipruntimeobservation)) adds the canvas draw-batch statistics of the game viewport only when `EnableHUDCanvasStats` is on. It grants nothing and changes no command's permission; while it is off, the result explains how to turn it on. See also [Safety & Capabilities](safety.md#runtime-game-viewport-ui).
 
 | Key | Type | Default | Description |
 |---|---|---|---|
+| `RecordWindowMessages` | bool | `True` | Whether the window size message log is kept |
 | `EnableHUDCanvasStats` | bool | `False` | Whether the HUD canvas statistics are recorded and added to the `DumpHUDState` result |
 
-- The value is read when the recorder starts, once at startup, so an edit takes effect after the editor or game is restarted.
+- Both values are read once at startup, so an edit takes effect after the editor or game is restarted.
 - There is no launch flag.
 
 ```ini
 [UAIP.RuntimeObservation]
+RecordWindowMessages=False
 EnableHUDCanvasStats=True
 ```
 

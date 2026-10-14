@@ -21,7 +21,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | **コマンド** | | |
 | Core（HealthCheck、ListCommands など） | ✅ | ✅ |
 | Editor 観測（スクリーンショット・ダンプ） | ✅ | ✅ |
-| Editor ワークスペース操作（タブのフォーカス・グラフの表示調整・エディタ再起動など） | ✅ | ✅ |
+| Editor ワークスペース操作（タブのフォーカス・グラフの表示調整・エディタ再起動・メインウィンドウの最小化と復元など） | ✅ | ✅ |
 | PIE 制御（StartPIE、StopPIE、LoadMap など） | ✅ | ✅ |
 | Runtime 観測（ビューポートキャプチャ・ワールドダンプ・HUD とウィジェットの状態） | ✅ | ✅ |
 | Runtime の AI 知覚・Chaos 破壊・ナビゲーションの観測（読み取り専用の一部） | ✅ | ✅ |
@@ -118,6 +118,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.Workspace.OpenTabById` | Slate のレイアウト ID でエディタータブを開く | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.CloseTabById` | Slate のレイアウト ID でエディタータブを閉じる | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.NormalizeEditorLayout` | メイングラフのタブにフォーカスし、一時的なパネルを隠す | |
+| `UAIP.Editor.Workspace.SetEditorWindowState` | エディタのメインウィンドウを最小化する、または最小化から復元する | `EditorWindowStateControl`。復元はウィンドウをアクティブにし、キーボードフォーカスをエディタへ移す |
 | `UAIP.Editor.Workspace.SetGraphZoom` | グラフビューのズーム倍率を設定する | |
 | `UAIP.Editor.Workspace.FrameGraphAll` | グラフ全体をビューに収める | |
 | `UAIP.Editor.Workspace.FrameGraphSelection` | 選択ノードをビューに収める | |
@@ -252,7 +253,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.UIAutomation.PressKey` | キー入力を送る | `EditorKeyboardInput` |
 | `UAIP.Editor.UIAutomation.WaitForWidget` | ウィジェットの出現を待機する | |
 | `UAIP.Editor.UIAutomation.FillForm` | フォームを自動入力する | |
-| `UAIP.Editor.UIAutomation.OpenPasswordTestWindow` | パスワード欄を持つテスト用ウィンドウを開く（パスワード欄のポリシー検証用） | |
+| `UAIP.Editor.UIAutomation.OpenPasswordTestWindow` | パスワード欄を持つ小さなテスト用ウィンドウを開く（パスワード欄のポリシー検証用） | 窓を開くだけで何も変更しない。デモ版にも製品版にも含まれる（[デモ版が制限するもの・しないもの](#デモ版が制限するものしないもの)） |
 
 ### `UAIP.Editor.Assets.*`（読み取り専用の一部）
 
@@ -382,6 +383,17 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 
 レビューやテストの証跡として共有された画像が、デモ版で取得されたものだと分かるようにするための表示です。製品版では入りません。
 
+### デモ版が制限するもの・しないもの
+
+デモ版が制限するのは、存在する**コマンド**です。コマンドがエディタに作用した後で、エディタが何をするかまでは止めません。ここから次の 4 点になります。
+
+1. **意味的な編集コマンドは提供しません。** アセット・アクター・プロパティ・設定を意味の単位で書き換えるコマンド（アセットの作成・リネーム・削除、アクターの配置、`Set*Property` など）はデモ版にありません。[除外コマンド](#除外コマンド) を参照してください。
+2. **保存・終了・再起動は、観測の前提として残しています。** `SaveAllPackages`・`ShutdownEditor`・`RestartEditor` は、UI 操作の結果をエディタの再起動で確かめる流れを成り立たせるためのものです。`SaveAll` を指定しなければ（`DisableSave` が既定の `false` なら）、`ShutdownEditor` と `RestartEditor` は終了・再起動の前に、変更のあるパッケージをすべて保存します。
+3. **UI 自動化はアセットを変更・保存しうる。** `ConnectGraphPins` と `DragGraphNode` は、開いているエディタのアセットを実際に変更します。`ClickWidget` は実際のクリックを送るため、保存ボタンも押せます。要求するのは DefaultAllow の `EditorUIAutomation` だけで、`DisableSave` は見ません。止まるのは `ReadOnly=True` のときだけです。「編集コマンドが無い」を「デモ版ではプロジェクトに書き込めない」と読まないでください。
+4. **`SaveAsset` は除外し、`SaveAllPackages` は残します。** `SaveAsset` は、アセットを 1 件開き・直し・保存する編集の流れの一部で、作成・リネーム・削除のコマンドと同じ系統です。`SaveAllPackages` は `ShutdownEditor` / `RestartEditor` と同じ `EditorLifecycle` に属し、終了・再起動がすでに行っている「全て保存」を単独で呼べるようにしただけなので、書き込みの手段は増えません。
+
+`OpenPasswordTestWindow` は、別の理由でデモ版にも製品版にも含まれます。パスワード欄を持つ小さなウィンドウを開くだけのコマンドで、`InputText` やパスワード欄のポリシーがパスワード欄をどう扱うかを確かめるためのターゲットです。アセット・設定・保存済みの状態は何も変更しません。すでに公開されているコマンドであり、公開済みのコマンドを外すと破壊的変更になるためです。
+
 ### 除外コマンド
 
 製品版には存在するが、デモ版では利用できないコマンド：
@@ -398,6 +410,14 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Runtime.ChaosDestruction.EnableForcedDestructionNotify` と `UAIP.Runtime.Navigation.RebuildNavigation` | 実行中のゲーム（破壊通知・ナビメッシュの再生成）を変更するため製品版のみ。`CommandNotFound` を返す |
 | `UAIP.Runtime.Animation.GetMotionMatchingState` | PoseSearch プラグインが必要で、デモ版には含まれないため製品版のみ。`CommandNotFound` を返す |
 | `UAIP.Runtime.Network.DumpReplicatedPropertyValues`・`UAIP.Runtime.Network.CompareReplicatedProperties`・`UAIP.Runtime.Network.SetNetworkEmulation`・`UAIP.Runtime.Network.ResetNetworkEmulation` | プレイヤーのアカウント識別子や名前が入りうるレプリケートされるプロパティの値を読む、または実行中のゲームのパケットエミュレーションを変更するため製品版のみ。`CommandNotFound` を返す |
+
+デモ版で Toolset ブリッジのコマンドを呼ぶと、エラー文は対処を述べる前に、連携の名前とその状態を示すので、何が足りないのかが分かります: `This command runs through the Toolset integration 'UAIPCoreToolsetRegistry', which is not loaded (state: NotInThisEdition). The integration is not included in the free demo edition of UAIP. Its commands are available in the Pro edition on Fab.`
+
+### デモ版が「使えない」と示す Capability
+
+デモ版は、含まれないコマンドの Capability も登録するため、Capability の一覧は製品版と同じ形に見えます。デモ版のどのコマンドも要求しない Capability には、**この版では使えない**の印が付きます。`UAIP.Core.QueryCapabilities`（`IncludeUnavailable: true`）は、それを `UnavailableReason: "NotInThisEdition"` と `IsGranted: false` で列挙し、`+AllowedCapabilities` に書いても付与されず、書くと起動時にエディタが警告を出します。これは何かを解禁する手段ではありません。そのコマンドを持つのは製品版だけです。デモ版の利用者が使えない Capability のすべてに印が付くわけではなく、デモ版がそもそも登録しないもの（たとえば `CommonUIProjectCodeExecution`）は、一覧に現れません。詳しくは [Safety & Capabilities](safety.md#デモ版が提供しない-capability) を参照してください。
+
+`EditorWindowStateControl` は、`SetEditorWindowState` がデモ版に含まれるので、印が付きません。デモ版の `DefaultUAIP.ini` は付与しないため、AI にエディタのメインウィンドウを最小化・復元させるには、`+AllowedCapabilities=EditorWindowStateControl` を追加してください。
 
 ### ロード対象
 

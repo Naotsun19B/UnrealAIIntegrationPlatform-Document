@@ -152,15 +152,26 @@ Capabilities marked 🧩 require an optional plugin. On an editor build (source 
 |---|---|
 | `Capabilities` | **What can this session use right now?** The effective set — the process capability set, minus anything `DeniedCapabilities` removes, minus anything the session's bound role denies |
 | `RegisteredCapabilityCount` / `UngrantedCapabilityCount` | **How much is there, and how much of it can't this session use?** Always returned, including when both are what you hoped — so "nothing is ungranted" never has to be guessed from a missing field |
-| `RegisteredCapabilities` | **What exists at all?** Every capability the loaded modules have declared, whether or not this session holds it. Each entry carries `Name`, `DefaultPolicy` (`Allowed` or `Denied`) and `IsGranted` — so a name present here with `IsGranted: false` is one to ask an operator to enable. **Returned only when you pass `IncludeUnavailable: true`** |
+| `RegisteredCapabilities` | **What exists at all?** Every capability the loaded modules have declared, whether or not this session holds it. Each entry carries `Name`, `DefaultPolicy` (`Allowed` or `Denied`) and `IsGranted` (plus `UnavailableReason: "NotInThisEdition"` on a capability the running edition does not ship; see [Capabilities the demo build does not ship](#capabilities-the-demo-build-does-not-ship)) — so a name present here with `IsGranted: false` is one to ask an operator to enable, unless it carries `UnavailableReason`: no grant changes that. **Returned only when you pass `IncludeUnavailable: true`** |
 
 The catalog is **opt-in**, for the same reason `uaip_list_commands` hides unavailable commands by default: it runs to well over a hundred entries in a normal editor, and this is the command you are told to call first. Pass `IncludeUnavailable: true` to receive it. What is *not* optional is knowing it is there — the two counts come back on every call, so a session that never opts in still learns how many capabilities it does not hold, and can then ask for the list.
 
-**"What would an operator have to enable?" is answered from `RegisteredCapabilities` alone**: those are the entries whose `DefaultPolicy` is `Denied`. The response carries no separate list of them, deliberately — it would repeat names already in the catalog without adding anything.
+**"What would an operator have to enable?" is answered from `RegisteredCapabilities` alone**: those are the entries whose `DefaultPolicy` is `Denied`, leaving out any that carries `UnavailableReason` (no grant enables it). The response carries no separate list of them, deliberately — it would repeat names already in the catalog without adding anything.
 
 The catalog matters because a DefaultDenied capability is invisible to the effective set by definition. For most of them that is not a problem — they appear in some command's `RequiredCapabilities`, so `uaip_describe_command` names them. `PropertyReferenceEdit` and `PropertyStructuredEdit` are the exception: they are decided from the type of the property being written, long after dispatch, so no command declares them and the catalog is the only place they can be found before one is granted.
 
 Only capability names and their default policies are disclosed. Nothing about the project's contents, and no values, are involved.
+
+### Capabilities the demo build does not ship
+
+The free demo build includes only part of the commands, but it still **registers** the capabilities of the commands it leaves out, with their normal default policy, so the capability catalog has the same shape in both editions. A capability that no command of the demo requires is **marked "not in this edition"**. A marked capability behaves like this:
+
+- `QueryCapabilities` lists it in `RegisteredCapabilities` with `UnavailableReason: "NotInThisEdition"` and `IsGranted: false`, and counts it in `UngrantedCapabilityCount`.
+- It is never granted, however it would have been: named in `+AllowedCapabilities`, declared by a command provider, or even DefaultAllow (so `LiveCoding`, which is DefaultAllow, is not granted in the demo). `UAIP.Core.ReloadCapabilities` does not change that.
+- If `[UAIP.SafetyPolicy]` names it in `AllowedCapabilities`, the editor logs a warning at startup: `Capability '<Name>' is granted in [UAIP.SafetyPolicy] but is not available in this edition of UAIP. The grant has no effect.` Naming it in `DeniedCapabilities` matches what actually happens, so it draws no such warning.
+- Pro builds mark nothing. Their catalog and effective set are unchanged.
+
+The mark does not change a capability's default policy, and **not every capability a demo user cannot use carries it**. A capability the demo does not register at all (`CommonUIProjectCodeExecution` is an example) is not in the catalog and has no mark; naming it in the ini has no effect either. A capability that a command of the demo can require (such as `RuntimeCVarRead` or `BlackboardValueRead`) is never marked. `EditorWindowStateControl` is registered in the demo and is not marked, because `SetEditorWindowState` is part of the demo.
 
 ---
 
@@ -450,6 +461,7 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `LogVerbosityEdit` | Change log verbosity levels — `SetLogVerbosity` native and `Toolset.Editor.Toolset.Logs.SetVerbosity` bridge |
 | `ViewportAnnotationCapture` | Capture annotated viewport images with world-coordinate labels — `CaptureViewportImageAnnotated` |
 | `EditorTabSpawn` | Open, close, and enumerate editor tabs by their Slate `FTabId` — `OpenTabById`, `CloseTabById`, `ListSpawnableTabs`. Distinct from the DefaultAllow `EditorWorkspaceControl`, which only reaches asset-editor tabs through `AssetPath`: an arbitrary `TabId` can run a third party's bound delegate — `CanSpawnTab`/`OnSpawnTab` when opening, `OnCanCloseTab`/`OnTabClosed` when closing, and the display-name/tooltip `TAttribute` accessors when listing — including internal tabs never shown in a menu. `ListSpawnableTabs` requires the same capability rather than being DefaultAllow: enumerating carries the same delegate-execution risk, and the only use for the list is deciding what to open or close. Closing is not limited to tabs this session opened — any tab currently open can be closed, including ones a human has open for their own work, and closing bypasses the tab permission list entirely so that cleanup never fails after a permission change |
+| `EditorWindowStateControl` | Minimize the editor main window and restore it from the minimized state — `SetEditorWindowState`. It moves a window the user is looking at, and restoring activates the window and takes the keyboard focus, so it is not DefaultAllow. It is registered in the demo build too and is **not** marked as unavailable there, because the command is part of the demo. The demo's `DefaultUAIP.ini` does not grant it; add `+AllowedCapabilities=EditorWindowStateControl` to use the command |
 
 #### Script execution
 
@@ -611,7 +623,7 @@ The behavior tree and Blackboard commands ([`UAIP.Runtime.AI`](commands.md#behav
 
 Then restart the editor, or — where `AllowCapabilityReload=True` — call `UAIP.Core.ReloadCapabilities`, which applies it without a restart. Deleting a line and reloading again takes the capability away. While one is not granted, the command that requires it fails with `CapabilityNotAvailable` naming the missing capability; that check comes before the parameters or the play session are looked at, and no artifact is produced.
 
-**Not provided in the demo build.** `DescribeBehaviorTreeWithProjectCode` and `AIBehaviorProjectCodeExecution` are not part of the demo binary: the command is absent (`CommandNotFound`) and the capability is not registered, so naming it in the ini has no effect there. The other seven commands are provided. `BlackboardValueRead` is registered in the demo, but the demo's ini grants only `RuntimeCVarRead`, so `GetBlackboardValues` needs the `+AllowedCapabilities=BlackboardValueRead` line above in the demo as well.
+**Not provided in the demo build.** `DescribeBehaviorTreeWithProjectCode` is not part of the demo binary, so the command is absent (`CommandNotFound`). `AIBehaviorProjectCodeExecution` is registered there, DefaultDenied and marked as not in this edition (see [Capabilities the demo build does not ship](#capabilities-the-demo-build-does-not-ship)): no command of the demo requires it, naming it in the ini has no effect and draws a startup warning, and `QueryCapabilities` lists it with `UnavailableReason: "NotInThisEdition"`. The other seven commands are provided. `BlackboardValueRead` is registered in the demo, but the demo's ini grants only `RuntimeCVarRead`, so `GetBlackboardValues` needs the `+AllowedCapabilities=BlackboardValueRead` line above in the demo as well.
 
 **Denying them explicitly.** `+DeniedCapabilities=BlackboardValueRead` refuses `GetBlackboardValues` and `DescribeBehaviorTreeWithProjectCode` with `PolicyViolation`, even when the same capability is also allowed (deny wins); `+DeniedCapabilities=AIBehaviorProjectCodeExecution` refuses `DescribeBehaviorTreeWithProjectCode` alone. `+DeniedCapabilities=RuntimeInspect` refuses **all eight** behavior tree commands with `PolicyViolation` — along with every other command that requires `RuntimeInspect`. None of these refusals produces an artifact.
 
@@ -654,7 +666,7 @@ The Chaos destruction commands ([`UAIP.Runtime.ChaosDestruction`](commands.md#ua
 
 **What is restored.** When the capture that forced a notification stops (`StopDestructionCapture`, its duration limit, a replacement or the end of the session), each notification no capture forces any more is put back if it still carries the forced value. A notification the game turned off in the meantime is left as the game set it. One the game wrote back on cannot be told apart from ours and is restored as well. Nothing is restored when the play world is torn down, because the components go with it.
 
-**Not provided in the demo build.** `EnableForcedDestructionNotify` and `ChaosDestructionForceNotify` are not part of the demo binary: the command is absent (`CommandNotFound`) and the capability is not registered, so naming it in the ini has no effect there. The seven read-only commands are provided.
+**Not provided in the demo build.** `EnableForcedDestructionNotify` is not part of the demo binary, so the command is absent (`CommandNotFound`). `ChaosDestructionForceNotify` is registered there, DefaultDenied and marked as not in this edition (see [Capabilities the demo build does not ship](#capabilities-the-demo-build-does-not-ship)): naming it in the ini has no effect and draws a startup warning. The seven read-only commands are provided.
 
 **Enabling it.** Add the capability to `[UAIP.SafetyPolicy]` in `Config/DefaultUAIP.ini`:
 
@@ -680,7 +692,7 @@ The navigation commands ([`UAIP.Runtime.Navigation`](commands.md#uaipruntimenavi
 
 **What is not offered, and what to use.** A synchronous full build of the navigation mesh holds the game thread until it finishes, with no upper bound, and the editor bridge treats an editor that does not answer for 30 seconds as stopped. Regenerating a region by deleting its tiles and re-adding them discards the tiles first. Neither is offered. Use `RebuildNavigation` (the whole world, or a `Box`) followed by `WaitForNavigationBuild`: the first queues the regeneration and answers at once, the second waits until the navigation system is quiescent.
 
-**Not provided in the demo build.** `RebuildNavigation` and `RuntimeNavigationRebuild` are not part of the demo binary: the command is absent (`CommandNotFound`) and the provider does not declare the capability, so no command uses it and naming it in the ini has no effect there. The capability is still recorded as Denied by default. The seven read-only commands are provided, and so is the extended search capability.
+**Not provided in the demo build.** `RebuildNavigation` is not part of the demo binary, so the command is absent (`CommandNotFound`). `RuntimeNavigationRebuild` is registered there, DefaultDenied and marked as not in this edition (see [Capabilities the demo build does not ship](#capabilities-the-demo-build-does-not-ship)): naming it in the ini has no effect and draws a startup warning. The seven read-only commands are provided, and so is the extended search capability.
 
 **Enabling it.** Add the capabilities you need to `[UAIP.SafetyPolicy]` in `Config/DefaultUAIP.ini`:
 
@@ -737,7 +749,7 @@ The network commands ([`UAIP.Runtime.Network`](commands.md#uaipruntimenetwork)) 
 
 > ⚠️ **Restore the packet emulation before taking `RuntimeNetworkEmulationControl` away.** A change stays until it is reset or the net driver is destroyed — when the PIE session ends, or when a client reconnects after travelling to another map. `ResetNetworkEmulation` needs the same capability, so call it before the grant is withdrawn; afterwards UAIP cannot restore the settings, and the change stays until the net driver is destroyed. After a change to a whole net driver the engine also stops reloading its settings from the project configuration until the net driver is destroyed, even after the reset.
 
-**Not provided in the demo build or in Shipping builds.** `DumpReplicatedPropertyValues`, `CompareReplicatedProperties` and `RuntimeReplicatedPropertyValueRead` are not part of the demo binary. `SetNetworkEmulation`, `ResetNetworkEmulation` and `RuntimeNetworkEmulationControl` are registered only in builds that can use the engine's packet emulation, so neither the demo binary nor a Shipping build has them. Where they are absent the commands return `CommandNotFound` and the capabilities are not registered, so naming them in the ini has no effect there. The three read-only commands and `RuntimeNetConnectionAddressRead` are provided in the demo build.
+**Not provided in the demo build or in Shipping builds.** `DumpReplicatedPropertyValues`, `CompareReplicatedProperties`, `SetNetworkEmulation` and `ResetNetworkEmulation` are not part of the demo binary, so they return `CommandNotFound` there. `RuntimeReplicatedPropertyValueRead` and `RuntimeNetworkEmulationControl` are registered in the demo, DefaultDenied and marked as not in this edition (see [Capabilities the demo build does not ship](#capabilities-the-demo-build-does-not-ship)): naming them in the ini has no effect and draws a startup warning. `SetNetworkEmulation`, `ResetNetworkEmulation` and `RuntimeNetworkEmulationControl` are registered only in builds that can use the engine's packet emulation, so a Shipping build has none of them: the commands return `CommandNotFound`, and the capability is not in the catalog, so naming it in the ini has no effect there either. The three read-only commands and `RuntimeNetConnectionAddressRead` are provided in the demo build.
 
 **Enabling them.** Add the capabilities you need to `[UAIP.SafetyPolicy]` in `Config/DefaultUAIP.ini`:
 
@@ -985,6 +997,44 @@ The five names owned by `UAIP.Runtime.LiveLink` carry no 🧩 — that module ha
 | `LiveLinkRecording` 🧩 | Start, stop and cancel a Take Recorder recording of LiveLink Subjects — `StartLiveLinkRecording`, `StopLiveLinkRecording`, `CancelLiveLinkRecording`. Starting one holds the domain's mutation state for as long as it runs, and stopping or cancelling acts on a real recording and the LevelSequence it produces. `GetLiveLinkRecordingStatus` is read-only and uses `EditorInspect` instead, since observing whether a recording is in progress carries none of that risk |
 
 > **Stopping and cancelling only ever act on a recording UAIP started.** A recording begun from the Take Recorder panel or by another plugin is observable through `GetLiveLinkRecordingStatus` but is never stopped or cancelled by these commands, whatever capabilities are held.
+
+#### Mass observation and editing
+
+The Mass commands observe a running Mass simulation ([`UAIP.Runtime.Mass`](commands.md#uaipruntimemass)) and read or edit the assets it is built from ([`UAIP.Editor.Mass`](commands.md#uaipeditormass-)). Reading the structure of a simulation is DefaultAllow: the six runtime commands need `RuntimeInspect` (archetypes, entity counts, the processor graph, the element types an entity carries), and the three reading commands of the editor domain need `EditorInspect`. Everything below is denied by default, and the Mass commands are not part of the demo build.
+
+| Capability | What it unlocks |
+|---|---|
+| `RuntimeMassFragmentValueRead` | Read the values of the fragments, shared fragments and const shared fragments of one entity in a play world — `GetMassEntityFragments`, required in addition to `RuntimeInspect`. Denied by default because these values are project data and are handed to the AI client and written to an artifact. The structure of the simulation is not gated |
+| `MassAssetEdit` | Write to the assets this domain edits — Mass entity configs and spawners: `AddMassEntityConfigTrait`, `RemoveMassEntityConfigTrait`, `SetMassEntityConfigTraitProperty`, `ConfigureMassSpawner`. It also gates **generic property writes** to a Mass asset (see the last note below). Denied by default because every one of them rewrites an asset the simulation is built from. Writes are refused while a play session is in progress |
+| `MassCustomTypeEdit` | Required in addition to `MassAssetEdit` to bring in a trait or a spawn data generator class this domain does not ship with: a class from a project module, another plugin or a Blueprint generated class. Without it, the classes a session can place are exactly the ones the engine's own Mass modules declare. It is asked while a command runs and appears in no command's `RequiredCapabilities`; `ListMassEntityTraits` reports per class, under `Admission`, whether adding it needs it |
+| `MassProjectCodeExecution` | Allow a call to make project code run: evaluating the build of a trait the project declares (to read its elements, `DumpMassEntityConfig`, `ValidateMassEntityConfig`, `ListMassEntityTraits`), passing `InitialProperties` to `AddMassEntityConfigTrait`, writing any trait property (`SetMassEntityConfigTraitProperty`, whatever the trait class), and `ConfigureMassSpawner` when replacing the entity types makes the editor world register a template that resolves to such a trait. Adding a project's generator class alone does not need it, because a generator runs only while entities are spawned in play. Denied by default because it turns an editor operation into the execution of code this plugin did not ship |
+
+The three editor capabilities are registered whether or not the `MassGameplay` plugin was compiled in, so an operator can grant them in either build and they carry no 🧩. The editor commands themselves need the `MassGameplay` plugin (see [`UAIP.Editor.Mass`](commands.md#uaipeditormass-)); `RuntimeMassFragmentValueRead` belongs to the runtime commands, which do not.
+
+> ⚠️ **What `MassProjectCodeExecution` exposes you to.** Granting it lets the project's own trait code run in two places: a private, empty world created for the length of one call to work out what a config builds, and the editor world, where the engine registers templates when a spawner's entity types are replaced. A trait that is written to stop in an unexpected state can bring **the whole editor down**. Grant it only where the AI client may cause that. Also keep in mind:
+>
+> - **"Project's own" is decided per trait class.** A trait shipped with the engine is judged as an engine trait. When a command inspects one, the trait's code does not reach project code: the engine itself skips the steps that touch the classes and assets it refers to during an inspection call. The engine's Mass modules are the only trusted origin: a trait from another engine plugin (such as `UAFMass`) counts as a project type and needs `MassCustomTypeEdit` and `MassProjectCodeExecution` like any other.
+> - **Loading an asset can run project code, and this capability does not stop it.** When a command loads a config asset that is not loaded yet, the StateTrees it refers to are loaded too, and the engine's ordinary loading steps (post-load, link and, in the editor, compile) can run on StateTree nodes the project wrote in C++. That comes with loading assets in general.
+> - **Generic commands can still run trait code.** Starting PIE, deleting an actor, saving and Undo / Redo make the engine itself run custom trait code in reaction, and this capability cannot stop that. It is a property of those commands, not of Mass.
+> - **A project's own struct nested in a trait is not caught by the generic write gate.** The gate judges the declared type being written. A write that reaches a struct the project declares (nested inside a project trait or an engine-shipped one) passes with the usual `PropertyEdit` alone, and that struct's import hooks may run.
+
+> ⚠️ **What comes out of `GetMassEntityFragments`.** The values are returned as they are at the moment of the call, with no masking, and written to an artifact. The amount is bounded, not the kind: 16 KiB for one fragment's value and 256 KiB for one response; strong object references are never read, a struct whose type is chosen at run time is not expanded, and members that are not reflected are not output. Grant the capability only where the AI client may read whatever the project keeps in its fragments. The structure-only commands, which stay available, still let a client infer which entities exist and how they are composed.
+
+> ⚠️ **Generic property writes to Mass assets now need two more capabilities (behavior change).** Writing a property of a Mass entity config, a spawner, a trait, a spawn data generator, or the structs that carry their settings through a generic property command now requires `MassAssetEdit` and `MassProjectCodeExecution`, always, on top of what the generic command already asked for. The structs covered are those the Mass plugins (MassGameplay, MassAI, MassCrowd) declare and that can be reached from the properties of a config, a spawner, a trait or a generator. A struct used only by Mass project settings (movement styles, crowd lane density, look-at priorities and the like) or only by StateTree nodes is not covered; a struct used both by a trait and by another asset (a data table row, for example) is covered whichever way it is written. A procedure that wrote such a property with `PropertyEdit` alone must add the two capabilities. A value that holds a reference or a nested object can need `PropertyReferenceEdit` or `PropertyStructuredEdit` as before.
+
+**Enabling them.**
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=RuntimeMassFragmentValueRead
++AllowedCapabilities=MassAssetEdit
++AllowedCapabilities=MassCustomTypeEdit
++AllowedCapabilities=MassProjectCodeExecution
+```
+
+Grant only the ones you need. Then restart the editor, or — where `AllowCapabilityReload=True` — call `UAIP.Core.ReloadCapabilities`. While one is not granted, a command that needs it fails with `CapabilityNotAvailable` naming the capability (a write also lists `RequiredCapabilities` and `MissingCapabilities`) and changes nothing.
+
+**Denying them explicitly.** `+DeniedCapabilities=<Name>` for any of the four refuses the commands that need it with `PolicyViolation`, even when the same capability is also allowed (deny wins). `+DeniedCapabilities=RuntimeInspect` refuses all six runtime Mass commands, and `+DeniedCapabilities=EditorInspect` the three reading commands of the editor domain, along with every other command that requires them.
 
 ---
 

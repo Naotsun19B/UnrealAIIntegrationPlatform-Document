@@ -152,15 +152,26 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 |---|---|
 | `Capabilities` | **このセッションが今使えるものは何か。** 実効セット — プロセスの Capability セットから `DeniedCapabilities` の分を引き、さらにセッションが束縛されている役割が拒否する分を引いたもの |
 | `RegisteredCapabilityCount` / `UngrantedCapabilityCount` | **どれだけ存在し、そのうちこのセッションが使えないものは何件か。** 常に返します（0 件のときも返します）。フィールドが無いことから「未付与は無い」を推測する必要がありません |
-| `RegisteredCapabilities` | **そもそも何が存在するか。** ロード済みモジュールが宣言したすべての Capability を、このセッションが保有しているかどうかに関わらず列挙します。各要素は `Name`・`DefaultPolicy`（`Allowed` / `Denied`）・`IsGranted` を持ちます。ここに `IsGranted: false` で現れる名前が、運用者へ有効化を依頼すべきものです。**`IncludeUnavailable: true` を渡したときだけ返ります** |
+| `RegisteredCapabilities` | **そもそも何が存在するか。** ロード済みモジュールが宣言したすべての Capability を、このセッションが保有しているかどうかに関わらず列挙します。各要素は `Name`・`DefaultPolicy`（`Allowed` / `Denied`）・`IsGranted` を持ち、実行中の版が提供しない Capability にはさらに `UnavailableReason: "NotInThisEdition"` が付きます（[デモ版が提供しない Capability](#デモ版が提供しない-capability)）。ここに `IsGranted: false` で現れる名前が、運用者へ有効化を依頼すべきものです。ただし `UnavailableReason` が付いているものは、付与しても変わりません。**`IncludeUnavailable: true` を渡したときだけ返ります** |
 
 カタログは**オプトイン**です。`uaip_list_commands` が既定で利用不可のコマンドを隠すのと同じ理由で、通常のエディタでは 100 件を優に超えるうえ、このコマンドは「最初に呼べ」と案内しているものだからです。受け取るには `IncludeUnavailable: true` を渡します。一方で、**カタログの存在自体は隠しません** — 2 つの件数は毎回返るため、一度もオプトインしていないセッションでも「保有していない Capability が何件あるか」を知り、そのうえで一覧を要求できます。
 
-**「運用者が有効化しなければならないものは何か」は `RegisteredCapabilities` だけで分かります** — `DefaultPolicy` が `Denied` の要素がそれにあたります。この一覧を別フィールドとして返すことは意図的にしていません。カタログに既にある名前を繰り返すだけで、新しい情報を持たないからです。
+**「運用者が有効化しなければならないものは何か」は `RegisteredCapabilities` だけで分かります** — `DefaultPolicy` が `Denied` の要素がそれにあたります（`UnavailableReason` が付いた要素は、付与しても有効にならないので除きます）。この一覧を別フィールドとして返すことは意図的にしていません。カタログに既にある名前を繰り返すだけで、新しい情報を持たないからです。
 
 このカタログが必要なのは、DefaultDenied な Capability が定義上そもそも実効セットに現れないためです。多くの場合これは問題になりません — いずれかのコマンドの `RequiredCapabilities` に現れるので `uaip_describe_command` で名前が分かります。例外が `PropertyReferenceEdit` と `PropertyStructuredEdit` で、この 2 つは書き込み対象プロパティの型から dispatch のはるか後に判定されるため、どのコマンドも宣言しません。付与される前にこの 2 つを見つけられる場所は、このカタログだけです。
 
 開示されるのは Capability の名前と既定方針だけです。プロジェクトの内容も値も含まれません。
+
+### デモ版が提供しない Capability
+
+無償のデモ版は含まれるコマンドが一部だけですが、含まれないコマンドの Capability も、通常の既定ポリシーのまま**登録**します。そのため、Capability のカタログの形はどちらの版でも同じです。デモ版のどのコマンドも要求しない Capability には、**「この版では使えない」の印**が付きます。印の付いた Capability は次のように振る舞います。
+
+- `QueryCapabilities` は、`RegisteredCapabilities` に `UnavailableReason: "NotInThisEdition"` と `IsGranted: false` を付けて列挙し、`UngrantedCapabilityCount` にも数えます。
+- 付与される経路が何であっても付与されません。`+AllowedCapabilities` への記載、コマンド Provider の宣言、DefaultAllow のいずれでも同じです（DefaultAllow の `LiveCoding` も、デモ版では付与されません）。`UAIP.Core.ReloadCapabilities` を呼んでも変わりません。
+- `[UAIP.SafetyPolicy]` の `AllowedCapabilities` に書くと、起動時にエディタが警告を出します: `Capability '<Name>' is granted in [UAIP.SafetyPolicy] but is not available in this edition of UAIP. The grant has no effect.` `DeniedCapabilities` に書いた場合は実際の状態と一致するので、この警告は出ません。
+- 製品版は何にも印を付けません。カタログも実効セットも従来と同じです。
+
+印は Capability の既定ポリシーを変えません。また、**デモ版の利用者が使えない Capability のすべてに印が付くわけではありません**。デモ版がそもそも登録しない Capability（`CommonUIProjectCodeExecution` が例）はカタログに現れず、印もありません。ini に書いても効果がない点は同じです。デモ版のコマンドが要求しうる Capability（`RuntimeCVarRead`、`BlackboardValueRead` など）には印が付きません。`EditorWindowStateControl` は、`SetEditorWindowState` がデモ版に含まれるので、デモ版にも登録され、印は付きません。
 
 ---
 
@@ -450,6 +461,7 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `LogVerbosityEdit` | ログ詳細レベルの変更 — `SetLogVerbosity` native および `Toolset.Editor.Toolset.Logs.SetVerbosity` bridge |
 | `ViewportAnnotationCapture` | ワールド座標ラベル付きビューポート画像のキャプチャ — `CaptureViewportImageAnnotated` |
 | `EditorTabSpawn` | Slate の `FTabId` でエディタタブを開く・閉じる・列挙する — `OpenTabById`、`CloseTabById`、`ListSpawnableTabs`。DefaultAllow の `EditorWorkspaceControl`（`AssetPath` でアセットエディタタブのみに到達する）とは別物です。任意の `TabId` を指定できるということは第三者プラグインが登録したデリゲートを実行しうるということであり、該当するのは開く側の `CanSpawnTab` / `OnSpawnTab`、閉じる側の `OnCanCloseTab` / `OnTabClosed`、読み取り専用の列挙側の表示名・ツールチップ取得（`TAttribute` の bound デリゲート）です。これはメニューに一切表示されない内部タブも対象に含みます。`ListSpawnableTabs` を DefaultAllow にせず同じ Capability を要求するのは、列挙自体が同じデリゲート実行リスクを持つことと、一覧の唯一の用途が開閉の判断であることによります。閉じる操作は**このセッションが開いたタブに限定されません** — 人間が作業のために開いているものを含め、いま開いている任意のタブを閉じられます。また閉じる操作はタブ許可リストを一切通さないため、許可設定を変更した後でも後始末が失敗することはありません |
+| `EditorWindowStateControl` | エディタのメインウィンドウの最小化と、最小化からの復元 — `SetEditorWindowState`。ユーザーが見ているウィンドウを動かし、復元はウィンドウをアクティブにしてキーボードフォーカスを奪うため、DefaultAllow にしない。デモ版にも登録され、コマンドがデモ版に含まれるので「使えない」の印は付かない。デモ版の `DefaultUAIP.ini` は付与しないため、使うには `+AllowedCapabilities=EditorWindowStateControl` を足す |
 
 #### スクリプト実行
 
@@ -611,7 +623,7 @@ BehaviorTree と Blackboard のコマンド（[`UAIP.Runtime.AI`](commands.md#be
 
 そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます（再起動なしで反映されます）。行を消してもう一度読み直せば外れます。与えられていない間、それを要するコマンドは、足りない Capability の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
 
-**デモ版には含まれません。** `DescribeBehaviorTreeWithProjectCode` と `AIBehaviorProjectCodeExecution` はデモバイナリに含まれません。コマンドは存在せず（`CommandNotFound`）、Capability も登録されないため、ini に書いても効果がありません。残りの 7 コマンドは含まれます。`BlackboardValueRead` はデモにも登録されていますが、デモの ini が付与するのは `RuntimeCVarRead` だけなので、デモ版でも `GetBlackboardValues` には上の `+AllowedCapabilities=BlackboardValueRead` の行が要ります。
+**デモ版には含まれません。** `DescribeBehaviorTreeWithProjectCode` はデモバイナリに含まれず、コマンドは存在しません（`CommandNotFound`）。`AIBehaviorProjectCodeExecution` はデモ版にも DefaultDenied で登録され、「この版では使えない」の印が付きます（[デモ版が提供しない Capability](#デモ版が提供しない-capability)）。デモ版のどのコマンドも要求しないので、ini に書いても効果はなく、起動時に警告が出ます。`QueryCapabilities` は `UnavailableReason: "NotInThisEdition"` を付けて列挙します。残りの 7 コマンドは含まれます。`BlackboardValueRead` はデモにも登録されていますが、デモの ini が付与するのは `RuntimeCVarRead` だけなので、デモ版でも `GetBlackboardValues` には上の `+AllowedCapabilities=BlackboardValueRead` の行が要ります。
 
 **明示的に拒否する。** `+DeniedCapabilities=BlackboardValueRead` は、同じ Capability が許可されていても、`GetBlackboardValues` と `DescribeBehaviorTreeWithProjectCode` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=AIBehaviorProjectCodeExecution` は `DescribeBehaviorTreeWithProjectCode` だけを拒否します。`+DeniedCapabilities=RuntimeInspect` は、BehaviorTree の **8 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。どの拒否でも artifact は作られません。
 
@@ -654,7 +666,7 @@ Chaos 破壊のコマンド（[`UAIP.Runtime.ChaosDestruction`](commands.md#uaip
 
 **何が元に戻るか。** 通知を強制した capture が止まる（`StopDestructionCapture`、時間切れ、置き換え、セッション終了）と、どの capture も強制しなくなった通知は、強制した値のままなら元に戻します。その間にゲームが切った通知はゲームが設定したままにします。ゲームが有効に書き戻した通知はこちらの設定と区別できないため、同じく元に戻します。プレイワールドが片付けられるときは、コンポーネントごと無くなるので何も戻しません。
 
-**デモ版では提供されません。** `EnableForcedDestructionNotify` と `ChaosDestructionForceNotify` はデモ版に含まれません。コマンドは存在せず（`CommandNotFound`）、Capability も登録されないので、ini に書いても効果はありません。読み取り専用の 7 コマンドは提供されます。
+**デモ版では提供されません。** `EnableForcedDestructionNotify` はデモ版に含まれず、コマンドは存在しません（`CommandNotFound`）。`ChaosDestructionForceNotify` はデモ版にも DefaultDenied で登録され、「この版では使えない」の印が付きます（[デモ版が提供しない Capability](#デモ版が提供しない-capability)）。ini に書いても効果はなく、起動時に警告が出ます。読み取り専用の 7 コマンドは提供されます。
 
 **有効にする。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に Capability を追加します。
 
@@ -680,7 +692,7 @@ Chaos 破壊のコマンド（[`UAIP.Runtime.ChaosDestruction`](commands.md#uaip
 
 **提供しないものと、代わりに使うもの。** ナビゲーションメッシュの同期的な全体ビルドは、終わるまでゲームスレッドを止め、上限がなく、エディタブリッジは 30 秒応答しないエディタを停止と判定します。領域のタイルをいったん削除して入れ直す再生成は、先にタイルを捨てます。どちらも提供しません。代わりに `RebuildNavigation`（ワールド全体、または `Box`）を実行し、続けて `WaitForNavigationBuild` を使ってください。前者は再生成を予約してすぐ応答し、後者はナビゲーションシステムが静止するまで待ちます。
 
-**デモ版では提供されません。** `RebuildNavigation` と `RuntimeNavigationRebuild` はデモ版に含まれません。コマンドは存在せず（`CommandNotFound`）、Provider が Capability を申告しないため、使うコマンドが無く、ini に書いても効果はありません。Capability の既定ポリシー（Denied）の記録は残ります。読み取り専用の 7 コマンドは提供され、探索ノードの拡張の Capability も提供されます。
+**デモ版では提供されません。** `RebuildNavigation` はデモ版に含まれず、コマンドは存在しません（`CommandNotFound`）。`RuntimeNavigationRebuild` はデモ版にも DefaultDenied で登録され、「この版では使えない」の印が付きます（[デモ版が提供しない Capability](#デモ版が提供しない-capability)）。ini に書いても効果はなく、起動時に警告が出ます。読み取り専用の 7 コマンドは提供され、探索ノードの拡張の Capability も提供されます。
 
 **有効にする。** 必要な Capability を `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に追加します。
 
@@ -736,7 +748,7 @@ Chaos 破壊のコマンド（[`UAIP.Runtime.ChaosDestruction`](commands.md#uaip
 
 > ⚠️ **`RuntimeNetworkEmulationControl` を外す前に、パケットエミュレーションを元に戻してください。** 変更は、戻すか NetDriver が破棄される — PIE セッションの終了時、またはクライアントが別のマップへ移動して再接続したとき — まで残ります。`ResetNetworkEmulation` にも同じ Capability が必要なので、外す前に呼んでください。外した後は UAIP から設定を戻せず、NetDriver が破棄されるまで変更が残ります。また、NetDriver 全体を変更すると、エンジンはその NetDriver が破棄されるまで、戻した後も、プロジェクト設定から設定を読み直さなくなります。
 
-**デモ版と Shipping ビルドでは提供されません。** `DumpReplicatedPropertyValues`・`CompareReplicatedProperties`・`RuntimeReplicatedPropertyValueRead` はデモ版に含まれません。`SetNetworkEmulation`・`ResetNetworkEmulation`・`RuntimeNetworkEmulationControl` は、エンジンのパケットエミュレーションを使えるビルドでだけ登録されるため、デモ版にも Shipping ビルドにもありません。存在しない環境では、コマンドは `CommandNotFound` を返し、Capability は登録されないため、ini に書いても効果はありません。読み取り専用の 3 コマンドと `RuntimeNetConnectionAddressRead` はデモ版でも提供されます。
+**デモ版と Shipping ビルドでは提供されません。** `DumpReplicatedPropertyValues`・`CompareReplicatedProperties`・`SetNetworkEmulation`・`ResetNetworkEmulation` はデモ版に含まれず、デモ版では `CommandNotFound` を返します。`RuntimeReplicatedPropertyValueRead` と `RuntimeNetworkEmulationControl` はデモ版にも DefaultDenied で登録され、この版では使えない印が付きます（[デモ版が提供しない Capability](#デモ版が提供しない-capability) を参照）。ini に書いても効果はなく、起動時に警告が出ます。`SetNetworkEmulation`・`ResetNetworkEmulation`・`RuntimeNetworkEmulationControl` は、エンジンのパケットエミュレーションを使えるビルドでだけ登録されるため、Shipping ビルドにはどれもありません。コマンドは `CommandNotFound` を返し、Capability はカタログに現れないので、ini に書いてもやはり効果はありません。読み取り専用の 3 コマンドと `RuntimeNetConnectionAddressRead` はデモ版でも提供されます。
 
 **有効にする。** 必要な Capability を `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に追加します。
 
@@ -984,6 +996,44 @@ LiveLink の状態を読むことは DefaultAllow です — `UAIP.Runtime.LiveL
 | `LiveLinkRecording` 🧩 | LiveLink Subject の Take Recorder 録画の開始・停止・中止 — `StartLiveLinkRecording`、`StopLiveLinkRecording`、`CancelLiveLinkRecording`。開始すると実行中はこのドメインの変更状態を占有し、停止・中止は実際の録画とそれが生成する LevelSequence に作用します。`GetLiveLinkRecordingStatus` は read-only でそうしたリスクが無いため、代わりに `EditorInspect` を使います |
 
 > **停止と中止が作用するのは UAIP が始めた録画だけです。** Take Recorder パネルや他プラグインが始めた録画は `GetLiveLinkRecordingStatus` で観測できますが、どの Capability を持っていてもこれらのコマンドで停止・中止されることはありません。
+
+#### Mass の観測と編集
+
+Mass のコマンドは、実行中の Mass シミュレーションの観測（[`UAIP.Runtime.Mass`](commands.md#uaipruntimemass)）と、その元になるアセットの読み取り・編集（[`UAIP.Editor.Mass`](commands.md#uaipeditormass-)）を行います。シミュレーションの構造の読み取りは DefaultAllow です。実行時の 6 コマンドは `RuntimeInspect`（アーキタイプ、エンティティ数、プロセッサグラフ、エンティティが持つ要素の型）、エディタ側の読み取り 3 コマンドは `EditorInspect` を必要とします。以下はすべて既定で無効で、Mass のコマンドはデモ版に含まれません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `RuntimeMassFragmentValueRead` | プレイワールドの 1 体のエンティティの Fragment・Shared Fragment・Const Shared Fragment の値を読む — `GetMassEntityFragments`。`RuntimeInspect` に**加えて**必要です。これらの値はプロジェクトのデータで、AI クライアントに渡され、成果物に書き込まれるため、既定で無効です。シミュレーションの構造は対象外です |
+| `MassAssetEdit` | このドメインが編集するアセット（Mass のエンティティ構成とスポナー）への書き込み — `AddMassEntityConfigTrait`・`RemoveMassEntityConfigTrait`・`SetMassEntityConfigTraitProperty`・`ConfigureMassSpawner`。Mass のアセットへの**汎用のプロパティ書き込み**も対象です（最後の注意を参照）。どれもシミュレーションの元になるアセットを書き換えるため、既定で無効です。プレイセッション中の書き込みは断られます |
+| `MassCustomTypeEdit` | `MassAssetEdit` に**加えて**、このドメインが同梱しない Trait・スポナー生成器のクラス（プロジェクトのモジュール、ほかのプラグイン、Blueprint 生成クラス）を持ち込むときに必要です。これが無ければ、セッションが置けるクラスは、エンジン自身の Mass モジュールが宣言するものだけです。コマンドの実行中に判定され、どのコマンドの `RequiredCapabilities` にも現れません。追加に要るかどうかは、`ListMassEntityTraits` が `Admission` でクラスごとに示します |
+| `MassProjectCodeExecution` | 呼び出しがプロジェクトのコードを走らせることを許す。プロジェクトが宣言する Trait の組み立ての評価（要素の読み取り。`DumpMassEntityConfig`・`ValidateMassEntityConfig`・`ListMassEntityTraits`）、`AddMassEntityConfigTrait` への `InitialProperties` の指定、Trait のプロパティの書き込み（`SetMassEntityConfigTraitProperty`。Trait のクラスを問わない）、そして、エンティティの種類の置き換えでエディタのワールドがそのような Trait に行き着くテンプレートを登録する場合の `ConfigureMassSpawner`。プロジェクトの生成器クラスを足すだけなら要りません。生成器が走るのはプレイ中の生成時だけだからです。エディタの操作を、このプラグインが同梱していないコードの実行に変えるため、既定で無効です |
+
+エディタ側の 3 つの Capability は、`MassGameplay` プラグインがコンパイルされているかどうかにかかわらず登録されるので、どちらのビルドでも運用者が許可でき、🧩 は付きません。エディタのコマンド自体は `MassGameplay` プラグインを必要とします（[`UAIP.Editor.Mass`](commands.md#uaipeditormass-) を参照）。`RuntimeMassFragmentValueRead` は実行時のコマンドのもので、プラグインは要りません。
+
+> ⚠️ **`MassProjectCodeExecution` が何にさらすか。** 許可すると、プロジェクト独自の Trait のコードが 2 つの場所で走ります。構成が何を組み立てるかを求めるために 1 回の呼び出しの間だけ作る専用の空のワールドと、スポナーのエンティティの種類を置き換えたときにエンジンがテンプレートを登録するエディタのワールドです。想定外の状態で止まる作りの Trait は、**エディタ全体を落とす**ことがあります。AI クライアントがそうしてよい場所でだけ許可してください。次の点にも注意してください。
+>
+> - **「プロジェクト独自」は Trait のクラスの単位で判定します。** エンジン同梱の Trait はエンジンの Trait として扱います。調べるコマンドがその Trait を呼んでも、その Trait の処理からプロジェクトのコードには届きません。調査用の呼び出しでは、Trait が参照するクラスやアセットに触る処理をエンジン自身が飛ばすためです。信頼する出自はエンジンの Mass モジュールだけで、ほかのエンジンプラグイン（`UAFMass` など）の Trait はプロジェクトの型と同じ扱いになり、`MassCustomTypeEdit` と `MassProjectCodeExecution` が要ります。
+> - **アセットの読み込みはプロジェクトのコードを走らせることがあり、この Capability では止まりません。** まだ読み込まれていない構成アセットをコマンドが読み込むと、そこから参照される StateTree も一緒に読み込まれます。そのとき、エンジンの通常の読み込み処理（読み込み後処理・リンク、エディタではコンパイル）が、プロジェクトが C++ で書いた StateTree のノードに対して走りうるのです。これはアセットの読み込み一般に伴う挙動です。
+> - **汎用のコマンドは、それでも Trait のコードを走らせます。** プレイの開始、アクターの削除、保存、Undo / Redo に対してエンジン自身が独自の Trait の処理を走らせることは、この Capability では止められません。Mass ではなく、それらのコマンドが元から持つ性質です。
+> - **Trait に入れ子になったプロジェクト独自の構造体は、汎用の書き込みの判定に捕まりません。** 判定は書き込む宣言型の単位で行います。プロジェクトが宣言する構造体（プロジェクトの Trait やエンジン同梱の Trait の中に入れ子になったもの）に届く書き込みは、通常の `PropertyEdit` だけで通り、その構造体の import のフックが走りうります。
+
+> ⚠️ **`GetMassEntityFragments` が返すもの。** 値は、呼び出した時点のものをそのまま返し、伏せる仕組みはなく、成果物に書き込まれます。上限があるのは量であって種類ではありません。1 つの Fragment の値は 16 KiB、1 回の応答は 256 KiB までです。強参照のオブジェクトは読まず、実行時に型が決まる構造体は展開せず、リフレクションされないメンバーは出力しません。AI クライアントが Fragment に入っているものを読んでよい場所でだけ許可してください。引き続き使える構造だけを返すコマンドからも、どのエンティティがありどう構成されているかは推測できます。
+
+> ⚠️ **Mass のアセットへの汎用のプロパティ書き込みに、2 つの Capability が加わりました（動作の変更）。** Mass のエンティティ構成・スポナー・Trait・スポーンデータ生成器、およびそれらの設定を運ぶ構造体のプロパティを汎用のプロパティコマンドで書くには、汎用コマンドがもともと求めるものに加えて、常に `MassAssetEdit` と `MassProjectCodeExecution` が要ります。対象の構造体は、構成・スポナー・Trait・生成器のプロパティからたどれる、Mass 系プラグイン（MassGameplay / MassAI / MassCrowd）の構造体に限ります。Mass のプロジェクト設定（移動のスタイル、群衆のレーンの密度、注視の優先度など）や StateTree のノードにだけ使われる構造体は対象になりません。Trait と別のアセット（データテーブルの行など）の両方で使われる構造体は、どちらで書いても対象になります。`PropertyEdit` だけでそのようなプロパティを書いていた手順は、2 つの Capability を足してください。参照や入れ子のオブジェクトを含む値には、従来どおり `PropertyReferenceEdit` または `PropertyStructuredEdit` が要ることがあります。
+
+**有効にする。**
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=RuntimeMassFragmentValueRead
++AllowedCapabilities=MassAssetEdit
++AllowedCapabilities=MassCustomTypeEdit
++AllowedCapabilities=MassProjectCodeExecution
+```
+
+必要なものだけを許可してください。そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます。与えられていない間、それを必要とするコマンドは Capability の名前を示した `CapabilityNotAvailable` で失敗し（書き込みは `RequiredCapabilities` と `MissingCapabilities` も返します）、何も変更しません。
+
+**明示的に拒否する。** 4 つのどれでも、`+DeniedCapabilities=<Name>` は、同じ Capability が許可されていても、それを必要とするコマンドを `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は実行時の Mass の 6 コマンドすべてを、`+DeniedCapabilities=EditorInspect` はエディタ側の読み取り 3 コマンドを、それらを要求するほかのコマンドとともに拒否します。
 
 ---
 

@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1301 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1722 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1314 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1735 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -28,6 +28,8 @@ UAIP では 2 種類のコマンドを公開しています：
 - **Toolset ブリッジコマンド**（`Toolset.*` プレフィックス・UE 5.8+ かつ Toolset 系プラグイン導入時のみ）：UE 5.8 公式 Toolset フレームワークへの委譲レイヤー。多くは対応する UAIP コマンドのミラーで、Toolset 経由でしか提供されない機能を統一的に呼び出せるようにします。
 
 本ページのドメインサマリでは件数のみを並べています。Toolset ブリッジコマンドの全名前を実行時に列挙したい場合は `uaip_list_commands(ProviderPrefix="Toolset")` を使ってください。
+
+Toolset ブリッジコマンドが、経由する Toolset 連携の準備ができていないために実行できないとき、エラー文はまずその連携とその状態を示し、続けて状態に応じた対処を述べます。たとえば Toolset 連携を含まない無償のデモ版では、`This command runs through the Toolset integration 'UAIPCoreToolsetRegistry', which is not loaded (state: NotInThisEdition). The integration is not included in the free demo edition of UAIP. Its commands are available in the Pro edition on Fab.` となります。連携がまだ読み込み中（状態が `Pending` または `Loading`）のときは、最初の文が `is not loaded` ではなく `has not finished loading yet` になります。同じ状態は `UAIP.Core.ListIntegrations` でも確認できます。
 
 ### Toolset ブリッジコマンドへの引数宣言・厳格検証の導入が進行中
 
@@ -76,7 +78,7 @@ UAIP では 2 種類のコマンドを公開しています：
 |---|---|---:|---:|---:|
 | Core | `UAIP.Core` | 12 | — | ✅ |
 | Core Artifacts | `UAIP.Core.Artifacts` | 1 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 23 | 1 | 一部（18/23） |
+| Editor Workspace | `UAIP.Editor.Workspace` | 24 | 1 | 一部（19/24） |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
 | Editor Engine CVar 🧩 | `Toolset.Editor.Toolset.EngineManagement` | — | 1 | — |
@@ -135,6 +137,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor GroomAsset 🧩 | `UAIP.Editor.GroomAsset` | 35 | — | — |
 | Editor Validation 🧩 | `UAIP.Editor.Validation` | 7 | — | — |
 | Editor LiveLink 🧩 | `UAIP.Editor.LiveLink` | 11 | — | — |
+| Editor Mass 🧩 | `UAIP.Editor.Mass` | 7 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
 | Runtime World | `UAIP.Runtime.World` | 14 | 1 | — |
 | Runtime Observation | `UAIP.Runtime.Observation` | 14 | — | ✅ |
@@ -158,6 +161,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Navigation | `UAIP.Runtime.Navigation` | 8 | — | 一部（7/8） |
 | Runtime Animation | `UAIP.Runtime.Animation` | 7 | — | 一部（6/7） |
 | Runtime Network | `UAIP.Runtime.Network` | 7 | — | 一部（3/7） |
+| Runtime Mass | `UAIP.Runtime.Mass` | 6 | — | — |
 
 ---
 
@@ -313,7 +317,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ## 実行時コマンドの対象プレイワールドを指定する
 
-ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 107 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
+ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 112 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
 
 | パラメータ | 型 | 意味 |
 |---|---|---|
@@ -360,6 +364,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | `UAIP.Runtime.Navigation` | `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`、`RebuildNavigation` |
 | `UAIP.Runtime.Animation` | `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState` |
 | `UAIP.Runtime.Network` | `GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`、`DumpReplicatedPropertyValues`、`CompareReplicatedProperties`、`SetNetworkEmulation`、`ResetNetworkEmulation` |
+| `UAIP.Runtime.Mass` | `GetMassEntityCount`、`DumpMassEntityArchetypes`、`DumpMassProcessorGraph`、`DescribeMassEntity`、`GetMassEntityFragments` |
 
 上の一覧のうち `CheckpointCapture` だけは、自分でワールドを解決しません。`CaptureViewportImage` と `DumpWorldState` を組み合わせたコマンドであり、指定された対象をそのまま両方へ引き渡します。これにより、1 つのチェックポイントに含まれるスクリーンショットと状態ダンプが、エンジンが別々に選んだ 2 つのワールドではなく、常に同じワールドを指すようになります。
 
@@ -403,13 +408,13 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 |---|---|
 | 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` に加え、`ProjectFilePath`（開いている `.uproject` の絶対パス。MCP Bridge が正しいエディタインスタンスへアタッチしているか検証するために使う）・`TransportTimeouts`（トランスポートごとの非同期コマンドタイムアウト秒数。例 `{"HTTP": 120, "WS": 12}`）・`QueueCongestion`（遅延実行キューの混雑度。`None` / `Low` / `High` の 3 段階。正確な待ち件数は他セッションの活動量を推測させるため返しません）・`MinBridgeVersion`（この UAIP が受け入れる MCP Bridge の最低バージョン。Bridge はこの応答から読み取り、これ未満では動作を拒否します）を返す |
 | 🆓 `GetSystemInfo` | UE バージョン（Major/Minor/Patch/Changelist）・プロジェクト名・プラットフォーム・ビルド設定・UAIP バージョンを返す |
-| 🆓 `QueryCapabilities` | `Capabilities`（セッションの実効セット）・`RegisteredCapabilityCount` / `UngrantedCapabilityCount`（常に返る）・`OperationalConstraints`（9 つのポリシーフラグ）を返す。`IncludeUnavailable: true` を渡すと `RegisteredCapabilities`（ロード済みモジュールが宣言したすべての Capability。各要素が `Name` / `DefaultPolicy` / `IsGranted` を持つため、このセッションが保有していないものも名前で見つけられる。既定で拒否されるものは `DefaultPolicy` が `Denied` の要素）も返る |
+| 🆓 `QueryCapabilities` | `Capabilities`（セッションの実効セット）・`RegisteredCapabilityCount` / `UngrantedCapabilityCount`（常に返る）・`OperationalConstraints`（9 つのポリシーフラグ）を返す。`IncludeUnavailable: true` を渡すと `RegisteredCapabilities`（ロード済みモジュールが宣言したすべての Capability。各要素が `Name` / `DefaultPolicy` / `IsGranted` を持つため、このセッションが保有していないものも名前で見つけられる。既定で拒否されるものは `DefaultPolicy` が `Denied` の要素）も返る。無償のデモ版では、製品版でだけ使う Capability の要素に `UnavailableReason: "NotInThisEdition"` も付く。その `IsGranted` は常に `false` で、`AllowedCapabilities` に書いても変わらない（[Safety & Capabilities](safety.md#デモ版が提供しない-capability)）。`UnavailableReason` が無い要素は、その理由では塞がれていない。製品版では付かない |
 | 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`ProviderPrefix`・`KeywordFilter`・`IncludeUnavailable`・`Stability`。`ResultMode` — `Commands`（既定）または `Providers` を指定するとコマンドではなく Provider の一覧を返す。`Limit` — 返却件数の上限（1〜1000）。`IncludeDescription` — 一覧に各コマンドの説明文を含める） |
 | 🆓 `DescribeCommand` | 単一コマンドの完全メタデータ（スキーマ・必要 Capability・可用性） |
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
 | 🆓 `EndSession` | セッションを明示的に終了しサーバー側リソースを解放する（成果物は GC 対象になる） |
 | 🆓 `ReloadCapabilities` | エディタを再起動せずに `Config/DefaultUAIP.ini` から Capability セットを再読み込みする。`AllowCapabilityReload=True` になるまでは `ListCommands` の既定応答から隠れ、`Available: false`（設定すべき ini キー名を含む `UnavailableDetail: "SafetyPolicyDisabled"`）を返す — [UnavailableDetail](#unavailabledetail--handlerunavailable-の8つの詳細理由) 参照 |
-| 🆓 `ListIntegrations` | UAIP が把握しているすべてのオプション統合（実行時に無効・不在になりうるプラグインを必要とする UAIP モジュール、またはその一部）の状態を返す。各エントリは `Name`・`State`（`Pending` / `Loading` / `Loaded` / `CompiledOut` / `PluginDisabled` / `PluginNotInstalled` / `DependencyNotLoaded` / `NotApplicable` / `LoadFailed`。無償のデモ版では、製品版にだけ含まれる統合を示す `NotInThisEdition` も加わる）・`RequiredPlugins`・`MissingPlugins`・`DependsOn`・`CommandMatchers`・平易な文の `Remedy`（そのコマンドの `CommandNotFound` ヒントと同じ文言）を持ち、`State` が `LoadFailed` のときだけ `FailureKind` / `FailureReason` も持つ。`CompiledOut` は、その統合のコードがこのバイナリに組み込まれていないことを示す。ビルド時に統合先のプラグインが有効と判定されなかった、またはエンジン版が統合の対応版より古い場合である。`MissingPlugins` はビルド時に有効と判定されなかったプラグインの一覧で、理由がエンジン版の場合（`Remedy` に必要な最小エンジン版が書かれる）と `NotInThisEdition` の場合は空になる。統合が必要とするプラグインは常に `RequiredPlugins` で確認できる。エンジンにインストールした Fab 配布版の UAIP からパッケージしたゲームには、これらの統合を含められない。UAIP をプロジェクトの `Plugins` フォルダーに置き、プロジェクトと一緒にコンパイルすれば使える。任意の `State` パラメータで返す `Integrations` 配列をその状態だけに絞り込めるが、`IntegrationCount` / `LoadedCount` / `NotLoadedCount` は絞り込みに関係なく常に全体の数を返す。未知の `State` 値は `InvalidParams` で拒否される。Capability は不要 |
+| 🆓 `ListIntegrations` | UAIP が把握しているすべてのオプション統合（実行時に無効・不在になりうるプラグインを必要とする UAIP モジュール、またはその一部）の状態を返す。各エントリは `Name`・`State`（`Pending` / `Loading` / `Loaded` / `CompiledOut` / `PluginDisabled` / `PluginNotInstalled` / `DependencyNotLoaded` / `NotApplicable` / `LoadFailed`。無償のデモ版では、製品版にだけ含まれる統合を示す `NotInThisEdition` も加わる）・`RequiredPlugins`・`MissingPlugins`・`DependsOn`・`CommandMatchers`・平易な文の `Remedy`（そのコマンドの `CommandNotFound` ヒントと同じ文言）を持ち、`State` が `LoadFailed` のときだけ `FailureKind` / `FailureReason` も持つ。`CompiledOut` は、その統合のコードがこのバイナリに組み込まれていないことを示す。ビルド時に統合先のプラグインが有効と判定されなかった、またはエンジン版が統合の対応版より古い場合である。`MissingPlugins` は「有効にすれば直るプラグイン」、つまりビルド時に有効と判定されなかったプラグインの一覧で、理由がエンジン版の場合（`Remedy` に必要な最小エンジン版が書かれる）と `NotInThisEdition` の場合は空になる。統合が必要とするプラグインは常に `RequiredPlugins` で確認できる。エンジンにインストールした Fab 配布版の UAIP からパッケージしたゲームには、これらの統合を含められない。UAIP をプロジェクトの `Plugins` フォルダーに置き、プロジェクトと一緒にコンパイルすれば使える。任意の `State` パラメータで返す `Integrations` 配列をその状態だけに絞り込めるが、`IntegrationCount` / `LoadedCount` / `NotLoadedCount` は絞り込みに関係なく常に全体の数を返す。未知の `State` 値は `InvalidParams` で拒否される。Capability は不要 |
 | 🆓 `GetPendingInteractionStatus` | 保留中の対話 1 件の状態 — `State`・`Cause`・`ElapsedSeconds`・`Prompt`・`Reason`・`Result` — を、変化を待たずに報告する。対話（`DrawPCGSpline` などの対話型コマンド）を開始したときと同じ `SessionId` を明示的に指定する必要があり、未知・期限切れ・他セッション所有はすべて同じ `NotFound` として扱われる |
 | 🆓 `WaitForPendingInteraction` | 対話が `AwaitingUser` を離れるか、この呼び出し自身の `TimeoutSeconds` 上限（デフォルト 30、範囲 [1, 600]）に達するまでブロックする。タイムアウトしても対話自体には影響せず、人間の応答を待ち続ける。同じ対話を同時に監視できる呼び出しは最大 4 件までだが、2 件目以降には `[UAIP.Transport] AllowConcurrentPassiveWaits` が必要（[設定](config.md) 参照） |
 | 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックし、もう保有していないものは `CapabilityNotAvailable` で、運用者が `DeniedCapabilities` で明示的に拒否しているものは `PolicyViolation` で拒否する |
@@ -451,6 +456,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `OpenTabById` | Slate レイアウトのタブ識別子（`TabId`。`FocusEditorTab` の `AssetPath` とは別の識別子空間）を指定してエディタタブを開く。`FocusEditorTab` やメニュー操作代行では届かないタブ — ToolMenus に一度も登録されていないレガシーメニュー経由のタブや、所属ウィンドウが前面にないタブ — にも到達できる。`OwnerTabId` に `"Global"` を指定するとエディタ全体に登録されたタブ（Output Log 等）を、major tab 自身の `TabId`（複数該当する場合は `OwnerInstanceId` で絞り込み）を指定するとその内部のパネルを対象にできる。所属先のウィンドウがまだ開いていなければ先に開く。既に開いている所属先はそのまま使うため、`ListSpawnableTabs` が返した行はそのまま渡せる（所属先に対するスポナー登録と許可の判定は、この呼び出しが所属先を開く必要がある場合にだけ適用される）。応答には実際に開いたタブの `InstanceId`（この応答からしか得られない値）、`WasAlreadyOpen`、`OwnerOpenedByThisCall` が含まれ、後始末で何を閉じるべきかを判断できる（閉じる順序は対象タブ→所属先）。失敗時はこの呼び出しが開いたものを取り除く。候補の発見には `ListSpawnableTabs` を使う（`EditorTabSpawn` 必要） |
 | 🆓 `CloseTabById` | `OpenTabById` と同じ指定（`TabId` / `OwnerTabId` / `InstanceId` / `OwnerInstanceId`）でタブを閉じる。アセットパスでは指定できない。`OpenTabById` と異なり `OwnerTabId` が開いていなくても新たに開くことはせず、その場合は `NotFound` になる。許可判定も行わない — 実行時にポリシーが変わったせいで後始末そのものが失敗する方が悪いという判断による。そのため対象は「このセッションが開いたタブ」に限らず、人間が手動で開いたものも含め、いま生きている任意のタブになる（`EditorTabSpawn` 必要） |
 | 🆓 `NormalizeEditorLayout` | メイングラフタブをフォーカスし、一時パネルを非表示にする。`OpenAsset` と同じエディタ状態の成果物を保存し、非推奨の `ActiveTabId` フィールドも含む — 代わりに `ActiveAssetPath` を読むこと（[`OpenAsset`](#uaipeditorassets) を参照） |
+| 🆓 `SetEditorWindowState` | エディタのメインウィンドウを最小化する、または最小化から復元し、ウィンドウが指定の状態に落ち着いてから返る。必須パラメータは `State`（`Restored` または `Minimized`。それ以外は `InvalidParams`）。`Restored` は最小化を解いて**ウィンドウをアクティブにする**ため、ユーザーのキーボードフォーカスがエディタへ移る。最小化の前に最大化されていたウィンドウは、`Restored` が最大化を解かないので、最大化の状態に戻る。対象はメインウィンドウだけ。`EditorWindowStateControl`（DefaultDenied。表の下の注を参照）が必要 |
 | 🆓 `SetGraphZoom` | グラフビューポートのズーム倍率を設定 |
 | 🆓 `FrameGraphAll` | グラフビューポートを全ノードが収まるようにズーム |
 | 🆓 `FrameGraphSelection` | グラフビューポートを選択ノードが収まるようにズーム |
@@ -468,6 +474,14 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | `CompileLiveCoding` | Live Coding 再コンパイルをトリガー |
 | `GetLiveCodingStatus` | 現在の Live Coding ステータスを取得 |
 | `EnableLiveCodingForSession` | セッションに対して Live Coding を有効化 |
+
+> **`SetEditorWindowState` — 結果と拒否。** `Result` は `PreviousState`・`State`（どちらも `Normal` / `Minimized` / `Maximized`。待機中にウィンドウが破棄された場合は `NoWindow`）・`Changed`（bool）・`Size`（画面ピクセルの `Width` / `Height`）を返し、同じ内容を JSON アーティファクトにも保存する。すでに指定の状態にあるときは、待たずに `Changed: false` ですぐ返る。そうでなければ最大 2 秒、ウィンドウが落ち着くのを待つ。落ち着かない、または待つ間にウィンドウが破棄された場合は、観測した状態を添えて `ExecutionFailed` を返す。待つ間にウィンドウを変更するため、このコマンドは実行中のコマンドとして数えられ、最大 2 秒のあいだ transport のスロットを占有する。
+>
+> 操作の対象が無いときは、[キャプチャのコマンド](#キャプチャが断られるとき)と同じ語彙の `Reason` を付けて拒否される。`Headless`・`BlockedByModal`・`Hidden` は `NotAllowed`、`NoWindow`（メインウィンドウがまだ無い）は `PreconditionFailed`。`Minimized` のウィンドウや、Slate が今は描けないウィンドウ（`DebuggerPaused`・`NotInVisibleTree`・`NotRenderable`）は、ウィンドウを変更することがこのコマンドの目的なので、**拒否されない**。
+>
+> **`Restored` の後の大きさの同期。** 復元の後（すでに `Restored` の状態で `Restored` を求められたときも。その場合は `Changed: false` のまま）、Slate が持つウィンドウの大きさを OS が報告する大きさに同期する。直らないときは `NotAllowed` と `Reason: WindowSizeMismatch` を返す。結果には `PreviousState`・`State`・`Changed`・`Size`（同期の後の値）に加えて `OsClientSize` と `SlateSize`（どちらも `Width` / `Height`）が入り、同じ内容が JSON アーティファクトにも保存される。ウィンドウを最小化して復元し直すか、ユーザーに大きさを手で変えてもらう。`Minimized` を求めたときは大きさを比べない。
+>
+> `EditorWindowStateControl` は **DefaultDenied** で、デモ版でも登録される（デモ版での「使えない」の印は付かない）。無いと `CapabilityNotAvailable`、`ReadOnly` のときは `PolicyViolation` で、他の書き込みコマンドと同様に拒否される。許可するには `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に `+AllowedCapabilities=EditorWindowStateControl` を足す（デモ版の `DefaultUAIP.ini` には、この行がコメントとして入っている）。
 
 > **`RestartEditor` と `GetRestartStatus` — `Success` の意味と、結果の確かめ方。** どちらも `EditorLifecycle` が必要です。`RestartEditor` の引数は省略可能な `SaveAll` だけです。省略すると、`DisableSave` が有効でない限り未保存の変更を先に保存し、有効なときは保存しません。`DisableSave` のときに `SaveAll: true` を明示すると `PolicyViolation` で拒否します。`Success` は要求を**受け付けた**ことを表します。`Data` には `AttemptId`・`State`（`Scheduled`）・`RestartScheduled: true`・`CloseDeadlineSeconds`・`ProcessId`（要求を受け付けたエディタのプロセス ID）が入ります。
 >
@@ -613,10 +627,10 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `CaptureActiveWindowImage` | アクティブな最上位ウィンドウのスクリーンショット（PNG Artifact）。エディタがフォアグラウンドである必要はない — アクティブなウィンドウがない場合はメインウィンドウを撮影し、どちらを撮ったかを `Result.CapturedWindow`（`"ActiveWindow"` / `"MainWindow"`）で返す。フォールバックはメインウィンドウにしか届かないため、フローティングのアセットエディタやモーダルダイアログは `CaptureEditorTabImage` を使う |
-| 🆓 `CaptureEditorTabImage` | 指定エディタタブのウィジェット領域のスクリーンショット。Slate レイアウト識別子で指定するため、`DumpEditorState` が返す `ActiveTabId` をそのまま渡せる。エディタが背面でも動作する。⚠️ 撮影前に対象タブをスタックの前面へ出すため（背面のタブは描画されておらず空の画像になる）、**ユーザーに見えているタブが切り替わる** |
-| 🆓 `CaptureGraphViewportImage` | SGraphEditor ビューポートのスクリーンショット |
-| 🆓 `DumpEditorState` | アクティブタブ・開いているアセット・ウィンドウサイズ等（JSON）。あわせてプレイセッションの状態を `IsPIERunning` / `IsPIEPaused` / `IsSimulatingInEditor` の 3 つの真偽値で返す。編集系コマンドの多くはセッション実行中に拒否され、その間に取ったワールドのダンプはエディタワールドではなくプレイワールドを表すため、変更を加える前にここを読む。3 つとも常に存在するので「何も再生されていない」と「報告されていない」を区別できる |
+| 🆓 `CaptureActiveWindowImage` | アクティブな最上位ウィンドウのスクリーンショット（PNG Artifact）。エディタがフォアグラウンドである必要はない — アクティブなウィンドウがない場合はメインウィンドウを撮影し、どちらを撮ったかを `Result.CapturedWindow`（`"ActiveWindow"` / `"MainWindow"`）で返す。フォールバックはメインウィンドウにしか届かないため、フローティングのアセットエディタやモーダルダイアログは `CaptureEditorTabImage` を使う。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
+| 🆓 `CaptureEditorTabImage` | 指定エディタタブのウィジェット領域のスクリーンショット。Slate レイアウト識別子で指定するため、`DumpEditorState` が返す `ActiveTabId` をそのまま渡せる。エディタが背面でも動作する。⚠️ 撮影前に対象タブを前面へ出すため（背面のタブは描画されておらず空の画像になる）、それを収めた外側のエディタのタブ（たとえばブループリントエディタが手前にあるときのレベルエディタのタブ）ごと前に出る。**ユーザーに見えているタブが切り替わり**、タブが点滅する。エディタの OS ウィンドウは他のアプリの前には出さない。タブを前に出したときは、描かれるのを最長 2 秒待ってから撮る。すでに前にあるタブはすぐ撮る。それでも描かれないときは、文がユーザーにタブを前に出してもらうよう案内する。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
+| 🆓 `CaptureGraphViewportImage` | SGraphEditor ビューポートのスクリーンショット。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
+| 🆓 `DumpEditorState` | アクティブタブ・開いているアセット・ウィンドウサイズ等（JSON）。あわせてプレイセッションの状態を `IsPIERunning` / `IsPIEPaused` / `IsSimulatingInEditor` の 3 つの真偽値で返す。編集系コマンドの多くはセッション実行中に拒否され、その間に取ったワールドのダンプはエディタワールドではなくプレイワールドを表すため、変更を加える前にここを読む。3 つとも常に存在するので「何も再生されていない」と「報告されていない」を区別できる。`MainWindowSize` は最初の最上位ウィンドウの大きさで、メインフレームとは限らない。メインフレームそのものは `MainWindowState` で読む。`MainWindowState` は `State`（`Normal` / `Minimized` / `Maximized` / `Hidden` / `NoWindow`。一度も表示されていないウィンドウは `Hidden`）・`Size` と `RestoredSize`（どちらも `Width` と `Height` を持つオブジェクト。ウィンドウが無いときは 0）・`CaptureBlocker`（キャプチャが撮れるときは `None`、そうでなければキャプチャが拒否される[`Reason`](#キャプチャが断られるとき)）を持つ。このコマンドは読み取りだけで同期はしないので、キャプチャや `SetEditorWindowState` なら自動で直る食い違いでも、`CaptureBlocker` が `WindowSizeMismatch` になりうる。`MainWindowState` には `SizeCheck`（`NotQueryable` / `Minimized` / `Matched` / `Mismatched`）・`SizeMismatched`（bool または null）・`OsClientSize` と `SlateSize`（どちらも `Width` / `Height`。`SizeCheck` が `Matched` / `Mismatched` 以外のときは null）もある。ルートには `WindowMessageRecording` がある: `RecordingEnabled`・`RecordingActive`・`RecordingStatus`（`Disabled` / `NotRegistered` / `WaitingForMessages` / `Recording`）・`TotalRecordedCount`・`Capacity`（64。優先でないウィンドウが共有するリングの容量）・`PriorityWindowCapacity`（64。優先ウィンドウ 1 つあたり）・`MaxPriorityWindowCount`（8）・`PriorityMessageCount`・`SharedMessageCount`（この 2 つの合計が `RecentMessages` の件数）・`RecentMessages`（古い順。1 件は `Kind`・`WindowHandle`・`IsPriorityWindow`・`SizeType`・`MessageSize`・`MessageSizeMeaning`・`WindowPosFlags`・`ClientStateAtArrival`・`TimeSeconds`・`SequenceNumber`）。Slate の通常のウィンドウ（メインウィンドウ、別ウィンドウになったフローティングタブやアセットエディタ、モーダルダイアログ）のメッセージは優先として扱われ、ウィンドウごとに専用のリングで直近 64 件を保持する（最大 8 ウィンドウ。9 つ目が送ってきたら、最後のメッセージが最も古いウィンドウが記録ごと外れる）。数百件のメッセージを送る通知トーストやメニューは優先ウィンドウではないため、これらを押し出さない。それ以外のウィンドウのメッセージも、共有の 1 つのリング（直近 64 件）に記録される。一覧は合計で最大 576 件になりうる。どちらの記録かは `IsPriorityWindow` で分かる。`MessageSizeMeaning` は `MessageSize` が何の大きさかを示す: `ClientArea`（`WM_SIZE`）・`WholeWindow`（`WM_WINDOWPOSCHANGED`。クライアント領域ではなくウィンドウ全体なので、`ClientArea` とそのまま比べない）・`ProposedWholeWindow`（`WM_NCCALCSIZE`）。メッセージが大きさを持たなかったときは `MessageSize` が null、`WM_SIZE` 以外では `SizeType` が null、OS にウィンドウの状態を問い合わせられなかったときは `ClientStateAtArrival` が null になる。記録の有無は [`RecordWindowMessages`](config.md#uaipruntimeobservation--ウィンドウサイズメッセージの記録と-hud-描画統計) で切り替える |
 | 🆓 `DumpSelectionState` | 現在の選択状態（JSON）。`SelectedActors` / `SelectedObjects` は常に返る。`TabId` が開いているグラフエディタタブを指す場合に限り `SelectedNodes`（ノードごとに `NodeId` / `NodeClass` / `NodeTitle` / `Position`）も返る — 解決方法は `CaptureGraphViewportImage` の `TabId` と同じ（Slate タブへの完全一致、続いて開いているアセットの名前への大小文字を区別しない部分一致。`/` を含むコンテンツブラウザ形式のパスは `InvalidParams` で拒否される）。`TabId` がどのタブにも一致しない場合は `SelectedNodes` を空にして成功させるのではなく `NotFound` を返す。`TabId` を省略した場合の挙動は変更なし — `SelectedNodes` は空のままで、アクター/オブジェクトの選択は従来どおり返る |
 | 🆓 `DumpOpenTabs` | 開いているアセットエディタタブ一覧（JSON） |
 | 🆓 `DumpOutputLog` | バッファリングされた Output Log（テキスト Artifact、行数・フィルタ対応） |
@@ -627,7 +641,35 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | 🆓 `ObserveWidget` | ウィジェットの Visibility / Enabled / Hovered / Focused 状態を時系列サンプリング |
 | 🆓 `GetLogCategories` | 登録済みエンジンログカテゴリ名の一覧（任意でサブストリングフィルタ対応） |
 | 🆓 `ListGraphNodes` | 指定タブのグラフエディタ内の全ノードを列挙 — `NodeId`（GUID）・`NodeClass`・`NodeTitle`・`Position`。`UEdGraph` ベースのエディタ全般で動作 |
-| 🆓 `CaptureViewportImageAnnotated` | ワールド座標ラベル付きビューポート画像のキャプチャ（`ViewportAnnotationCapture` 必要） |
+| 🆓 `CaptureViewportImageAnnotated` | ワールド座標ラベル付きビューポート画像のキャプチャ（`ViewportAnnotationCapture` 必要）。ビューポートを持つウィンドウが描かれない状態（たとえば最小化）のときは、古いフレームを返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
+
+### キャプチャが断られるとき
+
+`CaptureActiveWindowImage`・`CaptureEditorTabImage`・`CaptureGraphViewportImage`・`CaptureViewportImageAnnotated` は、何かを撮る前に、対象が描かれる状態かを確かめる。描かれない状態なら、撮らずに拒否する（空の画像は返さず、`CaptureViewportImageAnnotated` も古いフレームを返さなくなった）。応答には `Reason` と、直し方を示すエラー文が付く。確認は表の順に行い、最初に満たさなかった条件が `Reason` になる。`DumpEditorState` はメインウィンドウについて同じ語彙を `MainWindowState.CaptureBlocker` で報告し、`SetEditorWindowState` も拒否にこの語彙を使う。
+
+| `Reason` | ErrorCode | 意味 | 対処 |
+|---|---|---|---|
+| `NoWindow` | `PreconditionFailed` | Slate が未初期化、対象がウィンドウを持たない、またはウィンドウのネイティブウィンドウがまだ無い | ウィンドウが現れるのを待ってから呼び直す。対象が別のタブの後ろに回ったタブの中にある場合（判定が拾えないことがある）は、待っても直らない。`OpenTabById`（`EditorTabSpawn` が必要）でタブを前に出すか、ユーザーに頼む |
+| `Headless` | `NotAllowed` | このプロセスでは Slate がウィジェットを描かない（描画デバイスが無い、コマンドレット、専用サーバー）。描画デバイスが無い場合は、文でもそう伝える | 描画デバイスのある環境でエディタを起動し直す |
+| `DebuggerPaused` | `NotAllowed` | ブループリントのデバッガのブレークポイントが、フレームの途中でゲームスレッドを止めている | 実行を再開してから撮り直す |
+| `NotInVisibleTree` | `NotAllowed` | ウィンドウからウィジェットまでの経路が無い（ウィジェットまたは祖先が折りたたまれている、隠されている） | その部分を表示させてから撮り直す |
+| `BlockedByModal` | `NotAllowed` | モーダルウィンドウが開いていて、描かれるのはモーダル・その子・ツールチップ・通知だけ | モーダルを閉じてから撮り直す |
+| `Minimized` | `NotAllowed` | ウィンドウ、または先に描かれるはずの祖先のウィンドウが最小化されている | 復元する。エディタのメインウィンドウなら、`SetEditorWindowState` を `State: Restored` で呼ぶ（`EditorWindowStateControl` が必要）か、ユーザーに戻してもらう |
+| `Hidden` | `NotAllowed` | ウィンドウ、または祖先のウィンドウのネイティブウィンドウが見えない状態。作られたがまだ一度も表示されていないウィンドウも、エンジンが両者を区別できないので同じ扱い | ウィンドウを表示させる。起動直後なら、表示し終わってから呼び直す |
+| `NotRenderable` | `PreconditionFailed` | レンダラーがそのウィンドウのビューポートを持たない、またはビューポートの大きさが 0 | ウィンドウの表示が終わるのを待ってから呼び直す |
+| `InBackgroundTab` | `NotAllowed` | 対象が、別のタブの後ろに回ったドッキングタブの中、または別のエディタのタブの後ろに回ったエディタのタブの中（たとえばブループリントエディタを開いたあとのレベルエディタのビューポート）にあり、描かれない。確認は、Slate 未初期化の `NoWindow` の直後に行う | タブを前に出す。`OpenTabById`（`EditorTabSpawn` が必要。開いているタブも、それを収めたエディタのタブごと前に出る）を使うか、ユーザーに頼む。`OpenTabById` は `TabId` と `OwnerTabId` の両方を取る。`OwnerTabId` は対象を収めたエディタのタブ（レベルエディタなら `LevelEditor`）で、有効な組み合わせは `ListSpawnableTabs` が一覧する。待っても変わらない。`CaptureEditorTabImage` は自分で前に出す |
+| `WindowSizeMismatch` | `NotAllowed` | Slate が持つウィンドウの大きさが OS の報告する大きさと食い違い、撮る前に試みる同期でも直らなかったため、撮ると壊れた画像になる。全てのキャプチャのコマンドが、撮る前に両者を比べる。最小化されたウィンドウは比べない。確認は `Minimized` / `Hidden` の後、`NotRenderable` の前に行う | エディタのメインウィンドウなら、`SetEditorWindowState` で `Minimized` にしてから `Restored` に戻し（`EditorWindowStateControl` が必要）、もう一度キャプチャする。それでも直らなければ、ユーザーにウィンドウの大きさを手で変えてもらう。メインウィンドウ以外は、ユーザーに大きさを変えてもらう |
+
+- **`InBackgroundTab` だけは表の順と違う**: `Headless` と Slate 未初期化の `NoWindow` の後、ほかのウィンドウの確認より前に確認する。表の末尾近くにあるのは、後から足したため。`WindowSizeMismatch` は `Minimized` / `Hidden` の後、`NotRenderable` の前に確認する。
+- **`NoWindow` と `NotRenderable` は `PreconditionFailed`**: 土台がまだ無く、待てば直る。シナリオのステップに `RetryCount` があれば再試行される。
+- **それ以外の `Reason` は `NotAllowed`**: 既にあるウィンドウの状態がキャプチャを許さない。シナリオの `RetryCount` は `NotAllowed` を**再試行しない**。以前は最小化されたウィンドウに `ExecutionFailed` が返っていたため再試行の対象だったステップも、今は 1 回で失敗する。表のとおり、先に状態を変える。
+- 親のウィンドウが描かれないとき、子のウィンドウも描かれない。そのため、親が最小化または非表示のウィンドウの子（浮いているウィンドウなど）は、子自身が最小化されていなくても、親の状態（`Minimized` または `Hidden`）で拒否される。モーダルが開いている間は、モーダル・その子・ツールチップ・通知だけが撮れる。
+- 撮れる状態のはずが撮影に失敗した場合（エンジンが画像を返さない、画像が空、PNG への変換に失敗）は、`Reason` なしの `ExecutionFailed` で、文がどの段階の失敗かを言う。
+
+**ゲームビューポートのコマンドも同じように断る。** `CaptureViewportImage`（`UAIP.Runtime.Observation`）は、撮る前にゲームビューポートが描かれる状態かを確かめる。描かれない状態（ビューポートを持つウィンドウが最小化・非表示、モーダルが開いている、など）なら、撮らずに拒否する。`Reason`・エラーコード・`Result.Reason` は上の表と同じで、エラー文が直し方を言う。最小化されたウィンドウがエディタのメインウィンドウ（そこに収まった Play In Editor のウィンドウ）なら `SetEditorWindowState` の案内、別ウィンドウの PIE やスタンドアロンのゲームなら、そのウィンドウを戻してもらう案内になる。撮れる状態のはずが撮影に失敗した場合は、従来どおり `Reason` なしの `ExecutionFailed`。
+
+- **`CheckpointCapture` は拒否をそのまま引き継ぐ。** 最初に `CaptureViewportImage` で撮るため、それが拒否されると、チェックポイントも同じ `NotAllowed` または `PreconditionFailed` で拒否し、`Reason` を自分の `Result.Reason` にコピーする。エラー文は `CheckpointCapture: CaptureViewportImage failed: ` に `CaptureViewportImage` の文が続く形。組み合わせている 2 つのコマンドのそれ以外の失敗は `ExecutionFailed` のまま。
+- **ゲームビューポートの UI 操作は、ホストウィンドウの状態で拒否される。** `ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText` は、何かを送る前にゲームを載せているウィンドウを確かめ、`Reason: HostWindowUnavailable` で拒否する。`NoWindow`（ゲームビューポートのウィンドウがまだ無い）は `PreconditionFailed`（`The game viewport has no window yet. Retry after the game window has been created.`）、`Hidden` と `Minimized` は `NotAllowed`（`The window that hosts the game is not visible, so nothing in it is laid out.` / `The window that hosts the game is minimized, so nothing in it is laid out.`）。最小化は `PreconditionFailed` ではなく `NotAllowed` なので、シナリオの `RetryCount` は再試行しない。先にウィンドウを戻す。
 
 ---
 
@@ -714,7 +756,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | 🆓 `WaitForWidget` | `SnapshotUI` の `WidgetRef` で識別したウィジェットが期待状態になるまでポーリング |
 | 🆓 `FillForm` | フォームウィジェットへの一括入力を逐次 state machine で実行 |
 | 🆓 `SnapshotUI` | 範囲を絞り込め、除外分も報告する UI の構造スナップショットを取得 |
-| 🆓 `OpenPasswordTestWindow` | パスワード用 `SEditableTextBox` を持つフローティングテストウィンドウを開く（パスワードフィールドのポリシーテスト用ターゲット） |
+| 🆓 `OpenPasswordTestWindow` | パスワード用 `SEditableTextBox` を持つ小さな単独のテストウィンドウを開く（`InputText` やパスワードフィールドのポリシーが、パスワード欄をどう扱うかを確かめるためのターゲット）。アセット・設定・保存済みの状態は何も変更しない。窓を開くだけなので、製品版だけでなくデモ版にも含まれる |
 
 > **Note**: ウィジェットを対象にするコマンドは、ウィジェットパスではなく `SnapshotUI` が返す `WidgetRef` を受け取ります。先に `SnapshotUI` を呼び、対象ウィジェットの `WidgetRef` を渡してください。
 >
@@ -824,6 +866,10 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | `LoadPrimaryAsset`（要 `PrimaryAssetLoad`） | `PrimaryAsset` を明示的にメモリへロードする（ノンブロッキング、PIE中も許可） |
 | `UnloadPrimaryAsset`（要 `PrimaryAssetUnload`） | `PrimaryAsset` を明示的にメモリからアンロードする（PIE中は拒否） |
 
+> **フォルダを受け取るパラメータは、コンテンツのルートそのものを受け付ける。** `SearchAssets`・`ListAssetRedirectors`・`GetAssetSizeMap`・`GetAssetSizeMapByClass`・`StartAssetAudit`・`RunAssetAudit`・`FindUnreferencedAssets`・`FindCircularReferences`・`FindBrokenReferences` は、`PackagePath` / `FolderPath` に `/Game`（またはプラグインのコンテンツのルート。たとえば `/MyPlugin`）を、`/Game/` やその下のフォルダと同じように渡せる。末尾の `/` は外され、フォルダは末尾の `/` が無い形で扱われる（`ListAssetRedirectors` は応答の `FolderPath` にもその形を返す）。マウントされたルートでもその下でもないパスや空の文字列は `InvalidParams` で、エラー文に引数名と渡された値が入る（`'PackagePath' value '…': <理由>`）。`StartValidationJob` も `PackagePath` にコンテンツのルートを同じように受け付ける。アセット 1 件のパスを求めるコマンドは変わらず、ルートそのものはそこでは拒否される。
+>
+> **Content Browser のコマンドは、Content Browser があるかどうかを示す。** `GetSelectedAssets`・`SelectAssets`・`GetContentBrowserPath`・`SetContentBrowserPath` は、Content Browser のモジュールが読み込まれていない環境では、コマンド一覧で使えないもの（`Available: false`、`UnavailableReason: HandlerUnavailable`、`UnavailableDetail: ExecutionEnvironment`）として示され、呼ぶ前に分かる。以前は使えるものとして示され、呼ぶと断られていた。Toolset ブリッジ側（`Toolset.Editor.Toolset.Assets.GetContentBrowserPath` など）は対象外で、可否は Toolset 連携に従う。
+
 > **Note**: `StartAssetAudit` は**ジョブ型コマンド**の一例で、呼び出しをブロックせずに即座に応答を返し、実際の処理はエディタのフレームをまたいで進む。`uaip_execute` の呼び出しに MCP の `_meta.progressToken` を添えると、応答待ちの間ブリッジがおよそ 5 秒おきに `notifications/progress` を送出する。内容は経過秒数とエディタ自身の状態（`STARTING` / `RUNNING` / `UNRESPONSIVE`）のみで、**ジョブ内部の進捗は含まれない**（それを知りたい場合は `GetAssetAuditStatus` をポーリングする）。この仕組みは `uaip_execute` にのみ適用され（`uaip_run_scenario` は対象外）、クライアントが進捗トークンを送った場合にのみ働く。また、届いた通知を実際に表示するかどうかは MCP クライアント側の実装による。監査ジョブが 1 フレームあたり走査に使う時間の上限は `Config/DefaultUAIP.ini` の `[UAIP.Jobs] AuditStepBudgetMs` で変更できる（既定 `10.0`、`[1.0, 100.0]` の範囲にクランプされる。範囲外を指定してもエラーにはならず自動的に範囲内へ収められる）。
 
 
@@ -895,11 +941,11 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 | 🆓 `GetVisibleActors` | アクティブなエディタビューポートに現在表示されているアクターを返す（視錐体カリング） |
 | 🆓 `ProjectWorldToScreen` | ワールド空間の位置をスクリーン座標に投影 |
 | 🆓 `ProjectScreenToWorld` | スクリーン座標からワールドにレイをキャスト（ECC_Visibility ライントレース） |
-| 🆓 `ListActorComponents` | レベルに配置済みのアクターが持つコンポーネントを列挙。各エントリは以下の 3 コマンドが受け取る `ComponentId` に加え、`ComponentClassPath`・`Origin`（`Instance` / `SimpleConstructionScript` / `UserConstructionScript` / `Native`）・`IsEditableInstance`・`IsSceneComponent`・`IsRootComponent`・`AttachParentComponentName`・`AttachSocketName` を返す。さらに各エントリは、そのクラスのコンポーネントを**追加**するのに何が要るかを `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）・`RequiredCapabilities`・`MissingCapabilities` として返す — `ComponentCustomTypeEdit` が要るかどうかを書き込みを試す前に確認できるのはこれによる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要 |
+| 🆓 `ListActorComponents` | レベルに配置済みのアクターが持つコンポーネントを列挙。各エントリは以下の 3 コマンドが受け取る `ComponentId` に加え、`ComponentClassPath`・`Origin`（`Instance` / `SimpleConstructionScript` / `UserConstructionScript` / `Native`）・`IsEditableInstance`・`IsSceneComponent`・`IsRootComponent`・`AttachParentComponentName`・`AttachSocketName` を返す。さらに各エントリは、そのクラスのコンポーネントを**追加**するのに何が要るかを `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）・`RequiredCapabilities`・`MissingCapabilities` として返す — `ComponentCustomTypeEdit` が要るかどうかを書き込みを試す前に確認できるのはこれによる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要。`ComponentId` は不透明で、すでにエスケープ済みの識別子。他のコンポーネント系コマンドにそのまま渡し、手で組み立てたり編集したりしない |
 | `AddActorComponent` | レベルに配置済みのアクターにコンポーネントを追加（Details パネルの *Add Component* ボタン相当）。1 つの Undo ステップとして記録され、新しい `ComponentId` を返す。`ComponentName` は省略するとエンジンが命名する。`AttachParentComponentName` / `AttachSocketName` は `USceneComponent` 派生にのみ適用され、アクターにルートが無い場合は新しいコンポーネントがルートになる。クラスは既にロード済みのものからのみ解決し、要求に応じたロードは行わない（未ロードのクラスは `NotFound`）。`ActorComponentEdit` が必要で、`/Script/Engine` と `/Script/LiveLinkComponents` 以外のクラスにはさらに `ComponentCustomTypeEdit` が必要 — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照。PIE 中は拒否 |
 | `DeleteActorComponent` | レベルに配置済みのアクターからインスタンスコンポーネントを削除。1 つの Undo ステップとして記録される。削除できるのは `Origin: Instance` のみ — SCS のものは Blueprint コンポーネントコマンドの担当、コンストラクションスクリプト由来のものはスクリプトが作り直し、Native のものはそのクラスの全インスタンスに存在するため、いずれも「どの経路が担当か」を示して拒否する。アクターの `DefaultSceneRoot` も拒否対象。削除したシーンコンポーネントの子は、ワールドトランスフォームを保ったままその親へ付け替えられる。`ExpectedComponentClass` は必須（一覧が返した `ComponentClassPath` をそのまま渡す）で、古くなった識別子は追従せず `NotFound` で拒否する。`ActorComponentEdit` が必要。PIE 中は拒否 |
 | `ReparentActorComponent` | レベルに配置済みのアクターのシーンコンポーネントを、同じアクターの別のコンポーネントの下へ、ワールドトランスフォームを保ったまま付け替える。1 つの Undo ステップとして記録される。両方が同一アクター上の `USceneComponent` 派生で、動かす側は `Origin: Instance` である必要がある。「どこにも付いていない」状態は表現できず、切り離しはアクターのルートを `NewParentComponentName` に指定して表す。ルート自身は動かせない。循環になる付け替えと、新しい親に存在しないソケットは、書き込み前に拒否される。`ExpectedComponentClass` は上と同様に必須。`ActorComponentEdit` が必要。PIE 中は拒否 |
-| 🆓 `GetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントのプロパティ値を、`ListActorComponents` / `AddActorComponent` が返す `ComponentId` で指定して読み取る — `GetActorProperty` は、アクターがコンポーネントを保持するオブジェクト参照を辿るパスを拒否するため、これが唯一の到達手段になる。`Value`・`PropertyType`・`Origin`、および `WriteRequirements`（そのプロパティへの書き込みが `ActorComponentEdit` に加えて何を要求するか、このセッションが既に持っているものと不足しているものに分けたもの、書き込みがそもそも可能かどうか、`SetActorComponentProperty` の 2 つの値パラメータのどちらで渡す必要があるか）を返す。`ExpectedComponentClass` は必須で、古くなった `ComponentId` は追従せず拒否する。どの `Origin` のコンポーネントも読み取れる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要 |
+| 🆓 `GetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントのプロパティ値を、`ListActorComponents` / `AddActorComponent` が返す `ComponentId` で指定して読み取る — `GetActorProperty` は、アクターがコンポーネントを保持するオブジェクト参照を辿るパスを拒否するため、これが唯一の到達手段になる。`Value`・`PropertyType`・`Origin`、および `WriteRequirements`（そのプロパティへの書き込みが `ActorComponentEdit` に加えて何を要求するか、このセッションが既に持っているものと不足しているものに分けたもの、書き込みがそもそも可能かどうか、`SetActorComponentProperty` の 2 つの値パラメータのどちらで渡す必要があるか）を返す。`ExpectedComponentClass` は必須で、古くなった `ComponentId` は追従せず拒否する。どの `Origin` のコンポーネントも読み取れる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要。`ComponentId` は不透明で、すでにエスケープ済み。`ListActorComponents` が返した形のまま渡す |
 | `SetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントへプロパティ値を書き込む。指定方法は `GetActorComponentProperty` と同じで、1 つの Undo ステップとして記録される。値は UE インポートテキストとして `Value`、または JSON として `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` で値全体の置換ではなくコンテナの要素 1 つだけを操作できる — これらのパラメータと、参照・複合値の書き込みに追加で必要な Capability（先に `GetActorComponentProperty` を呼べば分かる）については [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。`ExpectedComponentClass` は上と同様に必須。コンポーネントの `Origin` が `UserConstructionScript` の場合は拒否される — そのスクリプトが次回実行されると書き込みが失われるため。`ActorComponentEdit` が必要。PIE 中は拒否 |
 
 > **Note — インスタンス側専用です。** この 6 コマンドが対象とするのは、**レベルに配置済みのアクター**が持つコンポーネントです（`GetActorComponentProperty` は、コンストラクションスクリプトが所有するものを含め、どの `Origin` のコンポーネントも読み取れる — 書き込みだけが拒否される）。アクターの Blueprint 側に宣言されたコンポーネントは [UAIP.Editor.Blueprint — コンポーネント — SCS](#コンポーネント--scs8) を使ってください。インスタンス側にリネームと複製に相当する操作はありません（望む名前を指定して追加し直してください）。
@@ -3335,7 +3381,7 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 | コマンド | 説明 |
 |---|---|
 | `ValidateAssets` | 1〜8 件のアセットを同期的に検証して結果を返します。無効だったアセット、警告のあるアセット、検査されなかったアセットは個別に列挙され、何も見つからなかったアセットは `Summary` に集計され、`IncludeValid` が true のときにのみ列挙されます。結果 JSON は 64 KiB 未満の間はインラインで返され、いずれにせよ artifact としても書き出されます。⚠️ 本コマンドには時間予算も中断点も進捗取得もありません — マテリアル 1 件の検証だけでシェーダーコンパイルを伴い数秒かかりうるため、重いアセットを含む呼び出しはエディタを数秒〜数十秒応答させなくしうることに注意してください。`ResultId` は、結果に修正が 1 件以上含まれるときにのみ返ります。`AssetPaths` 内で重複したパスは、黙って重複除去せず `InvalidParams` で拒否します（8 件を明示指定したのに 7 件しか検証されない結果は分かりにくいため） |
-| `StartValidationJob` | フォルダ（`PackagePath` + `Recursive`）または明示的な `AssetPaths` リスト — どちらか一方だけであり、両方指定も両方省略も不可 — を複数フレームに分けて検証し、結果ではなく `JobId` を返します。`MaxAssets` は、リダイレクタ解決と外部オブジェクトの所有者への畳み込みの後に残る件数を制限します（切り捨てた場合は `Summary.AssetLimitReached` が立ちます）。列挙だけで内部上限を超えるほど広いフォルダは、先頭の一部を検証するのではなく `EnumerationLimitExceeded` で失敗しますので、`MaxAssets` を下げるのではなくフォルダを絞ってください。同一セッションのジョブが実行中に 2 つ目を開始すると前のジョブが中断され `ReplacedPreviousJob` が返り、前回からの間隔が短すぎる場合は `TooManyRequests` が返ります。`Recursive` は `PackagePath` と併用したときにのみ意味を持つため、`AssetPaths` と同時に指定した場合は黙って無視せず拒否します（20,000 件を超える `AssetPaths` も同様です） |
+| `StartValidationJob` | フォルダ（`PackagePath` + `Recursive`）または明示的な `AssetPaths` リスト — どちらか一方だけであり、両方指定も両方省略も不可 — を複数フレームに分けて検証し、結果ではなく `JobId` を返します。`MaxAssets` は、リダイレクタ解決と外部オブジェクトの所有者への畳み込みの後に残る件数を制限します（切り捨てた場合は `Summary.AssetLimitReached` が立ちます）。列挙だけで内部上限を超えるほど広いフォルダは、先頭の一部を検証するのではなく `EnumerationLimitExceeded` で失敗しますので、`MaxAssets` を下げるのではなくフォルダを絞ってください。同一セッションのジョブが実行中に 2 つ目を開始すると前のジョブが中断され `ReplacedPreviousJob` が返り、前回からの間隔が短すぎる場合は `TooManyRequests` が返ります。`Recursive` は `PackagePath` と併用したときにのみ意味を持つため、`AssetPaths` と同時に指定した場合は黙って無視せず拒否します（20,000 件を超える `AssetPaths` も同様です）。`PackagePath` は `/Game` のようなコンテンツのルートも、その下のフォルダも受け付ける（末尾の `/` は外される）。拒否されたパスは `InvalidParams` で、文は `'PackagePath' value '…': <理由>` の形になる |
 
 #### Job observation & control（3 コマンド）— 要 `EditorInspect`
 
@@ -3805,7 +3851,7 @@ Runtime での入力注入と Enhanced Input 状態検査。PIE 必須。
 | ゲーム層がまだ無い | `PreconditionFailed`（再試行）。場所を特定できない場合は `NotAllowed` |
 | Capability が許可されていない | 名前を示した `CapabilityNotAvailable`（エディタ用に予約されたキーでは、当たったショートカットの名前と、ゲームパッドの「戻る」を使う案内も添えられます）。明示的に拒否している場合は `PolicyViolation` |
 | クリックでゲームビューポートがマウスを掴んでいる（入力モードがゲーム専用）、対象なしのキー・文字でフォーカスがゲームビューポートそのものにある、ドラッグ中、モーダルがどれか開いている、ゲームビューポートの外のメニューが開いている | `NotAllowed`。フォーカスとマウスキャプチャの状態が添えられます。入力モードは勝手に変えません（`SetInputMode` を使ってください）。ゲーム自身の UI のドロップダウンが開いているだけなら妨げになりません |
-| ウィンドウが最小化されている | `PreconditionFailed` |
+| ゲームを載せているウィンドウが最小化または非表示（`Reason: HostWindowUnavailable`。[キャプチャが断られるとき](#キャプチャが断られるとき)を参照） | `NotAllowed`。ホストウィンドウがまだ無い場合は `PreconditionFailed` |
 | 対象が無い、またはビューポートに追加されていない | `NotFound` |
 | 検索の後で画面が作り直された | `Conflict`（検索し直す） |
 | 対象が非表示または無効 | `NotAllowed` |
@@ -3893,6 +3939,41 @@ LiveLink の Source / Subject 観測、クライアント状態の制御、UAIP 
 | `CreateLiveLinkSyntheticSource` | UAIP 所有の Source をクライアントへ登録し、その `SourceGuid` を返す。Source は要求したセッションの所有として記録され、**そのセッションだけがフレームを流し込み、削除できる**。セッションが保持できる合成 Source の上限に達すると `TooManyRequests`。`LiveLinkSyntheticSource` が必要 |
 | `PushLiveLinkSyntheticFrame` | このセッションが作成した合成 Source へ、1 つの Role の `StaticData` と `FrameData` を流し込む（名前付き Subject は初回に作られる）。⚠️ **どちらの流し込みもキューに積むだけ**で、クライアントは自身の次のティックでキューを処理する。そのため成功したほぼ全ての呼び出しで `IsSubjectValidImmediately` は `false` になる。この Subject のフレームを評価する前に、クライアントのティックを最低 1 回待つこと（`WaitForCondition` など）。`SourceGuid` がこのセッションの作成でない場合は `NotAllowed`。存在しない Source への流し込みはエンジンが黙って捨てるため、応答では Subject が実際に成立したかを確認して返す。セッション単位の Subject 数と流し込み頻度（`TooManyRequests`）、ペイロード単位の配列長・名前長・非有限値（`NaN` / `Inf`）（`InvalidParams`）で制限される。プリセット適用中・録画中も拒否されない。`LiveLinkFrameInjection` が必要 — Source を作ることとデータを流し込むことは別の権限であるため、意図的に `LiveLinkSyntheticSource` と分けてある |
 | `RemoveLiveLinkSyntheticSource` | このセッションが作成した合成 Source を削除する。冪等で、登録されたことのない `SourceGuid` も既に削除済みのものも `Removed: false` で成功する。別セッションのものは `NotAllowed`。`LiveLinkSyntheticSource` が必要 |
+
+---
+
+## UAIP.Editor.Mass 🧩
+
+Mass シミュレーションの元になるデータの読み取りと組み立てを行うコマンド群です。対象は、セッションが選べる Trait クラス、Mass のエンティティ構成アセット（宣言している内容、継承している内容、有効かどうか）、エンティティを配置するスポナーです。**MassGameplay** プラグインが必要です。このプラグインなしで作ったビルドでも 7 コマンドは一覧に出ますが、`Available: false`（`UnavailableDetail: OptionalPluginDisabled`）になります。デモ版には含まれません。実行中のゲームのエンティティを観測するには [`UAIP.Runtime.Mass`](#uaipruntimemass) を使います。
+
+**Capability。** 読み取りの 3 コマンドは `EditorInspect`（DefaultAllow）を必要とします。書き込みの 4 コマンドは `MassAssetEdit`（DefaultDenied）を必要とし、呼び出しごとに、リクエストが指す内容に応じて追加の Capability が要ることがあります。エンジン自身の Mass モジュールの外にある Trait・スポナーの生成器クラスには `MassCustomTypeEdit`、呼び出しがプロジェクトのコードを走らせる場合は `MassProjectCodeExecution` です。Capability が足りない場合は `CapabilityNotAvailable` で、`RequiredCapabilities` と `MissingCapabilities` を載せ、何も変更しません。`MassProjectCodeExecution` を許可すると何にさらされるかは [安全性と Capability](safety.md#mass-の観測と編集) を参照してください。
+
+**読み取りはエディタのワールドを変えません。** `DumpMassEntityConfig`・`ValidateMassEntityConfig`・`ListMassEntityTraits` は、構成が何を組み立てるかを、呼び出しの間だけ存在する専用の空のワールドで各 Trait を組み立てて求めます。そのため、エディタのワールドもアセットも変わりません。結果は実行モード `EditorWorld`（`EvaluatedExecutionMode`）のものです。ワールドの実行モードで振る舞いを変える Trait は、実行中のゲームでは別のものを組み立てることがあり、`Limitations` がそれを伝えます。エンジンの Mass モジュールの外にある Trait は、`MassProjectCodeExecution` を持たないセッションでは、組み立ても、プロパティ値の読み取りもされず、`SkippedTraits`（または `ElementsOmittedReason`）に載ります。このとき `ValidateMassEntityConfig` は `IsComplete: false` を返し、`Verdict` は `Inconclusive` になります。ただし、省かれた Trait では取り消せないエラーがすでにあれば `Invalid` です。読み取りは PIE 中でも許可されます。
+
+**書き込み。** 書き込みは元に戻せる 1 ステップです。断られたリクエストは何も変えません（アセットも、そのパッケージのダーティフラグも、Undo 履歴も変わりません）。プレイセッション中、および読み取り専用の場所（`/Engine` 配下など）にあるアセットへの書き込みは `NotAllowed` で断られます。構成への書き込みが成功すると、その構成と、読み込み済みの子孫の構成について、エディタのワールドが覚えているテンプレートを外します。応答は `RemovedEditorWorldTemplates`・`UnloadedDescendantCount`・`TemplateRegistryUnavailable` を返します。汎用のプロパティコマンド、手による編集、Undo / Redo では外しません。
+
+> **Mass Debugger のタブ。** Mass Debugger のタブが開いていると、一時ワールドの作成でエンジン内部のチェック（`ensure`）が 1 回失敗し、ログにコールスタックが出ます（デバッガーを付けて起動しているとそこで止まります）。エンジン自身も、Trait の一覧のために作る一時ワールドで同じことをします。コマンドは成功し、一時ワールドは Mass Debugger の環境の一覧には出ません。避けたいときは、先にタブを閉じてください。
+
+| コマンド | 説明 |
+|---|---|
+| `ListMassEntityTraits` | セッションが選べる Mass の Trait クラスを一覧する。各エントリは `ClassPath`・`DisplayName`・`Admission`（`Allowed`・`RequiresCapabilities`・`NotAddable`・`CompatibilityUnknownUntilAuthorized`）、追加に要る `RequiredCapabilities` / `MissingCapabilities`、要素の読み取りに要る `EvaluationRequiredCapabilities`、`Deprecated`、Trait が追加・要求する要素（`AddedElements` / `RequiredElements`）を持つ。セッションが置けないクラスも、断る理由付きで一覧に残る。`AddsElement` はその要素を追加する Trait だけに絞り（読めずに判定から漏れた Trait の数が `UnevaluatedTraitCount`）、`NameFilter` はクラスパスまたは表示名に大文字小文字を区別せず一致させ、`MaxClasses`（1〜1000、既定 200）が件数の上限（`TotalCount` / `Truncated`）。クラスパス順。Data は先頭のエントリを、成果物はサイズ予算までの残りを持つ。読み取り専用。`EditorInspect` が必要で、プロジェクトの Trait の要素を読むときだけ `MassProjectCodeExecution` も必要 |
+| `DumpMassEntityConfig` | Mass のエンティティ構成アセット（`AssetPath`）を読み、宣言している内容を保存する。`OwnTraits`、`ParentChain`（近い順）、`InheritanceCycle`、`CombinedTraits`（親の連なりのすべての Trait。`OverriddenBy` と `Effective` 付き）、`Composition`（有効な Trait が組み立てるテンプレートの要素）、`PerTrait`（有効な Trait ごとの追加・要求・除去）、`SkippedTraits`。親の連なりが循環していると、`CombinedTraits`・`Composition`・`PerTrait` は空になり、`Limitations` に `CompositionNotComputedDueToCycle` が付く。読み取り専用。`EditorInspect` が必要で、プロジェクトの Trait を評価するときだけ `MassProjectCodeExecution` も必要 |
+| `ValidateMassEntityConfig` | 構成（`AssetPath`）を、エンジンが Trait の組み立てるエンティティテンプレートを検証するのと同じ方法で検証する。`Verdict` は `Valid`・`Invalid`・`Inconclusive`。`IsComplete` はすべての Trait を評価できたかを示し、true なら `Verdict` はエンジン自身の検証と一致する。`Issues` の各エントリは `Kind`（`MissingElement`・`DuplicateElement`・`TraitValidationFailed`・`InheritanceCycle`・`TraitOverridden`）と `Severity` を持ち、足りない要素には `SuggestedTraits` が付く。`SuggestionsComplete` と `UnevaluatedTraitCount` は、候補がすべての Trait クラスに基づくかを示す。Trait 固有の検証が失敗した理由はエンジンのログにしか出ない（`TraitValidationReasonOnlyInLog`）。読み取り専用。`EditorInspect` が必要で、プロジェクトの Trait を評価するときだけ `MassProjectCodeExecution` も必要 |
+| `AddMassEntityConfigTrait`（`MassAssetEdit` が必要） | 構成に Trait を追加する。`TraitClass` は `ListMassEntityTraits` が返す、読み込み済みの Trait クラスのパス（未読み込みのクラスは読み込まずに `NotFound`）。`InitialProperties`（任意、最大 64 件）は追加の前に新しい Trait へ書き込まれ、1 件でも断られれば追加全体を取り消す。`ValidTargetConfig`（任意）は対象フラグ（`Standalone`・`Server`・`Client`・`Editor`・`EditorWorld` をカンマ区切り、または `None`）。UE 5.7 には無く `NotApplicable` だけを受け付ける。同じ対象ですでに構成が宣言している Trait は `InvalidParams` で `CandidateIndices` を返し、親が宣言している Trait は上書きとなり `OverridesParentTrait` が示す。クラスがエンジンの Mass モジュールの外にあるときは `MassCustomTypeEdit` も、`InitialProperties` を渡すときはクラスを問わず `MassProjectCodeExecution` も必要 |
+| `RemoveMassEntityConfigTrait`（`MassAssetEdit` が必要） | 構成が自分で宣言している Trait を外す。`Index`（構成自身の Trait の中での位置。`DumpMassEntityConfig` の `OwnTraits` と同じ）か `TraitClass` のどちらか 1 つだけで指定する。構成自身の複数の Trait に一致するクラスは `InvalidParams` で `CandidateIndices` を返し、親だけが宣言している Trait は `InvalidParams` で `ParentAssetPaths`（代わりに編集すべき構成）を返す。Trait の処理は走らないので、ほかの Capability は要らない |
+| `SetMassEntityConfigTraitProperty`（`MassAssetEdit` と `MassProjectCodeExecution` が必要） | 構成が自分で宣言している Trait のプロパティを 1 つ設定する。Trait の指定は `RemoveMassEntityConfigTrait` と同じ。`PropertyPath`（1024 文字まで）と `Value`（null は不可）で書き込む内容を指す。文字列はプロパティがテキストを受け付けるときテキストとして、それ以外の JSON 値は構造化ドキュメントとして書く。値によって Trait が構成のほかの Trait と重複する場合は `InvalidParams`、プロパティの書き込み経路が断った値はその経路自身のエラーコードで返す。**Trait のクラスを問わず**両方の Capability が要る。Trait のすべてのメンバーは共通のプロパティ書き込み経路で書かれ、エンジンの Mass モジュールの外の Trait では、その書き込みがプロジェクト自身のコードを走らせるため。参照や入れ子のオブジェクトを含む値は、`PropertyReferenceEdit` または `PropertyStructuredEdit` も要ることがある |
+| `ConfigureMassSpawner`（`MassAssetEdit` が必要） | エディタのワールドにある Mass スポナー（`ActorIdentifier` はそのラベルまたはオブジェクトパス）の `Count`・`EntityTypes`・`SpawnDataGenerators`・`AutoSpawnOnBeginPlay` を設定する。少なくとも 1 つが必要で、指定したものだけが置き換わる。リストを指定すると全体が置き換わり（最大 64 件、`Proportion` の既定は 1）、エントリごとに新しい生成器が作られる。生成器のクラスは読み込み済みであること。生成器のクラスがエンジンの Mass モジュールの外にあるときは `MassCustomTypeEdit` も、エンティティの種類を置き換えた結果、エディタのワールドが、そのような Trait（受け継いだ Trait を含む）に行き着くテンプレートを登録するときは `MassProjectCodeExecution` も必要。テンプレートがすでにある構成は再利用され、どちらも要らない。応答は、作ったものと再利用したものを示す（`TemplatesBuiltInEditorWorld`・`ExistingTemplatesReused`）。`ExistingTemplatesReused` が 0 でなければ、古いテンプレートが使われている可能性がある（`ExistingEditorWorldTemplateReused`） |
+
+**エラー。**
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `NotAllowed` | プレイセッション中の書き込み、または読み取り専用の場所にあるアセットへの書き込み |
+| `NotFound` | アセット・Trait・クラス（未読み込み）・スポナーが存在しない。複数のアクターが持つラベルは `NotFound` で、該当するアクターを `CandidateActorPaths` に列挙する |
+| `InvalidParams` | Trait の重複、曖昧な Trait や親だけが持つ Trait、構成ではないアセット、Trait や生成器ではないクラス、不正または範囲外のパラメータ |
+| `CapabilityNotAvailable` / `PolicyViolation` | 必要な Capability が与えられていない / セーフティポリシーで拒否されている |
+
+**Mass のアセットと汎用コマンド。** エンティティ構成アセットの作成、スポナーの配置、構成の親の設定は、既存の汎用コマンドで行います。このドメインの追加以降、Mass のアセット（構成・スポナー・Trait・生成器、およびそれらの設定を運ぶ構造体）に対する汎用のプロパティ書き込みには、`MassAssetEdit` と `MassProjectCodeExecution` も必要です。[安全性と Capability](safety.md#mass-の観測と編集) を参照してください。
 
 ---
 
@@ -4904,7 +4985,7 @@ AnimInstance を持たないメッシュはエラーではありません。ア�
 
 **Capability。** `GetNetDriverState`・`ListNetConnections`・`DumpActorReplication`・`DumpReplicatedPropertyValues`・`CompareReplicatedProperties` は `RuntimeInspect`（DefaultAllow）を必要とします。`DumpReplicatedPropertyValues` と `CompareReplicatedProperties` は、さらに `RuntimeReplicatedPropertyValueRead`（DefaultDenied）を必要とします。値にはプレイヤーのプラットフォームアカウント識別子（`PlayerState` のレプリケートされる `UniqueId`）やプレイヤー名が入りうるためです。`ListNetConnections` は、`IncludeRemoteAddress` が `true` のとき**だけ**、さらに `RuntimeNetConnectionAddressRead`（DefaultDenied）を必要とします。この Capability は要求ごとに判定するため、コマンドが宣言する `RequiredCapabilities` には現れません。`SetNetworkEmulation` と `ResetNetworkEmulation` は `RuntimeNetworkEmulationControl`（DefaultDenied）を必要とし、読み取り専用ではないため、安全ポリシーが読み取り専用モードのときは拒否されます。足りない場合は、その名前を示した `CapabilityNotAvailable` になります。詳細は [安全性と Capability](safety.md#runtime-ネットワークとレプリケーション) を参照してください。
 
-**デモ版。** `GetNetDriverState`・`ListNetConnections`・`DumpActorReplication` と `RuntimeNetConnectionAddressRead` はデモ版でも提供されます。`DumpReplicatedPropertyValues`・`CompareReplicatedProperties`・`SetNetworkEmulation`・`ResetNetworkEmulation` とその Capability（`RuntimeReplicatedPropertyValueRead`、`RuntimeNetworkEmulationControl`）は含まれず、デモ版ではこれらのコマンドは存在せず `CommandNotFound` を返します。
+**デモ版。** `GetNetDriverState`・`ListNetConnections`・`DumpActorReplication` と `RuntimeNetConnectionAddressRead` はデモ版でも提供されます。`DumpReplicatedPropertyValues`・`CompareReplicatedProperties`・`SetNetworkEmulation`・`ResetNetworkEmulation` は含まれず、デモ版ではこれらのコマンドは存在せず `CommandNotFound` を返します。その Capability（`RuntimeReplicatedPropertyValueRead`、`RuntimeNetworkEmulationControl`）はデモ版にも登録されますが、この版では使えない印が付くため、ini で許可しても効果はありません。
 
 **Shipping ビルド。** `SetNetworkEmulation`・`ResetNetworkEmulation`・`RuntimeNetworkEmulationControl` は、エンジンのパケットエミュレーションを使えるビルドでだけ登録されます。Shipping ビルドでは登録されません（`CommandNotFound`）。
 
@@ -5040,6 +5121,48 @@ AnimInstance を持たないメッシュはエラーではありません。ア�
 | `CommandNotFound` | ビルドが提供していないコマンド: デモ版での値の読み取り・比較・エミュレーションのコマンドと、Shipping ビルドでのエミュレーションのコマンド |
 
 観測コマンドは、成功した呼び出しごとにちょうど 1 つの JSON 成果物を保存し、失敗した呼び出しは何も保存しません。拒否された要求も何も保存しません。
+
+---
+
+## UAIP.Runtime.Mass
+
+プレイワールドの Mass シミュレーションを観測するコマンド群です。エンティティがいくつあるか、どのアーキタイプにまとまっているか、どのプロセッサがどの順で動くか、1 体のエンティティがどの要素の型を持つか、そして許可すればその要素の値が分かります。このモジュールが必要とするのはエンジン同梱の `MassEntity` モジュールだけで、`MassGameplay` プラグインは要らないため、🧩 は付きません。エディタでのみ読み込まれ（ゲームのビルドには含まれません）、デモ版にも含まれません。すべてのコマンドは読み取りだけを行います。シミュレーションの元になるアセットの読み取りと組み立ては [`UAIP.Editor.Mass`](#uaipeditormass-) を参照してください。
+
+6 つのうち 5 つは、エディタ上のプレイワールドの Mass エンティティマネージャーに作用し、[`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。`DumpMassEntitySettings` はエンジンの設定を読むので、パラメータを取りません。
+
+**Capability。** 6 つすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`GetMassEntityFragments` は、フラグメントの値がプロジェクトのデータであるため、`RuntimeMassFragmentValueRead`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#mass-の観測と編集) を参照してください。
+
+**エンティティの指定。** エンティティは、先に返った応答が示した `EntityIndex` と `EntitySerialNumber` の組で指定します（見本は `DumpMassEntityArchetypes` の `SampleEntitiesPerArchetype` で求めます）。プレイワールドについての応答には、観測したワールドを識別する `WorldToken` が付きます。これをそのまま返してください。`GetMassEntityFragments` は必須で、別のワールド（たとえば PIE を再起動した後）について答えることを `Conflict` で断ります。`DescribeMassEntity` は渡されれば検証し、渡されなければ `WorldTokenNotVerified` の制限事項でそれを示します。
+
+**安全点での読み取り。** エンジンの状態が更新の途中かもしれないとき（モーダルダイアログや長い処理がゲームループを止めている、またはワールドがティックの途中）は、何も読まずに、`Availability: NotAtSafePoint` とデータなしで**成功**を返します。これは空のワールドとは別物で、`DescribeMassEntity` / `GetMassEntityFragments` ではエンティティが存在するかどうかも分かりません。もう一度呼んでください。
+
+**出力の上限。** 上限は設定できません。Data は先頭のエントリを、成果物はサイズ予算までの残りを持ち、何かが省かれたときは `…Truncated` のフラグと切り捨て前の件数がそれを示します。
+
+**デバッグ用インターフェース。** `GetMassEntityCount`・`DumpMassEntityArchetypes`・`DumpMassProcessorGraph` は Mass のデバッグ用インターフェースを必要とします。ビルド構成によっては含まれません（Shipping ビルドのように `WITH_MASSENTITY_DEBUG` が 0 のエンジンビルド）。その場合、これらは `Available: false`（`UnavailableDetail: BuildConfiguration`）で、理由を示すメッセージ付きで一覧に出ます。
+
+**Mass が動いていないとき。** プロジェクト設定やコンソール変数（たとえば `mass.RuntimeSubsystemsEnabled`）でプレイワールドの Mass のサブシステムが無効になっていると、それを必要とするコマンドは、設定の名前を示した `PreconditionFailed` で断られます。`DumpMassEntitySettings` は影響を受けません。
+
+**TEDS を無効にしているとき。** エディタの Typed Elements Data Storage（TEDS）が有効（既定）なら、このモジュールによる新たな副作用はありません。TEDS を無効にしていると、このモジュールの読み込みでエディタが `MassEntity` モジュールを読み込み、エディタ側のワールド（エディタのワールドなど）に Mass のサブシステムが作られることがあります。影響はエディタの中に限られ、ゲームには及びません。
+
+| コマンド | 説明 |
+|---|---|
+| `DumpMassEntitySettings` | エンジンの Mass 設定を JSON 成果物として保存する。`ChunkMemorySize`（エンティティメモリ 1 チャンクのバイト数）、`ProcessingPhases`（`Phase` と `PhaseGroupClassPath`。設定が並べる順）、設定が集めたプロセッサクラスの `ProcessorCDOs`（`ClassPath`・`Phase`・`Group`/`Before`/`After` 付きの `ExecutionOrder`・`ExecutionFlags`・`AutoRegisterWithProcessingPhases`）。設定はクラスのデフォルトオブジェクトから読むため、プレイワールドは不要で、応答に `WorldToken` は付かず、`Availability` は常に `Available`。Data は先頭 50 件のプロセッサクラスと `ProcessorCDOsTotalCount`・`ProcessorCDOsTruncated` を持つ。読み取り専用。`RuntimeInspect` が必要 |
+| `GetMassEntityCount` | 対象プレイワールドのエンティティ数を数える。`TotalEntityCount`（ワールド全体）、`MatchingEntityCount`、`MatchingArchetypeCount`、`Archetypes`（条件に合うアーキタイプごとの `ArchetypeId` と `EntityCount`。多い順）。`RequiredElements` は列挙した要素の型をすべて持つアーキタイプに絞り、`ExcludedElements` はどれかを持つものを除く。名前は `TransformFragment` のような短い名前、または `/Script/MassCommon.TransformFragment` のような完全なパスで、不明・曖昧・要素の型でない名前は断られる（1 つのリストにつき 64 個まで、各 512 文字まで）。エンティティが無いワールドは件数 0 になる。Data は先頭 50 件のアーキタイプを持つ（`ArchetypesTruncated`）。読み取り専用。`RuntimeInspect` が必要 |
+| `DumpMassEntityArchetypes` | 対象プレイワールドのアーキタイプを 1 ページずつ一覧する。各アーキタイプに `ArchetypeId`・`Composition`（各要素の `Kind` と `Type`）・`EntityCount`・`ChunkCount`・`EntitiesPerChunk`・`AllocatedSizeBytes`・`WastedEntityMemoryBytes`・`BytesPerEntity`・`DebugNames`・`SampleEntities`（`SampleEntitiesPerArchetype` 個までのエンティティの `Index` と `SerialNumber`。既定では無し）。`RequiredElements` / `ExcludedElements` の絞り込みは上と同じ。`StartIndex`・`MaxArchetypes`（1〜500、既定 50）・`SampleEntitiesPerArchetype`（0〜16）で、安定した順序の中をページ送りする。応答は `TotalArchetypeCount`・`TotalEntityCount`（絞り込み前）・`MatchingArchetypeCount`・`NextStartIndex`（アーキタイプが残っているときだけ）・`ArchetypesTruncated` を持つ。ページの間にアーキタイプが変わることがある。読み取り専用。`RuntimeInspect` が必要 |
+| `DumpMassProcessorGraph` | 対象プレイワールドのプロセッサグラフ。処理フェーズごとに、実行される順のプロセッサ、続いてエンジンが除いたプロセッサと、要素の追加・除去を監視するプロセッサ。各プロセッサは、クラス、位置、自分より前に走るべきプロセッサ、宣言しているグループ・順序・実行フラグ、クエリの要件（要素の型と種類、読み取りか読み書きか、エンティティが持つ必要があるか）を持つ。Data は先頭のエントリを、成果物は残りを持つ。Mass デバッガーの処理環境が無いワールドは、制限事項 `ProcessingEnvironmentNotFound` 付きの空のグラフを返す。これはプロセッサが無いワールドとは別物。読み取り専用。`RuntimeInspect` が必要 |
+| `DescribeMassEntity` | 1 体のエンティティがどの要素の型を持つかを、値を読まずに返す。所属するアーキタイプのハッシュと、Fragment・Tag・Shared Fragment・Const Shared Fragment・Chunk Fragment を、種類と型パスの組で返す。UE 5.8 以降では、sparse Fragment（型のみ）も列挙し、常に `SparseTagsNotListed` を返す。エンティティ単位の sparse Tag は列挙できないので、Tag の一覧が空でも持っていないという意味ではない。`EntityIndex` と `EntitySerialNumber` が必要で、`WorldToken` は任意。エンティティが存在しないと `NotFound`。読み取り専用。`RuntimeInspect` が必要。値は `GetMassEntityFragments` で読む |
+| `GetMassEntityFragments` | 1 体のエンティティの Fragment・Shared Fragment・Const Shared Fragment の値。`EntityIndex`・`EntitySerialNumber`・`WorldToken` が必要。`ElementTypes`（最大 64 個）で、名前を挙げた型だけに読み取りを絞る。Tag と Chunk Fragment は 1 体のエンティティについて読む値が無いので `InvalidParams`、エンティティが持たない型は `MissingRequestedElements` に載る。`Elements` の各エントリは `Kind`・`Type` を持ち、読めた場合は `Value`（構造体のメンバーの一覧。`Name`・`Type`・`Value`）、1 つの Fragment の予算（16 KiB）で切ったときは `ValueTruncated`、省いたときは `ValueOmittedReason` を持つ。1 回の応答の値は 256 KiB の予算を共有し、尽きた後の要素は型だけと `ValueBudgetExceeded` を返す。`Limitations` が省いたものを示す。強参照のオブジェクトは読まない（`ObjectReferenceOmitted`）、実行時に型が決まる構造体は展開しない（`NestedInstancedStructNotExpanded`）、リフレクションされないメンバーは出力しない（`NonReflectedMembersOmitted`）、UE 5.8 以降の sparse 要素は型のみ（`SparseElementValuesNotRead`）。読み取り専用。`RuntimeInspect` と `RuntimeMassFragmentValueRead` が必要 |
+
+**エラー。**
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `NotAllowed` | プレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に合うものが無い |
+| `PreconditionFailed` | プレイワールドで Mass が無効になっている（プロジェクト設定やコンソール変数） |
+| `NotFound` | エンティティが存在しない、破棄済み、またはシリアル番号がインデックスに属さない |
+| `Conflict` | `WorldToken` が今観測しているワールドを指していない |
+| `InvalidParams` | 不明・曖昧・要素の型でない名前、`ElementTypes` の Tag や Chunk Fragment、範囲外のパラメータ |
+| `CapabilityNotAvailable` / `PolicyViolation` | 必要な Capability が与えられていない / セーフティポリシーで拒否されている |
 
 ---
 

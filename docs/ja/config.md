@@ -181,19 +181,23 @@ bAllowWritesDuringPIE=False
 MaxSaveFileBytes=67108864
 ```
 
-### `[UAIP.RuntimeObservation]` — `DumpHUDState` の HUD 描画統計
+### `[UAIP.RuntimeObservation]` — ウィンドウサイズメッセージの記録と HUD 描画統計
 
-`DumpHUDState`（[`UAIP.Runtime.Observation`](commands.md#uaipruntimeobservation)）がゲームビューポートの Canvas の描画バッチ統計を添えるのは、この設定をオンにしたときだけです。何かを許可するものではなく、どのコマンドの権限も変えません。オフの間は、結果が有効にする方法を示します。[安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) も参照してください。
+`RecordWindowMessages` は、OS が送るウィンドウサイズのメッセージ（`WM_SIZE` / `WM_WINDOWPOSCHANGED` / `WM_NCCALCSIZE`）の短い記録を取るかどうかを決めます。記録するだけでメッセージは消費せず、Slate の通常のウィンドウ（メインウィンドウ、別ウィンドウになったフローティングタブやアセットエディタ、モーダルダイアログ。最大 8 ウィンドウ）はウィンドウごとに直近 64 件、通知トーストやメニューなどそれ以外のウィンドウは全体で直近 64 件を保持し、`DumpEditorState` の `WindowMessageRecording` に出ます（[キャプチャが断られるとき](commands.md#キャプチャが断られるとき) も参照）。最小化から復元したあとにウィンドウが古い大きさで描かれ続ける原因を調べるためのものです。何かを許可するものではなく、どのコマンドの権限も変えません。`False` にするとハンドラーは登録されず、`RecordingStatus` は `Disabled` になります。
+
+`DumpHUDState`（[`UAIP.Runtime.Observation`](commands.md#uaipruntimeobservation)）がゲームビューポートの Canvas の描画バッチ統計を添えるのは、`EnableHUDCanvasStats` をオンにしたときだけです。何かを許可するものではなく、どのコマンドの権限も変えません。オフの間は、結果が有効にする方法を示します。[安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) も参照してください。
 
 | キー | 型 | 既定 | 説明 |
 |---|---|---|---|
+| `RecordWindowMessages` | bool | `True` | ウィンドウサイズメッセージの記録を取るかどうか |
 | `EnableHUDCanvasStats` | bool | `False` | HUD の Canvas 統計を記録し、`DumpHUDState` の結果へ添えるかどうか |
 
-- 値は記録を始めるときに、起動時に 1 回だけ読まれるので、変更はエディタまたはゲームの再起動後に効きます。
+- どちらの値も起動時に 1 回だけ読まれるので、変更はエディタまたはゲームの再起動後に効きます。
 - 起動引数はありません。
 
 ```ini
 [UAIP.RuntimeObservation]
+RecordWindowMessages=False
 EnableHUDCanvasStats=True
 ```
 

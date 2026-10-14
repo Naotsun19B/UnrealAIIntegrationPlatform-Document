@@ -21,7 +21,7 @@ The UAIP demo binary is a free, feature-limited build distributed via GitHub Rel
 | **Commands** | | |
 | Core (HealthCheck, ListCommands, …) | ✅ | ✅ |
 | Editor observation (screenshots, dumps) | ✅ | ✅ |
-| Editor workspace (tab focus, graph framing, editor restart, …) | ✅ | ✅ |
+| Editor workspace (tab focus, graph framing, editor restart, minimizing and restoring the main window, …) | ✅ | ✅ |
 | PIE control (StartPIE, StopPIE, LoadMap, …) | ✅ | ✅ |
 | Runtime observation (viewport capture, world dump, HUD and widget state) | ✅ | ✅ |
 | Runtime AI perception, Chaos destruction and navigation observation (read-only subset) | ✅ | ✅ |
@@ -118,6 +118,7 @@ Every command below is registered in the demo build. Where a namespace is marked
 | `UAIP.Editor.Workspace.OpenTabById` | Open an editor tab by its Slate layout ID | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.CloseTabById` | Close an editor tab by its Slate layout ID | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.NormalizeEditorLayout` | Focus the main graph tab and hide transient panels | |
+| `UAIP.Editor.Workspace.SetEditorWindowState` | Minimize the editor main window, or restore it from the minimized state | `EditorWindowStateControl`; restoring activates the window and moves the keyboard focus to the editor |
 | `UAIP.Editor.Workspace.SetGraphZoom` | Set the graph viewport zoom level | |
 | `UAIP.Editor.Workspace.FrameGraphAll` | Fit all nodes in the graph viewport | |
 | `UAIP.Editor.Workspace.FrameGraphSelection` | Fit the selected nodes in the graph viewport | |
@@ -252,7 +253,7 @@ The commands that inject input exist only in Pro (see [Excluded commands](#exclu
 | `UAIP.Editor.UIAutomation.PressKey` | Send a key input | `EditorKeyboardInput` |
 | `UAIP.Editor.UIAutomation.WaitForWidget` | Wait for a widget to appear | |
 | `UAIP.Editor.UIAutomation.FillForm` | Auto-fill a form | |
-| `UAIP.Editor.UIAutomation.OpenPasswordTestWindow` | Open a test window with a password field (target for password-field policy tests) | |
+| `UAIP.Editor.UIAutomation.OpenPasswordTestWindow` | Open a small test window with a password field (a target for password-field policy tests) | Only opens a window and changes nothing; it is in the demo as well as Pro (see [What the demo does and does not restrict](#what-the-demo-does-and-does-not-restrict)) |
 
 ### `UAIP.Editor.Assets.*` (read-only subset)
 
@@ -382,6 +383,17 @@ The following capture commands embed a **"UAIP Demo"** watermark in the output P
 
 The mark makes it clear that a screenshot — when it ends up shared as review or test evidence — was produced by the demo build. The Pro version emits captures without the watermark.
 
+### What the demo does and does not restrict
+
+The demo restricts which **commands** exist. It does not stop the editor from doing something once a command has acted on it. Four points follow from that:
+
+1. **No semantic editing commands.** The demo has no command that rewrites an asset, an actor, a property or a setting as a unit of meaning (creating, renaming or deleting assets, placing actors, `Set*Property`, and so on). See [Excluded commands](#excluded-commands).
+2. **Saving, shutting down and restarting stay, because observation depends on them.** `SaveAllPackages`, `ShutdownEditor` and `RestartEditor` let a session check the result of a UI operation by restarting the editor. Unless `SaveAll` is given (and `DisableSave` is left at its default of `false`), `ShutdownEditor` and `RestartEditor` save every package that has unsaved changes before they close.
+3. **UI automation can change and save assets.** `ConnectGraphPins` and `DragGraphNode` do change the asset in the open editor, and `ClickWidget` sends a real click, which can press a Save button. They need only the DefaultAllow `EditorUIAutomation` capability and do not look at `DisableSave`; only `ReadOnly=True` stops them. Do not read "the demo has no editing commands" as "the demo cannot write to your project".
+4. **`SaveAsset` is left out, but `SaveAllPackages` stays.** `SaveAsset` belongs to the editing flow that opens, changes and saves one asset, the same family as the create, rename and delete commands. `SaveAllPackages` belongs to the same `EditorLifecycle` capability as `ShutdownEditor` and `RestartEditor`, and only makes callable on its own the "save everything" that closing and restarting already do, so it adds no new way to write.
+
+`OpenPasswordTestWindow` is in the demo, and in Pro, for a different reason: it only opens a small window with a password field, as a target for checking how `InputText` and the password-field policy treat a password field. It changes no asset, setting or saved state. It was already a published command, and removing a published command would have been a breaking change.
+
 ### Excluded commands
 
 Commands that exist in Pro but are not available in the demo:
@@ -398,6 +410,14 @@ Commands that exist in Pro but are not available in the demo:
 | `UAIP.Runtime.ChaosDestruction.EnableForcedDestructionNotify` and `UAIP.Runtime.Navigation.RebuildNavigation` | They change the running game (destruction notifications, navigation mesh regeneration) — Pro only — `CommandNotFound` |
 | `UAIP.Runtime.Animation.GetMotionMatchingState` | It needs the PoseSearch plugin, which the demo does not include — Pro only — `CommandNotFound` |
 | `UAIP.Runtime.Network.DumpReplicatedPropertyValues`, `UAIP.Runtime.Network.CompareReplicatedProperties`, `UAIP.Runtime.Network.SetNetworkEmulation` and `UAIP.Runtime.Network.ResetNetworkEmulation` | They read the values of replicated properties, which can include the account identifiers and names of players, or change the packet emulation of the running game — Pro only — `CommandNotFound` |
+
+When a Toolset bridge command is called in the demo, the error names the integration and its state before it says what to do, so you can tell what is missing: `This command runs through the Toolset integration 'UAIPCoreToolsetRegistry', which is not loaded (state: NotInThisEdition). The integration is not included in the free demo edition of UAIP. Its commands are available in the Pro edition on Fab.`
+
+### Capabilities the demo marks as unavailable
+
+The demo registers the capabilities of the commands it leaves out, so the capability list looks the same as in Pro. A capability that no command of the demo requires is marked **not in this edition**: `UAIP.Core.QueryCapabilities` (with `IncludeUnavailable: true`) lists it with `UnavailableReason: "NotInThisEdition"` and `IsGranted: false`, naming it in `+AllowedCapabilities` does not grant it, and the editor logs a warning at startup if you did. It is not a way to unlock anything: only the Pro edition has the commands. Not every capability a demo user cannot use is marked — one the demo does not register at all (`CommonUIProjectCodeExecution`, for example) is simply absent from the list. See [Safety & Capabilities](safety.md#capabilities-the-demo-build-does-not-ship).
+
+`EditorWindowStateControl` is not marked, because `SetEditorWindowState` is in the demo. The demo's `DefaultUAIP.ini` does not grant it, so add `+AllowedCapabilities=EditorWindowStateControl` to let an AI minimize and restore the editor main window.
 
 ### Where the demo loads
 
