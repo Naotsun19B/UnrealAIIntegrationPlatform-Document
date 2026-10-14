@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1295 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1716 commands organized by domain. These totals count every command the plugin defines for the UE 5.8 editor on Win64, including commands listed with `Available: false` because a plugin they need is disabled. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1301 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1722 commands organized by domain. These totals count every command the plugin defines for the UE 5.8 editor on Win64, including commands listed with `Available: false` because a plugin they need is disabled. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -144,7 +144,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Runtime Observation | `UAIP.Runtime.Observation` | 14 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
-| Runtime Input | `UAIP.Runtime.Input` | 14 | — | partial (2/14) |
+| Runtime Input | `UAIP.Runtime.Input` | 15 | — | partial (2/15) |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 17 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
 | Runtime LiveLink | `UAIP.Runtime.LiveLink` | 14 | — | — |
@@ -153,6 +153,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Runtime SaveGame | `UAIP.Runtime.SaveGame` | 10 | — | — |
 | Runtime AI | `UAIP.Runtime.AI` | 14 | — | partial (13/14) |
 | Runtime StateTree 🧩 | `UAIP.Runtime.StateTree` | 7 | — | — |
+| Runtime CommonUI 🧩 | `UAIP.Runtime.CommonUI` | 4 | — | — |
 | Runtime Chaos Destruction | `UAIP.Runtime.ChaosDestruction` | 8 | — | partial (7/8) |
 | Runtime Navigation | `UAIP.Runtime.Navigation` | 8 | — | partial (7/8) |
 | Runtime Animation | `UAIP.Runtime.Animation` | 7 | — | partial (6/7) |
@@ -312,7 +313,7 @@ Component classes are gated the same way but by a rule of their own, described i
 
 ## Choosing which play world a Runtime command acts on
 
-A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 102 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
+A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 107 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
 
 | Parameter | Type | Meaning |
 |---|---|---|
@@ -349,11 +350,12 @@ Two limits worth knowing:
 | `UAIP.Runtime.Observation` | `CaptureViewportImage`, `DumpWorldState`, `DumpActorState`, `DumpComponentState`, `CheckpointCapture`, `DumpGameViewportWidgets`, `FindGameViewportWidgets`, `DumpGameViewportWidgetTexts`, `DumpHUDState`, `ListSubsystems`, `DumpSubsystemState` |
 | `UAIP.Runtime.Execution` | `RunFunctionalTest`, `RunRuntimeAutomationTest` |
 | `UAIP.Runtime.Assertion` | `WaitForCondition`, `AssertActorProperty`, `AssertWorldState` |
-| `UAIP.Runtime.Input` | `InjectInputKey`, `InjectEnhancedInputAction`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `AddMappingContext`, `RemoveMappingContext`, `SetInputMode`, `FlushInput`, `DumpInputState`, `GetEnhancedInputActionValue`, `ClickGameViewportWidget`, `PressGameViewportUIKey`, `TypeGameViewportText` |
+| `UAIP.Runtime.Input` | `InjectInputKey`, `InjectEnhancedInputAction`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `AddMappingContext`, `RemoveMappingContext`, `SetInputMode`, `FlushInput`, `DumpInputState`, `GetEnhancedInputActionValue`, `ClickGameViewportWidget`, `PressGameViewportUIKey`, `TypeGameViewportText`, `EvaluateInputGateWithProjectCode` |
 | `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`, `GetActiveEffects`, `GetGrantedAbilities`, `GetActiveTags`, `FindAttributeSetClasses`, `GrantAbility`, `RemoveAbility`, `ClearGrantedAbilities`, `ApplyEffect`, `RemoveEffect`, `ClearActiveEffects`, `SetAttributeValue`, `ResetAttributesToBase`, `SendGameplayEvent` |
 | `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`, `GetVariable`, `SetVariable`, `SetSystem` |
 | `UAIP.Runtime.AI` | `DumpAIPerceptionState`, `GetPerceivedActors`, `GetActorPerceivers`, `DumpAIPerceptionSystemState`, `ExplainSightPerception`, `DumpAIPerceptionSenseConfigs`, `DumpBehaviorTreeState`, `GetActiveBehaviorTreeNode`, `ListBehaviorTreeAgents`, `GetBlackboardValues`, `DescribeBehaviorTreeWithProjectCode`, `StartBehaviorTreeCapture` |
 | `UAIP.Runtime.StateTree` 🧩 | `DumpStateTreeState`, `GetActiveStateTreeState`, `ListStateTreeComponents`, `DumpStateTreeInstanceData`, `StartStateTreeCapture` |
+| `UAIP.Runtime.CommonUI` 🧩 | `DumpActivatableStacks`, `GetInputState`, `GetActionDisplayNames`, `DescribeActivatableWidgetsWithProjectCode` |
 | `UAIP.Runtime.ChaosDestruction` | `ListGeometryCollections`, `DumpGeometryCollectionState`, `DumpChaosFieldState`, `StartDestructionCapture`, `CaptureGeometryCollectionStrain` |
 | `UAIP.Runtime.Navigation` | `DumpNavigationSystemState`, `FindPath`, `IsLocationReachable`, `DumpNavMeshTiles`, `QueryNavModifiers`, `GetPathFollowingState`, `WaitForNavigationBuild`, `RebuildNavigation` |
 | `UAIP.Runtime.Animation` | `DumpAnimInstanceState`, `GetAnimStateMachineStates`, `GetAnimBlendWeights`, `GetActiveMontages`, `GetAnimCurveValues`, `DumpAnimInstanceVariables`, `GetMotionMatchingState` |
@@ -952,20 +954,25 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 | Command | Description |
 |---|---|
 
-### Variables & graph (10)
+### Variables & graph (11)
 
 | Command | Description |
 |---|---|
 | `AddBlueprintVariable` | Add a member variable to a Blueprint (type, default, tooltip). A type that Blueprints cannot use as a variable type is refused with `InvalidParams`, using the same rule as the editor's variable type menu: a class needs `BlueprintType` (or `BlueprintSpawnableComponent`) on itself or an ancestor and must not be `NotBlueprintType`; a struct needs `BlueprintType` and must not be `BlueprintInternalUseOnly`. A refused call leaves the Blueprint unchanged (no variable is added and the asset is not marked dirty). The default is now validated once the variable's type has resolved, and a refused default **removes the variable again** rather than leaving it behind with an empty value. The default is engine text only — a reference or container default is refused whatever the session holds; set those afterwards with `SetBlueprintDefault`, which takes `ValueJson` |
 | `DeleteBlueprintVariable` | Remove a member variable |
 | `SetBlueprintVariableDefault` | Update a Blueprint variable's CDO default value |
-| `AddGraphNode` | Add a node to any graph in a Blueprint asset (VariableGet/Set, FunctionCall, Event, ...) — not just the event graph and function graphs. `GraphName` or `GraphGuid` selects the target; see the note below the table for graph selection, ambiguity, and the two-stage acceptance check |
+| `AddGraphNode` | Add a node to any graph in a Blueprint asset (VariableGet/Set, FunctionCall, EventBeginPlay/EventTick, or `Event` to override any parent or interface event) — not just the event graph and function graphs. `GraphName` or `GraphGuid` selects the target; see the note below the table for graph selection, ambiguity, and the two-stage acceptance check |
+| `AddFunctionOverride` | Override a parent class or interface function that returns a value, has output parameters or is const as a function graph, the way the Override menu does. Returns the graph and its entry / result node GUIDs |
 | `DeleteGraphNode` | Delete a graph node by GUID (EntryNode / Tunnel cannot be deleted) |
 | `ConnectBlueprintPins` | Connect two pins in a Blueprint graph |
 | `DisconnectBlueprintPins` | Disconnect a pin connection |
 | `ListBlueprintPins` | List pins of a Blueprint graph node |
 | `SetPinDefaultValue` | Set a default value on a Blueprint graph node pin (auto-selects DefaultValue / DefaultObject / DefaultTextValue based on pin type) |
 | `GetPinDefaultValue` | Get the current default value of a Blueprint graph node pin |
+
+> **New — `AddGraphNode` with `NodeType: "Event"` overrides any event of the parent classes or of an implemented interface, named by `FunctionName`** (for example `ReceiveDestroyed` or `ReceiveActorBeginOverlap`), the way the Override menu of the My Blueprint panel adds an event node. `EventBeginPlay` and `EventTick` keep working as before. A Blueprint can override an event only once: when the override already exists anywhere in the Blueprint, the existing node is returned instead of a second one. A function that returns a value, has output parameters or is const cannot be an event node and is refused with `InvalidParams` naming `AddFunctionOverride`; a name that no parent class or interface declares as a `BlueprintImplementableEvent` / `BlueprintNativeEvent` is refused with `InvalidParams` as well.
+>
+> **New — `AddFunctionOverride` overrides such a function as a function graph** (for example `ACharacter::CanJumpInternal`). The graph gets the entry and result nodes of the parent's signature and a call to the parent implementation, and is compiled unless `SkipCompile` is `true`. The artifact reports `GraphName`, `GraphGuid`, `EntryNodeId`, `ResultNodeId` (absent when the function returns nothing), `OverriddenClass` and `AlreadyExisted`; wire the graph with `AddGraphNode` and `ConnectBlueprintPins`. Asking again returns the existing graph with `AlreadyExisted: true`. A function that can be an event node is refused with `InvalidParams` naming `AddGraphNode`, and so is one already overridden as an event node. Requires `BlueprintGraphEdit`.
 
 > **`AddGraphNode` now looks at every graph in the asset, not just the event graph and function graphs.** Macros, interface-implementation graphs, and graphs nested inside a collapsed graph are now reachable by `GraphName` — previously naming one of those answered `NotFound` (before this change, `ExecutionFailed`) even though the graph existed.
 >
@@ -1033,7 +1040,7 @@ Widget Blueprint editing — tree, variables, animation, bindings.
 | `GetNamedSlots` | List NamedSlots in a Widget Blueprint |
 | `ReparentWidgetBlueprint` | Change a Widget Blueprint's parent class |
 | `GetSlotProperties` | Get a widget's slot properties (JSON, CPF filter, max 64 keys), plus a `PropertyWriteRequirements` map saying what a write to each property would need and which input form it takes |
-| `SetSlotProperties` | Set a widget's slot properties (32 KiB limit, `/Game/` UObject refs only). A reference now requires `WidgetSlotReferenceEdit` and a struct or container `PropertyStructuredEdit`, and those values are supplied as a JSON document rather than engine bracket text — read the property first for its `WriteInputForm`. A refused write leaves no undo entry and does not mark the asset dirty |
+| `SetSlotProperties` | Set a widget's slot properties (32 KiB limit, `/Game/` UObject refs only). A reference now requires `WidgetSlotReferenceEdit` and a struct or container `PropertyStructuredEdit`, and those values are supplied as a JSON document rather than engine bracket text — read the property first for its `WriteInputForm`. A refused write leaves no undo entry and does not mark the asset dirty. A successful write compiles the Widget Blueprint so the change reaches widgets created at runtime; pass `bSkipCompile: true` to only mark it modified (the response then reports `bRequiresFollowupCompile: true`) and compile once with `CompileWidgetBlueprint` after a batch of edits |
 | `GetWidgets` | Get the full widget tree structure (JSON) |
 | `ListWidgetClasses` | List available widget classes (max 500) |
 | `CompileWidgetBlueprint` | Compile a Widget Blueprint and return errors / warnings |
@@ -3533,7 +3540,7 @@ Runtime captures and state dumps.
 | 🆓 `CheckpointCapture` | Combined screenshot + state dump (scenario primitive) |
 | 🆓 `SearchLoadedClasses` | Search loaded classes (used for runtime introspection) |
 | 🆓 `DumpGameViewportWidgets` | The widget tree of the game viewport of the play world — the game's own UI, with none of the editor's toolbars or tabs. The whole tree is saved as a JSON artifact; the response carries the node count, whether and where the walk was cut by `MaxDepth` / `MaxNodes`, the first 50 top level user widgets, the keyboard and gamepad focus and the screen area of each local player, and `Limitations`. Each node gives its Slate type, the UMG name and class, its rectangle, whether it is effectively visible and which layer it sits in. Text is read only with `IncludeText: true`. See [Game viewport UI and HUD](#game-viewport-ui-and-hud-4) |
-| 🆓 `FindGameViewportWidgets` | Searches the same tree for the nodes that meet every condition given (`WidgetClass`, `SlateType`, `WidgetName` / `WidgetNameContains`, `OwningPlayerIndex`; at least one is required). Each match carries the `TypePath` and the `Fingerprint` that `ClickGameViewportWidget`, `PressGameViewportUIKey` and `TypeGameViewportText` take back. A search that finds nothing is a success; `ResultLimitReached` and the `SearchIncomplete` limitation say whether the list was cut or the walk stopped early. Text is never read |
+| 🆓 `FindGameViewportWidgets` | Searches the same tree for the nodes that meet every condition given (`WidgetClass`, `SlateType`, `WidgetName` / `WidgetNameContains`, `OwningPlayerIndex`; at least one is required). `WithinWidgetPath` narrows the search to the subtree of one widget, such as a CommonUI screen. Each match carries the `TypePath` and the `Fingerprint` that `ClickGameViewportWidget`, `PressGameViewportUIKey` and `TypeGameViewportText` take back. A search that finds nothing is a success; `ResultLimitReached` and the `SearchIncomplete` limitation say whether the list was cut or the walk stopped early. Text is never read |
 | 🆓 `DumpGameViewportWidgetTexts` | The text of **every** text widget of the game viewport, on screen or not, and editable text with its value, as a JSON artifact. Each entry says whether its text is on screen. Requires `RuntimeWidgetTextRead` (DefaultDenied). The plain value of a password field is never written to the artifact; it appears in the response (`PasswordFieldValues`) only when the session also holds `RuntimeWidgetPasswordTextRead` |
 | 🆓 `DumpHUDState` | The HUD state of each local player as a JSON artifact: the HUD class, the display flags, the `ShowDebug` state, the debug texts, the names of the hit boxes, the widgets the HUD references and the widgets the player controller keeps on screen. What the HUD drew (lines, text, boxes) and hit box positions cannot be read and are reported in `Limitations` |
 | 🆓 `ListSubsystems` | The subsystems alive in the engine, the game instance, the play world and the local players, one row per instance (class, class path, object path, owner, status), sorted into one fixed order and cut into pages with `StartIndex` / `MaxEntries`. With `IncludeNotCreated: true` the loaded classes that have no instance under an owner are listed too. The `Engine` scope alone works without a play world. No property value is read |
@@ -3573,11 +3580,12 @@ Read the UI of a running game: which widgets are in the game viewport, where the
 | `OwningPlayerIndex` | `FindGameViewportWidgets` | Local player number (0 or more) that owns the user widget the node belongs to. A player who owns none, or does not exist, gives no match — still a success |
 | `VisibleOnly` | `FindGameViewportWidgets` | Match only widgets that are effectively visible. Default `true` |
 | `MaxResults` | `FindGameViewportWidgets` | Most matches returned, 1 to 500. Default 50. The rest are counted, not returned |
+| `WithinWidgetPath` | `FindGameViewportWidgets` | Object path of a UMG widget (at most 4096 characters) to search inside — for example the `WidgetPath` that [`UAIP.Runtime.CommonUI.DumpActivatableStacks`](#uaipruntimecommonui-) returns for a screen. Narrows the search; it is not a condition by itself. The whole game layer is walked all the same, so `MaxDepth` and `MaxNodes` count from the root of the game layer and `TypePath` stays relative to that root. A path that does not lead to a widget below the game layer is `NotFound`, naming the parameter. When the walk never reaches the widget (hidden, collapsed, a page that is not shown, or beyond the limits), the result has no match and the `ScopeRootNotTraversed` limitation. The value given is echoed back in `Result` and in the artifact |
 | `RootTypePath` | `DumpGameViewportWidgetTexts` | `TypePath` of the widget whose subtree is dumped. The whole game layer is walked all the same, so `MaxDepth` and `MaxNodes` count from its root. A path that leads to no widget is `NotFound`. Default: the whole game layer |
 | `PlayerIndex` | `DumpHUDState` | Number of the **local player** to inspect (0 is the first local player). Omit for every local player. A number no local player has is `NotFound` |
 | `TargetNetRole`, `TargetPIEInstance` | all four | Which play world; see [Choosing which play world](#choosing-which-play-world-a-runtime-command-acts-on) |
 
-At least one of `WidgetClass`, `SlateType`, `WidgetName`, `WidgetNameContains` and `OwningPlayerIndex` is required by `FindGameViewportWidgets`; none at all, or `WidgetName` together with `WidgetNameContains`, is `InvalidParams`.
+At least one of `WidgetClass`, `SlateType`, `WidgetName`, `WidgetNameContains` and `OwningPlayerIndex` is required by `FindGameViewportWidgets`; none at all, or `WidgetName` together with `WidgetNameContains`, is `InvalidParams`. `WithinWidgetPath` does not count as a condition, so giving it alone is `InvalidParams` too.
 
 #### Refusals
 
@@ -3588,6 +3596,7 @@ At least one of `WidgetClass`, `SlateType`, `WidgetName`, `WidgetNameContains` a
 | The game layer does not exist yet (just after start) | `PreconditionFailed`; retry shortly (a scenario retries by itself) |
 | The game layer cannot be located (a project replaced the standard UI layer) | `NotAllowed`. Only the standard game layer is supported |
 | `PlayerIndex` of `DumpHUDState` names a player who is not there | `NotFound` |
+| `WithinWidgetPath` of `FindGameViewportWidgets` does not lead to a widget below the game layer | `NotFound`, naming `WithinWidgetPath` |
 
 #### The HUD
 
@@ -3760,8 +3769,9 @@ Runtime input injection and Enhanced Input state inspection. PIE required.
 | `RemoveMappingContext` | Remove an Input Mapping Context from the local player |
 | `SetInputMode` | Set the input mode (GameOnly / UIOnly / GameAndUI) |
 | `FlushInput` | Flush pressed-key state at the end of a test |
-| 🆓 `DumpInputState` | Dump current input state (pressed keys, axis values, active mapping contexts with priority, and — with `IncludeActionStates=true` — per-action trigger state) |
+| 🆓 `DumpInputState` | Dump current input state (pressed keys, axis values, active mapping contexts with priority, the evidence behind the inferred input mode, the verdict of the injection gate, and — with `IncludeActionStates=true` — per-action trigger state). Runs no project code. See [The injection gate](#the-injection-gate) |
 | 🆓 `GetEnhancedInputActionValue` | Get the current value of an Enhanced Input Action |
+| `EvaluateInputGateWithProjectCode` | Evaluate the injection gate exactly as an injection would, **running the project's overrides** of the game viewport client, and report the verdict without injecting anything. `PlayerIndex`: number of the player controller (default 0). Succeeds when the gate blocks too (`Decision: "Blocked"`). Requires `RuntimeInspect` + `InputProjectCodeExecution` (DefaultDenied). Not a read-only command: refused under the read-only safety mode. Not in the Demo edition |
 | `ClickGameViewportWidget` | Click a widget of the UI of a running game with the mouse: moves the pointer to the press point, confirms that the widget under it is the target or inside it, then presses and releases the button. The target is given as a UMG `WidgetPath`, a `ViewportPosition`, or a `TypePath` with its `Fingerprint` from `FindGameViewportWidgets`. Requires `RuntimeUIInputInjection`. See [Game viewport UI input](#game-viewport-ui-input-3) |
 | `PressGameViewportUIKey` | Press a UI key (arrows, Tab, Enter, Space, Escape, the gamepad buttons) as the Slate user of a local player: key down, a safety re-check, key up. Without a target the key goes to the widget that has the player's focus; with one, the focus is moved to it first. Requires `RuntimeUIInputInjection` |
 | `TypeGameViewportText` | Type text into an input field of the UI of a running game, one character event at a time, as the Slate user of a local player. Does not confirm the text (send Enter with `PressGameViewportUIKey`) and never sets the field's value directly. The text is not logged, returned or recorded. Requires `RuntimeUIInputInjection`; a password field also needs the `AllowRuntimePasswordFieldWrite` safety setting |
@@ -3769,6 +3779,38 @@ Runtime input injection and Enhanced Input state inspection. PIE required.
 ---
 
 > **Note**: `DumpInputState` always reports `ActiveMappingContexts` (sorted by `Priority` descending, then `Path` ascending) and `EnhancedInputState` (`"Available"` / `"Unavailable"`, telling apart "queried and found none" from "could not query"). Pass `IncludeActionStates=true` to additionally get `ActionStates[]` — one entry per action reachable from the active mapping contexts, each carrying `Trigger` (one of the six `ETriggerEvent` values, including `"None"` for an action that was evaluated but is not currently firing), `ValueX`/`ValueY`/`ValueZ`, `SourceContexts[]` (which active context configured it) and `ConfiguredKeys[]` (deduplicated, sorted) — plus `ActionStatesTotalCount` and `ActionStatesTruncated` (capped at 256, sorted by `ActionPath`). Leaving `IncludeActionStates` at its default `false` keeps the call cheap; the flag is opt-in specifically because its cost scales with the number of mapped actions rather than the number of loaded mapping contexts.
+
+### `DumpInputState` output
+
+`DumpInputState` never runs project code. The mapping contexts are read from the data the Enhanced Input evaluation itself uses, not through the subsystem's overridable functions, so a project that overrides those functions sees the contexts input processing really applies. `PlayerIndex` is resolved the same way: from the game instance's local player list and the game state's player array, not through a function a project can override. When that data cannot be read on the running engine version, `EnhancedInputState` is `"Unavailable"` and `EnhancedInputUnavailableReason` names why (for example `"ReflectedFieldUnavailable:AppliedInputContextData"`); the field is present only then.
+
+| Field | Meaning |
+|---|---|
+| `InputModeEvidence` | What the inferred input mode was derived from. `Viewport` (`IgnoreInput`, `MouseCaptureMode`, `MouseLockMode`, `HideCursorDuringCapture`; `null` with no game viewport), `PlayerController` (`IgnoreMoveInput`, `IgnoreLookInput`, `ShowMouseCursor`) and `LastSetInputModeDebugString` (development builds only) |
+| `PlayerControllerPath` | Object path of the player controller `PlayerIndex` resolved to. `PlayerIndex` is a position in a numbering that shifts as players join and leave, so use the path to tell which player controller a dump describes, or whether two dumps describe the same one. Written for local and remote player controllers alike |
+| `ViewportClientClass` | Class of the game viewport client |
+| `ViewportClientIsVerifiedEngineClass` | `true` when that class is exactly an engine class (or one a gate contributor has verified). When `false`, the viewport values above are the engine's implementation, not the project's overrides — see `GameInputGate` |
+| `GameInputGate` | The verdict the injection gate would reach: `Decision` (`Allowed` / `Blocked`), `Source` (`Bypass` / `ViewportInference` / `Contributor`), `InferredInputMode`, `ViewportReadStatus` (`Read` / `NoViewport` / `ChangedDuringProjectCode` / `OutOfRangeValue`), `ContributorInstalled`, and `Contributor` (`Name`, `Applicability`, `AllowsGameInput`, `Reason`, `Evidence`; `null` when none is installed). With an unverified viewport client class it adds `RequiresCapabilities: ["InputProjectCodeExecution"]` and `SeeCommand: "UAIP.Runtime.Input.EvaluateInputGateWithProjectCode"` (in the Demo edition `RequiresCapabilities: ["NotInThisEdition"]` and no `SeeCommand`) |
+| `Limitations[]` | `{Code}`: `ViewportClientOverridesNotEvaluated`, `ViewportInputStateOutOfRange`, `ViewportChangedDuringProjectCode`, `InputModeDebugStringUnavailableInThisBuild`, `ReflectedFieldUnavailable:<field>` |
+
+`Result` is `{PlayerIndex, InferredInputMode, GameInputGate: {Decision, Source}}`.
+
+Arguments are checked before the play world is looked up: a negative `PlayerIndex` or a non-boolean `IncludeActionStates` is `InvalidParams`. A `PlayerIndex` no player controller has is `NotFound`, listing the indices that exist.
+
+### The injection gate
+
+The five injection commands (`InjectInputKey`, `InjectEnhancedInputAction`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`) refuse to inject while the game is not taking game input. The gate combines two judges, and blocks when either blocks:
+
+- **ViewportInference** — the input mode inferred from the game viewport client and the player controller.
+- **A contributor** — an optional integration that knows about a UI framework's own input routing. The [CommonUI integration](#uaipruntimecommonui-) installs one named `CommonUIRouter`; it blocks game input while the CommonUI action router is in menu mode, for example. At most one contributor is installed.
+
+An injection reads the viewport client the way real input does, including the project's overrides of `IgnoreInput`, `GetMouseCaptureMode` and `HideCursorDuringCapture`. `DumpInputState` reads only the engine's implementation, so for a project viewport client that overrides these its `GameInputGate` can differ from what an injection decides; `EvaluateInputGateWithProjectCode` reports the injection's own verdict. If the project code run during the read replaces the player controller, local player, world or viewport client, the gate blocks with `ViewportReadStatus: "ChangedDuringProjectCode"`.
+
+A refusal is `NotAllowed` and its message names the judge that blocked (`ViewportInference` or the contributor's name) with its reason. The `PolicyViolation` returned for `BypassInputMode=true` without the bypass safety setting is unchanged. Every injection's audit record carries `GateSource`, `GateContributorReason` and `GateViewportReadStatus`.
+
+The gate does not model everything: a key a person presses can be consumed by a UI action binding (CommonUI's, for example) before it reaches game input, and the gate does not reproduce that. In a build with the console enabled and no viewport console object, the gate is stricter than the engine.
+
+`EvaluateInputGateWithProjectCode` does not wait for a safe point in the frame — it evaluates where an injection evaluates, so it returns what an injection would get. Because it runs project code it is refused with `PolicyViolation` in read-only mode and with `NotAllowed` while a modal dialog is open or the engine tick is starved.
 
 ### Game viewport UI input (3)
 
@@ -3796,7 +3838,7 @@ Operate the UI of a running game by the same input path a person uses. The point
 #### How an operation goes
 
 1. **Click.** The pointer is moved onto the press point and the command checks that the widget directly under it is the target or inside it — if not, nothing is pressed (`ExecutionFailed`, naming the widget in front). Then the button is pressed and released.
-2. **Key.** With a target, the focus is moved there first and the move is checked. The key goes down, a safety re-check runs, then it goes up. `ReachedGameViewport` tells whether the UI let the key through to the game: `True`, `False` or `Unknown`.
+2. **Key.** With a target, the focus is moved there first and the move is checked. The key goes down, a safety re-check runs, then it goes up. `ReachedGameViewport` tells whether the UI let the key through to the game: `true`, `false` or `Unknown`. With `false`, `ReachedGameViewportReason` is `HandledBeforeGameViewport`: the focused widget, or a widget that contains it, handled the key, so nothing that reads input at the game viewport saw it (the player controller's input, and input actions the game binds through the viewport client). The command still succeeds — check `FocusAfter` and whether that screen binds the key itself. `Unknown` (the key may have gone to another viewport) carries no reason.
 3. **Text.** With a target, the focus is moved to it first. Characters are sent one at a time as a person typing would; no IME composition is sent. Before each character the command checks that the focus is still on the same field and that its password state has not changed, and stops if not. Whether the field is a password field is judged at the time of sending; one that cannot be judged counts as a password field.
 
 The response is sent after the input has been delivered. It reports what was hit (`HitWidget`, `HitWidgetIsTarget`), where the focus is afterwards (`FocusAfter`), whether the input reached the game (`ReachedGameViewport`), whether a modal window opened (`ModalOpened`) and `Limitations`; `TypeGameViewportText` reports `CharactersDelivered`, the reason it stopped, and the length class of the field before and after (`Empty`, `NonEmpty`, `Long`) — never the text.
@@ -4493,6 +4535,69 @@ While a StateTree recording runs, every StateTree debug notification in the proc
 | `PolicyViolation` | A required capability is denied by the safety policy |
 
 Every successful call saves exactly one JSON artifact (the recording commands `StartStateTreeCapture` and `StopStateTreeCapture` save a supporting one); a failed call saves none.
+
+---
+
+## UAIP.Runtime.CommonUI 🧩
+
+Observe the CommonUI state of a running game: the activatable widget containers (stacks and queues) and which widget each one shows, the input state CommonUI keeps for each local player (the input mode its action router applies, the front activated widget, the focus, the input type and the bound actions), and the texts the actions are displayed with. Requires the `CommonUI` plugin (and `EnhancedInput`, which CommonUI itself requires). If it is disabled the commands are not registered, and calling one returns `CommandNotFound` naming the plugin; `UAIP.Core.ListIntegrations` reports the state. A UAIP build made without CommonUI keeps the commands listed and refuses them with `UnavailableDetail: OptionalPluginDisabled`. Not provided in the demo build. All four accept [`TargetNetRole` / `TargetPIEInstance`](#choosing-which-play-world-a-runtime-command-acts-on) and reject unknown parameters. Works in PIE and in `-game` and packaged builds.
+
+**Capabilities.** All four require `RuntimeInspect` (DefaultAllow). `GetActionDisplayNames` also requires `RuntimeWidgetTextRead` (DefaultDenied), because the texts are what the game shows — the same capability that gates the text of [game viewport widgets](#game-viewport-ui-and-hud-4). `DescribeActivatableWidgetsWithProjectCode` also requires `CommonUIProjectCodeExecution` (DefaultDenied). See [Safety & Capabilities](safety.md#runtime-commonui-observation).
+
+**No project code by default.** The first three commands do not call functions a project may override: the getters of an activatable widget (the input configuration and the focus target it asks for) are left out, and every response names them in `ProjectCodeFields` (`Omitted`, `OmittedReason: "ProjectCodeExecutionRequired"`, `RequiresCapabilities: ["CommonUIProjectCodeExecution"]`, `Command`). The router's verdict is CommonUI's own check, even when the project derived the router. Two engine paths may still reach project code through a virtual function: the walk of the widget tree (a project widget that overrides how it lists its children) and the lookup of the activatable widget that owns a Slate widget (a project's own Slate metadata type). Only `DescribeActivatableWidgetsWithProjectCode` calls the overridable getters.
+
+**`PlayerIndex` is the local player number.** `GetInputState` and `GetActionDisplayNames` number the **local players** of the game instance (0 is the first), as `PressGameViewportUIKey` does. `DumpInputState` and `EvaluateInputGateWithProjectCode` number the **player controllers** of the world instead, in this order: the players of this machine first (in the order of the game's local players), then the other players (in the order the game state lists them), and the world's own list of player controllers only when there are neither. A negative number is `InvalidParams`; a number no local player has is `NotFound`, and the message lists the numbers that exist. Left out, every local player is read.
+
+| Command | Description |
+|---|---|
+| `DumpActivatableStacks` 🧩 | For each container: its kind and order, the local player that owns it (`OwningPlayerIndex`, `null` when unknown), whether its Slate widget is built and lies in the game layer, the activatable widget that holds it (`ParentActivatable`), the widget it shows (`ActiveWidget`, `ActiveWidgetIsActivated`), whether it is between two widgets (`IsTransitioning`, and `ActiveWidgetIsOutgoing` in the first half of a transition), the root content of a stack, and its entries in the order they were added (`IsDisplayed`, `IsActivated`, `IsModal`, `SupportsActivationFocus`, `AutoRestoresFocus`, `IsBackHandler`, `AutoActivate`). Activated widgets in no container are in `UncontainedActivatedWidgets`. Widgets and containers left out are counted by reason in `ExcludedCounts` (`PendingKill`, `DesignTime`, `NoWorld`, `OtherWorld`, and `Unconstructed` for a container not built yet). `IncludeUnconstructed` (default `false`) lists those containers too. Bounds: 64 containers, 256 entries per container (the displayed entry is always kept), 64 widgets in no container. `Result` holds the counts, `ExcludedCounts`, `Limitations` and the widget each of the first 16 containers shows |
+| `GetInputState` 🧩 | For each local player: the action router's class (`RouterClass`, `RouterIsEngineBaseClass`), the input mode it applies (`InputMode`: `Menu`, `Game`, `All` or `NotApplied`), the mouse capture it applies, whether it is rebuilding its tree of activated widgets, `RouterAllowsGameInput` with the values it was decided from (`GameInputDecisionEvidence`), the activated widget CommonUI treats as the front one (`Leafmost`, UE 5.8 and later), the Slate user's actual focus (`Focus`) and whether it lies inside `Leafmost`, the input type (`InputType`, `RawInputType`, `GamepadName`, `IsUsingPointerInput`) and what the player controller ignores and shows. Once for the world: the game viewport's input state (`ViewportState`), its class, whether it derives from CommonUI's game viewport client, whether it is a verified engine class, and whether CommonUI's verdict is installed in the [injection gate](#the-injection-gate) (`GameInputGateContributorInstalled`). `IncludeActions` (default `false`) adds the actions bound for each player — name, identifier, input event, input mode, keys and the widget they are bound to — without display text. Bounds: 128 actions per player and 8 keys per action, counted separately for the normal and the hold keys. `Result` holds each player's index, status, input mode, `RouterAllowsGameInput` and the path of `Leafmost`, plus `ViewportClientIsCommonUIBased` and `Limitations` |
+| `GetActionDisplayNames` 🧩 | The texts the bound actions are displayed with. Each action carries three texts, one per source: `ActionDisplayName` (the display name the binding carries), `LegacyRowDisplayName` (the display name of the data table row the action is defined by) and `InputActionDescription` (the description of the Enhanced Input action it is defined by); a source that has none is `null`. Which one the screen shows depends on the game, so the command does not choose. A row held by a data table whose class the project derived is not read (`LegacyRowNotReadFromProjectDataTable`). `ActionName`, `ActionIdentifier`, `InputEvent`, `InputMode` and `BoundWidget.WidgetPath` together match an action with the same action in `GetInputState`'s `Actions`; the two commands read at different moments, so an action can be in one and not the other. A player with no action router has `Status: "Unavailable"`. The texts are written to the artifact only: `Result` holds, for each player, its index, status and number of actions, and the limitations. Requires `RuntimeWidgetTextRead` |
+| `DescribeActivatableWidgetsWithProjectCode` 🧩 | **Runs project code.** Calls the getters an activatable widget may override and returns `DesiredInputConfig` (`InputMode`, `MouseCaptureMode`, `MouseLockMode`, `HideCursorDuringViewportCapture`, `IgnoreMoveInput`, `IgnoreLookInput`; `null` when the widget asks for none) and `DesiredFocusTarget` (`null` when it names none; a target that is being destroyed or belongs to another world is left out with `DesiredFocusTargetExcludedReason`). `WidgetPaths` names the widgets by the `WidgetPath` `DumpActivatableStacks` returns: 1 to 32 entries, each a full object path that starts with `/`, holds no single quote or control character and is at most 1023 characters (otherwise the whole request is `InvalidParams`); repeats are kept, and a named widget is evaluated whether it is activated or not. Left out, every activated widget of the world is evaluated, the ones in the game layer first. Each target has `Status`: `Evaluated`, `NotEvaluated` (the command stopped before it), `NotFound`, or `Excluded` with `ExcludedReason` (`PendingKill`, `DesignTime`, `NoWorld`, `OtherWorld`). The world and the widget are checked again around every call: a widget that stops being activated is marked `DeactivatedDuringProjectCode` and still evaluated; a change of the world or the widget stops the command, which still succeeds with what it evaluated, `StoppedAt` naming the widget and the getter, and `ScreenChangedDuringProjectCode` (or `NotAtSafePoint`) in `Limitations`. Bound: 32 targets. Not a read-only command: refused under the read-only safety mode. Requires `CommonUIProjectCodeExecution`. Not in the Demo edition |
+
+#### Fields in every CommonUI response
+
+| Field | Meaning |
+|---|---|
+| `CapturedAt`, `Frame`, `NetMode`, `WorldContext`, `PIEInstance` | When and where the state was read |
+| `Availability` | `NotAtSafePoint` when the engine state may be half updated (a modal dialog or a long task holds the game loop, or the world is in the middle of its tick): nothing is read, the command succeeds and no lists are returned. Call again |
+| `WidgetPath` | On every widget. `FindGameViewportWidgets` takes it as `WithinWidgetPath` to search inside that widget |
+| `TypePath`, `Fingerprint` | On a built widget in the game layer. The [game viewport UI input](#game-viewport-ui-input-3) commands take them as a target. Left out, with `InGameLayer`, when the root of the game layer cannot be resolved (`GameLayerRootUnresolved`) |
+| `ProjectCodeFields` | The fields only project code can produce and the capability and command that produce them |
+| `XTruncated`, `XTotalCount` | Present only on a list that was cut, with the count before the cut |
+| `ActionDisplayNameTruncated`, `LegacyRowDisplayNameTruncated`, `InputActionDescriptionTruncated` | A text was cut. Texts are cleaned of control characters and cut to 256 characters |
+| `Limitations[]` | Caveats about what was returned, each with `Code` and sometimes `Detail` |
+
+`Limitations[].Code` takes one of:
+
+| `Code` | Meaning |
+|---|---|
+| `NotAtSafePoint` | The engine state may have been half updated, so it was not read (or, for `DescribeActivatableWidgetsWithProjectCode`, the engine left its safe point while project code ran) |
+| `GeometryFromPreviousFrame` | Positions and sizes come from the last frame that was laid out |
+| `GameLayerRootUnresolved` | The root of the game layer could not be resolved; `InGameLayer`, `TypePath` and `Fingerprint` are left out |
+| `TransitionStateUnavailable` | Whether a container is between two widgets could not be read |
+| `ReflectedFieldUnavailable:<field>` | An engine field read by name was not found on this engine version; what depends on it is left out |
+| `NoLocalPlayers` | The world has no local player |
+| `SlateUnavailable` | Slate is not initialized (for example in a process without rendering) |
+| `LeafmostUnavailableOnThisEngineVersion` | UE 5.7: the engine does not expose the front activated widget, so `Leafmost` is left out |
+| `InputModeNotEnforced` | The game viewport client does not derive from CommonUI's, so CommonUI's input mode is not applied on the path game input takes |
+| `GameInputGateContributorNotInstalled` | CommonUI's verdict is not part of the injection gate in this process |
+| `ViewportClientOverridesNotEvaluated` | The game viewport client is a project class; its overrides were not run, so the viewport values are the engine's implementation |
+| `ScreenChangedDuringProjectCode` | The world or a widget changed while project code ran, and the command stopped |
+| `LegacyRowNotReadFromProjectDataTable` | A data table row was not read because the table's class is derived by the project |
+
+#### Errors
+
+| ErrorCode | When |
+|---|---|
+| `InvalidParams` | A parameter is of the wrong type, out of range or unknown; an entry of `WidgetPaths` breaks the rules above |
+| `NotAllowed` | No play world is running, or none matches `TargetNetRole` / `TargetPIEInstance`; for `DescribeActivatableWidgetsWithProjectCode`, a modal dialog is open or the engine tick is starved |
+| `NotFound` | `PlayerIndex` names no local player (the message lists the numbers that exist) |
+| `CapabilityNotAvailable` | A required capability is not granted |
+| `PolicyViolation` | A required capability is denied by the safety policy; `DescribeActivatableWidgetsWithProjectCode` under the read-only safety mode |
+| `CommandNotFound` | The `CommonUI` plugin is disabled; in the Demo edition |
+
+In a packaged game from a Fab-distributed UAIP installed in the engine, the optional integrations are never built in, and the four commands are listed and refused with `OptionalPluginDisabled`, as for the other optional integrations; place UAIP in the project's `Plugins` folder so it is compiled with the project. See [Capability reference](safety.md#capability-reference).
 
 ---
 

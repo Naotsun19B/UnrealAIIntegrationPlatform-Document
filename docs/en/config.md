@@ -362,23 +362,27 @@ UnrealEditor-Cmd.exe MyProject.uproject \
 
 ### SafetyPolicy CLI flags
 
-Every `[UAIP.SafetyPolicy]` bool flag has a matching `-uaip-policy-*` CLI flag (the ini keys themselves are documented in [Safety & Capabilities](safety.md#safetypolicy-settings)):
+Every `[UAIP.SafetyPolicy]` bool flag has a matching `-uaip-policy-*` CLI flag, which overrides the ini value (the ini keys themselves are documented in [Safety & Capabilities](safety.md#safetypolicy-settings)):
 
 | ini key | CLI flag |
 |---|---|
-| `ReadOnly` | `-uaip-policy-read-only` |
-| `DisableSave` | `-uaip-policy-disable-save` |
-| `AllowLogDump` | `-uaip-policy-allow-log-dump` |
-| `AllowContextMenuMutation` | `-uaip-policy-allow-context-menu-mutation` |
-| `AllowKeyboardInput` | `-uaip-policy-allow-keyboard-input` |
-| `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input` |
-| `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write` |
-| `AllowRuntimePasswordFieldWrite` | `-uaip-policy-allow-runtime-password-field-write` |
-| `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass` |
-| `DisablePIEStart` | `-uaip-policy-disable-pie-start` |
-| `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write` |
-| `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis` |
-| `AllowDisclosingTraceAttachment` | `-uaip-policy-allow-disclosing-trace-attachment` |
+| `ReadOnly` | `-uaip-policy-read-only=True` |
+| `DisableSave` | `-uaip-policy-disable-save=True` |
+| `AllowLogDump` | `-uaip-policy-allow-log-dump=True` |
+| `AllowContextMenuMutation` | `-uaip-policy-allow-context-menu-mutation=True` |
+| `AllowKeyboardInput` | `-uaip-policy-allow-keyboard-input=True` |
+| `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input=True` |
+| `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write=True` |
+| `AllowRuntimePasswordFieldWrite` | `-uaip-policy-allow-runtime-password-field-write=True` |
+| `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass=True` |
+| `AllowProjectNetDriverNetModeQuery` | `-uaip-policy-allow-project-net-driver-net-mode-query=True` |
+| `DisablePIEStart` | `-uaip-policy-disable-pie-start=True` |
+| `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write=True` |
+| `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis=True` |
+| `AllowDisclosingTraceAttachment` | `-uaip-policy-allow-disclosing-trace-attachment=True` |
+| `AllowUserInteractionPrompt` | `-uaip-policy-allow-user-interaction-prompt=True` |
+
+**Every flag takes a value.** Write `-uaip-policy-read-only=True` to turn a setting on, or `=False` to turn off one the ini turns on. The value may be `True` / `False`, `Yes` / `No`, `On` / `Off` or `1` / `0`, in any case. A flag written without a value, such as `-uaip-policy-read-only`, is **ignored without a warning** and the ini value stays; a value that is none of these is ignored with a warning in the log.
 
 `AllowCapabilityReload`, `AllowedCapabilities`, `DeniedCapabilities`, `DeniedCommands`, `AllowedArtifactDirectory`, and `ExternalTraceDirectory` are **ini-only** (no CLI equivalents — they control capability escalation and sandbox boundaries that must not be alterable via the process command line).
 
@@ -471,7 +475,7 @@ uaip_reload_config()
 - It applies **the next time the bridge launches the editor**, never to an editor that is already running, and changing it alone does not shut the editor down (`EditorRestartScheduled` stays `false`). To apply it now, run `UAIP.Editor.Workspace.ShutdownEditor`; the next tool call launches the editor with the new arguments. A guest-mode (`attach_only`) bridge never launches the editor, so the arguments never apply there.
 - The arguments stay in effect until replaced — a relaunch after a crash carries them too. Clear them with `EditorExtraArgs=[]` once they are no longer needed. The response's `Data.EditorExtraArgs` and `uaip_get_editor_status`'s `Data.Config.EditorExtraArgs` both show the list in effect.
 - One argument per element, without surrounding quotes: `"-abslog=C:\\My Logs\\Editor.log"`.
-- Refused with `InvalidParams`, leaving the configuration unchanged: flags starting with `-uaip-` (the bridge manages the port, MCP mode and the scenario route itself), `-unattended` (use `launch_attended` instead), `-nopause` (always passed already), empty elements, and elements containing control characters. The same values in `UAIP_EDITOR_EXTRA_ARGS` make the bridge refuse to start.
+- Refused with `InvalidParams`, leaving the configuration unchanged: flags starting with `-uaip-` (the bridge manages the port, MCP mode and the scenario route itself; the SafetyPolicy flags `-uaip-policy-*` are refused too, so that a client cannot lift its own restrictions — set those keys in `[UAIP.SafetyPolicy]` of the project's `Config/DefaultUAIP.ini` instead), `-unattended` (use `launch_attended` instead), `-nopause` (always passed already), empty elements, and elements containing control characters. The same values in `UAIP_EDITOR_EXTRA_ARGS` make the bridge refuse to start.
 
 Typical flow after editing `config.json`:
 

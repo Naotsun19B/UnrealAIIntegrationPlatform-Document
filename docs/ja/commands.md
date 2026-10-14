@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1295 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1716 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1301 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1722 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -140,7 +140,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Observation | `UAIP.Runtime.Observation` | 14 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
-| Runtime Input | `UAIP.Runtime.Input` | 14 | — | 一部（2/14） |
+| Runtime Input | `UAIP.Runtime.Input` | 15 | — | 一部（2/15） |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 17 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
 | Runtime LiveLink | `UAIP.Runtime.LiveLink` | 14 | — | — |
@@ -153,6 +153,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime SaveGame | `UAIP.Runtime.SaveGame` | 10 | — | — |
 | Runtime AI | `UAIP.Runtime.AI` | 14 | — | 一部（13/14） |
 | Runtime StateTree 🧩 | `UAIP.Runtime.StateTree` | 7 | — | — |
+| Runtime CommonUI 🧩 | `UAIP.Runtime.CommonUI` | 4 | — | — |
 | Runtime Chaos Destruction | `UAIP.Runtime.ChaosDestruction` | 8 | — | 一部（7/8） |
 | Runtime Navigation | `UAIP.Runtime.Navigation` | 8 | — | 一部（7/8） |
 | Runtime Animation | `UAIP.Runtime.Animation` | 7 | — | 一部（6/7） |
@@ -312,7 +313,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ## 実行時コマンドの対象プレイワールドを指定する
 
-ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 102 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
+ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 107 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
 
 | パラメータ | 型 | 意味 |
 |---|---|---|
@@ -349,11 +350,12 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | `UAIP.Runtime.Observation` | `CaptureViewportImage`、`DumpWorldState`、`DumpActorState`、`DumpComponentState`、`CheckpointCapture`、`DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpGameViewportWidgetTexts`、`DumpHUDState`、`ListSubsystems`、`DumpSubsystemState` |
 | `UAIP.Runtime.Execution` | `RunFunctionalTest`、`RunRuntimeAutomationTest` |
 | `UAIP.Runtime.Assertion` | `WaitForCondition`、`AssertActorProperty`、`AssertWorldState` |
-| `UAIP.Runtime.Input` | `InjectInputKey`、`InjectEnhancedInputAction`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`AddMappingContext`、`RemoveMappingContext`、`SetInputMode`、`FlushInput`、`DumpInputState`、`GetEnhancedInputActionValue`、`ClickGameViewportWidget`、`PressGameViewportUIKey`、`TypeGameViewportText` |
+| `UAIP.Runtime.Input` | `InjectInputKey`、`InjectEnhancedInputAction`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`AddMappingContext`、`RemoveMappingContext`、`SetInputMode`、`FlushInput`、`DumpInputState`、`GetEnhancedInputActionValue`、`EvaluateInputGateWithProjectCode`、`ClickGameViewportWidget`、`PressGameViewportUIKey`、`TypeGameViewportText` |
 | `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`、`GrantAbility`、`RemoveAbility`、`ClearGrantedAbilities`、`ApplyEffect`、`RemoveEffect`、`ClearActiveEffects`、`SetAttributeValue`、`ResetAttributesToBase`、`SendGameplayEvent` |
 | `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`、`GetVariable`、`SetVariable`、`SetSystem` |
 | `UAIP.Runtime.AI` | `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`、`DumpBehaviorTreeState`、`GetActiveBehaviorTreeNode`、`ListBehaviorTreeAgents`、`GetBlackboardValues`、`DescribeBehaviorTreeWithProjectCode`、`StartBehaviorTreeCapture` |
 | `UAIP.Runtime.StateTree` 🧩 | `DumpStateTreeState`、`GetActiveStateTreeState`、`ListStateTreeComponents`、`DumpStateTreeInstanceData`、`StartStateTreeCapture` |
+| `UAIP.Runtime.CommonUI` 🧩 | `DumpActivatableStacks`、`GetInputState`、`GetActionDisplayNames`、`DescribeActivatableWidgetsWithProjectCode` |
 | `UAIP.Runtime.ChaosDestruction` | `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`CaptureGeometryCollectionStrain` |
 | `UAIP.Runtime.Navigation` | `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`、`RebuildNavigation` |
 | `UAIP.Runtime.Animation` | `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState` |
@@ -951,20 +953,25 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | コマンド | 説明 |
 |---|---|
 
-### 変数とグラフ（10）
+### 変数とグラフ（11）
 
 | コマンド | 説明 |
 |---|---|
 | `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。Blueprint で変数の型として使えない型は、エディタの変数型メニューと同じ規則で `InvalidParams` として拒否されます。クラスは自身または祖先に `BlueprintType`（または `BlueprintSpawnableComponent`）が必要で、`NotBlueprintType` のものは拒否されます。構造体は `BlueprintType` が必要で、`BlueprintInternalUseOnly` のものは拒否されます。拒否された呼び出しは Blueprint を変更しません（変数は追加されず、アセットも dirty になりません）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください |
 | `DeleteBlueprintVariable` | メンバー変数を削除 |
 | `SetBlueprintVariableDefault` | Blueprint 変数の CDO デフォルト値を更新 |
-| `AddGraphNode` | Blueprint アセットの**あらゆるグラフ**にノードを追加（VariableGet/Set・FunctionCall・Event 等）— イベントグラフと関数グラフに限らない。対象は `GraphName` または `GraphGuid` で選ぶ。グラフの選び方・複数一致時の扱い・2 段階の受け入れ判定は表の下の注記を参照 |
+| `AddGraphNode` | Blueprint アセットの**あらゆるグラフ**にノードを追加（VariableGet/Set・FunctionCall・EventBeginPlay/EventTick、または親やインターフェースのイベントを上書きする `Event`）— イベントグラフと関数グラフに限らない。対象は `GraphName` または `GraphGuid` で選ぶ。グラフの選び方・複数一致時の扱い・2 段階の受け入れ判定は表の下の注記を参照 |
+| `AddFunctionOverride` | 値を返す・出力引数を持つ・const の、親クラスかインターフェースの関数を、Override メニューと同じく関数グラフとして上書きする。グラフと、その入口・結果ノードの GUID を返す |
 | `DeleteGraphNode` | グラフノードを GUID 指定で削除（EntryNode・Tunnel は削除不可） |
 | `ConnectBlueprintPins` | Blueprint グラフの 2 ピンを接続 |
 | `DisconnectBlueprintPins` | ピン接続を切断 |
 | `ListBlueprintPins` | Blueprint グラフノードのピン一覧 |
 | `SetPinDefaultValue` | Blueprint グラフノードのピンにデフォルト値を設定（DefaultValue / DefaultObject / DefaultTextValue を型に応じて自動選択） |
 | `GetPinDefaultValue` | Blueprint グラフノードのピンのデフォルト値を取得 |
+
+> **新規 — `AddGraphNode` に `NodeType: "Event"` を渡すと、親クラスまたは実装しているインターフェースのイベントを `FunctionName` で指定してオーバーライドできる**（例: `ReceiveDestroyed`、`ReceiveActorBeginOverlap`）。My Blueprint パネルの Override メニューでイベントノードを追加するのと同じ動作。`EventBeginPlay` と `EventTick` はこれまでどおり使える。1 つの Blueprint で同じイベントをオーバーライドできるのは 1 回だけで、オーバーライドが Blueprint 内のどこかにすでにあるときは、2 つ目を作らずに既存のノードを返す。戻り値・出力パラメータを持つ関数や const 関数はイベントノードにできないため、`AddFunctionOverride` を案内する `InvalidParams` で拒否する。親クラスにもインターフェースにも `BlueprintImplementableEvent` / `BlueprintNativeEvent` として宣言されていない名前も `InvalidParams` で拒否する。
+>
+> **新規 — `AddFunctionOverride` は、そうした関数を関数グラフとしてオーバーライドする**（例: `ACharacter::CanJumpInternal`）。グラフには親のシグネチャどおりのエントリノードとリザルトノード、親実装の呼び出しが入り、`SkipCompile` が `true` でない限りコンパイルされる。artifact は `GraphName`・`GraphGuid`・`EntryNodeId`・`ResultNodeId`（戻り値が無い関数では省略）・`OverriddenClass`・`AlreadyExisted` を返す。グラフの中身は `AddGraphNode` と `ConnectBlueprintPins` で組む。同じ要求をもう一度送ると、既存のグラフを `AlreadyExisted: true` で返す。イベントノードにできる関数と、すでにイベントノードとしてオーバーライドされている関数は、`AddGraphNode` を案内する `InvalidParams` で拒否する。`BlueprintGraphEdit` が必要。
 
 > **`AddGraphNode` は、イベントグラフと関数グラフだけでなくアセット内のすべてのグラフを見るようになった。** マクロ・インターフェース実装のグラフ・折りたたんだグラフの中にあるグラフも `GraphName` で指せるようになった — この変更より前は、グラフが実在していても `NotFound`（この変更より前は `ExecutionFailed`）で終わっていた。
 >
@@ -1032,7 +1039,7 @@ Widget Blueprint 編集 — ツリー・変数・アニメーション・バイ�
 | `GetNamedSlots` | Widget Blueprint の NamedSlot 一覧 |
 | `ReparentWidgetBlueprint` | Widget Blueprint の親クラスを変更 |
 | `GetSlotProperties` | ウィジェットのスロットプロパティを取得（CPF フィルタ・最大 64 キー）。あわせて `PropertyWriteRequirements` マップを返し、各プロパティへの書き込みに何が必要か・どの入力形式で渡すかを示します |
-| `SetSlotProperties` | ウィジェットのスロットプロパティを設定（32 KiB 制限・UObject 参照は `/Game/` 以下のみ）。参照には `WidgetSlotReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要になり、これらの値はエンジンの括弧表記ではなく **JSON ドキュメント** で渡します — 書く前に取得系の `WriteInputForm` を確認してください。拒否された書き込みは undo エントリを残さず、アセットを dirty にもしません |
+| `SetSlotProperties` | ウィジェットのスロットプロパティを設定（32 KiB 制限・UObject 参照は `/Game/` 以下のみ）。参照には `WidgetSlotReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要になり、これらの値はエンジンの括弧表記ではなく **JSON ドキュメント** で渡します — 書く前に取得系の `WriteInputForm` を確認してください。拒否された書き込みは undo エントリを残さず、アセットを dirty にもしません。成功した書き込みは Widget Blueprint をコンパイルし、実行時に作られるウィジェットへ変更が届きます。`bSkipCompile: true` を渡すと変更済みの印だけを付け（応答は `bRequiresFollowupCompile: true` になる）、複数の編集のあとに `CompileWidgetBlueprint` で 1 回コンパイルできます |
 | `GetWidgets` | ウィジェットツリー構造を取得（JSON） |
 | `ListWidgetClasses` | 利用可能なウィジェットクラス一覧（最大 500 件） |
 | `CompileWidgetBlueprint` | Widget Blueprint をコンパイルしエラー / 警告を返す |
@@ -3481,7 +3488,7 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | 🆓 `CheckpointCapture` | スクリーンショット + 状態ダンプの複合（シナリオ primitive） |
 | 🆓 `SearchLoadedClasses` | ロード済みクラスを検索（ランタイム内省用） |
 | 🆓 `DumpGameViewportWidgets` | プレイワールドのゲームビューポートの Widget ツリーを返します。ゲーム自身の UI だけで、エディタのツールバーやタブは混ざりません。ツリー全体は JSON artifact に保存し、応答にはノード数、`MaxDepth` / `MaxNodes` で走査が途中で止まったか・どこで止まったか、上位のユーザー Widget の先頭 50 件、各ローカルプレイヤーのキーボード / ゲームパッドのフォーカスと画面領域、`Limitations` が入ります。各ノードは Slate の型、UMG の名前とクラス、矩形、実際に見えているか、どのレイヤーにあるかを持ちます。テキストは `IncludeText: true` のときだけ読みます。[ゲームビューポートの UI と HUD](#ゲームビューポートの-ui-と-hud4) を参照 |
-| 🆓 `FindGameViewportWidgets` | 同じツリーから、指定した条件をすべて満たすノードを探します（`WidgetClass`・`SlateType`・`WidgetName` / `WidgetNameContains`・`OwningPlayerIndex`。1 つ以上が必須）。一致には、`ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText` に渡し直す `TypePath` と `Fingerprint` が付きます。何も見つからなくても成功です。一覧を切ったか、走査が途中で止まったかは `ResultLimitReached` と `SearchIncomplete` の limitation で分かります。テキストは読みません |
+| 🆓 `FindGameViewportWidgets` | 同じツリーから、指定した条件をすべて満たすノードを探します（`WidgetClass`・`SlateType`・`WidgetName` / `WidgetNameContains`・`OwningPlayerIndex`。1 つ以上が必須）。`WithinWidgetPath` を渡すと、CommonUI の画面など 1 つの Widget の部分木に探す範囲を絞れます。一致には、`ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText` に渡し直す `TypePath` と `Fingerprint` が付きます。何も見つからなくても成功です。一覧を切ったか、走査が途中で止まったかは `ResultLimitReached` と `SearchIncomplete` の limitation で分かります。テキストは読みません |
 | 🆓 `DumpGameViewportWidgetTexts` | ゲームビューポートの**すべての**テキスト Widget のテキストと、入力欄の値を、画面に出ているかどうかを問わず JSON artifact として返します。各エントリに、そのテキストが画面に出ているかの印が付きます。`RuntimeWidgetTextRead`（DefaultDenied）が必要です。パスワード欄の平文は artifact には書かれず、セッションが `RuntimeWidgetPasswordTextRead` も持つときだけ応答（`PasswordFieldValues`）に入ります |
 | 🆓 `DumpHUDState` | 各ローカルプレイヤーの HUD の状態を JSON artifact として返します: HUD のクラス、表示フラグ、`ShowDebug` の状態、デバッグテキスト、ヒットボックスの名前、HUD が参照している Widget、プレイヤーコントローラーが画面に出している Widget。HUD が描いた内容（線・文字・ボックス）とヒットボックスの位置は読めず、`Limitations` で報告します |
 | 🆓 `ListSubsystems` | エンジン・GameInstance・プレイワールド・ローカルプレイヤーの下で生きている Subsystem を、実体ごとに 1 行（クラス・クラスパス・実体のパス・所有者・状態）で返します。行は決まった 1 つの順に並び、`StartIndex` / `MaxEntries` でページに区切られます。`IncludeNotCreated: true` を付けると、ロード済みで所有者の下に実体が無いクラスも載ります。`Engine` 種別だけの要求ならプレイワールド無しで動きます。プロパティの値は読みません |
@@ -3521,11 +3528,12 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | `OwningPlayerIndex` | `FindGameViewportWidgets` | そのノードが属するユーザー Widget を持つ**ローカルプレイヤー**の番号（0 以上）。何も持たない、またはいないプレイヤーは一致 0 件で、成功です |
 | `VisibleOnly` | `FindGameViewportWidgets` | 実際に見えている Widget だけを対象にします。既定 `true` |
 | `MaxResults` | `FindGameViewportWidgets` | 返す一致の上限。1〜500。既定 50。超えた分は数えるだけで返しません |
+| `WithinWidgetPath` | `FindGameViewportWidgets` | 中を探す UMG Widget のオブジェクトパス（4096 文字以内）。たとえば [`UAIP.Runtime.CommonUI.DumpActivatableStacks`](#uaipruntimecommonui-) が画面ごとに返す `WidgetPath`。探す範囲を絞るもので、それだけでは条件になりません。ゲーム層の全体を走査することに変わりはないので、`MaxDepth` / `MaxNodes` はゲーム層の根から数え、`TypePath` もその根からの相対のままです。ゲーム層の下の Widget に行き着かないパスは、パラメータ名を挙げて `NotFound` です。走査がその Widget に届かなかった場合（非表示・折りたたみ・表示されていないページ・上限の外）は、一致なしで limitation `ScopeRootNotTraversed` が付きます。渡した値は `Result` と artifact にそのまま返します |
 | `RootTypePath` | `DumpGameViewportWidgetTexts` | サブツリーをダンプする Widget の `TypePath`。ゲーム層の全体を走査することに変わりはないので、`MaxDepth` / `MaxNodes` はゲーム層のルートから数えます。Widget に至らない経路は `NotFound`。既定はゲーム層全体 |
 | `PlayerIndex` | `DumpHUDState` | 調べる**ローカルプレイヤー**の番号（0 が 1 人目）。省略すると全ローカルプレイヤー。いない番号は `NotFound` |
 | `TargetNetRole`・`TargetPIEInstance` | 4 つすべて | どのプレイワールドか。[対象プレイワールドを指定する](#実行時コマンドの対象プレイワールドを指定する) を参照 |
 
-`FindGameViewportWidgets` は、`WidgetClass`・`SlateType`・`WidgetName`・`WidgetNameContains`・`OwningPlayerIndex` のうち 1 つ以上を必要とします。1 つも無い場合や、`WidgetName` と `WidgetNameContains` を同時に指定した場合は `InvalidParams` です。
+`FindGameViewportWidgets` は、`WidgetClass`・`SlateType`・`WidgetName`・`WidgetNameContains`・`OwningPlayerIndex` のうち 1 つ以上を必要とします。1 つも無い場合や、`WidgetName` と `WidgetNameContains` を同時に指定した場合は `InvalidParams` です。`WithinWidgetPath` は条件に数えないので、それだけを渡した場合も `InvalidParams` です。
 
 #### 拒否される場合
 
@@ -3536,6 +3544,7 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | ゲーム層がまだ無い（起動直後） | `PreconditionFailed`。少し待って再試行します（シナリオでは自動で再試行されます） |
 | ゲーム層の場所を特定できない（プロジェクトが標準の UI 層を置き換えている） | `NotAllowed`。対応するのは標準のゲーム層だけです |
 | `DumpHUDState` の `PlayerIndex` がいないプレイヤーを指す | `NotFound` |
+| `FindGameViewportWidgets` の `WithinWidgetPath` がゲーム層の下の Widget に行き着かない | `NotFound`（`WithinWidgetPath` を名指しする） |
 
 #### HUD
 
@@ -3708,8 +3717,9 @@ Runtime での入力注入と Enhanced Input 状態検査。PIE 必須。
 | `RemoveMappingContext` | ローカルプレイヤーから Input Mapping Context を削除 |
 | `SetInputMode` | 入力モードを設定（GameOnly / UIOnly / GameAndUI） |
 | `FlushInput` | テスト終了時の押下中キー状態をフラッシュ |
-| 🆓 `DumpInputState` | 現在の入力状態（押下中キー・軸値・優先度付きの有効 Mapping Context、`IncludeActionStates=true` 指定時はアクション単位の Trigger 状態も含む）をダンプ |
+| 🆓 `DumpInputState` | 現在の入力状態（押下中キー・軸値・優先度付きの有効 Mapping Context・推定した入力モードの根拠・注入ゲートの判定、`IncludeActionStates=true` 指定時はアクション単位の Trigger 状態も含む）をダンプ。プロジェクトのコードは実行しません。[注入ゲート](#注入ゲート) を参照 |
 | 🆓 `GetEnhancedInputActionValue` | Enhanced Input Action の現在値を取得 |
+| `EvaluateInputGateWithProjectCode` | 注入ゲートを、実際の注入と同じく**ゲームビューポートクライアントのプロジェクトの override を実行して**評価し、何も注入せずに判定を返します。`PlayerIndex` はプレイヤーコントローラの番号（既定 0）。ゲートが止める場合も成功です（`Decision: "Blocked"`）。`RuntimeInspect` と `InputProjectCodeExecution`（DefaultDenied）が必要です。読み取り専用のコマンドではないので、安全設定の読み取り専用モードでは拒否されます。デモ版にはありません |
 | `ClickGameViewportWidget` | 実行中のゲームの UI の Widget をマウスでクリックします。押す位置へポインターを動かし、カーソルの真下にあるのが対象（またはその中身）であることを確かめてから、ボタンを押して離します。対象は UMG の `WidgetPath`、`ViewportPosition`、または `FindGameViewportWidgets` が返した `TypePath` と `Fingerprint` で指定します。`RuntimeUIInputInjection` が必要です。[ゲームビューポートの UI 入力](#ゲームビューポートの-ui-入力3) を参照 |
 | `PressGameViewportUIKey` | ローカルプレイヤーの Slate ユーザーとして、UI 用のキー（矢印・Tab・Enter・Space・Escape・ゲームパッドのボタン）を押します: キーを押す → 安全の再確認 → キーを離す。対象を指定しないと、そのプレイヤーのフォーカスがある Widget に届き、指定すると先にフォーカスをそこへ移します。`RuntimeUIInputInjection` が必要です |
 | `TypeGameViewportText` | 実行中のゲームの UI の入力欄へ、ローカルプレイヤーの Slate ユーザーとして 1 文字ずつ文字を打ちます。確定はしません（確定には `PressGameViewportUIKey` で Enter を送ります）。欄の値を直接書き換えることもしません。打った文字列はログにも応答にも記録にも残りません。`RuntimeUIInputInjection` が必要で、パスワード欄に打つには安全設定 `AllowRuntimePasswordFieldWrite` も要ります |
@@ -3717,6 +3727,38 @@ Runtime での入力注入と Enhanced Input 状態検査。PIE 必須。
 ---
 
 > **Note**: `DumpInputState` は常に `ActiveMappingContexts`（`Priority` 降順・同値は `Path` 昇順でソート）と `EnhancedInputState`（`"Available"` / `"Unavailable"`。「取得できて 0 件」と「そもそも取得できない」を区別する）を返します。`IncludeActionStates=true` を渡すと、有効な Mapping Context から到達できるアクションごとに `ActionStates[]` が追加されます。各エントリは `Trigger`（`ETriggerEvent` の全 6 値のいずれか。発火していないアクションを表す `"None"` を含む）、`ValueX`/`ValueY`/`ValueZ`、`SourceContexts[]`（どの有効 Context がそのアクションを設定しているか）、`ConfiguredKeys[]`（重複排除・ソート済み）を持ち、`ActionStatesTotalCount` と `ActionStatesTruncated`（`ActionPath` 昇順で最大 256 件に打ち切り）も併せて返されます。`IncludeActionStates` を既定の `false` のままにすると呼び出しは軽量なままです — このパラメータが opt-in なのは、コストがロード済み Mapping Context 数ではなくマッピング済みアクション数に比例して増えるためです。
+
+### `DumpInputState` の出力
+
+`DumpInputState` はプロジェクトのコードを実行しません。Mapping Context は、サブシステムの override できる関数を通さず、Enhanced Input の評価そのものが使うデータから読みます。そのため、それらの関数を override しているプロジェクトでも、入力の処理が実際に適用している Context が見えます。`PlayerIndex` の解決も同じで、プロジェクトが override できる関数を通さず、ゲームインスタンスのローカルプレイヤー一覧とゲームステートのプレイヤー配列から読みます。実行中のエンジンの版でそのデータを読めないときは、`EnhancedInputState` が `"Unavailable"` になり、`EnhancedInputUnavailableReason` が理由を示します（例 `"ReflectedFieldUnavailable:AppliedInputContextData"`）。この欄はそのときだけ付きます。
+
+| 欄 | 意味 |
+|---|---|
+| `InputModeEvidence` | 入力モードを推定した根拠。`Viewport`（`IgnoreInput`・`MouseCaptureMode`・`MouseLockMode`・`HideCursorDuringCapture`。ゲームビューポートが無ければ `null`）、`PlayerController`（`IgnoreMoveInput`・`IgnoreLookInput`・`ShowMouseCursor`）、`LastSetInputModeDebugString`（開発用ビルドだけ） |
+| `PlayerControllerPath` | `PlayerIndex` が指したプレイヤーコントローラのオブジェクトパス。`PlayerIndex` はプレイヤーの出入りで変わる番号付けの中の位置なので、どのプレイヤーコントローラのダンプか、2 つのダンプが同じプレイヤーコントローラのものかは、このパスで見分けます。ローカルのプレイヤーコントローラにもリモートのものにも付きます |
+| `ViewportClientClass` | ゲームビューポートクライアントのクラス |
+| `ViewportClientIsVerifiedEngineClass` | そのクラスがエンジンのクラス（またはゲートの差し込みが確かめたクラス）と完全に一致するときに `true`。`false` のときは、上のビューポートの値はプロジェクトの override ではなくエンジンの実装の値です — `GameInputGate` を参照 |
+| `GameInputGate` | 注入ゲートが下す判定。`Decision`（`Allowed` / `Blocked`）、`Source`（`Bypass` / `ViewportInference` / `Contributor`）、`InferredInputMode`、`ViewportReadStatus`（`Read` / `NoViewport` / `ChangedDuringProjectCode` / `OutOfRangeValue`）、`ContributorInstalled`、`Contributor`（`Name`・`Applicability`・`AllowsGameInput`・`Reason`・`Evidence`。差し込みが無ければ `null`）。確かめていないビューポートクライアントのクラスでは、`RequiresCapabilities: ["InputProjectCodeExecution"]` と `SeeCommand: "UAIP.Runtime.Input.EvaluateInputGateWithProjectCode"` が付きます（デモ版では `RequiresCapabilities: ["NotInThisEdition"]` で、`SeeCommand` は付きません） |
+| `Limitations[]` | `{Code}`: `ViewportClientOverridesNotEvaluated`・`ViewportInputStateOutOfRange`・`ViewportChangedDuringProjectCode`・`InputModeDebugStringUnavailableInThisBuild`・`ReflectedFieldUnavailable:<欄>` |
+
+`Result` は `{PlayerIndex, InferredInputMode, GameInputGate: {Decision, Source}}` です。
+
+引数はプレイワールドを探す前に検査します。負の `PlayerIndex` や bool でない `IncludeActionStates` は `InvalidParams` です。どのプレイヤーコントローラも持たない `PlayerIndex` は `NotFound` で、存在する番号を挙げます。
+
+### 注入ゲート
+
+注入の 5 コマンド（`InjectInputKey`・`InjectEnhancedInputAction`・`InjectLegacyAction`・`InjectLegacyAxisInput`・`InjectLegacySpeechInput`）は、ゲームがゲーム入力を受け付けていない間は注入を断ります。ゲートは 2 つの判定を合わせ、どちらかが止めれば止めます。
+
+- **ViewportInference** — ゲームビューポートクライアントとプレイヤーコントローラから推定した入力モード。
+- **差し込み（contributor）** — UI フレームワーク自身の入力の振り分けを知っている任意の連携。[CommonUI 連携](#uaipruntimecommonui-) が `CommonUIRouter` という名前で差し込みます。たとえば CommonUI のアクションルーターがメニューモードの間は、ゲーム入力を止めます。差し込めるのは 1 つまでです。
+
+注入は、実際の入力と同じ読み方でゲームビューポートクライアントを読みます。`IgnoreInput`・`GetMouseCaptureMode`・`HideCursorDuringCapture` のプロジェクトの override も実行します。`DumpInputState` はエンジンの実装だけを読むので、これらを override しているプロジェクトのビューポートクライアントでは、その `GameInputGate` が注入の判定と食い違うことがあります。注入そのものの判定は `EvaluateInputGateWithProjectCode` が返します。読み取りの途中で実行されたプロジェクトのコードが、プレイヤーコントローラ・ローカルプレイヤー・ワールド・ビューポートクライアントのどれかを入れ替えた場合、ゲートは `ViewportReadStatus: "ChangedDuringProjectCode"` で止めます。
+
+拒否は `NotAllowed` で、メッセージは止めた判定（`ViewportInference` または差し込みの名前）とその理由を示します。安全設定のバイパスを許していないときの `BypassInputMode=true` に対する `PolicyViolation` は変わりません。注入ごとの監査記録には `GateSource`・`GateContributorReason`・`GateViewportReadStatus` が入ります。
+
+ゲートはすべてを写すわけではありません。人が押したキーは、ゲーム入力に届く前に UI のアクションのバインド（CommonUI のものなど）に消費されることがありますが、ゲートはそれを再現しません。コンソールを有効にしたビルドでビューポートのコンソールのオブジェクトが無いときは、ゲートはエンジンより厳しく判定します。
+
+`EvaluateInputGateWithProjectCode` はフレームの安全な地点を待ちません — 注入が評価するのと同じ地点で評価するので、注入が受ける判定をそのまま返します。プロジェクトのコードを実行するため、読み取り専用モードでは `PolicyViolation`、モーダルダイアログが開いている間やエンジンの tick が止まっている間は `NotAllowed` で拒否されます。
 
 ### ゲームビューポートの UI 入力（3）
 
@@ -3744,7 +3786,7 @@ Runtime での入力注入と Enhanced Input 状態検査。PIE 必須。
 #### 操作の流れ
 
 1. **クリック。** ポインターを押す位置へ動かし、カーソルの真下にあるのが対象（またはその中身）であることを確かめます。違えば何も押さず（`ExecutionFailed`、最前面の Widget を添える）、合っていればボタンを押して離します。
-2. **キー。** 対象を指定した場合は、先にフォーカスを移して移ったことを確かめます。キーを押し、安全の再確認をしてから離します。`ReachedGameViewport` は、UI が処理せずにキーがゲーム側へ届いたかを示します: `True`・`False`・`Unknown`。
+2. **キー。** 対象を指定した場合は、先にフォーカスを移して移ったことを確かめます。キーを押し、安全の再確認をしてから離します。`ReachedGameViewport` は、UI が処理せずにキーがゲーム側へ届いたかを示します: `true`・`false`・`Unknown`。`false` のときは `ReachedGameViewportReason` が `HandledBeforeGameViewport` になります。フォーカスのある Widget か、それを含む Widget がキーを処理したため、ゲームビューポートで入力を読むもの（プレイヤーコントローラーの入力や、ゲームがビューポートクライアント経由で結び付けた入力アクション）には届いていません。コマンド自体は成功します。`FocusAfter` と、その画面がキーを自分で結び付けているかを確かめてください。`Unknown`（別のビューポートへ行った可能性がある）には理由を付けません。
 3. **文字。** 対象を指定した場合は、先にフォーカスを移します。文字は人がキーボードで打つのと同じ形で 1 文字ずつ送ります（IME の変換は送りません）。1 文字ごとに、フォーカスが同じ欄にあること、パスワード欄かどうかが変わっていないことを確かめ、変わっていれば止めます。パスワード欄かどうかは送る時点で判定し、判定できない欄はパスワード欄として扱います。
 
 応答は、入力を送り終えてから返ります。何に当たったか（`HitWidget`・`HitWidgetIsTarget`）、操作後のフォーカス（`FocusAfter`）、入力がゲームまで届いたか（`ReachedGameViewport`）、モーダルが開いたか（`ModalOpened`）、`Limitations` が入ります。`TypeGameViewportText` はさらに、送った文字数（`CharactersDelivered`）、止まった理由、操作の前後の入力欄の長さの区分（`Empty`・`NonEmpty`・`Long`）を返します。文字列そのものは返しません。
@@ -4495,6 +4537,69 @@ StateTree の記録中は、プロセス内のすべての StateTree のデバ�
 | `PolicyViolation` | 必要な Capability が安全ポリシーで拒否されている |
 
 成功した呼び出しは JSON の artifact をちょうど 1 つ保存します（記録の `StartStateTreeCapture` と `StopStateTreeCapture` は補助の artifact を保存します）。失敗した呼び出しは何も保存しません。
+
+---
+
+## UAIP.Runtime.CommonUI 🧩
+
+実行中のゲームの CommonUI の状態を観測します。活性化ウィジェットのコンテナ（スタックとキュー）とそれぞれが表示しているウィジェット、ローカルプレイヤーごとに CommonUI が持つ入力の状態（アクションルーターが適用している入力モード・最前面の活性化ウィジェット・フォーカス・入力の種類・バインドされたアクション）、アクションの表示テキストです。`CommonUI` プラグイン（と、CommonUI 自身が要求する `EnhancedInput`）が必要です。無効ならコマンドは登録されず、呼ぶとプラグイン名を示した `CommandNotFound` になります。状態は `UAIP.Core.ListIntegrations` が報告します。CommonUI なしでビルドした UAIP では、コマンドは一覧に出たまま `UnavailableDetail: OptionalPluginDisabled` で断ります。デモ版にはありません。4 つとも [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付け、未知のパラメータは拒否します。PIE でも `-game` やパッケージ版でも動きます。
+
+**Capability。** 4 つとも `RuntimeInspect`（DefaultAllow）が必要です。`GetActionDisplayNames` は、テキストがゲームの表示するものなので、さらに `RuntimeWidgetTextRead`（DefaultDenied）が必要です — [ゲームビューポートの Widget](#ゲームビューポートの-ui-と-hud4) のテキストと同じ Capability です。`DescribeActivatableWidgetsWithProjectCode` は、さらに `CommonUIProjectCodeExecution`（DefaultDenied）が必要です。[安全性と Capability](safety.md#runtime-commonui-の観測) を参照してください。
+
+**既定ではプロジェクトのコードを実行しません。** 最初の 3 つのコマンドは、プロジェクトが override しうる関数を呼びません。活性化ウィジェットの getter（そのウィジェットが求める入力設定とフォーカス先）は省き、どの応答も `ProjectCodeFields`（`Omitted`・`OmittedReason: "ProjectCodeExecutionRequired"`・`RequiresCapabilities: ["CommonUIProjectCodeExecution"]`・`Command`）でそれを示します。ルーターの判定は、プロジェクトがルーターを派生させていても CommonUI 自身の判定です。それでも、エンジンの 2 つの経路は virtual 関数を通じてプロジェクトのコードに届きえます。Widget のツリーの走査（子の列挙を override したプロジェクトの Widget）と、Slate の Widget を持つ活性化ウィジェットの検索（プロジェクト独自の Slate メタデータの型）です。override しうる getter を呼ぶのは `DescribeActivatableWidgetsWithProjectCode` だけです。
+
+**`PlayerIndex` はローカルプレイヤーの番号です。** `GetInputState` と `GetActionDisplayNames` は、`PressGameViewportUIKey` と同じく、ゲームインスタンスの**ローカルプレイヤー**に番号を振ります（0 が最初）。`DumpInputState` と `EvaluateInputGateWithProjectCode` は、ワールドの**プレイヤーコントローラ**に番号を振ります。順序は、このマシンのローカルプレイヤーが先（ゲームのローカルプレイヤーの順）、ほかのプレイヤーが後（ゲームステートが挙げる順）で、どちらもいないときだけワールド自身のプレイヤーコントローラの一覧の順になります。負の番号は `InvalidParams`、どのローカルプレイヤーも持たない番号は `NotFound` で、メッセージが存在する番号を挙げます。省略すると全ローカルプレイヤーを読みます。
+
+| コマンド | 説明 |
+|---|---|
+| `DumpActivatableStacks` 🧩 | コンテナごとに、種類と順序、所有するローカルプレイヤー（`OwningPlayerIndex`。分からなければ `null`）、Slate の Widget が構築済みか・ゲーム層にあるか、それを持つ活性化ウィジェット（`ParentActivatable`）、表示しているウィジェット（`ActiveWidget`・`ActiveWidgetIsActivated`）、2 つのウィジェットの切り替えの途中か（`IsTransitioning`。切り替えの前半では `ActiveWidgetIsOutgoing` も）、スタックの RootContent、追加された順のエントリ（`IsDisplayed`・`IsActivated`・`IsModal`・`SupportsActivationFocus`・`AutoRestoresFocus`・`IsBackHandler`・`AutoActivate`）を返します。どのコンテナにも入っていない活性化ウィジェットは `UncontainedActivatedWidgets` に入ります。除いたウィジェットとコンテナは、理由ごとに `ExcludedCounts` で数えます（`PendingKill`・`DesignTime`・`NoWorld`・`OtherWorld`、まだ構築されていないコンテナは `Unconstructed`）。`IncludeUnconstructed`（既定 `false`）を渡すと、それらのコンテナも列挙します。上限: コンテナ 64、コンテナあたりのエントリ 256（表示中のエントリは必ず残す）、コンテナに入っていないウィジェット 64。`Result` は件数・`ExcludedCounts`・`Limitations` と、最初の 16 コンテナが表示しているウィジェットです |
+| `GetInputState` 🧩 | ローカルプレイヤーごとに、アクションルーターのクラス（`RouterClass`・`RouterIsEngineBaseClass`）、適用している入力モード（`InputMode`: `Menu`・`Game`・`All`・`NotApplied`）、適用しているマウスキャプチャ、活性化ウィジェットのツリーを組み直している最中か、`RouterAllowsGameInput` と判定に使った値（`GameInputDecisionEvidence`）、CommonUI が最前面として扱う活性化ウィジェット（`Leafmost`。UE 5.8 以降）、Slate ユーザーの実際のフォーカス（`Focus`）とそれが `Leafmost` の中にあるか、入力の種類（`InputType`・`RawInputType`・`GamepadName`・`IsUsingPointerInput`）、プレイヤーコントローラが無視しているもの・表示しているものを返します。ワールドに 1 つ: ゲームビューポートの入力の状態（`ViewportState`）、そのクラス、CommonUI のゲームビューポートクライアントの派生か、確かめたエンジンのクラスか、CommonUI の判定が[注入ゲート](#注入ゲート)に差し込まれているか（`GameInputGateContributorInstalled`）。`IncludeActions`（既定 `false`）を渡すと、プレイヤーごとにバインドされたアクション（名前・識別子・入力イベント・入力モード・キー・バインド先の Widget）を、表示テキスト抜きで加えます。上限: プレイヤーあたりのアクション 128、アクションあたりのキー 8（通常のキーと長押しのキーで別々に数える）。`Result` は各プレイヤーの番号・状態・入力モード・`RouterAllowsGameInput`・`Leafmost` のパスと、`ViewportClientIsCommonUIBased`・`Limitations` です |
+| `GetActionDisplayNames` 🧩 | バインドされたアクションの表示テキストです。アクションごとに、出どころの違う 3 つのテキストを返します: `ActionDisplayName`（バインドが持つ表示名）、`LegacyRowDisplayName`（アクションを定義する DataTable の行の表示名）、`InputActionDescription`（アクションを定義する Enhanced Input のアクションの説明）。無い出どころは `null` です。画面がどれを表示するかはゲーム次第なので、コマンドは選びません。プロジェクトがクラスを派生させた DataTable の行は読みません（`LegacyRowNotReadFromProjectDataTable`）。`ActionName`・`ActionIdentifier`・`InputEvent`・`InputMode`・`BoundWidget.WidgetPath` の組で、`GetInputState` の `Actions` の同じアクションと突き合わせられます。2 つのコマンドは別の時点で読むので、片方にだけアクションが出ることがあります。アクションルーターの無いプレイヤーは `Status: "Unavailable"` です。テキストは artifact にだけ書きます。`Result` は各プレイヤーの番号・状態・アクションの数と、limitation です。`RuntimeWidgetTextRead` が必要です |
+| `DescribeActivatableWidgetsWithProjectCode` 🧩 | **プロジェクトのコードを実行します。** 活性化ウィジェットが override しうる getter を呼び、`DesiredInputConfig`（`InputMode`・`MouseCaptureMode`・`MouseLockMode`・`HideCursorDuringViewportCapture`・`IgnoreMoveInput`・`IgnoreLookInput`。何も求めていなければ `null`）と `DesiredFocusTarget`（指していなければ `null`。破棄中や別のワールドの Widget なら省いて `DesiredFocusTargetExcludedReason` を付ける）を返します。`WidgetPaths` は `DumpActivatableStacks` が返す `WidgetPath` でウィジェットを指定します。1〜32 件で、各要素は `/` で始まり、単一引用符と制御文字を含まず、1023 文字以下の完全なオブジェクトパスです（外れれば要求全体が `InvalidParams`）。重複はそのまま保ち、指定したウィジェットは活性化していなくても評価します。省略するとワールドの活性化ウィジェットをすべて評価します（ゲーム層のものが先）。各対象には `Status` が付きます: `Evaluated`、`NotEvaluated`（その前でコマンドが止まった）、`NotFound`、`Excluded` と `ExcludedReason`（`PendingKill`・`DesignTime`・`NoWorld`・`OtherWorld`）。呼び出しの前後ごとにワールドとウィジェットを確かめ直します。活性化が外れただけのウィジェットは `DeactivatedDuringProjectCode` を付けて評価を続けます。ワールドかウィジェットが変わればコマンドは止まり、そこまでに評価した結果で成功を返します。`StoppedAt` がウィジェットと getter を示し、`Limitations` に `ScreenChangedDuringProjectCode`（または `NotAtSafePoint`）が入ります。上限: 対象 32。読み取り専用のコマンドではないので、安全設定の読み取り専用モードでは拒否されます。`CommonUIProjectCodeExecution` が必要です。デモ版にはありません |
+
+#### CommonUI のすべての応答に付く欄
+
+| 欄 | 意味 |
+|---|---|
+| `CapturedAt`・`Frame`・`NetMode`・`WorldContext`・`PIEInstance` | 状態を読んだ時点と場所 |
+| `Availability` | エンジンの状態が更新の途中かもしれないとき（モーダルダイアログや長い処理がゲームループを止めている、またはワールドが tick の途中）は `NotAtSafePoint`。何も読まず、成功して一覧を返しません。呼び直してください |
+| `WidgetPath` | すべてのウィジェットに付きます。`FindGameViewportWidgets` に `WithinWidgetPath` として渡すと、そのウィジェットの中を探せます |
+| `TypePath`・`Fingerprint` | ゲーム層にある構築済みのウィジェットに付きます。[ゲームビューポートの UI 入力](#ゲームビューポートの-ui-入力3)のコマンドに対象として渡せます。ゲーム層の根を解決できないときは `InGameLayer` とともに省きます（`GameLayerRootUnresolved`） |
+| `ProjectCodeFields` | プロジェクトのコードでしか作れない欄と、それを作る Capability とコマンド |
+| `XTruncated`・`XTotalCount` | 一覧を切ったときだけ、切る前の件数とともに付きます |
+| `ActionDisplayNameTruncated`・`LegacyRowDisplayNameTruncated`・`InputActionDescriptionTruncated` | テキストを切った。テキストは制御文字を除き、256 文字で切ります |
+| `Limitations[]` | 返した内容の注意点。それぞれ `Code` と、場合により `Detail` を持ちます |
+
+`Limitations[].Code` は次のいずれかです:
+
+| `Code` | 意味 |
+|---|---|
+| `NotAtSafePoint` | エンジンの状態が更新の途中だったかもしれないので読まなかった（`DescribeActivatableWidgetsWithProjectCode` では、プロジェクトのコードの実行中にエンジンが安全な地点を離れた） |
+| `GeometryFromPreviousFrame` | 位置と大きさは、最後にレイアウトしたフレームの値 |
+| `GameLayerRootUnresolved` | ゲーム層の根を解決できなかった。`InGameLayer`・`TypePath`・`Fingerprint` を省いた |
+| `TransitionStateUnavailable` | コンテナが切り替えの途中かどうかを読めなかった |
+| `ReflectedFieldUnavailable:<欄>` | 名前で読むエンジンの欄が、このエンジンの版に無かった。それに依存するものを省いた |
+| `NoLocalPlayers` | ワールドにローカルプレイヤーがいない |
+| `SlateUnavailable` | Slate が初期化されていない（描画の無いプロセスなど） |
+| `LeafmostUnavailableOnThisEngineVersion` | UE 5.7: エンジンが最前面の活性化ウィジェットを公開していないので、`Leafmost` を省いた |
+| `InputModeNotEnforced` | ゲームビューポートクライアントが CommonUI のものの派生ではないので、CommonUI の入力モードがゲーム入力の経路で適用されない |
+| `GameInputGateContributorNotInstalled` | このプロセスでは、CommonUI の判定が注入ゲートに入っていない |
+| `ViewportClientOverridesNotEvaluated` | ゲームビューポートクライアントがプロジェクトのクラス。その override は実行していないので、ビューポートの値はエンジンの実装の値 |
+| `ScreenChangedDuringProjectCode` | プロジェクトのコードの実行中にワールドかウィジェットが変わり、コマンドが止まった |
+| `LegacyRowNotReadFromProjectDataTable` | DataTable のクラスをプロジェクトが派生させているので、その行を読まなかった |
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータの型が違う・範囲外・未知のキー。`WidgetPaths` の要素が上の規則に外れる |
+| `NotAllowed` | プレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い。`DescribeActivatableWidgetsWithProjectCode` で、モーダルダイアログが開いている、またはエンジンの tick が止まっている |
+| `NotFound` | `PlayerIndex` がどのローカルプレイヤーも指さない（メッセージが存在する番号を挙げる） |
+| `CapabilityNotAvailable` | 必要な Capability が付与されていない |
+| `PolicyViolation` | 必要な Capability が安全ポリシーで拒否されている。読み取り専用モードでの `DescribeActivatableWidgetsWithProjectCode` |
+| `CommandNotFound` | `CommonUI` プラグインが無効。デモ版 |
+
+Fab で配布された UAIP をエンジンに入れてパッケージしたゲームでは、任意の連携は組み込まれず、ほかの任意の連携と同じく、4 つのコマンドは一覧に出たまま `OptionalPluginDisabled` で断ります。プロジェクトと一緒にコンパイルされるよう、UAIP をプロジェクトの `Plugins` フォルダーに置いてください。[Capability リファレンス](safety.md#capability-リファレンス) を参照してください。
 
 ---
 

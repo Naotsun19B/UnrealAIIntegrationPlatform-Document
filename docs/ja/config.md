@@ -362,23 +362,27 @@ UnrealEditor-Cmd.exe MyProject.uproject \
 
 ### SafetyPolicy 系 CLI フラグ
 
-`[UAIP.SafetyPolicy]` の各 bool フラグには対応する `-uaip-policy-*` CLI フラグがあります（ini キー側の説明は [Safety & Capabilities](safety.md#safetypolicy-settings) を参照）：
+`[UAIP.SafetyPolicy]` の各 bool フラグには対応する `-uaip-policy-*` CLI フラグがあり、ini の値より優先されます（ini キー側の説明は [Safety & Capabilities](safety.md#safetypolicy-settings) を参照）：
 
 | ini キー | CLI フラグ |
 |---|---|
-| `ReadOnly` | `-uaip-policy-read-only` |
-| `DisableSave` | `-uaip-policy-disable-save` |
-| `AllowLogDump` | `-uaip-policy-allow-log-dump` |
-| `AllowContextMenuMutation` | `-uaip-policy-allow-context-menu-mutation` |
-| `AllowKeyboardInput` | `-uaip-policy-allow-keyboard-input` |
-| `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input` |
-| `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write` |
-| `AllowRuntimePasswordFieldWrite` | `-uaip-policy-allow-runtime-password-field-write` |
-| `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass` |
-| `DisablePIEStart` | `-uaip-policy-disable-pie-start` |
-| `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write` |
-| `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis` |
-| `AllowDisclosingTraceAttachment` | `-uaip-policy-allow-disclosing-trace-attachment` |
+| `ReadOnly` | `-uaip-policy-read-only=True` |
+| `DisableSave` | `-uaip-policy-disable-save=True` |
+| `AllowLogDump` | `-uaip-policy-allow-log-dump=True` |
+| `AllowContextMenuMutation` | `-uaip-policy-allow-context-menu-mutation=True` |
+| `AllowKeyboardInput` | `-uaip-policy-allow-keyboard-input=True` |
+| `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input=True` |
+| `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write=True` |
+| `AllowRuntimePasswordFieldWrite` | `-uaip-policy-allow-runtime-password-field-write=True` |
+| `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass=True` |
+| `AllowProjectNetDriverNetModeQuery` | `-uaip-policy-allow-project-net-driver-net-mode-query=True` |
+| `DisablePIEStart` | `-uaip-policy-disable-pie-start=True` |
+| `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write=True` |
+| `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis=True` |
+| `AllowDisclosingTraceAttachment` | `-uaip-policy-allow-disclosing-trace-attachment=True` |
+| `AllowUserInteractionPrompt` | `-uaip-policy-allow-user-interaction-prompt=True` |
+
+**どのフラグも値が必要です。** 設定をオンにするには `-uaip-policy-read-only=True`、ini でオンにした設定をオフにするには `=False` と書きます。値は `True` / `False`、`Yes` / `No`、`On` / `Off`、`1` / `0` のいずれかで、大文字小文字は区別しません。`-uaip-policy-read-only` のように値を付けずに書いたフラグは**警告なしに無視され**、ini の値のままになります。これら以外の値は、ログに警告を出して無視されます。
 
 `AllowCapabilityReload` / `AllowedCapabilities` / `DeniedCapabilities` / `DeniedCommands` / `AllowedArtifactDirectory` / `ExternalTraceDirectory` は **ini 専用**（CLI フラグなし — Capability の昇格やサンドボックス境界に関わるため、プロセスコマンドラインからの変更を許可しない設計）。
 
@@ -471,7 +475,7 @@ uaip_reload_config()
 - 効くのは **Bridge が次にエディタを起動するとき**で、起動中のエディタには効きません。これだけを変えてもエディタは終了しません（`EditorRestartScheduled` は `false` のまま）。すぐ反映するには `UAIP.Editor.Workspace.ShutdownEditor` を実行してください。次のツール呼び出しで新しい引数のエディタが起動します。ゲストモード（`attach_only`）の Bridge はエディタを起動しないため、引数が使われることはありません。
 - 置き換えるまで有効なまま残り、クラッシュ後の再起動にも引き継がれます。不要になったら `EditorExtraArgs=[]` で消してください。現在の値は、応答の `Data.EditorExtraArgs` と `uaip_get_editor_status` の `Data.Config.EditorExtraArgs` のどちらでも確認できます。
 - 1 要素に 1 引数を、外側のクォート無しで書きます：`"-abslog=C:\\My Logs\\Editor.log"`。
-- 次の値は `InvalidParams` で拒否され、設定は変わりません：`-uaip-` で始まるフラグ（ポート・MCP モード・シナリオルートは Bridge 自身が管理する）、`-unattended`（代わりに `launch_attended` を使う）、`-nopause`（常に渡している）、空の要素、制御文字を含む要素。`UAIP_EDITOR_EXTRA_ARGS` に同じ値があると Bridge は起動を拒否します。
+- 次の値は `InvalidParams` で拒否され、設定は変わりません：`-uaip-` で始まるフラグ（ポート・MCP モード・シナリオルートは Bridge 自身が管理する。SafetyPolicy のフラグ `-uaip-policy-*` も、クライアントが自分の制限を外せないように拒否する。これらはプロジェクトの `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` で設定する）、`-unattended`（代わりに `launch_attended` を使う）、`-nopause`（常に渡している）、空の要素、制御文字を含む要素。`UAIP_EDITOR_EXTRA_ARGS` に同じ値があると Bridge は起動を拒否します。
 
 `config.json` 編集後の典型的な手順：
 
