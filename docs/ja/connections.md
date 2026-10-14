@@ -286,6 +286,7 @@ uaip_get_editor_status()
   "KeyCount": 7,
   "Keys": ["editor_path", "uproject_path", "http_port", "command_timeout_seconds", "log_level", "enable_scenario", "inline_artifacts"],
   "LastReloadError": "",
+  "LastReloadApplyFailure": "",
   "EditorExtraArgs": []
 }
 ```
@@ -297,9 +298,10 @@ uaip_get_editor_status()
 | `KeyCount` | `config.json` に実際に含まれていたトップレベルキーの数。 |
 | `Keys` | それらキーの**名前のみ** — 値は一切含まれない。この項目は診断用のサーフェスであり、稼働中の Bridge から `role_token` のようなシークレットを読み出す手段ではない。 |
 | `LastReloadError` | 直近の `uaip_reload_config` 呼び出し（あれば）が成功した場合、またはまだ一度も呼ばれていない場合は空文字列。直近のリロード試行が `config.json` の解析に失敗した場合は非空になり、メッセージにファイルと理由が記される — このとき Bridge は既に持っていた設定のまま動作を続ける（リロード失敗が現在のセッションを止めることはない）。上記「[MCP クライアントを再起動せずに config をリロード](#mcp-クライアントを再起動せずに-config-をリロード)」を参照。 |
+| `LastReloadApplyFailure` | 新しい設定を反映する途中で `uaip_reload_config` が失敗した場合（例：ブリッジを構成するファイルの編集中で、読み直せなかった）だけ非空になります。メッセージに原因が記され、ブリッジは古い設定・新しい設定・混ざったもののどれで動いているか分かりません。原因を直してから MCP を再接続（`/mcp`）してください。次にリロードが成功すると空に戻ります。設定がまったく適用されなかったことを表す `LastReloadError` とは別の項目です。反映の途中で失敗したリロードは設定の検証を通っているので、`LastReloadError` を空にします。両方が非空になるのは、その後のリロードが拒否された場合だけです。 |
 | `EditorExtraArgs` | Bridge が次にエディタを起動するときに追加するコマンドライン引数。無ければ空配列。`Keys` と違いこれは値そのもので、`config.json` からは読まれず、環境変数 `UAIP_EDITOR_EXTRA_ARGS` か `uaip_reload_config(EditorExtraArgs=[...])` の呼び出しだけが設定する。置き換えるまで有効なまま残り、クラッシュ後の再起動にも引き継がれるため、エディタが普段どおりのコマンドラインで動いていると決めつける前にここを確認する。「[設定 → 実行時の config リロード](config.md#実行時の-config-リロードuaip_reload_config)」を参照。 |
 
-上記の `RecommendedAction` にも、`Config` に報告すべき事項がある場合 — `Status` が `"Absent"` か、`LastReloadError` が非空 — は追加の一文が付与されます。`RecommendedAction` しか読まない呼び出し側でも、毎回 `Data.Config` を読まなくてもこの事実に気づける仕組みです。
+上記の `RecommendedAction` にも、`Config` に報告すべき事項がある場合 — `Status` が `"Absent"` か、`LastReloadError` が非空、または `LastReloadApplyFailure` が非空 — は追加の一文が付与されます。`RecommendedAction` しか読まない呼び出し側でも、毎回 `Data.Config` を読まなくてもこの事実に気づける仕組みです。`LastReloadApplyFailure` と `LastReloadError` が両方とも非空のときは、反映の失敗を先にして両方の一文が付きます。設定ファイルが壊れたまま再接続すると Bridge が起動できないので、再接続の前に `config.json` を直してください。
 
 ### 長時間コマンドと 120 秒の非同期タイムアウト
 
@@ -344,6 +346,8 @@ uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\
 ```
 
 詳細は [設定リファレンス → 実行時の config リロード](config.md#実行時の-config-リロードuaip_reload_config) を参照。
+
+リロードがどのエディタを止めてよいかは、そのエディタを誰が起動したかで決まります。Bridge が止めるのは、自分で起動したエディタ（`uaip_get_editor_status` の `Ownership` が `OWNED`）だけです。`RestartEditor` の後や、MCP 再接続で既に動いているエディタにつないだ後のエディタは `ATTACHED` で、Bridge が起動したものではなく、確実には止められません。そのため、エディタのパス・uproject のパス・HTTP ポート・`enable_scenario`・`launch_attended` を変えるリロードは何も変えずに拒否され、応答に手順が書かれます（AI 側の操作でエディタを起動したと分かっている場合だけ `ShutdownEditor` を送る。そうでなければ持ち主に閉じてもらうか、変更を見送る）。その間も接続は使えます。新しいエディタが要らない設定は、従来どおり反映されます。[設定 → 実行時の config リロード](config.md#リロードがエディタを止めることになる場合) を参照。
 
 ### MCP セットアップのトラブルシューティング
 

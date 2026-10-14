@@ -286,6 +286,7 @@ Typical uses:
   "KeyCount": 7,
   "Keys": ["editor_path", "uproject_path", "http_port", "command_timeout_seconds", "log_level", "enable_scenario", "inline_artifacts"],
   "LastReloadError": "",
+  "LastReloadApplyFailure": "",
   "EditorExtraArgs": []
 }
 ```
@@ -297,9 +298,10 @@ Typical uses:
 | `KeyCount` | How many top-level keys `config.json` actually contained. |
 | `Keys` | The **names** of those keys only — never their values. This block is a diagnostic surface, not a way to read secrets like `role_token` back out of the running bridge. |
 | `LastReloadError` | Empty when the most recent `uaip_reload_config` call (if any) succeeded, or when none has been made yet. Non-empty when the last reload attempt failed to parse its `config.json` — the message names the file and the reason, and the bridge kept running on the configuration it already had (a failed reload never tears down the current session). See [Reload config without restarting the MCP client](#reload-config-without-restarting-the-mcp-client) above. |
+| `LastReloadApplyFailure` | Empty unless a `uaip_reload_config` call failed partway while applying the new configuration (for example a file the bridge is made of was being edited and could not be read again). Then the message names the cause, and the bridge cannot tell whether it runs on the old settings, the new settings or a mix: fix the cause and reconnect the MCP server (`/mcp`). Cleared by the next reload that succeeds. Separate from `LastReloadError`, which means the configuration was not applied at all. A failed apply clears `LastReloadError`, since that reload got past the configuration checks; both are non-empty only when a later reload was refused after the failed apply. |
 | `EditorExtraArgs` | The extra command-line arguments the bridge will add the next time it launches the editor — empty when there are none. Unlike `Keys`, this is a value: it never comes from `config.json`, only from the `UAIP_EDITOR_EXTRA_ARGS` environment variable or a `uaip_reload_config(EditorExtraArgs=[...])` call. They stay in effect until replaced, including for a relaunch after a crash, so check here before assuming the editor runs with its usual command line. See [Configuration → Reloading config at runtime](config.md#reloading-config-at-runtime-uaip_reload_config). |
 
-`RecommendedAction` (above) also gets an extra sentence appended when `Config` has something worth flagging — a `Status` of `"Absent"`, or a non-empty `LastReloadError` — so a caller that only ever parses `RecommendedAction` still learns about it without having to read `Data.Config` on every call.
+`RecommendedAction` (above) also gets an extra sentence appended when `Config` has something worth flagging — a `Status` of `"Absent"`, a non-empty `LastReloadError`, or a non-empty `LastReloadApplyFailure` — so a caller that only ever parses `RecommendedAction` still learns about it without having to read `Data.Config` on every call. When both `LastReloadApplyFailure` and `LastReloadError` are non-empty, both notes are appended, the apply failure first: fix `config.json` before reconnecting, because a bridge restarted on a broken `config.json` does not start.
 
 ### Long-running commands and the 120 s async timeout
 
@@ -344,6 +346,8 @@ uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\
 ```
 
 See [Configuration → Reloading config at runtime](config.md#reloading-config-at-runtime-uaip_reload_config) for full details.
+
+Which editor a reload may stop depends on who launched it. The bridge stops only an editor it launched itself (`Ownership` of `OWNED` in `uaip_get_editor_status`). After `RestartEditor`, or after an MCP reconnect that attached to an editor already running, the editor is `ATTACHED`: the bridge did not launch it and cannot reliably stop it, so a reload that changes the editor path, the uproject path, the HTTP port, `enable_scenario` or `launch_attended` is refused with nothing changed, and the answer lists the steps (send `ShutdownEditor` only if an AI operation started the editor, otherwise ask its owner to close it or give up the change). The connection stays usable meanwhile. Settings that do not need a new editor are applied as before. See [Configuration → Reloading config at runtime](config.md#when-a-reload-would-have-to-stop-an-editor).
 
 ### MCP setup troubleshooting
 
