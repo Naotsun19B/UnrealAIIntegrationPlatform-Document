@@ -118,7 +118,7 @@ Every command below is registered in the demo build. Where a namespace is marked
 | `UAIP.Editor.Workspace.OpenTabById` | Open an editor tab by its Slate layout ID | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.CloseTabById` | Close an editor tab by its Slate layout ID | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.NormalizeEditorLayout` | Focus the main graph tab and hide transient panels | |
-| `UAIP.Editor.Workspace.SetEditorWindowState` | Minimize the editor main window, or restore it from the minimized state | `EditorWindowStateControl`; restoring activates the window and moves the keyboard focus to the editor |
+| `UAIP.Editor.Workspace.SetEditorWindowState` | Minimize the editor main window, or restore it from the minimized state | `EditorWindowStateControl`; while the user works in another application, restoring leaves the editor behind it and does not take the keyboard focus |
 | `UAIP.Editor.Workspace.SetGraphZoom` | Set the graph viewport zoom level | |
 | `UAIP.Editor.Workspace.FrameGraphAll` | Fit all nodes in the graph viewport | |
 | `UAIP.Editor.Workspace.FrameGraphSelection` | Fit the selected nodes in the graph viewport | |

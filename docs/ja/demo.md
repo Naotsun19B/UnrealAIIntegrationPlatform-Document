@@ -118,7 +118,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.Workspace.OpenTabById` | Slate のレイアウト ID でエディタータブを開く | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.CloseTabById` | Slate のレイアウト ID でエディタータブを閉じる | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.NormalizeEditorLayout` | メイングラフのタブにフォーカスし、一時的なパネルを隠す | |
-| `UAIP.Editor.Workspace.SetEditorWindowState` | エディタのメインウィンドウを最小化する、または最小化から復元する | `EditorWindowStateControl`。復元はウィンドウをアクティブにし、キーボードフォーカスをエディタへ移す |
+| `UAIP.Editor.Workspace.SetEditorWindowState` | エディタのメインウィンドウを最小化する、または最小化から復元する | `EditorWindowStateControl`。ユーザーが別のアプリで作業しているときは、復元してもエディタはそのアプリの後ろに残り、キーボードフォーカスを奪わない |
 | `UAIP.Editor.Workspace.SetGraphZoom` | グラフビューのズーム倍率を設定する | |
 | `UAIP.Editor.Workspace.FrameGraphAll` | グラフ全体をビューに収める | |
 | `UAIP.Editor.Workspace.FrameGraphSelection` | 選択ノードをビューに収める | |
