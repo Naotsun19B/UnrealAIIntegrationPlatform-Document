@@ -216,6 +216,24 @@ EnableHUDCanvasStats=True
 
 **CLI での指定はできません。**
 
+### `[UAIP.Sequencer]` — 再コンパイルの後も Sequencer の Control Rig のバインドを保つ
+
+旧形式（Blueprint 形式）の Control Rig Blueprint を再コンパイルすると、エンジンは rig のインスタンスをすべて新しいものに置き換えます。Sequencer の Control Rig トラックが使っている rig の新しいインスタンスには、動かすメッシュへのバインドが引き継がれないので、その後にシーケンスを閉じるとエディタが落ちます。再コンパイルが UAIP のコマンド（`AddVariable` や `CompileControlRig` など rig を編集するもの）から始まっても、エディタの Compile ボタンから始まっても同じです。`CarryControlRigBindingOnRecompile` がオンのとき、UAIP は置き換えられた rig のバインドを新しい rig へ渡します。対象は Control Rig トラックが持つ rig のうち、自分のバインドを持たないものだけです。ランタイムアセット形式の rig は再コンパイルで置き換わらないので、影響を受けません。何かを許可するものではなく、どのコマンドの権限も変えません。
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `CarryControlRigBindingOnRecompile` | bool | `True` | 再コンパイルで置き換わった Sequencer トラックの Control Rig のバインドを、新しいインスタンスへ渡すかどうか |
+
+- 値は起動時に 1 回だけ読まれるので、変更はエディタの再起動後に効きます。
+- `False` にするのは、エンジンの振る舞いのままにしたいとき（たとえば、エンジンの版がこの問題を自分で直したとき）だけにしてください。
+
+```ini
+[UAIP.Sequencer]
+CarryControlRigBindingOnRecompile=False
+```
+
+**CLI での指定はできません。**
+
 ### `[UAIP.Build]` — テスト専用の型をビルドに含めるか
 
 UAIP の自動テストは、テストのためだけに存在するリフレクション型を使います。この型は既定でプラグインに組み込まれるため、それらに依存するテストはお使いの環境でも登録されて走ります。それらを使うテストの実行中を除いて、エディタの型選択メニューやクラス一覧、UAIP の型一覧コマンドの結果には出ません。このセクションで、それらをビルドから除けます。

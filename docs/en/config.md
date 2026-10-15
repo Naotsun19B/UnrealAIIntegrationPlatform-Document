@@ -216,6 +216,24 @@ EnableHUDCanvasStats=True
 
 No CLI equivalent.
 
+### `[UAIP.Sequencer]` — Keeping a Sequencer Control Rig bound across a recompile
+
+When a Control Rig Blueprint in the legacy (Blueprint) format is recompiled, the engine replaces every instance of the rig with a new one. The new instance of a rig used by a Sequencer Control Rig track does not get the binding to the mesh it drives, so closing that sequence afterwards crashes the editor. This happens however the recompile was started: from a UAIP command that edits the rig (for example `AddVariable` or `CompileControlRig`) or from the editor's own Compile button. With `CarryControlRigBindingOnRecompile` on, UAIP hands the binding of the replaced rig to its replacement. It touches only rigs owned by a Control Rig track that have no binding of their own. Rigs in the runtime-asset format are not replaced on recompile and are not affected. It grants nothing and changes no command's permission.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `CarryControlRigBindingOnRecompile` | bool | `True` | Whether the binding of a Sequencer track's Control Rig is handed to the instance that replaces it on recompile |
+
+- The value is read once at startup, so an edit takes effect after the editor is restarted.
+- Set it to `False` only to leave the replacement exactly as the engine leaves it, for example once an engine version fixes this itself.
+
+```ini
+[UAIP.Sequencer]
+CarryControlRigBindingOnRecompile=False
+```
+
+No CLI equivalent.
+
 ### `[UAIP.Build]` — Compiling the test-only types
 
 UAIP's automation tests use reflection types that exist only for testing. They are compiled into the plugin by default, so the tests that depend on them register and run on your machine. They stay out of the editor's type pickers, menus and class lists, and out of UAIP's type-listing commands, unless a test that uses them is running. This section lets you leave them out of the build.

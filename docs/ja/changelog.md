@@ -230,6 +230,7 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 - **`AddVariableNode`（Control Rig）がメンバー変数を見つけるようになりました**（`UAIPEditorControlRig` モジュール）: これまではグラフのローカル変数しか探さなかったので、`AddVariable` で追加した変数のノードは「Internal operation failed.」で失敗していました。ローカル変数、メンバー変数の順に探すようになりました。どちらにも無い名前は `NotFound`（「Variable not found.」）です。
 - **`AddVariable`（Control Rig の旧形式）が、型を指さない型パスを断るようになりました**（`UAIPEditorControlRig` モジュール）: `/Script/Nowhere.NoSuchType` のようなオブジェクトパスを渡すと、これまでは型の無い変数ができていました。今は `InvalidParams` になり、変数は追加されません。UE 5.8 では、エンジンが保持できない型を渡したときのメッセージで、型をオブジェクトパス（例: `/Script/CoreUObject.Vector`）で指定するよう案内するようになりました。
 - **Toolset が真偽値・数値を返すブリッジのコマンドが、成功を返すようになりました**（`UAIPCore` モジュール）: これまでは、Toolset の処理が済んでいても、必ず `ExecutionFailed`「Failed to parse Toolset response as JSON.」になっていました。たとえば `Toolset.Editor.SequencerControlRig.SetFloatValue` は、値を書き込んだうえで失敗を返していました。今は値が `Result.Result`（例: `true`・`0.37`）に入ります。すべての `Toolset.*` ブリッジに効きます。結果がオブジェクトや配列のコマンドは変わりません。
+- **Control Rig を再コンパイルした後にシーケンスを閉じても、エディタが落ちなくなりました**（`UAIPEditorSeqControlRig` モジュール）: 旧形式の Control Rig Blueprint を再コンパイルすると、Sequencer の Control Rig トラックが使う rig は新しいインスタンスに置き換わり、エンジンはそれにメッシュへのバインドを渡しません。そのシーケンスを閉じるとエディタが落ちていました。再コンパイルが rig を編集する UAIP のコマンド（`AddVariable` など）から始まっても、エディタの Compile ボタンから始まっても同じでした。UAIP がバインドを新しいインスタンスへ渡すようになりました。ランタイムアセット形式の rig は、もともと影響を受けません。新しい設定 [`[UAIP.Sequencer]` の `CarryControlRigBindingOnRecompile`](config.md#uaipsequencer--再コンパイルの後も-sequencer-の-control-rig-のバインドを保つ)（既定 `True`）で切れます。
 
 #### MCP Bridge 1.3.0 — 未リリース
 
