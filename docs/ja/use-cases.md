@@ -132,7 +132,7 @@ UAIP は「誰が」「何のために」「なぜ」使うのか。本ページ
 
 **UAIP が用意している手段**：
 - `UAIP.Editor.AnimBlueprint.*` で AnimGraph と StateMachine を編集
-- `UAIP.Editor.ControlRig.*` でヒエラルキーと RigVM グラフを編集（ネイティブ 59 件 + Toolset 44 件）
+- `UAIP.Editor.ControlRig.*` でヒエラルキーと RigVM グラフを編集（ネイティブ 59 件 + Toolset 44 件）。UE 5.8 のランタイムアセット形式と旧 Blueprint 形式の両方に対応（[Control Rig アセットの形式](commands.md#control-rig-アセットの形式) を参照）
 - `UAIP.Editor.Sequencer.*` で LevelSequence を編集（ネイティブ 93 件 + Toolset 61 件）
 - `UAIP.Editor.Skeleton.*` でソケットやバーチャルボーンを管理
 - `UAIP.Editor.Physics.*` で物理アセットを調整

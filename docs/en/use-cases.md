@@ -132,7 +132,7 @@ Who uses UAIP, for what, and why. Each scenario links to the relevant Cookbook r
 
 **What UAIP gives them**:
 - `UAIP.Editor.AnimBlueprint.*` for AnimGraph + StateMachine editing
-- `UAIP.Editor.ControlRig.*` for hierarchy and RigVM graph editing (59 native + 44 Toolset commands)
+- `UAIP.Editor.ControlRig.*` for hierarchy and RigVM graph editing (59 native + 44 Toolset commands), on both the UE 5.8 runtime-asset format and the legacy Blueprint format (see [Control Rig asset formats](commands.md#control-rig-asset-formats))
 - `UAIP.Editor.Sequencer.*` for LevelSequence editing (93 native + 61 Toolset commands)
 - `UAIP.Editor.Skeleton.*` for socket / virtual bone management
 - `UAIP.Editor.Physics.*` for physics asset tuning

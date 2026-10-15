@@ -819,9 +819,9 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | `SaveAsset` | 名指ししたアセットだけをディスクへ書き込む（`AssetMutate` 必要）。確認ダイアログを出さないため非対話でも完結する |
 | 🆓 `ListDirtyPackages` | 未保存の変更を持つパッケージを列挙する（保存前の事前確認用） |
 | 🆓 `SearchAssets` | パス・クラス・タグでアセットを検索 |
-| `CreateAsset` | 指定クラスの新規アセットを作成 |
+| `CreateAsset` | 指定クラスの新規アセットを作成。`AssetPath` に既にアセットがある場合（保存済みかどうか・クラスを問わない）は `InvalidParams` で断り、何も作らず既存のアセットにも触れず、上書き確認ダイアログも出ません。先に削除するか別のパスを指定してください。レジストリが既存アセットを把握している場合は、応答の `Result` にそのクラスが `ExistingClassName` として入ります。Factory が `ClassName` と違うクラスのアセットを作った場合、またはアセット種別ごとの後処理に失敗した場合は、作成したアセットを破棄してからエラーを返します。破棄できなかったときはエラーにその旨が書かれ、`Result.RemainingAssetPath` が残っている場所を示します。要求した種類を無視して常に普通の Blueprint を作る汎用の Blueprint Factory は、特定の種類の Blueprint では候補から外れます（`/Script/Engine.Blueprint` 自体では今までどおり使えます）。`/Script/Engine.Blueprint` を指定した次の 2 つの要求は、何も作る前に `InvalidParams` で断ります。汎用の Factory は、そのままだと別の種類のアセットを、その種類に必要な検査を通さずに作ってしまうためです。エンジンが専用の Blueprint の種類を対応付けている `FactoryParams.ParentClass`（Animation Instance の派生は Animation Blueprint、User Widget の派生は Widget Blueprint など）には、代わりに使うクラスをメッセージと `Result.RequiredClassName` で返します（例: `/Script/Engine.AnimBlueprint`。そのクラスの Factory と受け取る `FactoryParams` は `ListFactoriesForClass` で調べられます）。`UControlRig` の派生を `ParentClass` に渡した場合は、使うべき Control Rig のクラスを挙げるメッセージで断ります（`Result.RequiredClassName` は付きません）。Actor など専用の種類が要らない親と、`ParentClass` の省略は、今までどおり作れます。Control Rig については [Control Rig アセットの形式](#control-rig-アセットの形式) を参照 |
 | 🆓 `ListCreatableAssetClasses` | `CreateAsset` が作成可能な全 UClass をFactory数・デフォルトFactory付きで返す（重い呼び出し） |
-| 🆓 `ListFactoriesForClass` | 指定 `ClassName` に対応する Factory 候補と各 `FactoryParams` スキーマを返す |
+| 🆓 `ListFactoriesForClass` | 指定 `ClassName` に対応する Factory 候補と各 `FactoryParams` スキーマを返す。汎用の Blueprint Factory は、特定の種類の Blueprint では一覧に出なくなりました（`CreateAsset` を参照） |
 | `DuplicateAsset` | 既存アセットを複製 |
 | `CopyAsset` | アセットを新しい完全パッケージパスへコピー（コピー先が存在する場合は失敗・`AssetCreate` 必要） |
 | `RenameAsset` | アセットをリネーム / 別パスへ移動。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
@@ -2211,7 +2211,7 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `AddMixerTransition` | Transition を追加 |
 | `RemoveMixerTransition` | Transition を削除 |
 | `GetMixerSectionInfo` | AnimMixer セクション情報を取得 |
-| `AddMixerChildTrack` | `LayerIndex` のレイヤーに紐づく子トラックとして ControlRig 子トラックを追加し、`ControlRigPath`（`UControlRig` 派生である必要がある）の ControlRig インスタンスを生成してパラメータセクションを紐づける。`LayerIndex` は現在のレイヤー数と同じ値を指定して末尾に新規行を追加できる。任意の `IsLayered`（既定 false）で新しい ControlRig を加算式に設定できる。対象レイヤーに既に子トラックまたはアニメーションセクションがある場合は副作用なしで `Conflict` |
+| `AddMixerChildTrack` | `LayerIndex` のレイヤーに紐づく子トラックとして ControlRig 子トラックを追加し、`ControlRigPath`（`UControlRig` 派生である必要がある）の ControlRig インスタンスを生成してパラメータセクションを紐づける。`LayerIndex` は現在のレイヤー数と同じ値を指定して末尾に新規行を追加できる。任意の `IsLayered`（既定 false）で新しい ControlRig を加算式に設定できる。対象レイヤーに既に子トラックまたはアニメーションセクションがある場合は副作用なしで `Conflict`。`ControlRigPath` はどちらの形式の Control Rig アセットも受け付ける（UE 5.8 ではアセット本体のパス。例: `/Game/X.X`。`/Game/X.X:X_EditorOnly` のような内部の部品のパスは見つからない扱い）。Control Rig ではないパスは `NotFound` |
 | `RemoveMixerChildTrack` | `LayerIndex` のレイヤーに紐づく子トラックを削除し、レイヤー参照・子トラック管理データ・Decoration・バインディングをまとめて片付ける。レイヤーに子トラックが無ければ `NotFound` |
 | `GetMixerChildTracks` | バインディングの AnimMixer トラックの全レイヤーにわたる子トラック一覧。各エントリは `LayerIndex`・`TrackName`・`TrackClass` を持つ |
 | `MoveMixerChildTrack` | `LayerIndex` に紐づく子トラックを `NewLayerIndex` へ移動する。両インデックスが等しい場合は副作用なしの no-op として成功する。移動先レイヤーに既に子トラックまたはアニメーションセクションがある場合は副作用なしで `Conflict` |
@@ -2226,8 +2226,8 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 |---|---|
 | `GetControlRigTracks` | LevelSequence 内の全 ControlRig パラメータトラック。各エントリは `IsChildTrack` を持ち、`true` のときのみ `LayerIndex` も含まれる |
 | `GetControlRigSectionInfo` | セクションのプロパティ — `IsInfinite`・`StartFrame`・`EndFrame`・`IsActive`・クラス名 |
-| `FindOrCreateControlRigTrack` | バインディングの ControlRig パラメータトラックを取得または作成し `TrackCreated` を返す。任意の `IsLayered`（既定 false）で新規作成する ControlRig を加算式に設定できる。既存トラックが見つかった場合は無視される |
-| `BakeToControlRig` | バインディングのアニメーションを ControlRig トラックへベイク（表示レートフレーム・`Tolerance` は 0.0〜1.0） |
+| `FindOrCreateControlRigTrack` | バインディングの ControlRig パラメータトラックを取得または作成し `TrackCreated` を返す。任意の `IsLayered`（既定 false）で新規作成する ControlRig を加算式に設定できる。既存トラックが見つかった場合は無視される。どちらの形式の Control Rig アセットも受け付ける（UE 5.8 では内部の部品のパスではなくアセット本体のパス、例: `/Game/X.X` を渡す）。Control Rig を指さないパスは `NotFound`。別の Control Rig のトラックを取り違えることはない |
+| `BakeToControlRig` | バインディングのアニメーションを ControlRig トラックへベイク（表示レートフレーム・`Tolerance` は 0.0〜1.0）。どちらの形式の Control Rig も受け付け、Control Rig を指さないパスは `NotFound`。**UE 5.8 の新形式（ランタイムアセット）の Control Rig ではキー削減が異なります。** `Tolerance` が 0 より大きければ削減する点は同じですが、古い形式のキー値の差そのものではなく値の幅に対する割合（`0.1` なら 10%）として扱われるため、既定の `0.1` はエンジンの画面の既定（5%）より強く削減します。削減にはそのシーケンスをレベルシーケンスエディタで開いておく必要があり、開いていない場合（別のシーケンスが開いている場合も含む）は `PreconditionFailed` で断り、トラックもキーも変更しません。シーケンスを開くか、削減しないなら `Tolerance: 0` を渡してください。ベイク後は、そのバインディングのアニメーショントラックをすべて無効にします（古い形式は 1 本目のみ） |
 | `KeyControls` | 指定コントロールを 1 つの表示レートフレームでキー（`ControlNames` 省略時は表示中の全コントロール） |
 | `KeyControlsAtFrames` | 指定コントロールを複数の表示レートフレームでキー。UE 5.8+ 専用。UE 5.7 では `Available: false`（`UnavailableDetail: "EngineVersion"`） |
 | `GetControlsMask` | ControlRig セクションのコントロール別表示マスク |
@@ -2542,6 +2542,25 @@ ConversationDB グラフ編集。`CommonConversation` プラグインが必要�
 
 ControlRig ヒエラルキーと RigVM グラフ編集。
 
+#### Control Rig アセットの形式
+
+UE 5.8 の Control Rig アセットには 2 つの形式があります。ここのネイティブコマンドはどちらも同じパラメーターで受け付けます（Undo / Redo、ダーティ印、ModularRig の保護も同じように働きます）。
+
+| 形式 | クラスパス | 備考 |
+|---|---|---|
+| ランタイムアセット（UE 5.8 の既定） | `/Script/ControlRig.ControlRigRuntimeAsset` | UE 5.7 には存在しない |
+| 旧形式（Blueprint） | `/Script/ControlRigDeveloper.ControlRigBlueprint` | |
+
+新規アセットがどちらの形式になるかは、プロジェクトのコンソール変数 `RigVM.BlueprintIndependentAssets` で決まります（UE 5.8 の既定は有効。プロジェクトの `DefaultEngine.ini` の `[ConsoleVariables]` に `RigVM.BlueprintIndependentAssets=0` を置くと旧形式になります）。この変数はエディタの作成メニューを含むプロジェクト全体に効き、UAIP が変更することはありません。
+
+- **`CreateAsset` は設定に従います。** クラスパスは設定と一致している必要があります。プロジェクトがランタイムアセットを作る設定なのに旧形式のクラスを指定した場合（逆の場合も）は `InvalidParams` で断り、何も作らず、正しいクラスと変更すべき変数をメッセージで案内します。`ControlRigBlueprintCreate` Capability が無い場合はそちらが先に、`AssetPath` に既にアセットがある場合は Factory の指定の誤りより先に報告されます。プロジェクトが旧形式の設定なら、旧形式のクラスに `FactoryClassName` は不要です。
+- **以前のドキュメントにあったクラスパス `/Script/ControlRig.ControlRigBlueprint` は誤りでした。** UE 5.8 では解決できず「class could not be resolved」になります。上の 2 つのパスのどちらかを使ってください。
+- **応答に出るアセットのパス**は常にアセット本体（`/Game/X.X`）です。ランタイムアセットの内部の部品のパス（`/Game/X.X:X_EditorOnly`）は、これらのネイティブコマンドでは入力として受け付けられ、応答にはアセット本体のパスが返ります。
+- **`AddVariable` は実際に付いた名前を返し**、リグを再コンパイルし、初期値を保存して開き直しても保持します。ランタイムアセットの Control Rig では `IsReadOnly` は受け付けられますが効きません。エンジンが反映せず、変数は読み書きできるままです。
+- **`Toolset.Editor.ControlRig.*` はランタイムアセット形式を断ります。** 委譲する前に `UnsupportedOperation` で断り、同じことができる `UAIP.Editor.ControlRig.*` のコマンド名（無い場合はこのドメイン）を案内します。この判定は ModularRig の保護より先です。旧形式のアセットと読めなかったアセットは、今までどおり Toolset に任せます。`Toolset.Editor.ControlRig.Create` はプロジェクトの設定にかかわらず常に**旧形式**で作成し、作成先に既存アセットがある場合の扱いも今までどおりです。
+- **`ClassName=/Script/Engine.Blueprint` で Control Rig の `FactoryParams.ParentClass` を渡した `CreateAsset` は断られます。** 何も作る前に `InvalidParams` になります（親は `UControlRig` かその派生: Modular Rig、プロジェクト定義の派生、Control Rig の生成クラス）。汎用の Blueprint Factory は、Control Rig のアセットではなくそのクラスを親にした普通の Blueprint を、`ControlRigBlueprintCreate` Capability を調べずに作ってしまい、Control Rig のコマンドでは編集できません。メッセージは `ClassName` に指定するクラス（プロジェクトが作る形式に応じてランタイムアセットか旧形式のクラス）を挙げ、親クラスは `FactoryParams.ParentClass` に残すよう案内します（例: `/Script/ControlRig.ModularRig`）。Capability の不足、`AssetPath` の使用中、`FactoryClassName` の誤りは、これより先に報告されます。
+- UE 5.7 には旧形式しかありません。ランタイムアセットのクラスを指定すると `InvalidParams`（「class could not be resolved」）になります。
+
 ### ネイティブ（68）
 
 #### ヒエラルキー観測（10）
@@ -2634,7 +2653,7 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 
 | コマンド | 説明 |
 |---|---|
-| `AddVariable` | RigVM 変数を追加。デフォルト値は変数の型が確定してから検証され、拒否された場合は **変数の追加ごと取り消されます**（`AddBlueprintVariable` と同じ扱い）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトは追加後に `SetBlueprintDefault` で設定してください。拒否された呼び出しはアセットを dirty にしません |
+| `AddVariable` | RigVM 変数を追加。デフォルト値は変数の型が確定してから検証され、拒否された場合は **変数の追加ごと取り消されます**（`AddBlueprintVariable` と同じ扱い）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトは追加後に `SetBlueprintDefault` で設定してください。拒否された呼び出しはアセットを dirty にしません。変数が実際に受け取った名前（エンジンがスペースを含む名前などを整えることがあります）を返し、リグを再コンパイルします。UE 5.8 のランタイムアセットの Control Rig では `IsReadOnly` は受け付けられますが効かず、変数は読み書きできるままです |
 | `ListVariables` | RigVM 変数一覧 |
 | `GetVariable` | RigVM 変数の値 |
 | `ChangeVariableType` | RigVM 変数の型を変更 |
@@ -2699,9 +2718,9 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 
 いずれも `AnimationAssistantToolset`（UE 5.8+）へ委譲する 2 つのブリッジプロバイダがあります。
 
-**`Toolset.Editor.ControlRig.*`（44 件）** — 上記ネイティブのアセット編集コマンドのミラー。グループ：アセット作成（1）/ ヒエラルキー観測（8）/ ヒエラルキー編集（7）/ グラフ管理（10）/ ノード（7）/ ピン（6）/ 変数（5）。
+**`Toolset.Editor.ControlRig.*`（44 件）** — 上記ネイティブのアセット編集コマンドのミラー。グループ：アセット作成（1。`Create` はプロジェクトの `RigVM.BlueprintIndependentAssets` の設定にかかわらず常に旧形式の Control Rig を作ります。`CreateAsset` とは異なります。[Control Rig アセットの形式](#control-rig-アセットの形式) を参照）/ ヒエラルキー観測（8）/ ヒエラルキー編集（7）/ グラフ管理（10）/ ノード（7）/ ピン（6）/ 変数（5）。
 
-**`Toolset.Editor.SequencerControlRig.*`（63 件）** — アニメーション時のコントロールオーサリング。実装は Sequencer モジュール（`SequencerControlRigTools`）ですが、全コマンドが ControlRig のコントロールを対象とするため本セクションに掲載しています。ControlRig に加えて `MovieSceneAnimMixer` が必要です。グループ：
+**`Toolset.Editor.SequencerControlRig.*`（63 件）** — アニメーション時のコントロールオーサリング。実装は Sequencer モジュール（`SequencerControlRigTools`）ですが、全コマンドが ControlRig のコントロールを対象とするため本セクションに掲載しています。ControlRig に加えて `MovieSceneAnimMixer` が必要です。UE 5.8 では、`ControlRigPath` を受け取る 38 件（残りの 25 件は受け取らず、影響を受けません）は、ランタイムアセットの Control Rig を、委譲する前に `UnsupportedOperation` で断ります。委譲先の Toolset はシーケンス内の rig を Blueprint のクラスで探しますが、ランタイムアセットにはそのクラスが無く、見つからずに失敗するか、パスの文字列が重なる別の旧形式の rig を操作してしまうためです。値の読み取りだけのコマンド（`Get...` / `Is...`）も同じく断ります。メッセージにはコマンド名とアセットのパスが入り、パスはオブジェクトパス（`/Game/Rigs/CR_X.CR_X`）でもパッケージパス（`/Game/Rigs/CR_X`）でも同じです。案内できる同等のネイティブコマンドはありません。`AssetPath` や `ControlRigPath` の欠落は今までどおり先に `InvalidParams` になり、旧形式の rig、アセットが存在しないパス、アセットのパスでない値は今までどおり委譲されます。グループ：
 
 | グループ | 件数 | コマンド |
 |---|---:|---|
@@ -3950,6 +3969,8 @@ Mass シミュレーションの元になるデータの読み取りと組み立
 
 **読み取りはエディタのワールドを変えません。** `DumpMassEntityConfig`・`ValidateMassEntityConfig`・`ListMassEntityTraits` は、構成が何を組み立てるかを、呼び出しの間だけ存在する専用の空のワールドで各 Trait を組み立てて求めます。そのため、エディタのワールドもアセットも変わりません。結果は実行モード `EditorWorld`（`EvaluatedExecutionMode`）のものです。ワールドの実行モードで振る舞いを変える Trait は、実行中のゲームでは別のものを組み立てることがあり、`Limitations` がそれを伝えます。エンジンの Mass モジュールの外にある Trait は、`MassProjectCodeExecution` を持たないセッションでは、組み立ても、プロパティ値の読み取りもされず、`SkippedTraits`（または `ElementsOmittedReason`）に載ります。このとき `ValidateMassEntityConfig` は `IsComplete: false` を返し、`Verdict` は `Inconclusive` になります。ただし、省かれた Trait では取り消せないエラーがすでにあれば `Invalid` です。読み取りは PIE 中でも許可されます。
 
+**曖昧な要素名。** `ListMassEntityTraits` の `AddsElement` が複数の要素の型に一致する短い名前だと、このコマンドは `InvalidParams` で失敗します。その失敗応答の `Result` には、`AmbiguousName`（指定された名前）、`Candidates`（候補の型パス。並べ替え済み、最大 10 件）、`TotalCandidateCount`（一致した型の総数）が載ります。候補の型パスのどれかで指定し直すと、曖昧さが解けます。
+
 **書き込み。** 書き込みは元に戻せる 1 ステップです。断られたリクエストは何も変えません（アセットも、そのパッケージのダーティフラグも、Undo 履歴も変わりません）。プレイセッション中、および読み取り専用の場所（`/Engine` 配下など）にあるアセットへの書き込みは `NotAllowed` で断られます。構成への書き込みが成功すると、その構成と、読み込み済みの子孫の構成について、エディタのワールドが覚えているテンプレートを外します。応答は `RemovedEditorWorldTemplates`・`UnloadedDescendantCount`・`TemplateRegistryUnavailable` を返します。汎用のプロパティコマンド、手による編集、Undo / Redo では外しません。
 
 > **Mass Debugger のタブ。** Mass Debugger のタブが開いていると、一時ワールドの作成でエンジン内部のチェック（`ensure`）が 1 回失敗し、ログにコールスタックが出ます（デバッガーを付けて起動しているとそこで止まります）。エンジン自身も、Trait の一覧のために作る一時ワールドで同じことをします。コマンドは成功し、一時ワールドは Mass Debugger の環境の一覧には出ません。避けたいときは、先にタブを閉じてください。
@@ -5138,6 +5159,8 @@ AnimInstance を持たないメッシュはエラーではありません。ア�
 
 **出力の上限。** 上限は設定できません。Data は先頭のエントリを、成果物はサイズ予算までの残りを持ち、何かが省かれたときは `…Truncated` のフラグと切り捨て前の件数がそれを示します。
 
+**曖昧な要素名。** 短い要素名が複数の型に一致すると、`GetMassEntityCount`・`DumpMassEntityArchetypes`・`GetMassEntityFragments` は `InvalidParams` で失敗します。その失敗応答の `Result` には、`AmbiguousName`（指定された名前）、`Candidates`（候補の型パス。並べ替え済み、最大 10 件）、`TotalCandidateCount`（一致した型の総数。載せた 10 件より多いことがある）が載ります。候補の型パスのどれかで指定し直すと、曖昧さが解けます。
+
 **デバッグ用インターフェース。** `GetMassEntityCount`・`DumpMassEntityArchetypes`・`DumpMassProcessorGraph` は Mass のデバッグ用インターフェースを必要とします。ビルド構成によっては含まれません（Shipping ビルドのように `WITH_MASSENTITY_DEBUG` が 0 のエンジンビルド）。その場合、これらは `Available: false`（`UnavailableDetail: BuildConfiguration`）で、理由を示すメッセージ付きで一覧に出ます。
 
 **Mass が動いていないとき。** プロジェクト設定やコンソール変数（たとえば `mass.RuntimeSubsystemsEnabled`）でプレイワールドの Mass のサブシステムが無効になっていると、それを必要とするコマンドは、設定の名前を示した `PreconditionFailed` で断られます。`DumpMassEntitySettings` は影響を受けません。
@@ -5151,7 +5174,7 @@ AnimInstance を持たないメッシュはエラーではありません。ア�
 | `DumpMassEntityArchetypes` | 対象プレイワールドのアーキタイプを 1 ページずつ一覧する。各アーキタイプに `ArchetypeId`・`Composition`（各要素の `Kind` と `Type`）・`EntityCount`・`ChunkCount`・`EntitiesPerChunk`・`AllocatedSizeBytes`・`WastedEntityMemoryBytes`・`BytesPerEntity`・`DebugNames`・`SampleEntities`（`SampleEntitiesPerArchetype` 個までのエンティティの `Index` と `SerialNumber`。既定では無し）。`RequiredElements` / `ExcludedElements` の絞り込みは上と同じ。`StartIndex`・`MaxArchetypes`（1〜500、既定 50）・`SampleEntitiesPerArchetype`（0〜16）で、安定した順序の中をページ送りする。応答は `TotalArchetypeCount`・`TotalEntityCount`（絞り込み前）・`MatchingArchetypeCount`・`NextStartIndex`（アーキタイプが残っているときだけ）・`ArchetypesTruncated` を持つ。ページの間にアーキタイプが変わることがある。読み取り専用。`RuntimeInspect` が必要 |
 | `DumpMassProcessorGraph` | 対象プレイワールドのプロセッサグラフ。処理フェーズごとに、実行される順のプロセッサ、続いてエンジンが除いたプロセッサと、要素の追加・除去を監視するプロセッサ。各プロセッサは、クラス、位置、自分より前に走るべきプロセッサ、宣言しているグループ・順序・実行フラグ、クエリの要件（要素の型と種類、読み取りか読み書きか、エンティティが持つ必要があるか）を持つ。Data は先頭のエントリを、成果物は残りを持つ。Mass デバッガーの処理環境が無いワールドは、制限事項 `ProcessingEnvironmentNotFound` 付きの空のグラフを返す。これはプロセッサが無いワールドとは別物。読み取り専用。`RuntimeInspect` が必要 |
 | `DescribeMassEntity` | 1 体のエンティティがどの要素の型を持つかを、値を読まずに返す。所属するアーキタイプのハッシュと、Fragment・Tag・Shared Fragment・Const Shared Fragment・Chunk Fragment を、種類と型パスの組で返す。UE 5.8 以降では、sparse Fragment（型のみ）も列挙し、常に `SparseTagsNotListed` を返す。エンティティ単位の sparse Tag は列挙できないので、Tag の一覧が空でも持っていないという意味ではない。`EntityIndex` と `EntitySerialNumber` が必要で、`WorldToken` は任意。エンティティが存在しないと `NotFound`。読み取り専用。`RuntimeInspect` が必要。値は `GetMassEntityFragments` で読む |
-| `GetMassEntityFragments` | 1 体のエンティティの Fragment・Shared Fragment・Const Shared Fragment の値。`EntityIndex`・`EntitySerialNumber`・`WorldToken` が必要。`ElementTypes`（最大 64 個）で、名前を挙げた型だけに読み取りを絞る。Tag と Chunk Fragment は 1 体のエンティティについて読む値が無いので `InvalidParams`、エンティティが持たない型は `MissingRequestedElements` に載る。`Elements` の各エントリは `Kind`・`Type` を持ち、読めた場合は `Value`（構造体のメンバーの一覧。`Name`・`Type`・`Value`）、1 つの Fragment の予算（16 KiB）で切ったときは `ValueTruncated`、省いたときは `ValueOmittedReason` を持つ。1 回の応答の値は 256 KiB の予算を共有し、尽きた後の要素は型だけと `ValueBudgetExceeded` を返す。`Limitations` が省いたものを示す。強参照のオブジェクトは読まない（`ObjectReferenceOmitted`）、実行時に型が決まる構造体は展開しない（`NestedInstancedStructNotExpanded`）、リフレクションされないメンバーは出力しない（`NonReflectedMembersOmitted`）、UE 5.8 以降の sparse 要素は型のみ（`SparseElementValuesNotRead`）。読み取り専用。`RuntimeInspect` と `RuntimeMassFragmentValueRead` が必要 |
+| `GetMassEntityFragments` | 1 体のエンティティの Fragment・Shared Fragment・Const Shared Fragment の値。`EntityIndex`・`EntitySerialNumber`・`WorldToken` が必要。`ElementTypes`（最大 64 個）で、名前を挙げた型だけに読み取りを絞る。Tag と Chunk Fragment は 1 体のエンティティについて読む値が無いので `InvalidParams`、エンティティが持たない型は `MissingRequestedElements` に載る。`Elements` の各エントリは `Kind`・`Type` を持ち、読めた場合は `Value`（構造体のメンバーの一覧。`Name`・`Type`・`Value`）、1 つの Fragment の予算（16 KiB）で切ったときは `ValueTruncated`、省いたときは `ValueOmittedReason` を持つ。1 回の応答の値は 256 KiB の予算を共有し、尽きた後の要素は型だけと `ValueBudgetExceeded` を返す。`Limitations` が省いたものを示す。強参照のオブジェクトは読まない（`ObjectReferenceOmitted`）、実行時に型が決まる構造体は展開しない（`NestedInstancedStructNotExpanded`）、リフレクションされないメンバーは出力しない（`NonReflectedMembersOmitted`）、展開が 4 段を超える入れ子の構造体は型名だけを返す（`StructDepthTruncated`。`Detail` は要素の型パスで、型ごとに 1 回。値の中に印は無いので、打ち切られたかどうかは `Limitations` で判断する）、UE 5.8 以降の sparse 要素は型のみ（`SparseElementValuesNotRead`）。読み取り専用。`RuntimeInspect` と `RuntimeMassFragmentValueRead` が必要 |
 
 **エラー。**
 

@@ -407,6 +407,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.Workspace` の `WaitForShaderCompilation`・`RecompileGlobalShaders` と Live Coding 系コマンド | シェーダー・Live Coding の開発操作は製品版のみ。`CommandNotFound` を返す |
 | トレース解析（`UAIP.Runtime.Insights.Analysis.*`） | デモ版ではコンパイル対象外。`CommandNotFound` を返す |
 | `UAIP.Runtime.Input` の入力注入（`InjectInputKey`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`FlushInput`、`SetInputMode`、`InjectEnhancedInputAction`、`AddMappingContext`、`RemoveMappingContext`、`ClickGameViewportWidget`、`PressGameViewportUIKey`、`TypeGameViewportText`） | 実行中のゲームへ入力を送るため製品版のみ。`CommandNotFound` を返す |
+| `UAIP.Runtime.Input.EvaluateInputGateWithProjectCode` | プロジェクト自身のコード（ゲームビューポートクライアントの override）を走らせるため製品版のみ。`CommandNotFound` を返す |
 | `UAIP.Runtime.ChaosDestruction.EnableForcedDestructionNotify` と `UAIP.Runtime.Navigation.RebuildNavigation` | 実行中のゲーム（破壊通知・ナビメッシュの再生成）を変更するため製品版のみ。`CommandNotFound` を返す |
 | `UAIP.Runtime.Animation.GetMotionMatchingState` | PoseSearch プラグインが必要で、デモ版には含まれないため製品版のみ。`CommandNotFound` を返す |
 | `UAIP.Runtime.Network.DumpReplicatedPropertyValues`・`UAIP.Runtime.Network.CompareReplicatedProperties`・`UAIP.Runtime.Network.SetNetworkEmulation`・`UAIP.Runtime.Network.ResetNetworkEmulation` | プレイヤーのアカウント識別子や名前が入りうるレプリケートされるプロパティの値を読む、または実行中のゲームのパケットエミュレーションを変更するため製品版のみ。`CommandNotFound` を返す |
