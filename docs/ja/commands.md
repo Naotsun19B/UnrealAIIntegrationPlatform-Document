@@ -496,7 +496,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 > **`FocusEditorTab` の `GraphName` — 応答の契約。** `GraphName` を非空の文字列で指定した呼び出しに限り、`Result` に 4 つのフィールドが載る: `WindowFocusRequested`（bool — エディタウィンドウを前面化する**要求を行った**ことの記録。OS が実際に最前面へ持って行ったことまでは保証しない）、`GraphNameRequested`（bool）、`GraphNameApplied`（bool）、`Reason`（`Applied` / `BlueprintEditorInterfaceUnavailable` / `OpenFailed` の 3 値だけを取る閉じた列挙）。成否判定には `Success` だけでなく `GraphNameApplied` と `Reason` を読むこと — `BlueprintEditorInterfaceUnavailable` の場合も `Success: true` が返る。これは開いているエディタに Blueprint グラフのナビゲーション手段がそもそも存在しない（例: `RigVM.UseNewEditor` を有効にした ControlRig エディタ）という構造的な状態であり、同じ指定で呼び直しても変わらないため。`GraphName` を省略または空文字列にした呼び出しでは、この 4 フィールドはいずれも設定されない — 呼び出し側は「`Result` が無い」場合と「`Result.GraphNameRequested` が `false`」の場合の両方を扱う必要がある。グラフ移動が適用されると、エディタの現在の UI 選択状態がクリアされ、Widget Blueprint を Designer モードで開いている場合は先に Graph モードへ切り替わる（グラフを表示するために必要）。この 2 つはいずれもグラフを開く処理より前に起きるため、その後グラフを開く処理自体が `OpenFailed` で失敗した場合でも、既に起きていることがある。
 >
-> ⚠️ **破壊的変更** — `GraphName` のエラーコードのうち 2 件が、`ExecutionFailed` から再試行対象外のコードへ変わった。シナリオの `RetryCount` は `ExecutionFailed` だけを再試行対象にしており、この 2 件はいずれも同じ指定で再試行しても成功しようがないため: アセットに存在しないグラフ名を指定した場合は `NotFound`（従来は `ExecutionFailed`）、Blueprint 系ではないアセットに `GraphName` を指定した場合は `InvalidParams`（従来は `ExecutionFailed`）を返す。`OpenFailed`（ナビゲーション手段は取得できたが実際にグラフを開く処理自体が失敗した場合）は変更なく `ExecutionFailed` のままで、こちらは再試行に意味がある。
+> ⚠️ **破壊的変更** — `GraphName` のエラーコードのうち 2 件が、`ExecutionFailed` から再試行対象外のコードへ変わった。シナリオの `RetryCount` は `ExecutionFailed` と `PreconditionFailed` だけを再試行対象にしており、この 2 件はいずれも同じ指定で再試行しても成功しようがないため: アセットに存在しないグラフ名を指定した場合は `NotFound`（従来は `ExecutionFailed`）、Blueprint 系ではないアセットに `GraphName` を指定した場合は `InvalidParams`（従来は `ExecutionFailed`）を返す。`OpenFailed`（ナビゲーション手段は取得できたが実際にグラフを開く処理自体が失敗した場合）は変更なく `ExecutionFailed` のままで、こちらは再試行に意味がある。
 >
 > **`GraphName` が同一アセット内の複数のグラフに一致する場合、いずれか 1 つが開かれるが、どれが選ばれるかはこの契約の対象外**であり、特定の 1 つが選ばれ続けることを前提にした使い方はしないこと。呼び出し側がどちらを意図していたかを読み取る仕組みではなく、返り値も変わらない — `GraphNameApplied` と `Reason` はグラフを開けたかどうかを表すだけで、どのグラフを開いたかは表さない。実際に名前が重なる状況はまれ: 同じ階層に並ぶグラフ（関数・マクロ・イベントグラフ・インターフェース実装のグラフ）同士は、そもそも同じ名前で共存させる手段がエディタに無い。名前が重なりうるのは**折りたたんだグラフ**が絡む場合だけで、折りたたんだグラフの中にあるグラフが外側のグラフと名前が重なることがある。
 
@@ -1033,7 +1033,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 >
 > **存在しないグラフ名を指定した場合、`NotFound` を返すようになった**（従来は `ExecutionFailed`）— 同じ要求を繰り返しても成功しようがないため、シナリオの `RetryCount` がこれ以上無駄な再試行に使われることがなくなった。
 
-> ⚠️ **破壊的変更 — `ConnectBlueprintPins` / `DisconnectBlueprintPins` / `DeleteGraphNode` / `GetPinDefaultValue` / `ListBlueprintPins` / `SetPinDefaultValue` は、指定したノードやピンが存在しないとき `NotFound` を返すようになった**（従来は `ExecutionFailed`）。シナリオの `RetryCount` は `ExecutionFailed` だけを再試行対象にしており、この変更より前は存在しない `NodeId` や `PinName` を指定した要求も再試行の対象になっていた（同じ要求を繰り返しても成功しようがないにもかかわらず）。
+> ⚠️ **破壊的変更 — `ConnectBlueprintPins` / `DisconnectBlueprintPins` / `DeleteGraphNode` / `GetPinDefaultValue` / `ListBlueprintPins` / `SetPinDefaultValue` は、指定したノードやピンが存在しないとき `NotFound` を返すようになった**（従来は `ExecutionFailed`）。シナリオの `RetryCount` は `ExecutionFailed` と `PreconditionFailed` だけを再試行対象にしており、この変更より前は存在しない `NodeId` や `PinName` を指定した要求も再試行の対象になっていた（同じ要求を繰り返しても成功しようがないにもかかわらず）。
 >
 > `GetPinDefaultValue` にはさらに、この変更で修正した欠陥がある。`PinName` が対象ノードのどのピンにも一致しない場合の分岐がそもそも無く、見つからなかったピンをそのまま読みに行く未検査のアクセス（未定義動作になりうる）になっていた。現在は、ノードのどのピンにも一致しない `PinName` に対して、この表の他のコマンドと同じく `NotFound` を返す。
 
