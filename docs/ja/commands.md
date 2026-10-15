@@ -904,7 +904,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | `DeleteAsset` | アセットを削除。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | `CreateFolder` | Content Browser に新規フォルダを作成 |
 | `DeleteFolder` | 空フォルダを削除（空でない場合 `NotEmpty`）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
-| `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし）。削除した・一部だけ削除した・フォルダが無い・上限を超えた、のどれでも成功を返し、どれだったかは `Result.Status`（`Deleted` / `PartiallyDeleted` / `NotFound` / `TooManyAssets`）に入る。削除まで進んだときは `DeletedAssetCount` / `FailedAssetCount` も入る。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | `MoveFolder` | フォルダ内の全アセットをサブフォルダ構造を保ったまま移動。部分失敗は `FailedAssets` に列挙（`AssetFolderRefactor` 必要）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | 🆓 `GetSelectedAssets` | Content Browser で現在選択中のアセットを返す |
 | `SelectAssets` | Content Browser で指定アセットを選択（`ContentBrowserNavigate` 必要） |
@@ -2795,7 +2795,7 @@ UE 5.8 の Control Rig アセットには 2 つの形式があります。ここ
 
 **`Toolset.Editor.ControlRig.*`（44 件）** — 上記ネイティブのアセット編集コマンドのミラー。グループ：アセット作成（1。`Create` はプロジェクトの `RigVM.BlueprintIndependentAssets` の設定にかかわらず常に旧形式の Control Rig を作ります。`CreateAsset` とは異なります。[Control Rig アセットの形式](#control-rig-アセットの形式) を参照）/ ヒエラルキー観測（8）/ ヒエラルキー編集（7）/ グラフ管理（10）/ ノード（7）/ ピン（6）/ 変数（5）。
 
-**`Toolset.Editor.SequencerControlRig.*`（63 件）** — アニメーション時のコントロールオーサリング。実装は Sequencer モジュール（`SequencerControlRigTools`）ですが、全コマンドが ControlRig のコントロールを対象とするため本セクションに掲載しています。ControlRig に加えて `MovieSceneAnimMixer` が必要です。UE 5.8 では、`ControlRigPath` を受け取る 38 件（残りの 25 件は受け取らず、影響を受けません）は、ランタイムアセットの Control Rig を、委譲する前に `UnsupportedOperation` で断ります。委譲先の Toolset はシーケンス内の rig を Blueprint のクラスで探しますが、ランタイムアセットにはそのクラスが無く、見つからずに失敗するか、パスの文字列が重なる別の旧形式の rig を操作してしまうためです。値の読み取りだけのコマンド（`Get...` / `Is...`）も同じく断ります。メッセージにはコマンド名とアセットのパスが入り、パスはオブジェクトパス（`/Game/Rigs/CR_X.CR_X`）でもパッケージパス（`/Game/Rigs/CR_X`）でも同じです。案内できる同等のネイティブコマンドはありません。`AssetPath` や `ControlRigPath` の欠落は今までどおり先に `InvalidParams` になり、旧形式の rig、アセットが存在しないパス、アセットのパスでない値は今までどおり委譲されます。グループ：
+**`Toolset.Editor.SequencerControlRig.*`（63 件）** — アニメーション時のコントロールオーサリング。実装は Sequencer モジュール（`SequencerControlRigTools`）ですが、全コマンドが ControlRig のコントロールを対象とするため本セクションに掲載しています。ControlRig に加えて `MovieSceneAnimMixer` が必要です。UE 5.8 では、`ControlRigPath` を使う 37 件（残りの 26 件は使わず、影響を受けません。`ZeroControlRigTransforms` は `ControlRigPath` を互換のために受け付けるだけで、アクティブな Sequencer の rig に作用するので、この 26 件に入ります）は、ランタイムアセットの Control Rig を、委譲する前に `UnsupportedOperation` で断ります。委譲先の Toolset はシーケンス内の rig を Blueprint のクラスで探しますが、ランタイムアセットにはそのクラスが無く、見つからずに失敗するか、パスの文字列が重なる別の旧形式の rig を操作してしまうためです。値の読み取りだけのコマンド（`Get...` / `Is...`）も同じく断ります。メッセージにはコマンド名とアセットのパスが入り、パスはオブジェクトパス（`/Game/Rigs/CR_X.CR_X`）でもパッケージパス（`/Game/Rigs/CR_X`）でも同じです。案内できる同等のネイティブコマンドはありません。`AssetPath` や `ControlRigPath` の欠落は今までどおり先に `InvalidParams` になり、旧形式の rig、アセットが存在しないパス、アセットのパスでない値は今までどおり委譲されます。グループ：
 
 | グループ | 件数 | コマンド |
 |---|---:|---|
