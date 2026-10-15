@@ -383,7 +383,9 @@ Response `Data` (the same fields, plus the catalog):
     "HasDeniedCommands":             false,
     "IsKeyboardInputAllowed":        true,
     "IsKeyboardModifierInputAllowed":false,
-    "IsPasswordFieldWriteAllowed":   false
+    "IsPasswordFieldWriteAllowed":   false,
+    "IsPasswordFieldReadAllowed":    false,
+    "IsRuntimePasswordFieldReadAllowed": false
   }
 }
 ```

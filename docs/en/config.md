@@ -57,6 +57,8 @@ The default list is deliberately two commands: a modal dialog means the editor i
 
 Matching CLI flag: `-uaip-command-pump-starved-tick-allow-list=...`
 
+To close a menu that was opened from inside a modal dialog, add `UAIP.Editor.UIAutomation.DismissMenus` to this list (for example `StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.DismissMenus`; the default entries must be kept in the value because the key replaces the default) and restart the editor. Without it, `DismissMenus` waits in the queue until the dialog is closed. Only this one UI command is meant to be added: it changes the state of Slate's menu stack and nothing else.
+
 The effective list is resolved at startup and written to the Output Log as a single line (`Starved tick allowlist: ...`). If an ini edit does not appear to take effect, or an entry was dropped for being malformed, **the startup log is where to look**. Note that reading the `uaip.Command.StarvedTickAllowList` console variable only ever returns the default — the ini and the command line layer on top of it rather than writing back to it.
 
 #### Console variables
@@ -69,6 +71,17 @@ The effective list is resolved at startup and written to the Output Log as a sin
 | `uaip.Command.StarvedTickAllowList` | as above | **No** | Read-only; set it from an ini file or the command line |
 
 `StarvedTickAllowList` is read-only because the console is reachable through the very interface this list exists to constrain. A boundary that can be widened from inside is not a boundary.
+
+### `[UAIP.UIAutomation]` — Guarding the write commands (off by default)
+
+The click, hover and key commands of `UAIP.Editor.UIAutomation` are refused while a drag is in progress, and when the target is outside the open modal window or menu. `InputText`, `FillForm`, `SetCheckboxState` and `SetComboSelection` do not go through that check unless you turn it on here.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `GuardWriteCommands` | bool | `False` | When `True`, those four commands are checked once, when the request is accepted, in the same way as the click: they are refused with `PolicyViolation` (and `Result.GuardDiagnostics`) while a drag is in progress or when the target is outside the open modal window or menu. `FillForm` is all or nothing: if the target of any field is refused, nothing is written, and `Result.RejectedFieldName` holds the `WidgetRef` of the first refused field. `SetComboSelection` is checked once, not again for the click on the item |
+
+The value is read once at startup, so changing it needs an editor restart. Only `DefaultUAIP.ini` is read, and a value that is not a boolean is ignored with the default kept. No CLI equivalents. See [UAIP.Editor.UIAutomation](commands.md#uaipeditoruiautomation).
+
 
 ### `[UAIP.Jobs]` — Per-frame budget for job-style commands
 
@@ -378,6 +391,8 @@ Every `[UAIP.SafetyPolicy]` bool flag has a matching `-uaip-policy-*` CLI flag, 
 | `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input=True` |
 | `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write=True` |
 | `AllowRuntimePasswordFieldWrite` | `-uaip-policy-allow-runtime-password-field-write=True` |
+| `AllowPasswordFieldRead` | `-uaip-policy-allow-password-field-read=True` |
+| `AllowRuntimePasswordFieldRead` | `-uaip-policy-allow-runtime-password-field-read=True` |
 | `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass=True` |
 | `AllowProjectNetDriverNetModeQuery` | `-uaip-policy-allow-project-net-driver-net-mode-query=True` |
 | `DisablePIEStart` | `-uaip-policy-disable-pie-start=True` |

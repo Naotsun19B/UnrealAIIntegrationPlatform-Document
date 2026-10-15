@@ -383,7 +383,9 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
     "HasDeniedCommands":             false,
     "IsKeyboardInputAllowed":        true,
     "IsKeyboardModifierInputAllowed":false,
-    "IsPasswordFieldWriteAllowed":   false
+    "IsPasswordFieldWriteAllowed":   false,
+    "IsPasswordFieldReadAllowed":    false,
+    "IsRuntimePasswordFieldReadAllowed": false
   }
 }
 ```

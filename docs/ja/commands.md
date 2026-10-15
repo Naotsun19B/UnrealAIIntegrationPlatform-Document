@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1314 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1735 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1315 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1736 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -86,7 +86,7 @@ Toolset ブリッジコマンドが、経由する Toolset 連携の準備がで
 | Editor Engine Toolset 🧩 | `UAIP.Editor.Engine.Toolset` | 1 | — | — |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ |
 | Editor Execution | `UAIP.Editor.Execution` | 9 | — | — |
-| Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
+| Editor UI Automation | `UAIP.Editor.UIAutomation` | 17 | 10 | ✅ |
 | Editor Assets | `UAIP.Editor.Assets` | 51 | 6 | 一部（29/51） |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 22 | 8 | 一部（9/22） |
@@ -398,6 +398,14 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 **`PlayerIndex` の意味はコマンドによって違います。** 既存の入力コマンド（`InjectInputKey` など）は**プレイヤーコントローラー**の番号を取ります。`PressGameViewportUIKey`・`TypeGameViewportText`・`DumpHUDState` は、ゲームインスタンスの**ローカルプレイヤー**の一覧の番号を取ります。どちらかはパラメータの説明に書かれています。
 
+**`DumpGameViewportWidgetTexts` がパスワード欄の平文を返すには、安全設定が要るようになりました。** これまでは `RuntimeWidgetPasswordTextRead` だけで返っていました。これからは、その Capability **と**、`[UAIP.SafetyPolicy]` の `AllowRuntimePasswordFieldRead=True`（起動時に読まれます。起動フラグは `-uaip-policy-allow-runtime-password-field-read=True`）の両方が要ります。Capability だけに頼っていた運用者の呼び出しは、失敗せずに値が伏せられ、`PasswordTextWithheldBySafetyPolicy` の limitation が伏せた欄の数を示します。設定がオンで Capability が無いときの limitation は、これまでどおり `PasswordTextWithheld` です。[Safety & Capabilities](safety.md#runtime-ゲームビューポートの-ui) を参照してください。
+
+**`SnapshotUI` と `DumpSlateTree` のラベル。** ラベルが `None` だったノードは型名になり、リッチテキストは表示内容の近似になり、パスワード欄のラベルはヒント文か型名になります。`DumpSlateTree` の `AccessibleText` も同じ規則に従います。リッチテキストは `SnapshotUI` の既定の対象に入るので、ノード数や Ref の番号の振られ方が変わることがあります。[UAIP.Editor.UIAutomation](#uaipeditoruiautomation) を参照してください。
+
+**`Toolset.Editor.SlateInspector.SnapshotUI` は入力欄の行を、パスワード欄かどうかによらず伏せます。** [UAIP.Editor.UIAutomation](#uaipeditoruiautomation) を参照してください。
+
+**シナリオは、宣言されていない引数へ渡される機微な値を拒否します**（`PolicyViolation`、`Reason: SensitiveValueToUndeclaredParam`）。[機微な値と伏せる場所](#機微な値と伏せる場所) を参照してください。
+
 ---
 
 ## UAIP.Core
@@ -431,6 +439,18 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 **伏せる場所。** コマンドのたびにエディタが出す完了通知です。エディタ自身の通知と、コマンドを記録するコード（監査記録・ログ）がこれを受け取ります。宣言した位置の値は、型にかかわらず（`null`・オブジェクト・配列も）長さも載らない文字列 `"<redacted>"` になります。応答の形がパスの示す形と違うときは、飛ばさずに伏せます。`[]` の位置にある値が配列でも `null` でもないとき、また項目を読む位置にある値がオブジェクトでも `null` でもないとき（例: `A.B` の `A` が文字列や配列）は、その値ごと伏せます。宣言を頼れないときは、トップレベルの項目名を残して `Data` 全体を伏せます。宣言したパスが不正なとき（コマンドの登録時にエディタがエラーをログに出します）と、コマンドを引けないとき（未知の名前、または実行中に登録が解除されたコマンド）です。[シナリオ](scenario.md) で、前のステップの応答から伏せる値（またはそれを含む配列やオブジェクト）を `${...}` のテンプレートで取ったステップは、パラメータと応答の `Data` の全体を伏せて記録されます。その値を受け取った後続のステップも同じです。ステップ自身には元の値が届きます。
 
 **伏せない場所。** 呼び出し元に返す応答（MCP・HTTP・WebSocket・CLI、およびシナリオの結果の各ステップ）と、コマンドが保存する成果物は元の値のままです。その値は、コマンドが求める Capability のもとで呼び出し元自身が求めたものだからです。成果物は、Artifact の自動 GC が消すまでディスクに残ります。
+
+**シナリオで機微な値を渡してよい場所。** `${...}` テンプレートは、前のステップの応答の機微な部分（`SensitiveResponseData` の位置。`SnapshotUI` の `PasswordFieldValues` など）を、後のステップのパラメータへ写せます。ただし、受け取るコマンドが機微な値の行き先として宣言した位置にだけです。宣言されている行き先は次のとおりです。
+
+| コマンド | 行き先 |
+|---|---|
+| `InputText` | `Text` |
+| `FillForm` | `Fields` の各エントリの `Value`（エントリの `WidgetRef` は含みません） |
+| `TypeGameViewportText` | `Text` |
+
+これらのコマンドは、行き先で受け取った値を、エラー文・応答・artifact・ログに書きません。`DescribeCommand` は行き先を一覧しないので、この表が一覧です。機微な値をそれ以外の場所へ渡すステップは**実行されず**、`PolicyViolation` と `Result.Reason: SensitiveValueToUndeclaredParam` で失敗します。エラー文は値もテンプレートの式も含まない固定の文で、再試行されません。コマンドを引けないときも同じです。位置は**キーの大文字小文字も含めて**完全一致で比べます。`Text` が宣言されているとき、`text` に入れた機微な値は拒否されます。検査するのは直接の参照だけです。機微な値を持ったステップの応答を参照しただけのステップ（たとえば `InputText` の応答から `WidgetRef` を取る `ClickWidget`）は拒否されません。この検査ができる前に、宣言されていない引数へ機微な値を渡していたシナリオは、これから失敗します。そうする必要があるセッションには、DefaultDenied の Capability `ScenarioSensitiveValueToUndeclaredParam` が要ります（[Safety & Capabilities](safety.md#シナリオ実行) 参照）。
+
+**そのようなステップのエラー文。** 機微な値を受け取ったステップ（全パラメータを伏せて記録されるステップ）は、シナリオの結果の `ErrorMessage` が固定の文に置き換わります。`ErrorCode` は残ります。シナリオ実行のログにも出しません。完了通知でも、全パラメータが伏せられる要求の `ErrorMessage` は同じように置き換えられます。
 
 ---
 
@@ -635,7 +655,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | 🆓 `DumpOpenTabs` | 開いているアセットエディタタブ一覧（JSON） |
 | 🆓 `DumpOutputLog` | バッファリングされた Output Log（テキスト Artifact、行数・フィルタ対応） |
 | 🆓 `DumpMessageLog` | Message Log エントリ（カテゴリフィルタ付き JSON Artifact） |
-| 🆓 `DumpSlateTree` | Slate ウィジェットツリー（JSON、ルートパスフィルタ対応） |
+| 🆓 `DumpSlateTree` | Slate ウィジェットツリー（JSON、ルートパスフィルタ対応）。`IncludeTextContent: true` のときの `AccessibleText` には `SnapshotUI` と同じラベルが入る（型名またはリッチテキストの近似。パスワード欄と判定できない欄では、アクセシビリティ文字列ではなくヒント文か型名） |
 | 🆓 `InspectMenu` | 指定パス配下のトップバーメニュー構造（ラベル・enabled・checked） |
 | 🆓 `InspectContextMenu` | 指定対象のコンテキストメニュー項目（実行はしない） |
 | 🆓 `ObserveWidget` | ウィジェットの Visibility / Enabled / Hovered / Focused 状態を時系列サンプリング |
@@ -752,10 +772,11 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | 🆓 `CancelDialog` | アクティブなモーダルダイアログをキャンセル（Cancel/No をクリック） |
 | 🆓 `InvokeContextMenuAction` | 指定対象を右クリックしてコンテキストメニューから項目を実行 |
 | 🆓 `HoverWidget` | ウィジェットに OnMouseEnter をシミュレート |
-| 🆓 `PressKey` | 修飾キー対応のキー入力をシミュレート（危険ショートカットブラックリスト付き） |
+| 🆓 `PressKey` | 修飾キー対応のキー入力をシミュレート（危険ショートカットブラックリスト付き）。メニューを閉じるには `DismissMenus` を使う（Escape は受け取ったウィジェットが消費しうる） |
 | 🆓 `WaitForWidget` | `SnapshotUI` の `WidgetRef` で識別したウィジェットが期待状態になるまでポーリング |
 | 🆓 `FillForm` | フォームウィジェットへの一括入力を逐次 state machine で実行 |
-| 🆓 `SnapshotUI` | 範囲を絞り込め、除外分も報告する UI の構造スナップショットを取得 |
+| 🆓 `SnapshotUI` | 範囲を絞り込め、除外分も報告する UI の構造スナップショットを取得。`IncludeFieldValues: true` を指定すると入力欄の値とヒント文も返す。パスワード欄の平文には `AllowPasswordFieldRead` と `EditorWidgetPasswordTextRead` が必要 |
+| 🆓 `DismissMenus` | 開いているメニューやポップアップ（すべて、または指定したウィジェットを含むメニューとそのサブメニュー）を閉じ、消えるまで待つ |
 | 🆓 `OpenPasswordTestWindow` | パスワード用 `SEditableTextBox` を持つ小さな単独のテストウィンドウを開く（`InputText` やパスワードフィールドのポリシーが、パスワード欄をどう扱うかを確かめるためのターゲット）。アセット・設定・保存済みの状態は何も変更しない。窓を開くだけなので、製品版だけでなくデモ版にも含まれる |
 
 > **Note**: ウィジェットを対象にするコマンドは、ウィジェットパスではなく `SnapshotUI` が返す `WidgetRef` を受け取ります。先に `SnapshotUI` を呼び、対象ウィジェットの `WidgetRef` を渡してください。
@@ -783,6 +804,58 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 >
 > `RootWidgetRef` は使い捨てです。呼び出しが完了すると、指定した Ref だけでなく**そのセッションの `WidgetRef` がすべて**無効化されます — `SnapshotUI` の呼び出しごとに新しい世代が始まるためです。以前の Ref を残したまま段階的に絞り込みたい場合は `RootWidgetPath` を使ってください。`SnapshotUI` は引き続き `IsReadOnly() == true` を宣言し `bReadOnly` 下でも実行できます — リセットされるのは UAIP 側の Ref キャッシュのみで、永続的なエディタの状態は変わりません。UI Automation の全コマンドを通じて、`WidgetRef` はそれを発行したスナップショットから 60 秒で失効します。
 
+> **ラベル。** `SnapshotUI` のノードの `Label` は、次の順で決まります。ウィジェットのアクセシビリティ文字列、リッチテキスト（`SRichTextBlock`）なら表示内容の近似、ウィジェットの Tag、型名。名前もアクセシビリティ文字列も無いウィジェットは、`None` ではなく型名がラベルになりました。リッチテキストの近似は、`<...>` のタグをすべて取り除くので、タグ名や属性（リンク先など）はラベルに出ません。複数行は空白 1 つでつなぎます。実際の表示と少し食い違うことがあります。スタイルに無いタグを使った文字列は近似になり、文字どおりの `<b>` も除かれます。リッチテキストは既定の対象（ロール `tb`）に入るので、ノード数・Ref の番号の振られ方・`MaxNodes` に達する位置が変わることがあります。
+>
+> - ボタンのラベルは子のアクセシビリティの要約をつなげて作られるため、子がリッチテキストでも改善しません。
+> - `Label` は、パス属性 `[Label=...]` が照合する文字列（加工していないアクセシビリティ文字列）とは別物です。`Label` をそのまま `[Label=...]` に書いても一致しないことがあります。
+> - `DumpSlateTree` では、`AccessibleText`（`IncludeTextContent: true` のとき）にも同じラベルが入ります。互換のためキー名は変えていないので、名前と中身は正確には一致しません。`PressKey` の `FocusedWidgetTypeName` も、名前に反して中身は対象のウィジェットの型です。こちらもそのままです。
+> - パスワード欄と、パスワード欄かどうか判定できない欄のラベルは、アクセシビリティ文字列ではなく、ヒント文（無ければ型名）になります。`SnapshotUI` では `IncludeFieldValues` によらず常にそうで、`DumpSlateTree` の `AccessibleText` も同じです。アプリがパスワード欄のアクセシビリティ文字列を値に結び付けていても、ラベルから漏れません。通常の欄のラベルは変わりません。ボタンのように子から組み立てる親のラベルは対象外です。アプリがパスワード欄のアクセシビリティ文字列を値に結び付けていると、その値が親のラベルに現れることがあります。
+>
+> **`IncludeFieldValues`。** `SnapshotUI` は bool の `IncludeFieldValues`（既定 `false`）を受け取ります。`true` にすると、入力テキスト（`SEditableTextBox` の内側の `SEditableText` と `SMultiLineEditableText`）のノードに次の欄が付きます。
+>
+> | 欄 | 付く条件 | 内容 |
+> |---|---|---|
+> | `HintText` | 常に | ヒント文。制御文字を除き、256 文字で切ります |
+> | `Value` | パスワード欄でないとき | 入力されている文字列。256 文字で切り、切ったときは `ValueTruncated: true`。改行とタブは残し、それ以外の制御文字は除きます |
+> | `ValueWithheld` | パスワード欄、またはパスワード欄かどうか判定できないとき | `Value` の代わりに `"Password"` または `"PasswordUnknown"` |
+>
+> 保存されるスナップショット（artifact の JSON。応答の `Result` ではありません）のトップレベルに、伏せた欄の数（`ValueWithheldCount`）と、伏せた値を応答に返さなかったときの理由（`PasswordValuesWithheldReason`）も入ります。`IncludeFieldValues` はスキーマのパラメーターで、`EffectiveParams` にも出ます。`LabelContains` が見るのは `Label` だけで、値は検索しません。複数行の入力欄は既定の対象に入りません。`WidgetTypes` で名指しする（または `bIncludeUnclassified` を指定する）と含まれますが、内側のテキストは判定できない欄として扱うので、値は伏せられます。
+>
+> パスワード欄（と、判定できない欄）の平文が返るのは、安全設定 `AllowPasswordFieldRead` がオンで、**かつ**セッションが Capability `EditorWidgetPasswordTextRead` を持つときだけです（[Safety & Capabilities](safety.md#エディタ操作) 参照）。返るときは、応答の `Result` にだけ、スナップショットの保存と添付が成功し、値が 1 件以上あるときに限って（それ以外の `Result` は空です）、`PasswordFieldValues`（`{Ref, Value, ValueTruncated?}` の配列。最大 16 件・各 256 文字）に入ります。入りきらない分は `PasswordFieldValuesTruncated: true` と `PasswordFieldValuesOmittedCount` で知らせます。保存されるスナップショットとログには出ず、完了通知では伏せられます。失敗した応答（スナップショットを保存できなかったときなど）にも入りません。`SnapshotUI` 自体は `EditorWidgetPasswordTextRead` を要求しないので、持たないセッションでもスナップショットは返り、値だけが伏せられます。理由は（保存されるスナップショットの）`PasswordValuesWithheldReason` が示します。安全設定がオフなら Capability の有無によらず `PasswordTextWithheldBySafetyPolicy`（設定は起動時に読まれるため、最初に直すべきものとして先に知らせます）。設定がオンで Capability が無ければ `PasswordTextWithheld` です。名前と優先順は `DumpGameViewportWidgetTexts` と同じです。
+>
+> **とても深いツリー。** 保存する JSON には、入れ子の深さの上限があります。出力するウィジェットの入れ子が 30 段を超えるウィジェットは、その下も含めて出力しません。`Traversal.OutputNestingLimitReached` が `true` になり、出力しなかった数が `Traversal.OutputNestingSkippedCount` に入り、見ていない枝があるので `Traversal.Complete` も `false` になります。出力しなかったウィジェットには `WidgetRef` が付きません。以前は、こういうツリーで何も知らせずに空の artifact が返ることがありました。それでも JSON を作れないときは、深さの上限を示す `ExecutionFailed` で失敗し、直前のスナップショットの `WidgetRef` は有効のまま残ります。
+>
+> **`DismissMenus`** は、開いているメニューやポップアップを閉じ、消えるまで待ちます。
+>
+> - `WidgetRef`（任意）。省略するか `null` なら、開いているメニューをすべて閉じます。`WidgetRef` を指定すると、そのウィジェットを含むメニューと、そこから開いたサブメニューだけを閉じます。親のメニューは開いたまま残り、応答には `MenuStackOpenAfter: true` が付きます。空文字列・文字列以外の値・形式の正しくない Ref は `InvalidParams` で拒否します。Ref を取り損ねたときに「すべて閉じる」にすり替わらないようにするためです。
+> - Capability は `EditorUIAutomation` です。読み取り専用ではなく、デモ版に含まれ、Toolset ブリッジはありません。キーボードフォーカスは動かさず、Escape も送りません。
+> - `Result`（と artifact）には `MenusOpenBefore`・`MenuWindowCountBefore`・`MenuWindowCountAfter`・`MenuStackOpenAfter`・`FramesWaited` が入ります。閉じた後にフォーカスを持つウィジェットがあれば `KeyboardFocusWidgetType` も入ります。
+> - 閉じたメニューのウィンドウが消えるまで、最大で 10 フレーム**かつ** 1 秒（遅いほう）待ちます。それでも残っていれば `ExecutionFailed` で、残ったウィンドウの数とメニュースタックの状態を `Result` に入れます。
+> - 拒否されるのはドラッグ中だけです（`PolicyViolation`、`Reason: DragInProgress`、`GuardDiagnostics` 付き）。メニューやモーダルの外にあることは理由になりません。
+> - 何も開いておらず `WidgetRef` も無いときは、`MenusOpenBefore: false`・`FramesWaited: 0` の成功です。何度呼んでも構いません。`WidgetRef` を指定した呼び出しは、メニューが閉じた後では冪等になりません。`NotFound` を返し、ウィジェットが破棄されていれば `Result.Reason: WidgetDestroyed`（閉じたメニューの中のウィジェットは通常破棄されます。要求の受付前でも後でも同じです）、ウィジェットは残っているがどのメニューにも属さなければ `Result.Reason: WidgetNotInApplicationMenu` です。どのメニューにも属さないウィジェットを指定したときも `WidgetNotInApplicationMenu` です。これらのときは何も閉じません。形式の不正や期限切れの Ref は、他の UI コマンドと同じく `InvalidParams` / `NotFound` です。
+> - 待っている間に UAIP が停止したときは、`ExecutionFailed` と `Reason: DeliveryCancelledByShutdown` を 1 回だけ返します。
+> - **制限。** 閉じる対象にも数える対象にもなるのは、アプリのメニュースタックに載ったメニューだけです。スタックに載らずに開くメニュー（一部のエンジンのプラグインにあります）には触れません。`WidgetRef` なしで、そういうメニューだけが開いているときは、`MenusOpenBefore: false` の成功を返してウィンドウは残ります（`MenuWindowCountAfter` で分かります）。その中のウィジェットを `WidgetRef` に指定したときは、`NotFound` と `WidgetNotInApplicationMenu` です。そのメニュー自身の操作で閉じてください。
+> - **モーダルダイアログの中から。** モーダルダイアログが開いている間、コマンドポンプの許可リストに無いコマンドはキューで待ち、ダイアログが閉じてから実行されます。その間に呼び出し側の Transport がタイムアウトすることがあります。モーダルの中から開いたピッカーを閉じるには、コマンドポンプを有効にし、`StarvedTickAllowList` に `UAIP.Editor.UIAutomation.DismissMenus` を足して、エディタを再起動します（このリストは起動時に 1 回だけ読まれます）。[`[UAIP.CommandPump]`](config.md#uaipcommandpump--モーダル表示中のコマンド実行既定で無効) を参照してください。
+> - `PressKey` で Escape を送ることはできますが、キーを受け取ったウィジェット（メニューの検索欄など）が消費すると、メニューは閉じません。メニューを閉じるには `DismissMenus` を使ってください。
+>
+> **操作が拒否された理由の確認。** `ClickWidget`・`HoverWidget`・`PressKey` は、ドラッグ中（`DragInProgress`）、モーダルが開いていて対象がその外にあるとき（`ModalActive`）、メニューが開いていて対象がその外にあるとき（`ForeignMenuActive`）に、`PolicyViolation` で拒否されます。`ErrorMessage` はその理由です。応答の `Result` と保存される報告の両方に `GuardDiagnostics` オブジェクトが付くので、artifact を開かなくても原因が分かります。
+>
+> | 欄 | 内容 |
+> |---|---|
+> | `RejectReason` | 上の理由 |
+> | `TargetWidgetType`, `TargetWindowType` | 対象の型と、それが属するウィンドウの種類（`Normal` / `Menu` / `ToolTip` / `Notification` / `CursorDecorator` / `Unknown`） |
+> | `TargetInMenuStack` | 対象がアプリのメニュースタックのメニューに属するか |
+> | `KeyboardFocusWidgetType`, `KeyboardFocusWindowType` | キーボードフォーカスの位置（誰も持っていなければ出ません） |
+> | `OpenMenuWindowCount`, `MenuStackOpen` | 見えているメニューのウィンドウの数と、メニュースタックが開いているか |
+> | `ActiveModalWindowTitle` | 開いているモーダルウィンドウのタイトル（あれば） |
+>
+> 出るのは型名・ウィンドウの種類・モーダルのタイトルだけで、ウィジェットのテキストは入りません。どの理由でも同じキーを同じ規則で出します。対象が「開いているメニューの中」かどうかは、アプリのメニュースタックのメニューに属するか（補助的に、Menu 型ウィンドウの中か）で判定するようになり、親を最大 50 段たどる方式ではなくなりました。そのため、メニューの深い位置にあるウィジェットや、独自のウィンドウを持たずに開くメニュー（PIE のゲーム画面のコンボなど）が、「メニューの外」として拒否されることはなくなります。
+>
+> **書き込み系コマンドのガード（`GuardWriteCommands`）。** `InputText`・`FillForm`・`SetCheckboxState`・`SetComboSelection` は、既定ではこのガードを通りません。`DefaultUAIP.ini` の `[UAIP.UIAutomation]` で `GuardWriteCommands=True` にする（起動時に 1 回だけ読むのでエディタの再起動が必要。ini のみで起動フラグはありません。[設定リファレンス](config.md#uaipuiautomation--書き込み系コマンドのガード既定で無効) 参照）と、要求を受け付けるときに 1 回、クリックと同じ判定を受けます。ドラッグ中、または対象が開いているモーダルウィンドウやメニューの外にあるときは、`PolicyViolation` と同じ `GuardDiagnostics` で拒否されます。`FillForm` は全か無かです。どれか 1 つの欄の対象が拒否されたら、どの欄にも書き込まず、最初に拒否された欄の拒否を返します。このとき `Result.RejectedFieldName` にその欄の `WidgetRef` が入ります。解決できない欄が混じる `FillForm` は、ガードを判定する前に、これまでどおりの検証エラーを返します。`SetComboSelection` は要求を受け付けるときに 1 回だけ判定し、コンボを開いた後の項目のクリックでは判定し直しません。判定はその時点のもので、値を書き込む前に状態が変わる可能性は残ります。
+>
+> **記録。** `InputText` に渡した文字列（`Text`）と `FillForm` に渡した値（`Fields`）は、`TypeGameViewportText` の文字列と同じく、完了通知と監査記録で伏せられるようになりました。以前は入力したとおりに記録されていました。
+
+
 ### Toolset ブリッジ — SlateInspector（10 件）🧩
 
 `SlateInspectorToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SlateInspector.*`。refPath でウィジェットを指定します。ネイティブ側のコマンドは、`SnapshotUI` が返す `WidgetRef` でウィジェットを指定します。このセクションの全ブリッジコマンドは、対応するネイティブコマンドと同じ Capability を要求するようになりました（[Safety & Capabilities](safety.md) 参照）— それまでのリリースでは Capability チェックなしにディスパッチされていました。
@@ -796,11 +869,13 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | `Toolset.Editor.SlateInspector.ClickWidget` | 指定 ref のウィジェットへのマウスクリックをシミュレート |
 | `Toolset.Editor.SlateInspector.HoverWidget` | 指定 ref のウィジェット上へカーソルを移動 |
 | `Toolset.Editor.SlateInspector.InputText` | 指定 ref のウィジェットにテキストを入力 |
-| `Toolset.Editor.SlateInspector.PressKey` | キー入力を送信（`Ctrl+S` のような修飾キープレフィックス対応） |
+| `Toolset.Editor.SlateInspector.PressKey` | キー入力を送信（`Ctrl+S` のような修飾キープレフィックス対応）。メニューを閉じるには `DismissMenus` を使う（Escape は受け取ったウィジェットが消費しうる） |
 | `Toolset.Editor.SlateInspector.SetComboSelection` | コンボボックスウィジェットの項目を選択 |
 | `Toolset.Editor.SlateInspector.FillForm` | 複数のフォームフィールドを 1 回の呼び出しで入力 |
 
 > **Note**: `Toolset.Editor.SlateInspector.PressKey` はネイティブの `PressKey` と同じ危険ショートカットのブロックリストを適用しますが、現在どのウィジェットにフォーカスがあるかを解決する手段が無いため、**Backspace を常時ブロック**します — ネイティブコマンドが持つ「テキスト入力ウィジェットにフォーカスがある場合の例外」はブリッジには引き継がれません。
+
+> **`Toolset.Editor.SlateInspector.SnapshotUI` は入力欄の行を伏せます。** エンジンが描画する行には各ウィジェットのラベルが入り、入力欄ではそれが入力中の文字列そのものです。UAIP は、入力欄（`SEditableText`・`SEditableTextBox`・`SMultiLineEditableText`・`SMultiLineEditableTextBox`）に属する行は、パスワード欄かどうかによらず、また Ref の接頭辞が `tb` の行も、ラベルを `"(withheld)"` に置き換えます。ウィジェットと結び付けられない行（Ref を引き当てられない、Ref が無い、ラベルを解析できない）も伏せます。ラベルの範囲すら分からない行は、行全体が `(withheld)` だけになります。それ以外の行と応答の形は変わりません。`Ref` が解決できなかったときの 1 行の応答 `Error: Could not resolve ref` は、そのまま返ります。エンジンの結果が UAIP の想定と違う形のときは、結果の一部も含まない固定の文で `InternalError` を返します。Ref を引き当てる部分が読み込まれていないときは、Ref のある行をすべて伏せます。入力欄に入っている値を読むには、ネイティブの `SnapshotUI` を `IncludeFieldValues` 付きで使ってください。パスワード欄を扱えるのはネイティブのコマンドだけです。
 
 > **⚠️ Breaking change — このセクションの 10 件は、これまで 1 件も動いていませんでした。** 委譲先の toolset 名を**モジュール修飾なしの `SlateInspectorToolset`** として渡しており、ToolsetRegistry は 1 回の完全一致検索でしか解決しないため（前方一致もサフィックス一致もありません）、正しい `SlateInspectorToolset.SlateInspectorToolset` に一致せず、どのコマンドも実行時に「そのような toolset は無い」で失敗していました。**本更新で 8 件が実際に動くようになりました**（`SnapshotUI` / `ListObservers` / `ClickWidget` / `HoverWidget` / `InputText` / `PressKey` / `SetComboSelection` / `FillForm`）。
 >
@@ -3554,7 +3629,7 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | 🆓 `SearchLoadedClasses` | ロード済みクラスを検索（ランタイム内省用） |
 | 🆓 `DumpGameViewportWidgets` | プレイワールドのゲームビューポートの Widget ツリーを返します。ゲーム自身の UI だけで、エディタのツールバーやタブは混ざりません。ツリー全体は JSON artifact に保存し、応答にはノード数、`MaxDepth` / `MaxNodes` で走査が途中で止まったか・どこで止まったか、上位のユーザー Widget の先頭 50 件、各ローカルプレイヤーのキーボード / ゲームパッドのフォーカスと画面領域、`Limitations` が入ります。各ノードは Slate の型、UMG の名前とクラス、矩形、実際に見えているか、どのレイヤーにあるかを持ちます。テキストは `IncludeText: true` のときだけ読みます。[ゲームビューポートの UI と HUD](#ゲームビューポートの-ui-と-hud4) を参照 |
 | 🆓 `FindGameViewportWidgets` | 同じツリーから、指定した条件をすべて満たすノードを探します（`WidgetClass`・`SlateType`・`WidgetName` / `WidgetNameContains`・`OwningPlayerIndex`。1 つ以上が必須）。`WithinWidgetPath` を渡すと、CommonUI の画面など 1 つの Widget の部分木に探す範囲を絞れます。一致には、`ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText` に渡し直す `TypePath` と `Fingerprint` が付きます。何も見つからなくても成功です。一覧を切ったか、走査が途中で止まったかは `ResultLimitReached` と `SearchIncomplete` の limitation で分かります。テキストは読みません |
-| 🆓 `DumpGameViewportWidgetTexts` | ゲームビューポートの**すべての**テキスト Widget のテキストと、入力欄の値を、画面に出ているかどうかを問わず JSON artifact として返します。各エントリに、そのテキストが画面に出ているかの印が付きます。`RuntimeWidgetTextRead`（DefaultDenied）が必要です。パスワード欄の平文は artifact には書かれず、セッションが `RuntimeWidgetPasswordTextRead` も持つときだけ応答（`PasswordFieldValues`）に入ります |
+| 🆓 `DumpGameViewportWidgetTexts` | ゲームビューポートの**すべての**テキスト Widget のテキストと、入力欄の値を、画面に出ているかどうかを問わず JSON artifact として返します。各エントリに、そのテキストが画面に出ているかの印が付きます。`RuntimeWidgetTextRead`（DefaultDenied）が必要です。パスワード欄の平文は artifact には書かれず、セッションが `RuntimeWidgetPasswordTextRead` も持ち、かつ安全設定 `AllowRuntimePasswordFieldRead` がオンのときだけ応答（`PasswordFieldValues`）に入ります |
 | 🆓 `DumpHUDState` | 各ローカルプレイヤーの HUD の状態を JSON artifact として返します: HUD のクラス、表示フラグ、`ShowDebug` の状態、デバッグテキスト、ヒットボックスの名前、HUD が参照している Widget、プレイヤーコントローラーが画面に出している Widget。HUD が描いた内容（線・文字・ボックス）とヒットボックスの位置は読めず、`Limitations` で報告します |
 | 🆓 `ListSubsystems` | エンジン・GameInstance・プレイワールド・ローカルプレイヤーの下で生きている Subsystem を、実体ごとに 1 行（クラス・クラスパス・実体のパス・所有者・状態）で返します。行は決まった 1 つの順に並び、`StartIndex` / `MaxEntries` でページに区切られます。`IncludeNotCreated: true` を付けると、ロード済みで所有者の下に実体が無いクラスも載ります。`Engine` 種別だけの要求ならプレイワールド無しで動きます。プロパティの値は読みません |
 | 🆓 `DumpSubsystemState` | 1 つの Subsystem の実体のプロパティの値を JSON artifact として返します。`RuntimeInspect` と `SubsystemStateDump`（DefaultDenied）が必要です。応答には要約だけが載り、値は artifact に入ります。⚠️ `SubsystemStateDump` を外しても、すでに作られた artifact は残ります — [Safety & Capabilities](safety.md#runtime-subsystem) を参照 |
@@ -3563,7 +3638,7 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 
 実行中のゲームの UI を読み取ります: ゲームビューポートにどの Widget があるか、どこにあるか、見えているか、HUD が何を表示する状態か。返るのはゲーム自身の UI だけで、エディタのツールバーやタブは混ざりません。エディタ全体を対象にする `DumpSlateTree` との違いはここです。PIE でも `-game` 起動でもパッケージ版でも、同じコマンドで使えます。4 つとも [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付け、読み取り専用です: 安全ポリシーが `ReadOnly` のときもモーダルが開いている間も動きます。ゲームビューポートを持たないワールド（サーバーのワールド）は `NotAllowed` で拒否され、選び直せるクライアント側のプレイワールドが応答に添えられます。
 
-**Capability。** `DumpGameViewportWidgets`・`FindGameViewportWidgets`・`DumpHUDState` は `RuntimeInspect`（DefaultAllow）が必要です。`DumpGameViewportWidgetTexts` は `RuntimeWidgetTextRead`（DefaultDenied）が必要で、応答にパスワード欄の平文を入れるには、さらに `RuntimeWidgetPasswordTextRead`（DefaultDenied）が必要です。足りない場合は、その名前を示した `CapabilityNotAvailable` になります。`DeniedCapabilities` で明示的に拒否している場合は `PolicyViolation` です。詳細は [安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) を参照してください。
+**Capability。** `DumpGameViewportWidgets`・`FindGameViewportWidgets`・`DumpHUDState` は `RuntimeInspect`（DefaultAllow）が必要です。`DumpGameViewportWidgetTexts` は `RuntimeWidgetTextRead`（DefaultDenied）が必要で、応答にパスワード欄の平文を入れるには、さらに `RuntimeWidgetPasswordTextRead`（DefaultDenied）が必要です。足りない場合は、その名前を示した `CapabilityNotAvailable` になります。`DeniedCapabilities` で明示的に拒否している場合は `PolicyViolation` です。詳細は [安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) を参照してください。パスワード欄の平文には、安全設定 `AllowRuntimePasswordFieldRead=True` も必要です。Capability だけでは値は伏せられ、`PasswordTextWithheldBySafetyPolicy` の limitation が件数を示します。
 
 **見つけた Widget を操作するには**、一致の `TypePath` と `Fingerprint` を [`ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText`](#ゲームビューポートの-ui-入力3) に渡し、効果はもう一度ツリーを読んで確かめます。
 
@@ -3571,7 +3646,7 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 
 - **矩形**は、ゲームビューポート左上を原点とした物理ピクセルで、直前に描いたフレームの位置です。操作の直後は古い位置のことがあります。描画しない環境（`-nullrhi`）ではツリーは取れても矩形は取れず、`Limitations` に理由が出ます。
 - **テキスト。** `DumpGameViewportWidgets` を `IncludeText: true` で呼んだとき平文になるのは、**画面に出ている**テキストだけです。256 文字で切り詰め、制御文字は除きます。次のものは画面に出ていないとみなします: 非表示、UI の不透明度・色の設定で完全に透明（マテリアルなど色以外の手段で透明にしたものは判定できません）、スクロールの外やビューポートの外などで切り取られている・大きさが 0、描画できない環境。他の Widget に**覆われている**かどうかは判定しません。覆われたテキストも平文になり、その旨が注記されます。入力欄は、長さの区分 — `Empty`、`NonEmpty`（1〜127 文字）、`Long`（128 文字以上）— と、パスワード欄かどうかだけを返します。パスワード欄かどうか判定できない欄は、パスワード欄として扱います。
-- **`DumpGameViewportWidgetTexts` はすべてを返します。** 画面に出ているかを問わず、各エントリに出ているかの印が付きます。結果は artifact に保存され、既定では 24 時間残り、既定の HTTP 設定では ID を知っていれば誰でも取得できます。パスワード欄の平文は artifact には書かれず、`RuntimeWidgetPasswordTextRead` があるときだけ応答の `PasswordFieldValues`（最大 16 件・各 256 文字。残りは件数だけ）に入ります。無いときは `PasswordTextWithheld` の limitation が、伏せた欄の数を示します。
+- **`DumpGameViewportWidgetTexts` はすべてを返します。** 画面に出ているかを問わず、各エントリに出ているかの印が付きます。結果は artifact に保存され、既定では 24 時間残り、既定の HTTP 設定では ID を知っていれば誰でも取得できます。パスワード欄の平文は artifact には書かれず、`RuntimeWidgetPasswordTextRead` があり、かつ安全設定 `AllowRuntimePasswordFieldRead` がオンのときだけ応答の `PasswordFieldValues`（最大 16 件・各 256 文字。残りは件数だけ）に入ります。Capability が無いときは `PasswordTextWithheld` の limitation が、Capability はあるが安全設定がオフのときは `PasswordTextWithheldBySafetyPolicy` の limitation が、伏せた欄の数を示します。
 - **Blueprint のバインディングが呼ばれることがあります。** Widget が何を表示するかを求める過程で、ゲームの Blueprint のバインディング関数が呼ばれることがあります。Widget の観測の応答は、常に `Limitations` でそれを知らせます。
 - **`FindGameViewportWidgets` は既定で見えている Widget だけを探します**（`VisibleOnly: true`）。ここでの「見えている」は、自分と親の表示の設定で非表示になっていないことです。不透明度が 0 の Widget や画面の外にある Widget も含むので、テキストの「画面に出ている」より広い意味です。何も見つからなくても成功です。応答は、一覧を切ったか（`ResultLimitReached`）、走査が途中で止まったか（`SearchIncomplete`）、見えている Widget だけを探した結果の 0 件か、を示すので、「無い」と「見ていない」を区別できます。
 - **開いているドロップダウン**（ゲーム自身のメニュー）の中身もツリーに含まれます。

@@ -253,6 +253,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.UIAutomation.PressKey` | キー入力を送る | `EditorKeyboardInput` |
 | `UAIP.Editor.UIAutomation.WaitForWidget` | ウィジェットの出現を待機する | |
 | `UAIP.Editor.UIAutomation.FillForm` | フォームを自動入力する | |
+| `UAIP.Editor.UIAutomation.DismissMenus` | 開いているメニューやポップアップを閉じる | |
 | `UAIP.Editor.UIAutomation.OpenPasswordTestWindow` | パスワード欄を持つ小さなテスト用ウィンドウを開く（パスワード欄のポリシー検証用） | 窓を開くだけで何も変更しない。デモ版にも製品版にも含まれる（[デモ版が制限するもの・しないもの](#デモ版が制限するものしないもの)） |
 
 ### `UAIP.Editor.Assets.*`（読み取り専用の一部）

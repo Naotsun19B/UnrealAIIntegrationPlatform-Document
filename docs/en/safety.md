@@ -183,7 +183,7 @@ These are active in every session without any configuration. They cover read-onl
 |---|---|
 | `EditorObservation` | Screenshots (`CaptureActiveWindowImage`, `CaptureEditorTabImage`, `CaptureGraphViewportImage`) and JSON state dumps (`DumpEditorState`, `DumpSlateTree`, `DumpSelectionState`, `DumpOutputLog`, `DumpMessageLog`, etc.) |
 | `EditorInspect` | Read-only inspection of editor state — assets, details panel, viewport, graph info. Used by shared infrastructure commands |
-| `EditorUIAutomation` | UI-driving commands — `ClickWidget`, `SelectMenuItem`, `InputText`, `SetCheckboxState`, `DragGraphNode`, `AcceptDialog`, `CancelDialog`, `InvokeContextMenuAction`, `WaitForWidget`, `FillForm`, `SnapshotUI`, etc. — and their `Toolset.Editor.SlateInspector.*` bridge counterparts, which now require the same capability (earlier releases dispatched the bridge commands without a capability check) |
+| `EditorUIAutomation` | UI-driving commands — `ClickWidget`, `SelectMenuItem`, `InputText`, `SetCheckboxState`, `DragGraphNode`, `AcceptDialog`, `CancelDialog`, `InvokeContextMenuAction`, `WaitForWidget`, `FillForm`, `SnapshotUI`, `DismissMenus`, etc. — and their `Toolset.Editor.SlateInspector.*` bridge counterparts, which now require the same capability (earlier releases dispatched the bridge commands without a capability check) |
 | `EditorWorkspaceControl` | Tab and panel management — open/close tabs, focus graph editors, manage editor layout |
 | `EditorLifecycle` | Editor lifecycle operations — `SaveAll`, `ShutdownEditor`, `RestartEditor` |
 | `EditorExecution` | Run Automation Tests and Editor Utility Blueprints from the editor |
@@ -462,6 +462,14 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `ViewportAnnotationCapture` | Capture annotated viewport images with world-coordinate labels — `CaptureViewportImageAnnotated` |
 | `EditorTabSpawn` | Open, close, and enumerate editor tabs by their Slate `FTabId` — `OpenTabById`, `CloseTabById`, `ListSpawnableTabs`. Distinct from the DefaultAllow `EditorWorkspaceControl`, which only reaches asset-editor tabs through `AssetPath`: an arbitrary `TabId` can run a third party's bound delegate — `CanSpawnTab`/`OnSpawnTab` when opening, `OnCanCloseTab`/`OnTabClosed` when closing, and the display-name/tooltip `TAttribute` accessors when listing — including internal tabs never shown in a menu. `ListSpawnableTabs` requires the same capability rather than being DefaultAllow: enumerating carries the same delegate-execution risk, and the only use for the list is deciding what to open or close. Closing is not limited to tabs this session opened — any tab currently open can be closed, including ones a human has open for their own work, and closing bypasses the tab permission list entirely so that cleanup never fails after a permission change |
 | `EditorWindowStateControl` | Minimize the editor main window and restore it from the minimized state — `SetEditorWindowState`. It moves a window the user is looking at, so it is not DefaultAllow. Restoring does not take the keyboard focus from an application the user is working in: Windows keeps the editor behind it. It is registered in the demo build too and is **not** marked as unavailable there, because the command is part of the demo. The demo's `DefaultUAIP.ini` does not grant it; add `+AllowedCapabilities=EditorWindowStateControl` to use the command |
+| `EditorWidgetPasswordTextRead` | Include the plain value of a password field (or of a field whose password state cannot be determined) in the response of `SnapshotUI` called with `IncludeFieldValues: true`. It has no effect unless the safety setting `AllowPasswordFieldRead` is also on — see below. The value is in the response only — up to 16 values of 256 characters — and never in the saved snapshot, the log or the completion notification |
+
+**Reading a password field in the editor — `AllowPasswordFieldRead` and `EditorWidgetPasswordTextRead`.** `SnapshotUI` called with `IncludeFieldValues: true` returns the plain value of a password field, and of a field whose password state cannot be determined (a multi-line input box is one), only when **both** of these hold: the safety setting `AllowPasswordFieldRead` is on, and the session holds the capability `EditorWidgetPasswordTextRead`. If either is missing, the value is withheld and the snapshot says why (`PasswordValuesWithheldReason`): `PasswordTextWithheldBySafetyPolicy` when the setting is off, whatever the capability, or `PasswordTextWithheld` when the setting is on and the capability is missing. The command itself does not fail, because `SnapshotUI` does not require `EditorWidgetPasswordTextRead`.
+
+- Set `AllowPasswordFieldRead=True` under `[UAIP.SafetyPolicy]`, or start the editor with `-uaip-policy-allow-password-field-read=True`. It is read at startup and is not reloaded by `ReloadCapabilities`, so restart the editor. Grant the capability with `+AllowedCapabilities=EditorWidgetPasswordTextRead`.
+- It is independent of `AllowRuntimePasswordFieldRead` (the game viewport; see below) and of `AllowPasswordFieldWrite` (writing). `QueryCapabilities` reports the state as `OperationalConstraints.IsPasswordFieldReadAllowed` and `OperationalConstraints.IsRuntimePasswordFieldReadAllowed`.
+- The value is returned in the response only (`Result.PasswordFieldValues`), never in the saved snapshot, the log or the completion notification. What the AI client does with a response after receiving it is outside UAIP.
+- The `Toolset.Editor.SlateInspector.SnapshotUI` bridge never returns the value of an input field, whatever is granted: it hides those lines altogether.
 
 #### Script execution
 
@@ -470,6 +478,22 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 | `ScriptExecution` 🧩 | Run Python scripts in the editor (`RunEditorPythonScript`; requires `PythonScriptPlugin`) |
 | `PythonCommandExecution` 🧩 | Execute dynamically registered `@uaip_command` Python commands (requires `PythonScriptPlugin`) |
 | `PythonExtensionReload` 🧩 | Rescan and reload registered Python commands (`ReloadPythonCommands`; requires `PythonScriptPlugin`). Also required for the editor's own startup scan of the project's `Scripts/UAIPCommands/**/*.py` to run — without it, no Python commands are registered at launch; grant it and call `ReloadPythonCommands` (or restart with it already granted) to pick them up |
+
+#### Scenario execution
+
+| Capability | What it unlocks |
+|---|---|
+| `ScenarioSensitiveValueToUndeclaredParam` | Lets a scenario pass a sensitive value — a part of an earlier step's response that the command declares as sensitive, such as the `PasswordFieldValues` of `SnapshotUI` — to a parameter that the receiving command has **not** declared as a destination for sensitive values. Without it such a step is refused before it runs: `PolicyViolation` with `Result.Reason: SensitiveValueToUndeclaredParam`. Keys are compared exactly, case included. See [Sensitive values and where they are masked](commands.md#sensitive-values-and-where-they-are-masked) for the declared destinations |
+
+> ⚠️ **Granting this capability fully releases the protection of sensitive values for the scenarios of the session that holds it.** The receiving command may write the value into its response `Result` or `Data`, into its artifacts and into its own log, and a later step may read that response and carry the value on — a chain that UAIP does not check. What UAIP still guarantees is only that the `ErrorMessage` of such a step is replaced by a fixed sentence and that the recorded request stays masked. The statement that a plain password value travels by only one path does not hold for that session. Grant it only where the AI client may see the value, and only to the sessions that need it.
+
+Enable it in `[UAIP.SafetyPolicy]`; where `AllowCapabilityReload=True` it can be applied with `UAIP.Core.ReloadCapabilities`:
+
+```ini
+[UAIP.SafetyPolicy]
+; +AllowedCapabilities=ScenarioSensitiveValueToUndeclaredParam
+```
+
 
 #### Runtime — restricted operations
 
@@ -798,7 +822,7 @@ The game viewport UI commands let an AI read and operate the UI of a running gam
 | `RuntimeUIInputInjection` | Operate the UI of a running game through its input path — `ClickGameViewportWidget`, `PressGameViewportUIKey`, `TypeGameViewportText`. **Separate from `RuntimeInputInjection`**: that one injects input straight into the game and does not let you operate the UI, and this one does not allow `InjectInputKey` and the others. Checked when the request is accepted and again just before the input is sent |
 | `RuntimeUIEditorReservedKeyInput` | In PIE inside the editor, send a UI key that the editor binds to its own PIE commands — by default Escape, which stops PIE. Required in addition to `RuntimeUIInputInjection`. The shortcut bindings are read as they are at that moment (a rebinding is followed; while a physical modifier key is held, bindings with that modifier are checked too), and if the bindings cannot be read, every UI key is refused. Standalone and packaged builds are not restricted |
 | `RuntimeWidgetTextRead` | Read the text of **every** text widget and the value of every editable text, whether it is on screen or not — `DumpGameViewportWidgetTexts`. Denied by default because text that is clipped, transparent or collapsed cannot be seen in a screen capture, and the values are handed to the AI client and saved in an artifact. The ordinary dump (`DumpGameViewportWidgets` with `IncludeText`) gives plain text only for text that is on screen, and only a length class for editable text. Also required by `GetActionDisplayNames` (see [Runtime CommonUI observation](#runtime-commonui-observation)), which reads the texts the CommonUI actions are displayed with |
-| `RuntimeWidgetPasswordTextRead` | Include the plain value of a password field (or of a field whose password state cannot be determined) in the response of `DumpGameViewportWidgetTexts`. Required in addition to `RuntimeWidgetTextRead`. The value is in the response only — up to 16 values of 256 characters — and never in the artifact, the completion notification or the audit record |
+| `RuntimeWidgetPasswordTextRead` | Include the plain value of a password field (or of a field whose password state cannot be determined) in the response of `DumpGameViewportWidgetTexts`. Required in addition to `RuntimeWidgetTextRead`. The value is in the response only — up to 16 values of 256 characters — and never in the artifact, the completion notification or the audit record. Also requires the safety setting `AllowRuntimePasswordFieldRead` — see below |
 
 > ⚠️ **An input the UI did not handle can reach the game.** As with a person's input, a click or key the UI does not consume can become game input (movement, attack). The response says whether the input reached the game, and every operation's response carries the warning. `Success` means the input was delivered by the path a person's input takes; it does not promise that the button's handler ran.
 
@@ -817,6 +841,8 @@ The game viewport UI commands let an AI read and operate the UI of a running gam
 Then restart the editor, or — where `AllowCapabilityReload=True` — call `UAIP.Core.ReloadCapabilities`. While one is not granted, the command that needs it fails with `CapabilityNotAvailable` naming it. `+DeniedCapabilities=` on any of them refuses the command with `PolicyViolation`, even when the same capability is also allowed (deny wins); `+DeniedCapabilities=RuntimeInspect` also refuses the three DefaultAllow commands above.
 
 **Typing into a password field — `AllowRuntimePasswordFieldWrite`.** `TypeGameViewportText` refuses a password field, and a field whose password state cannot be determined, with `PolicyViolation` unless this safety setting is on, even when `RuntimeUIInputInjection` is granted. It is independent of `AllowPasswordFieldWrite`, which covers the editor's own UI (`FillForm`). Set it in `[UAIP.SafetyPolicy]` or with the launch flag `-uaip-policy-allow-runtime-password-field-write=True`; `QueryCapabilities` reports the current state as `OperationalConstraints.IsRuntimePasswordFieldWriteAllowed`. The text itself is never logged, returned or recorded, but a text passed through the CLI (`-uaip-request=`, `-uaip-request-file=`) stays in that command line or file.
+
+**Reading a password field of the game — `AllowRuntimePasswordFieldRead`.** `DumpGameViewportWidgetTexts` returns the plain value of a password field only when the session holds `RuntimeWidgetPasswordTextRead` **and** this safety setting is on. It is independent of `AllowPasswordFieldRead`, which covers the editor's own UI (`SnapshotUI`). Set it in `[UAIP.SafetyPolicy]` or with the launch flag `-uaip-policy-allow-runtime-password-field-read=True`, and restart the editor: it is read at startup. `QueryCapabilities` reports it as `OperationalConstraints.IsRuntimePasswordFieldReadAllowed`. **Compatibility:** the capability alone used to be enough. An operator who granted only `RuntimeWidgetPasswordTextRead` now gets the values withheld, with the `PasswordTextWithheldBySafetyPolicy` limitation (and the number of withheld fields) instead of a failure; with the setting on and the capability missing, the limitation is `PasswordTextWithheld`, as before.
 
 **HUD draw statistics — `EnableHUDCanvasStats`.** `DumpHUDState` adds the canvas draw-batch statistics of the game viewport only when `EnableHUDCanvasStats=True` under `[UAIP.RuntimeObservation]` in `DefaultUAIP.ini`. The default is `False`, there is no launch flag, and the setting is read at startup, so it takes effect after the editor or game is restarted. It grants nothing and changes no command's permission: while it is off the result explains how to turn it on.
 
@@ -1084,6 +1110,8 @@ AllowKeyboardInput=False
 AllowKeyboardModifierInput=False
 AllowPasswordFieldWrite=False
 AllowRuntimePasswordFieldWrite=False
+AllowPasswordFieldRead=False
+AllowRuntimePasswordFieldRead=False
 AllowInputModeBypass=False
 DisablePIEStart=False
 AllowCheatCVarWrite=False
@@ -1119,6 +1147,8 @@ AllowProjectNetDriverNetModeQuery=False
 | `AllowKeyboardModifierInput` | `False` | Allow Ctrl/Alt/Shift modifier keys inside `PressKey` |
 | `AllowPasswordFieldWrite` | `False` | Allow `FillForm` to write into password fields |
 | `AllowRuntimePasswordFieldWrite` | `False` | Allow `TypeGameViewportText` to type into password fields of a running game's UI, and into fields whose password state cannot be determined (also requires `RuntimeUIInputInjection`). Independent of `AllowPasswordFieldWrite`. CLI flag: `-uaip-policy-allow-runtime-password-field-write=True` |
+| `AllowPasswordFieldRead` | `False` | Allow `SnapshotUI` to return the plain value of password fields of the editor's UI, and of fields whose password state cannot be determined (also requires `EditorWidgetPasswordTextRead`). Independent of `AllowRuntimePasswordFieldRead`. Read at startup, not reloadable. CLI flag: `-uaip-policy-allow-password-field-read=True` |
+| `AllowRuntimePasswordFieldRead` | `False` | Allow `DumpGameViewportWidgetTexts` to return the plain value of password fields of a running game's UI, and of fields whose password state cannot be determined (also requires `RuntimeWidgetTextRead` and `RuntimeWidgetPasswordTextRead`). Independent of `AllowPasswordFieldRead`. Read at startup, not reloadable. CLI flag: `-uaip-policy-allow-runtime-password-field-read=True` |
 | `AllowInputModeBypass` | `False` | Allow `BypassInputMode=true` in Inject commands |
 | `DisablePIEStart` | `False` | Reject PIE startup |
 | `AllowCheatCVarWrite` | `False` | Allow `SetConsoleVariable` / `ResetConsoleVariable` to write `ECVF_Cheat`-flagged CVars (also requires `RuntimeCVarWrite`) |

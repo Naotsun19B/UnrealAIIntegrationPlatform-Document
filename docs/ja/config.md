@@ -57,6 +57,8 @@ CLI フラグ：なし。
 
 対応する CLI フラグ：`-uaip-command-pump-starved-tick-allow-list=...`
 
+モーダルダイアログの中から開いたメニューを閉じるには、このリストに `UAIP.Editor.UIAutomation.DismissMenus` を足し（例：`StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.DismissMenus`。このキーは既定値を置き換えるので、既定のエントリも値に残してください）、エディタを再起動します。足さないと、`DismissMenus` はダイアログが閉じるまでキューで待ちます。足すことを想定しているのはこの UI コマンドだけです。変えるのは Slate のメニュースタックの状態だけだからです。
+
 実効値は起動時に解決され、Output Log に 1 行だけ記録されます（`Starved tick allowlist: ...`）。ini に書いたのに効いていない場合や、書式を誤って無視されたエントリがある場合は、**起動直後のログで確認できます**。CVar `uaip.Command.StarvedTickAllowList` を読んでも既定値しか返らない点に注意してください — ini とコマンドラインは CVar を書き換えず、その上に重ねます。
 
 #### コンソール変数
@@ -69,6 +71,17 @@ CLI フラグ：なし。
 | `uaip.Command.StarvedTickAllowList` | 上表のとおり | **不可** | 読み取り専用。ini またはコマンドラインからのみ設定できます |
 
 `StarvedTickAllowList` を読み取り専用にしているのは、コンソールがまさにこの制限で守ろうとしている経路から到達できるためです。実行中に広げられる防御は防御になりません。
+
+### `[UAIP.UIAutomation]` — 書き込み系コマンドのガード（既定で無効）
+
+`UAIP.Editor.UIAutomation` のクリック・ホバー・キー入力のコマンドは、ドラッグ中や、対象が開いているモーダルウィンドウ・メニューの外にあるときに拒否されます。`InputText`・`FillForm`・`SetCheckboxState`・`SetComboSelection` は、ここで有効にしない限り、その判定を通りません。
+
+| キー | 型 | デフォルト | 説明 |
+|---|---|---|---|
+| `GuardWriteCommands` | bool | `False` | `True` にすると、この 4 つのコマンドも、要求を受け付けるときに 1 回、クリックと同じ判定を受けます。ドラッグ中や、対象が開いているモーダルウィンドウ・メニューの外にあるときは、`PolicyViolation`（と `Result.GuardDiagnostics`）で拒否されます。`FillForm` は全か無かで、どれか 1 つの欄の対象が拒否されたら何も書き込まず、`Result.RejectedFieldName` に最初に拒否された欄の `WidgetRef` が入ります。`SetComboSelection` は 1 回だけ判定し、項目のクリックでは判定し直しません |
+
+値は起動時に一度だけ読まれるため、変更にはエディタの再起動が必要です。読まれるのは `DefaultUAIP.ini` だけで、真偽値として読めない値は無視されて既定のままになります。CLI フラグ：なし。[UAIP.Editor.UIAutomation](commands.md#uaipeditoruiautomation) を参照してください。
+
 
 ### `[UAIP.Jobs]` — ジョブ型コマンドの 1 フレームあたりの予算
 
@@ -378,6 +391,8 @@ UnrealEditor-Cmd.exe MyProject.uproject \
 | `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input=True` |
 | `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write=True` |
 | `AllowRuntimePasswordFieldWrite` | `-uaip-policy-allow-runtime-password-field-write=True` |
+| `AllowPasswordFieldRead` | `-uaip-policy-allow-password-field-read=True` |
+| `AllowRuntimePasswordFieldRead` | `-uaip-policy-allow-runtime-password-field-read=True` |
 | `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass=True` |
 | `AllowProjectNetDriverNetModeQuery` | `-uaip-policy-allow-project-net-driver-net-mode-query=True` |
 | `DisablePIEStart` | `-uaip-policy-disable-pie-start=True` |

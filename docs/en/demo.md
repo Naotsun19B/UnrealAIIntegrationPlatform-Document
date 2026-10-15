@@ -253,6 +253,7 @@ The commands that inject input exist only in Pro (see [Excluded commands](#exclu
 | `UAIP.Editor.UIAutomation.PressKey` | Send a key input | `EditorKeyboardInput` |
 | `UAIP.Editor.UIAutomation.WaitForWidget` | Wait for a widget to appear | |
 | `UAIP.Editor.UIAutomation.FillForm` | Auto-fill a form | |
+| `UAIP.Editor.UIAutomation.DismissMenus` | Close the open menus and popups | |
 | `UAIP.Editor.UIAutomation.OpenPasswordTestWindow` | Open a small test window with a password field (a target for password-field policy tests) | Only opens a window and changes nothing; it is in the demo as well as Pro (see [What the demo does and does not restrict](#what-the-demo-does-and-does-not-restrict)) |
 
 ### `UAIP.Editor.Assets.*` (read-only subset)

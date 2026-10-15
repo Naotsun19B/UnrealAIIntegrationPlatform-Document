@@ -183,7 +183,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 |---|---|
 | `EditorObservation` | スクリーンショット（`CaptureActiveWindowImage`、`CaptureEditorTabImage`、`CaptureGraphViewportImage`）および JSON 状態ダンプ（`DumpEditorState`、`DumpSlateTree`、`DumpSelectionState`、`DumpOutputLog`、`DumpMessageLog` など） |
 | `EditorInspect` | Editor 状態の読み取り専用検査 — アセット・詳細パネル・ビューポート・グラフ情報。共有インフラコマンドが使用 |
-| `EditorUIAutomation` | UI 駆動コマンド — `ClickWidget`、`SelectMenuItem`、`InputText`、`SetCheckboxState`、`DragGraphNode`、`AcceptDialog`、`CancelDialog`、`InvokeContextMenuAction`、`WaitForWidget`、`FillForm`、`SnapshotUI` など、およびその `Toolset.Editor.SlateInspector.*` ブリッジ版。ブリッジ版も同じ Capability を要求するようになった（旧リリースでは Capability チェックなしにディスパッチされていた） |
+| `EditorUIAutomation` | UI 駆動コマンド — `ClickWidget`、`SelectMenuItem`、`InputText`、`SetCheckboxState`、`DragGraphNode`、`AcceptDialog`、`CancelDialog`、`InvokeContextMenuAction`、`WaitForWidget`、`FillForm`、`SnapshotUI`、`DismissMenus` など、およびその `Toolset.Editor.SlateInspector.*` ブリッジ版。ブリッジ版も同じ Capability を要求するようになった（旧リリースでは Capability チェックなしにディスパッチされていた） |
 | `EditorWorkspaceControl` | タブ・パネル管理 — タブの開閉、グラフエディタのフォーカス、エディタレイアウトの制御 |
 | `EditorLifecycle` | エディタライフサイクル操作 — `SaveAll`、`ShutdownEditor`、`RestartEditor` |
 | `EditorExecution` | エディタからの Automation Test 実行・Editor Utility Blueprint の実行 |
@@ -462,6 +462,14 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `ViewportAnnotationCapture` | ワールド座標ラベル付きビューポート画像のキャプチャ — `CaptureViewportImageAnnotated` |
 | `EditorTabSpawn` | Slate の `FTabId` でエディタタブを開く・閉じる・列挙する — `OpenTabById`、`CloseTabById`、`ListSpawnableTabs`。DefaultAllow の `EditorWorkspaceControl`（`AssetPath` でアセットエディタタブのみに到達する）とは別物です。任意の `TabId` を指定できるということは第三者プラグインが登録したデリゲートを実行しうるということであり、該当するのは開く側の `CanSpawnTab` / `OnSpawnTab`、閉じる側の `OnCanCloseTab` / `OnTabClosed`、読み取り専用の列挙側の表示名・ツールチップ取得（`TAttribute` の bound デリゲート）です。これはメニューに一切表示されない内部タブも対象に含みます。`ListSpawnableTabs` を DefaultAllow にせず同じ Capability を要求するのは、列挙自体が同じデリゲート実行リスクを持つことと、一覧の唯一の用途が開閉の判断であることによります。閉じる操作は**このセッションが開いたタブに限定されません** — 人間が作業のために開いているものを含め、いま開いている任意のタブを閉じられます。また閉じる操作はタブ許可リストを一切通さないため、許可設定を変更した後でも後始末が失敗することはありません |
 | `EditorWindowStateControl` | エディタのメインウィンドウの最小化と、最小化からの復元 — `SetEditorWindowState`。ユーザーが見ているウィンドウを動かすため、DefaultAllow にしない。ユーザーが別のアプリで作業しているときは、Windows がエディタをそのアプリの後ろに置くので、復元してもキーボードフォーカスは奪わない。デモ版にも登録され、コマンドがデモ版に含まれるので「使えない」の印は付かない。デモ版の `DefaultUAIP.ini` は付与しないため、使うには `+AllowedCapabilities=EditorWindowStateControl` を足す |
+| `EditorWidgetPasswordTextRead` | `IncludeFieldValues: true` で呼んだ `SnapshotUI` の応答に、パスワード欄（とパスワード欄かどうか判定できない欄）の平文を含めます。安全設定 `AllowPasswordFieldRead` もオンでなければ効きません（下記参照）。値は応答の中だけに入り（最大 16 件・各 256 文字）、保存されるスナップショット・ログ・完了通知には出ません |
+
+**エディタでパスワード欄を読む — `AllowPasswordFieldRead` と `EditorWidgetPasswordTextRead`。** `IncludeFieldValues: true` で呼んだ `SnapshotUI` が、パスワード欄と、パスワード欄かどうか判定できない欄（複数行の入力欄はこれに当たります）の平文を返すのは、次の**両方**が成り立つときだけです。安全設定 `AllowPasswordFieldRead` がオンであること、セッションが Capability `EditorWidgetPasswordTextRead` を持つこと。どちらかが欠けていると値は伏せられ、スナップショットが理由を示します（`PasswordValuesWithheldReason`）。設定がオフなら Capability の有無によらず `PasswordTextWithheldBySafetyPolicy`、設定がオンで Capability が無ければ `PasswordTextWithheld` です。`SnapshotUI` 自体は `EditorWidgetPasswordTextRead` を要求しないので、コマンドは失敗しません。
+
+- `[UAIP.SafetyPolicy]` の `AllowPasswordFieldRead=True` にするか、エディタを `-uaip-policy-allow-password-field-read=True` で起動します。起動時に読まれ、`ReloadCapabilities` では再読み込みされないので、エディタを再起動してください。Capability は `+AllowedCapabilities=EditorWidgetPasswordTextRead` で付与します。
+- `AllowRuntimePasswordFieldRead`（ゲームビューポート用。後述）や、書き込みの `AllowPasswordFieldWrite` とは独立しています。`QueryCapabilities` は状態を `OperationalConstraints.IsPasswordFieldReadAllowed` と `OperationalConstraints.IsRuntimePasswordFieldReadAllowed` として報告します。
+- 値は応答（`Result.PasswordFieldValues`）にだけ入り、保存されるスナップショット・ログ・完了通知には出ません。応答を受け取った AI クライアントがそれをどうするかは、UAIP の外の話です。
+- ブリッジの `Toolset.Editor.SlateInspector.SnapshotUI` は、何を許可しても入力欄の値を返しません。その行をすべて伏せます。
 
 #### スクリプト実行
 
@@ -470,6 +478,22 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `ScriptExecution` 🧩 | エディタでの Python スクリプト実行（`RunEditorPythonScript`；`PythonScriptPlugin` 必須） |
 | `PythonCommandExecution` 🧩 | `@uaip_command` で動的登録された Python コマンドの実行（`PythonScriptPlugin` 必須） |
 | `PythonExtensionReload` 🧩 | 登録済み Python コマンドの再スキャン・リロード（`ReloadPythonCommands`；`PythonScriptPlugin` 必須）。エディタ起動時にプロジェクトの `Scripts/UAIPCommands/**/*.py` を自動スキャンするのにもこの Capability が必要です — 許可されていなければ起動時に Python コマンドは 1 つも登録されません。許可してから `ReloadPythonCommands` を呼ぶ（または、既に許可した状態で再起動する）と読み込まれます |
+
+#### シナリオ実行
+
+| Capability | 有効になる操作 |
+|---|---|
+| `ScenarioSensitiveValueToUndeclaredParam` | シナリオが機微な値（前のステップの応答のうち、コマンドが機微と宣言した部分。`SnapshotUI` の `PasswordFieldValues` など）を、受け取るコマンドが機微な値の行き先として宣言して**いない**引数へ渡せるようにします。無ければ、そのステップは実行される前に拒否されます（`PolicyViolation`、`Result.Reason: SensitiveValueToUndeclaredParam`）。キーは大文字小文字も含めて完全一致で比べます。宣言されている行き先は [機微な値と伏せる場所](commands.md#機微な値と伏せる場所) を参照してください |
+
+> ⚠️ **この Capability を付与すると、付与されたセッションのシナリオについて、機微な値の保護が完全に解除されます。** 受け取ったコマンドは、値を応答の `Result` や `Data`、artifact、自身のログに書くことができ、後のステップがその応答を読んで値を運び直すこともできます（この連鎖を UAIP は検査しません）。UAIP が引き続き保証するのは、そのステップの `ErrorMessage` が固定の文に置き換わることと、記録された要求が伏せられたままであることだけです。パスワードの平文が通る経路は 1 つだけ、という説明は、そのセッションでは成り立ちません。AI クライアントがその値を見てよい場合に限り、必要なセッションにだけ付与してください。
+
+`[UAIP.SafetyPolicy]` で有効にします。`AllowCapabilityReload=True` の環境では `UAIP.Core.ReloadCapabilities` で反映できます。
+
+```ini
+[UAIP.SafetyPolicy]
+; +AllowedCapabilities=ScenarioSensitiveValueToUndeclaredParam
+```
+
 
 #### Runtime — 制限付き操作
 
@@ -797,7 +821,7 @@ Subsystem のコマンド（[`UAIP.Runtime.Observation`](commands.md#subsystem2)
 | `RuntimeUIInputInjection` | 実行中のゲームの UI を、その入力経路で操作する — `ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText`。**`RuntimeInputInjection` とは別**です。後者は入力をゲームへ直接注入するもので UI は操作できず、この Capability は `InjectInputKey` などを許可しません。要求を受け付けたときと、実際に送る直前に確かめます |
 | `RuntimeUIEditorReservedKeyInput` | エディタ内の PIE で、エディタが自身の PIE 用コマンドに割り当てている UI キー（既定では PIE を停止する Escape）を送る。`RuntimeUIInputInjection` に**加えて**必要です。ショートカットの割り当ては、その時点のものを読みます（割り当てを変えていればそれに従い、物理キーボードの修飾キーを押している間は、その修飾キー付きの割り当ても見ます）。割り当てを読めないときは、UI 用のキーをすべて拒否します。Standalone とパッケージ版では制限されません |
 | `RuntimeWidgetTextRead` | **すべての**テキスト Widget のテキストと、入力欄の値を、画面に出ているかを問わず読む — `DumpGameViewportWidgetTexts`。切り取られた・透明な・折りたたまれたテキストは画面キャプチャでは読めず、値は AI クライアントへ渡り artifact にも保存されるため、既定で無効です。通常のダンプ（`IncludeText` 付きの `DumpGameViewportWidgets`）が平文にするのは画面に出ているテキストだけで、入力欄は長さの区分しか返しません。CommonUI のアクションの表示テキストを読む `GetActionDisplayNames` もこれを必要とします（[Runtime CommonUI の観測](#runtime-commonui-の観測) を参照） |
-| `RuntimeWidgetPasswordTextRead` | `DumpGameViewportWidgetTexts` の応答に、パスワード欄（またはパスワード欄かどうか判定できない欄）の平文を含める。`RuntimeWidgetTextRead` に**加えて**必要です。値は応答にだけ入り（最大 16 件・各 256 文字）、artifact にも完了通知にも監査記録にも書かれません |
+| `RuntimeWidgetPasswordTextRead` | `DumpGameViewportWidgetTexts` の応答に、パスワード欄（またはパスワード欄かどうか判定できない欄）の平文を含める。`RuntimeWidgetTextRead` に**加えて**必要です。値は応答にだけ入り（最大 16 件・各 256 文字）、artifact にも完了通知にも監査記録にも書かれません。安全設定 `AllowRuntimePasswordFieldRead` も必要です（下記参照） |
 
 > ⚠️ **UI が処理しなかった入力はゲームに届きえます。** 人の入力と同じく、UI が消費しなかったクリックやキーはゲーム側の入力（移動・攻撃など）になることがあります。応答は入力がゲームまで届いたかを示し、各操作の応答にはこの注意書きが付きます。`Success` は人の入力と同じ経路で送り終えたという意味で、ボタンの処理が動いたことは保証しません。
 
@@ -816,6 +840,8 @@ Subsystem のコマンド（[`UAIP.Runtime.Observation`](commands.md#subsystem2)
 その後エディタを再起動します。`AllowCapabilityReload=True` の環境では `UAIP.Core.ReloadCapabilities` を呼べば再起動なしで反映できます。許可されていない間、それを必要とするコマンドは、その名前を示した `CapabilityNotAvailable` で失敗します。これらに `+DeniedCapabilities=` を指定すると、同じ Capability が許可されていても `PolicyViolation` で拒否されます（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、上の DefaultAllow の 3 コマンドも拒否します。
 
 **パスワード欄への入力 — `AllowRuntimePasswordFieldWrite`。** `RuntimeUIInputInjection` が許可されていても、この安全設定がオンでない限り、`TypeGameViewportText` はパスワード欄と、パスワード欄かどうか判定できない欄への入力を `PolicyViolation` で拒否します。エディタ自身の UI（`FillForm`）を対象にする `AllowPasswordFieldWrite` とは独立です。`[UAIP.SafetyPolicy]` か、起動引数 `-uaip-policy-allow-runtime-password-field-write=True` で設定でき、`QueryCapabilities` は現在の状態を `OperationalConstraints.IsRuntimePasswordFieldWriteAllowed` で返します。打った文字列はログにも応答にも記録にも残りませんが、CLI（`-uaip-request=`、`-uaip-request-file=`）で渡した場合は、そのコマンドラインやファイルに残ります。
+
+**ゲームのパスワード欄を読む — `AllowRuntimePasswordFieldRead`。** `DumpGameViewportWidgetTexts` がパスワード欄の平文を返すのは、セッションが `RuntimeWidgetPasswordTextRead` を持ち、**かつ**この安全設定がオンのときだけです。エディタ自身の UI（`SnapshotUI`）を対象にする `AllowPasswordFieldRead` とは独立しています。`[UAIP.SafetyPolicy]` で設定するか、起動フラグ `-uaip-policy-allow-runtime-password-field-read=True` で指定し、エディタを再起動してください（起動時に読まれます）。`QueryCapabilities` は `OperationalConstraints.IsRuntimePasswordFieldReadAllowed` として報告します。**互換性：** これまでは Capability だけで足りていました。`RuntimeWidgetPasswordTextRead` だけを付与していた運用者の呼び出しは、失敗せずに値が伏せられ、`PasswordTextWithheldBySafetyPolicy` の limitation（と伏せた欄の数）が返ります。設定がオンで Capability が無いときの limitation は、従来どおり `PasswordTextWithheld` です。
 
 **HUD の描画統計 — `EnableHUDCanvasStats`。** `DumpHUDState` がゲームビューポートの Canvas の描画統計を添えるのは、`DefaultUAIP.ini` の `[UAIP.RuntimeObservation]` で `EnableHUDCanvasStats=True` にしたときだけです。既定は `False` で、起動引数はなく、起動時に読むので、エディタまたはゲームの再起動後に効きます。何かを許可するものではなく、どのコマンドの権限も変えません。オフの間は、結果が有効にする方法を示します。
 
@@ -1083,6 +1109,8 @@ AllowKeyboardInput=False
 AllowKeyboardModifierInput=False
 AllowPasswordFieldWrite=False
 AllowRuntimePasswordFieldWrite=False
+AllowPasswordFieldRead=False
+AllowRuntimePasswordFieldRead=False
 AllowInputModeBypass=False
 DisablePIEStart=False
 AllowCheatCVarWrite=False
@@ -1118,6 +1146,8 @@ AllowProjectNetDriverNetModeQuery=False
 | `AllowKeyboardModifierInput` | `False` | `PressKey` 内の Ctrl/Alt/Shift 修飾キーを許可 |
 | `AllowPasswordFieldWrite` | `False` | `FillForm` でパスワードフィールドへの書き込みを許可 |
 | `AllowRuntimePasswordFieldWrite` | `False` | `TypeGameViewportText` による、実行中のゲームの UI のパスワード欄と、パスワード欄かどうか判定できない欄への入力を許可（`RuntimeUIInputInjection` も必要）。`AllowPasswordFieldWrite` とは独立。起動引数: `-uaip-policy-allow-runtime-password-field-write=True` |
+| `AllowPasswordFieldRead` | `False` | `SnapshotUI` が、エディタの UI のパスワード欄と、パスワード欄かどうか判定できない欄の平文を返せるようにします（`EditorWidgetPasswordTextRead` も必要）。`AllowRuntimePasswordFieldRead` とは独立。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-password-field-read=True` |
+| `AllowRuntimePasswordFieldRead` | `False` | `DumpGameViewportWidgetTexts` が、実行中のゲームの UI のパスワード欄と、パスワード欄かどうか判定できない欄の平文を返せるようにします（`RuntimeWidgetTextRead` と `RuntimeWidgetPasswordTextRead` も必要）。`AllowPasswordFieldRead` とは独立。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-runtime-password-field-read=True` |
 | `AllowInputModeBypass` | `False` | Inject 系コマンドの `BypassInputMode=true` を許可 |
 | `DisablePIEStart` | `False` | PIE 起動を拒否 |
 | `AllowCheatCVarWrite` | `False` | `SetConsoleVariable` / `ResetConsoleVariable` による `ECVF_Cheat` フラグ付き CVar への書き込みを許可（`RuntimeCVarWrite` も別途必要） |
