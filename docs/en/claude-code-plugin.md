@@ -67,7 +67,7 @@ value recorded in the table below.
 1. Delete the `plugins/uaip` folder inside the folder you extracted to. An update that only
    overwrites files in place can leave behind files an older version shipped that the new one
    removed. Leave `plugins/uaip-result-view` alone if it is there: it is the
-   [uaip-result-view](uaip-result-view.md) Mod, which ships in its own zip.
+   [Result View](uaip-result-view.md) Mod, which ships in its own zip.
 2. Extract the zip for the version you want — the newest release to update, an older release to
    roll back.
 3. In Claude Code, run `/plugin marketplace update uaip-tools`, then `/plugin update uaip@uaip-tools`,

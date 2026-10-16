@@ -1,6 +1,6 @@
 **[日本語](../ja/uaip-result-view.md)** | [Back to README](../../README.md)
 
-# uaip-result-view (Claude Code Mod)
+# Result View — Claude Code Mod (`uaip-result-view`)
 
 A Claude Code Mod that redraws the transcript rows of UAIP MCP tool calls. By default, Claude Code
 shows only the first characters of the response JSON for each call, so a person following the
@@ -59,7 +59,7 @@ The Mod ships in its own zip but belongs to the same `uaip-tools` marketplace as
 or both.
 
 1. Download `UAIP-ResultView-<X.Y.Z>.zip` together with its `.sha256` file from this repository's
-   [Releases](../../../releases) (tag `UAIPResultView-v<X.Y.Z>`), and check it — see
+   [Releases](../../../releases) (tag `ResultView-v<X.Y.Z>`), and check it — see
    [Verifying the download](#verifying-the-download) below.
 2. Extract it into a permanent folder only you can write to, outside any UE project folder and
    outside Claude Code's working directory. If you already use the Claude Code Plugin, extract it

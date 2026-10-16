@@ -1,6 +1,6 @@
 **[English](../en/uaip-result-view.md)** | [概要に戻る](overview.md)
 
-# uaip-result-view（Claude Code の Mod）
+# Result View — Claude Code の Mod（`uaip-result-view`）
 
 UAIP の MCP ツール呼び出しの行を、トランスクリプト上で描き替える Claude Code の Mod です。Claude Code の
 既定の表示は、呼び出しごとに応答 JSON の先頭の数文字だけなので、セッションを見ている人にはどのコマンドを
@@ -56,7 +56,7 @@ VS Code 拡張とデスクトップアプリでは、要約を呼び出しの行
 marketplace に属します。2 つの zip は同じ `UAIPClaudeCodePlugin` フォルダに展開され、同じ marketplace の
 ファイルを持つので、どちらか一方だけでも両方でもインストールできます。
 
-1. このリポジトリの [Releases](../../../releases)（タグ `UAIPResultView-v<X.Y.Z>`）から
+1. このリポジトリの [Releases](../../../releases)（タグ `ResultView-v<X.Y.Z>`）から
    `UAIP-ResultView-<X.Y.Z>.zip` と `.sha256` ファイルをダウンロードし、検証します（下記
    [ダウンロードの検証](#ダウンロードの検証) 参照）
 2. 自分だけが書き込める恒久的なフォルダに展開します。UE プロジェクトのフォルダや Claude Code の作業
