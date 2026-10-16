@@ -56,9 +56,9 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 > 未リリース・開発中の変更は [`next` ブランチの更新履歴](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/ja/changelog.md) で確認できます。
 
-### uaip-result-view 0.1.0 — 2026-10-16
+### Result View 0.1.0 — 2026-10-16
 
-初の公開版 `0.1.0`。UAIP の MCP ツール呼び出しを、生の応答 JSON の先頭ではなく要約（呼んだコマンド、成否またはエラーコードとメッセージ、Artifacts、シナリオのステップ）でトランスクリプトに描く Claude Code の Mod です。`Result` の主要フィールドは Details ボタンで開きます（失敗時は最初から開いています）。変わるのは描画だけで、モデルが読む結果は変わりません。MCP Bridge 経由で UAIP を使うセッション向けで、Claude Code Plugin は不要です。このリポジトリの Releases（タグ `UAIPResultView-v<X.Y.Z>`）から `UAIP-ResultView-<version>.zip` として配布し、Claude Code Plugin と同じ marketplace `uaip-tools` に属します（プラグイン名 `uaip-result-view`）。使っている Claude Code の Mod API が EARLY ACCESS のため、版は `0.x` です。詳細は [uaip-result-view](uaip-result-view.md) を参照してください。
+初の公開版 `0.1.0`。UAIP の MCP ツール呼び出しを、生の応答 JSON の先頭ではなく要約（呼んだコマンド、成否またはエラーコードとメッセージ、Artifacts、シナリオのステップ）でトランスクリプトに描く Claude Code の Mod です。`Result` の主要フィールドは Details ボタンで開きます（失敗時は最初から開いています）。変わるのは描画だけで、モデルが読む結果は変わりません。MCP Bridge 経由で UAIP を使うセッション向けで、Claude Code Plugin は不要です。このリポジトリの Releases（タグ `ResultView-v<X.Y.Z>`）から `UAIP-ResultView-<version>.zip` として配布し、Claude Code Plugin と同じ marketplace `uaip-tools` に属します（プラグイン名 `uaip-result-view`）。使っている Claude Code の Mod API が EARLY ACCESS のため、版は `0.x` です。詳細は [Result View](uaip-result-view.md) を参照してください。
 
 [Claude Code Plugin](claude-code-plugin.md) の更新手順は、`plugins/uaip` だけを削除する形に変わりました。同じフォルダに展開した Mod が更新で消えないようにするためです。
 
