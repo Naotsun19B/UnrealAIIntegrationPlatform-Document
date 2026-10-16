@@ -117,10 +117,10 @@ Default policy:
 | Type | Inlined by default | Reason |
 |---|---|---|
 | `Image` (PNG) | **No** | Multi-MB PNGs blow past the AI client's token budget |
-| `Json` | Yes | Usually small (KB); useful inline |
-| `Text` | Yes | Log slices, usually small |
+| `Json` | **No** | Large dumps accumulate across a session the same way; fetch the body when it is needed |
+| `Text` | **No** | Same as `Json` |
 
-Whether to inline PNG output is a policy choice. The default is **off** because accumulated PNGs across a session can blow past an AI client's token budget. Flip `inline_artifacts.image` to `true` in `config.json` if you want the AI to receive image bytes inline.
+Inlining is a policy choice, and the default is **off for every type** because bodies accumulated across a session can blow past an AI client's token budget. Turn it on per type in `config.json` — `inline_artifacts.image`, `inline_artifacts.json`, `inline_artifacts.text` — if you want the AI to receive the bodies inline.
 
 ---
 
@@ -145,10 +145,10 @@ Default inline policy:
 | Type | Inlined by default |
 |---|---|
 | `Image` (PNG) | **No** — PNG accumulates across sessions and can exceed token limits |
-| `Json` | Yes |
-| `Text` | Yes |
+| `Json` | **No** |
+| `Text` | **No** |
 
-Whether to inline PNG output is a policy choice. The default is **off** because accumulated PNGs across a session can blow past an AI client's token budget. Flip `inline_artifacts.image` to `true` in `config.json` if you want the AI to receive image bytes inline.
+`_inlined_artifacts` therefore appears only for the types you turned on in `config.json` (`inline_artifacts.image` / `inline_artifacts.json` / `inline_artifacts.text`). With the defaults, fetch every body by its artifact id.
 
 ---
 

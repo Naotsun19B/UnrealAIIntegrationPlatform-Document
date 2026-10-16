@@ -95,8 +95,8 @@ python Plugins/UAIPMCPBridge/install/check_guides.py --apply --migrate
 ```json
 {
   "Success": true,
-  "Data": {
-    "Status": "Healthy",
+  "Result": {
+    "Status": "OK",
     "UAIPVersion": "1.2.0",
     "EngineVersion": "5.8.0"
   }

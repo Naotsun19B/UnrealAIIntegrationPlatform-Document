@@ -206,7 +206,7 @@ Anonymous sessions (no `SessionId` passed) get an auto-generated ID — `MCP-Ano
 
 ## 7. Artifact lifecycle
 
-Every command that produces output (capture, dump, log, report) writes one or more **artifacts** to `Saved/UAIP/<SessionId>/` and returns artifact IDs in the response. Clients fetch the content by ID — file paths are not exposed in the response payload, which prevents path-leak attacks and gives every transport the same handling.
+Every command that produces output (capture, dump, log, report) writes one or more **artifacts** to `Saved/UAIP/<SessionId>/` and returns artifact IDs in the response. Clients fetch the content by ID, which gives every transport the same handling. A command response also carries each artifact's `FilePath`, a path inside the editor's save directory, but it is informational: resolve artifacts by ID rather than reading that path, since a remote client cannot reach it. Scenario step results carry IDs only.
 
 See [Artifacts](artifacts.md) for the on-disk layout, inline-vs-fetch behavior, and per-type policies.
 

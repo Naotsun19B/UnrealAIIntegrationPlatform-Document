@@ -442,10 +442,10 @@ Response:
 ```json
 {
   "Success": true,
-  "Data": { ... },
+  "Result": { ... },
   "Artifacts": [...],
-  "ErrorCode": null,
-  "ErrorMessage": null
+  "ErrorCode": "Success",
+  "ErrorMessage": ""
 }
 ```
 

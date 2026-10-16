@@ -117,10 +117,10 @@ flowchart TB
 | 種類 | デフォルトでインライン | 理由 |
 |---|---|---|
 | `Image`（PNG） | **いいえ** | MB 単位の PNG は AI クライアントのトークン予算を圧迫 |
-| `Json` | はい | 通常 KB レベル — インライン参照が便利 |
-| `Text` | はい | ログ断片、通常小さい |
+| `Json` | **いいえ** | 大きなダンプもセッション全体で同じように蓄積する。必要なときに本体を取得する |
+| `Text` | **いいえ** | `Json` と同じ |
 
-PNG をインライン化するかどうかは利用ポリシー次第です。デフォルトでは画像インラインが OFF になっています（PNG をセッション全体で蓄積すると AI クライアントのトークン予算を圧迫しやすいためです）。`config.json` の `inline_artifacts.image` を `true` に変えれば変更できます。
+インライン化するかどうかは利用ポリシー次第です。デフォルトでは**すべての種類で OFF** になっています（本体をセッション全体で蓄積すると AI クライアントのトークン予算を圧迫しやすいためです）。`config.json` の `inline_artifacts.image` / `inline_artifacts.json` / `inline_artifacts.text` を種類ごとに `true` に変えれば変更できます。
 
 ---
 
@@ -145,10 +145,10 @@ MCP Bridge は小さな Artifact をレスポンスに直接埋め込むこと�
 | 種類 | デフォルトでインライン |
 |---|---|
 | `Image`（PNG） | **No** — PNG はセッション全体で蓄積するとトークン上限を超える |
-| `Json` | Yes |
-| `Text` | Yes |
+| `Json` | **No** |
+| `Text` | **No** |
 
-PNG をインライン化するかどうかは利用ポリシー次第です。デフォルトでは画像インラインが OFF になっています（PNG をセッション全体で蓄積すると AI クライアントのトークン予算を圧迫しやすいためです）。`config.json` の `inline_artifacts.image` を `true` に変えれば変更できます。
+したがって `_inlined_artifacts` が付くのは、`config.json` で有効にした種類（`inline_artifacts.image` / `inline_artifacts.json` / `inline_artifacts.text`）だけです。デフォルトのままなら、本体はすべて Artifact ID で取得します。
 
 ---
 

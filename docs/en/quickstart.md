@@ -91,8 +91,8 @@ The agent should call `uaip_execute(CommandName="UAIP.Core.HealthCheck")` and re
 ```json
 {
   "Success": true,
-  "Data": {
-    "Status": "Healthy",
+  "Result": {
+    "Status": "OK",
     "UAIPVersion": "1.2.0",
     "EngineVersion": "5.8.0",
     "BuildConfig": "Development"

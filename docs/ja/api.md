@@ -128,8 +128,8 @@ uaip_execute(
 ```json
 {
   "Success":      true,
-  "Data":         { ... },
-  "Artifacts":    [ { "ArtifactId": "...", "FilePath": "...", "Type": "Image" } ],
+  "Result":       { ... },
+  "Artifacts":    [ { "ArtifactId": "...", "FilePath": "...", "Type": "Image", "SizeBytes": 123456 } ],
   "ErrorCode":    "Success",
   "ErrorMessage": "",
   "SessionId":    "HTTP-Anonymous-7b8e"
@@ -139,7 +139,7 @@ uaip_execute(
 | フィールド | 型 | 備考 |
 |---|---|---|
 | `Success` | bool | `ErrorCode == "Success"` なら true |
-| `Data` | object | コマンド固有の結果データ（各コマンドが形状を定義） |
+| `Result` | object | コマンド固有の結果データ（各コマンドが形状を定義）。常に含まれ、コマンドが何も返さなかったときは `{}`。この文書の他の箇所では、このオブジェクトをレスポンスの `Data` と呼ぶことが多く、シナリオのテンプレートでは `${StepName.Data...}` で読みます。どちらもこのフィールドを指します。例外はブリッジ自身の MCP ツール（`uaip_get_editor_status` / `uaip_reload_config`）で、こちらは独自の `Data` フィールドで応答します |
 | `Artifacts` | array | 生成された Artifact 毎に 1 エントリ。詳細は [§5](#5-artifact-契約) |
 | `ErrorCode` | string | [§4](#4-エラーコード) のコードのいずれか、または `"Success"` |
 | `ErrorMessage` | string | 人間可読の詳細。成功時は空 |
@@ -514,16 +514,15 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
       "Success":      true,
       "ErrorCode":    "Success",
       "ErrorMessage": "",
-      "Data":         { ... },
-      "ArtifactIds":  ["8D14..."],
-      "AttemptCount": 1,
-      "DurationMs":   1234
+      "ArtifactIds":  ["8D14..."]
     }
   ],
   "ArtifactIds": ["8D14...", "F521..."],
   "SessionId":   "scenario-001"
 }
 ```
+
+ステップ結果に含まれるのは上の 5 フィールドだけです。ステップの結果データは応答に含まれず、シナリオの実行中に後続のステップが `${StepName.Data...}` テンプレートで読みます。
 
 `SessionId` の意味は `CommandResponse`（§3.1）と同じです — このシナリオ要求が実際に解決されたセッション。要求で `SessionId` を省略した場合はサーバが割り当てた匿名セッションの値が入ります。値が空のときはフィールド自体が応答に出ません。
 
@@ -763,7 +762,7 @@ class UAIPClient:
         return r.content
 
 client = UAIPClient(token=open("...EditorHttpAuthToken.txt").read().strip())
-print(client.execute("UAIP.Core.HealthCheck")["Data"])
+print(client.execute("UAIP.Core.HealthCheck")["Result"])
 ```
 
 ### 10.3 WebSocket — JavaScript

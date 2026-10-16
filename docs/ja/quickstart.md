@@ -91,8 +91,8 @@ AI クライアントで次のように依頼してみてください：
 ```json
 {
   "Success": true,
-  "Data": {
-    "Status": "Healthy",
+  "Result": {
+    "Status": "OK",
     "UAIPVersion": "1.2.0",
     "EngineVersion": "5.8.0",
     "BuildConfig": "Development"

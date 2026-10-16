@@ -128,8 +128,8 @@ The bridge sets `SessionId` automatically if omitted (`MCP-Anonymous-<guid>`).
 ```json
 {
   "Success":      true,
-  "Data":         { ... },
-  "Artifacts":    [ { "ArtifactId": "...", "FilePath": "...", "Type": "Image" } ],
+  "Result":       { ... },
+  "Artifacts":    [ { "ArtifactId": "...", "FilePath": "...", "Type": "Image", "SizeBytes": 123456 } ],
   "ErrorCode":    "Success",
   "ErrorMessage": "",
   "SessionId":    "HTTP-Anonymous-7b8e"
@@ -139,7 +139,7 @@ The bridge sets `SessionId` automatically if omitted (`MCP-Anonymous-<guid>`).
 | Field | Type | Notes |
 |---|---|---|
 | `Success` | bool | True if `ErrorCode == "Success"` |
-| `Data` | object | Command-specific result data (shape defined by each command) |
+| `Result` | object | Command-specific result data (shape defined by each command). Always present; `{}` when the command returned nothing. Elsewhere in these pages this object is often called the response `Data`, and a scenario template reads it as `${StepName.Data...}` — both mean this field. The bridge's own MCP tools (`uaip_get_editor_status`, `uaip_reload_config`) are the exception: they answer with a `Data` field of their own |
 | `Artifacts` | array | One entry per produced artifact; see [§5](#5-artifact-contract) |
 | `ErrorCode` | string | One of the codes in [§4](#4-error-codes), or `"Success"` |
 | `ErrorMessage` | string | Human-readable detail; empty on success |
@@ -514,16 +514,15 @@ Scenarios run an ordered list of commands as one request. See [Scenario Executio
       "Success":      true,
       "ErrorCode":    "Success",
       "ErrorMessage": "",
-      "Data":         { ... },
-      "ArtifactIds":  ["8D14..."],
-      "AttemptCount": 1,
-      "DurationMs":   1234
+      "ArtifactIds":  ["8D14..."]
     }
   ],
   "ArtifactIds": ["8D14...", "F521..."],
   "SessionId":   "scenario-001"
 }
 ```
+
+A step result carries only the five fields shown. A step's result data is not returned; later steps read it through `${StepName.Data...}` templates while the scenario runs.
 
 `SessionId` carries the same meaning as on `CommandResponse` (§3.1) — the session the scenario actually resolved to, including a server-assigned anonymous session when the request omitted `SessionId`. It is omitted from the response when empty.
 
@@ -763,7 +762,7 @@ class UAIPClient:
         return r.content
 
 client = UAIPClient(token=open("...EditorHttpAuthToken.txt").read().strip())
-print(client.execute("UAIP.Core.HealthCheck")["Data"])
+print(client.execute("UAIP.Core.HealthCheck")["Result"])
 ```
 
 ### 10.3 WebSocket — JavaScript
