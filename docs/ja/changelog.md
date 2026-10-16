@@ -262,6 +262,12 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 - **`RestartEditor` を `uaip_execute` で呼ぶと、再起動を受け付けた時点ではなく、結果が分かった時点で応答を返すようになりました**。エディタが `AttemptId` を返したとき、ブリッジは待つ間も進捗をクライアントへ送り続け、`GetRestartStatus` を照会します。新しいエディタにつながったとき、再起動が見送られたとき（エディタが返した理由と対処をそのままエラーとして返す）、または上限時間内に結果を確認できなかったとき（エディタが閉じるまでは、エディタの `CloseDeadlineSeconds` に約 30 秒を足した時間で、終了処理が始まったらさらに最大 60 秒。閉じてからは `http_startup_timeout_seconds`）に応答します。成功を報告する前に、新しいエディタの本人確認をします。`AttemptId` を返さない古いエディタや、照会コマンドが使えない・拒否される場合は、今までどおり受付の時点で応答を返します。ブリッジが新しいエディタを待っている間に `RestartEditor` を呼ぶと、今のエディタを起動し直さずにエラーを返します。要求するプラグインの最低バージョンは変わりません。
 - **エンジンインストールの経路で UAIP プラグインのコピーが複数あると、インストーラは 1 つを選ばず拒否するようになりました。** `install.sh` は以前、警告もなく 1 つを選んでいました。使うコピーを `--uaip-plugin-dir` / `-UAIPPluginDir` で指定するか、他のコピーを `Engine/Plugins` から移してください。
 
+#### uaip-result-view 0.1.0 — 未リリース
+
+初の公開版 `0.1.0`。UAIP の MCP ツール呼び出しを、生の応答 JSON の先頭ではなく要約（呼んだコマンド、成否またはエラーコードとメッセージ、Artifacts、シナリオのステップ）でトランスクリプトに描く Claude Code の Mod です。`Result` の主要フィールドは Details ボタンで開きます（失敗時は最初から開いています）。変わるのは描画だけで、モデルが読む結果は変わりません。MCP Bridge 経由で UAIP を使うセッション向けで、Claude Code Plugin は不要です。このリポジトリの Releases（タグ `UAIPResultView-v<X.Y.Z>`）から `UAIP-ResultView-<version>.zip` として配布し、Claude Code Plugin と同じ marketplace `uaip-tools` に属します（プラグイン名 `uaip-result-view`）。使っている Claude Code の Mod API が EARLY ACCESS のため、版は `0.x` です。詳細は [uaip-result-view](uaip-result-view.md) を参照してください。
+
+[Claude Code Plugin](claude-code-plugin.md) の更新手順は、`plugins/uaip` だけを削除する形に変わりました。同じフォルダに展開した Mod が更新で消えないようにするためです。
+
 
 ### UAIP Plugin 1.2.0 — 2026-09-29
 

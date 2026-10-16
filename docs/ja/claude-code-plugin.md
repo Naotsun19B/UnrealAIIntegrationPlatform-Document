@@ -62,8 +62,9 @@ Get-FileHash UAIP-ClaudeCodePlugin-<version>.zip -Algorithm SHA256
 
 ## アップデート・古いリリースへのロールバック
 
-1. 展開先フォルダの中身を**すべて**削除してください。上書きだけのアップデートでは、新しいバージョンで
-   削除されたはずの古いファイルが残ってしまうことがあります。
+1. 展開先フォルダの中の `plugins/uaip` フォルダを削除してください。上書きだけのアップデートでは、新しい
+   バージョンで削除されたはずの古いファイルが残ってしまうことがあります。`plugins/uaip-result-view` が
+   あれば消さないでください。別の zip で配布している [uaip-result-view](uaip-result-view.md) の Mod です。
 2. 目的のバージョン（アップデートなら最新リリース、ロールバックなら古いリリース）の zip を展開します。
 3. Claude Code で `/plugin marketplace update uaip-tools` を実行し、続けて `/plugin update uaip@uaip-tools` を
    実行してから再起動します。marketplace の更新だけではフォルダを読み直すだけで、インストール済みの版は

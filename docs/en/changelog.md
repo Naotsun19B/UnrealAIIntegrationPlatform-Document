@@ -262,6 +262,12 @@ The bridge is versioned and released independently of the plugin; see the versio
 - **`uaip_execute` of `RestartEditor` now returns when the outcome is known, not when the restart is accepted.** When the editor returns an `AttemptId`, the bridge keeps sending progress to the client and polls `GetRestartStatus` while it waits, then answers once it has connected to the new editor, or the restart was declined (the editor's reason and remedy come back as the error), or the outcome could not be confirmed within the limit (until the editor closes: the editor's `CloseDeadlineSeconds` plus about 30 seconds, and up to 60 more once shutdown has begun; after it closes: `http_startup_timeout_seconds`). It verifies the identity of the new editor before reporting success. With an older editor that returns no `AttemptId`, or when the status command is unavailable or denied, the bridge behaves as before and returns at acceptance. A `RestartEditor` issued while the bridge is already waiting for a new editor is refused with an error instead of restarting the current one. The minimum plugin version is unchanged.
 - **When the engine install path holds more than one UAIP plugin copy, the installer now refuses instead of picking one.** `install.sh` used to pick one without even a warning. Pass `--uaip-plugin-dir` / `-UAIPPluginDir` with the copy you want, or move the others out of `Engine/Plugins`.
 
+#### uaip-result-view 0.1.0 — Unreleased
+
+First public release, `0.1.0`. A Claude Code Mod that draws UAIP MCP tool calls in the transcript as a summary — which command ran, success or the error code and message, artifacts, scenario steps — instead of the first characters of the raw response JSON, with the main fields of `Result` behind a Details button (already open when the call failed). Only the drawing changes; the result the model reads is unchanged. For sessions that reach UAIP through the MCP Bridge; it does not need the Claude Code Plugin. Distributed as `UAIP-ResultView-<version>.zip` from this repository's Releases (tag `UAIPResultView-v<X.Y.Z>`), under the same marketplace `uaip-tools` as the Claude Code Plugin (plugin name `uaip-result-view`). Versioned `0.x` because the Claude Code Mod API it uses is early access. See [uaip-result-view](uaip-result-view.md).
+
+The [Claude Code Plugin](claude-code-plugin.md)'s update steps now delete only `plugins/uaip`, so that the Mod extracted into the same folder survives an update.
+
 
 ### UAIP Plugin 1.2.0 — 2026-09-29
 
