@@ -56,6 +56,13 @@ The free demo (GitHub Releases) and Pro (Fab) **always share the same version nu
 
 > Unreleased and upcoming changes are tracked on the [`next` branch changelog](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/en/changelog.md).
 
+### uaip-result-view 0.1.0 — 2026-10-16
+
+First public release, `0.1.0`. A Claude Code Mod that draws UAIP MCP tool calls in the transcript as a summary — which command ran, success or the error code and message, artifacts, scenario steps — instead of the first characters of the raw response JSON, with the main fields of `Result` behind a Details button (already open when the call failed). Only the drawing changes; the result the model reads is unchanged. For sessions that reach UAIP through the MCP Bridge; it does not need the Claude Code Plugin. Distributed as `UAIP-ResultView-<version>.zip` from this repository's Releases (tag `UAIPResultView-v<X.Y.Z>`), under the same marketplace `uaip-tools` as the Claude Code Plugin (plugin name `uaip-result-view`). Versioned `0.x` because the Claude Code Mod API it uses is early access. See [uaip-result-view](uaip-result-view.md).
+
+The [Claude Code Plugin](claude-code-plugin.md)'s update steps now delete only `plugins/uaip`, so that the Mod extracted into the same folder survives an update.
+
+
 ### UAIP Plugin 1.2.0 — 2026-09-29
 
 **UAIP 1.2.0 is now live on Fab.** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
