@@ -3620,7 +3620,7 @@ Read and write engine-wide console variables (CVars). CVars are global engine st
 | ✏️ `SetConsoleVariable` | Set the value of a CVar (sensitive names and `ECVF_ReadOnly` CVars are rejected; `ECVF_Cheat` CVars are rejected unless `AllowCheatCVarWrite` is enabled) |
 | ✏️ `ResetConsoleVariable` | Reset a CVar to its default value (sensitive names and `ECVF_ReadOnly` CVars are rejected; `ECVF_Cheat` CVars are rejected unless `AllowCheatCVarWrite` is enabled) |
 
-> **Note**: The legacy `GetConsoleVariable` and `SearchConsoleVariables` commands under `UAIP.Runtime.PIE` are deprecated and will be removed in v1.2. Use these commands instead.
+> **Note**: The legacy `GetConsoleVariable` and `SearchConsoleVariables` commands under `UAIP.Runtime.World` (which were registered under `UAIP.Runtime.PIE` in earlier releases) are deprecated. They keep working; use these commands instead.
 
 ---
 
@@ -3675,8 +3675,8 @@ Every command in this domain except `QuitGame`, `ListPlayWorlds` and the two CVa
 | `SetTimeScale` | Set the global time dilation of the active game world |
 | `QuitGame` | Request a graceful quit of the running game process (requires `RuntimeActorManipulation`). During PIE it stops the PIE session. In an editor where no game is running it answers `ExecutionFailed` and the editor stays open — `QuitGame` quits the running game, not the editor; use [`ShutdownEditor`](#uaipeditorworkspace) (`UAIP.Editor.Workspace.ShutdownEditor`) to close the editor. It used to answer `Success: true` without doing anything in that case |
 | `ExecuteConsoleCommand` | Execute a console command in the active game world (requires `RuntimeExecCommand`) |
-| 🆓 `GetConsoleVariable` | Value, type and help text of a console variable; sensitive names report as not found (requires `RuntimeCVarRead`) |
-| 🆓 `SearchConsoleVariables` | Wildcard (`*`) search over registered console variables — `MaxResults` default 50, max 200; sensitive names are excluded |
+| 🆓 `GetConsoleVariable` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.GetConsoleVariable`. Value, type and help text of a console variable; sensitive names report as not found (requires `RuntimeCVarRead`) |
+| 🆓 `SearchConsoleVariables` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.SearchConsoleVariables`. Wildcard (`*`) search over registered console variables — `MaxResults` default 50, max 200; sensitive names are excluded |
 | `ListPlayWorlds` | Every play world the engine currently holds — `PIEInstance`, `NetMode` (`Standalone` / `DedicatedServer` / `ListenServer` / `Client`), `MapName`, `bIsPrimaryPIEInstance` — plus `Count`. Returns an empty list rather than an error when nothing is playing, so it is safe to call before starting play, and it takes no parameters at all. What it reports is exactly what `TargetNetRole` / `TargetPIEInstance` accept. Requires no capability |
 
 > ⚠️ **Breaking change — `SetTimeScale`, `TeleportActor`, `PossessActor` and `ExecuteConsoleCommand` no longer act on the level open in the editor.** These four used to resolve their world without filtering by world type, so with no play session running they picked up the first world they found — **the level being edited** — and really did apply the change there. They no longer do: outside a play session they now fail and change nothing. The refusal also changed shape, from `ExecutionFailed` with `No active game world found.` to **`NotAllowed` with `PIE is not running.`** These four are addressed to a running game; to change the level being edited, use the matching `UAIP.Editor.*` commands. Update anything that pattern-matches the old error code or the old message text.
@@ -3708,7 +3708,7 @@ Bridge command via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Provi
 
 | Command | Description |
 |---|---|
-| `Toolset.Editor.Toolset.World.SearchCVars` | Search console variables by name substring; sensitive variables are excluded (requires `CVarInspect`) |
+| `Toolset.Editor.Toolset.World.SearchCVars` | ⚠️ **Deprecated** — use `Toolset.Editor.Toolset.EngineManagement.SearchCVars`. Search console variables by name substring; sensitive variables are excluded (requires `CVarInspect`). It is now provided by the `UAIPEditorEngineManagement` module and behaves the same as the command it points to; the response carries `SensitiveExclusionCount` |
 
 ---
 

@@ -501,7 +501,7 @@ Enable it in `[UAIP.SafetyPolicy]`; where `AllowCapabilityReload=True` it can be
 |---|---|
 | `RuntimeCVarRead` | Read engine-wide CVar values — `UAIP.Runtime.Engine.CVar.GetConsoleVariable`, `SearchConsoleVariables` (owned by `UAIPRuntimeEngineManagement`) |
 | `RuntimeCVarWrite` | Set or reset CVar values — `UAIP.Runtime.Engine.CVar.SetConsoleVariable`, `ResetConsoleVariable` (sensitive names and `ECVF_ReadOnly` CVars are rejected; `ECVF_Cheat` CVars additionally require the `AllowCheatCVarWrite` SafetyPolicy switch; owned by `UAIPRuntimeEngineManagement`) |
-| `CVarInspect` | Search CVars with sensitive-pattern filtering — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` bridge (owned by `UAIPEditorEngineManagement`) |
+| `CVarInspect` | Search CVars with sensitive-pattern filtering — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` bridge and its deprecated alias `Toolset.Editor.Toolset.World.SearchCVars`, both under the same capability (owned by `UAIPEditorEngineManagement`) |
 | `RuntimeActorManipulation` | Spawn, destroy, teleport, and possess actors during PIE |
 | `RuntimeExecCommand` | Execute console commands at runtime via `UWorld` |
 | `RuntimeDataLayerControl` | Change the runtime state of a World Partition Data Layer in a running play world — `UAIP.Runtime.World.SetDataLayerRuntimeState`, and that command alone. Observing that state (`ListDataLayerRuntimeStates`, `GetDataLayerRuntimeState`), waiting for streaming to settle (`WaitForDataLayerStreaming`) and enumerating play worlds (`ListPlayWorlds`) need no capability at all. Held apart from `WorldPartitionEdit` / `DataLayerEdit`, which author Data Layers in the level asset: this one changes only what a running session has loaded, and changes nothing that is saved to disk |

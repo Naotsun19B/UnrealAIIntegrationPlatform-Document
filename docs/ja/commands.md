@@ -3584,8 +3584,8 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | `SetTimeScale` | アクティブなゲームワールドのグローバル時間スケールを設定 |
 | `QuitGame` | 実行中のゲームプロセスの正常終了をリクエスト（`RuntimeActorManipulation` 必要）。PIE 実行中は PIE セッションを停止します。ゲームを実行していないエディタでは `ExecutionFailed` を返し、エディタは閉じません — `QuitGame` が終了させるのは実行中のゲームであってエディタではありません。エディタを閉じるには [`ShutdownEditor`](#uaipeditorworkspace)（`UAIP.Editor.Workspace.ShutdownEditor`）を使ってください。この場合、以前は何もせずに `Success: true` を返していました |
 | `ExecuteConsoleCommand` | アクティブなゲームワールドでコンソールコマンドを実行（`RuntimeExecCommand` 必要） |
-| 🆓 `GetConsoleVariable` | コンソール変数の値・型・ヘルプテキストを取得。機微な名前は not found 扱い（`RuntimeCVarRead` 必要） |
-| 🆓 `SearchConsoleVariables` | ワイルドカード（`*`）でコンソール変数を検索。`MaxResults` は既定 50・最大 200、機微な名前は除外 |
+| 🆓 `GetConsoleVariable` | ⚠️ **非推奨** — `UAIP.Runtime.Engine.CVar.GetConsoleVariable` を使用してください。コンソール変数の値・型・ヘルプテキストを取得。機微な名前は not found 扱い（`RuntimeCVarRead` 必要） |
+| 🆓 `SearchConsoleVariables` | ⚠️ **非推奨** — `UAIP.Runtime.Engine.CVar.SearchConsoleVariables` を使用してください。ワイルドカード（`*`）でコンソール変数を検索。`MaxResults` は既定 50・最大 200、機微な名前は除外 |
 | `ListPlayWorlds` | エンジンがいま保持しているプレイワールドをすべて返します — `PIEInstance`、`NetMode`（`Standalone` / `DedicatedServer` / `ListenServer` / `Client`）、`MapName`、`bIsPrimaryPIEInstance`、および `Count`。プレイしていないときもエラーではなく空のリストを返すため、プレイ開始前に呼んでも安全です。パラメータは一切取りません。ここで返る値がそのまま `TargetNetRole` / `TargetPIEInstance` に渡せます。Capability 不要 |
 
 > ⚠️ **破壊的変更 — `SetTimeScale` / `TeleportActor` / `PossessActor` / `ExecuteConsoleCommand` はエディタで開いているレベルに作用しなくなりました。** この 4 つは対象ワールドを世界種別で絞らずに解決していたため、プレイしていない状態では最初に見つかったワールド — つまり**編集中のレベル** — を掴み、実際にそこへ変更を適用していました。今後は適用されません。プレイセッションの外では失敗し、何も変更しません。拒否の形も変わり、`ExecutionFailed` ＋ `No active game world found.` から **`NotAllowed` ＋ `PIE is not running.`** になりました。この 4 つは実行中のゲームを対象とするコマンドです。編集中のレベルを変更したい場合は、対応する `UAIP.Editor.*` コマンドを使ってください。旧エラーコードや旧メッセージ文字列でパターンマッチしている箇所は更新が必要です。
@@ -3617,7 +3617,7 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 
 | コマンド | 説明 |
 |---|---|
-| `Toolset.Editor.Toolset.World.SearchCVars` | コンソール変数を名前の部分一致で検索。機微な変数は除外（`CVarInspect` 必要） |
+| `Toolset.Editor.Toolset.World.SearchCVars` | ⚠️ **非推奨** — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` を使用してください。コンソール変数を名前の部分一致で検索。機微な変数は除外（`CVarInspect` 必要）。現在は `UAIPEditorEngineManagement` モジュールが提供し、移行先のコマンドと同じ動作をします。応答には `SensitiveExclusionCount` が付きます |
 
 ---
 
@@ -4122,7 +4122,7 @@ Mass シミュレーションの元になるデータの読み取りと組み立
 | ✏️ `SetConsoleVariable` | 指定した CVar の値を設定（機密名・`ECVF_ReadOnly` 付きは拒否。`ECVF_Cheat` 付きは `AllowCheatCVarWrite` が有効でない限り拒否） |
 | ✏️ `ResetConsoleVariable` | 指定した CVar をデフォルト値にリセット（機密名・`ECVF_ReadOnly` 付きは拒否。`ECVF_Cheat` 付きは `AllowCheatCVarWrite` が有効でない限り拒否） |
 
-> **注意**: `UAIP.Runtime.PIE` にあった旧 `GetConsoleVariable` / `SearchConsoleVariables` コマンドは非推奨です（v1.2 で削除予定）。本コマンド群を使用してください。
+> **注意**: `UAIP.Runtime.World` にある旧 `GetConsoleVariable` / `SearchConsoleVariables` コマンド（旧バージョンでは `UAIP.Runtime.PIE` 配下に登録されていました）は非推奨です。引き続き動作しますが、本コマンド群を使用してください。
 
 ---
 

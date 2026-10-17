@@ -501,7 +501,7 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 |---|---|
 | `RuntimeCVarRead` | エンジン全体の CVar 値の読み取り — `UAIP.Runtime.Engine.CVar.GetConsoleVariable`、`SearchConsoleVariables`（`UAIPRuntimeEngineManagement` 所有） |
 | `RuntimeCVarWrite` | CVar 値の設定・リセット — `UAIP.Runtime.Engine.CVar.SetConsoleVariable`、`ResetConsoleVariable`（機密名・`ECVF_ReadOnly` は拒否、`ECVF_Cheat` 付きはさらに `AllowCheatCVarWrite` SafetyPolicy スイッチが必要、`UAIPRuntimeEngineManagement` 所有） |
-| `CVarInspect` | センシティブパターンフィルタリング付き CVar 検索 — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` bridge（`UAIPEditorEngineManagement` 所有） |
+| `CVarInspect` | センシティブパターンフィルタリング付き CVar 検索 — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` bridge と、その非推奨の別名 `Toolset.Editor.Toolset.World.SearchCVars`（どちらも同じ Capability で動作。`UAIPEditorEngineManagement` 所有） |
 | `RuntimeActorManipulation` | PIE 中のアクタースポーン・破棄・テレポート・Possess |
 | `RuntimeExecCommand` | `UWorld` 経由のランタイムコンソールコマンド実行 |
 | `RuntimeDataLayerControl` | 実行中のプレイワールドにおける World Partition Data Layer のランタイム状態変更 — `UAIP.Runtime.World.SetDataLayerRuntimeState` のみが要求します。状態の観測（`ListDataLayerRuntimeStates`、`GetDataLayerRuntimeState`）、ストリーミング完了の待機（`WaitForDataLayerStreaming`）、プレイワールドの列挙（`ListPlayWorlds`）には Capability は一切不要です。レベルアセット側の Data Layer を編集する `WorldPartitionEdit` / `DataLayerEdit` とは別に切り出しています — こちらは実行中セッションのロード状態だけを変更し、ディスクには何も保存しません |
