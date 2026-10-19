@@ -951,6 +951,51 @@ CommonUI のコマンド（[`UAIP.Runtime.CommonUI`](commands.md#uaipruntimecomm
 | `ConfigSettingsSave` | `ISettingsSection::Save()` 経由でのディスク書き出し — `SaveSettings`（`bDisableSave` が設定されている場合は実行不可） |
 | `ConfigSettingsReset` | 設定をクラスデフォルトに戻す — `ResetSettingsToDefaults` |
 
+#### 秘密値の平文での読み取り
+
+| Capability | 有効になる操作 |
+|---|---|
+| `SecretValueRead` | 呼び出しが `IncludeSecretValues: true` を渡したとき、秘密の設定値の平文を `Result.SecretFieldValues` に返す。デモ版には含まれません（`NotInThisEdition`） |
+
+設定を返すコマンドは、秘密の値を `"***"` で伏せ、横に `IsMasked: true` を付けます。平文が返るのは、次の **3 つがすべて**そろったときだけです。
+
+1. 呼び出しが `IncludeSecretValues: true` を渡している。引数は boolean だけで、文字列や数値は `InvalidParams` で断られます。
+2. `[UAIP.SafetyPolicy]` の `AllowSecretValueRead=True`（または起動引数 `-uaip-policy-allow-secret-value-read=True`）。起動時に読まれ、`ReloadCapabilities` では再読み込みされないので、エディタを再起動してください。`QueryCapabilities` は `OperationalConstraints.IsSecretValueReadAllowed` として報告します。
+3. セッションが `SecretValueRead` を持っている（`+AllowedCapabilities=SecretValueRead`。`ReloadCapabilities` で再起動なしに反映できます）。ロールに結び付いたセッションでは、そのロールがこの Capability を含む必要があります。
+
+`SecretValueRead` はこれらのコマンドの必須 Capability ではないので、持っていない呼び出しも成功し、値は伏せたまま返ります。先に判定されるのは `AllowSecretValueRead` です。
+
+- **平文の行き先。** 平文は `Result.SecretFieldValues` にだけ入り、artifact・監査ログ・完了通知には出ません（そこは `"***"` のままです）。各要素は `Key`（`MaskedFields` と同じパス）と、伏せた欄と同じ名前の欄（`Value`、`OldValue` / `NewValue`、`CurrentValue` / `DefaultValue`）を持ちます。返すのは最大 64 要素で、4096 文字を超える値は文字列 `"<truncated>"` に置き換わります。切り捨てた数は `SecretFieldValuesTruncatedCount` と `SecretFieldValuesOmittedCount` で分かり、0 のときは応答に現れません。
+- **平文を返さないとき。** 理由は `Result.SecretValuesWithheldReason` に入ります。設定が無効なら `SecretValuesWithheldBySafetyPolicy`、設定は有効でセッションに Capability が無ければ `SecretValuesWithheld` です。平文を求めて許可が無かったときは、応答に秘密が無くても必ず返ります。許可があって秘密が無いときは `SecretFieldValues` が空の一覧で返るので、「求めて許可された」と「求めていない」を区別できます。デモ版には Capability が無いので、理由は Capability が無いときと同じです。
+- **解禁されないもの。** 秘密かどうかを判定できずに伏せた値（`Toolset.ConfigSettings.GetSectionPropertyValues` の `UnverifiedMaskedFields`）は、この方法でも平文になりません。
+
+**`IncludeSecretValues` を受け付けるコマンド**
+
+| コマンド | 解禁される値 |
+|---|---|
+| `Toolset.ConfigSettings.GetSectionPropertyValues` | 要求したプロパティの値 |
+| `UAIP.Editor.Engine.ConfigSettings.GetSettingsValues` | 値 |
+| `UAIP.Editor.Engine.ConfigSettings.SetSettingsValues` | `DryRun` の `OldValue` / `NewValue`。`DryRun` なしの呼び出しは秘密の値を返さないので、引数は何もしません |
+| `UAIP.Editor.Engine.ConfigSettings.ResetSettingsToDefaults` | `DryRun` の `CurrentValue` / `DefaultValue` と、実行時の元の値の控え（`OldValue`） |
+| `UAIP.Editor.Engine.ConfigSettings.GetSettingsSchema` | `DefaultValue` |
+| `UAIP.Runtime.Engine.Config.GetConfigValue` | ini の値（`Value`） |
+| `UAIP.Runtime.Engine.Config.SetConfigValue` | 応答の変更前の値（`OldValue`） |
+| `UAIP.Editor.Property.GetProjectSetting`、`GetAssetProperty`、`GetActorProperty`、`GetBlueprintDefault`、`GetWorldSetting`、`GetDataTableRow` | `Value` |
+| `UAIP.Editor.Level.GetActorComponentProperty`、`UAIP.Editor.Blueprint.GetBlueprintComponentProperty` | `Value` |
+
+`Toolset.ConfigSettings.GetSectionSchema` は対象外です。プロパティの型・説明・範囲・enum の名前を返すだけで、値は返さないためです。そのほかのプロパティを読むコマンドは、秘密の値を伏せたままにし、解禁はできません。
+
+**何を秘密とみなすか。** 次のどれか 1 つに当たるプロパティが秘密です。メタデータ `Password` / `Secret` / `PasswordField=true`。名前のパターン（パスワード、API キー、トークンなど）。ファイルパス・ディレクトリパスの型（`FFilePath` / `FDirectoryPath`）。固定の一覧の項目（今は CryptoKeys の設定 `EncryptionKey`、`SigningPrivateExponent`、`SecondaryEncryptionKeys`）。`MyPath.FilePath` のようなパスは、途中のどれか 1 段でも秘密なら値全体が伏せられます。伏せる判定と解禁の判定は同じなので、伏せられるものは必ず解禁できます。`SetSettingsValues` と `Toolset.ConfigSettings.SetSectionProperties` で書く `Properties` は、秘密かどうかによらず、監査ログと完了通知で伏せられます。
+
+**パッケージしたゲームでは** プロパティのメタデータ（`Password`、`Secret`、`PasswordField`）が存在しないので、名前のパターン・パスの型・固定の一覧だけで判定します。メタデータだけを頼りにした秘密の設定は、そこでは伏せられません。
+
+**この仕組みが対象にしない経路。**
+
+- 任意のコードを実行するコマンド（`RunEditorPythonScript`、`UAIP.Editor.Python.*`、`RunNamedEditorCommand`、`ExecuteConsoleCommand`）は、伏せ字では防げません。どれも DefaultDenied の Capability が要り、それを付与した時点で、秘密値の読み取りより強い権限を与えています。
+- UI 系の経路（`SnapshotUI` の入力欄の値、`DumpSlateTree` の文字列、画面キャプチャ）は、入力欄がどのプロパティかを特定できません。自作の秘密の設定を守るには、そのプロパティに `meta=(PasswordField=true)` を付けてください。エンジンがパスワード欄として描くので、既存のパスワード欄の扱いで伏せられます（**エディタ操作** の `AllowPasswordFieldRead` と `EditorWidgetPasswordTextRead` を参照）。
+- メタデータも、秘密らしい名前も、パスの型も、固定の一覧への登録も無い秘密は、秘密と判定されません。自作の設定には `PasswordField=true` を付けてください。
+- `SetConfigValue` で書き込む値は、監査ログでは伏せられません。伏せるのは応答の `OldValue` だけです。
+
 #### プラグイン管理
 
 プラグインの有効状態やディスクリプタに対する書き込みコマンドです。エンジンおよびマーケットプレイスのプラグインは Capability に関わらず常に読み取り専用です。書き込みコマンドの変更はエディタ再起動後に反映されます。
@@ -1111,6 +1156,7 @@ AllowPasswordFieldWrite=False
 AllowRuntimePasswordFieldWrite=False
 AllowPasswordFieldRead=False
 AllowRuntimePasswordFieldRead=False
+AllowSecretValueRead=False
 AllowInputModeBypass=False
 DisablePIEStart=False
 AllowCheatCVarWrite=False
@@ -1140,7 +1186,7 @@ AllowProjectNetDriverNetModeQuery=False
 |---|---|---|
 | `ReadOnly` | `False` | 書き込みコマンドを拒否。エディタライフサイクルの 2 コマンドのみ例外 — 下記参照 |
 | `DisableSave` | `False` | ディスク書き込みコマンド（ファイルの削除・移動・リネームを含む）を拒否 — 下記参照 |
-| `AllowLogDump` | `False` | `DumpOutputLog` / `DumpMessageLog` を許可 |
+| `AllowLogDump` | `False` | `DumpOutputLog` / `DumpMessageLog` と `GetLogEntries`（`UAIP.Editor.Engine.Log.GetLogEntries` と `Toolset.Editor.Toolset.Logs.GetLogEntries`）を許可。`QueryCapabilities` は `OperationalConstraints.IsLogDumpAllowed` として報告します |
 | `AllowContextMenuMutation` | `False` | `InvokeContextMenuAction` を許可 |
 | `AllowKeyboardInput` | `False` | `PressKey` を許可（`EditorKeyboardInput` Capability も別途必要） |
 | `AllowKeyboardModifierInput` | `False` | `PressKey` 内の Ctrl/Alt/Shift 修飾キーを許可 |
@@ -1148,6 +1194,7 @@ AllowProjectNetDriverNetModeQuery=False
 | `AllowRuntimePasswordFieldWrite` | `False` | `TypeGameViewportText` による、実行中のゲームの UI のパスワード欄と、パスワード欄かどうか判定できない欄への入力を許可（`RuntimeUIInputInjection` も必要）。`AllowPasswordFieldWrite` とは独立。起動引数: `-uaip-policy-allow-runtime-password-field-write=True` |
 | `AllowPasswordFieldRead` | `False` | `SnapshotUI` が、エディタの UI のパスワード欄と、パスワード欄かどうか判定できない欄の平文を返せるようにします（`EditorWidgetPasswordTextRead` も必要）。`AllowRuntimePasswordFieldRead` とは独立。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-password-field-read=True` |
 | `AllowRuntimePasswordFieldRead` | `False` | `DumpGameViewportWidgetTexts` が、実行中のゲームの UI のパスワード欄と、パスワード欄かどうか判定できない欄の平文を返せるようにします（`RuntimeWidgetTextRead` と `RuntimeWidgetPasswordTextRead` も必要）。`AllowPasswordFieldRead` とは独立。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-runtime-password-field-read=True` |
+| `AllowSecretValueRead` | `False` | `IncludeSecretValues` を受け付けるコマンドが、秘密の設定値の平文を返せるようにします（`SecretValueRead` も必要）。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-secret-value-read=True`。[秘密値の平文での読み取り](#秘密値の平文での読み取り) を参照 |
 | `AllowInputModeBypass` | `False` | Inject 系コマンドの `BypassInputMode=true` を許可 |
 | `DisablePIEStart` | `False` | PIE 起動を拒否 |
 | `AllowCheatCVarWrite` | `False` | `SetConsoleVariable` / `ResetConsoleVariable` による `ECVF_Cheat` フラグ付き CVar への書き込みを許可（`RuntimeCVarWrite` も別途必要） |

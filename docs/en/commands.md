@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1315 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1736 commands organized by domain. These totals count every command the plugin defines for the UE 5.8 editor on Win64, including commands listed with `Available: false` because a plugin they need is disabled. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1319 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1740 commands organized by domain. These totals count every command the plugin defines for the UE 5.8 editor on Win64, including commands listed with `Available: false` because a plugin they need is disabled. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -89,7 +89,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 17 | 10 | ✅ |
 | Editor Assets | `UAIP.Editor.Assets` | 51 | 6 | partial (29/51) |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
-| Editor Level | `UAIP.Editor.Level` | 22 | 8 | partial (9/22) |
+| Editor Level | `UAIP.Editor.Level` | 24 | 8 | partial (10/24) |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | partial (6/12) |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
@@ -113,7 +113,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 18 | 7 | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
-| Editor Sequencer | `UAIP.Editor.Sequencer` | 129 | 61 | — |
+| Editor Sequencer | `UAIP.Editor.Sequencer` | 131 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
 | Editor PCG 🧩 | `UAIP.Editor.PCG` | 34 | 31 | — |
@@ -540,7 +540,7 @@ Log entry retrieval for the editor output log. Log **verbosity** commands live u
 
 | Command | Description |
 |---|---|
-| 🆓 `GetLogEntries` | Retrieve recent log entries from the editor output log (supports pattern filtering; no capability required) |
+| 🆓 `GetLogEntries` | Retrieve recent log entries from the editor output log (supports pattern filtering). Needs no capability, but runs only when the safety policy flag `AllowLogDump` (`bAllowLogDump`) is on, the same flag as `DumpOutputLog`. The flag is off by default, so in the default configuration the command is refused with `PolicyViolation` that tells you to turn it on. `uaip_query_capabilities` reports the state as `IsLogDumpAllowed`. It used to run whatever the flag said |
 
 ### Toolset bridges — Logs (4) 🧩
 
@@ -548,7 +548,7 @@ Bridge commands via the `LogsToolset` (UE 5.8+, EditorToolset plugin). Provider:
 
 | Command | Description |
 |---|---|
-| `Toolset.Editor.Toolset.Logs.GetLogEntries` | Retrieve recent log entries from the editor output log |
+| `Toolset.Editor.Toolset.Logs.GetLogEntries` | Retrieve recent log entries from the editor output log. Needs the same safety policy flag `AllowLogDump` (`bAllowLogDump`) as the native command and is refused with `PolicyViolation` while it is off |
 | `Toolset.Editor.Toolset.Logs.GetLogCategories` | List registered log category names |
 | `Toolset.Editor.Toolset.Logs.GetVerbosity` | Get the verbosity level for a log category |
 | `Toolset.Editor.Toolset.Logs.SetVerbosity` | Set the verbosity level for a log category (requires `LogVerbosityEdit`) |
@@ -612,11 +612,11 @@ Project Settings and Editor Preferences management via `ISettingsModule`. Comman
 | 🆓 `ListSettingsContainers` | List all registered settings containers (e.g. `Project`, `Editor`). No capability required |
 | 🆓 `ListSettingsCategories` | List all categories in a settings container. No capability required |
 | 🆓 `ListSettingsSections` | List all sections in a settings category. No capability required |
-| 🆓 `GetSettingsSchema` | Return a JSON artifact with editable property names, types, descriptions, defaults, and edit conditions for a section (requires `EditorInspect`) |
-| 🆓 `GetSettingsValues` | Return a JSON artifact with current property values for a section. Secret fields (name matches a secret pattern, has secret metadata, or is a file path type) are masked with `***` (requires `EditorInspect`) |
-| `SetSettingsValues` | Merge a `Properties` map into the settings object via `ImportText`. Supports `DryRun` (validates without applying). Requires `ConfigSettingsEdit`. Blocked during PIE. Values are engine text only, so a reference, a container or a struct outside the built-in value catalogue is refused **whatever capabilities the session holds** — write those through `SetProjectSetting`, which reaches the same settings object and takes `ValueJson`. A value that only parses part-way is now refused with `InvalidParams` instead of being applied as a fragment |
+| 🆓 `GetSettingsSchema` | Return a JSON artifact with editable property names, types, descriptions, defaults, and edit conditions for a section (requires `EditorInspect`) The default value of a secret property is `***` with `IsMasked: true`; it used to be plain. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values) |
+| 🆓 `GetSettingsValues` | Return a JSON artifact with current property values for a section. Secret fields (name matches a secret pattern, has secret metadata, or is a file path type) are masked with `***` (requires `EditorInspect`) A property whose name alone marks it secret is now masked too. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values) |
+| `SetSettingsValues` | Merge a `Properties` map into the settings object via `ImportText`. Supports `DryRun` (validates without applying). Requires `ConfigSettingsEdit`. Blocked during PIE. Values are engine text only, so a reference, a container or a struct outside the built-in value catalogue is refused **whatever capabilities the session holds** — write those through `SetProjectSetting`, which reaches the same settings object and takes `ValueJson`. A value that only parses part-way is now refused with `InvalidParams` instead of being applied as a fragment The `Properties` you send are masked in the audit log, the completion notice and the command record whether or not they are secret, and so is the text of a failure; the response to the caller is unchanged. A refusal never quotes the value you sent: it names the property, its type or flags, or the missing capability. With `DryRun`, the old and new values of a secret property are `***` with `IsMasked: true` (they used to be `null`). `IncludeSecretValues` returns the plain ones for a `DryRun`; without `DryRun` the response holds no value, so it does nothing — see [Reading secret values](#reading-secret-values) |
 | `SaveSettings` | Persist in-memory settings to the section's ini file via `ISettingsSection::Save()`. Requires `ConfigSettingsSave`. Blocked during PIE and when `bDisableSave` is set |
-| `ResetSettingsToDefaults` | Revert the settings object to class defaults and save. Requires `ConfigSettingsReset`. Blocked during PIE |
+| `ResetSettingsToDefaults` | Revert the settings object to class defaults and save. Requires `ConfigSettingsReset`. Blocked during PIE Secret values are `***` in the `DryRun` preview and in the backup artifact of a real run. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values) |
 
 ### Toolset bridges — ConfigSettings (8) 🧩
 
@@ -628,10 +628,50 @@ Bridge commands via the `ConfigSettingsToolset` plugin (UE 5.8+). Provider: `Too
 | `Toolset.ConfigSettings.ListCategories` | List all categories within a settings container |
 | `Toolset.ConfigSettings.ListSections` | List all sections within a settings category |
 | `Toolset.ConfigSettings.GetSectionSchema` | Get the property schema for a settings section |
-| `Toolset.ConfigSettings.GetSectionPropertyValues` | Get current property values for a settings section |
-| `Toolset.ConfigSettings.SetSectionProperties` | Set property values on a settings section and persist them (requires `ConfigSettingsEdit`) |
+| `Toolset.ConfigSettings.GetSectionPropertyValues` | Get the current values of the named properties of a settings section. `PropertyNames` is required: a non-empty array of property names. The `Result` is a JSON string in which secret properties are `***`. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values) and [Typed values and masked results](#toolset-bridges--configsettings-typed-values-and-masked-results) |
+| `Toolset.ConfigSettings.SetSectionProperties` | Set property values on a settings section and persist them (requires `ConfigSettingsEdit`). `Properties` maps a property name to a JSON value typed like the property; a value the property would not accept unchanged is refused before anything is written. The written values are masked in the audit log and the command record — see [Typed values and masked results](#toolset-bridges--configsettings-typed-values-and-masked-results) |
 | `Toolset.ConfigSettings.SaveSection` | Persist the current in-memory settings for a section to its ini file (requires `ConfigSettingsSave`) |
 | `Toolset.ConfigSettings.ResetSectionToDefaults` | Reset all property values of a settings section to their compiled defaults (requires `ConfigSettingsReset`) |
+
+<a id="toolset-bridges--configsettings-typed-values-and-masked-results"></a>
+### Toolset bridges — ConfigSettings: typed values and masked results
+
+**`SetSectionProperties`** takes each value in the JSON type of the property: a number for a number, `true` / `false` for a Boolean, a string for a string, an array for an array, an object for a struct. UAIP checks every property name and value against the settings class before it calls the toolset, so a value the toolset would store as something else is refused with `InvalidParams` and nothing is written. The refusal names the property and the form it expects, never your value. A struct, array, map or reference property also needs the same capabilities `SetSettingsValues` needs, so this command is not a looser way in (a missing one is refused with the same error as there).
+
+| Property type | Accepted value |
+|---|---|
+| Boolean | `true` / `false` |
+| Enum | The enumerator name as a string, or its integer value as a number |
+| Floating point | A finite number (within the range of `float` for a `float`) |
+| Integer | A whole, finite number no larger than 2^53 in magnitude. A string such as `"42"` is refused |
+| `FString` | A string |
+| `FName` | A string without whitespace and without `"` `'` `(` `)` `,` `=` |
+| `FText` | A string, except one that starts with `NSLOCTEXT(`, `LOCTEXT(`, `INVTEXT(`, `LOCTABLE(` or `LOCGEN_` |
+| `FLinearColor` | An object with all of `R`, `G`, `B`, `A` and nothing else |
+| `FGuid` | A hyphenated GUID string |
+| Object or class reference, soft reference or soft object path | A string starting with `/`, in the form `/Package/Path.ObjectName`. Empty, `None` and `null` are refused |
+| Other struct | An object with at least one member, each member following the same rules |
+| `TArray` / `TSet` | An array with no `null` element, each element following the same rules |
+
+These cannot be written here and are refused whatever the value: `TMap`, `FColor`, fixed-size arrays, `FTransform`, `FTopLevelAssetPath`, structs with their own text form (such as gameplay tags), instanced references, weak, lazy and interface references, optionals, delegates and field paths. Write them with `UAIP.Editor.Engine.ConfigSettings.SetSettingsValues`. `Properties` must name at least one property, and a container, category, section or property name of 1024 characters or more is refused. If the toolset fails halfway, or answers that it could not set the properties, the call fails and says that some properties may already have been written; read the values back to confirm.
+
+**`GetSectionPropertyValues`** reads only the names in `PropertyNames`. A key in the result that you did not ask for, or that the section does not have, is masked too. The response carries `MaskedFields` (the names) and `MaskedFieldCount`. Names masked only because UAIP could not tell whether they are secret are also in `UnverifiedMaskedFields`, and `IncludeSecretValues` does not reveal them. A masked number or Boolean becomes the string `"***"`. If the section changed while it was read (a settings reload or a code reload), the call fails and asks you to call again. If the toolset returns a shape UAIP cannot read, the call fails rather than return a value it could not mask; read through `UAIP.Editor.Engine.ConfigSettings.GetSettingsValues` instead. A container, category or section that does not exist is `NotFound`, with the same text as the native settings commands.
+
+**A failure of any Toolset bridge command** reads `Toolset.<ToolName> failed: <cause>`. `<ToolName>` is the name of the delegated toolset function and can differ from the last part of the command name (`Toolset.SetSectionProperties failed: ...`, `Toolset.set_anim_mode_gizmo_scale failed: ...`). Input values the command declares secret, and URLs, IDs and file-system paths, are removed from the cause, which is cut at 256 characters; the log gets the same text. When a secret input holds a value that cannot be hidden reliably (1 to 3 characters, or a number), and for commands that read secret values, the cause is left out and the message is just `Toolset.<ToolName> failed.` `SetSectionProperties` often falls under this because its values are often numbers (a wrong type is refused earlier, with its cause). Input values that are not declared secret, such as an asset path, can appear in the cause.
+
+
+<a id="reading-secret-values"></a>
+### Reading secret values
+
+Every command that returns a setting value replaces a secret value with `***` and sets `IsMasked: true` next to it. Commands that take `IncludeSecretValues` can return the plain value instead, and it is lifted only when **all three** layers allow it:
+
+1. **Argument** — `IncludeSecretValues: true` on the call (a Boolean).
+2. **Capability** — `SecretValueRead` (DefaultDenied) on the session. A grant applies without a restart.
+3. **SafetyPolicy** — `AllowSecretValueRead=True` under `[UAIP.SafetyPolicy]`, or the launch flag `-uaip-policy-allow-secret-value-read`. A change needs an editor restart; `uaip_query_capabilities` reports the state as `IsSecretValueReadAllowed`.
+
+The plain value comes back **only** in `Result.SecretFieldValues`; the usual places, every artifact, the audit log and the completion notice keep `***`. If a layer says no, the call still succeeds, the values stay masked and `Result.SecretValuesWithheldReason` says why. The demo build does not ship `SecretValueRead`. What counts as secret (including the whole property path, the engine's password-field marker and the fixed CryptoKeys list), the entry and length limits, and the routes masking does not cover are in [Safety & Capabilities](safety.md#reading-secret-values-in-plain-text).
+
+The commands that take `IncludeSecretValues` are `Toolset.ConfigSettings.GetSectionPropertyValues`, the four native ConfigSettings commands above (`GetSettingsSchema`, `GetSettingsValues`, `SetSettingsValues` with `DryRun`, `ResetSettingsToDefaults`), `UAIP.Runtime.Engine.Config.GetConfigValue` / `SetConfigValue`, the six `Get*` commands of [UAIP.Editor.Property](#uaipeditorproperty), `UAIP.Editor.Level.GetActorComponentProperty` and `UAIP.Editor.Blueprint.GetBlueprintComponentProperty`. `Toolset.ConfigSettings.GetSectionSchema` does not take it because it returns no value, only types, descriptions, ranges and enum names.
 
 ---
 
@@ -1021,11 +1061,13 @@ Editor-side actor placement, transforms, and level loading.
 | 🆓 `GetVisibleActors` | Return actors currently visible in the active editor viewport (frustum culling) |
 | 🆓 `ProjectWorldToScreen` | Project a world-space position to screen coordinates |
 | 🆓 `ProjectScreenToWorld` | Cast a ray from screen coordinates into the world (ECC_Visibility line trace) |
+| 🆓 `GetTransformGizmoSize` | Report the transform gizmo size settings and which one the gizmo in use reads: `AxisSizeMultiplier` (the TRS gizmo, the default in UE 5.8), `LegacySizeOffset` (the legacy gizmo), `GizmoVersion` / `UsesNewTRSGizmos` (which gizmo is in use) and `EffectiveSetting` (`AxisSizeMultiplier`, `LegacySizeOffset`, or `Unknown` when it cannot be told). On UE 5.7 there is no multiplier: `GizmoVersion` and `AxisSizeMultiplier` are absent, `AxisSizeMultiplierUnavailableReason` says why, and `EffectiveSetting` is `Unknown` when the new gizmo is in use. Requires `EditorInspect` |
+| `SetTransformGizmoSize` | Set the gizmo size, save it to the editor configuration and redraw the viewports. `AxisSizeMultiplier` (0.1 to 10) sizes the TRS gizmo; `LegacySizeOffset` (-10 to 150) is added to the size of the legacy gizmo. Give either or both; both are validated before either is written, and a value outside its range, a non-number, an infinity, or neither field is `InvalidParams` with nothing written. The response lists the fields written (`Applied`) and `EffectiveSetting`. Only the setting the current gizmo reads changes what is drawn: if you write only the other one, the value is saved and `Note` says the current gizmo reads a different value (no `Note` when `EffectiveSetting` is `Unknown`). On UE 5.7 a call that includes `AxisSizeMultiplier` is refused as a whole with `InvalidParams` that names the engine version, and `LegacySizeOffset` alone is written. The same setting is also written by `UAIP.Editor.Sequencer.SetAnimModeGizmoScale`. Requires `EditorViewportControl` |
 | 🆓 `ListActorComponents` | List every component of an actor placed in the level. Each entry carries the `ComponentId` the three commands below take, plus `ComponentClassPath`, `Origin` (`Instance` / `SimpleConstructionScript` / `UserConstructionScript` / `Native`), `IsEditableInstance`, `IsSceneComponent`, `IsRootComponent`, `AttachParentComponentName` and `AttachSocketName`. Each entry also reports what **adding** a component of that class would take — `Admission` (`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`) with `RequiredCapabilities` and `MissingCapabilities` — which is how a caller learns about `ComponentCustomTypeEdit` before attempting a write. Reads the editor world, so it stays answerable during PIE. Requires `EditorInspect`. `ComponentId` is opaque and already escaped: pass it unchanged to the other component commands, and never build it or edit it by hand |
 | `AddActorComponent` | Add a component to an actor placed in the level — what the Details panel's *Add Component* button does, as one undo step. Returns the new component's `ComponentId`. `ComponentName` may be omitted to let the engine generate one; `AttachParentComponentName` / `AttachSocketName` apply only to a `USceneComponent` subclass, and the new component becomes the root when the actor has none. The class is resolved against what is already loaded and is never loaded on request (an unloaded class is `NotFound`). Requires `ActorComponentEdit`, plus `ComponentCustomTypeEdit` for a class outside `/Script/Engine` and `/Script/LiveLinkComponents` — see [Capability-gated custom types](#capability-gated-custom-types). Refused during PIE |
 | `DeleteActorComponent` | Remove an instance component from an actor placed in the level, as one undo step. Only `Origin: Instance` components can be removed — an SCS one belongs to the Blueprint component commands, a construction-script one is rebuilt by the script, and a native one exists on every instance of the class; each refusal names the route that does own it, and the actor's `DefaultSceneRoot` is refused too. Children of a removed scene component are re-attached to its parent, keeping their world transforms. `ExpectedComponentClass` is required (pass back the `ComponentClassPath` from the listing) so a stale identifier is refused with `NotFound` rather than followed. Requires `ActorComponentEdit`. Refused during PIE |
 | `ReparentActorComponent` | Attach a scene component of a placed actor beneath a different component of the same actor, keeping its world transform, as one undo step. Both must be `USceneComponent` subclasses on that actor and the moved one must be `Origin: Instance`. There is no "attached to nothing" — detaching is expressed by naming the actor's root as `NewParentComponentName` — and the root itself cannot be moved. A cycle, or a socket the new parent does not have, is refused before anything is written. `ExpectedComponentClass` is required, same as above. Requires `ActorComponentEdit`. Refused during PIE |
-| 🆓 `GetActorComponentProperty` | Read a property value from a component of an actor placed in the level, addressed by the `ComponentId` from `ListActorComponents` / `AddActorComponent` — `GetActorProperty` refuses a path that traverses the object reference an actor holds its components through, so this is the only way to reach one. Returns `Value`, `PropertyType`, `Origin`, and `WriteRequirements` — what a write of that property would additionally require beyond `ActorComponentEdit`, split into what this session already holds and what it is missing, plus whether the write is possible at all and which of `SetActorComponentProperty`'s two value parameters it must arrive in. `ExpectedComponentClass` is required, so a stale `ComponentId` is refused rather than followed. A component of any `Origin` can be read. Reads the editor world, so it stays answerable during PIE. Requires `EditorInspect`. The `ComponentId` is opaque and already escaped — pass it unchanged, as `ListActorComponents` returned it |
+| 🆓 `GetActorComponentProperty` | Read a property value from a component of an actor placed in the level, addressed by the `ComponentId` from `ListActorComponents` / `AddActorComponent` — `GetActorProperty` refuses a path that traverses the object reference an actor holds its components through, so this is the only way to reach one. Returns `Value`, `PropertyType`, `Origin`, and `WriteRequirements` — what a write of that property would additionally require beyond `ActorComponentEdit`, split into what this session already holds and what it is missing, plus whether the write is possible at all and which of `SetActorComponentProperty`'s two value parameters it must arrive in. `ExpectedComponentClass` is required, so a stale `ComponentId` is refused rather than followed. A component of any `Origin` can be read. Reads the editor world, so it stays answerable during PIE. Requires `EditorInspect`. The `ComponentId` is opaque and already escaped — pass it unchanged, as `ListActorComponents` returned it A secret property, or one under a secret parent along the path, is returned as `***` (component reads used to be unmasked). Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values) |
 | `SetActorComponentProperty` | Write a property value onto a component of an actor placed in the level, addressed the same way as `GetActorComponentProperty`, as one undo step. The value arrives as UE import text in `Value` or as JSON in `ValueJson`, and `Operation` / `ElementIndex` / `ElementKeyJson` address a single container element instead of replacing the whole value — see [Writing references, structs and containers](#writing-references-structs-and-containers) for those parameters and the capabilities a reference or composite value additionally needs (call `GetActorComponentProperty` first to find out which). `ExpectedComponentClass` is required, same as above. Refused when the component's `Origin` is `UserConstructionScript`, since the next run of that script would discard the write. Requires `ActorComponentEdit`. Refused during PIE |
 
 > **Note — instance components only.** These six commands operate on components of an actor **placed in the level** (`GetActorComponentProperty` can also read a component of any `Origin`, including one owned by the Blueprint's construction script — only writing to that one is refused). Components declared on the actor's Blueprint go through [UAIP.Editor.Blueprint — Components — SCS](#components--scs-8) instead. Renaming and duplicating an instance component have no counterpart here; add the component again under the name you want.
@@ -1051,21 +1093,21 @@ Bridge commands via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Prov
 
 ## UAIP.Editor.Property
 
-Read and write properties on actors, assets, Blueprint defaults, DataTable rows, World / Project settings. `Get*` commands mask secret-looking property values (name matches a secret pattern, has secret metadata, or is a file path type) with `***` — a compound value (e.g. a struct) containing a secret member is masked as a whole, not just the secret sub-field. `Set*` commands accept 17 struct types (vectors, rotators, transforms, colors, `FGuid`, intervals, `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`, `FBoneReference`, …) and every integer width from `int8` through `uint64` in the text `Value`. Arrays, maps, sets, optionals, other structs and object references go in `ValueJson` instead, and a single container element can be addressed with `Operation` / `ElementIndex` / `ElementKeyJson` — see [Writing references, structs and containers](#writing-references-structs-and-containers) for those parameters and the two capabilities (`PropertyReferenceEdit` / `PropertyStructuredEdit`) that gate them.
+Read and write properties on actors, assets, Blueprint defaults, DataTable rows, World / Project settings. `Get*` commands mask secret-looking property values (name matches a secret pattern, has secret metadata, or is a file path type) with `***` — a compound value (e.g. a struct) containing a secret member is masked as a whole, not just the secret sub-field. `Set*` commands accept 17 struct types (vectors, rotators, transforms, colors, `FGuid`, intervals, `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`, `FBoneReference`, …) and every integer width from `int8` through `uint64` in the text `Value`. Arrays, maps, sets, optionals, other structs and object references go in `ValueJson` instead, and a single container element can be addressed with `Operation` / `ElementIndex` / `ElementKeyJson` — see [Writing references, structs and containers](#writing-references-structs-and-containers) for those parameters and the two capabilities (`PropertyReferenceEdit` / `PropertyStructuredEdit`) that gate them. A property is judged secret along the whole path: if any element of it is secret (`MyPath.FilePath`), the value is masked, where only the last element used to be checked. The engine's password-field marker `meta=(PasswordField=true)` counts, and so do the CryptoKeys `EncryptionKey`, `SigningPrivateExponent` and `SecondaryEncryptionKeys`. The six `Get*` commands below take `IncludeSecretValues` to return the plain value in `Result.SecretFieldValues` — see [Reading secret values](#reading-secret-values).
 
 | Command | Description |
 |---|---|
-| 🆓 `GetActorProperty` | Get a property value from an editor actor |
+| 🆓 `GetActorProperty` | Get a property value from an editor actor Takes `IncludeSecretValues` |
 | `SetActorProperty` | Set a property on an editor actor |
-| 🆓 `GetWorldSetting` | Get a WorldSettings property |
+| 🆓 `GetWorldSetting` | Get a WorldSettings property Takes `IncludeSecretValues` |
 | `SetWorldSetting` | Set a WorldSettings property |
-| 🆓 `GetAssetProperty` | Get a property from an asset (DataAsset etc.) |
+| 🆓 `GetAssetProperty` | Get a property from an asset (DataAsset etc.) Takes `IncludeSecretValues` |
 | `SetAssetProperty` | Set a property on an asset and call `MarkPackageDirty` |
-| 🆓 `GetBlueprintDefault` | Get a property from a Blueprint CDO |
+| 🆓 `GetBlueprintDefault` | Get a property from a Blueprint CDO Takes `IncludeSecretValues` |
 | `SetBlueprintDefault` | Set a property on a Blueprint CDO |
-| 🆓 `GetProjectSetting` | Get a property from a `UDeveloperSettings` CDO |
+| 🆓 `GetProjectSetting` | Get a property from a `UDeveloperSettings` CDO Takes `IncludeSecretValues` |
 | `SetProjectSetting` | Set a property on a `UDeveloperSettings` CDO and call `SaveConfig()` |
-| 🆓 `GetDataTableRow` | Get a DataTable row property |
+| 🆓 `GetDataTableRow` | Get a DataTable row property Takes `IncludeSecretValues` |
 | `SetDataTableRow` | Set a DataTable row property |
 
 **Failure codes.** A `Get*` command refuses a property path with the same `ErrorCode` the matching `Set*` command would use: `NotFound` when the property does not exist, and `InvalidParams` when the path is malformed, too deep, indexes out of range, or steps through something it cannot (for example a fixed-size array of structs without an index). ⚠️ These reads used to return `ExecutionFailed` whatever the reason. When the target itself — the actor, asset, Blueprint, row or settings object — cannot be found, both reads and writes still return `ExecutionFailed`. Two other domains keep their own codes for property paths, and their messages still say why: `GetDataflowNodeProperty` / `SetDataflowNodeProperty` return `InvalidParams`, and `GetSectionProperty` (`UAIP.Editor.Sequencer`) returns `ExecutionFailed`.
@@ -1131,7 +1173,7 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 | `RenameBlueprintComponent` | Rename an SCS component |
 | `ReparentBlueprintComponent` | Change an SCS component's parent. Naming a parent requires the component and the parent to each be a `USceneComponent` subclass; moving to the root level (an empty `NewParentVariableName`) works for any component class |
 | `DuplicateBlueprintComponent` | Duplicate an SCS component. ⚠️ Now additionally requires `ComponentCustomTypeEdit` for a project- or plugin-defined component class — see the note below |
-| `GetBlueprintComponentProperty` | Get a property value from an SCS component |
+| `GetBlueprintComponentProperty` | Get a property value from an SCS component A secret property, or one under a secret parent along the path, is returned as `***`. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values) |
 | `SetBlueprintComponentProperty` | Set a property on an SCS component. The value goes in `Value` as engine text or in `ValueJson` as JSON, and `Operation` / `ElementIndex` / `ElementKeyJson` address a single container element — see [Writing references, structs and containers](#writing-references-structs-and-containers) |
 
 > ⚠️ **Breaking change — `AddBlueprintComponent` and `DuplicateBlueprintComponent` now gate the component class.**
@@ -2125,7 +2167,7 @@ EQS query editing. Requires `EnvironmentQueryEditor` plugin.
 
 LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 
-### Native (129)
+### Native (131)
 
 #### Structure (15)
 
@@ -2319,6 +2361,15 @@ ControlRig authoring **inside a LevelSequence**. For editing a ControlRig asset 
 | `HideAllControls` | Hide every control in the section |
 | `LoadAnimIntoRig` | Bakes an AnimSequence onto the controls of a ControlRig section. The animation is sampled through the skeletal mesh the track's binding resolves to, so the level holding the bound actor must be open; otherwise the command fails with `NotFound` |
 | `GetActorTransformAtFrame` | Evaluate the sequence at a frame and return the named actor's world transform |
+
+#### Gizmo size (2)
+
+The size of the legacy transform gizmo in the Animation Mode viewport, stored in the editor configuration. The two commands work without the Toolset registry and on UE 5.7. `Scale` keeps its name but is **not a multiplier**: it is the offset added to the size of the legacy gizmo, from -10 to 150, default 0. Zero and negative values are accepted; a value above 150, a non-number and an infinity are `InvalidParams`. Only the legacy gizmo reads it. The TRS gizmo that is the default in UE 5.8 sizes itself with the axis size multiplier, which you set with [`UAIP.Editor.Level.SetTransformGizmoSize`](#uaipeditorlevel) (it writes this same offset as `LegacySizeOffset` too).
+
+| Command | Description |
+|---|---|
+| `GetAnimModeGizmoScale` | Return the stored size offset of the legacy gizmo as `Scale`. Unlike the Toolset bridge command of the same name, it reads the value in the editor configuration. Requires `EditorInspect` |
+| `SetAnimModeGizmoScale` | Set the size offset of the legacy gizmo (`Scale`, -10 to 150, default 0), save it to the editor configuration and redraw the viewports. Unlike the Toolset bridge command, the value survives a restart. Requires `SequencerStructureEdit` |
 
 ### Toolset bridges (61) 🧩
 
@@ -2815,7 +2866,7 @@ Two bridge providers, both delegating to `AnimationAssistantToolset` (UE 5.8+).
 | Selection | 4 | `GetSelectedControls`, `SelectControl`, `ClearControlSelection`, `FrameControlSelection` |
 | FBX | 2 | `ExportFBXFromRig`, `ImportFBXToRig` |
 | Sequencer queries | 4 | `GetSequencerControlRigs`, `GetSequencerControlsInfo`, `Get`/`SetControlRigTransformInSequencer` |
-| Anim mode settings | 12 | `Get`/`Set` for `AnimModeGizmoScale`, `AnimModeHierarchy`, `AnimModeNulls`, `AnimModeHideManips`, `AnimModeOnlyRigSel`, `AnimModeLocalSpaces` |
+| Anim mode settings | 12 | `Get`/`Set` for `AnimModeGizmoScale` (`Scale` is the offset added to the size of the legacy gizmo, -10 to 150, default 0, not a multiplier; 0 and negative values are accepted and anything above 150, a non-number or an infinity is refused. The bridge changes the running editor only and saves nothing, and the UE 5.8 default gizmo does not read it. For a saved value use the native pair under [Gizmo size](#gizmo-size-2), and for the default gizmo use [`UAIP.Editor.Level.SetTransformGizmoSize`](#uaipeditorlevel)), `AnimModeHierarchy`, `AnimModeNulls`, `AnimModeHideManips`, `AnimModeOnlyRigSel`, `AnimModeLocalSpaces` |
 
 ---
 
@@ -3630,8 +3681,8 @@ Raw ini key access for runtime and packaged builds. Reads and writes ini keys di
 
 | Command | Description |
 |---|---|
-| 🆓 `GetConfigValue` | Read the string value of an ini key given section and key name. No capability required |
-| `SetConfigValue` | Write or delete a raw ini key. Requires `ConfigSettingsEdit`. Blocked in packaged builds. Rejects ini injection characters (`[`, `]`) in key and value fields |
+| 🆓 `GetConfigValue` | Read the string value of an ini key given section and key name. No capability required. A secret key is returned as `***` with `IsMasked: true`; when the section is a settings class (`/Script/<Module>.<Class>`) the properties of that class decide, otherwise the key name does. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values) |
+| `SetConfigValue` | Write or delete a raw ini key. Requires `ConfigSettingsEdit`. Blocked in packaged builds. Rejects ini injection characters (`[`, `]`) in key and value fields The `OldValue` of a secret key is returned as `***` with `IsMasked: true`, judged the same way as `GetConfigValue`; `IncludeSecretValues` returns it plain — see [Reading secret values](#reading-secret-values). Only that `OldValue` is masked: the value you write is not hidden from the audit log |
 
 ---
 

@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1315 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1736 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1319 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1740 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -89,7 +89,7 @@ Toolset ブリッジコマンドが、経由する Toolset 連携の準備がで
 | Editor UI Automation | `UAIP.Editor.UIAutomation` | 17 | 10 | ✅ |
 | Editor Assets | `UAIP.Editor.Assets` | 51 | 6 | 一部（29/51） |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
-| Editor Level | `UAIP.Editor.Level` | 22 | 8 | 一部（9/22） |
+| Editor Level | `UAIP.Editor.Level` | 24 | 8 | 一部（10/24） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
 | Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
@@ -113,7 +113,7 @@ Toolset ブリッジコマンドが、経由する Toolset 連携の準備がで
 | Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 18 | 7 | — |
 | Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
 | Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
-| Editor Sequencer | `UAIP.Editor.Sequencer` | 129 | 61 | — |
+| Editor Sequencer | `UAIP.Editor.Sequencer` | 131 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
 | Editor PCG 🧩 | `UAIP.Editor.PCG` | 34 | 31 | — |
@@ -540,7 +540,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `GetLogEntries` | エディタ Output Log から最近のログエントリを取得（パターンフィルタ対応、Capability 不要） |
+| 🆓 `GetLogEntries` | エディタ Output Log から最近のログエントリを取得（パターンフィルタ対応）。Capability は不要ですが、安全設定 `AllowLogDump`（`bAllowLogDump`）が有効なときだけ動きます（`DumpOutputLog` と同じ設定）。既定では無効なので、既定の構成では `PolicyViolation` で断られ、設定を有効にするよう案内されます。今の状態は `uaip_query_capabilities` の `IsLogDumpAllowed` で確かめられます。以前は設定によらず読めました |
 
 ### Toolset ブリッジ — Logs（4 件）🧩
 
@@ -548,7 +548,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 | コマンド | 説明 |
 |---|---|
-| `Toolset.Editor.Toolset.Logs.GetLogEntries` | エディタ Output Log から最近のログエントリを取得 |
+| `Toolset.Editor.Toolset.Logs.GetLogEntries` | エディタ Output Log から最近のログエントリを取得。ネイティブ版と同じ安全設定 `AllowLogDump`（`bAllowLogDump`）が必要で、無効の間は `PolicyViolation` で断られる |
 | `Toolset.Editor.Toolset.Logs.GetLogCategories` | 登録済みログカテゴリ名の一覧 |
 | `Toolset.Editor.Toolset.Logs.GetVerbosity` | ログカテゴリの詳細レベルを取得 |
 | `Toolset.Editor.Toolset.Logs.SetVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
@@ -612,11 +612,11 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `ListSettingsContainers` | 登録済みの設定コンテナ（`Project`、`Editor` など）を一覧表示。Capability 不要 |
 | 🆓 `ListSettingsCategories` | コンテナ内の設定カテゴリを一覧表示。Capability 不要 |
 | 🆓 `ListSettingsSections` | カテゴリ内の設定セクションを一覧表示。Capability 不要 |
-| 🆓 `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） |
-| 🆓 `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） |
-| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可。値はエンジンのテキスト形式のみを受け取るため、参照・コンテナ・組み込みカタログ外の構造体は **どの Capability を付与しても拒否されます** — これらは同じ設定オブジェクトへ届き `ValueJson` を受け取る `SetProjectSetting` で書いてください。途中までしか解釈できない値は、断片が適用されるのではなく `InvalidParams` で拒否されるようになりました |
+| 🆓 `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） シークレットプロパティの既定値は `***` と `IsMasked: true` になる（以前は平文）。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
+| 🆓 `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） 名前だけでシークレットと分かるプロパティもマスクされる。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
+| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可。値はエンジンのテキスト形式のみを受け取るため、参照・コンテナ・組み込みカタログ外の構造体は **どの Capability を付与しても拒否されます** — これらは同じ設定オブジェクトへ届き `ValueJson` を受け取る `SetProjectSetting` で書いてください。途中までしか解釈できない値は、断片が適用されるのではなく `InvalidParams` で拒否されるようになりました 渡した `Properties` は、シークレットかどうかに関わらず監査ログ・完了通知・コマンドの記録で伏せられ、失敗理由の文も伏せられる。呼び出し側への応答は変わらない。拒否の文は送った値を引用せず、プロパティ・型やフラグ・足りない Capability の名前だけを示す。`DryRun` では、シークレットプロパティの変更前・変更後の値が `***` と `IsMasked: true` になる（以前は `null`）。`IncludeSecretValues` は `DryRun` の平文を返す。`DryRun` なしの応答には値が含まれないので何もしない — [シークレット値の読み取り](#reading-secret-values)を参照 |
 | `SaveSettings` | `ISettingsSection::Save()` 経由で設定を ini ファイルに書き出す。`ConfigSettingsSave` 必要。PIE 中および `bDisableSave` 設定時は実行不可 |
-| `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 |
+| `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 シークレット値は `DryRun` のプレビューでも、実行時の元の値のバックアップ（アーティファクト）でも `***` になる。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
 
 ### Toolset ブリッジ — ConfigSettings（8 コマンド）🧩
 
@@ -628,10 +628,50 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | `Toolset.ConfigSettings.ListCategories` | コンテナ内の設定カテゴリを一覧表示 |
 | `Toolset.ConfigSettings.ListSections` | カテゴリ内の設定セクションを一覧表示 |
 | `Toolset.ConfigSettings.GetSectionSchema` | セクションのプロパティスキーマを取得 |
-| `Toolset.ConfigSettings.GetSectionPropertyValues` | セクションの現在のプロパティ値を取得 |
-| `Toolset.ConfigSettings.SetSectionProperties` | セクションのプロパティ値を設定して永続化（`ConfigSettingsEdit` 必要） |
+| `Toolset.ConfigSettings.GetSectionPropertyValues` | 指定したプロパティの現在値を取得。`PropertyNames`（1 つ以上のプロパティ名の配列）が必須。`Result` は JSON 文字列で、シークレットプロパティは `***`。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)と[型どおりの値とマスクされた結果](#toolset-bridges--configsettings-typed-values-and-masked-results)を参照 |
+| `Toolset.ConfigSettings.SetSectionProperties` | セクションのプロパティ値を設定して永続化（`ConfigSettingsEdit` 必要）。`Properties` は「プロパティ名 → プロパティの型どおりの JSON 値」のマップで、プロパティがそのまま受け入れられない値は書き込む前に拒否される。書き込んだ値は監査ログとコマンドの記録で伏せられる — [型どおりの値とマスクされた結果](#toolset-bridges--configsettings-typed-values-and-masked-results)を参照 |
 | `Toolset.ConfigSettings.SaveSection` | 現在のメモリ上の設定をセクションの ini ファイルに書き出す（`ConfigSettingsSave` 必要） |
 | `Toolset.ConfigSettings.ResetSectionToDefaults` | セクションの全プロパティ値をコンパイル済みデフォルトにリセット（`ConfigSettingsReset` 必要） |
+
+<a id="toolset-bridges--configsettings-typed-values-and-masked-results"></a>
+### Toolset ブリッジ — ConfigSettings：型どおりの値とマスクされた結果
+
+**`SetSectionProperties`** は、各値をプロパティの JSON 型どおりに受け取ります（数値は数値、真偽値は `true` / `false`、文字列は文字列、配列は配列、構造体はオブジェクト）。UAIP は Toolset を呼ぶ前に、すべてのプロパティ名と値を設定クラスと突き合わせます。Toolset が別の値として保存してしまう値は `InvalidParams` で拒否され、何も書かれません。拒否の文にはプロパティ名と求める形が入り、送った値は入りません。構造体・配列・Map・参照を含むプロパティに書くには `SetSettingsValues` と同じ Capability が必要で、この経路だけが緩い入口にはなりません（不足時は同じエラーになります）。
+
+| プロパティの型 | 受け入れる値 |
+|---|---|
+| 真偽値 | `true` / `false` |
+| 列挙 | 列挙子の名前の文字列、または整数値の数値 |
+| 小数 | 有限の数値（`float` は `float` の範囲内） |
+| 整数 | 小数部の無い有限の数値（絶対値 2^53 以下）。`"42"` のような文字列は拒否 |
+| `FString` | 文字列 |
+| `FName` | 空白と `"` `'` `(` `)` `,` `=` を含まない文字列 |
+| `FText` | 文字列。ただし `NSLOCTEXT(` / `LOCTEXT(` / `INVTEXT(` / `LOCTABLE(` / `LOCGEN_` で始まるものは拒否 |
+| `FLinearColor` | `R` / `G` / `B` / `A` を全部持ち、それ以外を持たないオブジェクト |
+| `FGuid` | ハイフン区切りの GUID 文字列 |
+| オブジェクト・クラス参照、ソフト参照、ソフトオブジェクトパス | `/` で始まる `/Package/Path.ObjectName` 形式の文字列。空・`None`・`null` は拒否 |
+| その他の構造体 | 1 つ以上のメンバーを持つオブジェクト。各メンバーは同じ規則 |
+| `TArray` / `TSet` | `null` の要素を含まない配列。各要素は同じ規則 |
+
+次の型のプロパティは、値によらず拒否されます（このコマンドでは書けません）: `TMap`・`FColor`・固定長配列・`FTransform`・`FTopLevelAssetPath`・独自の文字列表現を持つ構造体（GameplayTag など）・Instanced な参照・弱い参照／遅延参照／インターフェース参照・optional・delegate・field path。これらは `UAIP.Editor.Engine.ConfigSettings.SetSettingsValues` で書いてください。`Properties` は 1 つ以上のプロパティ名を指定する必要があり、コンテナ・カテゴリ・セクション・プロパティの名前が 1024 文字以上のときも拒否されます。Toolset が書き込みの途中で失敗した場合、または「書けなかった」と答えた場合は、呼び出しが失敗し、一部のプロパティが既に書かれている可能性があるので値を読み直して確かめるよう案内されます。
+
+**`GetSectionPropertyValues`** は `PropertyNames` に挙げた名前だけを読みます。要求していない名前や、セクションに存在しない名前が結果に混ざっていた場合も、安全のため隠されます。応答には `MaskedFields`（隠した名前）と `MaskedFieldCount` が付きます。秘密かどうかを判断できずに隠した名前は `UnverifiedMaskedFields` にも載り、`IncludeSecretValues` でも平文になりません。マスクされた数値や真偽値は文字列の `"***"` になります。読んでいる途中で設定が変わった（設定やコードの再読み込みと重なった）場合は失敗し、呼び直すよう案内されます。Toolset の戻りが UAIP の読めない形のときは、隠せない値を返さないよう失敗にするので、代わりに `UAIP.Editor.Engine.ConfigSettings.GetSettingsValues` で読んでください。存在しないコンテナ・カテゴリ・セクションは、ネイティブの設定コマンドと同じ文の `NotFound` になります。
+
+**Toolset ブリッジコマンドの失敗**は `Toolset.<ツール名> failed: <原因>` の形で返ります。`<ツール名>` は委譲先の Toolset の関数名で、コマンド名の最後の部分と一致しないことがあります（`Toolset.SetSectionProperties failed: ...`、`Toolset.set_anim_mode_gizmo_scale failed: ...`）。原因からは、コマンドが秘密と宣言した入力値と、URL・ID・ファイルシステムのパスの類が取り除かれ、256 文字を超えた分は切り詰められます。ログにも同じ文が出ます。秘密の入力に確実には伏せられない値（1〜3 文字の値、数値）が含まれる場合と、秘密の値を読むコマンドでは、原因を付けずに `Toolset.<ツール名> failed.` だけになります。`SetSectionProperties` は値に数値を含むことが多いため、この形になりがちです（型の誤りは、その前に原因付きで拒否されます）。秘密と宣言されていない入力値（アセットのパスなど）は、原因の文に現れることがあります。
+
+
+<a id="reading-secret-values"></a>
+### シークレット値の読み取り
+
+設定値を返すコマンドは、シークレットの値を `***` に置き換え、同じ場所に `IsMasked: true` を付けます。`IncludeSecretValues` を取るコマンドは平文を返せますが、解禁されるのは次の **3 層すべて** が許したときだけです。
+
+1. **引数** — 呼び出しに `IncludeSecretValues: true` を付ける（真偽値）。
+2. **Capability** — セッションに `SecretValueRead`（DefaultDenied）が付いている。付与は再起動なしで反映される。
+3. **SafetyPolicy** — `[UAIP.SafetyPolicy]` の `AllowSecretValueRead=True`、または起動引数 `-uaip-policy-allow-secret-value-read`。変更にはエディタの再起動が必要で、今の状態は `uaip_query_capabilities` の `IsSecretValueReadAllowed` で確かめられる。
+
+平文は `Result.SecretFieldValues` に**だけ**入ります。いつもの場所、すべてのアーティファクト、監査ログ、完了通知には `***` が残ります。どれかの層が許さなくてもコマンドは成功し、値は隠れたままで、`Result.SecretValuesWithheldReason` が理由を示します。デモ版には `SecretValueRead` が含まれません。何をシークレットとみなすか（プロパティのパス全体、エンジンのパスワード欄の印、CryptoKeys の固定の一覧）、件数と長さの上限、マスクが及ばない経路は [Safety & Capabilities](safety.md#秘密値の平文での読み取り) にあります。
+
+`IncludeSecretValues` を取るコマンドは、`Toolset.ConfigSettings.GetSectionPropertyValues`、上の ConfigSettings のネイティブ 4 本（`GetSettingsSchema`・`GetSettingsValues`・`DryRun` の `SetSettingsValues`・`ResetSettingsToDefaults`）、`UAIP.Runtime.Engine.Config.GetConfigValue` / `SetConfigValue`、[UAIP.Editor.Property](#uaipeditorproperty) の `Get*` 6 本、`UAIP.Editor.Level.GetActorComponentProperty`、`UAIP.Editor.Blueprint.GetBlueprintComponentProperty` です。`Toolset.ConfigSettings.GetSectionSchema` は値を返さず（型・説明・範囲・enum の名前だけ）、対象に含まれません。
 
 ---
 
@@ -1020,11 +1060,13 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 | 🆓 `GetVisibleActors` | アクティブなエディタビューポートに現在表示されているアクターを返す（視錐体カリング） |
 | 🆓 `ProjectWorldToScreen` | ワールド空間の位置をスクリーン座標に投影 |
 | 🆓 `ProjectScreenToWorld` | スクリーン座標からワールドにレイをキャスト（ECC_Visibility ライントレース） |
+| 🆓 `GetTransformGizmoSize` | トランスフォームギズモの大きさの設定と、使用中のギズモがどれを読むかを返す。`AxisSizeMultiplier`（TRS ギズモの倍率。UE 5.8 の既定）、`LegacySizeOffset`（旧ギズモのオフセット）、`GizmoVersion` / `UsesNewTRSGizmos`（使用中のギズモの種類）、`EffectiveSetting`（`AxisSizeMultiplier` / `LegacySizeOffset`、判断できない場合は `Unknown`）。UE 5.7 には倍率が無く、`GizmoVersion` と `AxisSizeMultiplier` は返らず、代わりに `AxisSizeMultiplierUnavailableReason` が理由を示す。新しいギズモを使っている場合の `EffectiveSetting` は `Unknown`。`EditorInspect` 必要 |
+| `SetTransformGizmoSize` | ギズモの大きさを設定し、エディタ設定に保存してビューポートを描き直す。`AxisSizeMultiplier`（0.1〜10）は TRS ギズモの倍率、`LegacySizeOffset`（-10〜150）は旧ギズモの大きさに足すオフセット。どちらか一方または両方を指定する。両方を検証してから書くので、範囲外・数値でない値・無限大・どちらも未指定は、何も書かずに `InvalidParams` で断られる。応答には書いた欄（`Applied`）と `EffectiveSetting` が入る。描画が変わるのは今のギズモが読む方だけで、効いていない方だけを書いた場合は値を保存し、`Note` で「今のギズモは別の値を読んでいる」と知らせる（`EffectiveSetting` が `Unknown` のときは `Note` なし）。UE 5.7 では `AxisSizeMultiplier` を含む呼び出しは、エンジンの版が理由と分かる文の `InvalidParams` で呼び出し全体を断り、`LegacySizeOffset` だけなら書ける。同じ設定は `UAIP.Editor.Sequencer.SetAnimModeGizmoScale` でも書ける。`EditorViewportControl` 必要 |
 | 🆓 `ListActorComponents` | レベルに配置済みのアクターが持つコンポーネントを列挙。各エントリは以下の 3 コマンドが受け取る `ComponentId` に加え、`ComponentClassPath`・`Origin`（`Instance` / `SimpleConstructionScript` / `UserConstructionScript` / `Native`）・`IsEditableInstance`・`IsSceneComponent`・`IsRootComponent`・`AttachParentComponentName`・`AttachSocketName` を返す。さらに各エントリは、そのクラスのコンポーネントを**追加**するのに何が要るかを `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）・`RequiredCapabilities`・`MissingCapabilities` として返す — `ComponentCustomTypeEdit` が要るかどうかを書き込みを試す前に確認できるのはこれによる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要。`ComponentId` は不透明で、すでにエスケープ済みの識別子。他のコンポーネント系コマンドにそのまま渡し、手で組み立てたり編集したりしない |
 | `AddActorComponent` | レベルに配置済みのアクターにコンポーネントを追加（Details パネルの *Add Component* ボタン相当）。1 つの Undo ステップとして記録され、新しい `ComponentId` を返す。`ComponentName` は省略するとエンジンが命名する。`AttachParentComponentName` / `AttachSocketName` は `USceneComponent` 派生にのみ適用され、アクターにルートが無い場合は新しいコンポーネントがルートになる。クラスは既にロード済みのものからのみ解決し、要求に応じたロードは行わない（未ロードのクラスは `NotFound`）。`ActorComponentEdit` が必要で、`/Script/Engine` と `/Script/LiveLinkComponents` 以外のクラスにはさらに `ComponentCustomTypeEdit` が必要 — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照。PIE 中は拒否 |
 | `DeleteActorComponent` | レベルに配置済みのアクターからインスタンスコンポーネントを削除。1 つの Undo ステップとして記録される。削除できるのは `Origin: Instance` のみ — SCS のものは Blueprint コンポーネントコマンドの担当、コンストラクションスクリプト由来のものはスクリプトが作り直し、Native のものはそのクラスの全インスタンスに存在するため、いずれも「どの経路が担当か」を示して拒否する。アクターの `DefaultSceneRoot` も拒否対象。削除したシーンコンポーネントの子は、ワールドトランスフォームを保ったままその親へ付け替えられる。`ExpectedComponentClass` は必須（一覧が返した `ComponentClassPath` をそのまま渡す）で、古くなった識別子は追従せず `NotFound` で拒否する。`ActorComponentEdit` が必要。PIE 中は拒否 |
 | `ReparentActorComponent` | レベルに配置済みのアクターのシーンコンポーネントを、同じアクターの別のコンポーネントの下へ、ワールドトランスフォームを保ったまま付け替える。1 つの Undo ステップとして記録される。両方が同一アクター上の `USceneComponent` 派生で、動かす側は `Origin: Instance` である必要がある。「どこにも付いていない」状態は表現できず、切り離しはアクターのルートを `NewParentComponentName` に指定して表す。ルート自身は動かせない。循環になる付け替えと、新しい親に存在しないソケットは、書き込み前に拒否される。`ExpectedComponentClass` は上と同様に必須。`ActorComponentEdit` が必要。PIE 中は拒否 |
-| 🆓 `GetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントのプロパティ値を、`ListActorComponents` / `AddActorComponent` が返す `ComponentId` で指定して読み取る — `GetActorProperty` は、アクターがコンポーネントを保持するオブジェクト参照を辿るパスを拒否するため、これが唯一の到達手段になる。`Value`・`PropertyType`・`Origin`、および `WriteRequirements`（そのプロパティへの書き込みが `ActorComponentEdit` に加えて何を要求するか、このセッションが既に持っているものと不足しているものに分けたもの、書き込みがそもそも可能かどうか、`SetActorComponentProperty` の 2 つの値パラメータのどちらで渡す必要があるか）を返す。`ExpectedComponentClass` は必須で、古くなった `ComponentId` は追従せず拒否する。どの `Origin` のコンポーネントも読み取れる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要。`ComponentId` は不透明で、すでにエスケープ済み。`ListActorComponents` が返した形のまま渡す |
+| 🆓 `GetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントのプロパティ値を、`ListActorComponents` / `AddActorComponent` が返す `ComponentId` で指定して読み取る — `GetActorProperty` は、アクターがコンポーネントを保持するオブジェクト参照を辿るパスを拒否するため、これが唯一の到達手段になる。`Value`・`PropertyType`・`Origin`、および `WriteRequirements`（そのプロパティへの書き込みが `ActorComponentEdit` に加えて何を要求するか、このセッションが既に持っているものと不足しているものに分けたもの、書き込みがそもそも可能かどうか、`SetActorComponentProperty` の 2 つの値パラメータのどちらで渡す必要があるか）を返す。`ExpectedComponentClass` は必須で、古くなった `ComponentId` は追従せず拒否する。どの `Origin` のコンポーネントも読み取れる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要。`ComponentId` は不透明で、すでにエスケープ済み。`ListActorComponents` が返した形のまま渡す シークレットのプロパティ、またはパスの途中に秘密の親があるものは `***` で返る（以前、コンポーネントの読み取りはマスクされなかった）。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
 | `SetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントへプロパティ値を書き込む。指定方法は `GetActorComponentProperty` と同じで、1 つの Undo ステップとして記録される。値は UE インポートテキストとして `Value`、または JSON として `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` で値全体の置換ではなくコンテナの要素 1 つだけを操作できる — これらのパラメータと、参照・複合値の書き込みに追加で必要な Capability（先に `GetActorComponentProperty` を呼べば分かる）については [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。`ExpectedComponentClass` は上と同様に必須。コンポーネントの `Origin` が `UserConstructionScript` の場合は拒否される — そのスクリプトが次回実行されると書き込みが失われるため。`ActorComponentEdit` が必要。PIE 中は拒否 |
 
 > **Note — インスタンス側専用です。** この 6 コマンドが対象とするのは、**レベルに配置済みのアクター**が持つコンポーネントです（`GetActorComponentProperty` は、コンストラクションスクリプトが所有するものを含め、どの `Origin` のコンポーネントも読み取れる — 書き込みだけが拒否される）。アクターの Blueprint 側に宣言されたコンポーネントは [UAIP.Editor.Blueprint — コンポーネント — SCS](#コンポーネント--scs8) を使ってください。インスタンス側にリネームと複製に相当する操作はありません（望む名前を指定して追加し直してください）。
@@ -1050,21 +1092,21 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 ## UAIP.Editor.Property
 
-アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。`Get*` 系コマンドは、シークレットらしきプロパティ値（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）をネストした struct メンバーも含めて `***` でマスクする — シークレットなメンバーを内包する複合値（struct 等）は、その部分だけでなく値全体がマスク対象になる。`Set*` 系コマンドは、テキスト値 `Value` で 17 種の struct 型（ベクトル・回転・Transform・カラー・`FGuid`・区間型・`FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`・`FBoneReference` など）と `int8` から `uint64` までの全整数幅を書き込める。配列・マップ・セット・オプショナル・その他の構造体・オブジェクト参照は `ValueJson` で渡し、コンテナの要素 1 つだけを `Operation` / `ElementIndex` / `ElementKeyJson` で操作できる — パラメータと、これらを制御する 2 つの Capability（`PropertyReferenceEdit` / `PropertyStructuredEdit`）については [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。
+アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。`Get*` 系コマンドは、シークレットらしきプロパティ値（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）をネストした struct メンバーも含めて `***` でマスクする — シークレットなメンバーを内包する複合値（struct 等）は、その部分だけでなく値全体がマスク対象になる。`Set*` 系コマンドは、テキスト値 `Value` で 17 種の struct 型（ベクトル・回転・Transform・カラー・`FGuid`・区間型・`FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`・`FBoneReference` など）と `int8` から `uint64` までの全整数幅を書き込める。配列・マップ・セット・オプショナル・その他の構造体・オブジェクト参照は `ValueJson` で渡し、コンテナの要素 1 つだけを `Operation` / `ElementIndex` / `ElementKeyJson` で操作できる — パラメータと、これらを制御する 2 つの Capability（`PropertyReferenceEdit` / `PropertyStructuredEdit`）については [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。 シークレットかどうかはパス全体で判定する。パスの途中のどれか 1 つでも秘密なら（`MyPath.FilePath` など）値はマスクされる（以前は末端だけを見ていた）。エンジンのパスワード欄の印 `meta=(PasswordField=true)` と、CryptoKeys の `EncryptionKey`・`SigningPrivateExponent`・`SecondaryEncryptionKeys` も秘密として扱う。以下の `Get*` 6 本は `IncludeSecretValues` で平文を `Result.SecretFieldValues` に返せる — [シークレット値の読み取り](#reading-secret-values)を参照。
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `GetActorProperty` | Editor アクターのプロパティ値を取得 |
+| 🆓 `GetActorProperty` | Editor アクターのプロパティ値を取得 `IncludeSecretValues` を取る |
 | `SetActorProperty` | Editor アクターのプロパティを設定 |
-| 🆓 `GetWorldSetting` | WorldSettings のプロパティ値を取得 |
+| 🆓 `GetWorldSetting` | WorldSettings のプロパティ値を取得 `IncludeSecretValues` を取る |
 | `SetWorldSetting` | WorldSettings のプロパティを設定 |
-| 🆓 `GetAssetProperty` | アセット（DataAsset 等）のプロパティ値を取得 |
+| 🆓 `GetAssetProperty` | アセット（DataAsset 等）のプロパティ値を取得 `IncludeSecretValues` を取る |
 | `SetAssetProperty` | アセットのプロパティを設定し `MarkPackageDirty` を呼ぶ |
-| 🆓 `GetBlueprintDefault` | Blueprint CDO のプロパティ値を取得 |
+| 🆓 `GetBlueprintDefault` | Blueprint CDO のプロパティ値を取得 `IncludeSecretValues` を取る |
 | `SetBlueprintDefault` | Blueprint CDO のプロパティを設定 |
-| 🆓 `GetProjectSetting` | `UDeveloperSettings` CDO のプロパティ値を取得 |
+| 🆓 `GetProjectSetting` | `UDeveloperSettings` CDO のプロパティ値を取得 `IncludeSecretValues` を取る |
 | `SetProjectSetting` | `UDeveloperSettings` CDO のプロパティを設定し `SaveConfig()` を呼ぶ |
-| 🆓 `GetDataTableRow` | DataTable 行のプロパティ値を取得 |
+| 🆓 `GetDataTableRow` | DataTable 行のプロパティ値を取得 `IncludeSecretValues` を取る |
 | `SetDataTableRow` | DataTable 行のプロパティを設定 |
 
 **失敗の結果コード。** `Get*` コマンドは、プロパティ経路を対応する `Set*` コマンドと同じ `ErrorCode` で断ります。プロパティが無いときは `NotFound`、経路の書式の誤り・深すぎる経路・範囲外の添字・たどれないものを経由する経路（添字なしの構造体の固定長配列など）は `InvalidParams` です。⚠️ これらの読み取りは、以前は理由によらず `ExecutionFailed` を返していました。対象そのもの（アクター・アセット・Blueprint・行・設定のオブジェクト）が見つからないときは、読み取りも書き込みも従来どおり `ExecutionFailed` を返します。次の 2 つのドメインはプロパティ経路について独自の結果コードのままで、理由はメッセージで示します。`GetDataflowNodeProperty` / `SetDataflowNodeProperty` は `InvalidParams`、`GetSectionProperty`（`UAIP.Editor.Sequencer`）は `ExecutionFailed` を返します。
@@ -1130,7 +1172,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `RenameBlueprintComponent` | SCS コンポーネントをリネーム |
 | `ReparentBlueprintComponent` | SCS コンポーネントの親を変更。親を指定する場合はコンポーネントと親の双方が `USceneComponent` のサブクラスである必要がある。ルートレベルへの移動（`NewParentVariableName` が空）はどのコンポーネントクラスでも可能 |
 | `DuplicateBlueprintComponent` | SCS コンポーネントを複製。⚠️ プロジェクト・プラグイン定義のコンポーネントクラスには `ComponentCustomTypeEdit` が追加で必要になりました — 下の Note を参照 |
-| `GetBlueprintComponentProperty` | SCS コンポーネントのプロパティ値を取得 |
+| `GetBlueprintComponentProperty` | SCS コンポーネントのプロパティ値を取得 シークレットのプロパティ、またはパスの途中に秘密の親があるものは `***` で返る。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
 | `SetBlueprintComponentProperty` | SCS コンポーネントのプロパティを設定。値はエンジンテキストなら `Value`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
 
 > ⚠️ **破壊的変更 — `AddBlueprintComponent` と `DuplicateBlueprintComponent` がコンポーネントクラスをゲートするようになりました。**
@@ -2125,7 +2167,7 @@ EQS クエリ編集。`EnvironmentQueryEditor` プラグインが必要です。
 
 LevelSequence 編集 — トラック・セクション・キーフレーム・再生・バインド。
 
-### ネイティブ（129）
+### ネイティブ（131）
 
 #### 構造（15）
 
@@ -2319,6 +2361,15 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `HideAllControls` | セクション内の全コントロールを非表示 |
 | `LoadAnimIntoRig` | AnimSequence を ControlRig セクションのコントロールへ焼き込む。トラックのバインディングが解決するスケルタルメッシュを通してアニメーションをサンプリングするため、対象アクターのいるレベルが開かれている必要がある（開かれていない場合は `NotFound`） |
 | `GetActorTransformAtFrame` | 指定フレームでシーケンスを評価し、名前指定したアクターのワールドトランスフォームを返す |
+
+#### ギズモの大きさ（2）
+
+Animation Mode ビューポートの旧トランスフォームギズモの大きさで、エディタ設定に保存される値です。この 2 コマンドは Toolset レジストリが無くても、UE 5.7 でも使えます。引数名 `Scale` はそのままですが、**倍率ではありません**。旧ギズモの大きさに足すオフセットで、範囲は -10〜150、既定は 0 です。0 と負の値は受け付け、150 を超える値・数値でない値・無限大は `InvalidParams` で断られます。読むのは旧ギズモだけです。UE 5.8 で既定の TRS ギズモは軸の倍率で大きさが決まるので、[`UAIP.Editor.Level.SetTransformGizmoSize`](#uaipeditorlevel) で変えてください（このオフセットも `LegacySizeOffset` として書けます）。
+
+| コマンド | 説明 |
+|---|---|
+| `GetAnimModeGizmoScale` | 旧ギズモの大きさのオフセットを `Scale` として返す。同名の Toolset ブリッジコマンドと違い、エディタ設定に保存された値を読む。`EditorInspect` 必要 |
+| `SetAnimModeGizmoScale` | 旧ギズモの大きさのオフセット（`Scale`、-10〜150、既定 0）を設定し、エディタ設定に保存してビューポートを描き直す。Toolset ブリッジコマンドと違い、値は再起動後も残る。`SequencerStructureEdit` 必要 |
 
 ### Toolset ブリッジ（61）🧩
 
@@ -2817,7 +2868,7 @@ UE 5.8 の Control Rig アセットには 2 つの形式があります。ここ
 | 選択 | 4 | `GetSelectedControls`・`SelectControl`・`ClearControlSelection`・`FrameControlSelection` |
 | FBX | 2 | `ExportFBXFromRig`・`ImportFBXToRig` |
 | Sequencer 問い合わせ | 4 | `GetSequencerControlRigs`・`GetSequencerControlsInfo`・`Get`/`SetControlRigTransformInSequencer` |
-| アニメーションモード設定 | 12 | `AnimModeGizmoScale`・`AnimModeHierarchy`・`AnimModeNulls`・`AnimModeHideManips`・`AnimModeOnlyRigSel`・`AnimModeLocalSpaces` の `Get`/`Set` |
+| アニメーションモード設定 | 12 | `AnimModeGizmoScale`（`Scale` は旧ギズモの大きさに足すオフセットで、倍率ではない。範囲 -10〜150、既定 0。0 と負の値は受け付け、150 超・数値でない値・無限大は拒否される。ブリッジは動作中のエディタだけを変えて何も保存せず、UE 5.8 の既定ギズモは読まない。保存したいときは[ギズモの大きさ](#ギズモの大きさ2)のネイティブ 2 本を、既定ギズモには [`UAIP.Editor.Level.SetTransformGizmoSize`](#uaipeditorlevel) を使う）・`AnimModeHierarchy`・`AnimModeNulls`・`AnimModeHideManips`・`AnimModeOnlyRigSel`・`AnimModeLocalSpaces` の `Get`/`Set` |
 
 ---
 
@@ -4132,8 +4183,8 @@ Mass シミュレーションの元になるデータの読み取りと組み立
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `GetConfigValue` | セクション名とキー名を指定して ini キーの文字列値を読み取る。Capability 不要 |
-| `SetConfigValue` | raw ini キーを書き込みまたは削除。`ConfigSettingsEdit` 必要。パッケージ版ビルドでは実行不可。キー・値フィールドへの ini インジェクション文字（`[`・`]`）は拒否 |
+| 🆓 `GetConfigValue` | セクション名とキー名を指定して ini キーの文字列値を読み取る。Capability 不要。シークレットのキーは `***` と `IsMasked: true` で返る。セクションが設定クラス（`/Script/<モジュール>.<クラス>`）ならそのクラスのプロパティで、そうでなければキー名で判定する。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
+| `SetConfigValue` | raw ini キーを書き込みまたは削除。`ConfigSettingsEdit` 必要。パッケージ版ビルドでは実行不可。キー・値フィールドへの ini インジェクション文字（`[`・`]`）は拒否 応答の `OldValue` は、シークレットのキーなら `GetConfigValue` と同じ判定で `***` と `IsMasked: true` になり、`IncludeSecretValues` で平文を返せる — [シークレット値の読み取り](#reading-secret-values)を参照。隠れるのはこの `OldValue` だけで、書き込む値は監査ログでは伏せられない |
 
 ---
 

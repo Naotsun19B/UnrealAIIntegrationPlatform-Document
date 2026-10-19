@@ -952,6 +952,51 @@ These capabilities all require the `Niagara` plugin.
 | `ConfigSettingsSave` | Persist settings to disk via `ISettingsSection::Save()` — `SaveSettings` (blocked when `bDisableSave` is set) |
 | `ConfigSettingsReset` | Revert settings to class defaults — `ResetSettingsToDefaults` |
 
+#### Reading secret values in plain text
+
+| Capability | What it unlocks |
+|---|---|
+| `SecretValueRead` | Returning the plain value of a secret setting in `Result.SecretFieldValues` when a call passes `IncludeSecretValues: true`. Not part of the demo build (`NotInThisEdition`) |
+
+Every command that returns a setting hides a secret value as `"***"` and puts `IsMasked: true` next to it. The plain value comes back only when **all three** of the following hold:
+
+1. The call passes `IncludeSecretValues: true`. The argument is boolean only: a string or a number is refused with `InvalidParams`.
+2. `AllowSecretValueRead=True` under `[UAIP.SafetyPolicy]` (or the launch flag `-uaip-policy-allow-secret-value-read=True`). It is read at startup and is not reloaded by `ReloadCapabilities`, so restart the editor. `QueryCapabilities` reports it as `OperationalConstraints.IsSecretValueReadAllowed`.
+3. The session holds `SecretValueRead` (`+AllowedCapabilities=SecretValueRead`; `ReloadCapabilities` applies it without a restart). A session bound to a role needs a role that includes it.
+
+`SecretValueRead` is not a required capability of these commands, so a call without it still succeeds and returns the values hidden. The setting is judged first.
+
+- **Where the plain value goes.** It is returned in `Result.SecretFieldValues` only, never in an artifact, the audit log or the completion notification; those keep `"***"`. Each element has `Key` (the same path as in `MaskedFields`) and a field named after the field that was hidden: `Value`, `OldValue` / `NewValue`, or `CurrentValue` / `DefaultValue`. At most 64 elements are returned, and a value longer than 4096 characters is replaced by the string `"<truncated>"`. `SecretFieldValuesTruncatedCount` and `SecretFieldValuesOmittedCount` count what was cut and are absent when they are 0.
+- **When the plain value is not returned.** `Result.SecretValuesWithheldReason` says why: `SecretValuesWithheldBySafetyPolicy` when the setting is off, `SecretValuesWithheld` when the setting is on but the session does not hold the capability. It is reported whenever the plain value was asked for and not allowed, even if nothing in the response was secret. When it is allowed and nothing was secret, `SecretFieldValues` is an empty list, so "asked and allowed" can be told from "not asked". In the demo build the capability does not exist, so the reason is the same as for a missing capability.
+- **Never unlocked.** A value that was hidden only because the command could not tell whether it is secret (`UnverifiedMaskedFields` of `Toolset.ConfigSettings.GetSectionPropertyValues`) is not unlocked by this.
+
+**Commands that accept `IncludeSecretValues`**
+
+| Command | What is unlocked |
+|---|---|
+| `Toolset.ConfigSettings.GetSectionPropertyValues` | The values of the requested properties |
+| `UAIP.Editor.Engine.ConfigSettings.GetSettingsValues` | The values |
+| `UAIP.Editor.Engine.ConfigSettings.SetSettingsValues` | `OldValue` / `NewValue` of a `DryRun`. A call without `DryRun` returns no secret value, so the argument does nothing there |
+| `UAIP.Editor.Engine.ConfigSettings.ResetSettingsToDefaults` | `CurrentValue` / `DefaultValue` of a `DryRun`, and the `OldValue` snapshot of a real run |
+| `UAIP.Editor.Engine.ConfigSettings.GetSettingsSchema` | `DefaultValue` |
+| `UAIP.Runtime.Engine.Config.GetConfigValue` | The ini `Value` |
+| `UAIP.Runtime.Engine.Config.SetConfigValue` | `OldValue` of the response |
+| `UAIP.Editor.Property.GetProjectSetting`, `GetAssetProperty`, `GetActorProperty`, `GetBlueprintDefault`, `GetWorldSetting`, `GetDataTableRow` | `Value` |
+| `UAIP.Editor.Level.GetActorComponentProperty`, `UAIP.Editor.Blueprint.GetBlueprintComponentProperty` | `Value` |
+
+`Toolset.ConfigSettings.GetSectionSchema` is not on the list: it returns property types, descriptions, ranges and enum names, never a value. Every other command that reads a property hides a secret value and cannot unlock it.
+
+**What counts as secret.** A property is secret when any one of the following matches: the metadata `Password`, `Secret` or `PasswordField=true`; a name pattern (password, API key, token and the like); a file or directory path type (`FFilePath` / `FDirectoryPath`); or an entry of a fixed list that currently holds the CryptoKeys settings `EncryptionKey`, `SigningPrivateExponent` and `SecondaryEncryptionKeys`. For a path such as `MyPath.FilePath`, one secret step anywhere in the path hides the whole value. The same judgement applies to the hiding and to the unlocking, so what is hidden is exactly what can be unlocked. The `Properties` you write with `SetSettingsValues` and `Toolset.ConfigSettings.SetSectionProperties` are masked in the audit log and the completion notification whether they are secret or not.
+
+**In a packaged game** the property metadata (`Password`, `Secret`, `PasswordField`) does not exist, so only the name patterns, the path types and the fixed list decide. A secret setting that relies on metadata alone is not hidden there.
+
+**Routes this does not cover.**
+
+- The commands that run arbitrary code (`RunEditorPythonScript`, `UAIP.Editor.Python.*`, `RunNamedEditorCommand`, `ExecuteConsoleCommand`) cannot be stopped by masking. Each needs its own DefaultDenied capability, and granting one already allows more than reading a secret.
+- The UI routes (the input-field values of `SnapshotUI`, the strings of `DumpSlateTree`, screen captures) cannot tell which property an input field shows. To protect a secret setting of your own, mark the property with `meta=(PasswordField=true)`: the engine then draws it as a password field and the existing password-field handling hides it (see `AllowPasswordFieldRead` and `EditorWidgetPasswordTextRead` under **Editor operations**).
+- A secret that has no metadata, no secret-looking name, no path type and no entry in the fixed list is not recognised. Put `PasswordField=true` on your own settings.
+- The value you write with `SetConfigValue` is not hidden from the audit log; only the `OldValue` of its response is.
+
 #### Plugin management
 
 Write commands for plugin state and descriptors. Engine and Marketplace plugins are always read-only regardless of capability. Write commands require an editor restart to take effect.
@@ -1112,6 +1157,7 @@ AllowPasswordFieldWrite=False
 AllowRuntimePasswordFieldWrite=False
 AllowPasswordFieldRead=False
 AllowRuntimePasswordFieldRead=False
+AllowSecretValueRead=False
 AllowInputModeBypass=False
 DisablePIEStart=False
 AllowCheatCVarWrite=False
@@ -1141,7 +1187,7 @@ AllowProjectNetDriverNetModeQuery=False
 |---|---|---|
 | `ReadOnly` | `False` | Reject mutating commands. The two editor lifecycle commands are the one exception — see below |
 | `DisableSave` | `False` | Reject disk-writing commands, including those that delete, move or rename files — see below |
-| `AllowLogDump` | `False` | Allow `DumpOutputLog` / `DumpMessageLog` |
+| `AllowLogDump` | `False` | Allow `DumpOutputLog` / `DumpMessageLog` and `GetLogEntries` (`UAIP.Editor.Engine.Log.GetLogEntries` and `Toolset.Editor.Toolset.Logs.GetLogEntries`). `QueryCapabilities` reports it as `OperationalConstraints.IsLogDumpAllowed` |
 | `AllowContextMenuMutation` | `False` | Allow `InvokeContextMenuAction` |
 | `AllowKeyboardInput` | `False` | Allow `PressKey` (also requires `EditorKeyboardInput` capability) |
 | `AllowKeyboardModifierInput` | `False` | Allow Ctrl/Alt/Shift modifier keys inside `PressKey` |
@@ -1149,6 +1195,7 @@ AllowProjectNetDriverNetModeQuery=False
 | `AllowRuntimePasswordFieldWrite` | `False` | Allow `TypeGameViewportText` to type into password fields of a running game's UI, and into fields whose password state cannot be determined (also requires `RuntimeUIInputInjection`). Independent of `AllowPasswordFieldWrite`. CLI flag: `-uaip-policy-allow-runtime-password-field-write=True` |
 | `AllowPasswordFieldRead` | `False` | Allow `SnapshotUI` to return the plain value of password fields of the editor's UI, and of fields whose password state cannot be determined (also requires `EditorWidgetPasswordTextRead`). Independent of `AllowRuntimePasswordFieldRead`. Read at startup, not reloadable. CLI flag: `-uaip-policy-allow-password-field-read=True` |
 | `AllowRuntimePasswordFieldRead` | `False` | Allow `DumpGameViewportWidgetTexts` to return the plain value of password fields of a running game's UI, and of fields whose password state cannot be determined (also requires `RuntimeWidgetTextRead` and `RuntimeWidgetPasswordTextRead`). Independent of `AllowPasswordFieldRead`. Read at startup, not reloadable. CLI flag: `-uaip-policy-allow-runtime-password-field-read=True` |
+| `AllowSecretValueRead` | `False` | Allow the commands that accept `IncludeSecretValues` to return a secret setting's plain value (also requires `SecretValueRead`). Read at startup, not reloadable. CLI flag: `-uaip-policy-allow-secret-value-read=True`. See [Reading secret values in plain text](#reading-secret-values-in-plain-text) |
 | `AllowInputModeBypass` | `False` | Allow `BypassInputMode=true` in Inject commands |
 | `DisablePIEStart` | `False` | Reject PIE startup |
 | `AllowCheatCVarWrite` | `False` | Allow `SetConsoleVariable` / `ResetConsoleVariable` to write `ECVF_Cheat`-flagged CVars (also requires `RuntimeCVarWrite`) |
