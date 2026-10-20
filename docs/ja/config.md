@@ -51,13 +51,13 @@ CLI フラグ：なし。
 
 | キー | 型 | デフォルト | 説明 |
 |---|---|---|---|
-| `StarvedTickAllowList` | string | `UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities` | モーダル表示中に実行してよいコマンドの完全修飾名（カンマ区切り）。ここに無いコマンドは**拒否されず、モーダルが閉じるまで順番待ちのまま**になります |
+| `StarvedTickAllowList` | string | `UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities` | モーダル表示中に実行してよいコマンドの完全修飾名（カンマ区切り）。コマンドポンプの有効・無効によらず読まれます。ポンプが無効（既定）のとき、ここに無い状態を変えるコマンドは**その場で `NotAllowed` で断られ**、モーダルが閉じてから送り直す必要があります。読み取り専用のコマンドは、ここに無くても実行されます。ポンプが有効のときは、ここに無いコマンドは**拒否されず、モーダルが閉じるまで順番待ちのまま**になります |
 
-`StarvedTickAllowList` を既定の 2 件に絞っているのは、モーダルが開いている最中は「他の処理の途中」だからです。`ListCommands` / `DescribeCommand` は読み取り専用ですが、登録済みの全ハンドラへ問い合わせるため、あらゆるドメインのコードをこの状況で動かすことになります。そのため既定には含めていません。
+`StarvedTickAllowList` を既定の 2 件に絞っているのは、モーダルが開いている最中は「他の処理の途中」だからです。`ListCommands` / `DescribeCommand` は読み取り専用ですが、登録済みの全ハンドラへ問い合わせるため、あらゆるドメインのコードをこの状況で動かすことになります。そのため既定には含めていません。これはコマンドポンプが有効なときの話です。ポンプが無効なとき、このリストが止めるのは状態を変えるコマンドだけなので、この 2 つのような読み取り専用のコマンドはモーダル表示中でも実行されます。
 
 対応する CLI フラグ：`-uaip-command-pump-starved-tick-allow-list=...`
 
-モーダルダイアログの中から開いたメニューを閉じるには、このリストに `UAIP.Editor.UIAutomation.DismissMenus` を足し（例：`StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.DismissMenus`。このキーは既定値を置き換えるので、既定のエントリも値に残してください）、エディタを再起動します。足さないと、`DismissMenus` はダイアログが閉じるまでキューで待ちます。足すことを想定しているのはこの UI コマンドだけです。変えるのは Slate のメニュースタックの状態だけだからです。
+モーダルダイアログの中から開いたメニューを閉じるには、このリストに `UAIP.Editor.UIAutomation.DismissMenus` を足し（例：`StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.DismissMenus`。このキーは既定値を置き換えるので、既定のエントリも値に残してください）、エディタを再起動します。コマンドポンプの有効化は不要です。足さないと、`DismissMenus` はダイアログが開いている間は断られます（ポンプが有効なら、ダイアログが閉じるまでキューで待ちます）。足すことを想定しているのはこの UI コマンドだけです。変えるのは Slate のメニュースタックの状態だけだからです。
 
 実効値は起動時に解決され、Output Log に 1 行だけ記録されます（`Starved tick allowlist: ...`）。ini に書いたのに効いていない場合や、書式を誤って無視されたエントリがある場合は、**起動直後のログで確認できます**。CVar `uaip.Command.StarvedTickAllowList` を読んでも既定値しか返らない点に注意してください — ini とコマンドラインは CVar を書き換えず、その上に重ねます。
 

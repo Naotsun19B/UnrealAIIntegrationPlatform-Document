@@ -469,7 +469,8 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 - `[UAIP.SafetyPolicy]` の `AllowPasswordFieldRead=True` にするか、エディタを `-uaip-policy-allow-password-field-read=True` で起動します。起動時に読まれ、`ReloadCapabilities` では再読み込みされないので、エディタを再起動してください。Capability は `+AllowedCapabilities=EditorWidgetPasswordTextRead` で付与します。
 - `AllowRuntimePasswordFieldRead`（ゲームビューポート用。後述）や、書き込みの `AllowPasswordFieldWrite` とは独立しています。`QueryCapabilities` は状態を `OperationalConstraints.IsPasswordFieldReadAllowed` と `OperationalConstraints.IsRuntimePasswordFieldReadAllowed` として報告します。
 - 値は応答（`Result.PasswordFieldValues`）にだけ入り、保存されるスナップショット・ログ・完了通知には出ません。応答を受け取った AI クライアントがそれをどうするかは、UAIP の外の話です。
-- ブリッジの `Toolset.Editor.SlateInspector.SnapshotUI` は、何を許可しても入力欄の値を返しません。その行をすべて伏せます。
+- ブリッジの `Toolset.Editor.SlateInspector.SnapshotUI` は、何を許可しても入力欄の値の読み取りを解禁しません。代わりにその行を伏せます。この伏せ方は最善の努力なので、パスワード欄にはネイティブの `SnapshotUI` を使ってください（[コマンド](commands.md#uaipeditoruiautomation) を参照）。
+- UAIP が守るのは、AI クライアントとエディタの間の境界です。エディタのプロセスの中で動くコード（他のプラグインを含む）は、パスワード欄を含むすべての Slate のウィジェットを読めるので、信頼する側として扱います。そのようなコードが、UAIP がラベルを読む場所に置いた値（秘密を束縛したアクセシビリティ文字列・ヒント文・`Tag`、Slate Inspector の Toolset に登録したラベルの抽出器やウィジェットのロール）は、UAIP の保護の対象外です。
 
 #### スクリプト実行
 

@@ -469,7 +469,8 @@ These capabilities all require the `MetaHumanCharacter` plugin. They are split b
 - Set `AllowPasswordFieldRead=True` under `[UAIP.SafetyPolicy]`, or start the editor with `-uaip-policy-allow-password-field-read=True`. It is read at startup and is not reloaded by `ReloadCapabilities`, so restart the editor. Grant the capability with `+AllowedCapabilities=EditorWidgetPasswordTextRead`.
 - It is independent of `AllowRuntimePasswordFieldRead` (the game viewport; see below) and of `AllowPasswordFieldWrite` (writing). `QueryCapabilities` reports the state as `OperationalConstraints.IsPasswordFieldReadAllowed` and `OperationalConstraints.IsRuntimePasswordFieldReadAllowed`.
 - The value is returned in the response only (`Result.PasswordFieldValues`), never in the saved snapshot, the log or the completion notification. What the AI client does with a response after receiving it is outside UAIP.
-- The `Toolset.Editor.SlateInspector.SnapshotUI` bridge never returns the value of an input field, whatever is granted: it hides those lines altogether.
+- The `Toolset.Editor.SlateInspector.SnapshotUI` bridge does not unlock the value of an input field, whatever is granted: it hides those lines instead. That hiding is best effort, so use the native `SnapshotUI` for password fields (see [Commands](commands.md#uaipeditoruiautomation)).
+- UAIP guards the boundary between the AI client and the editor. Code running inside the editor process — other plugins included — can read every Slate widget, password fields too, and is treated as trusted: a value that such code places where UAIP reads a label (an accessibility text, a hint text or a `Tag` bound to a secret, a label extractor or widget role registered with the Slate inspector toolset) is outside what UAIP protects.
 
 #### Script execution
 
