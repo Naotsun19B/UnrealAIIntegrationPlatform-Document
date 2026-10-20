@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1319 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1740 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1320 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1741 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -91,7 +91,7 @@ Toolset ブリッジコマンドが、経由する Toolset 連携の準備がで
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 24 | 8 | 一部（10/24） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 21 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
@@ -406,6 +406,10 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 **`SnapshotUI` と `DumpSlateTree` のラベル。** ラベルが `None` だったノードは型名になり、リッチテキストは表示内容の近似になり、パスワード欄のラベルはヒント文か型名になります。`DumpSlateTree` の `AccessibleText` も同じ規則に従います。リッチテキストは `SnapshotUI` の既定の対象に入るので、ノード数や Ref の番号の振られ方が変わることがあります。[UAIP.Editor.UIAutomation](#uaipeditoruiautomation) を参照してください。
 
+**`DumpSlateTree` の `MaxDepth` は 29 まで。** それより大きい値は、ほかの範囲外の値と同じく 29 に切り詰められます。30 ではウィンドウのダンプの入れ子が深すぎて書き出せず、それでもコマンドは `Success` と空の成果物を返していました。ツリーを書き出せなかった場合は、空のファイルを保存せずに `ExecutionFailed` で失敗するようになりました。
+
+**`SetComboSelection` と `FillForm` がゲームビューポート内のコンボボックスを選べるようになりました。** プレイセッション中（またはウィジェットコンポーネント内）のコンボボックスは、リストを新しいウィンドウではなく自分が属するウィンドウの中に開くため、どちらのコマンドも「Dropdown did not appear within timeout」で失敗していました。そのリストも見つけるようになりました。エディタ自身の UI のコンボボックスの扱いは変わりません。
+
 **`Toolset.Editor.SlateInspector.SnapshotUI` は入力欄の行を、パスワード欄かどうかによらず伏せます。** [UAIP.Editor.UIAutomation](#uaipeditoruiautomation) を参照してください。
 
 **シナリオは、宣言されていない引数へ渡される機微な値を拒否します**（`PolicyViolation`、`Reason: SensitiveValueToUndeclaredParam`）。[機微な値と伏せる場所](#機微な値と伏せる場所) を参照してください。
@@ -557,6 +561,8 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.EngineManagement.*`。
 
+> `SearchCVars`（と `World` の別名）は `Name` を任意のままにし、既定値 `""`（全 CVar）をスキーマに出します。Toolset が必須とする `name` は、ブリッジが常に送ります。
+
 | コマンド | 説明 |
 |---|---|
 | `Toolset.Editor.Toolset.EngineManagement.SearchCVars` | CVar を名前パターンで検索（センシティブパターンを除外、`CVarInspect` 必要） |
@@ -582,6 +588,11 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 ### Toolset ブリッジ — Plugin（15 件）🧩
 
 `PluginToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Plugin.*`。
+
+> **引数は Plugin Toolset が宣言する形に揃えています。**
+>
+> - ⚠️ **`UpdatePluginDescriptor` はデスクリプターの全体を取ります。** `Descriptor` は次の 14 メンバーだけを持つオブジェクトで、すべて必須、ほかのメンバーは取りません: `FriendlyName`・`Description`・`Category`・`VersionName`・`CreatedBy`・`CreatedByURL`・`DocsURL`・`MarketplaceURL`・`SupportURL`（文字列）、`Version`（整数）、`bCanContainContent`・`bIsBetaVersion`・`bIsExperimentalVersion`・`bIsSealed`（真偽値）。Toolset は 14 メンバーすべてを書き込んで `.uplugin` を保存するため、省いたメンバーは空で保存されてしまいます。そのため一部だけの `Descriptor` は `InvalidParams` で断ります。以前の呼び出しは、Toolset 側で必ず失敗していました。
+> - **`AddPluginDependency`: `bOptional` の既定値は `false`、`bEnabled` の既定値は `true`** で、ネイティブコマンドと同じです。どちらも常に送ります。
 
 | コマンド | 説明 |
 |---|---|
@@ -614,9 +625,9 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `ListSettingsSections` | カテゴリ内の設定セクションを一覧表示。Capability 不要 |
 | 🆓 `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） シークレットプロパティの既定値は `***` と `IsMasked: true` になる（以前は平文）。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
 | 🆓 `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） 名前だけでシークレットと分かるプロパティもマスクされる。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
-| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可。値はエンジンのテキスト形式のみを受け取るため、参照・コンテナ・組み込みカタログ外の構造体は **どの Capability を付与しても拒否されます** — これらは同じ設定オブジェクトへ届き `ValueJson` を受け取る `SetProjectSetting` で書いてください。途中までしか解釈できない値は、断片が適用されるのではなく `InvalidParams` で拒否されるようになりました 渡した `Properties` は、シークレットかどうかに関わらず監査ログ・完了通知・コマンドの記録で伏せられ、失敗理由の文も伏せられる。呼び出し側への応答は変わらない。拒否の文は送った値を引用せず、プロパティ・型やフラグ・足りない Capability の名前だけを示す。`DryRun` では、シークレットプロパティの変更前・変更後の値が `***` と `IsMasked: true` になる（以前は `null`）。`IncludeSecretValues` は `DryRun` の平文を返す。`DryRun` なしの応答には値が含まれないので何もしない — [シークレット値の読み取り](#reading-secret-values)を参照 |
+| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可。値はエンジンのテキスト形式のみを受け取るため、参照・コンテナ・組み込みカタログ外の構造体は **どの Capability を付与しても拒否されます** — これらは同じ設定オブジェクトへ届き `ValueJson` を受け取る `SetProjectSetting` で書いてください。途中までしか解釈できない値は、断片が適用されるのではなく `InvalidParams` で拒否されるようになりました 渡した `Properties` は、シークレットかどうかに関わらず監査ログ・完了通知・コマンドの記録で伏せられ、失敗理由の文も伏せられる。呼び出し側への応答は変わらない。拒否の文は送った値を引用せず、プロパティ・型やフラグ・足りない Capability の名前だけを示す。`DryRun` では、シークレットプロパティの変更前・変更後の値が `***` と `IsMasked: true` になる（以前は `null`）。`IncludeSecretValues` は `DryRun` の平文を返す。`DryRun` なしの応答には値が含まれないので何もしない — [シークレット値の読み取り](#reading-secret-values)を参照。プロパティが宣言する `ClampMin` / `ClampMax` の外の数値は、詳細パネルと同じく `DryRun` の有無にかかわらず `InvalidParams` で拒否される。文はプロパティ名と範囲を示し、値は含まない |
 | `SaveSettings` | `ISettingsSection::Save()` 経由で設定を ini ファイルに書き出す。`ConfigSettingsSave` 必要。PIE 中および `bDisableSave` 設定時は実行不可 |
-| `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 シークレット値は `DryRun` のプレビューでも、実行時の元の値のバックアップ（アーティファクト）でも `***` になる。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
+| `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 シークレット値は `DryRun` のプレビューでも、実行時の元の値のバックアップ（アーティファクト）でも `***` になる。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照。既定値へ戻せないセクション（`ListSettingsSections` で `CanResetDefaults: false`）は `DryRun` の有無にかかわらず `NotAllowed` で拒否されるので、実行で拒否されるリセットをプレビューが表示することはない |
 
 ### Toolset ブリッジ — ConfigSettings（8 コマンド）🧩
 
@@ -879,7 +890,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 > - 何も開いておらず `WidgetRef` も無いときは、`MenusOpenBefore: false`・`FramesWaited: 0` の成功です。何度呼んでも構いません。`WidgetRef` を指定した呼び出しは、メニューが閉じた後では冪等になりません。`NotFound` を返し、ウィジェットが破棄されていれば `Result.Reason: WidgetDestroyed`（閉じたメニューの中のウィジェットは通常破棄されます。要求の受付前でも後でも同じです）、ウィジェットは残っているがどのメニューにも属さなければ `Result.Reason: WidgetNotInApplicationMenu` です。どのメニューにも属さないウィジェットを指定したときも `WidgetNotInApplicationMenu` です。これらのときは何も閉じません。形式の不正や期限切れの Ref は、他の UI コマンドと同じく `InvalidParams` / `NotFound` です。
 > - 待っている間に UAIP が停止したときは、`ExecutionFailed` と `Reason: DeliveryCancelledByShutdown` を 1 回だけ返します。
 > - **制限。** 閉じる対象にも数える対象にもなるのは、アプリのメニュースタックに載ったメニューだけです。スタックに載らずに開くメニュー（一部のエンジンのプラグインにあります）には触れません。`WidgetRef` なしで、そういうメニューだけが開いているときは、`MenusOpenBefore: false` の成功を返してウィンドウは残ります（`MenuWindowCountAfter` で分かります）。その中のウィジェットを `WidgetRef` に指定したときは、`NotFound` と `WidgetNotInApplicationMenu` です。そのメニュー自身の操作で閉じてください。
-> - **モーダルダイアログの中から。** モーダルダイアログが開いている間、コマンドポンプの許可リストに無いコマンドはキューで待ち、ダイアログが閉じてから実行されます。その間に呼び出し側の Transport がタイムアウトすることがあります。モーダルの中から開いたピッカーを閉じるには、コマンドポンプを有効にし、`StarvedTickAllowList` に `UAIP.Editor.UIAutomation.DismissMenus` を足して、エディタを再起動します（このリストは起動時に 1 回だけ読まれます）。[`[UAIP.CommandPump]`](config.md#uaipcommandpump--モーダル表示中のコマンド実行既定で無効) を参照してください。
+> - **モーダルダイアログの中から。** モーダルダイアログが開いている間、`StarvedTickAllowList` に無いコマンドはその場で `NotAllowed`（メッセージは `[StarvedTick]` で始まります）で断られ、何も閉じません。ダイアログが閉じてから送り直してください。コマンドポンプを有効にしている場合（`uaip.Command.PumpedExecution=1`）だけは、断られずにキューで待ち、ダイアログが閉じてから実行されます。その間に呼び出し側の Transport がタイムアウトすることがあります。モーダルの中から開いたピッカーを閉じるには、`StarvedTickAllowList` に `UAIP.Editor.UIAutomation.DismissMenus` を足して、エディタを再起動します（このリストは起動時に 1 回だけ読まれます。コマンドポンプの有効化は不要です）。閉じるのはピッカーだけで、モーダルダイアログは開いたまま残ります。[`[UAIP.CommandPump]`](config.md#uaipcommandpump--モーダル表示中のコマンド実行既定で無効) を参照してください。
 > - `PressKey` で Escape を送ることはできますが、キーを受け取ったウィジェット（メニューの検索欄など）が消費すると、メニューは閉じません。メニューを閉じるには `DismissMenus` を使ってください。
 >
 > **操作が拒否された理由の確認。** `ClickWidget`・`HoverWidget`・`PressKey` は、ドラッグ中（`DragInProgress`）、モーダルが開いていて対象がその外にあるとき（`ModalActive`）、メニューが開いていて対象がその外にあるとき（`ForeignMenuActive`）に、`PolicyViolation` で拒否されます。`ErrorMessage` はその理由です。応答の `Result` と保存される報告の両方に `GuardDiagnostics` オブジェクトが付くので、artifact を開かなくても原因が分かります。
@@ -919,7 +930,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 > **Note**: `Toolset.Editor.SlateInspector.PressKey` はネイティブの `PressKey` と同じ危険ショートカットのブロックリストを適用しますが、現在どのウィジェットにフォーカスがあるかを解決する手段が無いため、**Backspace を常時ブロック**します — ネイティブコマンドが持つ「テキスト入力ウィジェットにフォーカスがある場合の例外」はブリッジには引き継がれません。
 
-> **`Toolset.Editor.SlateInspector.SnapshotUI` は入力欄の行を伏せます。** エンジンが描画する行には各ウィジェットのラベルが入り、入力欄ではそれが入力中の文字列そのものです。UAIP は、入力欄（`SEditableText`・`SEditableTextBox`・`SMultiLineEditableText`・`SMultiLineEditableTextBox`）に属する行は、パスワード欄かどうかによらず、また Ref の接頭辞が `tb` の行も、ラベルを `"(withheld)"` に置き換えます。ウィジェットと結び付けられない行（Ref を引き当てられない、Ref が無い、ラベルを解析できない）も伏せます。ラベルの範囲すら分からない行は、行全体が `(withheld)` だけになります。それ以外の行と応答の形は変わりません。`Ref` が解決できなかったときの 1 行の応答 `Error: Could not resolve ref` は、そのまま返ります。エンジンの結果が UAIP の想定と違う形のときは、結果の一部も含まない固定の文で `InternalError` を返します。Ref を引き当てる部分が読み込まれていないときは、Ref のある行をすべて伏せます。入力欄に入っている値を読むには、ネイティブの `SnapshotUI` を `IncludeFieldValues` 付きで使ってください。パスワード欄を扱えるのはネイティブのコマンドだけです。
+> **`Toolset.Editor.SlateInspector.SnapshotUI` は入力欄の行を伏せます。** エンジンが描画する行には各ウィジェットのラベルが入り、入力欄ではそれが入力中の文字列そのものです。UAIP は、入力欄（`SEditableText`・`SEditableTextBox`・`SMultiLineEditableText`・`SMultiLineEditableTextBox`）に属する行は、パスワード欄かどうかによらず、また Ref の接頭辞が `tb` の行も、ラベルを `"(withheld)"` に置き換えます。ウィジェットと結び付けられない行（Ref を引き当てられない、Ref が無い、ラベルを解析できない）も伏せます。ラベルの範囲すら分からない行は、行全体が `(withheld)` だけになります。それ以外の行と応答の形は変わりません。`Ref` が解決できなかったときの 1 行の応答 `Error: Could not resolve ref` は、そのまま返ります。エンジンの結果が UAIP の想定と違う形のときは、結果の一部も含まない固定の文で `InternalError` を返します。Ref を引き当てる部分が読み込まれていないときは、Ref のある行をすべて伏せます。入力欄に入っている値を読むには、ネイティブの `SnapshotUI` を `IncludeFieldValues` 付きで使ってください。パスワード欄を扱えるのはネイティブのコマンドだけです。**このマスクは最善の努力です。パスワード欄を扱うときは、ネイティブの `SnapshotUI` を使ってください。** エンジンが行を描画してから UAIP が伏せるので、伏せるかどうかは、その行の Ref が今引き当たるウィジェットで判断するしかありません。エディタの中で動くコードがもたらす行は覆えません。たとえば、他のプラグインが入力欄に `textbox` 以外のロールを与え（`RegisterWidgetRole`）、さらに Toolset の Ref のキャッシュをリセットして、その行の Ref が入力欄でない別のウィジェットを指すようになった場合や、他のプラグインが上の 4 つの入力欄の型以外の型にラベルの抽出器（`RegisterLabelExtractor`）を登録して欄の値を返す場合です。UAIP は、エディタのプロセスの中で動くコードを信頼する側として扱います（[安全性と Capability](safety.md#エディタ操作) を参照）。
 
 > **⚠️ Breaking change — このセクションの 10 件は、これまで 1 件も動いていませんでした。** 委譲先の toolset 名を**モジュール修飾なしの `SlateInspectorToolset`** として渡しており、ToolsetRegistry は 1 回の完全一致検索でしか解決しないため（前方一致もサフィックス一致もありません）、正しい `SlateInspectorToolset.SlateInspectorToolset` に一致せず、どのコマンドも実行時に「そのような toolset は無い」で失敗していました。**本更新で 8 件が実際に動くようになりました**（`SnapshotUI` / `ListObservers` / `ClickWidget` / `HoverWidget` / `InputText` / `PressKey` / `SetComboSelection` / `FillForm`）。
 >
@@ -1076,6 +1087,8 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 ### Toolset ブリッジ — Level（8 件）🧩
 
 `EditorAppToolset`（UE 5.8+、EditorToolset プラグイン）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.Level.*`。
+
+> ⚠️ **`SelectActors` と `FocusOnActors` は `Actors` をアクターのパス文字列の配列で受け、ブリッジが各要素を `{"refPath": ...}` にして送ります。** 空文字列や `null` の要素、`null` の `Actors` は、Toolset を呼ぶ前に `InvalidParams` で断ります。
 
 | コマンド | 説明 |
 |---|---|
@@ -1503,6 +1516,15 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 >
 > **逆に `GetAssetDiscoveryInfo` は動くようになりました。** このコマンドは `NiagaraToolset_Info` へ委譲していましたが、実物は `NiagaraToolset_Assets` にあり、ToolsetRegistry は 1 回の完全一致検索でしか解決しないため到達していませんでした。宛先を修正済みです。
 
+> **引数は Niagara Toolset が宣言する形に揃えています。**
+>
+> - **参照引数は、オブジェクトパスの文字列でも `{"refPath": "..."}` でも渡せます。** このセクションの全コマンドの、アセット・クラス・`System` の参照が対象です。どちらの形も以前から受け付けていました。ブリッジは Toolset へ `{"refPath": ...}` で送ります。
+> - **スタック項目の参照は、メンバーとその既定値を宣言します。** 参照を取る 19 コマンド（`AddRenderer`・`AddSetParameterEntry`・`AddSetParametersModule`・`GetDynamicInputSchema`・`GetEmitterData`・`GetEmitterTopology`・`GetModuleSchema`・`GetModuleTopology`・`GetRendererData`・`GetScriptStackTopology`・`GetStackInputData`・`GetStackInputSchema`・`GetStackInputTopology`、および次の項目の 6 コマンド）のスキーマに、`EmitterName` / `ScriptName` / `ModuleName`（既定値 `"None"`）、`RendererIndex`（既定値 `-1`）、`InputNameStack`（省略すると空配列を送る）が載ります。Toolset 自身の既定値なので、メンバーを省略した呼び出しの意味は以前と変わりません。
+> - ⚠️ **次の 6 コマンドは、スタック項目の参照を中身を検査しないオブジェクトで受けていましたが、宣言するようになりました:** `RemoveRenderer`（`RendererToRemove`）、`RemoveSetParameterEntry` と `SetModuleEnabled`（`ModuleRef`）、`SetEmitterData`（`Emitter`）、`SetRendererData`（`Renderer`）、`SetStackInputData`（`StackInputRef`）。`System` は必須（パス文字列または `{"refPath": ...}`）、`EmitterName` / `ScriptName` / `ModuleName` は文字列、`RendererIndex` は整数、`InputNameStack` は配列です。宣言していないメンバーや `System` の欠落は、Toolset を呼ぶ前に `InvalidParams` で断ります。
+> - ⚠️ **`SetEmitterData`（`EmitterData`）・`SetRendererData`（`RendererData`）・`SetSystemData`（`SystemData`）は `PropertyValues` だけを取ります**（文字列、必須）。ほかのメンバー、`PropertyValues` の欠落、文字列でない値は `InvalidParams` で断ります。
+> - ⚠️ **`GetAvailableDynamicInputs` は `Type` の中に `ClassStructOrEnum` だけを取ります**（必須。パス文字列または `{"refPath": ...}`）。ほかのメンバーや `ClassStructOrEnum` の欠落は `InvalidParams` で断ります。
+> - **変更していないもの:** `AddSetParameterEntry`（`Entry`）・`AddSetParametersModule`（`Parameters`）・`AddUserVariables`（`VariablesToAdd`）・`RemoveUserVariables`（`VariablesToRemove`）・`SetStackInputData`（`InputData`）は、配列の要素や開いた構造体の形を宣言していません。スキーマがまだ表現できないためで、これらを渡す呼び出しは Toolset に断られることがあります。
+
 ---
 
 ## UAIP.Editor.Physics
@@ -1624,6 +1646,8 @@ Chaos Cloth Asset 編集と `ChaosClothAssetToolset` ブリッジ（UE 5.8, Expe
 ### Toolset ブリッジ（6）
 
 `ChaosClothAssetToolset` の6関数をそのままミラー。プロバイダ：`Toolset.Editor.ChaosClothAsset.*`。UE 5.8+ かつ `ChaosClothAssetToolset` + `ToolsetRegistry` 有効時のみ利用可能。
+
+> ⚠️ **`AssignClothingToSection`・`GetSectionClothing`・`RemoveClothingFromSection` は整数を取ります。** `LodIndex`・`SectionIndex`、および `AssignClothingToSection` の `ClothingLodIndex` は数値として宣言されていました。小数（例: `1.5`）は `InvalidParams` で断ります。
 
 | コマンド | 説明 |
 |---|---|
@@ -1883,7 +1907,7 @@ Unified Animation Framework アセット（`UUAFAnimGraph` / `UUAFSystem`）の�
 | `ConnectUAFPins` | 出力ピンと入力ピンを接続（`NodeName.PinName` 形式）。接続の両端いずれかの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit` が必要 |
 | `DisconnectUAFPins` | 出力ピンと入力ピンの接続を切断。`ConnectUAFPins` と同じ `UAFCustomTypeEdit` の条件が適用される |
 | `SetUAFPinValue` | ピンの既定値を設定（UE テキストインポート表記）。所有ノードの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit`、ピンの宣言型がオブジェクト／クラス参照を含む場合は `UAFReferenceEdit` が必要 |
-| `AddUAFVariable` | メンバー変数を新規作成。`ValueType` / `ContainerType` は `EPropertyBagPropertyType` / `EPropertyBagContainerType` の列挙子名。参照型の変数には `UAFReferenceEdit` が必要 |
+| `AddUAFVariable` | メンバー変数を新規作成。`ValueType` / `ContainerType` は `EPropertyBagPropertyType` / `EPropertyBagContainerType` の列挙子名。参照型の変数には `UAFReferenceEdit` が必要。⚠️ 型は、アセットを開く前に UAF エディタの変数型メニューで選べるものに限られます。64 ビット整数、テキスト型、ソフト参照、ユーザー定義構造体、Blueprint で使えない型は `InvalidParams` で拒否され（権限では解除できません）、`ValueType` と種類が合わない `TypeObject` も同じです。メニューに項目の無い基本型（符号なし 32 ビット整数など）は受け付けます。`ContainerType` は `None` か `Array` で、セット・マップは `UnsupportedOperation` です |
 | `RemoveUAFVariable` | 名前指定でメンバー変数を削除（同名のエントリが存在しない場合も、存在するが変数でない場合も `VariableNotFound`） |
 | `AddUAFEventGraph` | `StructPath` で指定した RigVM Unit 構造体をルートとする新規イベントグラフエントリを追加。`UUAFSystem` 専用 — `UUAFAnimGraph` はアニメーショングラフエントリを 1 つ固定で持ちイベントグラフの余地がないため `UnsupportedOperation` で拒否される |
 | `CompileUAFAsset` | `RequestAssetCompilation` 経由で同期コンパイルを実行。アセットごとにセッション単位のレート制限（`MinCompileIntervalSeconds`）あり |
@@ -2012,6 +2036,11 @@ ViewModel Blueprint のプロパティ管理、View Binding / Event の作成、
 ### Toolset ブリッジ（9）🧩
 
 `MVVMToolset` プラグイン（UE 5.8 以上）経由のブリッジコマンド。プロバイダ: `Toolset.MVVM.*`。`CreateViewModel` および `ListViewModels` はブリッジ固有；その他はネイティブコマンドに対応する。
+
+> **参照引数は、Toolset の参照の形に揃えています。**
+>
+> - ⚠️ **参照は、文字列の `refPath` が必須のオブジェクトです。** 対象は `AddViewModelProperty` の `ViewModel`、`AddViewModelToWidget` の `WidgetBlueprint` と `ViewModelClass`、`CreateViewBinding` の `WidgetBlueprint` / `SourceContext` / `DestinationContext`、`ListConversionFunctions`・`ListWidgetViewBindings`・`ListWidgetViewModels`・`RemoveWidgetViewBinding` の `WidgetBlueprint` です。これらの引数は、中身を問わないオブジェクトとして受けていました。`{}`、文字列でない `refPath`、裸の文字列、（参照が必須の引数での）空の `refPath` は `InvalidParams` で断ります。Toolset も以前から断っていた形です。`refPath` 以外のメンバーは受け付けますが、送りません。
+> - **以前動いていた `null` は引き続き受け付けます:** `CreateViewBinding` の `SourceContext` / `DestinationContext`（ウィジェットブループリント自身）、`ListConversionFunctions` の `WidgetBlueprint`、`AddViewModelToWidget` の `ViewModelClass`。`CreateViewBinding` では `{"refPath": ""}` も `null` と同じ意味です。
 
 | コマンド | 説明 |
 |---|---|
@@ -2379,6 +2408,14 @@ Animation Mode ビューポートの旧トランスフォームギズモの大�
 
 > Decoration の変更系 2 コマンド（`AddDecoration` / `RemoveDecoration`）は、native 版とまったく同じ形で `SequencerCustomTypeEdit` によりゲートされています — native 側だけを塞いでも、同じクラスが bridge 経由でそのまま到達できてしまうためです。Decoration の一覧系 2 コマンド（`GetCompatibleDecorations` / `GetDecorations`）は、外部 Toolset レジストリの応答をそのまま通す passthrough 実装のため、native の一覧コマンドが返すようになった `Admission` / `RequiredCapabilities` / `MissingCapabilities` を持ちません。この情報が必要な場合は native コマンドを使用してください。
 
+> **範囲・マーカー・ロックの引数は、Sequencer Toolset 自身の引数に揃えています。** 各コマンドは、対応する Toolset 関数が取る単位で受け付けます。ブリッジはフレームと秒の換算をしません（もう一方の単位やラベルが要るときは、ネイティブの `UAIP.Editor.Sequencer.*` コマンドを使ってください）。
+>
+> - ⚠️ **`AddMarkedFrame` は `Label` を取らなくなりました。** Toolset にラベルの引数が無く、反映されなかったためです。`Label` を送ると `InvalidParams` で断ります。
+> - ⚠️ **`SetPlaybackRange` と `SetSelectionRange` は `StartFrame` と `EndFrame` が必須になりました**（整数。以前は任意）。`SetPlaybackRange` は `StartSeconds` / `EndSeconds` を取らなくなりました。開始が終了より前でない再生範囲は Toolset が断ります。
+> - ⚠️ **`SetViewRange` と `SetWorkRange` は `StartSeconds` と `EndSeconds` が必須になりました**（数値。以前は任意）。`StartFrame` / `EndFrame` は取らなくなりました。片側だけの範囲や数値でない値は `InvalidParams` で断ります。
+> - ⚠️ **`SetSequenceLocked` は `Locked` ではなく `Lock` を取ります**（真偽値、必須）。`Locked` で呼ぶと常に失敗していました。
+> - ⚠️ **`Toolset.Editor.SequencerControlRig.MergeControlRigAnimLayers`: `Indices` の要素を整数と宣言しました。** 数値は従来どおり動きます。文字列の要素は `InvalidParams` で断ります。
+
 ---
 
 ## UAIP.Editor.StateTree
@@ -2555,6 +2592,29 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 >
 > **ブリッジ経由では UAIP の値検査が及びません。** `SetGraphParams` / `SetGraphInstanceParams` / `ResetGraphInstanceParams` の書き込みは `UPCGToolset` の内部で行われるため、ネイティブ版が適用する型ゲート・範囲 / NaN の検査・途中終了パースの検査・全件不可なら 1 件も書かない扱いは適用されません。検査が必要な場合はネイティブの `SetPCGGraphParams` / `SetPCGGraphInstanceParams` / `ResetPCGGraphInstanceParams` を使ってください。
 
+> **引数は PCG Toolset が宣言する形に揃えています。**
+>
+> - **オブジェクト引数は、オブジェクトパスの文字列でも `{"refPath": "..."}` でも渡せます。** 対象は `AddNode`・`AddSubgraphNode`・`ConnectNodePins`・`DisconnectNodePins`・`ExecuteGraphInstance`・`GetGraphDescription`・`GetGraphInstanceParams`・`GetGraphSchema`・`GetGraphStructure`・`GetNodeDataView`・`GetNodeInfo`・`RemoveCommentBox`・`RemoveGraphParams`・`RemoveNode`・`RepositionNode` の `Graph` / `Node` / `FromNode` / `ToNode` / `PCGVolume` / `SubGraphForNode` と、下の作り直した 9 コマンドのオブジェクト引数です。`{"refPath": ...}` の呼び出しは従来どおり動きます。以前は Toolset に断られていたパス文字列も動くようになりました。パスは `Package.Object` の形（例: `/Game/PCG/G.G`）で、パッケージパスだけでは解決できません。
+> - **Toolset が必須とする引数に既定値を付けました。** `AddNode` と `AddSubgraphNode` の `JsonParams` / `NodeTitle` / `NodeComment`、`GetNodeDataView` の `AttributeName`、`UpdateNode` の `JsonParams` / `NodeTitle` は既定値 `""` です。省略しても Toolset 側で失敗しなくなります。
+> - **`AddCommentBox`: `Graph` と `Nodes` はパス文字列でも `{"refPath": ...}` でも渡せます。** `Color` は `Color.r` / `g` / `b` / `a`（数値。既定値は各 `1`。常に送ります）です。⚠️ この 4 つ以外のメンバーや、数値でない成分は `InvalidParams` で断ります（以前は検査せずに Toolset へ渡していました）。
+> - **`UpdateCommentBox` は呼ぶたびに色を設定します。** `Color` を省略すると既定の白で上書きされます（ブリッジは現在の色を読めないため）。
+> - ⚠️ **9 コマンドを Toolset 自身の引数で作り直しました。** 以前は Toolset が宣言していないネイティブ風のキーを送っていたため、Toolset が必ず断っていました。旧キーは `InvalidParams` で先に断るようになりますが、動いていた呼び出しが失われることはありません。
+>
+> | コマンド | 現在の引数 | 受け付けなくなった旧キー |
+> |---|---|---|
+> | `ResetGraphInstanceParams` | `PCGVolume`（必須）、`ParamNames`（必須、文字列の配列） | `ActorIdentifier` |
+> | `RunPCGInstantGraph` | `Graph`（必須）、`Params`（必須、値がすべて文字列のオブジェクト。無ければ `{}`） | `AssetPath` |
+> | `SetGraphDescription` | `Graph`（必須）、`Description`（必須） | `AssetPath` |
+> | `SetGraphInstanceParams` | `PCGVolume`（必須）、`JsonParams`（必須、**JSON 文字列**） | `ActorIdentifier`、`Parameters` |
+> | `SetGraphParams` | `Graph`（必須）、`Params`（必須、`Name`・`Type`・`Description`・`ContainerType`・`DefaultValueJson` を持つパラメータ定義の配列） | `AssetPath`、`Parameters` |
+> | `SetNodeComment` | `Node`（必須）、`NodeComment`（必須） | `AssetPath`、`NodePath`、`CommentText` |
+> | `SpawnGraphInstance` | `Graph`（必須）、`Name`（必須）、`Transform`（任意。`Transform.location.x/y/z`・`Transform.rotation.pitch/yaw/roll`・`Transform.scale.x/y/z`。省略した部分は恒等変換）、`JsonParams`（既定値 `""`） | `AssetPath`、`ActorLabel` |
+> | `UpdateCommentBox` | `Graph`（必須）、`CommentId`（必須）、`Nodes`（必須。ノードをそのままにするなら `[]`）、`Comment`（既定値 `""`）、`Color.r/g/b/a`（既定値 `1`） | `AssetPath`、`CommentNodeGuid`、`CommentText`、`NodeX`、`NodeY`、`CommentWidth`、`CommentHeight` |
+> | `UpdateNode` | `Node`（必須）、`JsonParams`（既定値 `""`）、`NodeTitle`（既定値 `""`） | `AssetPath`、`NodePath`、`PropertyName`、`PropertyValue` |
+>
+> 同名の `UAIP.Editor.PCG.*` ネイティブコマンドは、これまでのキーのままです。
+> - **`SetGraphParams`: スキーマは `Params` の要素の形を記述しません**（オブジェクトの配列をまだ表現できないため）。オブジェクトを渡してください。検査は Toolset が行います。
+
 | コマンド | 説明 |
 |---|---|
 | `Toolset.Editor.PCG.CreateGraph` 🧩 | PCG グラフアセットを作成（`PCGGraphAssetCreate` 必須） |
@@ -2694,6 +2754,22 @@ UE 5.8 の Control Rig アセットには 2 つの形式があります。ここ
 - **`Toolset.Editor.ControlRig.*` はランタイムアセット形式を断ります。** 委譲する前に `UnsupportedOperation` で断り、同じことができる `UAIP.Editor.ControlRig.*` のコマンド名（無い場合はこのドメイン）を案内します。この判定は ModularRig の保護より先です。旧形式のアセットと読めなかったアセットは、今までどおり Toolset に任せます。`Toolset.Editor.ControlRig.Create` はプロジェクトの設定にかかわらず常に**旧形式**で作成し、作成先に既存アセットがある場合の扱いも今までどおりです。
 - **`ClassName=/Script/Engine.Blueprint` で Control Rig の `FactoryParams.ParentClass` を渡した `CreateAsset` は断られます。** 何も作る前に `InvalidParams` になります（親は `UControlRig` かその派生: Modular Rig、プロジェクト定義の派生、Control Rig の生成クラス）。汎用の Blueprint Factory は、Control Rig のアセットではなくそのクラスを親にした普通の Blueprint を、`ControlRigBlueprintCreate` Capability を調べずに作ってしまい、Control Rig のコマンドでは編集できません。メッセージは `ClassName` に指定するクラス（プロジェクトが作る形式に応じてランタイムアセットか旧形式のクラス）を挙げ、親クラスは `FactoryParams.ParentClass` に残すよう案内します（例: `/Script/ControlRig.ModularRig`）。Capability の不足、`AssetPath` の使用中、`FactoryClassName` の誤りは、これより先に報告されます。
 - UE 5.7 には旧形式しかありません。ランタイムアセットのクラスを指定すると `InvalidParams`（「class could not be resolved」）になります。
+
+#### 変数の型・名前と、エディタに届く前の検証
+
+`AddVariable` と `ChangeVariableType`（ネイティブも Toolset ブリッジも）は、変数の型をエディタの変数型メニューで選べるものに限ります。また、Control Rig のコマンドに渡される名前は、エンジンに届く前に長さの上限で検査されます。どちらもアセットを開く前に確かめるので、拒否されたときにアセットは変わりません。
+
+- ⚠️ **型は基本型名か完全なパスで書き、それ以外は受け付けません。** 基本型名は `bool` / `int32` / `float` / `double` / `FName` / `FString`（大文字小文字を区別）で、ほかは `/Script/CoreUObject.Vector` のような完全なオブジェクトパスです。配列は、そのどちらかを 1 段の `TArray<...>` で包みます。短い名前（`Vector`）、C++ の書き方（`FVector` / `TObjectPtr<AActor>` / `TSubclassOf<AActor>` / `EMyEnum`）、引用付きの書き方（`Class'/Script/Engine.Actor'`）、入れ子の配列、閉じていない `TArray<` は `InvalidParams` で拒否されます。クラスのパスは、そのクラスのオブジェクトへの参照を意味します。読み込み済みの型に解決できない完全なパスも `InvalidParams` です。型を含むアセットやモジュールを読み込んでから再実行してください。型の指定が 1023 文字を超える場合も拒否されます。
+- ⚠️ **変数型メニューで選べない型は `InvalidParams` で拒否され、権限を付けても解除されません。** 例: テキスト型（`FText`）、メニューに無い 64 ビット整数などの整数型、素のバイト型、ワイルドカード、Blueprint で使えない構造体・列挙型・クラス、実行ピン系の構造体、（エディタがオブジェクトを扱わない設定のときの）オブジェクト型。マップ・セットの型は `UnsupportedOperation` です。
+- ⚠️ **拒否の優先順が変わりました。** 型の判定はアセットを開く前に行われるため、存在しないアセット（`AddVariable` では、既にある名前も）に不正な型を指定すると、`NotFound` や重複ではなく型の拒否が返ります。UE 5.7 で存在しないパスのオブジェクト型を指定した場合は、`UnsupportedOperation` ではなく `InvalidParams`（型が見つからない）になります。UE 5.8 では、**インターフェース**のクラスパスは `InvalidParams` で拒否されます（以前は、インターフェースとして働かない変数が作られていました）。
+- ⚠️ **名前に長さの上限があります。** グラフ名・要素名・コンポーネント名・変数名・イベント名などの名前は、1023 文字を超えると `InvalidParams` で拒否されます。新しく作るグラフの名前は 1012 文字まで、ノード名とコントロール名は従来どおり 128 文字までです。メッセージにはフィールドと上限が示されます。Toolset ブリッジのコマンドにも同じ上限が掛かります。
+- ⚠️ **ピン系のコマンドは、より長いアセットパスを受け付けます。** 257〜512 文字の `AssetPath` を誤って拒否していたピン系の 7 コマンドが、512 文字まで受け付けるようになりました。
+- **Toolset ブリッジの `AddVariable` は、既にある名前を `InvalidParams` で拒否します。** 委譲の前に判定されます（`UAIP.Editor.ControlRig.AddVariable` と同じです）。
+- ⚠️ **Toolset ブリッジの `ChangeVariableType` が扱えるのは、基本型・構造体とその配列です。** それ以外の型（列挙型・オブジェクト型・クラス）への変更と、ノードから参照されている変数の変更（エディタが確認を求める状況）は `UnsupportedOperation` で拒否され、代わりに使うネイティブの `UAIP.Editor.ControlRig.ChangeVariableType` が案内されます。両方のブリッジのパラメータ説明には、通る型の例（`/Script/CoreUObject.Vector`、`float`、`TArray<FString>`）が示されます。
+- ⚠️ **権限が要る初期値や新しい型は、何かを変更する前に権限が確かめられます。** ブリッジでも、参照を含む型の初期値には `PropertyReferenceEdit` が要り、参照先のアセットはロードされません。`ChangeVariableType`（ネイティブもブリッジも）は、変数に値があるかどうかにかかわらず、新しい型の書き込み権限を判定します。参照を含む型への変更には `PropertyReferenceEdit` が、配列の型と、`Vector` などの組み込みの構造体ではない構造体への変更には `PropertyStructuredEdit` が要ります（無ければ `CapabilityNotAvailable`）。基本型と組み込みの構造体には、どちらも要りません。拒否されたときにアセットは変わりません。
+- **旧形式の Control Rig の `ChangeVariableType` で、列挙型・オブジェクト型へ変えられるようになりました。** 以前は、エディタが落ちるか、型が壊れたまま成功が返っていました。エディタの確認ダイアログでコマンドが止まることはなくなり、応答には常に `RebuiltReferencingNodeCount`（その変数を参照していて作り直したノードの数。0 件でも載ります）が含まれます。UE 5.7 のオブジェクト型は、`AddVariable` と同じく `UnsupportedOperation` です。 ⚠️ ランタイムアセットの Control Rig では、変数の既存の初期値は、新しい型で読めればそのまま保たれ（float の 2.5 を double に変える場合など）、読めない場合や一部しか読めない場合（テキスト `not a vector` を Vector に変える場合など）は捨てられて、変数は新しい型の初期値から始まります。どちらの場合も型の変更は成立します。`Result` と artifact に `DefaultValueDiscarded` が載ります（値を捨てたときは `true`、読めた・元から空・旧形式のときは `false`）。載るのは `RebuiltReferencingNodeCount` と同じ応答（成功と、型が要求と違った失敗）です。
+- **型の変更・追加が成立しなかったときは失敗として返ります。** ネイティブの `ChangeVariableType` と、Toolset ブリッジの `AddVariable` / `ChangeVariableType` は、実行後に変数を読み直して確かめます。変数が消えている、または要求と違う型になっているときは `ExecutionFailed` で、`Result` に `VariableLost` と `ActualType`（変数の実際の型）が載ります。ネイティブは artifact にも同じ項目を載せ、ブリッジも同じ形で応答します。変更は自動では元に戻されず、エディタの元に戻す履歴に残ります。ランタイムアセットの Control Rig で、エンジンが型を引き直すときにアセットの読み込みが要る型（ユーザー定義の列挙型など）への変更は、何も変更せず `UnsupportedOperation` で拒否されます（以前は変数が消えたまま成功が返っていました）。同じ短い名前の別の型がある型への変更も同様です。
+- **Toolset ブリッジの `AddVariable` で、エンジンが別の名前を付けた場合は確かめられません。** 委譲先が実際の名前を返さないため、「要求した名前の変数が見つからない」という `ExecutionFailed` になり、作られた変数がどれかは示されません。
 
 ### ネイティブ（68）
 
@@ -2855,6 +2931,16 @@ UE 5.8 の Control Rig アセットには 2 つの形式があります。ここ
 **`Toolset.Editor.ControlRig.*`（44 件）** — 上記ネイティブのアセット編集コマンドのミラー。グループ：アセット作成（1。`Create` はプロジェクトの `RigVM.BlueprintIndependentAssets` の設定にかかわらず常に旧形式の Control Rig を作ります。`CreateAsset` とは異なります。[Control Rig アセットの形式](#control-rig-アセットの形式) を参照）/ ヒエラルキー観測（8）/ ヒエラルキー編集（7）/ グラフ管理（10）/ ノード（7）/ ピン（6）/ 変数（5）。
 
 **`Toolset.Editor.SequencerControlRig.*`（63 件）** — アニメーション時のコントロールオーサリング。実装は Sequencer モジュール（`SequencerControlRigTools`）ですが、全コマンドが ControlRig のコントロールを対象とするため本セクションに掲載しています。ControlRig に加えて `MovieSceneAnimMixer` が必要です。UE 5.8 では、`ControlRigPath` を使う 37 件（残りの 26 件は使わず、影響を受けません。`ZeroControlRigTransforms` は `ControlRigPath` を互換のために受け付けるだけで、アクティブな Sequencer の rig に作用するので、この 26 件に入ります）は、ランタイムアセットの Control Rig を、委譲する前に `UnsupportedOperation` で断ります。委譲先の Toolset はシーケンス内の rig を Blueprint のクラスで探しますが、ランタイムアセットにはそのクラスが無く、見つからずに失敗するか、パスの文字列が重なる別の旧形式の rig を操作してしまうためです。値の読み取りだけのコマンド（`Get...` / `Is...`）も同じく断ります。メッセージにはコマンド名とアセットのパスが入り、パスはオブジェクトパス（`/Game/Rigs/CR_X.CR_X`）でもパッケージパス（`/Game/Rigs/CR_X`）でも同じです。案内できる同等のネイティブコマンドはありません。`AssetPath` や `ControlRigPath` の欠落は今までどおり先に `InvalidParams` になり、旧形式の rig、アセットが存在しないパス、アセットのパスでない値は今までどおり委譲されます。グループ：
+
+> **`Toolset.Editor.ControlRig.*` の引数は、Control Rig Toolset 自身の引数に揃えています。**
+>
+> - **要素とイベントの種別は、取りうる値をスキーマに載せます。** `AddBone`・`AddNull`・`AddControlElement`・`AddElement` の `Parent.Type`、`GetChildren`・`GetParent`・`GetGlobalTransform`・`SetGlobalTransform`・`GetLocalTransform`・`SetLocalTransform` の `Item.Type`、`GetElements` の `ElementType` に、Toolset が取る要素の種別（`Bone` が先頭）が載ります。`AddEventNode` と `GetEventGraph` の `EventType` は `FORWARD_SOLVE`・`BACKWARD_SOLVE`・`INTERACTION` を載せます。値は素通しで、強制はしないので、以前動いた呼び出しは引き続き動きます。`AddEventGraph` は `FORWARD_SOLVE` を取りません。Toolset が断るため、`EventType` には `BACKWARD_SOLVE` と `INTERACTION` だけを載せます。
+> - ⚠️ **`AddElement` は `ElementType` を省略するとボーンを追加します。** スキーマに `Bone` と `Null` が載り、既定値 `Bone` が示されます。Toolset は種別を必須とするため、省略した呼び出しは以前は失敗していましたが、今はボーンを追加して成功します。`Control` は引き続き Toolset が断ります。
+> - ⚠️ **`AddEventNode` と `AddVariableNode` は、`X` / `Y` で指定した位置にノードを置きます。** 以前は位置が黙って捨てられていました。片方の座標だけを指定した場合はもう一方が `0` になり、どちらも無ければ位置を送りません。
+> - ⚠️ **`CreateNode` は、`OffsetX` / `OffsetY` の位置にノードを置きます。** この 2 つの引数は宣言されていましたが、Toolset に届いていませんでした。同じ規則で、欠けた座標は `0`、どちらも無ければ位置を送りません。`X` / `Y` は受け付けません（以前もスキーマが断っていました）。
+> - **`SetNodePosition` が動くようになりました。** 以前は呼ぶたびに失敗していました。今は位置を Toolset へ送ります。`X` と `Y` の両方が必須なのは従来どおりです。
+> - **Toolset が必要とする次の 2 引数に、既定値 `""` を付けました:** `CreateNode` の `NodeName`、`AddVariable` の `DefaultValue`。省略しても Toolset 側で失敗しなくなります。
+> - **変更していないもの:** `AddControlElement` の `Settings`（Toolset が必須とするコントロール設定のメンバー。制限フラグ、最小値・最大値、シェイプ、カスタマイズなど）は、補完も必須化もしていません。一部だけを渡す呼び出しは、Toolset に断られることがあります。
 
 | グループ | 件数 | コマンド |
 |---|---:|---|
@@ -3155,6 +3241,8 @@ UE 5.8 Data Registry のエディタ時観測 — 一覧・スキーマ取得・
 ### Toolset ブリッジ（7 コマンド）🧩
 
 `DataRegistryToolset` プラグイン（UE 5.8+）経由でネイティブコマンドのうち先頭7個をミラー。プロバイダ: `Toolset.Editor.DataRegistry.*`。`GetItems` はここでは挙動が異なる: 見つからないアイテムは黙って省略され、機密マスキングも適用されない — マスキングや欠損明示が必要な場合はネイティブの `GetItems` を使用すること。
+
+> `ListRegistries` は `StructFilter` を引き続き文字列で受けます。ブリッジは Toolset へ `{"refPath": ...}` で送り、空または省略のときは何も送りません（フィルタなし）。
 
 | コマンド | 説明 |
 |---|---|
@@ -3611,6 +3699,8 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 ### Toolset ブリッジ（3 件）🧩
 
 `EditorAppToolset`（UE 5.8+、EditorToolset プラグイン）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.PIE.*`。
+
+> `StartPIE` は呼び出し側から見て変わりません（`bSimulateInEditor` は任意のまま）。ブリッジが Toolset の必須のセッションオプション（`bSimulate`・`playMode` = `PlayMode_InViewPort`・`warmupSeconds` = `2.0`）を送るようになりました。
 
 | コマンド | 説明 |
 |---|---|

@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1319 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1740 commands organized by domain. These totals count every command the plugin defines for the UE 5.8 editor on Win64, including commands listed with `Available: false` because a plugin they need is disabled. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1320 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1741 commands organized by domain. These totals count every command the plugin defines for the UE 5.8 editor on Win64, including commands listed with `Available: false` because a plugin they need is disabled. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -91,7 +91,7 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 24 | 8 | partial (10/24) |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | partial (6/12) |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 21 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
@@ -406,6 +406,10 @@ The game viewport UI commands ([`UAIP.Runtime.Observation`](#uaipruntimeobservat
 
 **`SnapshotUI` and `DumpSlateTree` labels.** A node that showed `None` as its label now shows its type name; a rich text block shows an approximation of its text; the label of a password field is the hint text or the type name. `DumpSlateTree`'s `AccessibleText` follows the same rules. A rich text block is part of the default roster of `SnapshotUI`, so node counts and the numbering of refs can change. See [UAIP.Editor.UIAutomation](#uaipeditoruiautomation).
 
+**`DumpSlateTree` takes `MaxDepth` up to 29.** A larger value is clamped to 29, as other out-of-range values already were. At 30 the dump of a window was nested too deeply to be written, and the command still answered `Success` with an empty artifact. If a tree ever cannot be written, the command now fails with `ExecutionFailed` instead of saving an empty file.
+
+**`SetComboSelection` and `FillForm` can pick from a combo box inside a game viewport.** A combo box in a play session (or in a widget component) opens its list inside the window it already belongs to, not in a new window, so both commands used to give up with "Dropdown did not appear within timeout". They now find that list as well. Combo boxes in the editor's own UI are handled as before.
+
 **`Toolset.Editor.SlateInspector.SnapshotUI` hides the lines of input fields**, password or not. See [UAIP.Editor.UIAutomation](#uaipeditoruiautomation).
 
 **Scenarios refuse a sensitive value that goes to an undeclared parameter** (`PolicyViolation`, `Reason: SensitiveValueToUndeclaredParam`). See [Sensitive values and where they are masked](#sensitive-values-and-where-they-are-masked).
@@ -557,6 +561,8 @@ Bridge commands via the `LogsToolset` (UE 5.8+, EditorToolset plugin). Provider:
 
 Bridge commands via the EditorToolset plugin (UE 5.8+). Provider: `Toolset.Editor.Toolset.EngineManagement.*`.
 
+> `SearchCVars` (and its `World` alias) leaves `Name` optional and shows its default `""` (all CVars) in the schema; the bridge always sends `name` to the toolset, which requires it.
+
 | Command | Description |
 |---|---|
 | `Toolset.Editor.Toolset.EngineManagement.SearchCVars` | Search CVars by name pattern; sensitive patterns are excluded (requires `CVarInspect`) |
@@ -582,6 +588,11 @@ Plugin management for the editor — read / write plugin state, descriptor, and 
 ### Toolset bridges — Plugin (15) 🧩
 
 Bridge commands via the `PluginToolset` (UE 5.8+). Provider: `Toolset.Plugin.*`.
+
+> **Arguments are held to what the Plugin toolset declares.**
+>
+> - ⚠️ **`UpdatePluginDescriptor` takes the whole descriptor.** `Descriptor` is an object with exactly these 14 members, all required and no others: `FriendlyName`, `Description`, `Category`, `VersionName`, `CreatedBy`, `CreatedByURL`, `DocsURL`, `MarketplaceURL`, `SupportURL` (strings), `Version` (integer), `bCanContainContent`, `bIsBetaVersion`, `bIsExperimentalVersion`, `bIsSealed` (booleans). The toolset writes all 14 and saves the `.uplugin`, so a member left out would be saved empty; a partial `Descriptor` is therefore refused with `InvalidParams`. Earlier calls always failed in the toolset.
+> - **`AddPluginDependency`: `bOptional` defaults to `false` and `bEnabled` to `true`**, as in the native command, and both are always sent.
 
 | Command | Description |
 |---|---|
@@ -614,9 +625,9 @@ Project Settings and Editor Preferences management via `ISettingsModule`. Comman
 | 🆓 `ListSettingsSections` | List all sections in a settings category. No capability required |
 | 🆓 `GetSettingsSchema` | Return a JSON artifact with editable property names, types, descriptions, defaults, and edit conditions for a section (requires `EditorInspect`) The default value of a secret property is `***` with `IsMasked: true`; it used to be plain. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values) |
 | 🆓 `GetSettingsValues` | Return a JSON artifact with current property values for a section. Secret fields (name matches a secret pattern, has secret metadata, or is a file path type) are masked with `***` (requires `EditorInspect`) A property whose name alone marks it secret is now masked too. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values) |
-| `SetSettingsValues` | Merge a `Properties` map into the settings object via `ImportText`. Supports `DryRun` (validates without applying). Requires `ConfigSettingsEdit`. Blocked during PIE. Values are engine text only, so a reference, a container or a struct outside the built-in value catalogue is refused **whatever capabilities the session holds** — write those through `SetProjectSetting`, which reaches the same settings object and takes `ValueJson`. A value that only parses part-way is now refused with `InvalidParams` instead of being applied as a fragment The `Properties` you send are masked in the audit log, the completion notice and the command record whether or not they are secret, and so is the text of a failure; the response to the caller is unchanged. A refusal never quotes the value you sent: it names the property, its type or flags, or the missing capability. With `DryRun`, the old and new values of a secret property are `***` with `IsMasked: true` (they used to be `null`). `IncludeSecretValues` returns the plain ones for a `DryRun`; without `DryRun` the response holds no value, so it does nothing — see [Reading secret values](#reading-secret-values) |
+| `SetSettingsValues` | Merge a `Properties` map into the settings object via `ImportText`. Supports `DryRun` (validates without applying). Requires `ConfigSettingsEdit`. Blocked during PIE. Values are engine text only, so a reference, a container or a struct outside the built-in value catalogue is refused **whatever capabilities the session holds** — write those through `SetProjectSetting`, which reaches the same settings object and takes `ValueJson`. A value that only parses part-way is now refused with `InvalidParams` instead of being applied as a fragment The `Properties` you send are masked in the audit log, the completion notice and the command record whether or not they are secret, and so is the text of a failure; the response to the caller is unchanged. A refusal never quotes the value you sent: it names the property, its type or flags, or the missing capability. With `DryRun`, the old and new values of a secret property are `***` with `IsMasked: true` (they used to be `null`). `IncludeSecretValues` returns the plain ones for a `DryRun`; without `DryRun` the response holds no value, so it does nothing — see [Reading secret values](#reading-secret-values). A number outside the `ClampMin` / `ClampMax` the property declares is refused with `InvalidParams`, with and without `DryRun`, as the Details panel would refuse it; the message names the property and the range, not the value |
 | `SaveSettings` | Persist in-memory settings to the section's ini file via `ISettingsSection::Save()`. Requires `ConfigSettingsSave`. Blocked during PIE and when `bDisableSave` is set |
-| `ResetSettingsToDefaults` | Revert the settings object to class defaults and save. Requires `ConfigSettingsReset`. Blocked during PIE Secret values are `***` in the `DryRun` preview and in the backup artifact of a real run. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values) |
+| `ResetSettingsToDefaults` | Revert the settings object to class defaults and save. Requires `ConfigSettingsReset`. Blocked during PIE Secret values are `***` in the `DryRun` preview and in the backup artifact of a real run. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values). A section that cannot be reset (`CanResetDefaults: false` in `ListSettingsSections`) is refused with `NotAllowed` with and without `DryRun`, so the preview never lists a reset the real run would refuse |
 
 ### Toolset bridges — ConfigSettings (8) 🧩
 
@@ -880,7 +891,7 @@ Drive the editor UI — click, type, select, drag.
 > - Nothing open and no `WidgetRef`: success with `MenusOpenBefore: false` and `FramesWaited: 0`, so it can be called as often as you like. With a `WidgetRef`, a call after the menu has closed is not idempotent: it answers `NotFound`, with `Result.Reason: WidgetDestroyed` when the widget has been destroyed (which a widget inside a closed menu usually is, whether before or after the call is accepted) and `Result.Reason: WidgetNotInApplicationMenu` when the widget still exists but is in no menu. The same `WidgetNotInApplicationMenu` answer comes for a widget outside every menu. Nothing is closed in these cases. A malformed or expired ref is `InvalidParams` / `NotFound`, as for the other UI commands.
 > - If UAIP shuts down while it waits, the answer is `ExecutionFailed` with `Reason: DeliveryCancelledByShutdown`, once.
 > - **Limit.** Only menus registered in the application's menu stack are closed or counted. A menu that opens outside it (some engine plugins do) is left alone: with no `WidgetRef` and only such menus open, the call succeeds with `MenusOpenBefore: false` and the window stays (`MenuWindowCountAfter` shows a window); a widget inside one passed as `WidgetRef` is `NotFound` with `WidgetNotInApplicationMenu`. Close it with its own controls.
-> - **From a modal dialog.** While a modal dialog is open, a command that is not on the allow list of the command pump waits in the queue and runs after the dialog closes, and the caller's transport may time out in the meantime. To close a picker opened from inside a modal dialog, turn on the command pump and add `UAIP.Editor.UIAutomation.DismissMenus` to `StarvedTickAllowList`, then restart the editor (the list is read once at startup). See [`[UAIP.CommandPump]`](config.md#uaipcommandpump--running-commands-while-a-modal-dialog-is-up-off-by-default).
+> - **From a modal dialog.** While a modal dialog is open, a command that is not on `StarvedTickAllowList` is refused at once with `NotAllowed` (the message starts with `[StarvedTick]`) and nothing is closed; send it again after the dialog closes. Only when the command pump is turned on (`uaip.Command.PumpedExecution=1`) does such a command wait in the queue instead and run after the dialog closes, and then the caller's transport may time out in the meantime. To close a picker opened from inside a modal dialog, add `UAIP.Editor.UIAutomation.DismissMenus` to `StarvedTickAllowList` and restart the editor (the list is read once at startup; the command pump does not need to be on). Only the picker is closed — the modal dialog stays open. See [`[UAIP.CommandPump]`](config.md#uaipcommandpump--running-commands-while-a-modal-dialog-is-up-off-by-default).
 > - `PressKey` can still send Escape, but a widget that receives the key (a menu's search box, for example) can consume it and the menu stays open. Use `DismissMenus` to close menus.
 >
 > **Why an operation was refused.** `ClickWidget`, `HoverWidget` and `PressKey` are refused with `PolicyViolation` while a drag is in progress (`DragInProgress`), while a modal window is open and the target is outside it (`ModalActive`), and while a menu is open and the target is outside it (`ForeignMenuActive`); `ErrorMessage` is that reason. The response `Result` and the saved report now both carry a `GuardDiagnostics` object, so the cause can be read without opening the artifact:
@@ -920,7 +931,7 @@ Bridge commands via the `SlateInspectorToolset` (UE 5.8+). Provider: `Toolset.Ed
 
 > **Note**: `Toolset.Editor.SlateInspector.PressKey` applies the same blocked-shortcut list as the native `PressKey` command, but it has no way to resolve which widget currently has focus, so it blocks **Backspace unconditionally** — the native command's exemption for a focused text-input widget does not carry over to the bridge.
 
-> **`Toolset.Editor.SlateInspector.SnapshotUI` withholds the lines of input fields.** The lines that the engine renders carry each widget's label, and for an input field that is the text being typed. UAIP now replaces the label of every line that belongs to an input field (`SEditableText`, `SEditableTextBox`, `SMultiLineEditableText`, `SMultiLineEditableTextBox`) — whether or not it is a password field — and of every line whose ref starts with `tb`, with `"(withheld)"`. A line that cannot be tied to a widget (the ref does not resolve, there is no ref, or the label cannot be parsed) is withheld too; when even the label's extent is unknown the whole line becomes `(withheld)` and nothing else. The other lines, and the shape of the response, do not change. The one-line answer `Error: Could not resolve ref` (a `Ref` that did not resolve) is returned as it is. If the engine's result has a shape UAIP does not expect, the call fails with `InternalError` and a fixed message that holds no part of the result. If the part that resolves refs is not loaded, every line that has a ref is withheld. To read what was entered in a field, use the native `SnapshotUI` with `IncludeFieldValues`; for a password field the native command is the only way.
+> **`Toolset.Editor.SlateInspector.SnapshotUI` withholds the lines of input fields.** The lines that the engine renders carry each widget's label, and for an input field that is the text being typed. UAIP now replaces the label of every line that belongs to an input field (`SEditableText`, `SEditableTextBox`, `SMultiLineEditableText`, `SMultiLineEditableTextBox`) — whether or not it is a password field — and of every line whose ref starts with `tb`, with `"(withheld)"`. A line that cannot be tied to a widget (the ref does not resolve, there is no ref, or the label cannot be parsed) is withheld too; when even the label's extent is unknown the whole line becomes `(withheld)` and nothing else. The other lines, and the shape of the response, do not change. The one-line answer `Error: Could not resolve ref` (a `Ref` that did not resolve) is returned as it is. If the engine's result has a shape UAIP does not expect, the call fails with `InternalError` and a fixed message that holds no part of the result. If the part that resolves refs is not loaded, every line that has a ref is withheld. To read what was entered in a field, use the native `SnapshotUI` with `IncludeFieldValues`; for a password field the native command is the only way. **This masking is best effort; for password fields, use the native `SnapshotUI`.** The engine renders the lines before UAIP masks them, so masking can only judge each line by the widget its ref resolves to now. It cannot cover a line whose text comes from code running inside the editor: another plugin that gives an input field a role other than `textbox` (`RegisterWidgetRole`) and then resets the toolset's ref cache so that the line's ref points to a different, non-input widget, or another plugin that registers a label extractor (`RegisterLabelExtractor`) returning a field's value for a widget type that is not one of the four input-field types above. UAIP treats code running inside the editor process as trusted; see [Safety & Capabilities](safety.md#editor-operations).
 
 > **⚠️ Breaking change — none of the 10 commands in this section worked until now.** They passed the toolset name **unqualified, as `SlateInspectorToolset`**, and the ToolsetRegistry resolves a call with one exact lookup and no fallback of any kind (no prefix match, no suffix match), so nothing matched the registered `SlateInspectorToolset.SlateInspectorToolset` and every command failed at run time with "no such toolset". **Eight of them now work**: `SnapshotUI`, `ListObservers`, `ClickWidget`, `HoverWidget`, `InputText`, `PressKey`, `SetComboSelection` and `FillForm`.
 >
@@ -1077,6 +1088,8 @@ Editor-side actor placement, transforms, and level loading.
 ### Toolset bridges — Level (8) 🧩
 
 Bridge commands via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Provider: `Toolset.Editor.Toolset.Level.*`.
+
+> ⚠️ **`SelectActors` and `FocusOnActors` take `Actors` as an array of actor path strings, and the bridge sends each one as `{"refPath": ...}`.** An empty string or `null` element, or a `null` `Actors`, is refused with `InvalidParams` before the toolset is called.
 
 | Command | Description |
 |---|---|
@@ -1504,6 +1517,15 @@ Mirror of native commands via the `NiagaraToolsets` plugin (UE 5.8+ Experimental
 >
 > **`GetAssetDiscoveryInfo`, by contrast, now works.** It delegated to `NiagaraToolset_Info` while the tool itself lives on `NiagaraToolset_Assets`, and the ToolsetRegistry resolves a call with one exact lookup, so it never arrived. The target has been corrected.
 
+> **Arguments are held to what the Niagara toolset declares.**
+>
+> - **A reference argument takes an object path string or `{"refPath": "..."}`.** This covers the asset, class and `System` references of every command in this section. Both forms were accepted before; the bridge sends the toolset `{"refPath": ...}`.
+> - **A stack-item reference declares its members and their defaults.** The 19 commands that take one (`AddRenderer`, `AddSetParameterEntry`, `AddSetParametersModule`, `GetDynamicInputSchema`, `GetEmitterData`, `GetEmitterTopology`, `GetModuleSchema`, `GetModuleTopology`, `GetRendererData`, `GetScriptStackTopology`, `GetStackInputData`, `GetStackInputSchema`, `GetStackInputTopology`, and the six commands in the next item) show `EmitterName` / `ScriptName` / `ModuleName` (default `"None"`), `RendererIndex` (default `-1`) and `InputNameStack` (an empty array is sent when it is left out) in their schema. These are the toolset's own defaults, so a call that left a member out means what it meant before.
+> - ⚠️ **Six commands used to take their stack-item reference as an object that was not checked, and now declare it:** `RemoveRenderer` (`RendererToRemove`), `RemoveSetParameterEntry` and `SetModuleEnabled` (`ModuleRef`), `SetEmitterData` (`Emitter`), `SetRendererData` (`Renderer`) and `SetStackInputData` (`StackInputRef`). `System` is required (a path string or `{"refPath": ...}`); `EmitterName`, `ScriptName` and `ModuleName` are strings; `RendererIndex` is an integer; `InputNameStack` is an array. A member that is not declared, or a missing `System`, is refused with `InvalidParams` before the toolset is called.
+> - ⚠️ **`SetEmitterData` (`EmitterData`), `SetRendererData` (`RendererData`) and `SetSystemData` (`SystemData`) take only `PropertyValues`** (a string, required). Any other member, or a missing or non-string `PropertyValues`, is refused with `InvalidParams`.
+> - ⚠️ **`GetAvailableDynamicInputs` takes only `ClassStructOrEnum` inside `Type`** (required; a path string or `{"refPath": ...}`). Any other member, or a missing `ClassStructOrEnum`, is refused with `InvalidParams`.
+> - **Not changed:** the shape of an array element or an open struct is not declared for `AddSetParameterEntry` (`Entry`), `AddSetParametersModule` (`Parameters`), `AddUserVariables` (`VariablesToAdd`), `RemoveUserVariables` (`VariablesToRemove`) and `SetStackInputData` (`InputData`). The schema cannot express it yet, so the toolset may still refuse a call that passes these.
+
 ---
 
 ## UAIP.Editor.Physics
@@ -1625,6 +1647,8 @@ Chaos Cloth Asset editing and `ChaosClothAssetToolset` bridge (UE 5.8, Experimen
 ### Toolset bridge
 
 Mirror of the 6 `ChaosClothAssetToolset` functions. Provider: `Toolset.Editor.ChaosClothAsset.*`. Available only on UE 5.8+ with `ChaosClothAssetToolset` + `ToolsetRegistry` enabled.
+
+> ⚠️ **`AssignClothingToSection`, `GetSectionClothing` and `RemoveClothingFromSection` take integers.** `LodIndex`, `SectionIndex` and (for `AssignClothingToSection`) `ClothingLodIndex` were declared as numbers; a fractional value (for example `1.5`) is now refused with `InvalidParams`.
 
 | Command | Description |
 |---|---|
@@ -1884,7 +1908,7 @@ Editing and inspection of Unified Animation Framework assets (`UUAFAnimGraph` / 
 | `ConnectUAFPins` | Connect an output pin to an input pin (`NodeName.PinName` format); requires `UAFCustomTypeEdit` when either endpoint's struct is not one this domain ships |
 | `DisconnectUAFPins` | Disconnect an output pin from an input pin; same `UAFCustomTypeEdit` condition as `ConnectUAFPins` |
 | `SetUAFPinValue` | Set the default value of a pin (UE text import notation). Requires `UAFCustomTypeEdit` when the owning node's struct is not one this domain ships, and `UAFReferenceEdit` when the pin's declared type is — or contains — an object / class reference |
-| `AddUAFVariable` | Create a new member variable; `ValueType` / `ContainerType` name `EPropertyBagPropertyType` / `EPropertyBagContainerType` enumerators. Requires `UAFReferenceEdit` for a reference-typed variable |
+| `AddUAFVariable` | Create a new member variable; `ValueType` / `ContainerType` name `EPropertyBagPropertyType` / `EPropertyBagContainerType` enumerators. Requires `UAFReferenceEdit` for a reference-typed variable. ⚠️ The type is held to what the UAF editor's variable type menu offers, before the asset is opened: 64-bit integers, text, soft references, user-defined structs and types Blueprints cannot use are refused with `InvalidParams` (no capability lifts it), as is a `TypeObject` whose kind does not match `ValueType`; a basic type the menu has no entry for (such as an unsigned 32-bit integer) is accepted. `ContainerType` is `None` or `Array`; set and map are `UnsupportedOperation` |
 | `RemoveUAFVariable` | Remove a member variable by name (`VariableNotFound` both when nothing of that name exists and when it exists but is not a variable) |
 | `AddUAFEventGraph` | Add a new event graph entry rooted at the RigVM unit struct named by `StructPath`. `UUAFSystem` only — refused with `UnsupportedOperation` on `UUAFAnimGraph`, which has a single fixed animation graph entry and no room for one |
 | `CompileUAFAsset` | Trigger a synchronous compile via `RequestAssetCompilation`, subject to per-session rate limiting (`MinCompileIntervalSeconds` between calls per asset) |
@@ -2013,6 +2037,11 @@ ViewModel Blueprint property management, View Binding / Event authoring, and Wid
 ### Toolset bridges (9) 🧩
 
 Bridge commands via the `MVVMToolset` plugin (UE 5.8+). Provider: `Toolset.MVVM.*`. `CreateViewModel` and `ListViewModels` are unique to this bridge; other commands mirror native equivalents.
+
+> **Reference arguments are held to the toolset's reference shape.**
+>
+> - ⚠️ **A reference is an object with a required `refPath` string.** This applies to `ViewModel` of `AddViewModelProperty`, `WidgetBlueprint` and `ViewModelClass` of `AddViewModelToWidget`, `WidgetBlueprint` / `SourceContext` / `DestinationContext` of `CreateViewBinding`, and `WidgetBlueprint` of `ListConversionFunctions`, `ListWidgetViewBindings`, `ListWidgetViewModels` and `RemoveWidgetViewBinding`. These arguments used to be an object of any content. `{}`, a `refPath` that is not a string, a bare string, and (where the reference is required) an empty `refPath` are refused with `InvalidParams`; the toolset used to refuse them too. Members other than `refPath` are accepted and not sent.
+> - **`null` is accepted where it worked before:** `SourceContext` / `DestinationContext` of `CreateViewBinding` (the widget blueprint itself), `WidgetBlueprint` of `ListConversionFunctions`, and `ViewModelClass` of `AddViewModelToWidget`. For `CreateViewBinding`, `{"refPath": ""}` means the same as `null`.
 
 | Command | Description |
 |---|---|
@@ -2379,6 +2408,14 @@ Provider: `Toolset.Editor.AnimationAssistant.*` (41 commands — Lifecycle 6, Pl
 
 > The two Decorations mutating commands (`AddDecoration` / `RemoveDecoration`) are gated by `SequencerCustomTypeEdit` exactly the same way their native counterparts are — closing only the native route would leave the identical class reachable through the bridge. The two Decorations listing commands (`GetCompatibleDecorations` / `GetDecorations`) pass the external Toolset registry's response through unchanged, so they do not carry the `Admission` / `RequiredCapabilities` / `MissingCapabilities` fields the native listing commands now report; use the native commands when that information is needed.
 
+> **Range, marker and lock arguments follow the Sequencer toolset's own.** Each command takes the unit its toolset function takes; the bridge does not convert between frames and seconds (use the native `UAIP.Editor.Sequencer.*` command when you need the other unit or a label).
+>
+> - ⚠️ **`AddMarkedFrame` no longer takes `Label`.** The toolset has no label argument, so it could never be applied. Sending `Label` is refused with `InvalidParams`.
+> - ⚠️ **`SetPlaybackRange` and `SetSelectionRange` require `StartFrame` and `EndFrame`** (integers; they were optional). `SetPlaybackRange` no longer takes `StartSeconds` / `EndSeconds`. The toolset refuses a playback range whose start is not before its end.
+> - ⚠️ **`SetViewRange` and `SetWorkRange` require `StartSeconds` and `EndSeconds`** (numbers; they were optional) and no longer take `StartFrame` / `EndFrame`. A range with only one end, or a non-number, is refused with `InvalidParams`.
+> - ⚠️ **`SetSequenceLocked` takes `Lock`** (boolean, required) instead of `Locked`. A call with `Locked` always failed.
+> - ⚠️ **`Toolset.Editor.SequencerControlRig.MergeControlRigAnimLayers`: `Indices` declares integer elements.** Numbers work as before; a string element is refused with `InvalidParams`.
+
 ---
 
 ## UAIP.Editor.StateTree
@@ -2553,6 +2590,29 @@ Bridge commands via the `PCGToolset` (UE 5.8+). Provider: `Toolset.Editor.PCG.*`
 >
 > **The bridge does not run UAIP's value checks.** `SetGraphParams`, `SetGraphInstanceParams` and `ResetGraphInstanceParams` write inside `UPCGToolset`, so the type gate, the range / NaN checks, the part-way-parse check and the all-or-nothing batching the native commands apply do not reach them. Use `SetPCGGraphParams` / `SetPCGGraphInstanceParams` / `ResetPCGGraphInstanceParams` when you want those checks.
 
+> **Arguments are held to what the PCG toolset declares.**
+>
+> - **An object argument takes an object path string or `{"refPath": "..."}`.** This covers `Graph`, `Node`, `FromNode`, `ToNode`, `PCGVolume` and `SubGraphForNode` of `AddNode`, `AddSubgraphNode`, `ConnectNodePins`, `DisconnectNodePins`, `ExecuteGraphInstance`, `GetGraphDescription`, `GetGraphInstanceParams`, `GetGraphSchema`, `GetGraphStructure`, `GetNodeDataView`, `GetNodeInfo`, `RemoveCommentBox`, `RemoveGraphParams`, `RemoveNode` and `RepositionNode`, and the object arguments of the nine rebuilt commands below. A `{"refPath": ...}` call works as before; a path string, which the toolset used to refuse, now works too. The path has the form `Package.Object` (for example `/Game/PCG/G.G`); a package path alone is not resolved.
+> - **Arguments the toolset needs now have a default.** `JsonParams`, `NodeTitle` and `NodeComment` of `AddNode` and `AddSubgraphNode`, `AttributeName` of `GetNodeDataView`, and `JsonParams` / `NodeTitle` of `UpdateNode` default to `""`, so leaving them out no longer fails in the toolset.
+> - **`AddCommentBox`: `Graph` and `Nodes` take path strings or `{"refPath": ...}` objects**, and `Color` is `Color.r` / `g` / `b` / `a` (numbers, each defaulting to `1`, always sent). ⚠️ A `Color` member other than those four, or a component that is not a number, is refused with `InvalidParams` (the toolset used to receive it unchecked).
+> - **`UpdateCommentBox` sets the colour on every call.** Leaving `Color` out writes the default white, because the bridge cannot read the current colour back.
+> - ⚠️ **Nine commands were rebuilt on the toolset's own arguments.** They used to send native-style keys that the toolset does not declare, so the toolset always refused them. The old keys are now refused up front with `InvalidParams`, and no call that worked is lost:
+>
+> | Command | Arguments now | Old keys, no longer accepted |
+> |---|---|---|
+> | `ResetGraphInstanceParams` | `PCGVolume` (required), `ParamNames` (required, array of strings) | `ActorIdentifier` |
+> | `RunPCGInstantGraph` | `Graph` (required), `Params` (required, object whose values are all strings; `{}` when there is none) | `AssetPath` |
+> | `SetGraphDescription` | `Graph` (required), `Description` (required) | `AssetPath` |
+> | `SetGraphInstanceParams` | `PCGVolume` (required), `JsonParams` (required, a **JSON string**) | `ActorIdentifier`, `Parameters` |
+> | `SetGraphParams` | `Graph` (required), `Params` (required, array of parameter definitions with `Name`, `Type`, `Description`, `ContainerType`, `DefaultValueJson`) | `AssetPath`, `Parameters` |
+> | `SetNodeComment` | `Node` (required), `NodeComment` (required) | `AssetPath`, `NodePath`, `CommentText` |
+> | `SpawnGraphInstance` | `Graph` (required), `Name` (required), `Transform` (optional; `Transform.location.x/y/z`, `Transform.rotation.pitch/yaw/roll`, `Transform.scale.x/y/z`; omitted parts are the identity transform), `JsonParams` (default `""`) | `AssetPath`, `ActorLabel` |
+> | `UpdateCommentBox` | `Graph` (required), `CommentId` (required), `Nodes` (required; `[]` keeps the nodes as they are), `Comment` (default `""`), `Color.r/g/b/a` (default `1`) | `AssetPath`, `CommentNodeGuid`, `CommentText`, `NodeX`, `NodeY`, `CommentWidth`, `CommentHeight` |
+> | `UpdateNode` | `Node` (required), `JsonParams` (default `""`), `NodeTitle` (default `""`) | `AssetPath`, `NodePath`, `PropertyName`, `PropertyValue` |
+>
+> The same-named `UAIP.Editor.PCG.*` native commands keep their own keys.
+> - **`SetGraphParams`: the schema does not describe the elements of `Params`** (it cannot express an array of objects yet). Pass objects; the toolset checks them.
+
 | Command | Description |
 |---|---|
 | `Toolset.Editor.PCG.CreateGraph` | Create a PCG graph asset (requires `PCGGraphAssetCreate`) |
@@ -2692,6 +2752,22 @@ Which format a new asset gets is decided by the project's console variable `RigV
 - **`Toolset.Editor.ControlRig.*` rejects the runtime-asset format** with `UnsupportedOperation`, before anything is delegated, and names the equivalent `UAIP.Editor.ControlRig.*` command (or points at this domain when there is none). This is checked before the ModularRig protection. Legacy assets and unreadable assets are handled by the Toolset as before. `Toolset.Editor.ControlRig.Create` always creates the **legacy** format regardless of the project setting, and an existing asset at the destination is handled as it always was.
 - **`CreateAsset` with `ClassName=/Script/Engine.Blueprint` and a Control Rig `FactoryParams.ParentClass` is refused** with `InvalidParams` before anything is created (the parent is `UControlRig` or a subclass: a Modular Rig, a project-defined subclass, a Control Rig generated class). The generic Blueprint factory would have produced a plain Blueprint of that class, not a Control Rig asset, without checking the `ControlRigBlueprintCreate` capability, and the Control Rig commands cannot edit it. The message names the class to use in `ClassName` (the runtime-asset class or the legacy class, whichever the project creates) and says to keep the parent class in `FactoryParams.ParentClass` (for example `/Script/ControlRig.ModularRig`). A missing capability, an occupied `AssetPath` and a wrong `FactoryClassName` are reported before this.
 - On UE 5.7 only the legacy format exists; a request for the runtime-asset class is `InvalidParams` ("class could not be resolved").
+
+#### Variable types, names and the checks before the editor is reached
+
+`AddVariable` and `ChangeVariableType` (native and Toolset bridge) hold a variable's type to what the editor's own variable type menu offers, and every name a Control Rig command is given is held to a length limit before it can reach the engine. Both are checked before the asset is opened, so the asset is not changed by a refusal.
+
+- ⚠️ **A type is written as a basic type name or a full path, and nothing else is accepted.** The basic type names are `bool`, `int32`, `float`, `double`, `FName` and `FString` (case-sensitive); everything else is a full object path such as `/Script/CoreUObject.Vector`. An array is one level of `TArray<...>` around either. Short names (`Vector`), C++ spellings (`FVector`, `TObjectPtr<AActor>`, `TSubclassOf<AActor>`, `EMyEnum`), quoted forms (`Class'/Script/Engine.Actor'`), nested arrays and an unclosed `TArray<` are refused with `InvalidParams`. A class path means a reference to an object of that class. A full path that resolves to no loaded type is `InvalidParams` as well; load the asset or module that holds the type and call again. A type string longer than 1023 characters is refused.
+- ⚠️ **A type the variable type menu does not offer is refused with `InvalidParams`, and no capability lifts it.** Examples: text (`FText`), 64-bit and other integer types the menu does not list, a bare byte, the wildcard, structs, enums and classes that Blueprints cannot use, execute-pin structs, and (when the editor is set not to handle objects) object types. Map and set types are `UnsupportedOperation`.
+- ⚠️ **The order of refusals changed.** The type is judged before the asset is opened, so a request with a bad type for an asset that does not exist (or, for `AddVariable`, a name that is already taken) now answers the type refusal instead of `NotFound` or the duplicate. On UE 5.7 an object type whose path does not exist now answers `InvalidParams` (the type cannot be found) instead of `UnsupportedOperation`. On UE 5.8 the class path of an **interface** is refused with `InvalidParams` (it used to create a variable that did not work as an interface).
+- ⚠️ **Names have length limits.** Graph, element, component, variable and event names, and the other name fields, are refused with `InvalidParams` above 1023 characters; the name of a graph that is being created is limited to 1012 characters; node names and control names stay at 128. The message names the field and the limit. The Toolset bridge commands apply the same limits.
+- ⚠️ **The pin commands accept a longer asset path.** The seven pin commands that refused an `AssetPath` of 257 to 512 characters by mistake now accept it; the limit is 512.
+- **A Toolset bridge `AddVariable` refuses a name that is already taken** with `InvalidParams`, before anything is delegated (as `UAIP.Editor.ControlRig.AddVariable` does).
+- ⚠️ **A Toolset bridge `ChangeVariableType` covers basic types and structs, and arrays of them.** Any other target type (an enum, an object, a class), and a variable that nodes reference (the editor would ask for confirmation), is refused with `UnsupportedOperation`, and the message names the native `UAIP.Editor.ControlRig.ChangeVariableType` to use instead. The parameter descriptions of both bridge commands now show types that work (`/Script/CoreUObject.Vector`, `float`, `TArray<FString>`).
+- ⚠️ **A default value or a new type that needs a permission is checked for the permission before anything is changed.** On the bridge too, a default for a type that holds a reference needs `PropertyReferenceEdit`, and the referenced asset is not loaded. `ChangeVariableType` (native and bridge) judges the permission for the new type whether or not the variable has a value: a change to a type that holds a reference needs `PropertyReferenceEdit`, and a change to an array type, or to a struct that is not one of the built-in structs such as `Vector`, needs `PropertyStructuredEdit` (without it the answer is `CapabilityNotAvailable`). Basic types and the built-in structs need neither. A refused request leaves the asset unchanged.
+- **`ChangeVariableType` on a legacy-format Control Rig can now change a variable to an enum or an object type**, which used to crash the editor or leave a broken type behind and answer success. The editor's confirmation dialog no longer stops the command, and the response always carries `RebuiltReferencingNodeCount` (the number of nodes that referenced the variable and were rebuilt; `0` is also reported). On UE 5.7 an object type is `UnsupportedOperation`, as for `AddVariable`. ⚠️ On a runtime-asset Control Rig, the variable's existing default value is kept when the new type can read it (a `float` 2.5 changed to `double`), and is discarded when it cannot, or can read only part of it (the text `not a vector` changed to `Vector`); the variable then starts from the new type's default. The type change succeeds either way. `Result` and the artifact carry `DefaultValueDiscarded` (`true` when a value was discarded; `false` when it was read, was empty to begin with, or the rig is the legacy format), in the same responses as `RebuiltReferencingNodeCount`: a success, and a failure where the type came out different from the one asked for.
+- **A type change or an addition that did not take effect is a failure.** `ChangeVariableType` (native) and the Toolset bridge `AddVariable` / `ChangeVariableType` read the variable back afterwards. If it is lost, or has a type other than the one asked for, the answer is `ExecutionFailed`, and `Result` carries `VariableLost` and `ActualType` (the type the variable actually has). The native command also adds the same fields to its artifact, and the bridge answers in the same shape. The change is not undone automatically; it is in the editor's undo history. On a runtime-asset Control Rig, a type change to a type the engine would have to load an asset to find again (a user-defined enum, for example) is refused with `UnsupportedOperation` before anything is changed (it used to lose the variable and answer success), and so is a change to a type whose short name another type shares.
+- **A Toolset bridge `AddVariable` for which the engine chose another name cannot be checked.** The delegated call does not report the name it used, so the answer is `ExecutionFailed` ("the variable with the requested name was not found") and does not say which variable was created.
 
 ### Native (68)
 
@@ -2853,6 +2929,16 @@ Two bridge providers, both delegating to `AnimationAssistantToolset` (UE 5.8+).
 **`Toolset.Editor.ControlRig.*` (44)** — mirror of the native asset-editing commands above. Groups: asset creation (1; `Create` always makes a legacy-format Control Rig, whatever the project's `RigVM.BlueprintIndependentAssets` setting — unlike `CreateAsset`; see [Control Rig asset formats](#control-rig-asset-formats)), hierarchy observation (8), hierarchy editing (7), graph management (10), nodes (7), pins (6), variables (5).
 
 **`Toolset.Editor.SequencerControlRig.*` (63)** — animation-time control authoring. Implemented in the Sequencer module (`SequencerControlRigTools`) but documented here because every command acts on ControlRig controls. Requires `MovieSceneAnimMixer` in addition to ControlRig. On UE 5.8, the 37 commands that use a `ControlRigPath` (the other 26 do not, and are unaffected; `ZeroControlRigTransforms` is one of the 26, because it accepts `ControlRigPath` for compatibility but acts on the rig in the active Sequencer) refuse a runtime-asset Control Rig with `UnsupportedOperation` before anything is delegated, because the delegated toolset finds a rig in the sequence by its Blueprint class, which a runtime asset does not have, and would either fail to find it or act on a different legacy rig whose path happens to overlap. Read-only commands (`Get...` / `Is...`) are refused the same way. The message names the command and the asset path, whether given as an object path (`/Game/Rigs/CR_X.CR_X`) or a package path (`/Game/Rigs/CR_X`). There is no native equivalent to point at. A missing `AssetPath` or `ControlRigPath` is still `InvalidParams` first; a legacy rig, a path that names no asset and a value that is not an asset path are delegated as before. Groups:
+
+> **The `Toolset.Editor.ControlRig.*` arguments follow the Control Rig toolset's own.**
+>
+> - **Element and event types list their values.** `Parent.Type` of `AddBone`, `AddNull`, `AddControlElement` and `AddElement`, `Item.Type` of `GetChildren`, `GetParent`, `GetGlobalTransform`, `SetGlobalTransform`, `GetLocalTransform` and `SetLocalTransform`, and `ElementType` of `GetElements` now show the element types the toolset takes (`Bone` first) in the schema. `EventType` of `AddEventNode` and `GetEventGraph` lists `FORWARD_SOLVE`, `BACKWARD_SOLVE` and `INTERACTION`. The values are passed through and not enforced, so a call that worked before still works. `AddEventGraph` does not take `FORWARD_SOLVE`: its `EventType` lists only `BACKWARD_SOLVE` and `INTERACTION`, because the toolset refuses `FORWARD_SOLVE` there.
+> - ⚠️ **`AddElement` adds a bone when `ElementType` is left out.** The schema now lists `Bone` and `Null` and shows the default `Bone`. The toolset requires the type, so a call without it used to fail; it now succeeds and adds a bone. `Control` is still refused by the toolset.
+> - ⚠️ **`AddEventNode` and `AddVariableNode` now place the node where `X` / `Y` say.** The position used to be dropped without a message. If only one coordinate is given, the other is `0`; with neither, no position is sent.
+> - ⚠️ **`CreateNode` now places the node at `OffsetX` / `OffsetY`.** These arguments were declared but never reached the toolset. Same rule: a missing coordinate is `0`; with neither, no position is sent. `X` / `Y` are not accepted (they were refused by the schema before too).
+> - **`SetNodePosition` works.** It used to fail on every call; it now sends the position to the toolset. `X` and `Y` are both required, as before.
+> - **Two arguments the toolset needs now have a default `""`:** `NodeName` of `CreateNode` and `DefaultValue` of `AddVariable`. Leaving them out no longer fails in the toolset.
+> - **Not changed:** the `Settings` of `AddControlElement` (the members of the control settings the toolset lists as required, such as the limit flags, minimum and maximum, shape and customization) are still not completed or made required. A call that gives only some of them may still be refused by the toolset.
 
 | Group | Count | Commands |
 |---|---:|---|
@@ -3153,6 +3239,8 @@ Editor-time observation of UE 5.8 Data Registries — listing, schema inspection
 ### Toolset bridges (7) 🧩
 
 Mirror of the first 7 native commands via the `DataRegistryToolset` plugin (UE 5.8+). Provider: `Toolset.Editor.DataRegistry.*`. `GetItems` behaves differently here: missing items are silently omitted and no secret masking is applied — use the native `GetItems` when either matters.
+
+> `ListRegistries` still takes `StructFilter` as a string; the bridge sends it to the toolset as `{"refPath": ...}`, and sends nothing when it is empty or left out (no filter).
 
 | Command | Description |
 |---|---|
@@ -3702,6 +3790,8 @@ PIE session lifecycle. Manipulating the running world is [`UAIP.Runtime.World`](
 ### Toolset bridges (3) 🧩
 
 Bridge commands via the `EditorAppToolset` (UE 5.8+, EditorToolset plugin). Provider: `Toolset.Editor.Toolset.PIE.*`.
+
+> `StartPIE` is unchanged for callers (`bSimulateInEditor` stays optional); the bridge now sends the session options the toolset requires (`bSimulate`, `playMode` = `PlayMode_InViewPort`, `warmupSeconds` = `2.0`).
 
 | Command | Description |
 |---|---|
