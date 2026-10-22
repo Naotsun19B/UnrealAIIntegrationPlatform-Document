@@ -1088,7 +1088,7 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 `EditorAppToolset`（UE 5.8+、EditorToolset プラグイン）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.Level.*`。
 
-> ⚠️ **`SelectActors` と `FocusOnActors` は `Actors` をアクターのパス文字列の配列で受け、ブリッジが各要素を `{"refPath": ...}` にして送ります。** 空文字列や `null` の要素、`null` の `Actors` は、Toolset を呼ぶ前に `InvalidParams` で断ります。
+> ⚠️ **`SelectActors` と `FocusOnActors` は `Actors` を、アクターのパス文字列または `{"refPath": ...}` を要素とする配列で受け、ブリッジが各要素を `{"refPath": ...}` にして送ります。** 空文字列・`null`・`{"refPath": ""}`・数値・`refPath` の無いオブジェクトの要素は除いて、残りを送ります。除いた結果が空の配列は空配列として送られます（`SelectActors` では、空配列は選択の全解除です）。⚠️ `Actors` が `null`・省略・配列でないときは、Toolset を呼ぶ前に `InvalidParams` で断ります。以前の `SelectActors` は `null` を「選択の全解除」として扱いましたが、配列の渡し忘れで選択が黙って消えてはならないので断ります。全解除したいときは `[]` を渡してください。
 
 | コマンド | 説明 |
 |---|---|
@@ -1520,10 +1520,14 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 >
 > - **参照引数は、オブジェクトパスの文字列でも `{"refPath": "..."}` でも渡せます。** このセクションの全コマンドの、アセット・クラス・`System` の参照が対象です。どちらの形も以前から受け付けていました。ブリッジは Toolset へ `{"refPath": ...}` で送ります。
 > - **スタック項目の参照は、メンバーとその既定値を宣言します。** 参照を取る 19 コマンド（`AddRenderer`・`AddSetParameterEntry`・`AddSetParametersModule`・`GetDynamicInputSchema`・`GetEmitterData`・`GetEmitterTopology`・`GetModuleSchema`・`GetModuleTopology`・`GetRendererData`・`GetScriptStackTopology`・`GetStackInputData`・`GetStackInputSchema`・`GetStackInputTopology`、および次の項目の 6 コマンド）のスキーマに、`EmitterName` / `ScriptName` / `ModuleName`（既定値 `"None"`）、`RendererIndex`（既定値 `-1`）、`InputNameStack`（省略すると空配列を送る）が載ります。Toolset 自身の既定値なので、メンバーを省略した呼び出しの意味は以前と変わりません。
-> - ⚠️ **次の 6 コマンドは、スタック項目の参照を中身を検査しないオブジェクトで受けていましたが、宣言するようになりました:** `RemoveRenderer`（`RendererToRemove`）、`RemoveSetParameterEntry` と `SetModuleEnabled`（`ModuleRef`）、`SetEmitterData`（`Emitter`）、`SetRendererData`（`Renderer`）、`SetStackInputData`（`StackInputRef`）。`System` は必須（パス文字列または `{"refPath": ...}`）、`EmitterName` / `ScriptName` / `ModuleName` は文字列、`RendererIndex` は整数、`InputNameStack` は配列です。宣言していないメンバーや `System` の欠落は、Toolset を呼ぶ前に `InvalidParams` で断ります。
+> - ⚠️ **次の 6 コマンドは、スタック項目の参照を中身を検査しないオブジェクトで受けていましたが、宣言するようになりました:** `RemoveRenderer`（`RendererToRemove`）、`RemoveSetParameterEntry` と `SetModuleEnabled`（`ModuleRef`）、`SetEmitterData`（`Emitter`）、`SetRendererData`（`Renderer`）、`SetStackInputData`（`StackInputRef`）。`System` は必須（パス文字列または `{"refPath": ...}`）、`EmitterName` / `ScriptName` / `ModuleName` は文字列、`RendererIndex` は整数、`InputNameStack` は配列です。`System` の欠落や、メンバーの型違い（たとえば整数でない `RendererIndex`）は、Toolset を呼ぶ前に `InvalidParams` で断ります。参照の中の宣言していないメンバーは受け付けて無視します（Toolset へは送りません）。これは上の 6 コマンドに限らず、スタック項目の参照を取る 19 の Niagara コマンド（上の 6 コマンドに加えて `AddSetParametersModule`・`AddSetParameterEntry`・`AddRenderer`・`GetEmitterTopology`・`GetEmitterData`・`GetScriptStackTopology`・`GetModuleTopology`・`GetModuleSchema`・`GetStackInputData`・`GetStackInputTopology`・`GetStackInputSchema`・`GetRendererData`・`GetDynamicInputSchema`）に共通です。
 > - ⚠️ **`SetEmitterData`（`EmitterData`）・`SetRendererData`（`RendererData`）・`SetSystemData`（`SystemData`）は `PropertyValues` だけを取ります**（文字列、必須）。ほかのメンバー、`PropertyValues` の欠落、文字列でない値は `InvalidParams` で断ります。
 > - ⚠️ **`GetAvailableDynamicInputs` は `Type` の中に `ClassStructOrEnum` だけを取ります**（必須。パス文字列または `{"refPath": ...}`）。ほかのメンバーや `ClassStructOrEnum` の欠落は `InvalidParams` で断ります。
-> - **変更していないもの:** `AddSetParameterEntry`（`Entry`）・`AddSetParametersModule`（`Parameters`）・`AddUserVariables`（`VariablesToAdd`）・`RemoveUserVariables`（`VariablesToRemove`）・`SetStackInputData`（`InputData`）は、配列の要素や開いた構造体の形を宣言していません。スキーマがまだ表現できないためで、これらを渡す呼び出しは Toolset に断られることがあります。
+> - **次の 5 つの引数の要素の形を宣言するようになりました:** `AddUserVariables`（`VariablesToAdd`）・`RemoveUserVariables`（`VariablesToRemove`）・`AddSetParametersModule`（`Parameters`）・`AddSetParameterEntry`（`Entry`）・`SetStackInputData`（`InputData`）。以前は検査しない値の配列、または開いたオブジェクトで受けていました。
+>   - 変数は `Name`（文字列、必須）と `Type.ClassStructOrEnum`（必須。パス文字列または `{"refPath": ...}`。Toolset へは `{"refPath": ...}` で送ります）です。`AddUserVariables` は `Description`（文字列、既定値 `""`）も取ります。`AddSetParametersModule` では同じ 2 つが `Variable` の下（`Variable.Name`・`Variable.Type.ClassStructOrEnum`）に、`AddSetParameterEntry` では `Entry.Variable` の下にあります。`RemoveUserVariables` は、Toolset が名前と型の両方でパラメータを探すため、どちらも必要です。
+>   - `DefaultValue`（`VariablesToAdd` の要素、`Parameters` の要素、`Entry` の中）は省略可能で、`Struct`（パス文字列または `{"refPath": ...}`）と `value`（中身が構造体ごとに違い、検査しないオブジェクト）の 2 メンバーを持ちます。両方を渡すか、両方とも渡さないかにしてください。片方だけはスキーマを通りますが、Toolset が断ります。`DefaultValue` を省略した呼び出しは従来どおり動きます。
+>   - `SetStackInputData` は `InputData.Struct`（必須。パス文字列または `{"refPath": ...}`）と `InputData.value`（必須のオブジェクト）を取ります。`value` は Toolset が読む綴りで、`GetStackInputData` が返す綴りでもある小文字なので、結果をそのまま渡せます。
+>   - これらの形の要素や、その中のどの階層でも、宣言していないメンバーは受け付けて無視します（従来どおり Toolset へは送りません）。裸の文字列の要素と、`Name`・型・`Struct`・`value` の欠落は、Toolset も断っていたので `InvalidParams` で断ります。上に挙げたスタック項目の参照（`ModuleRef` など）の中も同じで、断るのは `System` の欠落とメンバーの型違いだけです。
 
 ---
 
@@ -1647,7 +1651,7 @@ Chaos Cloth Asset 編集と `ChaosClothAssetToolset` ブリッジ（UE 5.8, Expe
 
 `ChaosClothAssetToolset` の6関数をそのままミラー。プロバイダ：`Toolset.Editor.ChaosClothAsset.*`。UE 5.8+ かつ `ChaosClothAssetToolset` + `ToolsetRegistry` 有効時のみ利用可能。
 
-> ⚠️ **`AssignClothingToSection`・`GetSectionClothing`・`RemoveClothingFromSection` は整数を取ります。** `LodIndex`・`SectionIndex`、および `AssignClothingToSection` の `ClothingLodIndex` は数値として宣言されていました。小数（例: `1.5`）は `InvalidParams` で断ります。
+> ⚠️ **`AssignClothingToSection`・`GetSectionClothing`・`RemoveClothingFromSection` は整数を取ります。** `LodIndex`・`SectionIndex`、および `AssignClothingToSection` の `ClothingLodIndex` は数値として宣言されていました。小数部のない数値は受け付けます（`1` も `1.0` も添字 1 です）。小数部のある値（例: `1.5`）は `InvalidParams` で断ります。以前は、そうした値を Toolset が 0 方向へ切り捨てて受け取っていたため、`1.5` が添字 `1` に効き、指定とは別の位置を操作していました。
 
 | コマンド | 説明 |
 |---|---|
@@ -2039,7 +2043,8 @@ ViewModel Blueprint のプロパティ管理、View Binding / Event の作成、
 
 > **参照引数は、Toolset の参照の形に揃えています。**
 >
-> - ⚠️ **参照は、文字列の `refPath` が必須のオブジェクトです。** 対象は `AddViewModelProperty` の `ViewModel`、`AddViewModelToWidget` の `WidgetBlueprint` と `ViewModelClass`、`CreateViewBinding` の `WidgetBlueprint` / `SourceContext` / `DestinationContext`、`ListConversionFunctions`・`ListWidgetViewBindings`・`ListWidgetViewModels`・`RemoveWidgetViewBinding` の `WidgetBlueprint` です。これらの引数は、中身を問わないオブジェクトとして受けていました。`{}`、文字列でない `refPath`、裸の文字列、（参照が必須の引数での）空の `refPath` は `InvalidParams` で断ります。Toolset も以前から断っていた形です。`refPath` 以外のメンバーは受け付けますが、送りません。
+> - ⚠️ **参照は、文字列の `refPath` が必須のオブジェクトです。** 対象は `AddViewModelProperty` の `ViewModel`、`AddViewModelToWidget` の `WidgetBlueprint` と `ViewModelClass`、`CreateViewBinding` の `WidgetBlueprint` / `SourceContext` / `DestinationContext`、`ListConversionFunctions`・`ListWidgetViewBindings`・`ListWidgetViewModels`・`RemoveWidgetViewBinding` の `WidgetBlueprint` です。これらの引数は、中身を問わないオブジェクトとして受けていました。`{}`、文字列でない `refPath`、裸の文字列は `InvalidParams` で断ります。Toolset も以前から断っていた形です。`refPath` 以外のメンバーは受け付けますが、送りません。
+> - ⚠️ **参照が必須の引数では、空の `refPath` を先に断ります。** 次の 6 引数は、`{"refPath": ""}` を Toolset を呼ばずに `InvalidParams`（`Parameter '<名前>.refPath' must not be empty`）で断ります: `AddViewModelProperty` の `ViewModel`、`AddViewModelToWidget`・`CreateViewBinding`・`ListWidgetViewBindings`・`ListWidgetViewModels`・`RemoveWidgetViewBinding` の `WidgetBlueprint`。空の参照は Toolset も失敗していました。編集系のコマンドでは、書き込みパスの `NotAllowed` ではなく `InvalidParams` になる点も変わります。
 > - **以前動いていた `null` は引き続き受け付けます:** `CreateViewBinding` の `SourceContext` / `DestinationContext`（ウィジェットブループリント自身）、`ListConversionFunctions` の `WidgetBlueprint`、`AddViewModelToWidget` の `ViewModelClass`。`CreateViewBinding` では `{"refPath": ""}` も `null` と同じ意味です。
 
 | コマンド | 説明 |
@@ -2596,7 +2601,7 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 >
 > - **オブジェクト引数は、オブジェクトパスの文字列でも `{"refPath": "..."}` でも渡せます。** 対象は `AddNode`・`AddSubgraphNode`・`ConnectNodePins`・`DisconnectNodePins`・`ExecuteGraphInstance`・`GetGraphDescription`・`GetGraphInstanceParams`・`GetGraphSchema`・`GetGraphStructure`・`GetNodeDataView`・`GetNodeInfo`・`RemoveCommentBox`・`RemoveGraphParams`・`RemoveNode`・`RepositionNode` の `Graph` / `Node` / `FromNode` / `ToNode` / `PCGVolume` / `SubGraphForNode` と、下の作り直した 9 コマンドのオブジェクト引数です。`{"refPath": ...}` の呼び出しは従来どおり動きます。以前は Toolset に断られていたパス文字列も動くようになりました。パスは `Package.Object` の形（例: `/Game/PCG/G.G`）で、パッケージパスだけでは解決できません。
 > - **Toolset が必須とする引数に既定値を付けました。** `AddNode` と `AddSubgraphNode` の `JsonParams` / `NodeTitle` / `NodeComment`、`GetNodeDataView` の `AttributeName`、`UpdateNode` の `JsonParams` / `NodeTitle` は既定値 `""` です。省略しても Toolset 側で失敗しなくなります。
-> - **`AddCommentBox`: `Graph` と `Nodes` はパス文字列でも `{"refPath": ...}` でも渡せます。** `Color` は `Color.r` / `g` / `b` / `a`（数値。既定値は各 `1`。常に送ります）です。⚠️ この 4 つ以外のメンバーや、数値でない成分は `InvalidParams` で断ります（以前は検査せずに Toolset へ渡していました）。
+> - **`AddCommentBox`: `Graph` と `Nodes` はパス文字列でも `{"refPath": ...}` でも渡せます。** `Color` はオブジェクトで、`r` / `g` / `b` / `a` は数値（`"0.5"` のような数値の文字列は変換します）、既定値は各 `1` で、ブリッジは常に 4 つとも送ります。`Color` のそれ以外のメンバーは無視し、送りません。数値として読めない成分は Toolset へ渡し、Toolset が断ります。
 > - **`UpdateCommentBox` は呼ぶたびに色を設定します。** `Color` を省略すると既定の白で上書きされます（ブリッジは現在の色を読めないため）。
 > - ⚠️ **9 コマンドを Toolset 自身の引数で作り直しました。** 以前は Toolset が宣言していないネイティブ風のキーを送っていたため、Toolset が必ず断っていました。旧キーは `InvalidParams` で先に断るようになりますが、動いていた呼び出しが失われることはありません。
 >
@@ -2606,14 +2611,14 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 > | `RunPCGInstantGraph` | `Graph`（必須）、`Params`（必須、値がすべて文字列のオブジェクト。無ければ `{}`） | `AssetPath` |
 > | `SetGraphDescription` | `Graph`（必須）、`Description`（必須） | `AssetPath` |
 > | `SetGraphInstanceParams` | `PCGVolume`（必須）、`JsonParams`（必須、**JSON 文字列**） | `ActorIdentifier`、`Parameters` |
-> | `SetGraphParams` | `Graph`（必須）、`Params`（必須、`Name`・`Type`・`Description`・`ContainerType`・`DefaultValueJson` を持つパラメータ定義の配列） | `AssetPath`、`Parameters` |
+> | `SetGraphParams` | `Graph`（必須）、`Params`（必須、パラメータ定義の配列。`Name` と `Type` は必須、`Description`・`ContainerType`・`DefaultValueJson` は省略可能） | `AssetPath`、`Parameters` |
 > | `SetNodeComment` | `Node`（必須）、`NodeComment`（必須） | `AssetPath`、`NodePath`、`CommentText` |
 > | `SpawnGraphInstance` | `Graph`（必須）、`Name`（必須）、`Transform`（任意。`Transform.location.x/y/z`・`Transform.rotation.pitch/yaw/roll`・`Transform.scale.x/y/z`。省略した部分は恒等変換）、`JsonParams`（既定値 `""`） | `AssetPath`、`ActorLabel` |
 > | `UpdateCommentBox` | `Graph`（必須）、`CommentId`（必須）、`Nodes`（必須。ノードをそのままにするなら `[]`）、`Comment`（既定値 `""`）、`Color.r/g/b/a`（既定値 `1`） | `AssetPath`、`CommentNodeGuid`、`CommentText`、`NodeX`、`NodeY`、`CommentWidth`、`CommentHeight` |
 > | `UpdateNode` | `Node`（必須）、`JsonParams`（既定値 `""`）、`NodeTitle`（既定値 `""`） | `AssetPath`、`NodePath`、`PropertyName`、`PropertyValue` |
 >
 > 同名の `UAIP.Editor.PCG.*` ネイティブコマンドは、これまでのキーのままです。
-> - **`SetGraphParams`: スキーマは `Params` の要素の形を記述しません**（オブジェクトの配列をまだ表現できないため）。オブジェクトを渡してください。検査は Toolset が行います。
+> - **`SetGraphParams` は `Params` の要素の形を宣言します。** 各要素は、`Name`（文字列）と `Type`（Toolset の型名。`float` のような小文字も可。または数値）がどちらも必須のオブジェクトで、`Description`（既定値 `""`）・`ContainerType`（既定値 `"None"`）・`DefaultValueJson`（既定値 `""`）は省略するとこの既定値で送られます。一覧にないメンバーは受け付けて送らず、文字列でない（数値など）`Description` / `ContainerType` / `DefaultValueJson` は従来どおりそのまま Toolset へ渡します。⚠️ `Name` や `Type` の無い要素と裸の文字列の要素は、Toolset を呼ぶ前に `InvalidParams` で断ります。
 
 | コマンド | 説明 |
 |---|---|
@@ -2940,7 +2945,8 @@ UE 5.8 の Control Rig アセットには 2 つの形式があります。ここ
 > - ⚠️ **`CreateNode` は、`OffsetX` / `OffsetY` の位置にノードを置きます。** この 2 つの引数は宣言されていましたが、Toolset に届いていませんでした。同じ規則で、欠けた座標は `0`、どちらも無ければ位置を送りません。`X` / `Y` は受け付けません（以前もスキーマが断っていました）。
 > - **`SetNodePosition` が動くようになりました。** 以前は呼ぶたびに失敗していました。今は位置を Toolset へ送ります。`X` と `Y` の両方が必須なのは従来どおりです。
 > - **Toolset が必要とする次の 2 引数に、既定値 `""` を付けました:** `CreateNode` の `NodeName`、`AddVariable` の `DefaultValue`。省略しても Toolset 側で失敗しなくなります。
-> - **変更していないもの:** `AddControlElement` の `Settings`（Toolset が必須とするコントロール設定のメンバー。制限フラグ、最小値・最大値、シェイプ、カスタマイズなど）は、補完も必須化もしていません。一部だけを渡す呼び出しは、Toolset に断られることがあります。
+> - **`AddControlElement` は `Settings` のすべてのメンバーを、Toolset の既定値つきで宣言します。** `Settings` は省略可能です。省略したとき、または一部のメンバーだけを渡したときは、ブリッジが呼び出しの前に 23 メンバー全部へ補うので、Toolset の必須メンバーの一覧で断られることはありません。渡した値は保たれ、省略したメンバーは次の既定値になります。`LimitEnabled` の要素の中（`bMinimum`・`bMaximum`: `false`）、`MinimumValue` / `MaximumValue`（すべて 0）、`ShapeColor`、`Customization` の中も同様です。既定値: `AnimationType` `"AnimationControl"`、`ControlType` `"EulerTransform"`、`DisplayName` `"None"`、`PrimaryAxis` `"X"`、`bIsCurve` `false`、`LimitEnabled` `[]`、`bDrawLimits` `true`、`bShapeVisible` `true`、`ShapeVisibility` `"UserDefined"`、`ShapeName` `"Default"`、`ShapeColor` 赤（`R` 1、`G` 0、`B` 0、`A` 1）、`bIsTransientControl` `false`、`ControlEnum` `null`、`Customization` は `AvailableSpaces` と `RemovedSpaces` が空、`DrivenControls` `[]`、`bGroupWithParentControl` `false`、`bRestrictSpaceSwitching` `false`、`FilteredChannels` `[]`、`PreferredRotationOrder` `"YZX"`、`bUsePreferredRotationOrder` `false`、`ShapeTransform` は恒等（`Location` はすべて 0、`Rotation` はすべて 0、`Scale` はすべて 1。省略した部分はこの値で補われ、結果は変わりません）。列挙の 5 メンバー（`AnimationType`・`ControlType`・`PrimaryAxis`・`ShapeVisibility`・`PreferredRotationOrder`）は名前でも数値でも渡せます。一覧にない `Settings` のメンバーは受け付けて、そのまま渡します。 `Settings` の中で要素名・表示名になる名前は、Toolset を呼ぶ前に長さを確認します。対象は `DisplayName`、`ShapeName`、`Customization.AvailableSpaces`（`Key.Name` と `Label`）・`Customization.RemovedSpaces`・`DrivenControls` の各要素の `Name` と `Label` です。1023 文字を超えるものは `InvalidParams` で断られ、メッセージには一覧の中の位置まで含めたフィールド名（例: `Settings.DrivenControls[1].Name`）が入ります。ここでもメンバー名は大文字小文字を区別せずに照合します。
+>   スカラーのメンバー（真偽値と数値）は、もう一方の JSON の型も受け付けます（文字列で渡した真偽値、数値の文字列など）。Toolset は従来どおりに読みます。
 
 | グループ | 件数 | コマンド |
 |---|---:|---|
