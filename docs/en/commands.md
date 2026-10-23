@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1320 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1741 commands organized by domain. These totals count every command the plugin defines for the UE 5.8 editor on Win64, including commands listed with `Available: false` because a plugin they need is disabled. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1324 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1745 commands organized by domain. These totals count every command the plugin defines for the UE 5.8 editor on Win64, including commands listed with `Available: false` because a plugin they need is disabled. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -91,8 +91,8 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 24 | 8 | partial (10/24) |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | partial (6/12) |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 21 | — | — |
-| Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 23 | — | — |
+| Editor UMG | `UAIP.Editor.UMG` | 24 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
 | Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 5 | 4 | — |
@@ -1146,11 +1146,27 @@ Read and write properties on actors, assets, Blueprint defaults, DataTable rows,
 
 **A refused write changes nothing.** When a `Set*` command is refused, for whatever reason, the target keeps its value, and its package keeps the unsaved flag it had before the call: a package that was saved stays saved. `SetActorComponentProperty` (`UAIP.Editor.Level`) behaves the same way.
 
+**⚠️ Objects inside a Blueprint that have a dedicated command.** `SetAssetProperty` no longer writes an object that belongs to a Blueprint when a dedicated command exists for it. It refuses the write with `InvalidParams` before the old value is read, and the message names the command to use, by its full name:
+
+| Object | Dedicated command |
+|---|---|
+| A widget of a Widget Blueprint, addressed through the Widget Blueprint or through the class it compiles to | `UAIP.Editor.UMG.SetWidgetProperties` (pass the Widget Blueprint as `AssetPath` and the widget as `WidgetName`) |
+| A widget slot | `UAIP.Editor.UMG.SetSlotProperties` |
+| A widget animation | `UAIP.Editor.UMG.CreateWidgetAnimation`, `UAIP.Editor.UMG.AddAnimationTrack` |
+| The default of a component a Blueprint adds | `UAIP.Editor.Blueprint.SetBlueprintComponentProperty` |
+| The component structure of a Blueprint (a construction script node) | `UAIP.Editor.Blueprint.AddBlueprintComponent`, `UAIP.Editor.Blueprint.RenameBlueprintComponent`, `UAIP.Editor.Blueprint.ReparentBlueprintComponent` |
+| A graph or a graph node | `UAIP.Editor.Blueprint.AddGraphNode`, `UAIP.Editor.Blueprint.SetPinDefaultValue`, `UAIP.Editor.Blueprint.ConnectBlueprintPins` |
+| The class defaults of a Blueprint | `UAIP.Editor.Property.SetBlueprintDefault`, `UAIP.Editor.Blueprint.SetBlueprintVariableDefault` |
+
+These writes used to go through: they changed the object without compiling the Blueprint, so the change did not reach what the Blueprint creates, and they went around the capabilities of the dedicated commands. Any other object inside a Blueprint — a timeline template, or the default of a component that the parent C++ class defines — is still written, and the response then carries `Result.Warnings` saying that the Blueprint was not compiled.
+
+`GetAssetProperty` still reads every one of these objects. For the seven kinds above, its result and its artifact add `SuggestedCommand`: the full names of the dedicated commands, separated by a comma and a space (for example `UAIP.Editor.Property.SetBlueprintDefault, UAIP.Editor.Blueprint.SetBlueprintVariableDefault`). ⚠️ `GetAssetProperty` now also hides the `Text` of a password field — an `EditableTextBox` or `EditableText` whose `IsPassword` is true — as `***`; it used to return it in plain text.
+
 ---
 
 ## UAIP.Editor.Blueprint
 
-Edit Blueprint variables, event graph nodes, and SCS components.
+Edit Blueprint variables, event graph nodes, and SCS components. The graph, pin, variable, function override and compile commands also edit the level Blueprint of a map that is open in the editor — see [Level Blueprints](#level-blueprints).
 
 ### Variables & graph (11)
 
@@ -1159,13 +1175,13 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 | `AddBlueprintVariable` | Add a member variable to a Blueprint (type, default, tooltip). A type that Blueprints cannot use as a variable type is refused with `InvalidParams`, using the same rule as the editor's variable type menu: a class needs `BlueprintType` (or `BlueprintSpawnableComponent`) on itself or an ancestor and must not be `NotBlueprintType`; a struct needs `BlueprintType` and must not be `BlueprintInternalUseOnly`. A refused call leaves the Blueprint unchanged (no variable is added and the asset is not marked dirty). The default is now validated once the variable's type has resolved, and a refused default **removes the variable again** rather than leaving it behind with an empty value. The default is engine text only — a reference or container default is refused whatever the session holds; set those afterwards with `SetBlueprintDefault`, which takes `ValueJson` |
 | `DeleteBlueprintVariable` | Remove a member variable |
 | `SetBlueprintVariableDefault` | Update a Blueprint variable's CDO default value |
-| `AddGraphNode` | Add a node to any graph in a Blueprint asset (VariableGet/Set, FunctionCall, EventBeginPlay/EventTick, or `Event` to override any parent or interface event) — not just the event graph and function graphs. `GraphName` or `GraphGuid` selects the target; see the note below the table for graph selection, ambiguity, and the two-stage acceptance check |
+| `AddGraphNode` | Add a node to any graph in a Blueprint asset — not just the event graph and function graphs — or to the level Blueprint of an open map. `NodeType` is one of 20 node types: variable Get/Set, function calls, BeginPlay/Tick, parent and interface events (`Event`), custom events, key and Enhanced Input events, component, actor and event dispatcher events, Create Widget, Branch, Sequence, standard macros, Self and Cast — see [AddGraphNode node types](#addgraphnode-node-types). Each node type accepts only its own parameters. `Result` and the artifact report `NodeId`, `AlreadyExisted` and `AdditionalNodes`. `GraphName` or `GraphGuid` selects the target; see the note below the table for graph selection, ambiguity, and the two-stage acceptance check |
 | `AddFunctionOverride` | Override a parent class or interface function that returns a value, has output parameters or is const as a function graph, the way the Override menu does. Returns the graph and its entry / result node GUIDs |
 | `DeleteGraphNode` | Delete a graph node by GUID (EntryNode / Tunnel cannot be deleted) |
-| `ConnectBlueprintPins` | Connect two pins in a Blueprint graph |
+| `ConnectBlueprintPins` | Connect two pins in a Blueprint graph. ⚠️ Needs `BlueprintUnrestrictedNodePlace` as well when either end is a call of a function that can run code, or a function call in an Editor Utility Blueprint — see [Function calls that can run code](#function-calls-that-can-run-code) |
 | `DisconnectBlueprintPins` | Disconnect a pin connection |
 | `ListBlueprintPins` | List pins of a Blueprint graph node |
-| `SetPinDefaultValue` | Set a default value on a Blueprint graph node pin (auto-selects DefaultValue / DefaultObject / DefaultTextValue based on pin type) |
+| `SetPinDefaultValue` | Set a default value on a Blueprint graph node pin (auto-selects DefaultValue / DefaultObject / DefaultTextValue based on pin type). ⚠️ Needs `BlueprintUnrestrictedNodePlace` as well when the node calls a function that can run code, or is a function call in an Editor Utility Blueprint — see [Function calls that can run code](#function-calls-that-can-run-code) |
 | `GetPinDefaultValue` | Get the current default value of a Blueprint graph node pin |
 
 > **New — `AddGraphNode` with `NodeType: "Event"` overrides any event of the parent classes or of an implemented interface, named by `FunctionName`** (for example `ReceiveDestroyed` or `ReceiveActorBeginOverlap`), the way the Override menu of the My Blueprint panel adds an event node. `EventBeginPlay` and `EventTick` keep working as before. A Blueprint can override an event only once: when the override already exists anywhere in the Blueprint, the existing node is returned instead of a second one. A function that returns a value, has output parameters or is const cannot be an event node and is refused with `InvalidParams` naming `AddFunctionOverride`; a name that no parent class or interface declares as a `BlueprintImplementableEvent` / `BlueprintNativeEvent` is refused with `InvalidParams` as well.
@@ -1189,6 +1205,68 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 > ⚠️ **Breaking change — `ConnectBlueprintPins`, `DisconnectBlueprintPins`, `DeleteGraphNode`, `GetPinDefaultValue`, `ListBlueprintPins`, and `SetPinDefaultValue` now answer `NotFound` when the node or pin they were asked for does not exist** (previously `ExecutionFailed`). A scenario's `RetryCount` retries only `ExecutionFailed` and `PreconditionFailed`, so before this change a request naming a nonexistent `NodeId` or `PinName` was retried anyway, even though repeating it can never succeed.
 >
 > `GetPinDefaultValue` additionally had a defect fixed here: when `PinName` named no pin on the target node, the handler had no branch for that case at all and fell through to reading a pin that was never found, an unchecked access with undefined behavior. It now reports `NotFound` for a `PinName` that does not match any pin on the node, the same as the other commands in this list.
+
+#### `AddGraphNode` node types
+
+Every node type takes the common keys `BlueprintPath`, `GraphName`, `GraphGuid`, `NodeType`, `NodeX`, `NodeY` and `SkipCompile`, and only the keys listed for it below. These are the same nodes the editor's context menu places.
+
+| NodeType | Keys of its own | Places |
+|---|---|---|
+| `VariableGet` / `VariableSet` | `VarName` | A Get / Set of a member variable |
+| `FunctionCall` | `FunctionName`, `FunctionClassName` (optional) | A function call. With `FunctionClassName` — a native class path such as `/Script/Engine.KismetSystemLibrary`, already loaded — the function of that class. Without it, a function or custom event of the target Blueprint, of its parent Blueprints or of its native parent classes, found by name; a custom event can be called before the Blueprint is compiled. The class of another Blueprint is not accepted |
+| `EventBeginPlay` / `EventTick` | — | The BeginPlay / Tick event |
+| `Event` | `FunctionName` | An override of an event of a parent class or of an implemented interface |
+| `CustomEvent` | `EventName`, `EventParameters` (optional, at most 16) | A custom event. Each parameter is an object with `Name`, `VarType` (`Boolean`, `Integer`, `Integer64`, `Float`, `String`, `Name`, `Text`, `Object` or `Struct`) and optionally `SubCategoryObject` (the class or struct, already loaded) and `IsArray`. The name must not collide with a function, variable, event dispatcher or graph of the Blueprint |
+| `InputKey` | `Key` (for example `R` or `SpaceBar`), `Modifiers` (optional, at most 4 of `Ctrl`, `Shift`, `Alt`, `Cmd`) | A key event |
+| `EnhancedInputAction` | `InputActionPath` | The event of an Input Action asset, by its object path (already loaded). Placed by an optional integration — see below |
+| `ComponentBoundEvent` | `ComponentName`, `DelegateName` | An event of a component or widget variable, such as the `OnClicked` of a button. The widget has to be a variable: when it is not, the refusal points at `SetWidgetAsVariable`. Not in a level Blueprint, which has no components — use `ActorBoundEvent` there |
+| `ActorBoundEvent` | `ActorIdentifier`, `DelegateName` | An event of an actor placed in the map, by its label or object path. Level Blueprints only |
+| `ActorReference` | `ActorIdentifier` | A reference to an actor placed in the map. Level Blueprints only |
+| `BindEvent` / `AssignEvent` | `DelegateName`, `DelegateOwnerClass` (optional; the target Blueprint when omitted, already loaded) | Bind Event to / Assign of an event dispatcher. `AssignEvent` also creates a custom event with the matching signature and connects it, the way the editor does; its `NodeId` is in `AdditionalNodes`. A dispatcher of a class the Blueprint does not inherit is still placed, with a warning to connect the object that has the dispatcher to the Target pin |
+| `CreateWidget` | `WidgetClass` | A Create Widget node for a user widget class (already loaded) |
+| `Branch` | — | A Branch |
+| `Sequence` | `OutputCount` (optional, 2 to 32, default 2) | A Sequence with that many outputs |
+| `Macro` | `MacroName` | A macro of the engine's standard macro library, such as `ForEachLoop` |
+| `Self` | — | A reference to self |
+| `Cast` | `TargetClass`, `Pure` (optional) | A cast to a class (already loaded). `Pure: true` places a pure cast, without execution pins |
+
+- **The response.** `Result` and the JSON artifact carry the same fields: `NodeId`, `AlreadyExisted`, `AdditionalNodes` (each entry has `Role`, `NodeType` and `NodeId`; an empty array when the placement created nothing else), `TargetKind` / `ResolvedBlueprintPath` (see [Level Blueprints](#level-blueprints)) and, when there is something to tell, `Warnings`.
+- **Nodes placed only once.** `CustomEvent`, `EnhancedInputAction`, `ComponentBoundEvent`, `ActorBoundEvent`, `EventBeginPlay`, `EventTick` and `Event` return the node that is already there, with `AlreadyExisted: true`, instead of placing a second one; nothing is changed and nothing is compiled. An Enhanced Input action is looked for in the whole Blueprint, as the engine does, so a node of the same action in another graph is the one returned. A `CustomEvent` that exists with other parameters is refused with `InvalidParams` showing the parameters it has. `InputKey`, `Branch` and the other node types place a new node every time, as the editor does.
+- **Classes and assets have to be loaded.** `FunctionClassName`, `TargetClass`, `WidgetClass`, `DelegateOwnerClass`, `SubCategoryObject` and `InputActionPath` are looked up among the loaded objects only. One that is not loaded is `NotFound`, with a hint to load it (for example by opening the asset); the command never loads it. The engine's standard macro library is the one exception.
+- **Limits.** More than 16 `EventParameters`, an `OutputCount` outside 2 to 32 and more than 4 `Modifiers` are `InvalidParams`.
+- **World Partition.** Referring to an actor of a World Partition map from the level Blueprint (`ActorReference`, `ActorBoundEvent`) makes the engine load that actor always; `Warnings` says so.
+- **`EnhancedInputAction`** is placed by the optional integration `UAIPEditorEnhancedInput`, which needs the `EnhancedInput` plugin. While the integration has not registered the node type, the request is refused with `AbilityUnavailable`, naming the integration and pointing at `UAIP.Core.ListIntegrations`. When the integration loaded but its registration of the node type was refused, the message says so instead and refers to the editor log. This is decided before the check for unused keys, so the answer is `AbilityUnavailable` even when `InputActionPath` is given. `InputActionPath` has to be a string of at most 512 characters whatever the `NodeType`, or the call is `InvalidParams`. The node type and the key stay in the schema whether or not the integration is loaded.
+- **A node type whose editor module is not loaded** — `CreateWidget` when the UMG editor module is not loaded — is refused with `AbilityUnavailable`, and nothing is changed.
+
+> ⚠️ **Breaking changes — `AddGraphNode`:**
+> - **A key the `NodeType` does not use is refused with `InvalidParams`.** The message names the unused keys (the first 8) and the keys the node type accepts. Such keys used to be ignored silently, so a call that sends, for example, `FunctionName` with `EventBeginPlay` now fails; drop the key.
+> - **`EventBeginPlay`, `EventTick` and `Event` report `AlreadyExisted: true`** when they return the node that is already there.
+> - **`FunctionCall`:** a function that cannot be found is `NotFound` (it was `ExecutionFailed`); a `FunctionClassName` that names a class that is not loaded is `NotFound` (the class used to be loaded); an empty `FunctionClassName` is `InvalidParams` — omit the key to call a function of the Blueprint itself. A class outside `/Script/` is refused with a message that says so.
+> - **`FunctionCall` needs `BlueprintUnrestrictedNodePlace` for a function that can run code, and for any function in an Editor Utility Blueprint** — see the next section.
+> - **The Blueprint has to be in a location UAIP may write to**: a Blueprint under `/Engine/` is refused with `NotAllowed`. See [Level Blueprints](#level-blueprints) for the other commands this applies to.
+> - **A placement is now one undoable step.** The compile that follows is not part of it.
+
+#### Function calls that can run code
+
+`AddGraphNode` with `FunctionCall`, `SetPinDefaultValue` and `ConnectBlueprintPins` need the DefaultDenied capability `BlueprintUnrestrictedNodePlace` in addition to their own capability in these cases. Without it the request is refused with `CapabilityNotAvailable` (with `PolicyViolation` when the safety policy denies the capability outright), naming the capability and the reason, and nothing is changed.
+
+- **A function that can run code.** Running a console command, launching a URL or another application, quitting the editor, and writing files to a path the caller chooses: exporting images, render targets, recorded audio, JSON, PFM files, traces and glTF, and creating, deleting, copying or moving files and directories. This includes functions of plugins that are enabled by default (the trace and glTF exports). Every function of a module that is editor-only, development-only or not cooked counts too — Python execution among them — and so does a function whose module cannot be determined, such as one defined by a Python class. Quit Game does not count: in the editor it only ends PIE.
+- **Any function call in an Editor Utility Blueprint**, Print String included. This covers Editor Utility Blueprints and Editor Utility Widgets, and every Blueprint whose parent class is an editor-only class (an Editor Utility Task or a tool menu entry, for example), because such a Blueprint runs inside the editor.
+- **For `SetPinDefaultValue` and `ConnectBlueprintPins`**, the node in question (either end, for a connection) has to be a function call that matches one of the cases above. A node whose function cannot be resolved needs the capability too. A node that calls no function (Branch, for example) never does.
+
+The function is judged after it is resolved, so naming such a function of a native parent class without `FunctionClassName` needs the capability as well. Ordinary functions such as Open Level and Print String, and the functions and custom events a Blueprint defines, need nothing more outside Editor Utility Blueprints. The capability does not close every route to running code; see [Safety & Capabilities](safety.md#blueprint--anim-blueprint-editing).
+
+### Node search and placement (2)
+
+| Command | Description |
+|---|---|
+| `FindGraphNodeActions` | Search the actions the editor's context menu offers for one graph of a Blueprint or of a level Blueprint (the menu opened on the empty graph, without a context pin). `Keyword` is matched against the menu name, the category and the search keywords, `Category` against the category, both as case-insensitive substrings. Candidates are sorted by category and menu name and cut at `MaxResults` (1 to 200, default 50); `TotalMatched` counts every match and `Truncated` says whether some were left out. Each candidate carries `ActionId`, `Category`, `MenuName`, `NodeClass`, `ActionObjectPath`, `Placeable` (with `NotPlaceableReason` when false) and `RequiredCapabilities`. Read only, and loads no asset. Requires `EditorInspect` |
+| `AddGraphNodeByAction` | Place the node of one action, named by the `ActionId` that `FindGraphNodeActions` reported for the same graph — for nodes no `AddGraphNode` node type covers, such as nodes a plugin adds. Any node can be placed this way, including nodes that run code, so it always requires `BlueprintUnrestrictedNodePlace` besides `BlueprintGraphEdit`, whatever the action places. `Result` and the artifact report `NodeId`, `NodeClass`, `MenuName`, `ActionId`, `AlreadyExisted` and `AdditionalNodes` (`NodeType: Action`, `Role: SpawnedWithAction`). Takes `NodeX` / `NodeY` and `SkipCompile` |
+
+- **`ActionId`** has the form `v1:` followed by 40 lowercase hexadecimal digits. A value of another form is `InvalidParams` before anything is searched. An identifier no action of the graph has is `NotFound`; search again, since an identifier changes when its action changes. An identifier several actions share is `InvalidParams`, and the message points at `AddGraphNode` when one of its node types covers the node. A search that matches nothing is not an error: it succeeds with an empty `Candidates` and `TotalMatched: 0`.
+- **What is offered.** Only what can be found without loading anything: an action of an asset that is not loaded is not offered. Actions that bind to an actor or a component are not offered either — place those with `ComponentBoundEvent` or `ActorBoundEvent`. Context pins are not supported; connect the node afterwards with `ConnectBlueprintPins`.
+- **Placing.** One action places one node, as choosing it in the context menu does, and the placement is one undoable step. When the action also places other nodes, they are in `AdditionalNodes`. When the action is an event the Blueprint already has, the existing node is returned with `AlreadyExisted: true` and nothing is changed or compiled. A graph that does not accept edits is `NotAllowed`, and a Blueprint under `/Engine/` is `NotAllowed`.
+- **Level Blueprints.** Both commands take the path of an open map, but neither creates a level Blueprint: a map without one is `NotFound`, telling you to place something with `AddGraphNode` first. During PIE an ordinary Blueprint can still be searched; a level Blueprint cannot.
 
 ### Components — SCS (8)
 
@@ -1218,13 +1296,27 @@ Edit Blueprint variables, event graph nodes, and SCS components.
 | `CompileBlueprint` | Compile a Blueprint and return CompileStatus + structured message log (AnimBlueprint / WidgetBlueprint not supported) |
 | `GetBlueprintCompileStatus` | Read the current Blueprint compile status without triggering a compile |
 
+### Level Blueprints
+
+Pass the package path of a map as `BlueprintPath` — `/Game/Maps/L_Puzzle` and `/Game/Maps/L_Puzzle.L_Puzzle` both work — to work on the level Blueprint of that map.
+
+- **Commands that take a map path**: `AddGraphNode`, `DeleteGraphNode`, `ConnectBlueprintPins`, `DisconnectBlueprintPins`, `ListBlueprintPins`, `SetPinDefaultValue`, `GetPinDefaultValue`, `AddBlueprintVariable`, `DeleteBlueprintVariable`, `SetBlueprintVariableDefault`, `AddFunctionOverride`, `CompileBlueprint`, `GetBlueprintCompileStatus`, `FindGraphNodeActions` and `AddGraphNodeByAction`. The eight commands of [Components — SCS](#components--scs-8) refuse a map path with `InvalidParams`, because a level Blueprint has no components. Any other Blueprint command fails on a map path as it did before.
+- **Maps that can be targeted**: a map that is open in the editor, and its loaded sub-levels. A map that is not open is refused with `PreconditionFailed`, asking you to open it; nothing is loaded or changed. A level instance, and a level of a preview or another temporary world, is `InvalidParams`. While PIE runs, a level Blueprint is refused with `NotAllowed`, reads included. An ordinary Blueprint keeps the PIE behavior it had (its refusal stays `ExecutionFailed`).
+- **The response** of each of these commands carries `TargetKind` in `Result` (and in the artifact, for the commands that write one): `Blueprint` or `LevelScriptBlueprint`. For a level Blueprint, `ResolvedBlueprintPath` is the object path of the level Blueprint the map path resolved to. Commands that used to return no `Result` now return one with these fields.
+- **A map without a level Blueprint.** Only the three commands that add something — `AddGraphNode`, `AddBlueprintVariable` and `AddFunctionOverride` — create it, after every check that could refuse the request has passed. Such a response carries a warning in `Result.Warnings`, whatever the outcome: the map now has unsaved changes, and undoing the request in the editor removes the level Blueprint again. The engine places its default events in a new level Blueprint, so `EventBeginPlay` on a new map answers `AlreadyExisted: true`. In the rare case that a request is refused after the level Blueprint was created, the empty level Blueprint stays, as after pressing Open Level Blueprint in the editor. Every other command answers `NotFound` without creating one, and its message names the commands that do (`UAIP.Editor.Blueprint.AddGraphNode, UAIP.Editor.Blueprint.AddBlueprintVariable, UAIP.Editor.Blueprint.AddFunctionOverride`); the map is not marked as changed. Before the level Blueprint exists, a `GraphGuid` is `NotFound`, a `FunctionCall` without `FunctionClassName` is `NotFound` asking for the class, and `AddFunctionOverride` refuses a function that is placed as an event (such as `ReceiveBeginPlay`) with `InvalidParams` pointing at `AddGraphNode`.
+- **Compiling** a level Blueprint makes the engine recreate the level script actor. Each placement compiles unless `SkipCompile` is `true`.
+- **Saving.** Save with `SaveAsset`, passing the path of the map. It writes the whole map package, so when the map may have had unsaved changes that a UAIP Blueprint edit did not make, the response carries a warning in `Result.Warnings` and the map is saved anyway. Save before you switch to another map.
+- **`SkipCompile` is spelled differently by domain**: `SkipCompile` for these graph commands, `bSkipCompile` for `SetWidgetProperties` and the other UMG writes. A graph command does not report whether a follow-up compile is due; ask `GetBlueprintCompileStatus`.
+
+> ⚠️ **Breaking change — writes to a Blueprint outside the locations UAIP may write to are refused, for ordinary Blueprints too.** `AddGraphNode`, `DeleteGraphNode`, `ConnectBlueprintPins`, `DisconnectBlueprintPins`, `AddBlueprintVariable`, `DeleteBlueprintVariable`, `SetBlueprintVariableDefault` and `AddFunctionOverride` now refuse a Blueprint under `/Engine/` with `NotAllowed`, as `SetPinDefaultValue` and `CompileBlueprint` already did; the new `AddGraphNodeByAction` does the same. `AddGraphNode`, `DeleteGraphNode` and the variable commands also became undoable, one step per call.
+
 ---
 
 ## UAIP.Editor.UMG
 
 Widget Blueprint editing — tree, variables, animation, bindings.
 
-### Native (22)
+### Native (24)
 
 | Command | Description |
 |---|---|
@@ -1239,6 +1331,8 @@ Widget Blueprint editing — tree, variables, animation, bindings.
 | `ReparentWidgetBlueprint` | Change a Widget Blueprint's parent class |
 | `GetSlotProperties` | Get a widget's slot properties (JSON, CPF filter, max 64 keys), plus a `PropertyWriteRequirements` map saying what a write to each property would need and which input form it takes |
 | `SetSlotProperties` | Set a widget's slot properties (32 KiB limit, `/Game/` UObject refs only). A reference now requires `WidgetSlotReferenceEdit` and a struct or container `PropertyStructuredEdit`, and those values are supplied as a JSON document rather than engine bracket text — read the property first for its `WriteInputForm`. A refused write leaves no undo entry and does not mark the asset dirty. A successful write compiles the Widget Blueprint so the change reaches widgets created at runtime; pass `bSkipCompile: true` to only mark it modified (the response then reports `bRequiresFollowupCompile: true`) and compile once with `CompileWidgetBlueprint` after a batch of edits |
+| `GetWidgetProperties` | Read the properties of a widget in a Widget Blueprint (the root widget included), as UE text export. Without `PropertyNames` every editable, non-deprecated property is reported, in the artifact; with `PropertyNames` (at most 64) the named values are in `Result` as well, and a name that matches no property, or one that is not editable or is deprecated, is `InvalidParams`. The artifact also carries `PropertyWriteRequirements`: what writing each property would take, including the properties `SetWidgetProperties` refuses because another command owns them. A secret value, the text of a password field included, is `***` and listed in `MaskedPropertyNames`; `IncludeSecretValues` asks for the plain values — see [Reading secret values](#reading-secret-values). Refused during PIE. Requires `EditorInspect` |
+| `SetWidgetProperties` | Set the properties of a widget in a Widget Blueprint (the root widget included), as changing them in the Details panel of the Designer does. `Properties` maps each property name to its value as a string — at most 64 properties and 32 KiB of values: UE text export for a scalar or a simple value struct, a fully qualified object path for a reference, and a JSON document written into the string for any other struct or a container. Either every property is written or none is. The Widget Blueprint is compiled afterwards, so the values reach the widgets created next (PIE included), unless `bSkipCompile` is `true`. Requires `WidgetPropertyEdit`, and `PropertyReferenceEdit` / `PropertyStructuredEdit` for a reference / a struct or container — see the note below |
 | `GetWidgets` | Get the full widget tree structure (JSON) |
 | `ListWidgetClasses` | List available widget classes (max 500) |
 | `CompileWidgetBlueprint` | Compile a Widget Blueprint and return errors / warnings |
@@ -1250,6 +1344,18 @@ Widget Blueprint editing — tree, variables, animation, bindings.
 | `AddPropertyBinding` | Add a property binding (same-WBP function / variable only) |
 | `RemovePropertyBinding` | Remove a property binding |
 | `ExtractWidgetToUserWidget` | Extract a widget subtree into a new UserWidget |
+
+> **New — `GetWidgetProperties` / `SetWidgetProperties` read and write the properties of the widget itself** (the Text of a TextBlock, the Min / Max / Value of a SpinBox, the options of a ComboBoxString, …), as the Details panel of the Designer does. Find the widget's name with `GetWidgets` first.
+>
+> - **What `SetWidgetProperties` reports.** `Result` and the artifact carry `AppliedPropertyNames`, `ChangedPropertyNames`, `PreviousValues` (the values before the write; a secret one is `***`), `MaskedPropertyNames`, `bRequiresFollowupCompile` and `Warnings`. The values written are never returned, and the `Properties` argument is masked in the records UAIP keeps.
+> - **Compiling.** A compile that fails does not undo the write: the call still succeeds, `Warnings` reports the failure and `bRequiresFollowupCompile` is `true`. With `bSkipCompile: true` the Widget Blueprint is only marked as modified, `bRequiresFollowupCompile` is `true`, and running widgets see the values only after a compile (`CompileWidgetBlueprint`). Undo restores the editor's values as one step; widgets created at runtime show the restored values after the next compile.
+> - **All or nothing.** When any one property cannot be written, none is, and the asset's unsaved flag is put back. A name the widget does not declare is `InvalidParams` (`'<name>' does not exist`). These properties are refused with `PolicyViolation`, naming the command to use where there is one: `Slot` (`UAIP.Editor.UMG.SetSlotProperties`), the variable flag `bIsVariable` (`UAIP.Editor.UMG.SetWidgetAsVariable`), a delegate (`UAIP.Editor.UMG.AddPropertyBinding`, `UAIP.Editor.UMG.RemovePropertyBinding`), and an instanced subobject such as `Navigation`, since creating one changes the object graph rather than assigning a value. A property that may not be written at all is `PolicyViolation` as well. More than 64 properties, more than 32 KiB of values, or an empty `Properties`, is `InvalidParams`.
+> - **Capabilities.** `WidgetPropertyEdit` always; `PropertyReferenceEdit` for a value that is or contains a reference, which may only point at content UAIP may write to; `PropertyStructuredEdit` for a struct outside the simple value set or a container. The last two are decided from each property's type while the write runs, so they do not appear in `RequiredCapabilities`; `PropertyWriteRequirements` of `GetWidgetProperties` names them per property.
+> - **Password fields.** Setting `IsPassword` from true to false on a password field needs the same permission as reading its text in plain text — the safety policy setting `AllowSecretValueRead` and the capability `SecretValueRead` — and is refused with `PolicyViolation` otherwise, so that a field cannot be turned into a plain one and read back.
+> - **Bindings.** A property that has a binding set in the Designer is still written, and `Warnings` says that the binding overrides the value at run time.
+> - **Refused** during PIE (`NotAllowed`), and for a Widget Blueprint under `/Engine/` (`NotAllowed`).
+> - **`GetWidgetProperties`** fails with `ExecutionFailed` when its artifact cannot be saved and no `PropertyNames` were given, since the artifact is then the only result; with `PropertyNames` the call succeeds and reports `ArtifactsNotSaved`. A `SetWidgetProperties` whose artifact cannot be saved still succeeds, with `ArtifactsNotSaved`, because the write already happened.
+> - `SetAssetProperty` refuses to write a widget and points at `SetWidgetProperties` — see [UAIP.Editor.Property](#uaipeditorproperty).
 
 ### Toolset bridges (13) 🧩
 
@@ -3104,7 +3210,7 @@ Reads require `EditorInspect`; every write requires `ControlRigComponentEdit` (d
 
 ## UAIP.Editor.EnhancedInput
 
-Enhanced Input asset editing — Input Actions and Input Mapping Contexts.
+Enhanced Input asset editing — Input Actions and Input Mapping Contexts. The same module also provides the `EnhancedInputAction` node type of `UAIP.Editor.Blueprint.AddGraphNode`, which places the event of an Input Action in a Blueprint graph — see [AddGraphNode node types](#addgraphnode-node-types).
 
 | Command | Description |
 |---|---|

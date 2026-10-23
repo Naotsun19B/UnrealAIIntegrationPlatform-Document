@@ -216,12 +216,31 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 |---|---|
 | `BlueprintEdit` | Blueprint アセットのコンパイルと構造検査 |
 | `BlueprintVariableEdit` | Blueprint 変数の追加・削除・変更 |
-| `BlueprintGraphEdit` | Blueprint グラフへのノード追加・削除・接続、親クラスまたはインターフェースの関数をオーバーライドする関数グラフの追加 |
+| `BlueprintGraphEdit` | Blueprint グラフへのノード追加・削除・接続、親クラスまたはインターフェースの関数をオーバーライドする関数グラフの追加。⚠️ **エディタで開いているすべてのマップのレベル Blueprint** にも届くようになった — 下の注記を参照 |
+| `BlueprintUnrestrictedNodePlace` | 次の場合に `BlueprintGraphEdit` に**加えて**必要: コードを実行しうる関数（コンソールコマンドの実行、URL やほかのアプリケーションの起動、エディタの終了、呼び出し側が選んだパスへのファイルの書き込み、エディタ専用・開発用・クック対象外のモジュールの関数すべて（Python を含む）、モジュールを判別できない関数）の呼び出しを置くとき、Editor Utility の Blueprint にあらゆる関数の呼び出しを置くとき、そうした呼び出しのピンを書き換える・接続するとき（`SetPinDefaultValue`、`ConnectBlueprintPins`）。`AddGraphNodeByAction` は、何を置くかに関わらず常に要求する。コマンドの実行中に解決した関数から決まるので、`AddGraphNode`・`SetPinDefaultValue`・`ConnectBlueprintPins` の宣言する `RequiredCapabilities` には現れない。拒否のメッセージが名前を示す。[コマンド — コードを実行しうる関数の呼び出し](commands.md#コードを実行しうる関数の呼び出し) を参照 |
 | `BlueprintComponentEdit` | Blueprint SCS コンポーネントの追加・削除・リネーム・親変更・複製・プロパティ編集 |
 | `AnimBlueprintGraphEdit` | AnimGraph へのノード追加・削除・接続、Anim Blueprint のコンパイル |
 | `AnimBlueprintCustomTypeEdit` | `AddAnimGraphNode` の `NodeClass` が、このドメインが信頼する 3 モジュール（`AnimGraph` / `AnimGraphRuntime` / `Engine`）以外 — プロジェクトやプラグインが定義した `UAnimGraphNode_Base` 派生クラス — のとき必要。このドメインには対になる「危険なノード」用の Capability はない。8 種のノードは、どの Capability を持っていても無条件で拒否される。[コマンド — UAIP.Editor.AnimBlueprint](commands.md#uaipeditoranimblueprint) を参照 |
 | `AnimStateMachineEdit` | Anim ステートマシンへの State・Transition の追加・削除 |
 | `AnimBlueprintReferenceEdit` | Anim Blueprint 上でオブジェクト参照を含む（または参照そのものである）プロパティ・実装済みインターフェース参照・埋め込み UAF グラフ参照を書き込むときに必要。`SetAnimGraphNodeProperty` は書き込みが実際に参照へ触れるときだけ動的に確認する。`ImplementAnimLayerInterface` と `AddUAFGraphNodeToAnimBlueprint` は毎回参照を書き込むため静的に宣言する。`AddLinkedAnimLayerNode` は `InterfacePath` 指定時だけ動的に確認する（自己完結型レイヤーノードは参照を書き込まない） |
+
+> ⚠️ **`BlueprintGraphEdit`・`BlueprintVariableEdit`・`BlueprintEdit` がマップのレベル Blueprint にも届くようになりました。** グラフ・変数・コンパイルのコマンドは、エディタで開いているマップ（またはその読み込み済みのサブレベル）のパスを受け付け、そのレベル Blueprint を対象にします — [コマンド — レベル Blueprint](commands.md#レベル-blueprint) を参照。これらの Capability を付与したセッションは、Blueprint アセットだけでなく、開いているマップのロジックも変えられます。レベル Blueprint の編集には、通常の Blueprint には無い副作用があります。
+>
+> - **コンパイルでレベルスクリプトアクターが作り直されます。** 配置のたびに、`SkipCompile` が `true` でなければコンパイルします。
+> - **`AddGraphNode`・`AddBlueprintVariable`・`AddFunctionOverride` は、レベル Blueprint の無いマップにレベル Blueprint を作ります。** マップに未保存の変更ができ、応答がそれを警告します。
+> - **保存はマップ全体に及びます。** マップに対する `SaveAsset` は、マップのパッケージ全体を保存します。UAIP の Blueprint 編集によらない未保存の変更がマップにあったかもしれないときは、応答の `Result.Warnings` に警告を載せたうえで保存します。
+> - **その警告が区別できないもの。** 警告は UAIP の Blueprint 編集とそれ以外を区別するので、ほかの UAIP のコマンドによる変更（`SetActorTransform` でアクターを動かしたなど）も「Blueprint 編集によらない変更」として警告の対象になります。UAIP の Blueprint 編集の後、保存の前に人が同じマップに加えた変更は区別できないので、警告は出ません。World Partition のマップでは、外部アクタのパッケージにだけある変更は、警告がマップのパッケージを見るため拾えないことがあります。
+> - **マップを切り替える前に保存してください。** レベル Blueprint はマップの中にあるので、その未保存の変更はマップと一緒に扱われます。
+>
+> ⚠️ **`BlueprintUnrestrictedNodePlace` が塞がないもの。** この Capability が制御するのは、コードを実行しうる関数の呼び出しの配置と、そのピンの書き換え・接続です。次の経路は、通常の Blueprint の Capability だけを持つセッションにも開いたままです。コードを実行させたくないセッションに `BlueprintGraphEdit` / `BlueprintVariableEdit` を付与する前に考慮してください。
+>
+> - この Capability が判定に使う一覧に無い、コードを実行しうる関数。
+> - コードを実行するノードの引数にすでにつながっている変数の既定値を、`SetBlueprintVariableDefault` で変える。
+> - 既存の Editor Utility の Blueprint を、ピンを書き換えも接続もせずに実行する。
+> - 人が作った、コードを実行する処理を包んでその引数をパラメータとして受け取る Blueprint の関数・マクロを呼び、引数を入れる — Blueprint 自身の関数の普通の `FunctionCall` には追加の Capability は要りません。
+> - コードを実行するノードの引数の上流にある Pure なノード（文字列の結合など）のピンを書き換える。判定するのは関数の呼び出しのノードそのものだけです。
+> - 非同期タスクのノードのように、関数を参照せずにコードを実行しうるノード。置くには常にこの Capability を要求する `AddGraphNodeByAction` が要りますが、すでにあるノードのピンの書き換え・接続は判定しません。
+> - Widget Blueprint の PreConstruct イベント（Designer のプレビューのために実行される）と Construction Script。どちらもエディタが `EditorExecution` 無しに実行します。
 
 #### Level / アクター / プロパティ編集
 
@@ -232,7 +251,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `EditorViewportControl` | Level Editor ビューポートカメラの操作 — `FocusOnActors`、`GetCameraTransform`、`SetCameraTransform` |
 | `ActorComponentEdit` | **レベルに配置済みのアクター**に対するコンポーネントの追加・削除・付け替えと、そのプロパティの書き込み — `AddActorComponent`、`DeleteActorComponent`、`ReparentActorComponent`、`SetActorComponentProperty`。`EditorActorEdit` と分けてあるのは、変えるものが違うため — あちらはアクターそのものを動かし・消すもので、こちらはアクターが何でできていて、どう設定されているかを変えるもの。コンポーネントのプロパティの読み取り（`GetActorComponentProperty`）と一覧取得（`ListActorComponents`）には `EditorInspect` だけで足りる。値が参照や複合型である書き込みには、加えて `PropertyReferenceEdit` / `PropertyStructuredEdit` が必要 — どちらが要るかは先に `GetActorComponentProperty` を呼べば分かる |
 | `ComponentCustomTypeEdit` | そのクラスのコンポーネントの**インスタンス数が増える**操作で、かつそのクラスが `/Script/Engine` と `/Script/LiveLinkComponents` のいずれでも宣言されていない場合に、コマンド自身の Capability に**加えて**必要になる（プロジェクトの C++ が定義したコンポーネント、他プラグイン（Niagara などエンジン同梱プラグインを含む）が定義したもの、Blueprint 由来のコンポーネントクラスが該当）。該当する 3 コマンドが共有する — `AddActorComponent`（インスタンス側。`ActorComponentEdit` と併用）と `AddBlueprintComponent` / `DuplicateBlueprintComponent`（Blueprint / SCS 側。`BlueprintComponentEdit` と併用）。1 つの名前に統一しているのは、片方の経路にだけ付与しても、もう一方から同じクラスへ到達できてしまわないようにするため。⚠️ **Blueprint 側の 2 コマンドにとっては挙動の変更です** — 下の Note を参照。コンポーネントの削除・リネーム・付け替え・プロパティ書き込みは対象**外**（いずれもインスタンス数を増やさないため） |
-| `PropertyEdit` | 詳細パネル経由でのアクター / アセットプロパティの読み書き（`GetActorProperty`、`SetActorProperty`、`GetAssetProperty`、`SetAssetProperty` など） |
+| `PropertyEdit` | 詳細パネル経由でのアクター / アセットプロパティの読み書き（`GetActorProperty`、`SetActorProperty`、`GetAssetProperty`、`SetAssetProperty` など）。⚠️ `SetAssetProperty` は、専用のコマンドが扱う Blueprint の中のオブジェクト — ウィジェット、ウィジェットのスロットやアニメーション、Blueprint で追加したコンポーネント、コンポーネントの構成、グラフやノード、クラスの既定値 — を書かなくなった。このため `PropertyEdit` で `WidgetPropertyEdit`・`BlueprintComponentEdit`・`BlueprintGraphEdit` など、それらのコマンドの Capability を迂回することはできない。拒否のメッセージが使うべきコマンドを示す。[コマンド — UAIP.Editor.Property](commands.md#uaipeditorproperty) を参照 |
 | `PropertyReferenceEdit` | 値がオブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパスであるか、それらを（どの深さであれ）内包するプロパティの書き込み。参照を空にする操作にも必要 — 依存関係を付けることと外すことは同じ種類の変更であるため |
 | `PropertyStructuredEdit` | 組み込みの値カタログ外の構造体・配列・セット・マップ・オプショナル・固定長配列の書き込みと、値全体を置き換える代わりにコンテナの要素 1 つを操作すること |
 | `PropertyDefaultsOnlyEdit` | エディタがその種類の対象では「既定値の側でだけ」見せるプロパティの書き込み（インスタンスへ書く `EditDefaultsOnly`、テンプレートへ書く `EditInstanceOnly`）。エディタ本体の詳細パネルはこれらを実際に編集できる。この指定はパネルのどこに行が出るかを決めるものであって編集できるかを決めるものではなく、ノードを保持するグラフエディタは明示的にその行を出している。一律に拒否すると自動化しようとしているエディタより厳しくなるため、拒否は「壁」ではなく「権限で開く」形にしてある。編集フラグを持たないプロパティ・`EditConst`・非推奨は、どの権限を持っていても拒否される |
@@ -241,13 +260,13 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `BehaviorTreeNodeReferenceEdit` | 参照へ到達しうる型を持つビヘイビアツリーのノードプロパティの書き込み。ブラックボードのキー選択は専用の経路で書かれるため対象外 |
 | `WorldConditionPropertyReferenceEdit` | 参照へ到達しうる型を持つ World Condition のプロパティの書き込み |
 | `ProjectConfigEdit` | プロジェクト設定の読み書き（`GetProjectSetting`、`SetProjectSetting`） |
-| `EditorUndoRedo` | エディタ操作の Undo / Redo |
+| `EditorUndoRedo` | エディタ操作の Undo / Redo。⚠️ Widget Blueprint のコマンドと組み合わせると、パスワード欄の門が弱まる: `SetWidgetProperties` でパスワード欄を普通の欄に変えるには秘密値を読む許可が要るが、同じエディタのセッションで先に行われた `IsPassword` の変更（人によるものなど）を Undo で戻すのには要らない |
 
 > ⚠️ **破壊的変更 — `ComponentCustomTypeEdit` が `AddBlueprintComponent` と `DuplicateBlueprintComponent` にも適用されるようになりました。** これまでこの種の判定は他ドメインのクラス許可リストだけのもので、Blueprint 上でのコンポーネントクラスの追加・複製はクラスに関わらず `BlueprintComponentEdit` だけで通っていました。これまで `BlueprintComponentEdit` だけでプロジェクト定義のコンポーネントを追加・複製できていたセッションは、`ComponentCustomTypeEdit` を名指しした `CapabilityNotAvailable` で拒否されるようになります。`+AllowedCapabilities=ComponentCustomTypeEdit` を追加すると従来どおりに戻ります。両方の経路を同時に対象にしたのは、新設のインスタンス側コマンドだけをゲートしても Blueprint 側が迂回路として残ってしまうためです。この要件はコマンド実行中にクラスから決まるため、3 コマンドいずれの `RequiredCapabilities` にも現れません。`ListActorComponents` がクラスごとに「追加に何が要るか」を返し（`Admission` / `RequiredCapabilities` / `MissingCapabilities`）、`QueryCapabilities` を `IncludeUnavailable: true` で呼べばカタログにこの名前が載ります。[コマンドリファレンス — コンポーネント — SCS](commands.md#コンポーネント--scs8) を参照。
 
-> **Note**: `PropertyReferenceEdit` と `PropertyStructuredEdit` は `UAIP.Editor.Property` 限定ではありません。Blueprint SCS コンポーネント、Sequencer セクション、Sound / SoundCue アセット、PCG / 会話ノード、DataTable 行、World / プロジェクト設定など、**プロパティを書き込むすべてのドメイン**で参照・構造体・コンテナの書き込みを制御します。参照を内包する構造体の書き込みには両方が必要なので、構造側だけで参照のゲートを迂回することはできません。
+> **Note**: `PropertyReferenceEdit` と `PropertyStructuredEdit` は `UAIP.Editor.Property` 限定ではありません。Blueprint SCS コンポーネント、Widget Blueprint のウィジェット（`SetWidgetProperties`）、Sequencer セクション、Sound / SoundCue アセット、PCG / 会話ノード、DataTable 行、World / プロジェクト設定など、**プロパティを書き込むすべてのドメイン**で参照・構造体・コンテナの書き込みを制御します。参照を内包する構造体の書き込みには両方が必要なので、構造側だけで参照のゲートを迂回することはできません。
 >
-> すでに独自の Capability で参照の書き込みを管理しているモジュールは、参照側についてはその名前を使い続けます — `SetAnimNotifyProperty` は `AnimNotifyReferenceEdit`、`SetDataflowNodeProperty` は `DataflowReferenceEdit`、Subsonic のプロパティ setter 群は `SubsonicEventEdit`、`SetSlotProperties` は `WidgetSlotReferenceEdit`、Enhanced Input のマッピング mutator 群は `EnhancedInputReferenceEdit`、`SetStateTreeParameter` は `StateTreeParameterReferenceEdit`、`AddSetParameterEntry` / `AddSetParametersModule` で参照型パラメータの既定値を書く場合は `NiagaraReferenceEdit` です。構造・コンテナ側は常に `PropertyStructuredEdit` です。例外は `SetPoseSearchSchemaChannelProperty` で、参照については付与できる Capability がありません — 参照を内包する型を一律拒否します。チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうためです。
+> すでに独自の Capability で参照の書き込みを管理しているモジュールは、参照側についてはその名前を使い続けます — `SetAnimNotifyProperty` は `AnimNotifyReferenceEdit`、`SetDataflowNodeProperty` は `DataflowReferenceEdit`、Subsonic のプロパティ setter 群は `SubsonicEventEdit`、`SetSlotProperties` は `WidgetSlotReferenceEdit`（`SetWidgetProperties` が書くウィジェットのプロパティは、代わりに共通の `PropertyReferenceEdit` を使います）、Enhanced Input のマッピング mutator 群は `EnhancedInputReferenceEdit`、`SetStateTreeParameter` は `StateTreeParameterReferenceEdit`、`AddSetParameterEntry` / `AddSetParametersModule` で参照型パラメータの既定値を書く場合は `NiagaraReferenceEdit` です。構造・コンテナ側は常に `PropertyStructuredEdit` です。例外は `SetPoseSearchSchemaChannelProperty` で、参照については付与できる Capability がありません — 参照を内包する型を一律拒否します。チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうためです。
 >
 > どちらも書き込み実行時にプロパティの型から決まるため、**いずれのコマンドの `RequiredCapabilities` にも現れず**、`uaip_describe_command` にも表示されません。ただし書き込みを試さずに見つけることはできます — `QueryCapabilities` を `IncludeUnavailable: true` で呼ぶと `RegisteredCapabilities` カタログがこの 2 つを列挙し、運用者が有効化するまで `DefaultPolicy: "Denied"` / `IsGranted: false` を返します（[どんな Capability が存在するかを調べる](#どんな-capability-が存在するかを調べる) 参照）。**個別のプロパティ**に何が必要かを知るには、先にそのプロパティを読む（`WriteRequirements` オブジェクトが、書き込みに必要なものと、そのうちセッションが既に保有しているものを返します）か、拒否の返答から名前を読み取ってください。[コマンドリファレンス — 参照・構造体・コンテナの書き込み](commands.md#参照構造体コンテナの書き込み) を参照。
 
@@ -368,6 +387,7 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `WidgetVariableEdit` | ウィジェット変数の追加・削除 |
 | `WidgetAnimationEdit` | Widget Animation の作成・アニメーショントラックの追加 |
 | `WidgetBindingEdit` | プロパティバインディングの追加・削除 |
+| `WidgetPropertyEdit` | `SetWidgetProperties` で Widget Blueprint のウィジェットのプロパティ（TextBlock の Text、SpinBox の範囲など）を書き込む。参照である値・参照を含む値にはさらに `PropertyReferenceEdit`、単純な値の集合に入らない構造体とコンテナには `PropertyStructuredEdit` が必要 — 書き込みの最中に各プロパティの型から決まる。[Level / アクター / プロパティ編集](#level--アクター--プロパティ編集) の Note を参照。パスワード欄を普通の欄に変える（`IsPassword` を true から false にする）には `AllowSecretValueRead` と `SecretValueRead` も必要 — [秘密値の平文での読み取り](#秘密値の平文での読み取り) を参照。プロパティの読み取り（`GetWidgetProperties`）は `EditorInspect` だけでよい |
 | `WidgetSlotReferenceEdit` | `SetSlotProperties` が、あらゆる種類の参照（オブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパス）であるか、それを（どの深さであれ）内包するスロットプロパティへ書き込む場合に必要。書き込み実行時にプロパティの型から決まるため `SetSlotProperties` の宣言する `RequiredCapabilities` には現れない — [Level / アクター / プロパティ編集](#level--アクター--プロパティ編集) の Note を参照。構造体・コンテナの書き込みにはさらに `PropertyStructuredEdit` が必要 |
 
 #### Sequencer 編集
@@ -983,10 +1003,11 @@ CommonUI のコマンド（[`UAIP.Runtime.CommonUI`](commands.md#uaipruntimecomm
 | `UAIP.Runtime.Engine.Config.SetConfigValue` | 応答の変更前の値（`OldValue`） |
 | `UAIP.Editor.Property.GetProjectSetting`、`GetAssetProperty`、`GetActorProperty`、`GetBlueprintDefault`、`GetWorldSetting`、`GetDataTableRow` | `Value` |
 | `UAIP.Editor.Level.GetActorComponentProperty`、`UAIP.Editor.Blueprint.GetBlueprintComponentProperty` | `Value` |
+| `UAIP.Editor.UMG.GetWidgetProperties` | プロパティの値（パスワード欄のテキストを含む） |
 
 `Toolset.ConfigSettings.GetSectionSchema` は対象外です。プロパティの型・説明・範囲・enum の名前を返すだけで、値は返さないためです。そのほかのプロパティを読むコマンドは、秘密の値を伏せたままにし、解禁はできません。
 
-**何を秘密とみなすか。** 次のどれか 1 つに当たるプロパティが秘密です。メタデータ `Password` / `Secret` / `PasswordField=true`。名前のパターン（パスワード、API キー、トークンなど）。ファイルパス・ディレクトリパスの型（`FFilePath` / `FDirectoryPath`）。固定の一覧の項目（今は CryptoKeys の設定 `EncryptionKey`、`SigningPrivateExponent`、`SecondaryEncryptionKeys`）。`MyPath.FilePath` のようなパスは、途中のどれか 1 段でも秘密なら値全体が伏せられます。伏せる判定と解禁の判定は同じなので、伏せられるものは必ず解禁できます。`SetSettingsValues` と `Toolset.ConfigSettings.SetSectionProperties` で書く `Properties` は、秘密かどうかによらず、監査ログと完了通知で伏せられます。
+**何を秘密とみなすか。** 次のどれか 1 つに当たるプロパティが秘密です。メタデータ `Password` / `Secret` / `PasswordField=true`。名前のパターン（パスワード、API キー、トークンなど）。ファイルパス・ディレクトリパスの型（`FFilePath` / `FDirectoryPath`）。固定の一覧の項目（今は CryptoKeys の設定 `EncryptionKey`、`SigningPrivateExponent`、`SecondaryEncryptionKeys`）。`MyPath.FilePath` のようなパスは、途中のどれか 1 段でも秘密なら値全体が伏せられます。Widget Blueprint のウィジェットでは、`IsPassword` が立っている文字入力ウィジェットの `Text` も秘密です。呼び出した時点のウィジェットの状態で判定します。`SetWidgetProperties` は、書き込みの前か後のどちらかでテキストが秘密なら、前の値を伏せます。伏せる判定と解禁の判定は同じなので、伏せられるものは必ず解禁できます。`SetSettingsValues` と `Toolset.ConfigSettings.SetSectionProperties` で書く `Properties` は、秘密かどうかによらず、監査ログと完了通知で伏せられます。
 
 **パッケージしたゲームでは** プロパティのメタデータ（`Password`、`Secret`、`PasswordField`）が存在しないので、名前のパターン・パスの型・固定の一覧だけで判定します。メタデータだけを頼りにした秘密の設定は、そこでは伏せられません。
 

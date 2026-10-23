@@ -134,11 +134,18 @@ For dependency-style audits (unused assets, circular references, broken referenc
 }
 ```
 
-`AddGraphNode` writes the new node's `NodeId` to its artifact only, not to the step's `Data`, so a `${AddGet.Data.NodeId}` template cannot carry it into a later step. Verify in two stages instead:
+`AddGraphNode` returns the new node's `NodeId` in the step's `Data` (the `Result`), and the JSON artifact carries the same field. A later step in the same scenario can therefore take it with a `${AddGet.Data.NodeId}` template. To check the node's pins, add a step after `AddGet`:
 
-1. Read the `NodeId` of the new node from the artifact of the `AddGet` step.
-2. In a separate call, pass it on:
-   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<NodeId read from the artifact>"})`
+```json
+{ "StepName": "PinsOfGet", "CommandName": "UAIP.Editor.Blueprint.ListBlueprintPins",
+  "Params": {
+    "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
+    "NodeId":        "${AddGet.Data.NodeId}"
+  } }
+```
+
+Outside a scenario, read `NodeId` from the `Result` of the `AddGraphNode` call and pass it to the next call:
+`uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<NodeId from the AddGraphNode Result>"})`
 
 After save, ask the AI to inspect the Blueprint graph visually with `CaptureGraphViewportImage` and confirm the wiring matches intent. A dedicated `CompileBlueprint` command with structured error retrieval is planned — see [Roadmap → Blueprint Compile & Error Retrieval](roadmap.md#blueprint-compile--error-retrieval).
 

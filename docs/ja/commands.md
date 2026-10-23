@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1320 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1741 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1324 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1745 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -91,8 +91,8 @@ Toolset ブリッジコマンドが、経由する Toolset 連携の準備がで
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 24 | 8 | 一部（10/24） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 21 | — | — |
-| Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 23 | — | — |
+| Editor UMG | `UAIP.Editor.UMG` | 24 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 11 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
 | Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 5 | 4 | — |
@@ -1145,11 +1145,27 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 **断られた書き込みは何も変えません。** `Set*` コマンドが理由を問わず断られたとき、対象の値は変わらず、そのパッケージの未保存の印も呼び出し前のままです（保存済みのパッケージは保存済みのまま）。`SetActorComponentProperty`（`UAIP.Editor.Level`）も同じです。
 
+**⚠️ 専用のコマンドがある、Blueprint の中のオブジェクト。** `SetAssetProperty` は、Blueprint に属するオブジェクトのうち専用のコマンドがあるものを書かなくなりました。書き込みは、前の値を読む前に `InvalidParams` で断り、メッセージで使うべきコマンドを完全名で示します。
+
+| オブジェクト | 専用のコマンド |
+|---|---|
+| Widget Blueprint のウィジェット（Widget Blueprint 側から指しても、コンパイルで作られるクラス側から指しても） | `UAIP.Editor.UMG.SetWidgetProperties`（`AssetPath` に Widget Blueprint を、`WidgetName` にウィジェットの名前を渡す） |
+| ウィジェットのスロット | `UAIP.Editor.UMG.SetSlotProperties` |
+| ウィジェットのアニメーション | `UAIP.Editor.UMG.CreateWidgetAnimation`、`UAIP.Editor.UMG.AddAnimationTrack` |
+| Blueprint で追加したコンポーネントの既定値 | `UAIP.Editor.Blueprint.SetBlueprintComponentProperty` |
+| Blueprint のコンポーネントの構成（Construction Script のノード） | `UAIP.Editor.Blueprint.AddBlueprintComponent`、`UAIP.Editor.Blueprint.RenameBlueprintComponent`、`UAIP.Editor.Blueprint.ReparentBlueprintComponent` |
+| グラフとグラフのノード | `UAIP.Editor.Blueprint.AddGraphNode`、`UAIP.Editor.Blueprint.SetPinDefaultValue`、`UAIP.Editor.Blueprint.ConnectBlueprintPins` |
+| Blueprint のクラスの既定値 | `UAIP.Editor.Property.SetBlueprintDefault`、`UAIP.Editor.Blueprint.SetBlueprintVariableDefault` |
+
+これらの書き込みは、以前は通っていました。Blueprint をコンパイルせずにオブジェクトを変えるので、変更は Blueprint が作るものに届かず、専用のコマンドの Capability も迂回できていました。それ以外の Blueprint の中のオブジェクト（タイムラインのテンプレートや、親の C++ クラスが定義したコンポーネントの既定値など）は今までどおり書けます。そのときは、Blueprint をコンパイルしていないことを `Result.Warnings` で示します。
+
+`GetAssetProperty` は、これらのオブジェクトを今までどおり読めます。上の 7 種類では、結果と artifact に `SuggestedCommand` が加わります。値は専用のコマンドの完全名を、カンマと空白で区切って並べたものです（例: `UAIP.Editor.Property.SetBlueprintDefault, UAIP.Editor.Blueprint.SetBlueprintVariableDefault`）。⚠️ `GetAssetProperty` は、パスワード欄（`IsPassword` が真の `EditableTextBox` / `EditableText`）の `Text` も `***` で伏せるようになりました。以前は平文で返していました。
+
 ---
 
 ## UAIP.Editor.Blueprint
 
-Blueprint 変数・イベントグラフノード・SCS コンポーネントの編集。
+Blueprint 変数・イベントグラフノード・SCS コンポーネントの編集。グラフ・ピン・変数・関数の上書き・コンパイルのコマンドは、エディタで開いているマップのレベル Blueprint も編集できる — [レベル Blueprint](#レベル-blueprint) を参照。
 
 ### 変数とグラフ（11）
 
@@ -1158,13 +1174,13 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。Blueprint で変数の型として使えない型は、エディタの変数型メニューと同じ規則で `InvalidParams` として拒否されます。クラスは自身または祖先に `BlueprintType`（または `BlueprintSpawnableComponent`）が必要で、`NotBlueprintType` のものは拒否されます。構造体は `BlueprintType` が必要で、`BlueprintInternalUseOnly` のものは拒否されます。拒否された呼び出しは Blueprint を変更しません（変数は追加されず、アセットも dirty になりません）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください |
 | `DeleteBlueprintVariable` | メンバー変数を削除 |
 | `SetBlueprintVariableDefault` | Blueprint 変数の CDO デフォルト値を更新 |
-| `AddGraphNode` | Blueprint アセットの**あらゆるグラフ**にノードを追加（VariableGet/Set・FunctionCall・EventBeginPlay/EventTick、または親やインターフェースのイベントを上書きする `Event`）— イベントグラフと関数グラフに限らない。対象は `GraphName` または `GraphGuid` で選ぶ。グラフの選び方・複数一致時の扱い・2 段階の受け入れ判定は表の下の注記を参照 |
+| `AddGraphNode` | Blueprint アセットの**あらゆるグラフ**（イベントグラフと関数グラフに限らない）、または開いているマップのレベル Blueprint にノードを追加。`NodeType` は 20 種類 — 変数の Get/Set・関数呼び出し・BeginPlay/Tick・親やインターフェースのイベント（`Event`）・カスタムイベント・キー入力と Enhanced Input のイベント・コンポーネントとアクターとイベントディスパッチャーのイベント・Create Widget・Branch・Sequence・標準のマクロ・Self・Cast — [`AddGraphNode` のノードの種類](#addgraphnode-のノードの種類) を参照。各種類は自分の引数しか受け付けない。`Result` と artifact が `NodeId`・`AlreadyExisted`・`AdditionalNodes` を返す。対象は `GraphName` または `GraphGuid` で選ぶ。グラフの選び方・複数一致時の扱い・2 段階の受け入れ判定は表の下の注記を参照 |
 | `AddFunctionOverride` | 値を返す・出力引数を持つ・const の、親クラスかインターフェースの関数を、Override メニューと同じく関数グラフとして上書きする。グラフと、その入口・結果ノードの GUID を返す |
 | `DeleteGraphNode` | グラフノードを GUID 指定で削除（EntryNode・Tunnel は削除不可） |
-| `ConnectBlueprintPins` | Blueprint グラフの 2 ピンを接続 |
+| `ConnectBlueprintPins` | Blueprint グラフの 2 ピンを接続。⚠️ どちらかの端がコードを実行しうる関数の呼び出し、または Editor Utility の Blueprint の関数の呼び出しのときは、`BlueprintUnrestrictedNodePlace` も必要 — [コードを実行しうる関数の呼び出し](#コードを実行しうる関数の呼び出し) を参照 |
 | `DisconnectBlueprintPins` | ピン接続を切断 |
 | `ListBlueprintPins` | Blueprint グラフノードのピン一覧 |
-| `SetPinDefaultValue` | Blueprint グラフノードのピンにデフォルト値を設定（DefaultValue / DefaultObject / DefaultTextValue を型に応じて自動選択） |
+| `SetPinDefaultValue` | Blueprint グラフノードのピンにデフォルト値を設定（DefaultValue / DefaultObject / DefaultTextValue を型に応じて自動選択）。⚠️ ノードがコードを実行しうる関数の呼び出し、または Editor Utility の Blueprint の関数の呼び出しのときは、`BlueprintUnrestrictedNodePlace` も必要 — [コードを実行しうる関数の呼び出し](#コードを実行しうる関数の呼び出し) を参照 |
 | `GetPinDefaultValue` | Blueprint グラフノードのピンのデフォルト値を取得 |
 
 > **新規 — `AddGraphNode` に `NodeType: "Event"` を渡すと、親クラスまたは実装しているインターフェースのイベントを `FunctionName` で指定してオーバーライドできる**（例: `ReceiveDestroyed`、`ReceiveActorBeginOverlap`）。My Blueprint パネルの Override メニューでイベントノードを追加するのと同じ動作。`EventBeginPlay` と `EventTick` はこれまでどおり使える。1 つの Blueprint で同じイベントをオーバーライドできるのは 1 回だけで、オーバーライドが Blueprint 内のどこかにすでにあるときは、2 つ目を作らずに既存のノードを返す。戻り値・出力パラメータを持つ関数や const 関数はイベントノードにできないため、`AddFunctionOverride` を案内する `InvalidParams` で拒否する。親クラスにもインターフェースにも `BlueprintImplementableEvent` / `BlueprintNativeEvent` として宣言されていない名前も `InvalidParams` で拒否する。
@@ -1188,6 +1204,68 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 > ⚠️ **破壊的変更 — `ConnectBlueprintPins` / `DisconnectBlueprintPins` / `DeleteGraphNode` / `GetPinDefaultValue` / `ListBlueprintPins` / `SetPinDefaultValue` は、指定したノードやピンが存在しないとき `NotFound` を返すようになった**（従来は `ExecutionFailed`）。シナリオの `RetryCount` は `ExecutionFailed` と `PreconditionFailed` だけを再試行対象にしており、この変更より前は存在しない `NodeId` や `PinName` を指定した要求も再試行の対象になっていた（同じ要求を繰り返しても成功しようがないにもかかわらず）。
 >
 > `GetPinDefaultValue` にはさらに、この変更で修正した欠陥がある。`PinName` が対象ノードのどのピンにも一致しない場合の分岐がそもそも無く、見つからなかったピンをそのまま読みに行く未検査のアクセス（未定義動作になりうる）になっていた。現在は、ノードのどのピンにも一致しない `PinName` に対して、この表の他のコマンドと同じく `NotFound` を返す。
+
+#### `AddGraphNode` のノードの種類
+
+どの種類も、共通のキー `BlueprintPath`・`GraphName`・`GraphGuid`・`NodeType`・`NodeX`・`NodeY`・`SkipCompile` と、下の表でその種類に挙げたキーだけを受け付けます。置かれるのは、エディタの右クリックメニューで置くのと同じノードです。
+
+| NodeType | 固有のキー | 置くもの |
+|---|---|---|
+| `VariableGet` / `VariableSet` | `VarName` | メンバー変数の Get / Set |
+| `FunctionCall` | `FunctionName`、`FunctionClassName`（省略可） | 関数の呼び出し。`FunctionClassName`（`/Script/Engine.KismetSystemLibrary` のようなネイティブのクラスのパスで、読み込み済みのもの）を指定すれば、そのクラスの関数。省略すれば、対象の Blueprint、その親の Blueprint、その親のネイティブクラスの関数・カスタムイベントを名前で探す。カスタムイベントは Blueprint をコンパイルする前でも呼べる。他の Blueprint のクラスは受け付けない |
+| `EventBeginPlay` / `EventTick` | — | BeginPlay / Tick のイベント |
+| `Event` | `FunctionName` | 親クラスまたは実装しているインターフェースのイベントの上書き |
+| `CustomEvent` | `EventName`、`EventParameters`（省略可、16 個まで） | カスタムイベント。各パラメータは `Name`、`VarType`（`Boolean`・`Integer`・`Integer64`・`Float`・`String`・`Name`・`Text`・`Object`・`Struct` のいずれか）と、省略可の `SubCategoryObject`（クラスまたは構造体。読み込み済みのもの）・`IsArray` を持つオブジェクト。名前は Blueprint の関数・変数・イベントディスパッチャー・グラフと重なってはいけない |
+| `InputKey` | `Key`（例: `R`、`SpaceBar`）、`Modifiers`（省略可。`Ctrl`・`Shift`・`Alt`・`Cmd` から 4 個まで） | キー入力のイベント |
+| `EnhancedInputAction` | `InputActionPath` | Input Action アセットのイベント。アセットはオブジェクトパスで指定する（読み込み済みのもの）。Optional の統合が提供する — 下記参照 |
+| `ComponentBoundEvent` | `ComponentName`、`DelegateName` | コンポーネントまたはウィジェットの変数のイベント（ボタンの `OnClicked` など）。ウィジェットは変数になっている必要があり、なっていなければ拒否のメッセージが `SetWidgetAsVariable` を案内する。レベル Blueprint にはコンポーネントが無いので使えない。そちらでは `ActorBoundEvent` を使う |
+| `ActorBoundEvent` | `ActorIdentifier`、`DelegateName` | マップに置いたアクターのイベント。アクターはラベルかオブジェクトパスで指定する。レベル Blueprint 専用 |
+| `ActorReference` | `ActorIdentifier` | マップに置いたアクターへの参照。レベル Blueprint 専用 |
+| `BindEvent` / `AssignEvent` | `DelegateName`、`DelegateOwnerClass`（省略可。省略すると対象の Blueprint。読み込み済みのもの） | イベントディスパッチャーの Bind Event / Assign。`AssignEvent` は、エディタと同じく、シグネチャを合わせたカスタムイベントも作ってつなぐ。その `NodeId` は `AdditionalNodes` に入る。Blueprint が継承していないクラスのディスパッチャーを指定してもノードは置かれ、ディスパッチャーを持つオブジェクトを Target のピンにつなぐよう警告が付く |
+| `CreateWidget` | `WidgetClass` | ユーザーウィジェットのクラス（読み込み済みのもの）の Create Widget |
+| `Branch` | — | Branch |
+| `Sequence` | `OutputCount`（省略可。2〜32、既定 2） | その数の出力を持つ Sequence |
+| `Macro` | `MacroName` | エンジンの標準マクロライブラリのマクロ（`ForEachLoop` など） |
+| `Self` | — | Self の参照 |
+| `Cast` | `TargetClass`、`Pure`（省略可） | クラス（読み込み済みのもの）へのキャスト。`Pure: true` で、実行ピンの無いピュアなキャストを置く |
+
+- **応答。** `Result` と JSON の artifact は同じ項目を持ちます。`NodeId`、`AlreadyExisted`、`AdditionalNodes`（各要素は `Role`・`NodeType`・`NodeId` を持つ。ほかに何も作らなかったときは空の配列）、`TargetKind` / `ResolvedBlueprintPath`（[レベル Blueprint](#レベル-blueprint) を参照）と、伝えることがあるときは `Warnings` です。
+- **一度しか置かない種類。** `CustomEvent`・`EnhancedInputAction`・`ComponentBoundEvent`・`ActorBoundEvent`・`EventBeginPlay`・`EventTick`・`Event` は、2 つ目を置かずに、すでにあるノードを `AlreadyExisted: true` で返します。何も変えず、コンパイルもしません。Enhanced Input のアクションは、エンジンと同じく Blueprint 全体で探すので、同じアクションのノードが別のグラフにあればそれを返します。同名でパラメータの違う `CustomEvent` は、既存のパラメータを示す `InvalidParams` で断ります。`InputKey`・`Branch` などほかの種類は、エディタと同じく毎回新しいノードを置きます。
+- **クラスとアセットは読み込み済みであること。** `FunctionClassName`・`TargetClass`・`WidgetClass`・`DelegateOwnerClass`・`SubCategoryObject`・`InputActionPath` は、読み込み済みのオブジェクトの中からだけ探します。読み込まれていなければ `NotFound` で、読み込むよう（アセットを開くなど）案内します。コマンドが読み込むことはありません。例外はエンジンの標準マクロライブラリだけです。
+- **上限。** `EventParameters` が 16 個を超える、`OutputCount` が 2〜32 の外、`Modifiers` が 4 個を超えると `InvalidParams` です。
+- **World Partition。** World Partition のマップで、レベル Blueprint からアクターを参照する（`ActorReference`・`ActorBoundEvent`）と、エンジンがそのアクターを常にロードする扱いに変えます。`Warnings` がその旨を示します。
+- **`EnhancedInputAction`** は Optional の統合 `UAIPEditorEnhancedInput` が置き、`EnhancedInput` プラグインが必要です。統合がこの種類を登録していないあいだは `AbilityUnavailable` で断り、統合の名前を示して `UAIP.Core.ListIntegrations` を案内します。統合は読み込まれたが、この種類の登録が拒否された場合は、その旨を示し、エディタのログを確かめるよう案内します。この判定は使わないキーの検査より先に行うので、`InputActionPath` を渡しても答えは `AbilityUnavailable` です。`InputActionPath` は、`NodeType` によらず 512 文字以内の文字列でなければ `InvalidParams` です。この種類とキーは、統合が読み込まれているかどうかに関わらずスキーマに載っています。
+- **ノードの種類を提供するエディタのモジュールが読み込まれていない**とき（UMG のエディタモジュールが読み込まれていないときの `CreateWidget`）は、`AbilityUnavailable` で断り、何も変えません。
+
+> ⚠️ **破壊的変更 — `AddGraphNode`:**
+> - **`NodeType` が使わないキーは `InvalidParams` で断ります。** メッセージは、使わないキー（最初の 8 個）と、その種類が受け付けるキーを示します。以前は黙って無視していたので、たとえば `EventBeginPlay` に `FunctionName` を付けて送っていた呼び出しは失敗するようになります。そのキーを外してください。
+> - **`EventBeginPlay`・`EventTick`・`Event` は、すでにあるノードを返したときに `AlreadyExisted: true` を返します。**
+> - **`FunctionCall`:** 見つからない関数は `NotFound`（以前は `ExecutionFailed`）、読み込まれていないクラスを指す `FunctionClassName` は `NotFound`（以前はクラスを読み込んでいた）、空文字の `FunctionClassName` は `InvalidParams` です。Blueprint 自身の関数を呼ぶときはキーを省いてください。`/Script/` 以外のクラスは、その旨を示すメッセージで断ります。
+> - **`FunctionCall` は、コードを実行しうる関数と、Editor Utility の Blueprint でのあらゆる関数に `BlueprintUnrestrictedNodePlace` を要求します** — 次の節を参照。
+> - **Blueprint は、UAIP が書き込んでよい場所になければなりません。** `/Engine/` の Blueprint は `NotAllowed` で断ります。同じ扱いになるほかのコマンドは [レベル Blueprint](#レベル-blueprint) を参照。
+> - **配置は 1 回の Undo の単位になりました。** 続くコンパイルはその中に含みません。
+
+#### コードを実行しうる関数の呼び出し
+
+`FunctionCall` の `AddGraphNode`、`SetPinDefaultValue`、`ConnectBlueprintPins` は、次の場合に、自身の Capability に加えて DefaultDenied の `BlueprintUnrestrictedNodePlace` を要求します。無ければ `CapabilityNotAvailable`（安全ポリシーがこの Capability を明示的に拒否しているときは `PolicyViolation`）で断り、Capability の名前と理由を示します。何も変えません。
+
+- **コードを実行しうる関数。** コンソールコマンドの実行、URL やほかのアプリケーションの起動、エディタの終了、呼び出し側が選んだパスへのファイルの書き出し（画像・レンダーターゲット・録音した音声・JSON・PFM・トレース・glTF の書き出しと、ファイル・ディレクトリの作成・削除・コピー・移動）。既定で有効なプラグインの関数（トレースと glTF の書き出し）も含みます。エディタ専用・開発用・クック対象外のモジュールの関数はすべて該当し（Python の実行もこれに当たります）、モジュールを判別できない関数（Python で定義したクラスの関数など）も該当します。Quit Game は該当しません。エディタの中では PIE を閉じるだけだからです。
+- **Editor Utility の Blueprint での、あらゆる関数の呼び出し**（Print String も含む）。Editor Utility の Blueprint・Editor Utility Widget に加えて、親のクラスがエディタ専用のクラスである Blueprint（Editor Utility Task やツールメニューの項目など）も対象です。こうした Blueprint はエディタの中で実行されるためです。
+- **`SetPinDefaultValue` と `ConnectBlueprintPins` では**、対象のノード（接続ならどちらかの端）が、上のどれかに当たる関数の呼び出しのときです。関数を解決できないノードも要求します。関数を呼ばないノード（Branch など）は要求しません。
+
+判定は関数を解決した後に行うので、親のネイティブクラスにあるそうした関数を `FunctionClassName` を省いて名前で指定しても要求します。Open Level や Print String のような普段の関数と、Blueprint で定義した関数・カスタムイベントは、Editor Utility の Blueprint 以外では追加の Capability なしで置けます。この Capability が、コードを実行するすべての経路を塞ぐわけではありません。[Safety & Capabilities](safety.md#blueprintanimblueprint-編集) を参照してください。
+
+### ノードの検索と配置（2）
+
+| コマンド | 説明 |
+|---|---|
+| `FindGraphNodeActions` | Blueprint またはレベル Blueprint の 1 つのグラフについて、エディタの右クリックメニュー（コンテキストピンなしで、空のグラフで開いたメニュー）が出すアクションを検索。`Keyword` はメニュー名・カテゴリ・検索キーワードに、`Category` はカテゴリに、どちらも大文字・小文字を区別しない部分一致で当てる。候補はカテゴリとメニュー名の順に並べ、`MaxResults`（1〜200、既定 50）で切る。`TotalMatched` は一致した全件の数、`Truncated` は切り捨てがあったかを示す。各候補は `ActionId`・`Category`・`MenuName`・`NodeClass`・`ActionObjectPath`・`Placeable`（偽なら `NotPlaceableReason` も）・`RequiredCapabilities` を持つ。読み取り専用で、アセットを読み込まない。`EditorInspect` が必要 |
+| `AddGraphNodeByAction` | `FindGraphNodeActions` が同じグラフについて返した `ActionId` で、1 つのアクションのノードを置く — プラグインが追加するノードなど、`AddGraphNode` のどの種類にも無いノード向け。コードを実行するノードも含めて何でも置けるので、何を置くかに関わらず、`BlueprintGraphEdit` に加えて常に `BlueprintUnrestrictedNodePlace` が必要。`Result` と artifact が `NodeId`・`NodeClass`・`MenuName`・`ActionId`・`AlreadyExisted`・`AdditionalNodes`（`NodeType: Action`、`Role: SpawnedWithAction`）を返す。`NodeX` / `NodeY` と `SkipCompile` を取る |
+
+- **`ActionId`** は、`v1:` に小文字の 16 進 40 桁が続く形です。ほかの形の値は、検索する前に `InvalidParams` になります。グラフのどのアクションも持たない ID は `NotFound` です。アクションが変わると ID も変わるので、検索し直してください。複数のアクションに当たる ID は `InvalidParams` で、`AddGraphNode` の種類で置けるノードならそれを案内します。何にも一致しない検索はエラーではなく、空の `Candidates` と `TotalMatched: 0` で成功します。
+- **出てくる候補。** 何も読み込まずに見つかるものだけです。読み込まれていないアセットのアクションは出ません。アクターやコンポーネントへの束縛が要るアクションも出ません。それらは `ComponentBoundEvent` / `ActorBoundEvent` で置いてください。コンテキストピンには対応していません。置いた後に `ConnectBlueprintPins` でつないでください。
+- **配置。** 1 つのアクションで、右クリックメニューで選んだときと同じく 1 つのノードを置き、1 回の Undo の単位になります。アクションがほかのノードも置いたときは `AdditionalNodes` に入ります。アクションが Blueprint にすでにあるイベントなら、既存のノードを `AlreadyExisted: true` で返し、何も変えず、コンパイルもしません。編集を受け付けないグラフは `NotAllowed`、`/Engine/` の Blueprint も `NotAllowed` です。
+- **レベル Blueprint。** どちらのコマンドも開いているマップのパスを受け付けますが、レベル Blueprint を作りません。レベル Blueprint の無いマップは `NotFound` で、先に `AddGraphNode` などで何か置くよう案内します。PIE 中は、通常の Blueprint は検索できますが、レベル Blueprint はできません。
 
 ### コンポーネント — SCS（8）
 
@@ -1217,13 +1295,27 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `CompileBlueprint` | Blueprint をコンパイルし、CompileStatus + 構造化されたメッセージログを返す（AnimBlueprint・WidgetBlueprint は非対応） |
 | `GetBlueprintCompileStatus` | コンパイルを実行せずに Blueprint の現在のコンパイル状態を取得する |
 
+### レベル Blueprint
+
+`BlueprintPath` にマップのパッケージパスを渡すと — `/Game/Maps/L_Puzzle` でも `/Game/Maps/L_Puzzle.L_Puzzle` でもよい — そのマップのレベル Blueprint を対象にします。
+
+- **マップのパスを受け付けるコマンド**: `AddGraphNode`、`DeleteGraphNode`、`ConnectBlueprintPins`、`DisconnectBlueprintPins`、`ListBlueprintPins`、`SetPinDefaultValue`、`GetPinDefaultValue`、`AddBlueprintVariable`、`DeleteBlueprintVariable`、`SetBlueprintVariableDefault`、`AddFunctionOverride`、`CompileBlueprint`、`GetBlueprintCompileStatus`、`FindGraphNodeActions`、`AddGraphNodeByAction`。[コンポーネント — SCS](#コンポーネント--scs8) の 8 コマンドは、レベル Blueprint にコンポーネントが無いので、マップのパスを `InvalidParams` で断ります。そのほかの Blueprint のコマンドは、マップのパスに対してこれまでどおり失敗します。
+- **対象にできるマップ**: エディタで開いているマップと、その読み込み済みのサブレベル。開いていないマップは `PreconditionFailed` で断り、開くよう求めます。何も読み込まず、何も変えません。レベルインスタンスと、プレビューなど一時的なワールドのレベルは `InvalidParams` です。PIE 中はレベル Blueprint を、読み取りも含めて `NotAllowed` で断ります。通常の Blueprint の PIE 中の扱いは変わりません（拒否は `ExecutionFailed` のまま）。
+- **応答。** これらのコマンドは `Result`（artifact を書くコマンドでは artifact にも）に `TargetKind` を載せます。値は `Blueprint` または `LevelScriptBlueprint` です。レベル Blueprint では、`ResolvedBlueprintPath` が、マップのパスから解決したレベル Blueprint のオブジェクトパスです。これまで `Result` を返さなかったコマンドも、これらの項目を持つ `Result` を返すようになりました。
+- **レベル Blueprint の無いマップ。** レベル Blueprint を作るのは、何かを追加する 3 コマンド — `AddGraphNode`、`AddBlueprintVariable`、`AddFunctionOverride` — だけで、要求を断りうる検査をすべて通った後に作ります。作ったときの応答は、結果に関わらず `Result.Warnings` に警告を載せます。マップに未保存の変更ができたことと、エディタで要求を Undo すればレベル Blueprint も消えることを示します。エンジンは新しいレベル Blueprint に既定のイベントを置くので、新しいマップへの `EventBeginPlay` は `AlreadyExisted: true` を返します。レベル Blueprint を作った後に要求が断られるまれな場合は、エディタで Open Level Blueprint を押した後と同じく、空のレベル Blueprint が残ります。ほかのコマンドは作らずに `NotFound` を返し、メッセージが作るコマンド（`UAIP.Editor.Blueprint.AddGraphNode, UAIP.Editor.Blueprint.AddBlueprintVariable, UAIP.Editor.Blueprint.AddFunctionOverride`）を示します。マップに変更の印は付きません。レベル Blueprint がまだ無いあいだは、`GraphGuid` は `NotFound`、`FunctionClassName` の無い `FunctionCall` はクラスの指定を求める `NotFound`、`AddFunctionOverride` はイベントとして置かれる関数（`ReceiveBeginPlay` など）を `AddGraphNode` を案内する `InvalidParams` で断ります。
+- **コンパイル。** レベル Blueprint をコンパイルすると、エンジンがレベルスクリプトアクターを作り直します。配置のたびに、`SkipCompile` が `true` でなければコンパイルします。
+- **保存。** `SaveAsset` にマップのパスを渡して保存します。マップのパッケージ全体を書き込むので、UAIP の Blueprint 編集によらない未保存の変更がマップにあったかもしれないときは、応答の `Result.Warnings` に警告を載せたうえで保存します。別のマップに切り替える前に保存してください。
+- **`SkipCompile` の綴りはドメインで違います**: これらのグラフのコマンドは `SkipCompile`、`SetWidgetProperties` などの UMG の書き込みは `bSkipCompile` です。グラフのコマンドは、後からコンパイルが要るかを返しません。`GetBlueprintCompileStatus` で確かめてください。
+
+> ⚠️ **破壊的変更 — UAIP が書き込んでよい場所の外にある Blueprint への書き込みを、通常の Blueprint でも断るようになりました。** `AddGraphNode`、`DeleteGraphNode`、`ConnectBlueprintPins`、`DisconnectBlueprintPins`、`AddBlueprintVariable`、`DeleteBlueprintVariable`、`SetBlueprintVariableDefault`、`AddFunctionOverride` は、`SetPinDefaultValue` と `CompileBlueprint` がすでにそうだったように、`/Engine/` の Blueprint を `NotAllowed` で断ります。新しい `AddGraphNodeByAction` も同じです。`AddGraphNode`、`DeleteGraphNode` と変数のコマンドは、1 回の呼び出しを 1 回の Undo の単位として、取り消せるようにもなりました。
+
 ---
 
 ## UAIP.Editor.UMG
 
 Widget Blueprint 編集 — ツリー・変数・アニメーション・バインディング。
 
-### ネイティブ（22）
+### ネイティブ（24）
 
 | コマンド | 説明 |
 |---|---|
@@ -1238,6 +1330,8 @@ Widget Blueprint 編集 — ツリー・変数・アニメーション・バイ�
 | `ReparentWidgetBlueprint` | Widget Blueprint の親クラスを変更 |
 | `GetSlotProperties` | ウィジェットのスロットプロパティを取得（CPF フィルタ・最大 64 キー）。あわせて `PropertyWriteRequirements` マップを返し、各プロパティへの書き込みに何が必要か・どの入力形式で渡すかを示します |
 | `SetSlotProperties` | ウィジェットのスロットプロパティを設定（32 KiB 制限・UObject 参照は `/Game/` 以下のみ）。参照には `WidgetSlotReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要になり、これらの値はエンジンの括弧表記ではなく **JSON ドキュメント** で渡します — 書く前に取得系の `WriteInputForm` を確認してください。拒否された書き込みは undo エントリを残さず、アセットを dirty にもしません。成功した書き込みは Widget Blueprint をコンパイルし、実行時に作られるウィジェットへ変更が届きます。`bSkipCompile: true` を渡すと変更済みの印だけを付け（応答は `bRequiresFollowupCompile: true` になる）、複数の編集のあとに `CompileWidgetBlueprint` で 1 回コンパイルできます |
+| `GetWidgetProperties` | Widget Blueprint のウィジェット（ルートウィジェットを含む）のプロパティを UE のテキストエクスポート形式で読む。`PropertyNames` を省くと、編集可能で非推奨でないすべてのプロパティを artifact に載せる。`PropertyNames`（64 個まで）を渡すと、指定した値を `Result` にも載せる。どのプロパティにも一致しない名前、編集できない・非推奨のプロパティの名前は `InvalidParams`。artifact には `PropertyWriteRequirements` も載り、各プロパティの書き込みに何が要るかを示す。ほかのコマンドの担当なので `SetWidgetProperties` が断るプロパティも含む。秘密の値（パスワード欄のテキストを含む）は `***` になり、`MaskedPropertyNames` に載る。平文の値は `IncludeSecretValues` で求める — [シークレット値の読み取り](#reading-secret-values) を参照。PIE 中は断る。`EditorInspect` が必要 |
+| `SetWidgetProperties` | Widget Blueprint のウィジェット（ルートウィジェットを含む）のプロパティを、Designer の詳細パネルで変えるのと同じく設定する。`Properties` は、プロパティ名からその値の文字列への対応 — 64 プロパティ・値の合計 32 KiB まで。スカラーと単純な値の構造体は UE のテキストエクスポート形式、参照は完全修飾のオブジェクトパス、そのほかの構造体とコンテナは文字列に書いた JSON ドキュメント。すべてのプロパティを書くか、1 つも書かないかのどちらか。`bSkipCompile` が `true` でなければ、後で Widget Blueprint をコンパイルするので、次に作られるウィジェット（PIE を含む）に値が届く。`WidgetPropertyEdit` が必要で、参照には `PropertyReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` も要る — 下の注記を参照 |
 | `GetWidgets` | ウィジェットツリー構造を取得（JSON） |
 | `ListWidgetClasses` | 利用可能なウィジェットクラス一覧（最大 500 件） |
 | `CompileWidgetBlueprint` | Widget Blueprint をコンパイルしエラー / 警告を返す |
@@ -1249,6 +1343,18 @@ Widget Blueprint 編集 — ツリー・変数・アニメーション・バイ�
 | `AddPropertyBinding` | プロパティバインディングを追加（同一 WBP 内関数/変数のみ） |
 | `RemovePropertyBinding` | プロパティバインディングを削除 |
 | `ExtractWidgetToUserWidget` | ウィジェットサブツリーを新規 UserWidget として抽出 |
+
+> **新規 — `GetWidgetProperties` / `SetWidgetProperties` は、ウィジェットそのもののプロパティを読み書きします**（TextBlock の Text、SpinBox の Min / Max / Value、ComboBoxString の選択肢など）。Designer の詳細パネルと同じ操作です。ウィジェットの名前は先に `GetWidgets` で調べてください。
+>
+> - **`SetWidgetProperties` が返すもの。** `Result` と artifact は `AppliedPropertyNames`、`ChangedPropertyNames`、`PreviousValues`（書き込み前の値。秘密の値は `***`）、`MaskedPropertyNames`、`bRequiresFollowupCompile`、`Warnings` を持ちます。書き込んだ値は返さず、UAIP が残す記録の中では `Properties` 引数をマスクします。
+> - **コンパイル。** コンパイルが失敗しても書き込みは取り消しません。呼び出しは成功し、`Warnings` が失敗を伝え、`bRequiresFollowupCompile` が `true` になります。`bSkipCompile: true` のときは Widget Blueprint に変更済みの印を付けるだけで、`bRequiresFollowupCompile` は `true` になり、実行中のウィジェットに値が届くのはコンパイル（`CompileWidgetBlueprint`）の後です。Undo はエディタ上の値を 1 回で戻します。実行時に作られるウィジェットに戻した値が出るのは、次のコンパイルの後です。
+> - **すべてか、何もしないか。** 1 つでも書けないプロパティがあれば、どれも書かず、アセットの未保存の印も元に戻します。ウィジェットが宣言していない名前は `InvalidParams`（`'<name>' does not exist`）です。次のプロパティは `PolicyViolation` で断り、使うべきコマンドがあればその名前を示します: `Slot`（`UAIP.Editor.UMG.SetSlotProperties`）、変数フラグ `bIsVariable`（`UAIP.Editor.UMG.SetWidgetAsVariable`）、デリゲート（`UAIP.Editor.UMG.AddPropertyBinding`、`UAIP.Editor.UMG.RemovePropertyBinding`）、`Navigation` のようなインスタンス化されたサブオブジェクト（作ると値の代入ではなくオブジェクトの構造を変えるため）。そもそも書いてはいけないプロパティも `PolicyViolation` です。64 個を超えるプロパティ、32 KiB を超える値、空の `Properties` は `InvalidParams` です。
+> - **Capability。** 常に `WidgetPropertyEdit`。参照である値・参照を含む値には `PropertyReferenceEdit`（参照先は UAIP が書き込んでよいコンテンツに限る）。単純な値の集合に入らない構造体とコンテナには `PropertyStructuredEdit`。後の 2 つは書き込みの最中に各プロパティの型から決まるので、`RequiredCapabilities` には現れません。`GetWidgetProperties` の `PropertyWriteRequirements` がプロパティごとに示します。
+> - **パスワード欄。** パスワード欄の `IsPassword` を true から false にするには、そのテキストを平文で読むのと同じ許可 — 安全ポリシーの設定 `AllowSecretValueRead` と Capability `SecretValueRead` — が要り、無ければ `PolicyViolation` で断ります。欄を普通の欄に変えて読み戻せないようにするためです。
+> - **バインディング。** Designer でバインディングを設定したプロパティにも書き込みます。実行時にはバインディングが値を上書きすることを `Warnings` が伝えます。
+> - PIE 中（`NotAllowed`）と、`/Engine/` の Widget Blueprint（`NotAllowed`）は**断ります**。
+> - **`GetWidgetProperties`** は、`PropertyNames` を渡していないときに artifact を保存できなければ `ExecutionFailed` で失敗します。そのときは artifact が唯一の結果だからです。`PropertyNames` を渡していれば、呼び出しは成功して `ArtifactsNotSaved` を伝えます。`SetWidgetProperties` は artifact を保存できなくても、書き込みはすでに済んでいるので、`ArtifactsNotSaved` を付けて成功します。
+> - `SetAssetProperty` はウィジェットへの書き込みを断り、`SetWidgetProperties` を案内します — [UAIP.Editor.Property](#uaipeditorproperty) を参照。
 
 ### Toolset ブリッジ（13）🧩
 
@@ -3104,7 +3210,7 @@ ControlRig ヒエラルキー上の `ControlRigPhysics` コンポーネント型
 
 ## UAIP.Editor.EnhancedInput
 
-Enhanced Input アセット編集 — Input Action と Input Mapping Context。
+Enhanced Input アセット編集 — Input Action と Input Mapping Context。同じモジュールが `UAIP.Editor.Blueprint.AddGraphNode` のノードの種類 `EnhancedInputAction` も提供します。Input Action のイベントを Blueprint のグラフに置くものです — [`AddGraphNode` のノードの種類](#addgraphnode-のノードの種類) を参照。
 
 | コマンド | 説明 |
 |---|---|

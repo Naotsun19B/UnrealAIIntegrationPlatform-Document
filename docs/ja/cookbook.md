@@ -134,11 +134,18 @@ uaip_execute(
 }
 ```
 
-`AddGraphNode` は新しいノードの `NodeId` を成果物にだけ書き、ステップの `Data` には書きません。そのため `${AddGet.Data.NodeId}` というテンプレートでは後続のステップへ渡せません。次の 2 段階で確認します。
+`AddGraphNode` は新しいノードの `NodeId` をステップの `Data`（`Result`）に返し、JSON の成果物にも同じ項目が入ります。そのため同じシナリオの後続ステップは `${AddGet.Data.NodeId}` というテンプレートで受け取れます。ノードのピンを確認するには、`AddGet` の後にステップを足します。
 
-1. `AddGet` ステップの成果物から、新しいノードの `NodeId` を読み取る。
-2. 別の呼び出しでその値を渡す：
-   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<成果物から読み取った NodeId>"})`
+```json
+{ "StepName": "PinsOfGet", "CommandName": "UAIP.Editor.Blueprint.ListBlueprintPins",
+  "Params": {
+    "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
+    "NodeId":        "${AddGet.Data.NodeId}"
+  } }
+```
+
+シナリオの外では、`AddGraphNode` の呼び出しの `Result` から `NodeId` を読み取り、次の呼び出しへ渡します。
+`uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<AddGraphNode の Result の NodeId>"})`
 
 保存が完了したら、続けて AI に `CaptureGraphViewportImage` で Blueprint グラフを取得させ、配線が意図どおりになっているかを目視で確認してもらいます。構造化されたエラー取得つきの専用 `CompileBlueprint` コマンドは計画段階です。詳細は [ロードマップ → Blueprint Compile / コンパイルエラー取得](roadmap.md#blueprint-compile--コンパイルエラー取得) を参照してください。
 
