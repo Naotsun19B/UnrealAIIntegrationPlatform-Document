@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "max_entries": 10,
+  "exceptions": [
+    {
+      "kind": "prose-only-bridge",
+      "domain": "UAIP.Editor.UMG",
+      "heading": { "en": "Toolset bridges", "ja": "Toolset ブリッジ" },
+      "toolset_providers": ["Toolset.Editor.UMG"],
+      "reason": "The bridge commands are described in prose, without a table."
+    },
+    {
+      "kind": "prose-only-bridge",
+      "domain": "UAIP.Editor.Niagara",
+      "heading": { "en": "Toolset bridges", "ja": "Toolset ブリッジ" },
+      "toolset_providers": ["Toolset.Editor.Niagara"],
+      "reason": "The bridge commands are described in prose, without a table."
+    },
+    {
+      "kind": "prose-only-bridge",
+      "domain": "UAIP.Editor.Physics",
+      "heading": { "en": "Toolset bridges", "ja": "Toolset ブリッジ" },
+      "toolset_providers": ["Toolset.Editor.Physics"],
+      "reason": "The bridge commands are described in prose, without a table."
+    },
+    {
+      "kind": "prose-only-bridge",
+      "domain": "UAIP.Editor.Sequencer",
+      "heading": { "en": "Toolset bridges", "ja": "Toolset ブリッジ" },
+      "toolset_providers": ["Toolset.Editor.AnimationAssistant", "Toolset.Editor.SequencerAnimMixer"],
+      "reason": "The bridge commands are described in prose, without a table."
+    },
+    {
+      "kind": "prose-only-bridge",
+      "domain": "UAIP.Editor.ControlRig",
+      "heading": { "en": "Toolset bridges", "ja": "Toolset ブリッジ" },
+      "toolset_providers": ["Toolset.Editor.ControlRig", "Toolset.Editor.SequencerControlRig"],
+      "reason": "The bridge commands are described in prose, without a table."
+    },
+    {
+      "kind": "prose-only-bridge",
+      "domain": "UAIP.Editor.GAS",
+      "heading": { "en": "Toolset bridges", "ja": "Toolset ブリッジ" },
+      "toolset_providers": ["Toolset.Editor.GAS"],
+      "reason": "The bridge commands are described in prose, without a table."
+    },
+    {
+      "kind": "prose-only-bridge",
+      "domain": "UAIP.Runtime.Niagara",
+      "heading": { "en": "Toolset bridges", "ja": "Toolset ブリッジ" },
+      "toolset_providers": ["Toolset.Runtime.Niagara"],
+      "reason": "The bridge commands are described in prose, without a table."
+    },
+    {
+      "kind": "subset-heading",
+      "domain": "UAIP.Runtime.Observation",
+      "heading": { "en": "Game viewport UI and HUD", "ja": "ゲームビューポートの UI と HUD" },
+      "members": ["DumpGameViewportWidgets", "FindGameViewportWidgets", "DumpHUDState", "DumpGameViewportWidgetTexts"],
+      "reason": "The heading points at commands already listed in the table above."
+    },
+    {
+      "kind": "subset-heading",
+      "domain": "UAIP.Runtime.Observation",
+      "heading": { "en": "Subsystems", "ja": "Subsystem" },
+      "members": ["ListSubsystems", "DumpSubsystemState"],
+      "reason": "The heading points at commands already listed in the table above."
+    },
+    {
+      "kind": "subset-heading",
+      "domain": "UAIP.Runtime.Input",
+      "heading": { "en": "Game viewport UI input", "ja": "ゲームビューポートの UI 入力" },
+      "members": ["ClickGameViewportWidget", "PressGameViewportUIKey", "TypeGameViewportText"],
+      "reason": "The heading points at commands already listed in the table above."
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+#!/bin/bash
+# pre-commit: keeps the command counts in docs/{en,ja}/commands.md consistent.
+#
+# Runs check_command_counts.py against the INDEX (what this commit records), using
+# a snapshot of docs/scripts/ taken from the index so the version being committed
+# judges itself. Setup per clone: git config core.hooksPath .githooks
+# The merge path is covered by .githooks/pre-merge-commit.
+
+# Only the index location is inherited; pathspec modifiers change how git reads
+# the paths below, so they are dropped.
+unset GIT_LITERAL_PATHSPECS GIT_GLOB_PATHSPECS GIT_NOGLOB_PATHSPECS GIT_ICASE_PATHSPECS
+
+hint() {
+    echo "hint: fix either the summary table or the section listing so the counts agree." >&2
+    echo "hint: if you add an exception, update command_count_exceptions.json and the max_entries cap in the contract test." >&2
+}
+
+# Step 1: nothing to check unless a watched path is staged (no --diff-filter, so
+# deletions and renames of the scripts are checked too).
+if git diff --cached --quiet -- docs/en/commands.md docs/ja/commands.md docs/scripts/ .githooks/; then
+    exit 0
+fi
+
+# Resolve a Python that works from Git Bash on Windows.
+PY=()
+if command -v python >/dev/null 2>&1 && python -c "import sys" >/dev/null 2>&1; then
+    PY=(python)
+elif command -v py >/dev/null 2>&1 && py -3 -c "import sys" >/dev/null 2>&1; then
+    PY=(py -3)
+elif command -v python3 >/dev/null 2>&1 && python3 -c "import sys" >/dev/null 2>&1; then
+    PY=(python3)
+else
+    echo "pre-commit (docs): no usable Python found (tried python, py -3, python3)." >&2
+    exit 1
+fi
+export PYTHONDONTWRITEBYTECODE=1
+
+TMP="$(mktemp -d)" || { echo "pre-commit (docs): cannot create a temporary directory." >&2; exit 1; }
+trap 'rm -rf "$TMP"' EXIT
+
+# Step 2: write the index's docs/scripts/ into the temporary directory.
+git ls-files -z -- docs/scripts | git checkout-index -z --stdin --prefix="$TMP/"
+if [ "${PIPESTATUS[0]}" -ne 0 ] || [ "${PIPESTATUS[1]}" -ne 0 ]; then
+    echo "pre-commit (docs): failed to snapshot docs/scripts/ from the index." >&2
+    exit 1
+fi
+if [ ! -f "$TMP/docs/scripts/check_command_counts.py" ]; then
+    echo "pre-commit (docs): docs/scripts/check_command_counts.py is missing from the index; the check cannot run." >&2
+    echo "hint: restore the script (and its exception JSON / contract test) before committing." >&2
+    exit 1
+fi
+
+# Python needs a native path.
+if command -v cygpath >/dev/null 2>&1; then
+    WTMP="$(cygpath -m "$TMP")"
+else
+    WTMP="$TMP"
+fi
+
+# Step 3: contract test first when the checker itself (or the hooks) changed.
+if ! git diff --cached --quiet -- docs/scripts/ .githooks/; then
+    OUT="$("${PY[@]}" -I -B -m unittest discover -s "$WTMP/docs/scripts" -p "test_*.py" 2>&1)"
+    RC=$?
+    echo "$OUT" >&2
+    if [ "$RC" -ne 0 ]; then
+        echo "pre-commit (docs): the contract tests for check_command_counts.py failed." >&2
+        hint
+        exit 1
+    fi
+    N="$(echo "$OUT" | sed -n 's/^Ran \([0-9][0-9]*\) tests\{0,1\} .*/\1/p' | tail -n 1)"
+    if [ -z "$N" ] || [ "$N" -eq 0 ]; then
+        echo "pre-commit (docs): the contract tests ran 0 tests; a green run that checked nothing is not a pass." >&2
+        exit 1
+    fi
+fi
+
+# Step 4: the check itself (default mode = index).
+"${PY[@]}" -I -B "$WTMP/docs/scripts/check_command_counts.py"
+RC=$?
+if [ "$RC" -ne 0 ]; then
+    echo "pre-commit (docs): check_command_counts.py failed (exit $RC)." >&2
+    hint
+fi
+exit "$RC"
