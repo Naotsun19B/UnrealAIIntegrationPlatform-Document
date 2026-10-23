@@ -40,7 +40,9 @@ trap 'rm -rf "$TMP"' EXIT
 
 # Step 2: write the index's docs/scripts/ into the temporary directory.
 git ls-files -z -- docs/scripts | git checkout-index -z --stdin --prefix="$TMP/"
-if [ "${PIPESTATUS[0]}" -ne 0 ] || [ "${PIPESTATUS[1]}" -ne 0 ]; then
+# Copied at once: the first test below would overwrite PIPESTATUS before the second reads it.
+snapshot_status=("${PIPESTATUS[@]}")
+if [ "${snapshot_status[0]}" -ne 0 ] || [ "${snapshot_status[1]}" -ne 0 ]; then
     echo "pre-commit (docs): failed to snapshot docs/scripts/ from the index." >&2
     exit 1
 fi
