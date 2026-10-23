@@ -1152,11 +1152,6 @@ Read and write properties on actors, assets, Blueprint defaults, DataTable rows,
 
 Edit Blueprint variables, event graph nodes, and SCS components.
 
-### Asset creation (1)
-
-| Command | Description |
-|---|---|
-
 ### Variables & graph (11)
 
 | Command | Description |
@@ -1667,7 +1662,7 @@ Chaos Cloth Asset editing and `ChaosClothAssetToolset` bridge (UE 5.8, Experimen
 
 `GetClothAssetInfo` returns the Cloth Asset's `UDataflow` reference path — feed it to `UAIP.Editor.Dataflow.*` commands to edit Weight Map / simulation config node properties generically.
 
-### Toolset bridge
+### Toolset bridge (6)
 
 Mirror of the 6 `ChaosClothAssetToolset` functions. Provider: `Toolset.Editor.ChaosClothAsset.*`. Available only on UE 5.8+ with `ChaosClothAssetToolset` + `ToolsetRegistry` enabled.
 
@@ -2535,6 +2530,8 @@ StateTree editing.
 > **Note — the three class listings no longer hide the native struct hierarchy, and say what each class would take**: `GetAvailableTaskClasses`, `GetAvailableConditionClasses` and `GetAvailableEvaluatorClasses` used to run the native `FStateTree*Base` struct hierarchy through no policy at all, and ran the Blueprint class hierarchy through it only for `GetAvailableTaskClasses` — so a project's own struct-based task was listed exactly as freely as an engine-shipped one, and a Blueprint-backed condition or evaluator was listed without regard to where it came from either. All three now answer both hierarchies from the same policy the add commands validate against, report `Admission` per entry, and include classes that cannot be placed at all as `NotAddable` rather than dropping them. The two hierarchies are combined into one ordered, capped set — previously each hierarchy was capped independently, so a response could in principle carry up to twice the stated limit. A listing is a snapshot, not an authorization: capabilities and roles can change between the listing and the mutation, so each command re-evaluates on its own request.
 >
 > **⚠️ A schema class named at asset creation is gated too, engine-shipped ones included.** `CreateAsset`'s `FactoryParams.SchemaClass` used to be accepted on two conditions alone — it resolved, and it derived from `UStateTreeSchema` — with nothing asked about where the class came from. It now goes through the same origin rule as the node classes above, so a schema class from outside `/Script/StateTreeModule`, `/Script/AIModule` and `/Script/GameplayStateTreeModule` needs `StateTreeCustomTypeEdit`. That is not limited to a project's own classes: `/Script/MassAIBehavior`, `/Script/GameplayCameras`, `/Script/GameplayInteractionsModule`, `/Script/AvalancheTransition` and `/Script/UAFStateTree` all ship with the engine and all sit outside those three modules, so their schemas now require the capability; `/Script/GameplayStateTreeModule` schemas continue to need nothing. A class that is abstract, deprecated, superseded, or hidden from the editor's schema dropdown is refused whatever is held — previously only an abstract class was refused and a deprecated one was merely logged. The class is no longer loaded on demand either: one that is not already in memory is refused instead of being loaded in order to decide whether the caller was allowed to name it. A missing `StateTreeCustomTypeEdit` for a schema class is reported as `CapabilityNotAvailable`, naming the capability, the same as everywhere else — see [Capability-gated custom types](#capability-gated-custom-types). A structural refusal (abstract, deprecated, superseded, hidden, or not loaded) is `InvalidParams`.
+
+#### Parameters, bindings and compile (7)
 
 | Command | Description |
 |---|---|
@@ -3875,8 +3872,8 @@ Every command in this domain except `QuitGame`, `ListPlayWorlds` and the two CVa
 | `SetTimeScale` | Set the global time dilation of the active game world |
 | `QuitGame` | Request a graceful quit of the running game process (requires `RuntimeActorManipulation`). During PIE it stops the PIE session. In an editor where no game is running it answers `ExecutionFailed` and the editor stays open — `QuitGame` quits the running game, not the editor; use [`ShutdownEditor`](#uaipeditorworkspace) (`UAIP.Editor.Workspace.ShutdownEditor`) to close the editor. It used to answer `Success: true` without doing anything in that case |
 | `ExecuteConsoleCommand` | Execute a console command in the active game world (requires `RuntimeExecCommand`) |
-| 🆓 `GetConsoleVariable` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.GetConsoleVariable`. Value, type and help text of a console variable; sensitive names report as not found (requires `RuntimeCVarRead`) |
-| 🆓 `SearchConsoleVariables` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.SearchConsoleVariables`. Wildcard (`*`) search over registered console variables — `MaxResults` default 50, max 200; sensitive names are excluded |
+| `GetConsoleVariable` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.GetConsoleVariable`. Value, type and help text of a console variable; sensitive names report as not found (requires `RuntimeCVarRead`) |
+| `SearchConsoleVariables` | ⚠️ **Deprecated** — use `UAIP.Runtime.Engine.CVar.SearchConsoleVariables`. Wildcard (`*`) search over registered console variables — `MaxResults` default 50, max 200; sensitive names are excluded |
 | `ListPlayWorlds` | Every play world the engine currently holds — `PIEInstance`, `NetMode` (`Standalone` / `DedicatedServer` / `ListenServer` / `Client`), `MapName`, `bIsPrimaryPIEInstance` — plus `Count`. Returns an empty list rather than an error when nothing is playing, so it is safe to call before starting play, and it takes no parameters at all. What it reports is exactly what `TargetNetRole` / `TargetPIEInstance` accept. Requires no capability |
 
 > ⚠️ **Breaking change — `SetTimeScale`, `TeleportActor`, `PossessActor` and `ExecuteConsoleCommand` no longer act on the level open in the editor.** These four used to resolve their world without filtering by world type, so with no play session running they picked up the first world they found — **the level being edited** — and really did apply the change there. They no longer do: outside a play session they now fail and change nothing. The refusal also changed shape, from `ExecutionFailed` with `No active game world found.` to **`NotAllowed` with `PIE is not running.`** These four are addressed to a running game; to change the level being edited, use the matching `UAIP.Editor.*` commands. Update anything that pattern-matches the old error code or the old message text.
@@ -4548,7 +4545,7 @@ Observe the AI perception system of a running game: what one AI currently senses
 
 | Command | Description |
 |---|---|
-| `DumpAIPerceptionSenseConfigs` | The value of every property of every sense configuration on one AI's perception component, the configurations of a project's own sense classes included. The response carries `SenseCount` and `Truncated`; the values are in the artifact's `Senses[]` — see [Values in DumpAIPerceptionSenseConfigs](#values-in-dumpaiperceptionsenseconfigs). Not affected by whether the perception system is available. ⚠️ The artifact stays after `AIPerceptionConfigDump` is taken away — see [Safety & Capabilities](safety.md#runtime-ai-perception) |
+| 🆓 `DumpAIPerceptionSenseConfigs` | The value of every property of every sense configuration on one AI's perception component, the configurations of a project's own sense classes included. The response carries `SenseCount` and `Truncated`; the values are in the artifact's `Senses[]` — see [Values in DumpAIPerceptionSenseConfigs](#values-in-dumpaiperceptionsenseconfigs). Not affected by whether the perception system is available. ⚠️ The artifact stays after `AIPerceptionConfigDump` is taken away — see [Safety & Capabilities](safety.md#runtime-ai-perception) |
 
 #### Parameters
 
@@ -5245,7 +5242,7 @@ Observe the animation state of a character in a running game: which state each s
 
 | Command | Description |
 |---|---|
-| `DumpAnimInstanceVariables` | The value of every variable that the project's own anim instance classes declare, for the main instance and, unless `InstanceScope` is `Main`, the linked and post process instances, each with its own values. A variable carries its name, the class that declared it, its type and its value. **Project-owned** means the project's Anim Blueprints and C++ classes and the plugins under the project's `Plugins/` folder: variables declared by the engine, by plugins installed in the engine, and by a parent class that lives on the engine side are not dumped (so a project Anim Blueprint whose parent is an engine class does not show what that parent declares), and neither are node internals. An object reference is written as the path of what it refers to and never followed. Large values are cut: arrays at 32 elements, strings at 1024 characters, structs after one level. When the size budget runs out, variables or whole instances are left out with a marker saying so. `VariableNameContains` keeps the variables whose name contains the text. The response carries the first 50 variables of each instance; the artifact holds every variable the capture kept. ⚠️ **Granting the capability writes the strings and paths held in the variables into the artifact as they are** — see [Safety & Capabilities](safety.md#runtime-animation) |
+| 🆓 `DumpAnimInstanceVariables` | The value of every variable that the project's own anim instance classes declare, for the main instance and, unless `InstanceScope` is `Main`, the linked and post process instances, each with its own values. A variable carries its name, the class that declared it, its type and its value. **Project-owned** means the project's Anim Blueprints and C++ classes and the plugins under the project's `Plugins/` folder: variables declared by the engine, by plugins installed in the engine, and by a parent class that lives on the engine side are not dumped (so a project Anim Blueprint whose parent is an engine class does not show what that parent declares), and neither are node internals. An object reference is written as the path of what it refers to and never followed. Large values are cut: arrays at 32 elements, strings at 1024 characters, structs after one level. When the size budget runs out, variables or whole instances are left out with a marker saying so. `VariableNameContains` keeps the variables whose name contains the text. The response carries the first 50 variables of each instance; the artifact holds every variable the capture kept. ⚠️ **Granting the capability writes the strings and paths held in the variables into the artifact as they are** — see [Safety & Capabilities](safety.md#runtime-animation) |
 
 ### Motion Matching (1) 🧩 — requires `RuntimeInspect`
 

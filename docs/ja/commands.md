@@ -1151,11 +1151,6 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 Blueprint 変数・イベントグラフノード・SCS コンポーネントの編集。
 
-### アセット作成（1）
-
-| コマンド | 説明 |
-|---|---|
-
 ### 変数とグラフ（11）
 
 | コマンド | 説明 |
@@ -3784,8 +3779,8 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | `SetTimeScale` | アクティブなゲームワールドのグローバル時間スケールを設定 |
 | `QuitGame` | 実行中のゲームプロセスの正常終了をリクエスト（`RuntimeActorManipulation` 必要）。PIE 実行中は PIE セッションを停止します。ゲームを実行していないエディタでは `ExecutionFailed` を返し、エディタは閉じません — `QuitGame` が終了させるのは実行中のゲームであってエディタではありません。エディタを閉じるには [`ShutdownEditor`](#uaipeditorworkspace)（`UAIP.Editor.Workspace.ShutdownEditor`）を使ってください。この場合、以前は何もせずに `Success: true` を返していました |
 | `ExecuteConsoleCommand` | アクティブなゲームワールドでコンソールコマンドを実行（`RuntimeExecCommand` 必要） |
-| 🆓 `GetConsoleVariable` | ⚠️ **非推奨** — `UAIP.Runtime.Engine.CVar.GetConsoleVariable` を使用してください。コンソール変数の値・型・ヘルプテキストを取得。機微な名前は not found 扱い（`RuntimeCVarRead` 必要） |
-| 🆓 `SearchConsoleVariables` | ⚠️ **非推奨** — `UAIP.Runtime.Engine.CVar.SearchConsoleVariables` を使用してください。ワイルドカード（`*`）でコンソール変数を検索。`MaxResults` は既定 50・最大 200、機微な名前は除外 |
+| `GetConsoleVariable` | ⚠️ **非推奨** — `UAIP.Runtime.Engine.CVar.GetConsoleVariable` を使用してください。コンソール変数の値・型・ヘルプテキストを取得。機微な名前は not found 扱い（`RuntimeCVarRead` 必要） |
+| `SearchConsoleVariables` | ⚠️ **非推奨** — `UAIP.Runtime.Engine.CVar.SearchConsoleVariables` を使用してください。ワイルドカード（`*`）でコンソール変数を検索。`MaxResults` は既定 50・最大 200、機微な名前は除外 |
 | `ListPlayWorlds` | エンジンがいま保持しているプレイワールドをすべて返します — `PIEInstance`、`NetMode`（`Standalone` / `DedicatedServer` / `ListenServer` / `Client`）、`MapName`、`bIsPrimaryPIEInstance`、および `Count`。プレイしていないときもエラーではなく空のリストを返すため、プレイ開始前に呼んでも安全です。パラメータは一切取りません。ここで返る値がそのまま `TargetNetRole` / `TargetPIEInstance` に渡せます。Capability 不要 |
 
 > ⚠️ **破壊的変更 — `SetTimeScale` / `TeleportActor` / `PossessActor` / `ExecuteConsoleCommand` はエディタで開いているレベルに作用しなくなりました。** この 4 つは対象ワールドを世界種別で絞らずに解決していたため、プレイしていない状態では最初に見つかったワールド — つまり**編集中のレベル** — を掴み、実際にそこへ変更を適用していました。今後は適用されません。プレイセッションの外では失敗し、何も変更しません。拒否の形も変わり、`ExecutionFailed` ＋ `No active game world found.` から **`NotAllowed` ＋ `PIE is not running.`** になりました。この 4 つは実行中のゲームを対象とするコマンドです。編集中のレベルを変更したい場合は、対応する `UAIP.Editor.*` コマンドを使ってください。旧エラーコードや旧メッセージ文字列でパターンマッチしている箇所は更新が必要です。
@@ -4550,7 +4545,7 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 
 | コマンド | 説明 |
 |---|---|
-| `DumpAIPerceptionSenseConfigs` | 1 体の AI の感知コンポーネントにある感覚設定すべてについて、全プロパティの値を返します。プロジェクト独自の感覚クラスの設定も含みます。応答には `SenseCount` と `Truncated` が入り、値は artifact の `Senses[]` に入ります — [DumpAIPerceptionSenseConfigs の値](#dumpaiperceptionsenseconfigs-の値) を参照してください。感知システムが使えるかどうかの影響を受けません。⚠️ artifact は `AIPerceptionConfigDump` を外した後も残ります — [安全性と Capability](safety.md#runtime-ai-の感知) を参照してください |
+| 🆓 `DumpAIPerceptionSenseConfigs` | 1 体の AI の感知コンポーネントにある感覚設定すべてについて、全プロパティの値を返します。プロジェクト独自の感覚クラスの設定も含みます。応答には `SenseCount` と `Truncated` が入り、値は artifact の `Senses[]` に入ります — [DumpAIPerceptionSenseConfigs の値](#dumpaiperceptionsenseconfigs-の値) を参照してください。感知システムが使えるかどうかの影響を受けません。⚠️ artifact は `AIPerceptionConfigDump` を外した後も残ります — [安全性と Capability](safety.md#runtime-ai-の感知) を参照してください |
 
 #### パラメータ
 
@@ -5247,7 +5242,7 @@ Capability の付与方法は [安全性と Capability](safety.md#runtime-chaos-
 
 | コマンド | 説明 |
 |---|---|
-| `DumpAnimInstanceVariables` | プロジェクトが持つ AnimInstance クラスが宣言した変数の値を、本体と、`InstanceScope` が `Main` でなければ Linked・Post Process の AnimInstance について、それぞれ自分の値で返します。変数ごとに名前・宣言したクラス・型・値を返します。**プロジェクトが持つ**とは、プロジェクトの Anim Blueprint と C++ クラス、およびプロジェクトの `Plugins/` に入れたプラグインのものです。エンジン本体・エンジンに同梱されたプラグイン・エンジン側にある親クラスが宣言した変数は出ません（親がエンジン側のクラスであるプロジェクトの Anim Blueprint でも、親が宣言した変数は出ません）。ノードの内部構造も出しません。オブジェクト参照は参照先のパスで書き、辿りません。大きな値は切り詰めます: 配列は 32 要素、文字列は 1024 文字、構造体は 1 段まで展開します。サイズの予算を使い切ったときは、変数や AnimInstance ごと省き、省いたことを示す印を付けます。`VariableNameContains` は名前に指定の文字列を含む変数を残します。応答には AnimInstance ごとに先頭 50 個の変数が載り、成果物には残した変数がすべて入ります。⚠️ **この Capability を解禁すると、変数に入っている文字列やパスがそのまま成果物に出ます** — [安全性と Capability](safety.md#runtime-アニメーション) を参照してください |
+| 🆓 `DumpAnimInstanceVariables` | プロジェクトが持つ AnimInstance クラスが宣言した変数の値を、本体と、`InstanceScope` が `Main` でなければ Linked・Post Process の AnimInstance について、それぞれ自分の値で返します。変数ごとに名前・宣言したクラス・型・値を返します。**プロジェクトが持つ**とは、プロジェクトの Anim Blueprint と C++ クラス、およびプロジェクトの `Plugins/` に入れたプラグインのものです。エンジン本体・エンジンに同梱されたプラグイン・エンジン側にある親クラスが宣言した変数は出ません（親がエンジン側のクラスであるプロジェクトの Anim Blueprint でも、親が宣言した変数は出ません）。ノードの内部構造も出しません。オブジェクト参照は参照先のパスで書き、辿りません。大きな値は切り詰めます: 配列は 32 要素、文字列は 1024 文字、構造体は 1 段まで展開します。サイズの予算を使い切ったときは、変数や AnimInstance ごと省き、省いたことを示す印を付けます。`VariableNameContains` は名前に指定の文字列を含む変数を残します。応答には AnimInstance ごとに先頭 50 個の変数が載り、成果物には残した変数がすべて入ります。⚠️ **この Capability を解禁すると、変数に入っている文字列やパスがそのまま成果物に出ます** — [安全性と Capability](safety.md#runtime-アニメーション) を参照してください |
 
 ### Motion Matching（1）🧩 — `RuntimeInspect` が必要
 

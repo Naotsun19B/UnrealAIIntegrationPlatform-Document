@@ -181,6 +181,13 @@ The commands that inject input exist only in Pro (see [Excluded commands](#exclu
 | `UAIP.Runtime.AI.DumpAIPerceptionSystemState` | The state of the perception system of the world as a whole | |
 | `UAIP.Runtime.AI.ExplainSightPerception` | Why sight does or does not see a target, as 14 ordered steps | |
 | `UAIP.Runtime.AI.DumpAIPerceptionSenseConfigs` | The value of every property of every sense configuration on one AI's perception component | `AIPerceptionConfigDump` (needed in addition to `RuntimeInspect`) |
+| `UAIP.Runtime.AI.DumpBehaviorTreeState` | Everything the default observation may say about one actor's behavior tree | |
+| `UAIP.Runtime.AI.GetActiveBehaviorTreeNode` | The active node of one actor's behavior tree and the path from it to the root | |
+| `UAIP.Runtime.AI.ListBehaviorTreeAgents` | The actors of the play world that are running a behavior tree | |
+| `UAIP.Runtime.AI.GetBlackboardValues` | The value of every key of one actor's Blackboard | `BlackboardValueRead` (needed in addition to `RuntimeInspect`; DefaultDenied in the demo too) |
+| `UAIP.Runtime.AI.StartBehaviorTreeCapture` | Start recording how one actor's behavior tree changes over time | |
+| `UAIP.Runtime.AI.StopBehaviorTreeCapture` | Stop a behavior tree capture and return its final state | |
+| `UAIP.Runtime.AI.GetBehaviorTreeEventLog` | Read the entries of a behavior tree capture, oldest first | |
 
 ### `UAIP.Runtime.ChaosDestruction.*` (read-only subset)
 
@@ -303,6 +310,7 @@ The commands that inject input exist only in Pro (see [Excluded commands](#exclu
 | `UAIP.Editor.Level.ProjectScreenToWorld` | Cast a ray from screen coordinates into the world |
 | `UAIP.Editor.Level.ListActorComponents` | List every component of an actor placed in the level |
 | `UAIP.Editor.Level.GetActorComponentProperty` | Read a property of a placed actor's component |
+| `UAIP.Editor.Level.GetTransformGizmoSize` | Report the transform gizmo size settings and which one the gizmo in use reads |
 
 ### `UAIP.Editor.Property.*` (read-only subset)
 

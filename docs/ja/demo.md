@@ -181,6 +181,13 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Runtime.AI.DumpAIPerceptionSystemState` | ワールドの知覚システム全体の状態を返す | |
 | `UAIP.Runtime.AI.ExplainSightPerception` | 視覚が対象を捉える（捉えない）理由を、順序のある 14 段階で説明する | |
 | `UAIP.Runtime.AI.DumpAIPerceptionSenseConfigs` | 1 体の AI の知覚コンポーネントにある全 Sense 設定の、全プロパティの値を返す | `AIPerceptionConfigDump`（`RuntimeInspect` に加えて必要） |
+| `UAIP.Runtime.AI.DumpBehaviorTreeState` | 1 つのアクターの BehaviorTree の全体像を返す | |
+| `UAIP.Runtime.AI.GetActiveBehaviorTreeNode` | 1 つのアクターの BehaviorTree のアクティブなノードとルートまでの経路を返す | |
+| `UAIP.Runtime.AI.ListBehaviorTreeAgents` | プレイワールドで BehaviorTree を実行しているアクターを列挙する | |
+| `UAIP.Runtime.AI.GetBlackboardValues` | 1 つのアクターの Blackboard の全キーの値を返す | `BlackboardValueRead`（`RuntimeInspect` に加えて必要。デモ版でも DefaultDenied） |
+| `UAIP.Runtime.AI.StartBehaviorTreeCapture` | 1 つのアクターの BehaviorTree の時間変化の記録を開始する | |
+| `UAIP.Runtime.AI.StopBehaviorTreeCapture` | BehaviorTree の記録を止めて最終状態を返す | |
+| `UAIP.Runtime.AI.GetBehaviorTreeEventLog` | BehaviorTree の記録のエントリを古いものから読む | |
 
 ### `UAIP.Runtime.ChaosDestruction.*`（読み取り専用の一部）
 
@@ -303,6 +310,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.Level.ProjectScreenToWorld` | スクリーン座標からワールドへレイを飛ばす |
 | `UAIP.Editor.Level.ListActorComponents` | レベルに配置したアクターの全コンポーネントを返す |
 | `UAIP.Editor.Level.GetActorComponentProperty` | 配置したアクターのコンポーネントのプロパティを読み取る |
+| `UAIP.Editor.Level.GetTransformGizmoSize` | トランスフォームギズモの大きさの設定と、使用中のギズモがどれを読むかを返す |
 
 ### `UAIP.Editor.Property.*`（読み取り専用の一部）
 
