@@ -416,6 +416,19 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ---
 
+## 応答の共通キー — `Truncated`・`DataEntriesTruncated`・`ArtifactsNotSaved`
+
+一覧を返すコマンドの応答には、返した要素が全部かどうかを示す 2 つの真偽値が付きます。コマンドが artifact を保存できなかったときは、成功応答の `Result` にその理由が付きます。以下の定義は、v1.3.0 で追加された一覧コマンドのすべてに共通です。各コマンドの節は、この定義に従って、そのコマンドのキー名だけを説明します。
+
+- **`Truncated`** — 返した結果（`Data` と artifact を合わせたもの）の**外に**、まだ要素があるかを示します。続きのページがある場合と、取得時の上限で切った場合の、どちらでも `true` になります。ページ付きの一覧では、全ページの総数ではなく、そのページの外（続きのページ）を指します。`Data` と artifact に同じ値で書きます。一覧が複数あるコマンドでは、`<一覧名>Truncated` のように一覧ごとに付きます。
+- **`DataEntriesTruncated`** — `Data` に載せた要素が、artifact より少ないかを示します。`Data` にだけ上限を持つ一覧の `Data` にだけ付く bool で、artifact には付きません。`true` のときは、全件を artifact で読めます。一覧が複数あるコマンドでは、`<一覧名>DataEntriesTruncated` のように一覧ごとに付きます。`Data` と artifact で同じ上限の一覧（入れ子の内側の一覧など）には付きません。
+- **2 つの違い。** `Data` の上限だけで切った応答は、`DataEntriesTruncated: true`、`Truncated: false` です。全件が artifact に入っていて、応答の外には何も残っていないためです。`Truncated: true` は、artifact を読んでも要素が残っているときです。続きのページがあるか、取得時の上限で切っています。
+- **artifact の範囲。** artifact が持つのは、そのページ（ページ付きでなければスナップショット）の要素を、artifact 側の上限まで入れたものです。コマンド全体の全件とは限りません。全件かどうかは `Truncated` で判断してください。
+- **`ArtifactsNotSaved`** — 成功応答の `Result` に載る、artifact を保存できなかった理由の配列です。要素は `{ "Reason": "<理由>" }` で、理由は artifact の保存失敗の種類を表す文字列です。コマンドが保存を必須にしていない artifact（コマンドによっては唯一の結果）を保存できなかったときだけ付き、コマンドの成否は変えません。結果の代わりではないので、その artifact が唯一の結果だったコマンドでは、成功でも読める結果が無いことがあります。この名前は予約されており、コマンドが自分で `Result` に書くことはありません。[シナリオ](scenario.md) の `${Step.Data...}` からは参照できません。
+- **成功応答の中身。** 成功した応答は、結果を `Result` か `Artifacts` の少なくとも一方に載せます。本体が大きい結果は artifact で返します。失敗応答にも、理由や証拠の artifact が付くことがあります。成否はまず `ErrorCode` で判断してください。
+
+---
+
 ## UAIP.Core
 
 検索・ヘルスチェック・セッション管理などのシステムレベルコマンド。
@@ -434,6 +447,8 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `GetPendingInteractionStatus` | 保留中の対話 1 件の状態 — `State`・`Cause`・`ElapsedSeconds`・`Prompt`・`Reason`・`Result` — を、変化を待たずに報告する。対話（`DrawPCGSpline` などの対話型コマンド）を開始したときと同じ `SessionId` を明示的に指定する必要があり、未知・期限切れ・他セッション所有はすべて同じ `NotFound` として扱われる |
 | 🆓 `WaitForPendingInteraction` | 対話が `AwaitingUser` を離れるか、この呼び出し自身の `TimeoutSeconds` 上限（デフォルト 30、範囲 [1, 600]）に達するまでブロックする。タイムアウトしても対話自体には影響せず、人間の応答を待ち続ける。同じ対話を同時に監視できる呼び出しは最大 4 件までだが、2 件目以降には `[UAIP.Transport] AllowConcurrentPassiveWaits` が必要（[設定](config.md) 参照） |
 | 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックし、もう保有していないものは `CapabilityNotAvailable` で、運用者が `DeniedCapabilities` で明示的に拒否しているものは `PolicyViolation` で拒否する |
+
+> **`EndSession` — 成功時の `Result`。** 終了したセッションの `SessionId`（文字列）を返します。終了済みのセッションに呼んでも成功し、同じ形の `Result` を返します。
 
 ### 機微な値と伏せる場所
 
@@ -513,7 +528,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 > **`RestartEditor` と `GetRestartStatus` — `Success` の意味と、結果の確かめ方。** どちらも `EditorLifecycle` が必要です。`RestartEditor` の引数は省略可能な `SaveAll` だけです。省略すると、`DisableSave` が有効でない限り未保存の変更を先に保存し、有効なときは保存しません。`DisableSave` のときに `SaveAll: true` を明示すると `PolicyViolation` で拒否します。`Success` は要求を**受け付けた**ことを表します。`Data` には `AttemptId`・`State`（`Scheduled`）・`RestartScheduled: true`・`CloseDeadlineSeconds`・`ProcessId`（要求を受け付けたエディタのプロセス ID）が入ります。
 >
-> - **MCP Bridge 経由**では、受け付けた時点では応答を返しません。Bridge が結果が出るまで待ち、その間も AI クライアントへ進捗を送り続け、新しいエディタにつながったとき・再起動が見送られたとき（エディタが返した理由と対処をそのままエラーとして返す）・上限時間内に結果を確認できなかったときに応答します。待ちの上限は 2 段あります。エディタが閉じるまでは、エディタが示した期限に約 30 秒を足した時間（終了処理が始まったら、そこからさらに最大 60 秒）。閉じてから先は、Bridge のエディタ起動待ち（既定 120 秒）です。Bridge が「結果を確認できなかった」と返したときは、`GetRestartStatus` と `uaip_get_editor_status` で今の状態を確かめてください。
+> - **MCP Bridge 経由**では、受け付けた時点では応答を返しません。Bridge が結果が出るまで待ち、その間も AI クライアントへ進捗を送り続け、新しいエディタにつながったとき・再起動が見送られたとき（エディタが返した理由と対処をそのままエラーとして返す。この拒否応答の `Result` には受付時のエディタの応答が `AcceptedResponse` として入り、その `Artifacts` が拒否応答の `Artifacts` にもなります。受付時に添付された artifact の参照は、応答の最上位の `_inlined_artifacts` にも載ります）・上限時間内に結果を確認できなかったときに応答します。待ちの上限は 2 段あります。エディタが閉じるまでは、エディタが示した期限に約 30 秒を足した時間（終了処理が始まったら、そこからさらに最大 60 秒）。閉じてから先は、Bridge のエディタ起動待ち（既定 120 秒）です。Bridge が「結果を確認できなかった」と返したときは、`GetRestartStatus` と `uaip_get_editor_status` で今の状態を確かめてください。
 > - **それ以外の経路**（HTTP など）では、`Success` は受付だけを意味します。`AttemptId` を指定して `GetRestartStatus` を呼びます。省略すると最新の試行になります。答えるのは、要求を受け付けたエディタがまだ動いている間だけです。再起動した後のエディタは以前の試行を持たず、存在しない `AttemptId`、または保持の範囲（直近 8 件）から外れた `AttemptId` は `NotFound` になります。`NotFound` を含むすべての `GetRestartStatus` の応答に `ProcessId` が入るので、呼び出し側は、照会したエディタと後継のエディタを見分けられます。
 > - **`GetRestartStatus` の `Data`**: `AttemptId`・`State`・`RequestedAt`・`ElapsedSeconds`・`CloseDeadlineSeconds`・`ProcessId`。`State` は `Scheduled`、`CloseRetrying`（保存や読み込みで忙しく、閉じるのを再試行中）、`Declined`、`ExitStarted` のいずれかです。`Declined` の試行には、さらに `DeclineReason`・`DeclineDetail`・`Remedy`・`OutcomeErrorCode`（`ExecutionFailed`）・`OutcomeErrorMessage`・`RestoredDirtyPackageCount`・`LostDirtyPackageCount` が入ります。
 > - **受付前に断られる場合（保存も破棄もせず、何も変えない）**: ライティングビルド（`LightingBuildRunning`）・Interchange のインポート（`InterchangeActive`）・メインウィンドウの作り直し（`MainFrameRecreating`）の最中、またはモーダルダイアログが開いている間（`ModalWindowOpen`。人が操作する通常起動のときだけで、Bridge が起動する無人のエディタは対象外）は `PreconditionFailed` です。`Data` に `DeclineReason` と `Remedy` が入り、メッセージの末尾にも対処が付きます。エディタが既に終了処理に入っていれば `NotAllowed`。別の試行が進行中なら `Conflict`（`Data.AttemptId` が進行中の試行を示します。上の条件より先に判定します）。保存を指定して一部のパッケージが保存できなかったときは `ExecutionFailed`（`Data.FailedPackages` に一覧）で、再起動しません。
@@ -836,6 +851,8 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 > **Note**: ウィジェットを対象にするコマンドは、ウィジェットパスではなく `SnapshotUI` が返す `WidgetRef` を受け取ります。先に `SnapshotUI` を呼び、対象ウィジェットの `WidgetRef` を渡してください。
 >
+> **`OpenPasswordTestWindow` — 成功時の `Result`。** 開いたウィンドウのタイトル `WindowTitle`（`Password Test Window`）を返します。`SnapshotUI` の `WindowTitle` 引数と同じ綴りなので、後続のコマンドでそのウィンドウを指定できます。
+>
 > **`SelectMenuItem`** の必須パラメータは `MenuPath` の 1 つです。スラッシュ区切りのメニューラベルの並びで、例は `Edit/Project Settings...` です。
 >
 > - 先頭の要素はメニュー名です。2 番目以降の要素は、メニュー名か表示ラベルに、大文字小文字を無視して完全一致する必要があります。
@@ -1008,6 +1025,8 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 > `SaveAsset` が対象にするのは**ロード済みかつ未保存の変更を持つパッケージだけ**。未ロードのアセットは未保存の変更を持ちようがないため、ロードして書き戻すことはせず `Skipped`（`Reason: "NotLoaded"`）として返る。すでに保存済みのものも `Skipped`（`NotDirty`）になる。どちらもエラーではない。`/Engine/` と `/Script/` 配下はプロジェクト外へ影響するため `Failed`（`WriteForbidden`）として拒否されるが、呼び出し全体は失敗せず、他のアセットの保存はそのまま行われる。SafetyPolicy が `DisableSave=True` の場合のみ呼び出し全体が `PolicyViolation` になる。
 >
 > **`ApplyValidationFix` との関係**: バリデータが提供する修正が `FAutoSavingFixer` で包まれていても、UAIP 経由の適用では**ディスクへ書き込まれない**。エンジンの自動保存が人間の確認を求めるモーダルダイアログ経由であり、応答する人がいない非対話実行では成立しないため。この場合 `ApplyValidationFix` は `Applied: true` と `AssetSaved: false` を返すので、**`AssetSaved` が `false` なら `SaveAsset` で明示的に保存する**こと。
+>
+> **`CloseAsset` — 成功時の `Result`。** `AssetPath`（要求の `AssetPath`）と `ClosedEditorCount`（整数）を返します。`ClosedEditorCount` は、閉じる前に開いていたそのアセットのエディタの数です。`0` は、そのアセットのエディタが開いていなかった（何も閉じていない）ことを表し、このときも成功です。
 
 > **Note — `FactoryParams` で名指しするクラス自体が Capability を要求することがあります。** 一部のドメインは、ここで名指しされたクラスを、そのドメインの編集コマンドと同じポリシーで審査します — 現時点では StateTree の `FactoryParams.SchemaClass` と ControlRig の `FactoryParams.ParentClass` が該当します。Blueprint 自身の `FactoryParams.ParentClass`（省略可能、既定は `AActor`）と Anim Blueprint の `FactoryParams.TargetSkeleton`（必須）は**この対象ではなく**、`AssetCreate` 以外の Capability を要求しません。どちらもオンデマンドには読み込まれなくなりました。すでにメモリ上にないクラスは、呼び出し側がその名前を指定できるかを判定するためだけに読み込まれることなく、未解決として拒否されます。名指しされたクラスが要求する Capability をセッションが持っていない場合、`CreateAsset` は **`CapabilityNotAvailable`** を返し、不足している Capability 名はメッセージ本文に入ります — 他の経路と同じ扱いです。詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
 
@@ -2086,6 +2105,12 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 | `SetBehaviorTreeBlackboard` | BT アセットの参照 Blackboard を変更 |
 | `RequestBehaviorTreeAutoArrange` | 開いている BT エディタで AutoArrange パスを実行 |
 
+> **成功時の `Result`（BehaviorTree の編集 3 コマンド）。** 要求で渡した識別子をそのまま返します（正規化はしません）。**設定した値（`Value`）は載せません。**
+>
+> - `SetBehaviorTreeNodeProperty`: `AssetPath`、`NodeId`（書き込んだノードの GUID）、`PropertyName`。`FBlackboardKeySelector` への書き込みでも、汎用の書き込みでも同じです
+> - `RemoveBehaviorTreeNode`: `AssetPath`、`NodeId`、`Removed`（常に `true`）。主ノードでも、子ノード（Decorator / Service）でも同じです
+> - `RemoveBlackboardKey`: `BlackboardAssetPath`、`KeyName`、`Removed`（常に `true`）
+
 > **Note — このドメインは 3 か所で型を受理しており、Capability も 3 つあります**: 配置・操作されるノードのクラス、書き込まれるノードプロパティを宣言しているクラス、宣言・削除される Blackboard キー型のクラス、の 3 か所です。それぞれ従来から受け入れてきたモジュールの集合が異なり、その非対称は意図的なものです。
 >
 > - **`BehaviorTreeCustomTypeEdit`** — 型がこのドメインの出荷物の外から来た場合に必要です。ノードクラスなら `/Script/AIModule` または `/Script/AITestSuite`、ノードプロパティの宣言クラスなら `/Script/AIModule` または `/Script/Engine`、Blackboard キー型なら `/Script/AIModule` のみが「出荷物」です。プロジェクトのモジュール、プラグインのモジュール（`GameplayBehaviorSmartObjects` のようなエンジンプラグインを含む）、Blueprint 生成クラスはいずれも外側になります。3 か所で 1 つの名前を共有しているのは意図的で、「このドメインが出荷していない型を扱う」という 1 つの許可を表すためです。プロジェクト製の型がどの面から届くかは、その許可を与える運用者が別々に決めたい事柄ではありません。
@@ -2170,6 +2195,13 @@ EQS クエリ編集。`EnvironmentQueryEditor` プラグインが必要です。
 | `RemoveEQSTest` 🧩 | NodeId 指定で Test を削除 — その Test のクラスが要求する Capability が同じく必要です |
 | `SetEQSGeneratorProperty` 🧩 | Generator プロパティを設定（汎用 ImportText_Direct）— 書き込み対象 Generator のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
 | `SetEQSTestProperty` 🧩 | Test プロパティを設定（`param:<Name>` → `UAIDataProvider_QueryParams`）— 確認内容は上と同じ。`bTestEnabled` の切り替え（`PropertyName: "TestEnabled"`）も、そのフラグ自体はグラフノード側にあり Test インスタンス側にはないにもかかわらず、Test 自身のクラスによってゲートされるようになりました — この経路は従来まったくゲートされていませんでした。下の Note を参照してください |
+
+> **成功時の `Result`（EQS の編集 4 コマンド）。** 要求で渡した識別子をそのまま返します（正規化はしません）。**設定した値（`Value`）は載せません。**
+>
+> - `RemoveEQSGenerator`: `AssetPath`、`OptionId`（削除した Option の GUID）、`Removed`（常に `true`）
+> - `RemoveEQSTest`: `AssetPath`、`TestId`、`Removed`（常に `true`）
+> - `SetEQSGeneratorProperty`: `AssetPath`、`OptionId`、`PropertyName`
+> - `SetEQSTestProperty`: `AssetPath`、`TestId`、`PropertyName`（`TestEnabled` の切り替えでも同じ）
 
 > **Note — このドメインは 3 か所で型を受理しており、Capability は 2 つあります**: 配置・操作される Generator のクラス、配置・操作される Test のクラス、書き込まれるノードプロパティを宣言しているクラス、の 3 か所です。3 つの面はいずれも従来から `/Script/AIModule` という同じ 1 つのモジュールだけを受け入れてきました。
 >
@@ -2515,6 +2547,27 @@ StateTree 編集。
 | `AddPropertyBinding` | ソースノードのプロパティをターゲットノードのプロパティへバインド |
 | `RemovePropertyBinding` | ターゲットノードのプロパティバインディングを削除 |
 | `CompileStateTree` | StateTree をコンパイル（連続呼び出しにはアセット単位のレートリミット） |
+
+> **成功時の `Result`（StateTree の編集 18 コマンド）。** 次の 18 コマンドは、成功すると識別子と操作の種類を `Result` に返します。`AssetPath` は要求で渡したパスのままで、GUID は `8-4-4-4-12` 形式の文字列です。**設定した値（`Value` / `ParameterValue`）は載せません。**
+>
+> - `AddPropertyBinding`: `AssetPath`、`SourceNodeId`、`SourceProperty`、`TargetNodeId`、`TargetProperty`、`Added`（常に `true`）
+> - `AddStateTreeParameter`: `AssetPath`、`ParameterName`、`ParameterType`（型名）、`Added`（常に `true`）
+> - `CompileStateTree`: `AssetPath`、`Compiled`（常に `true`）
+> - `MoveState`: `AssetPath`、`StateId`、`NewParentStateId`、`AfterStateId`、`Moved`（常に `true`）。`NewParentStateId` と `AfterStateId` は、要求が有効な GUID ならその文字列で、省略・空・無効なら空文字（親は空ならルート、`AfterStateId` は空なら先頭）。キーは常に載ります
+> - `SetStateName`: `AssetPath`、`StateId`、`NewName`、`Renamed`（常に `true`）
+> - `SetStateNodeProperty`: `AssetPath`、`NodeId`、`PropertyName`、`Updated`（常に `true`）
+> - `SetStateTreeParameter`: `AssetPath`、`ParameterName`、`Updated`（常に `true`）
+> - `SetEnterConditionProperty`: `AssetPath`、`StateId`、`ConditionId`、`PropertyName`、`Updated`（常に `true`）
+> - `SetEvaluatorProperty`: `AssetPath`、`EvaluatorId`、`PropertyName`、`Updated`（常に `true`）
+> - `SetGlobalTaskProperty`: `AssetPath`、`TaskId`、`PropertyName`、`Updated`（常に `true`）
+> - `RemoveEvaluator`: `AssetPath`、`EvaluatorId`、`Removed`（常に `true`）
+> - `RemoveGlobalTask`: `AssetPath`、`TaskId`、`Removed`（常に `true`）
+> - `RemovePropertyBinding`: `AssetPath`、`TargetNodeId`、`TargetProperty`、`Removed`（常に `true`）
+> - `RemoveStateEnterCondition`: `AssetPath`、`StateId`、`ConditionId`、`Removed`（常に `true`）
+> - `RemoveState`: `AssetPath`、`StateId`、`Removed`（常に `true`）
+> - `RemoveStateTask`: `AssetPath`、`StateId`、`TaskId`、`Removed`（常に `true`）
+> - `RemoveStateTransition`: `AssetPath`、`StateId`、`TransitionId`、`Removed`（常に `true`）
+> - `RemoveStateTreeParameter`: `AssetPath`、`ParameterName`、`Removed`（常に `true`）
 
 ### Toolset ブリッジ（8 件）🧩
 
@@ -3960,6 +4013,8 @@ PIE / Standalone でのテスト実行。
 | 🆓 `AssertActorProperty` | アクタープロパティが期待値と一致することをアサート |
 | 🆓 `AssertWorldState` | 複数プロパティを 1 回でバッチアサート |
 
+> **`WaitSeconds` — 成功時の `Result`。** `WaitedSeconds`（数値）を返します。値は要求した秒数で、実際に経過した時間の実測値ではありません。
+
 ---
 
 ## UAIP.Runtime.GAS 🧩
@@ -4568,7 +4623,9 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 - **値が無い項目は省略し、`null` にはしません。** エンジンの「未設定」を表す番兵値（一度も設定されていない位置など）や、有限でない数値も同様です。このドメインで `null` になるのは `ExplainSightPerception` の `Diverged` だけです。
 - **一覧の並び順**は `Name`（大文字小文字を区別しない）、次に `Path` です。コンポーネントは所有者の名前、次に `ComponentPath` の順です。感覚設定は設定された順のままです。
 - **内側の一覧**（対象ごとの刺激、Actor ごとの感覚、他に見つかったコンポーネントなど）は最大 64 件で、`<Key>TotalCount` と `<Key>Truncated` が付きます。
-- **`<Key>Truncated` は `Max*` の上限で一覧が切られたことだけを表します。** `GetPerceivedActors` と `GetActorPerceivers` は、何も切られていなくても応答には先頭 50 件しか入れません。取得した全件は artifact に入ります。たとえば `ActorsTruncated: false` で `Actors[]` が 50 件、`ActorsTotalCount: 120` なら、件数と配列の長さを比べ、残りは artifact から読んでください。
+- **`<Key>Truncated` は、`Max*` の上限で一覧が切られたことを表します**（[応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の `Truncated`）。`Data` の件数の上限では `true` になりません。`<Key>Truncated` は `Data` と artifact に同じ値で付きます。
+- **`<Key>DataEntriesTruncated` は、`Data` が artifact より少ない件数を載せたことを表します。** `Data` にだけ付く bool で、外側の一覧に常に付きます: `TargetsDataEntriesTruncated`（`DumpAIPerceptionState`）・`ActorsDataEntriesTruncated`（`GetPerceivedActors`）・`PerceiversDataEntriesTruncated`（`GetActorPerceivers`）・`ComponentsDataEntriesTruncated`（`DumpAIPerceptionSystemState`）。`DumpAIPerceptionSenseConfigs` の一覧は 1 つだけなので、キーは一覧名の無い `DataEntriesTruncated` です。`GetPerceivedActors` と `GetActorPerceivers` は、何も切られていなくても `Data` には先頭 50 件しか入れないので、取得した件数が 50 を超えると `true` になります。`DumpAIPerceptionState`・`DumpAIPerceptionSystemState`・`DumpAIPerceptionSenseConfigs` の `Data` は一覧を持たず件数（`TargetCount`・`ComponentCount`・`SenseCount`）だけを載せるので、一覧が 1 件でもあれば `true` で、全件は artifact にあります。たとえば `ActorsTruncated: false`・`ActorsDataEntriesTruncated: true` で `Actors[]` が 50 件、`ActorsTotalCount: 120` なら、残りの 70 件は artifact から読んでください。`ActorsTruncated: true` なら、取得時の上限で切っているので、artifact にも残りはありません（`MaxActors` を上げて呼び直します）。
+- **内側の一覧**（対象ごとの刺激・Actor ごとの感覚・他に見つかったコンポーネントなど）は `Data` と artifact で同じ上限なので、`<Key>Truncated` だけが付き、`DataEntriesTruncated` は付きません。
 
 #### 刺激
 
@@ -4656,7 +4713,7 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 | オブジェクト・クラス・ソフト・ウィーク・レイジー・インターフェースの参照 | パスの文字列。空なら `"None"`。何も読み込みません |
 | デリゲートなど対応しない型 | `{"Unsupported": "<型>"}` |
 
-上限は感覚 64 個、感覚ごとに 64 KiB、合計 256 KiB です。自分の上限に達した感覚は収まった分を残して `Truncated: true` を返し、合計の上限を使い切った後の感覚は識別情報だけを持つ `Omitted: true` として書き出します。応答の `SenseCount` は書き出した感覚の数（`Omitted` のものを含む）で、`Truncated` はこれらの上限のどれかでダンプが切られたときに `true` です。
+上限は感覚 64 個、感覚ごとに 64 KiB、合計 256 KiB です。自分の上限に達した感覚は収まった分を残して `Truncated: true` を返し、合計の上限を使い切った後の感覚は識別情報だけを持つ `Omitted: true` として書き出します。応答の `SenseCount` は書き出した感覚の数（`Omitted` のものを含む）で、`Truncated` はこれらの上限のどれかでダンプが切られたときに `true` です。`Data` には感覚の一覧が入らず件数だけなので、`Data` にだけ付く `DataEntriesTruncated` は、感覚設定が 1 つでもあれば `true` です（全件は artifact の `Senses[]`）。`Truncated` は `Data` と artifact に同じ値で付きます。
 
 `DumpAIPerceptionState` も同じ設定を `Senses[]` に、より簡略な形で挙げます。エンジンが宣言したプロパティは値を示し（それを継承したプロジェクト独自の設定クラスでも同様）、プロジェクトが宣言したプロパティは `Name` と `Type` だけで `Value` キーを持ちません。その値は `DumpAIPerceptionSenseConfigs` で読んでください。
 
@@ -4774,6 +4831,13 @@ Blackboard キーに結び付いたノードでも、キーの型を確かめら
 | `IsSetNotDeterminable` | 未設定とゼロ値を区別できないキー型では `IsSet` が `null` |
 | `UserDefinedEnumNamesAreInternal` | Blueprint で定義した列挙型の列挙子の名前は内部名 |
 
+**一覧の切り詰めの印。** `ListBehaviorTreeAgents`・`DumpBehaviorTreeState`・`GetBlackboardValues`・`DescribeBehaviorTreeWithProjectCode` の外側の一覧（`Agents`・`Nodes`、Blackboard のキーの一覧）には、[応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の 2 つの印が付きます。
+
+- `AgentsTruncated`・`NodesTruncated`・`KeysTruncated` は、`MaxEntries` や取得時の絶対上限で一覧が切られたときだけ `true` です。`Data` の件数の上限（先頭 50 件）だけで切った場合は `false` で、`Data` と artifact に同じ値が付きます。`AgentsTotalCount`・`NodesTotalCount` などの総数の値は変わりません。
+- `AgentsDataEntriesTruncated`・`NodesDataEntriesTruncated`・`KeysDataEntriesTruncated` は `Data` にだけ付く bool で、`Data` が artifact より少ない件数を載せたとき `true` です。全件は artifact にあります。
+- インスタンスの内側の一覧（`ActivePath`・`AuxNodes`・`ParallelTasks`）は `Data` と artifact で上限が同じなので、`Truncated` だけで `DataEntriesTruncated` は付きません。構造体キーの `Truncated` と文字列キーの `Truncated`（切ったときだけ付く）は、それぞれの値を切ったことを表し、意味は変わりません。
+- `GetBehaviorTreeEventLog` は `Truncated` を使いません。`EntriesReturned`（読み取りが返したエントリ数。`Data` と artifact で同じ値）と `EntriesInData`（その文書が載せたエントリ数。`Data` は先頭 50 件まで）の差で、`Data` が全件を載せたかが分かります。続きは `NextSequence` から読みます。
+
 記録のエントリは `Sequence`・フレーム・時刻と `Kind` を持ちます。`Kind` は `Baseline`・`TreeStarted`・`TreeStopped`・`Paused`・`Resumed`・`InstancePushed`・`InstancePopped`・`ActiveNodeChanged`・`ActiveNodeTypeChanged`・`AuxNodeActivated`・`AuxNodeDeactivated`・`ParallelTaskChanged`・`RestartPendingChanged`・`AbortPendingChanged` です。`Baseline` エントリはツリーの状態を `Snapshot` に持ち、開始時ではなく開始後の最初の読み取りで取った `Baseline` には `Deferred` が付きます。
 
 #### エラー
@@ -4858,6 +4922,13 @@ AI が実行している StateTree を観測するコマンド群です。どの
 | `TreeNotStarted` | ツリーが開始されていないので、報告する状態が無い |
 
 StateTree の記録中は、プロセス内のすべての StateTree のデバッグ通知にわずかな処理が入るため、その分 StateTree の実行が遅れ、複数のスレッドで動く StateTree の通知は 1 本ずつ順に処理されます。必要なものだけを記録し、終わったら止めてください。
+
+**一覧の切り詰めの印。** `DumpStateTreeState` の `Frames`、`ListStateTreeComponents` の `Components`、`DumpStateTreeInstanceData` の `Blocks` には、[応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の 2 つの印が付きます。
+
+- `FramesTruncated`・`ComponentsTruncated`・`BlocksTruncated` は、`MaxEntries` や取得時の絶対上限で一覧が切られたときだけ `true` です。`Data` の件数の上限（先頭 50 件）だけで切った場合は `false` で、`Data` と artifact に同じ値が付きます。`<一覧名>TotalCount` の値は変わりません。
+- `FramesDataEntriesTruncated`・`ComponentsDataEntriesTruncated`・`BlocksDataEntriesTruncated` は `Data` にだけ付く bool で、`Data` が artifact より少ない件数を載せたとき `true` です。全件は artifact にあります。
+- `GetActiveStateTreeState` の `Frames` は `Data` と artifact が同じ内容なので `FramesDataEntriesTruncated` は付きません。内側の一覧（`ActiveStates`・`Tasks`・`PendingTransitions`）とブロックの中の `Truncated` も同様で、意味は変わりません。
+- `GetStateTreeEventLog` は `TotalCount` と `Truncated` の代わりに `EntriesReturned`（読み取りが返したエントリ数。`Data` と artifact で同じ値）と `EntriesInData`（その文書が載せたエントリ数。`Data` は先頭 50 件まで）を返し、`Truncated` も `DataEntriesTruncated` も付けません。`EntriesInData` が `EntriesReturned` より小さければ、`Data` は全件を載せていません。続きは `NextSequence` から読みます。
 
 #### エラー
 
@@ -5000,6 +5071,12 @@ Capability の付与方法は [安全性と Capability](safety.md#runtime-chaos-
 
 成功した呼び出しは必ず JSON の成果物を 1 つ保存し、失敗した呼び出しは何も保存しません。
 
+**一覧の切り詰めの印。** 外側の一覧の `Truncated` と `DataEntriesTruncated` は [応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の定義に従います。`ListGeometryCollections` は、一覧が 1 つなので、`GeometryCollections` の印を一覧名の無い `Truncated` と `DataEntriesTruncated` で返します。`DumpGeometryCollectionState` と `CaptureGeometryCollectionStrain` の `Pieces` は `PiecesTruncated` と `PiecesDataEntriesTruncated`、`DumpChaosFieldState` の 4 つの一覧（永続・構築時・直近 tick の一時コマンドと Field System アクター）は一覧ごとに `<一覧名>Truncated` と `<一覧名>DataEntriesTruncated` を返します。
+
+- `Truncated` は、続きのページがあるとき（`NextStartIndex` と同時に `true`）、または `DumpChaosFieldState` でスナップショットを取るときの上限で総数より少なく取ったときだけ `true` です。`Data` の件数の上限（先頭 50 件）だけで切った場合は `false` で、`Data` と artifact に同じ値が付きます。`TotalCount` は全ページの総数のままで、`Truncated` の判定には使いません。そのため最後のページで総数がページの件数より大きくても `false` です。
+- `DataEntriesTruncated` は `Data` にだけ付く bool で、`Data` が artifact より少ない件数を載せたとき `true` です。全件（そのページ）は artifact にあります。
+- 内側の一覧（`Indices`・`Children`・`OtherComponents`・`Levels`・`InitializationFields`・`ConstructionCommands`・`Coverage`）は `Data` と artifact で同じ上限なので、`DataEntriesTruncated` は付きません。`GetDestructionEventLog` の `EventsReturned` と `EventsInData` は変わりません。
+
 ---
 
 ## UAIP.Runtime.Navigation
@@ -5119,7 +5196,15 @@ Capability の付与方法は [安全性と Capability](safety.md#runtime-chaos-
 
 #### 出力の上限
 
-`Data` に直接載せる一覧は先頭 50 件までで、捕捉した全件は artifact に入ります。件数の上限は、タイルとモディファイアが 4096、経路の点が 4096、ナビゲーションデータが 64、登録済みの範囲が 256、エリアが 64 です。上限で切った一覧は `TotalCount` を併記し、内側の配列は 64 件で切って `Truncated` を付けます。1 回の要求の作業量にも上限があります: 処理するポリゴン数（`MaxPolygons`）と探索ノード数（8192。`RuntimeNavigationExtendedSearch` があれば 65534）です。
+`Data` に直接載せる一覧は先頭 50 件までで、捕捉した全件は artifact に入ります。件数の上限は、タイルとモディファイアが 4096、経路の点が 4096、ナビゲーションデータが 64、登録済みの範囲が 256、エリアが 64 です。上限で切った一覧は `TotalCount` を併記し、内側の配列は 64 件で切って `Truncated` を付けます。
+
+外側の一覧（`NavData`・`NavigationBounds`・`Areas`（`DumpNavigationSystemState`）、`Tiles`（`DumpNavMeshTiles`）、`Modifiers`（`QueryNavModifiers`）、`PathPoints`（`FindPath`・`GetPathFollowingState`））の `Truncated` と `DataEntriesTruncated` は [応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の定義に従います。
+
+- `Truncated` は、取得時の上限（`MaxTiles`・`MaxModifiers`・`MaxPathPoints` や上に挙げた件数の上限）を超えて総数がそれより多いときだけ `true` で、`Data` と artifact に同じ値が付きます。`Data` の先頭 50 件だけで切った場合は `false` です。取得した件数と総数が同じなら `false` です。
+- `DataEntriesTruncated` は `Data` にだけ付く bool で、`Data` が artifact より少ない件数を載せたとき `true` です。`DumpNavigationSystemState` の `NavigationBounds` は `Data` に総数（`TotalCount`）だけを載せ、配列は artifact にあるので、1 件でもあれば `true` です。
+- `AreaBreakdown` や `RebuildNavigation` の `NavData` など、`Data` と artifact が同じ内容の一覧と、artifact にだけある `Corridor` には、`DataEntriesTruncated` は付きません。
+
+1 回の要求の作業量にも上限があります: 処理するポリゴン数（`MaxPolygons`）と探索ノード数（8192。`RuntimeNavigationExtendedSearch` があれば 65534）です。
 
 #### エラー
 
@@ -5134,7 +5219,7 @@ Capability の付与方法は [安全性と Capability](safety.md#runtime-chaos-
 | `PreconditionFailed` | `RebuildNavigation` のみ: ワールドにナビゲーションシステムが無い、生成する先が無い、またはゲーム中に再生成するナビゲーションデータが無いため、何も予約しなかった |
 | `Timeout` | `WaitForNavigationBuild` のみ: `TimeoutSeconds` 以内に静止しなかった。結果と artifact は返す |
 
-観測コマンドは、成功した呼び出しごとにちょうど 1 つの JSON artifact を保存し、失敗した呼び出しは何も保存しません。
+観測コマンドは、成功した呼び出しごとにちょうど 1 つの JSON artifact を保存し、失敗した呼び出しは何も保存しません。`RebuildNavigation` と `WaitForNavigationBuild` は、artifact の保存そのものに失敗しても成功のままですが、保存はできたのに保存先のパスを解決できなかったときは `ExecutionFailed` で終わり、このとき `Result` は付けません（`WaitForNavigationBuild` は待機がタイムアウトした後でも同じで、`Timeout` ではなく `ExecutionFailed` になります）。
 
 ---
 
@@ -5212,6 +5297,12 @@ AnimInstance を持たないメッシュはエラーではありません。ア�
 
 一覧は `MaxEntries`（既定は 256、カーブは 1024、最大 4096）で、決まった順序で打ち切り、`TotalCount` を報告します。入れ子の一覧（ブレンドスペースのサンプル、モンタージュのスロット、メッシュの候補）は 64 件までです。1 つのコマンドの量は全体でも上限があり、達したらそれより後ろの一覧は読まずに「省いた」と示すため、空だった一覧と省いた一覧を区別できます。応答には各一覧の先頭 50 件が載り、成果物には上限の範囲で読めたものがすべて入ります。
 
+一覧は、`Truncated`・`IncludedCount`・`TotalCount`・`Entries` などを持つオブジェクトとして各節に入ります（応答の直下のキーではありません）。`Truncated` と `DataEntriesTruncated` は [応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の定義に従います。
+
+- `Truncated` は、`MaxEntries` などの取得時の上限で落とした要素があるときだけ `true` で、`Data` と成果物に同じ値が付きます。応答の先頭 50 件だけで切った場合は `false` です。
+- `DataEntriesTruncated` は `Data` にだけ付く bool で、応答の先頭 50 件が成果物より少ないとき `true` です。成果物には付きません。セクション直下の一覧（ステートマシン・プレイヤー・ブレンドスペースノード・レイヤードブレンド・モンタージュ・カーブ・変数など）に付きます。
+- 内側の一覧（`StateWeights`・`ActiveTransitions`・サンプル・スロットなど）、`Candidates`、`Limitations` は応答と成果物で上限が同じなので、`DataEntriesTruncated` は付きません。
+
 #### Linked Anim Layer と Post Process
 
 既定では、本体・Linked・Post Process のすべての AnimInstance を、本体を先頭にして返します。Linked のカーブは本体の複製なので繰り返しません。Post Process のカーブも、本体があるあいだは繰り返しません。Linked のモンタージュは、本体のモンタージュのデータを使う設定のときは繰り返しません。変数はすべての AnimInstance について、それぞれ自分の値を返します。Linked Anim Layer を差し替えた直後の 1 回は、再生位置に 1 フレーム古い値が混じることがあります。
@@ -5251,7 +5342,7 @@ AnimInstance を持たないメッシュはエラーではありません。ア�
 | コマンド | 説明 |
 |---|---|
 | 🆓 `GetNetDriverState` | 対象ワールドの NetDriver を返します。プレイワールド選択子以外のパラメータはありません。`Availability.State` は `Available`・`Connecting`（クライアントが参加中。`Reason: PendingNetGame`）・`Unavailable`（`Reason: NoNetDriver`: ワールドにゲーム用の NetDriver が無い）のいずれかで、`Available` のときは `Reason` を省きます。`RunAsDedicated` と `HasGameViewport` は、ワールドがどんな種類のプロセスで動いているかを示します。`NetDrivers[]` の各項目には、`NetDriverName`・`NetDriverDefinition`・`IsServer`・`ReplicationSystem`（`Generic` / `Iris`）・`ConnectionCount`・`LoggedInConnectionCount`・`MaxClientRate`・`MaxInternetClientRate`・`MaxNetTickRate`・`NetServerMaxTickRate`・`ConnectionTimeoutSeconds`・コネクション全体の `Totals`（`InBytesPerSecond`・`OutBytesPerSecond`・`InPacketsPerSecond`・`OutPacketsPerSecond`、毎秒のパケット数で重み付けした `InLossRatioWeighted` / `OutLossRatioWeighted`、最も悪いコネクションの `InLossRatioMax` / `OutLossRatioMax`、合計に含めた統計の準備ができたコネクションの数 `StatsReadyConnectionCount`）・`MaxPlayers` / `MaxSpectators`（ゲームセッションを持つサーバーのときだけ。それ以外は省きます）・NetDriver の `PacketSimulation` 設定・`EmulationModifiedByUAIP`（`SetNetworkEmulation` がこの NetDriver かそのコネクションの元の設定を保存しているか）・`EmulationDisabledByConfig`（NetDriver が設定でエミュレーションを無視するか）が入ります。ゲーム用の NetDriver が無いワールドも成功で、ほかの NetDriver は並び、理由を `Availability` で示します。応答と成果物は同じ内容です |
-| 🆓 `ListNetConnections` | 1 つの NetDriver（`NetDriverName`、既定 `GameNetDriver`）のコネクションを、ページ単位（`StartIndex`、`MaxEntries`）で返します。各項目には、`ConnectionIndex`・`Direction`（`ToClient` / `ToServer`）・`ConnectionState`・`ClientLoginState`・`LoggedIn`・`PlayerController`・`PlayerState`・`ConnectedSeconds`・`LastReceiveAgeSeconds`・`StatsReady`・`RttMs`・`RawPingMs`・`PlayerPingMs`・`JitterMs`・`InLossRatio`・`OutLossRatio`・`InLossRatioAvg`・`OutLossRatioAvg`・`InBytesPerSecond`・`OutBytesPerSecond`・`InPacketsPerSecond`・`OutPacketsPerSecond`・累計の `InTotalBytes`・`OutTotalBytes`・`InTotalPackets`・`OutTotalPackets`・`InTotalPacketsLost`・`OutTotalPacketsLost`・`CurrentNetSpeedBytesPerSecond`・`QueuedBits`・`IsNetReady`・`OpenChannelCount`・`ActorChannelCount`・コネクションに実際に効いている `PacketSimulation`・`AddressKind`（`Loopback`・`Private`・`Public`、アドレスが 4 バイトでも 16 バイトでもないときは `Unknown`）が入ります。生の IP アドレスとポートである `RemoteAddress` は、`IncludeRemoteAddress` が `true` のときだけ書きます。`StatsReady` が false のあいだは、往復時間・ジッター・4 つの損失率・4 つの毎秒の値が `null` です。`RttMs` は直近の統計期間の平均で、次の期間が終わるまでは前の値を保ちます。累計のカウンターはエンジン内で 32 ビット整数のため、長いセッションでは一周することがあります。成果物には、ページ全体と `TotalCount`・`ReturnedCount`、残りがあるあいだは `NextStartIndex` が入ります。応答には同じ項目とページの先頭 50 件のコネクションが入り、ページにそれより多く入っているときは `Truncated: true` です。ゲーム用の NetDriver が無いワールドでは、`NetDriverName` を省いたときは空の一覧で成功し、理由を `Availability` で示します |
+| 🆓 `ListNetConnections` | 1 つの NetDriver（`NetDriverName`、既定 `GameNetDriver`）のコネクションを、ページ単位（`StartIndex`、`MaxEntries`）で返します。各項目には、`ConnectionIndex`・`Direction`（`ToClient` / `ToServer`）・`ConnectionState`・`ClientLoginState`・`LoggedIn`・`PlayerController`・`PlayerState`・`ConnectedSeconds`・`LastReceiveAgeSeconds`・`StatsReady`・`RttMs`・`RawPingMs`・`PlayerPingMs`・`JitterMs`・`InLossRatio`・`OutLossRatio`・`InLossRatioAvg`・`OutLossRatioAvg`・`InBytesPerSecond`・`OutBytesPerSecond`・`InPacketsPerSecond`・`OutPacketsPerSecond`・累計の `InTotalBytes`・`OutTotalBytes`・`InTotalPackets`・`OutTotalPackets`・`InTotalPacketsLost`・`OutTotalPacketsLost`・`CurrentNetSpeedBytesPerSecond`・`QueuedBits`・`IsNetReady`・`OpenChannelCount`・`ActorChannelCount`・コネクションに実際に効いている `PacketSimulation`・`AddressKind`（`Loopback`・`Private`・`Public`、アドレスが 4 バイトでも 16 バイトでもないときは `Unknown`）が入ります。生の IP アドレスとポートである `RemoteAddress` は、`IncludeRemoteAddress` が `true` のときだけ書きます。`StatsReady` が false のあいだは、往復時間・ジッター・4 つの損失率・4 つの毎秒の値が `null` です。`RttMs` は直近の統計期間の平均で、次の期間が終わるまでは前の値を保ちます。累計のカウンターはエンジン内で 32 ビット整数のため、長いセッションでは一周することがあります。成果物には、ページ全体と `TotalCount`・`ReturnedCount`、残りがあるあいだは `NextStartIndex` が入ります。応答には同じ項目とページの先頭 50 件のコネクションが入り、ページにそれより多く入っているときは `DataEntriesTruncated: true`（`Data` にだけ付く bool。完全なページは成果物にあります）です。`Truncated` は、このページの後ろにコネクションが残っている（`NextStartIndex` が付く）ときだけ `true` で、`Data` と成果物に同じ値が付きます（[応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved)）。全ページの総数 `TotalCount` は判定に使わないので、最後のページでは `false` です。ゲーム用の NetDriver が無いワールドでは、`NetDriverName` を省いたときは空の一覧で成功し、理由を `Availability` で示します |
 | 🆓 `DumpActorReplication` | 1 つのアクター（`ActorIdentifier`）のレプリケーション設定と、その送信についてサーバーが把握している状態を返します。`Actor` には `Name`・`Path`・`Class` が入ります。`Replication` には `Replicates`・`LocalRole`・`RemoteRole`・`NetOwner`・`HasOwningConnection`・`NetDormancy`・`NetUpdateFrequency`・`MinNetUpdateFrequency`・`NetCullDistance`（二乗ではなく距離そのもの）・`NetPriority`・`AlwaysRelevant`・`OnlyRelevantToOwner`・`IsNetStartupActor`・`ReplicateMovement` が入ります。`Properties[]` にアクターの、`Components[]` にレプリケートされる各コンポーネントの、レプリケートされるプロパティが並び、それぞれ `Name`・`Type`・`DeclaredBy`・`ArrayDim`・`DeclaredCondition`（`COND_` を除いた条件名）・`DeclaredRepNotifyCondition`（`OnChanged` / `Always`）・`RepNotifyFunction`（無いときは `null`）・`PushBased` を持ちます。サーバーでは、`Connections[]` がコネクションごとに、アクターチャンネルが開いているか（`ActorChannelOpen`）、見つかった変更をまだ送っていないか（`HasUnsentComparedChanges`）、アクター自身のどのプロパティが非アクティブか（`InactiveProperties`。エンジンが評価するまでは `null`）、直前の更新が空だったか（`LastUpdateEmpty`）を示し、`NetworkObjectInfo` に `NextUpdateTime`・`LastNetReplicateTime`・`PendingNetUpdate`・`DormantConnectionCount` が入ります。`Connections` と `NetworkObjectInfo` は、クライアント、Iris、NetDriver の無いワールド（理由は `Availability`）では `null` です。`HasUnsentComparedChanges: false` は、クライアントが同期していることを意味しません。ライフタイムプロパティに登録されていないレプリケート対象のプロパティは `DeclaredCondition: null` で、応答に `Limitations: PropertyMissingFromLifetimeProps` が付きます。`MaxProperties` はアクターとコンポーネントのプロパティを合わせた件数を、`MaxConnections` はコネクションの件数を制限し、切った一覧は `PropertiesTruncated` / `TotalPropertyCount` または `ConnectionsTruncated` / `TotalConnectionCount` を報告します。ページングはありません。応答と成果物は同じ内容です |
 
 ### プロパティの値の観測（2）— `RuntimeInspect` と `RuntimeReplicatedPropertyValueRead` が必要

@@ -2,7 +2,7 @@
 
 # Artifacts
 
-Every UAIP command returns **artifacts** — output files such as PNG screenshots, JSON state dumps, logs, and reports. Artifacts allow the AI to verify editor state without asking the user.
+A successful UAIP command response carries its result in `Result`, in **artifacts**, or in both. Artifacts are output files such as PNG screenshots, JSON state dumps, logs, and reports; they carry results too large for the response body and allow the AI to verify editor state without asking the user. A failed response can also carry artifacts that hold the reason or evidence, so judge success by `ErrorCode` first. When a command could not save an artifact it does not require, `Result.ArtifactsNotSaved` (an array of `Reason`) says why. A command whose only result was that artifact can succeed without any readable result.
 
 ---
 
