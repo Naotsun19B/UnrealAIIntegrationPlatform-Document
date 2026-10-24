@@ -425,6 +425,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 - **2 つの違い。** `Data` の上限だけで切った応答は、`DataEntriesTruncated: true`、`Truncated: false` です。全件が artifact に入っていて、応答の外には何も残っていないためです。`Truncated: true` は、artifact を読んでも要素が残っているときです。続きのページがあるか、取得時の上限で切っています。
 - **artifact の範囲。** artifact が持つのは、そのページ（ページ付きでなければスナップショット）の要素を、artifact 側の上限まで入れたものです。コマンド全体の全件とは限りません。全件かどうかは `Truncated` で判断してください。
 - **`ArtifactsNotSaved`** — 成功応答の `Result` に載る、artifact を保存できなかった理由の配列です。要素は `{ "Reason": "<理由>" }` で、理由は artifact の保存失敗の種類を表す文字列です。コマンドが保存を必須にしていない artifact（コマンドによっては唯一の結果）を保存できなかったときだけ付き、コマンドの成否は変えません。結果の代わりではないので、その artifact が唯一の結果だったコマンドでは、成功でも読める結果が無いことがあります。この名前は予約されており、コマンドが自分で `Result` に書くことはありません。[シナリオ](scenario.md) の `${Step.Data...}` からは参照できません。
+- **`Warnings`** — 成功応答の `Result` に載る、呼び出し側への注意書きです（コンパイルを行わなかった、など）。通常は文字列の配列です。例外は Runtime Insights のコマンドで、要素が `{ "Code": "<コード>", "Message": "<本文>" }` のオブジェクトです（[トレース制御](#トレース制御8) を参照）。キー名は同じなので、読む前に要素の型を確かめてください。
 - **成功応答の中身。** 成功した応答は、結果を `Result` か `Artifacts` の少なくとも一方に載せます。本体が大きい結果は artifact で返します。失敗応答にも、理由や証拠の artifact が付くことがあります。成否はまず `ErrorCode` で判断してください。
 
 ---
@@ -4468,6 +4469,8 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 | `AddTraceBookmark` | 採取中のトレースへ時点マーカー（`Text`）を書き込みます。ブックマークチャネルが無効な場合（何も採取していない時点を含む）は何も書き込まず、`Written: false` で成功します。テキストは解析済みトレースからログテキストと同じポリシーで読み出されるため、`AllowLogDump` が false のときは `PolicyViolation` で拒否します。テキスト中の絶対パスは可搬なプレースホルダに置換されます |
 | `BeginTraceRegion` | 採取中のトレースに名前付き区間（`Name`、省略可の `Category`）を開き、それを閉じるための `RegionId` を返します。区間は名前ではなく id で対応付けるため、入れ子の区間や同名の区間も区別されます。区間チャネルが無効でも `RegionId` は返り（`Written: false`）、閉じ方は同じです。開いたままの区間はトレース停止時とモジュール終了時に自動で閉じられます。`AddTraceBookmark` と同じく `AllowLogDump` でゲートされます |
 | `EndTraceRegion` | `BeginTraceRegion` が開いた区間を `RegionId` で閉じます（開いている区間を指さない id は `NotFound`。自動クローズ済みの id を含む）。`DurationSeconds` はプロセス内で計測するため、区間チャネルが無効で何も書き込まれていなくても報告されます。自身はテキストを持たないため、ログダンプポリシーで拒否されることはありません |
+
+**ここでの `Warnings` の形。** トレース系コマンド（および Insights の解析コマンド）の `Warnings` は、要素が `{ "Code": "<コード>", "Message": "<本文>" }` のオブジェクトです（例: `ChannelNotRestoredAfterResume`）。`Warnings` が文字列の配列である他の多くのコマンドとは形が異なります（[応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) を参照）。判定には `Message` の文面ではなく `Code` を使ってください。
 
 ---
 
