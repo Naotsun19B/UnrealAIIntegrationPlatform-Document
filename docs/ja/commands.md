@@ -720,9 +720,9 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 |---|---|
 | 🆓 `CaptureActiveWindowImage` | アクティブな最上位ウィンドウのスクリーンショット（PNG Artifact）。エディタがフォアグラウンドである必要はない — アクティブなウィンドウがない場合はメインウィンドウを撮影し、どちらを撮ったかを `Result.CapturedWindow`（`"ActiveWindow"` / `"MainWindow"`）で返す。フォールバックはメインウィンドウにしか届かないため、フローティングのアセットエディタやモーダルダイアログは `CaptureEditorTabImage` を使う。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
 | 🆓 `CaptureEditorTabImage` | 指定エディタタブのウィジェット領域のスクリーンショット。Slate レイアウト識別子で指定するため、`DumpEditorState` が返す `ActiveTabId` をそのまま渡せる。エディタが背面でも動作する。⚠️ 撮影前に対象タブを前面へ出すため（背面のタブは描画されておらず空の画像になる）、それを収めた外側のエディタのタブ（たとえばブループリントエディタが手前にあるときのレベルエディタのタブ）ごと前に出る。**ユーザーに見えているタブが切り替わり**、タブが点滅する。エディタの OS ウィンドウは他のアプリの前には出さない。タブを前に出したときは、描かれるのを最長 2 秒待ってから撮る。すでに前にあるタブはすぐ撮る。それでも描かれないときは、文がユーザーにタブを前に出してもらうよう案内する。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
-| 🆓 `CaptureGraphViewportImage` | SGraphEditor ビューポートのスクリーンショット。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
+| 🆓 `CaptureGraphViewportImage` | SGraphEditor ビューポートのスクリーンショット。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） （`TabId` は、開いているアセットの `/` で始まる完全なアセットパス〔レベル Blueprint のパスを含む〕も受け付け、完全一致で照合する） |
 | 🆓 `DumpEditorState` | アクティブタブ・開いているアセット・ウィンドウサイズ等（JSON）。あわせてプレイセッションの状態を `IsPIERunning` / `IsPIEPaused` / `IsSimulatingInEditor` の 3 つの真偽値で返す。編集系コマンドの多くはセッション実行中に拒否され、その間に取ったワールドのダンプはエディタワールドではなくプレイワールドを表すため、変更を加える前にここを読む。3 つとも常に存在するので「何も再生されていない」と「報告されていない」を区別できる。`MainWindowSize` は最初の最上位ウィンドウの大きさで、メインフレームとは限らない。メインフレームそのものは `MainWindowState` で読む。`MainWindowState` は `State`（`Normal` / `Minimized` / `Maximized` / `Hidden` / `NoWindow`。一度も表示されていないウィンドウは `Hidden`）・`Size` と `RestoredSize`（どちらも `Width` と `Height` を持つオブジェクト。ウィンドウが無いときは 0）・`CaptureBlocker`（キャプチャが撮れるときは `None`、そうでなければキャプチャが拒否される[`Reason`](#キャプチャが断られるとき)）を持つ。このコマンドは読み取りだけで同期はしないので、キャプチャや `SetEditorWindowState` なら自動で直る食い違いでも、`CaptureBlocker` が `WindowSizeMismatch` になりうる。`MainWindowState` には `SizeCheck`（`NotQueryable` / `Minimized` / `Matched` / `Mismatched`）・`SizeMismatched`（bool または null）・`OsClientSize` と `SlateSize`（どちらも `Width` / `Height`。`SizeCheck` が `Matched` / `Mismatched` 以外のときは null）もある。ルートには `WindowMessageRecording` がある: `RecordingEnabled`・`RecordingActive`・`RecordingStatus`（`Disabled` / `NotRegistered` / `WaitingForMessages` / `Recording`）・`TotalRecordedCount`・`Capacity`（64。優先でないウィンドウが共有するリングの容量）・`PriorityWindowCapacity`（64。優先ウィンドウ 1 つあたり）・`MaxPriorityWindowCount`（8）・`PriorityMessageCount`・`SharedMessageCount`（この 2 つの合計が `RecentMessages` の件数）・`RecentMessages`（古い順。1 件は `Kind`・`WindowHandle`・`IsPriorityWindow`・`SizeType`・`MessageSize`・`MessageSizeMeaning`・`WindowPosFlags`・`ClientStateAtArrival`・`TimeSeconds`・`SequenceNumber`）。Slate の通常のウィンドウ（メインウィンドウ、別ウィンドウになったフローティングタブやアセットエディタ、モーダルダイアログ）のメッセージは優先として扱われ、ウィンドウごとに専用のリングで直近 64 件を保持する（最大 8 ウィンドウ。9 つ目が送ってきたら、最後のメッセージが最も古いウィンドウが記録ごと外れる）。数百件のメッセージを送る通知トーストやメニューは優先ウィンドウではないため、これらを押し出さない。それ以外のウィンドウのメッセージも、共有の 1 つのリング（直近 64 件）に記録される。一覧は合計で最大 576 件になりうる。どちらの記録かは `IsPriorityWindow` で分かる。`MessageSizeMeaning` は `MessageSize` が何の大きさかを示す: `ClientArea`（`WM_SIZE`）・`WholeWindow`（`WM_WINDOWPOSCHANGED`。クライアント領域ではなくウィンドウ全体なので、`ClientArea` とそのまま比べない）・`ProposedWholeWindow`（`WM_NCCALCSIZE`）。メッセージが大きさを持たなかったときは `MessageSize` が null、`WM_SIZE` 以外では `SizeType` が null、OS にウィンドウの状態を問い合わせられなかったときは `ClientStateAtArrival` が null になる。記録の有無は [`RecordWindowMessages`](config.md#uaipruntimeobservation--ウィンドウサイズメッセージの記録と-hud-描画統計) で切り替える |
-| 🆓 `DumpSelectionState` | 現在の選択状態（JSON）。`SelectedActors` / `SelectedObjects` は常に返る。`TabId` が開いているグラフエディタタブを指す場合に限り `SelectedNodes`（ノードごとに `NodeId` / `NodeClass` / `NodeTitle` / `Position`）も返る — 解決方法は `CaptureGraphViewportImage` の `TabId` と同じ（Slate タブへの完全一致、続いて開いているアセットの名前への大小文字を区別しない部分一致。`/` を含むコンテンツブラウザ形式のパスは `InvalidParams` で拒否される）。`TabId` がどのタブにも一致しない場合は `SelectedNodes` を空にして成功させるのではなく `NotFound` を返す。`TabId` を省略した場合の挙動は変更なし — `SelectedNodes` は空のままで、アクター/オブジェクトの選択は従来どおり返る |
+| 🆓 `DumpSelectionState` | 現在の選択状態（JSON）。`SelectedActors` / `SelectedObjects` は常に返る。`TabId` が開いているグラフエディタタブを指す場合に限り `SelectedNodes`（ノードごとに `NodeId` / `NodeClass` / `NodeTitle` / `Position`）も返る — 解決方法は `CaptureGraphViewportImage` の `TabId` と同じ（Slate タブへの完全一致、続いて開いているアセットの名前への大小文字を区別しない部分一致。`/` で始まる値は開いているアセットの完全なアセットパス〔レベル Blueprint のパスを含む〕で、完全一致で照合される。それ以外の値は `/` を含められない）。`TabId` がどのタブにも一致しない場合は `SelectedNodes` を空にして成功させるのではなく `NotFound` を返す。`TabId` を省略した場合の挙動は変更なし — `SelectedNodes` は空のままで、アクター/オブジェクトの選択は従来どおり返る |
 | 🆓 `DumpOpenTabs` | 開いているアセットエディタタブ一覧（JSON） |
 | 🆓 `DumpOutputLog` | バッファリングされた Output Log（テキスト Artifact、行数・フィルタ対応） |
 | 🆓 `DumpMessageLog` | Message Log エントリ（カテゴリフィルタ付き JSON Artifact） |
@@ -731,7 +731,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | 🆓 `InspectContextMenu` | 指定対象のコンテキストメニュー項目（実行はしない） |
 | 🆓 `ObserveWidget` | ウィジェットの Visibility / Enabled / Hovered / Focused 状態を時系列サンプリング |
 | 🆓 `GetLogCategories` | 登録済みエンジンログカテゴリ名の一覧（任意でサブストリングフィルタ対応） |
-| 🆓 `ListGraphNodes` | 指定タブのグラフエディタ内の全ノードを列挙 — `NodeId`（GUID）・`NodeClass`・`NodeTitle`・`Position`。`UEdGraph` ベースのエディタ全般で動作 |
+| 🆓 `ListGraphNodes` | 指定タブのグラフエディタ内の全ノードを列挙 — `NodeId`（GUID）・`NodeClass`・`NodeTitle`・`Position`。`UEdGraph` ベースのエディタ全般で動作。`TabId` にはアセット名か、`/` で始まるアセットのフルパス（完全一致）を指定できる |
 | 🆓 `CaptureViewportImageAnnotated` | ワールド座標ラベル付きビューポート画像のキャプチャ（`ViewportAnnotationCapture` 必要）。ビューポートを持つウィンドウが描かれない状態（たとえば最小化）のときは、古いフレームを返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
 
 ### キャプチャが断られるとき
@@ -964,7 +964,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 |---|---|
 | `OpenAsset` | 指定アセットをエディタで開く。エディタ状態の成果物は、フォーカス中のエディタのアセットを `ActiveAssetPath` として返す。⚠️ **非推奨のフィールド:** 同じ成果物の `ActiveTabId` もそのアセットのパスを持つ（`DumpEditorState` が同じ名前で返す Slate レイアウト識別子ではない）。次の MAJOR でレイアウト識別子に切り替わるため、`ActiveAssetPath` を読むこと。成果物の `DeprecatedFields` 配列が同じことを機械可読な形で示す。エディタを `-uaip-active-tab-id-as-layout-id` 付きで起動すると、切り替え後の意味を先行して試せる（1.x の間だけ提供） |
 | `CloseAsset` | 指定アセットの全エディタを閉じる |
-| `SaveAsset` | 名指ししたアセットだけをディスクへ書き込む（`AssetMutate` 必要）。確認ダイアログを出さないため非対話でも完結する |
+| `SaveAsset` | 名指ししたアセットだけをディスクへ書き込む（`AssetMutate` 必要）。確認ダイアログを出さないため非対話でも完結する。World Partition のマップでは、そのマップの未保存の外部アクターのパッケージも一緒に書き込み、それらが未保存だったことを `Result.Warnings` で伝える |
 | 🆓 `ListDirtyPackages` | 未保存の変更を持つパッケージを列挙する（保存前の事前確認用） |
 | 🆓 `SearchAssets` | パス・クラス・タグでアセットを検索 |
 | `CreateAsset` | 指定クラスの新規アセットを作成。`AssetPath` に既にアセットがある場合（保存済みかどうか・クラスを問わない）は `InvalidParams` で断り、何も作らず既存のアセットにも触れず、上書き確認ダイアログも出ません。先に削除するか別のパスを指定してください。レジストリが既存アセットを把握している場合は、応答の `Result` にそのクラスが `ExistingClassName` として入ります。Factory が `ClassName` と違うクラスのアセットを作った場合、またはアセット種別ごとの後処理に失敗した場合は、作成したアセットを破棄してからエラーを返します。破棄できなかったときはエラーにその旨が書かれ、`Result.RemainingAssetPath` が残っている場所を示します。要求した種類を無視して常に普通の Blueprint を作る汎用の Blueprint Factory は、特定の種類の Blueprint では候補から外れます（`/Script/Engine.Blueprint` 自体では今までどおり使えます）。`/Script/Engine.Blueprint` を指定した次の 2 つの要求は、何も作る前に `InvalidParams` で断ります。汎用の Factory は、そのままだと別の種類のアセットを、その種類に必要な検査を通さずに作ってしまうためです。エンジンが専用の Blueprint の種類を対応付けている `FactoryParams.ParentClass`（Animation Instance の派生は Animation Blueprint、User Widget の派生は Widget Blueprint など）には、代わりに使うクラスをメッセージと `Result.RequiredClassName` で返します（例: `/Script/Engine.AnimBlueprint`。そのクラスの Factory と受け取る `FactoryParams` は `ListFactoriesForClass` で調べられます）。`UControlRig` の派生を `ParentClass` に渡した場合は、使うべき Control Rig のクラスを挙げるメッセージで断ります（`Result.RequiredClassName` は付きません）。Actor など専用の種類が要らない親と、`ParentClass` の省略は、今までどおり作れます。Control Rig については [Control Rig アセットの形式](#control-rig-アセットの形式) を参照 |
@@ -1080,7 +1080,7 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 | `DeleteActorFromLevel` | Editor レベルからアクターを削除 |
 | 🆓 `GetActorTransform` | Editor 上のアクターのトランスフォーム取得 |
 | `SetActorTransform` | Editor 上のアクターのトランスフォーム設定 |
-| `OpenLevel` | エディタビューポートでレベルを開く（File > Open Level） |
+| `OpenLevel` | エディタビューポートでレベルを開く（File > Open Level）。ディスク上にパッケージがまだ無い（一度も保存していない）ワールドは `PreconditionFailed` で拒否する。先に `UAIP.Editor.Assets.SaveAsset` で保存する |
 | `NewLevel` | テンプレートから新規レベルを作成（EmptyLevel / EmptyOpenWorld / Basic / OpenWorld） |
 | `SelectActors` | 指定アクターを Editor レベルで選択（既存選択を置換または追加） |
 | 🆓 `ListSelectedActors` | 現在 Editor で選択中のアクター一覧を返す |
@@ -1181,7 +1181,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `ConnectBlueprintPins` | Blueprint グラフの 2 ピンを接続。⚠️ どちらかの端がコードを実行しうる関数の呼び出し、または Editor Utility の Blueprint の関数の呼び出しのときは、`BlueprintUnrestrictedNodePlace` も必要 — [コードを実行しうる関数の呼び出し](#コードを実行しうる関数の呼び出し) を参照 |
 | `DisconnectBlueprintPins` | ピン接続を切断 |
 | `ListBlueprintPins` | Blueprint グラフノードのピン一覧 |
-| `SetPinDefaultValue` | Blueprint グラフノードのピンにデフォルト値を設定（DefaultValue / DefaultObject / DefaultTextValue を型に応じて自動選択）。⚠️ ノードがコードを実行しうる関数の呼び出し、または Editor Utility の Blueprint の関数の呼び出しのときは、`BlueprintUnrestrictedNodePlace` も必要 — [コードを実行しうる関数の呼び出し](#コードを実行しうる関数の呼び出し) を参照 |
+| `SetPinDefaultValue` | Blueprint グラフノードのピンにデフォルト値を設定（DefaultValue / DefaultObject / DefaultTextValue を型に応じて自動選択）。⚠️ ノードがコードを実行しうる関数の呼び出し、または Editor Utility の Blueprint の関数の呼び出しのときは、`BlueprintUnrestrictedNodePlace` も必要 — [コードを実行しうる関数の呼び出し](#コードを実行しうる関数の呼び出し) を参照。書き込みの後のコンパイルが失敗したら `ExecutionFailed` を返し、ピンの元の値に戻す |
 | `GetPinDefaultValue` | Blueprint グラフノードのピンのデフォルト値を取得 |
 
 > **新規 — `AddGraphNode` に `NodeType: "Event"` を渡すと、親クラスまたは実装しているインターフェースのイベントを `FunctionName` で指定してオーバーライドできる**（例: `ReceiveDestroyed`、`ReceiveActorBeginOverlap`）。My Blueprint パネルの Override メニューでイベントノードを追加するのと同じ動作。`EventBeginPlay` と `EventTick` はこれまでどおり使える。1 つの Blueprint で同じイベントをオーバーライドできるのは 1 回だけで、オーバーライドが Blueprint 内のどこかにすでにあるときは、2 つ目を作らずに既存のノードを返す。戻り値・出力パラメータを持つ関数や const 関数はイベントノードにできないため、`AddFunctionOverride` を案内する `InvalidParams` で拒否する。親クラスにもインターフェースにも `BlueprintImplementableEvent` / `BlueprintNativeEvent` として宣言されていない名前も `InvalidParams` で拒否する。
@@ -1293,7 +1293,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 
 | コマンド | 説明 |
 |---|---|
-| `CompileBlueprint` | Blueprint をコンパイルし、CompileStatus + 構造化されたメッセージログを返す（AnimBlueprint・WidgetBlueprint は非対応） |
+| `CompileBlueprint` | Blueprint をコンパイルし、CompileStatus + 構造化されたメッセージログを返す（AnimBlueprint・WidgetBlueprint は非対応 — `CompileAnimBlueprint` / `CompileWidgetBlueprint` を使う） |
 | `GetBlueprintCompileStatus` | コンパイルを実行せずに Blueprint の現在のコンパイル状態を取得する |
 
 ### レベル Blueprint
@@ -1305,7 +1305,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 - **応答。** これらのコマンドは `Result`（artifact を書くコマンドでは artifact にも）に `TargetKind` を載せます。値は `Blueprint` または `LevelScriptBlueprint` です。レベル Blueprint では、`ResolvedBlueprintPath` が、マップのパスから解決したレベル Blueprint のオブジェクトパスです。これまで `Result` を返さなかったコマンドも、これらの項目を持つ `Result` を返すようになりました。
 - **レベル Blueprint の無いマップ。** レベル Blueprint を作るのは、何かを追加する 3 コマンド — `AddGraphNode`、`AddBlueprintVariable`、`AddFunctionOverride` — だけで、要求を断りうる検査をすべて通った後に作ります。作ったときの応答は、結果に関わらず `Result.Warnings` に警告を載せます。マップに未保存の変更ができたことと、エディタで要求を Undo すればレベル Blueprint も消えることを示します。エンジンは新しいレベル Blueprint に既定のイベントを置くので、新しいマップへの `EventBeginPlay` は `AlreadyExisted: true` を返します。レベル Blueprint を作った後に要求が断られるまれな場合は、エディタで Open Level Blueprint を押した後と同じく、空のレベル Blueprint が残ります。ほかのコマンドは作らずに `NotFound` を返し、メッセージが作るコマンド（`UAIP.Editor.Blueprint.AddGraphNode, UAIP.Editor.Blueprint.AddBlueprintVariable, UAIP.Editor.Blueprint.AddFunctionOverride`）を示します。マップに変更の印は付きません。レベル Blueprint がまだ無いあいだは、`GraphGuid` は `NotFound`、`FunctionClassName` の無い `FunctionCall` はクラスの指定を求める `NotFound`、`AddFunctionOverride` はイベントとして置かれる関数（`ReceiveBeginPlay` など）を `AddGraphNode` を案内する `InvalidParams` で断ります。
 - **コンパイル。** レベル Blueprint をコンパイルすると、エンジンがレベルスクリプトアクターを作り直します。配置のたびに、`SkipCompile` が `true` でなければコンパイルします。
-- **保存。** `SaveAsset` にマップのパスを渡して保存します。マップのパッケージ全体を書き込むので、UAIP の Blueprint 編集によらない未保存の変更がマップにあったかもしれないときは、応答の `Result.Warnings` に警告を載せたうえで保存します。別のマップに切り替える前に保存してください。
+- **保存。** `SaveAsset` にマップのパスを渡して保存します。マップのパッケージ全体を書き込むので、UAIP の Blueprint 編集によらない未保存の変更がマップにあったかもしれないときは、応答の `Result.Warnings` に警告を載せたうえで保存します。World Partition のマップでは、未保存の外部アクターのパッケージも一緒に書き込み、警告はそれらも数えます。一度も保存していないワールドは `OpenLevel` で開き直せません。先に `SaveAsset` で保存してください。別のマップに切り替える前に保存してください。
 - **`SkipCompile` の綴りはドメインで違います**: これらのグラフのコマンドは `SkipCompile`、`SetWidgetProperties` などの UMG の書き込みは `bSkipCompile` です。グラフのコマンドは、後からコンパイルが要るかを返しません。`GetBlueprintCompileStatus` で確かめてください。
 
 > ⚠️ **破壊的変更 — UAIP が書き込んでよい場所の外にある Blueprint への書き込みを、通常の Blueprint でも断るようになりました。** `AddGraphNode`、`DeleteGraphNode`、`ConnectBlueprintPins`、`DisconnectBlueprintPins`、`AddBlueprintVariable`、`DeleteBlueprintVariable`、`SetBlueprintVariableDefault`、`AddFunctionOverride` は、`SetPinDefaultValue` と `CompileBlueprint` がすでにそうだったように、`/Engine/` の Blueprint を `NotAllowed` で断ります。新しい `AddGraphNodeByAction` も同じです。`AddGraphNode`、`DeleteGraphNode` と変数のコマンドは、1 回の呼び出しを 1 回の Undo の単位として、取り消せるようにもなりました。
@@ -1353,6 +1353,7 @@ Widget Blueprint 編集 — ツリー・変数・アニメーション・バイ�
 > - **Capability。** 常に `WidgetPropertyEdit`。参照である値・参照を含む値には `PropertyReferenceEdit`（参照先は UAIP が書き込んでよいコンテンツに限る）。単純な値の集合に入らない構造体とコンテナには `PropertyStructuredEdit`。後の 2 つは書き込みの最中に各プロパティの型から決まるので、`RequiredCapabilities` には現れません。`GetWidgetProperties` の `PropertyWriteRequirements` がプロパティごとに示します。
 > - **パスワード欄。** パスワード欄の `IsPassword` を true から false にするには、そのテキストを平文で読むのと同じ許可 — 安全ポリシーの設定 `AllowSecretValueRead` と Capability `SecretValueRead` — が要り、無ければ `PolicyViolation` で断ります。欄を普通の欄に変えて読み戻せないようにするためです。
 > - **バインディング。** Designer でバインディングを設定したプロパティにも書き込みます。実行時にはバインディングが値を上書きすることを `Warnings` が伝えます。
+> - **値の構造体。** カタログの入力形式が `TextOrJson` の構造体（たとえば `FVector2D`）は、値をテキスト形式のほかに、JSON オブジェクトを入れた文字列（たとえば `"{\"X\":1,\"Y\":2}"`）でも渡せます。
 > - PIE 中（`NotAllowed`）と、`/Engine/` の Widget Blueprint（`NotAllowed`）は**断ります**。
 > - **`GetWidgetProperties`** は、`PropertyNames` を渡していないときに artifact を保存できなければ `ExecutionFailed` で失敗します。そのときは artifact が唯一の結果だからです。`PropertyNames` を渡していれば、呼び出しは成功して `ArtifactsNotSaved` を伝えます。`SetWidgetProperties` は artifact を保存できなくても、書き込みはすでに済んでいるので、`ArtifactsNotSaved` を付けて成功します。
 > - `SetAssetProperty` はウィジェットへの書き込みを断り、`SetWidgetProperties` を案内します — [UAIP.Editor.Property](#uaipeditorproperty) を参照。
