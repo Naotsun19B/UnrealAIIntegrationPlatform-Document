@@ -1153,7 +1153,7 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 | Widget Blueprint のウィジェット（Widget Blueprint 側から指しても、コンパイルで作られるクラス側から指しても） | `UAIP.Editor.UMG.SetWidgetProperties`（`AssetPath` に Widget Blueprint を、`WidgetName` にウィジェットの名前を渡す） |
 | ウィジェットのスロット | `UAIP.Editor.UMG.SetSlotProperties` |
 | ウィジェットのアニメーション | `UAIP.Editor.UMG.CreateWidgetAnimation`、`UAIP.Editor.UMG.AddAnimationTrack` |
-| Blueprint で追加したコンポーネントの既定値 | `UAIP.Editor.Blueprint.SetBlueprintComponentProperty` |
+| Blueprint で追加したコンポーネントの既定値、または子の Blueprint が親の Blueprint から継承したコンポーネントの上書き | `UAIP.Editor.Blueprint.SetBlueprintComponentProperty` |
 | Blueprint のコンポーネントの構成（Construction Script のノード） | `UAIP.Editor.Blueprint.AddBlueprintComponent`、`UAIP.Editor.Blueprint.RenameBlueprintComponent`、`UAIP.Editor.Blueprint.ReparentBlueprintComponent` |
 | グラフとグラフのノード | `UAIP.Editor.Blueprint.AddGraphNode`、`UAIP.Editor.Blueprint.SetPinDefaultValue`、`UAIP.Editor.Blueprint.ConnectBlueprintPins` |
 | Blueprint のクラスの既定値 | `UAIP.Editor.Property.SetBlueprintDefault`、`UAIP.Editor.Blueprint.SetBlueprintVariableDefault` |
@@ -1278,8 +1278,8 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `RenameBlueprintComponent` | SCS コンポーネントをリネーム |
 | `ReparentBlueprintComponent` | SCS コンポーネントの親を変更。親を指定する場合はコンポーネントと親の双方が `USceneComponent` のサブクラスである必要がある。ルートレベルへの移動（`NewParentVariableName` が空）はどのコンポーネントクラスでも可能 |
 | `DuplicateBlueprintComponent` | SCS コンポーネントを複製。⚠️ プロジェクト・プラグイン定義のコンポーネントクラスには `ComponentCustomTypeEdit` が追加で必要になりました — 下の Note を参照 |
-| `GetBlueprintComponentProperty` | SCS コンポーネントのプロパティ値を取得 シークレットのプロパティ、またはパスの途中に秘密の親があるものは `***` で返る。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
-| `SetBlueprintComponentProperty` | SCS コンポーネントのプロパティを設定。値はエンジンテキストなら `Value`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
+| `GetBlueprintComponentProperty` | SCS コンポーネントのプロパティ値を取得 シークレットのプロパティ、またはパスの途中に秘密の親があるものは `***` で返る。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照。親の Blueprint から継承したコンポーネントの名前でも読める: 子の Blueprint に上書きがあればその値、無ければ継承した値（詳細パネルに表示される値）を返す。読み取りで上書きは作らない |
+| `SetBlueprintComponentProperty` | SCS コンポーネントのプロパティを設定。値はエンジンテキストなら `Value`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。親の Blueprint から継承したコンポーネントの名前でも書ける: 値は子の Blueprint の上書きとして残り（無ければ作る）、親の値は変わらない。Undo 1 回で書く前に戻る。子自身に同名のコンポーネントがあればそちらを書き、親の C++ クラスが作るコンポーネントは書けない |
 
 > ⚠️ **破壊的変更 — `AddBlueprintComponent` と `DuplicateBlueprintComponent` がコンポーネントクラスをゲートするようになりました。**
 >

@@ -1154,7 +1154,7 @@ Read and write properties on actors, assets, Blueprint defaults, DataTable rows,
 | A widget of a Widget Blueprint, addressed through the Widget Blueprint or through the class it compiles to | `UAIP.Editor.UMG.SetWidgetProperties` (pass the Widget Blueprint as `AssetPath` and the widget as `WidgetName`) |
 | A widget slot | `UAIP.Editor.UMG.SetSlotProperties` |
 | A widget animation | `UAIP.Editor.UMG.CreateWidgetAnimation`, `UAIP.Editor.UMG.AddAnimationTrack` |
-| The default of a component a Blueprint adds | `UAIP.Editor.Blueprint.SetBlueprintComponentProperty` |
+| The default of a component a Blueprint adds, or the override of a component a child Blueprint inherits from its parent Blueprint | `UAIP.Editor.Blueprint.SetBlueprintComponentProperty` |
 | The component structure of a Blueprint (a construction script node) | `UAIP.Editor.Blueprint.AddBlueprintComponent`, `UAIP.Editor.Blueprint.RenameBlueprintComponent`, `UAIP.Editor.Blueprint.ReparentBlueprintComponent` |
 | A graph or a graph node | `UAIP.Editor.Blueprint.AddGraphNode`, `UAIP.Editor.Blueprint.SetPinDefaultValue`, `UAIP.Editor.Blueprint.ConnectBlueprintPins` |
 | The class defaults of a Blueprint | `UAIP.Editor.Property.SetBlueprintDefault`, `UAIP.Editor.Blueprint.SetBlueprintVariableDefault` |
@@ -1279,8 +1279,8 @@ The function is judged after it is resolved, so naming such a function of a nati
 | `RenameBlueprintComponent` | Rename an SCS component |
 | `ReparentBlueprintComponent` | Change an SCS component's parent. Naming a parent requires the component and the parent to each be a `USceneComponent` subclass; moving to the root level (an empty `NewParentVariableName`) works for any component class |
 | `DuplicateBlueprintComponent` | Duplicate an SCS component. ⚠️ Now additionally requires `ComponentCustomTypeEdit` for a project- or plugin-defined component class — see the note below |
-| `GetBlueprintComponentProperty` | Get a property value from an SCS component A secret property, or one under a secret parent along the path, is returned as `***`. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values) |
-| `SetBlueprintComponentProperty` | Set a property on an SCS component. The value goes in `Value` as engine text or in `ValueJson` as JSON, and `Operation` / `ElementIndex` / `ElementKeyJson` address a single container element — see [Writing references, structs and containers](#writing-references-structs-and-containers) |
+| `GetBlueprintComponentProperty` | Get a property value from an SCS component A secret property, or one under a secret parent along the path, is returned as `***`. Takes `IncludeSecretValues` — see [Reading secret values](#reading-secret-values). Also reads a component the Blueprint inherits from its parent Blueprint: the override if the Blueprint has one, otherwise the inherited value (what the details panel shows). A read never creates an override |
+| `SetBlueprintComponentProperty` | Set a property on an SCS component. The value goes in `Value` as engine text or in `ValueJson` as JSON, and `Operation` / `ElementIndex` / `ElementKeyJson` address a single container element — see [Writing references, structs and containers](#writing-references-structs-and-containers). Also writes a component the Blueprint inherits from its parent Blueprint: the value is kept as an override in the child Blueprint (created if there is none) and the parent's value does not change; one Undo restores the state before the write. A component of the same name in the child itself wins, and a component created by the parent's C++ class is not written |
 
 > ⚠️ **Breaking change — `AddBlueprintComponent` and `DuplicateBlueprintComponent` now gate the component class.**
 >
