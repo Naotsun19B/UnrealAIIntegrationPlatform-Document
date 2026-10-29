@@ -347,6 +347,8 @@ uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\
 
 詳細は [設定リファレンス → 実行時の config リロード](config.md#実行時の-config-リロードuaip_reload_config) を参照。
 
+> **既定では、`uaip_reload_config` はエディタのパス・追加の起動引数・`enable_scenario`・`launch_attended` を変えられません。** 上の `EditorPath` の例は、Bridge の起動時に `allow_reload_launch_command` が `true` だったときだけ使えます。Bridge 自身のソースファイルの変更も reload では反映されません（MCP クライアントを再接続してください）。詳細は [設定リファレンス → reload が既定では変えないもの](config.md#reload-が既定では変えないもの) を参照。
+
 リロードがどのエディタを止めてよいかは、そのエディタを誰が起動したかで決まります。Bridge が止めるのは、自分で起動したエディタ（`uaip_get_editor_status` の `Ownership` が `OWNED`）だけです。`RestartEditor` の後や、MCP 再接続で既に動いているエディタにつないだ後のエディタは `ATTACHED` で、Bridge が起動したものではなく、確実には止められません。そのため、エディタのパス・uproject のパス・HTTP ポート・`enable_scenario`・`launch_attended` を変えるリロードは何も変えずに拒否され、応答に手順が書かれます（AI 側の操作でエディタを起動したと分かっている場合だけ `ShutdownEditor` を送る。そうでなければ持ち主に閉じてもらうか、変更を見送る）。その間も接続は使えます。新しいエディタが要らない設定は、従来どおり反映されます。[設定 → 実行時の config リロード](config.md#リロードがエディタを止めることになる場合) を参照。
 
 ### MCP セットアップのトラブルシューティング

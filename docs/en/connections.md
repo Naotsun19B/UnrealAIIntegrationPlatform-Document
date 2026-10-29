@@ -347,6 +347,8 @@ uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\
 
 See [Configuration → Reloading config at runtime](config.md#reloading-config-at-runtime-uaip_reload_config) for full details.
 
+> **By default, `uaip_reload_config` cannot change the editor path, the extra launch arguments, `enable_scenario` or `launch_attended`, so the `EditorPath` example above is refused unless `allow_reload_launch_command` was `true` when the bridge started.** Changes to the bridge's own source files are not picked up by a reload either; reconnect the MCP client. See [Configuration → What a reload does not change by default](config.md#what-a-reload-does-not-change-by-default).
+
 Which editor a reload may stop depends on who launched it. The bridge stops only an editor it launched itself (`Ownership` of `OWNED` in `uaip_get_editor_status`). After `RestartEditor`, or after an MCP reconnect that attached to an editor already running, the editor is `ATTACHED`: the bridge did not launch it and cannot reliably stop it, so a reload that changes the editor path, the uproject path, the HTTP port, `enable_scenario` or `launch_attended` is refused with nothing changed, and the answer lists the steps (send `ShutdownEditor` only if an AI operation started the editor, otherwise ask its owner to close it or give up the change). The connection stays usable meanwhile. Settings that do not need a new editor are applied as before. See [Configuration → Reloading config at runtime](config.md#when-a-reload-would-have-to-stop-an-editor).
 
 ### MCP setup troubleshooting

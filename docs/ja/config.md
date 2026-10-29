@@ -457,7 +457,7 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 | `editor_path` | string | `""` | `UnrealEditor.exe` の絶対パス。環境変数 `UAIP_UE_EDITOR_PATH` が設定されている場合はそちらが優先。**`attach_only` が `true` のときは不要** — ゲストモードの Bridge はエディタを一切起動しないため、指す先が無い |
 | `uproject_path` | string | `""` | `.uproject` ファイルの絶対パス。環境変数 `UAIP_UPROJECT_PATH` が設定されている場合はそちらが優先。**どのモードでも常に必須** — プロジェクト同一性検証・認証トークンの解決・crash marker のパス・接続情報記述子の解決に加え、[instance proof](security.md#instance-proof) の照合がこのパス配下の `Saved/UAIP/InstanceSecrets/` を読むのにも使われる |
 | `attach_only` | bool | `false` | ゲストモード。`true` のとき、Bridge は自分ではエディタを一切起動せず、既に待ち受けているエディタへアタッチするだけになる。ポートは[接続情報の記述子ファイル](config.md#接続情報の記述子ファイル)から解決し、見つからなければ `http_port` へフォールバックする。アタッチ中のエディタとの接続が切れても（ヘルスチェック失敗・config リロードのいずれでも）代わりのエディタを起動しない。詳細は [接続方法 → ゲストモード接続](connections.md#ゲストモード接続) を参照。環境変数オーバーライド：`UAIP_ATTACH_ONLY`（`1` / `true` / `yes`） |
-| `http_port` | int | `8765` | エディタ側 MCP エンドポイントの HTTP ポート。`-uaip-http-port` と一致させること |
+| `http_port` | int | `8765` | エディタ側 MCP エンドポイントの HTTP ポート。`-uaip-http-port` と一致させること。プロジェクトごとに別のポートにする — [プロジェクトごとに `http_port` を分ける](#プロジェクトごとに-http_port-を分ける) を参照 |
 | `http_startup_timeout_seconds` | int | `120` | Bridge が起動後のエディタ準備完了を待つ最大秒数 |
 | `command_timeout_seconds` | int | `180` | 転送されるコマンドのリクエストごとの HTTP タイムアウト。**HTTP トランスポート自身の非同期コマンドタイムアウト（120 秒）より小さい値には設定できない** — 詳細は下記「タイムアウトの不変条件」を参照 |
 | `unresponsive_timeout_seconds` | int | `30` | ポートは LISTEN しているがヘルス ping に応答しない状態を何秒許容してから `UNRESPONSIVE` と判定するか。この状態では自動起動も自動再起動も行わない — [接続方法 → エディタ状態の確認](connections.md#エディタ状態の確認uaip_get_editor_status) を参照 |
@@ -468,7 +468,7 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 | `probe_tcp_timeout_seconds` | float | `1.0` | エディタのポートが LISTEN しているかどうかだけを確認する TCP connect タイムアウト |
 | `probe_ping_timeout_seconds` | float | `5.0` | LISTEN 中のエディタが実際に応答するかを確認する HTTP ping タイムアウト |
 | `process_exit_wait_seconds` | int | `10` | Bridge が起動したエディタプロセスの終了を待つ最大秒数 |
-| `allow_unverified_attach` | bool | `false` | `HealthCheck` 応答に `ProjectFilePath` を持たない旧バージョンのプラグインへアタッチすることを許可するオプトイン。**既定では拒否**される — 同一性を検証できないピアは黙ってアタッチせず拒否するのが既定の挙動 |
+| `allow_unverified_attach` | bool | `false` | `HealthCheck` 応答に `ProjectFilePath` を持たない旧バージョンのプラグインへアタッチすることを許可するオプトイン。**既定では拒否**される — 同一性を検証できないピアは黙ってアタッチせず拒否するのが既定の挙動。Bridge の起動時にだけ読まれる |
 | `log_level` | string | `"INFO"` | Python logger の冗長度 — `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `enable_scenario` | bool | `false` | `true` のとき Bridge がエディタを `-uaip-enable-scenario` 付きで起動する。環境変数オーバーライド：`UAIP_ENABLE_SCENARIO=1` |
 | `role_name` | string | `""` | エディタの `[UAIP.Roles]` が役割を 1 つ以上定義している場合のみ必要。この Bridge が認証する役割名を指定する。対応するトークンは `Saved/UAIP/Roles/<role_name>.token` から**遅延読み込み**される — 一定周期ではなく、リクエストが `401` で返ってきたときにだけ読み直す。環境変数オーバーライド：`UAIP_ROLE_NAME` |
@@ -478,6 +478,33 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 | `inline_artifacts.text` | bool | `false` | テキスト Artifact を MCP レスポンスに base64 インライン化する。**デフォルト OFF**（理由は `inline_artifacts.json` と同様） |
 
 環境変数（`UAIP_UE_EDITOR_PATH`・`UAIP_UPROJECT_PATH`・`UAIP_ENABLE_SCENARIO`・`UAIP_ROLE_NAME`・`UAIP_ROLE_TOKEN`）が設定されている場合は対応する JSON 値を上書きします。フルコメント付きテンプレートは `config.json.example`（Bridge zip 同梱、インストール後は `<bridge-root>/config.json.example`）を参照してください。
+
+### ブリッジの起動時にだけ読まれる設定
+
+次のキーは、Bridge が起動したときに 1 回だけ読まれます。`config.json` を書き換えて `uaip_reload_config` を呼んでも変わりません（reload の応答に「Bridge の再起動で効く」と載ります）。変えるときは `config.json`（または環境変数）を直し、MCP クライアントを再接続してください。後ろの 3 つは、`true` にすると Bridge の安全性が下がります。必要なとき以外は `false` のままにしてください。
+
+| キー | 型 | デフォルト | 説明 |
+|---|---|---|---|
+| `log_to_file` | bool | `false` | Bridge の診断ログを、`<project>/Saved/UAIP/BridgeLogs/` に Bridge のプロセスごとに別のファイルとしても書き出す。ログには、エディタの身元確認の開始と結果が毎回残るので、どの確認が走ってどう決まったかを後から確かめられる。使っているファイルは `uaip_get_editor_status` の `Data.Config.LogFile` に出る（ファイルに書いていないときは `null`）。ファイルを作れないときは、標準エラーに警告を 1 行出し、標準エラーだけで動き続ける。ロールトークン・秘密・セッション ID・URL のクエリはファイルに書かれない。新しい順に 20 個程度まで残り、1 プロセスあたり最大 10 MB。`log_level` はファイルにも効く。環境変数オーバーライド：`UAIP_LOG_TO_FILE`（`1`） |
+| `allow_reload_launch_command` | bool | `false` | `uaip_reload_config` で `editor_path`・追加の起動引数・`enable_scenario`・`launch_attended` を変えられるようにする。[reload が既定では変えないもの](#reload-が既定では変えないもの) を参照。環境変数オーバーライド：`UAIP_ALLOW_RELOAD_LAUNCH_COMMAND`（`1`） |
+| `allow_reload_bridge_code` | bool | `false` | `uaip_reload_config` で Bridge 自身のソースファイルを読み直せるようにする。[reload が既定では変えないもの](#reload-が既定では変えないもの) を参照。環境変数オーバーライド：`UAIP_ALLOW_RELOAD_BRIDGE_CODE`（`1`） |
+| `allow_unverified_port_owner` | bool | `false` | Windows では、Bridge がエディタのポートを持っているプロセスを確かめる。確かめられないとき（OS への問い合わせが毎回失敗する、持ち主が見えない）は、既定では止まってコマンドを送らない。自分が起動したエディタが対象なら、そのエディタは閉じずに残す。`true` にすると、そのときに限り、Windows 以外と同じくプロジェクトの確認だけで進む（同じプロジェクトを開いた別のエディタとは見分けられなくなる）。別のプロセスがポートを持つと確かめられた場合には効かない。環境変数オーバーライド：`UAIP_ALLOW_UNVERIFIED_PORT_OWNER`（`1`） |
+
+`allow_unverified_attach` も、Bridge の起動時にだけ読まれます。Bridge が自分で起動して今も手元に持っているエディタの確認には使われず、既に起動しているエディタへのアタッチと、自己再起動した後継エディタの採用に効きます。
+
+### `editor_path` に `.bat` を指定するとき
+
+`editor_path` には `UnrealEditor.exe` の代わりに `.bat` / `.cmd` のラッパーを指定できます。バッチファイルは引数を `cmd.exe` 経由で渡すため、拡張子が `.exe` 以外（拡張子なしを含む）のときは、Bridge が次の保護を加えます。
+
+- **引数を検査する。** 引数（追加の起動引数・プロジェクトのパス）に、`cmd.exe` が解釈し直す文字 — `%` `!` `^` `&` `|` `<` `>` `"` `(` `)` や改行 — が含まれていれば、エディタを起動しません。エラーは `Failed to start editor:` で始まり、何番目の引数が問題かを示し（値そのものは表示しません）、その文字を取り除くか `editor_path` をエディタの実行ファイルに向けるよう案内します。`uaip_get_editor_status` は `STOPPED` になり、設定を直して Bridge を起動し直すまで、同じ拒否が続きます。
+- **全ての引数を二重引用符で囲んで渡す。** `.bat` は `,` `;` `=` でも引数を区切るためです。プロジェクトのパスに `=` が含まれていれば拒否します（`uproject_path` を直してください。reload で直せます）。`.exe` のときも、プロジェクトのパスは常に引用符で囲みます。
+- **中身の指紋を取る。** Bridge は起動したときに `.bat` の中身を控え、動いている間はそのファイルを開いたままにして、書き換え・改名・削除ができないようにし、起動のたびに直前にもう一度中身を比べます。変わっていればエディタを起動しません。エラーは `Failed to start editor:` で始まり、ファイルが Bridge の起動の後に変わったので、ファイルを確かめてから Bridge を起動し直すよう案内します。ファイルを開いたままにできない（他のプログラムが書き込みで開いている）とき、または Bridge の起動時に読めなかったときも、エディタを起動しません。
+
+制約：括弧を含むパスのプロジェクトは `.bat` 経由では起動できません。`=` を含むパスのプロジェクトも起動できません。**Bridge が動いている間は、`.bat` を自分で編集することもできません** — 先に MCP クライアントを切ってください。`.bat` がさらに呼ぶファイルの書き換えは検知しません。
+
+### プロジェクトごとに `http_port` を分ける
+
+同じ `http_port`（既定は `8765`）を使う 2 つのプロジェクトが、ほぼ同時にエディタを起動すると、ポートを取り合うことがあります。取れなかった側の Bridge はそれに気づき、ポートを持っているエディタにはコマンドを送らず、起動したばかりの自分のエディタを閉じ（既に使い始めていたエディタは閉じません）、理由を添えて拒否します。`uaip_get_editor_status` は `PORT_OCCUPIED`（理由 `LAUNCHED_EDITOR_LOST_PORT`）を表示します。取り合いそのものを避けるには、プロジェクトごとの `config.json` に別々の `http_port` を設定し（エディタも対応する `-uaip-http-port` で起動します）、またはもう一方のエディタを閉じてください。
 
 ### タイムアウトの不変条件
 
@@ -505,6 +532,8 @@ uaip_reload_config()
 | `EditorPath` | `config.json` を編集せずに実行時でエンジンバージョンを切り替える |
 | `UProjectPath` | このセッション限り別の `.uproject` を使用する |
 | `EditorExtraArgs` | エディタに追加するコマンドライン引数を文字列配列で指定する — 例: メモリ破壊の調査に `["-stomp2malloc", "-MallocStomp2MinSize=65", "-MallocStomp2MaxSize=80"]` |
+
+**既定では、このうち `EditorPath` と `EditorExtraArgs` は拒否され**、reload 全体が何も変えません。`allow_reload_launch_command` を `true` にして Bridge を起動したときだけ使えます。[reload が既定では変えないもの](#reload-が既定では変えないもの) を参照してください（`UProjectPath` は対象外です）。
 
 `EditorExtraArgs` は他の 2 つと振る舞いが異なります：
 
@@ -536,6 +565,16 @@ HTTP ポートを変える場合も同じ規則です。以前は、古いエデ
 **ゲストモード（`attach_only`）** ゲストの Bridge はエディタを起動も停止もしないので、上の拒否は当てはまらず、応答は `EditorRestartScheduled: false` になります。接続していた場合は、リロードが接続を切ります（エディタは止めません）。次のコマンドは 1 回だけ断られ（断りには「エディタは止めていない。そのまま再試行する」と書かれます）、その次からそのエディタのポートで応答しているエディタにつながります。接続を切っている間、ポートで応答しているものがあれば `uaip_get_editor_status` の `RecommendedAction` は `PROCEED:` で始まり（次のコマンドが確かめてつなぎます。起動はしません）、応答がなければ従来の `CHECK CONFIGURATION:` です。接続していなかった場合は、新しい設定が次につなぐエディタに使われます。前のリロードで接続を切ったまま、まだコマンドを送っていなければ、その次のコマンドは 1 回だけ断られます。ゲストモードで `EditorExtraArgs` だけを変えた場合は、引数が使われないことが応答に書かれます。以前は「次のツール呼び出しでエディタが起動し直される」（`EditorRestartScheduled: true`）と誤って答えていました。当てはまるのは「再起動・入れ替わりの確認の途中」と「ほかの呼び出しの実行中」の拒否だけです。
 
 **同じリロードで `attach_only` を切り替えた場合** `attach_only` だけを切り替えたリロード（新しいエディタが要る設定は変えていない）は、エディタを止めず、次のツール呼び出しも断られません。応答は、Bridge がこれからエディタを起動するのか、もう起動しないのかを答えます（`EditorRestartScheduled: false`）。同じリロードで新しいエディタが要る設定も変えた場合は、拒否されるかどうかはリロード前のモードで決まり、通ったときの応答は、切り替えた後のモードで次のツール呼び出しがどう動くかを答えます。ゲストモードをやめた場合は、次のツール呼び出しで新しい設定のエディタが起動します（`EditorRestartScheduled: true`）。このリロード自体は何も止めていないので、ポートでまだ応答しているエディタがあれば先に閉じてください。閉じないと、次のツール呼び出しはポートが空くのを待ったうえで「The config reload did not ask any editor to exit ... Close the editor holding the port, then retry.」と断られ、新しいエディタは起動しません。ゲストモードにした場合は、Bridge はエディタを起動しなくなります（`EditorRestartScheduled: false`）。次のツール呼び出しは 1 回だけ断られ（エディタは止めていない。そのまま再試行する）、その次からポートで応答しているエディタにつながります。
+
+#### reload が既定では変えないもの
+
+reload が変えるのは、AI が新しい何かを実行させるのに使えない設定だけです。
+
+- **起動コマンドは Bridge の起動時に固定される。** `editor_path`・追加の起動引数（`EditorExtraArgs`）・`enable_scenario`・`launch_attended` は、Bridge を起動したときの値から変わりません。これらを `uaip_reload_config` の引数で渡しても、`config.json` を書き換えてから reload しても、reload 全体が `PolicyViolation` で拒否され、何も変わらず、エディタの再起動も停止も起きません。同じ値の再指定は拒否されません。`config.json` が書き換わっていた場合、応答は変わった項目と新しい値を挙げ、MCP クライアントを再接続するとその値でエディタが起動されるので、先に確かめるよう案内します。reload が通った場合でも、`config.json` が書き換わったままなら、同じ案内が警告として返ります。このため、`uaip_reload_config(EditorPath=...)` でエンジンのバージョンを切り替える運用は、`allow_reload_launch_command` を `true` にしたときだけ使えます。
+- **Bridge 自身のコードは読み直さない。** Bridge は起動時に読み込んだコードで動き続けます。読み込んだファイルのどれかが起動したときから変わっていれば（起動時に読めなかったファイルを含む）、reload は `PolicyViolation` で拒否され、変わったファイルの名前が示されます。新しいコードを使うには MCP クライアントを再接続してください。また Bridge は、起動を終えた後に自分のフォルダを Python の読み込み先から外すので、後からそこに置かれたファイルは読み込まれません。
+- **従来どおり reload で変えられるもの：** `uproject_path` と `http_port`、そのほか起動コマンドに関わらない設定。Bridge が起動したエディタがまだ動いている間は、`uproject_path` を変える reload は何も変えずに拒否されます。そのエディタを閉じて（`ShutdownEditor`、または手で）から、もう一度 reload してください。
+
+従来の挙動に戻すには、Bridge を起動する**前**に、`config.json` の `allow_reload_launch_command` や `allow_reload_bridge_code` を `true` にします（または環境変数を設定します）。どちらも Bridge の安全性を下げる設定で、reload では切り替えられません。
 
 ---
 

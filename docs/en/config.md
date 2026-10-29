@@ -457,7 +457,7 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 | `editor_path` | string | `""` | Absolute path to `UnrealEditor.exe`. Falls back to env override `UAIP_UE_EDITOR_PATH` (env takes precedence). **Not required when `attach_only` is `true`** — a guest-mode bridge never launches an editor, so it has nothing to point this at |
 | `uproject_path` | string | `""` | Absolute path to the `.uproject` file. Falls back to env override `UAIP_UPROJECT_PATH` (env takes precedence). **Always required**, in every mode — used for project-identity verification, auth-token resolution, crash-marker paths, endpoint-descriptor resolution, and reading the per-launch secret at `Saved/UAIP/InstanceSecrets/` that [instance proof](security.md#instance-proof) verification reads under this path |
 | `attach_only` | bool | `false` | Guest mode. When `true`, the bridge never launches an editor of its own — it only attaches to one it finds already listening, resolving the port from the [endpoint descriptor](config.md#endpoint-descriptor-file) with a fallback to `http_port`. It also never launches a replacement when the attached editor's connection drops, whether from a health-check failure or a config reload. See [Connection Methods → Guest-mode connections](connections.md#guest-mode-connections). Env override: `UAIP_ATTACH_ONLY` (`1` / `true` / `yes`) |
-| `http_port` | int | `8765` | HTTP port for the editor's MCP endpoint. Must match `-uaip-http-port` when set |
+| `http_port` | int | `8765` | HTTP port for the editor's MCP endpoint. Must match `-uaip-http-port` when set. Give each project its own port — see [One `http_port` per project](#one-http_port-per-project) |
 | `http_startup_timeout_seconds` | int | `120` | How long the bridge waits for the editor to become ready after launch |
 | `command_timeout_seconds` | int | `180` | Per-request HTTP timeout for forwarded commands. **Cannot be set lower than the HTTP transport's own async command timeout (120 s)** — see the invariant note below |
 | `unresponsive_timeout_seconds` | int | `30` | How long a port that is listening but not answering health pings is tolerated before the bridge marks the editor `UNRESPONSIVE`. In this state the bridge neither auto-launches nor auto-restarts — see [Connection Methods → Check editor status](connections.md#check-editor-status-uaip_get_editor_status) |
@@ -468,7 +468,7 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 | `probe_tcp_timeout_seconds` | float | `1.0` | TCP connect timeout used to check whether the editor's port is listening at all |
 | `probe_ping_timeout_seconds` | float | `5.0` | HTTP ping timeout used to check whether a listening editor actually responds |
 | `process_exit_wait_seconds` | int | `10` | How long the bridge waits for a spawned editor process to exit before giving up |
-| `allow_unverified_attach` | bool | `false` | Opt-in to allow attaching to an existing editor whose `HealthCheck` response lacks `ProjectFilePath` (older plugin versions that predate this field). **Denied by default** — a peer that cannot be identity-verified is refused rather than silently attached |
+| `allow_unverified_attach` | bool | `false` | Opt-in to allow attaching to an existing editor whose `HealthCheck` response lacks `ProjectFilePath` (older plugin versions that predate this field). **Denied by default** — a peer that cannot be identity-verified is refused rather than silently attached. Read only when the bridge starts |
 | `log_level` | string | `"INFO"` | Python logger verbosity — `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `enable_scenario` | bool | `false` | When `true`, the bridge launches the editor with `-uaip-enable-scenario`. Env override: `UAIP_ENABLE_SCENARIO=1` |
 | `role_name` | string | `""` | Only needed when the editor's `[UAIP.Roles]` defines at least one role. Names the role this bridge authenticates as; the bridge reads the matching token lazily from `Saved/UAIP/Roles/<role_name>.token`, only after a request comes back `401` — never on a fixed schedule. Env override: `UAIP_ROLE_NAME` |
@@ -478,6 +478,33 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 | `inline_artifacts.text` | bool | `false` | Inline text artifacts as base64 in MCP responses. **Off by default**, same rationale as `inline_artifacts.json` above |
 
 Environment variables (`UAIP_UE_EDITOR_PATH`, `UAIP_UPROJECT_PATH`, `UAIP_ENABLE_SCENARIO`, `UAIP_ROLE_NAME`, `UAIP_ROLE_TOKEN`) override the corresponding JSON values when set. See `config.json.example` (shipped inside the bridge zip; after install, at `<bridge-root>/config.json.example`) for a fully-commented template.
+
+### Settings read only when the bridge starts
+
+These keys are read once, when the bridge starts. Editing `config.json` and calling `uaip_reload_config` does not change them (the reload response says the setting takes effect when the bridge is restarted). To change one, edit `config.json` (or set the environment variable) and reconnect the MCP client. The last three lower the bridge's safety posture when `true`; leave them `false` unless you need them.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `log_to_file` | bool | `false` | Also writes the bridge's diagnostic log to a file, one per bridge process, under `<project>/Saved/UAIP/BridgeLogs/`. The log includes the start and the result of every editor identity check, so you can see afterwards which check ran and how it was decided. `uaip_get_editor_status` shows the file in use as `Data.Config.LogFile` (`null` when nothing is written to a file). If the file cannot be created, the bridge prints one warning to standard error and keeps running on standard error alone. Role tokens, secrets, session ids and URL queries are never written. About the newest 20 files are kept, and each process writes at most 10 MB. `log_level` applies to the file as well. Env override: `UAIP_LOG_TO_FILE` (`1`) |
+| `allow_reload_launch_command` | bool | `false` | Lets `uaip_reload_config` change `editor_path`, the extra launch arguments, `enable_scenario` and `launch_attended`. See [What a reload does not change by default](#what-a-reload-does-not-change-by-default). Env override: `UAIP_ALLOW_RELOAD_LAUNCH_COMMAND` (`1`) |
+| `allow_reload_bridge_code` | bool | `false` | Lets `uaip_reload_config` re-read the bridge's own source files. See [What a reload does not change by default](#what-a-reload-does-not-change-by-default). Env override: `UAIP_ALLOW_RELOAD_BRIDGE_CODE` (`1`) |
+| `allow_unverified_port_owner` | bool | `false` | On Windows, the bridge checks which process owns the editor's port. When it cannot tell (the query to the OS fails every time, or the owner is not visible), it stops by default and does not send the command; if the editor it launched is the one involved, that editor is left running. With `true`, in that case only, it goes on with the project-identity check alone, as on other platforms, which cannot tell apart another editor that opened the same project. It has no effect when the bridge has confirmed that another process owns the port. Env override: `UAIP_ALLOW_UNVERIFIED_PORT_OWNER` (`1`) |
+
+`allow_unverified_attach` is also read only when the bridge starts. It does not apply while the bridge checks an editor it launched itself and still holds; it applies to attaching to an editor that is already running and to adopting an editor that restarted itself.
+
+### Using a `.bat` as `editor_path`
+
+`editor_path` may point to a `.bat` / `.cmd` wrapper instead of `UnrealEditor.exe`. Because a batch file passes its arguments through `cmd.exe`, the bridge adds these protections whenever the extension is anything other than `.exe` (no extension included):
+
+- **Arguments are checked.** If an argument (the extra launch arguments or the project path) contains a character that `cmd.exe` would interpret again — `%` `!` `^` `&` `|` `<` `>` `"` `(` `)` or a line break — the editor is not started. The error starts with `Failed to start editor:`, names which argument is the problem (never its value), and says to remove that character or to point `editor_path` at the editor's executable. `uaip_get_editor_status` shows `STOPPED`, and the same refusal repeats until you fix the setting and restart the bridge.
+- **Every argument is passed inside double quotes**, because a `.bat` also splits arguments at `,` `;` and `=`. A project path that contains `=` is refused (fix `uproject_path`; a reload can do that). With a `.exe`, the project path is always quoted as well.
+- **The contents of the file are fingerprinted.** The bridge records the contents of the `.bat` when it starts, keeps the file open for as long as it runs so that it cannot be rewritten, renamed or deleted, and compares the contents again right before every launch. If they changed, the editor is not started: the error starts with `Failed to start editor:` and says the file changed after the bridge started, so check the file and restart the bridge. If the file cannot be held open (another program has it open for writing), or could not be read when the bridge started, the editor is not started either.
+
+Limits: a project whose path contains parentheses cannot be launched through a `.bat`, and neither can one whose path contains `=`. **While the bridge is running you cannot edit the `.bat` yourself** — disconnect the MCP client first. Files that the `.bat` itself calls are not checked.
+
+### One `http_port` per project
+
+Two projects that use the same `http_port` (the default is `8765`) can start their editors at almost the same time and compete for the port. The bridge that loses detects it: it sends no command to the editor that holds the port, closes the editor it has just launched (an editor it had already been using is never closed), and refuses with an explanation. `uaip_get_editor_status` then reports `PORT_OCCUPIED` with the reason `LAUNCHED_EDITOR_LOST_PORT`. To avoid the clash altogether, give each project's `config.json` its own `http_port` (and start its editor with the matching `-uaip-http-port`), or close the other editor.
 
 ### Timeout invariants
 
@@ -505,6 +532,8 @@ uaip_reload_config()
 | `EditorPath` | Switch engine version at runtime without editing `config.json` |
 | `UProjectPath` | Point at a different `.uproject` for this session |
 | `EditorExtraArgs` | Extra editor command-line arguments as a string array — e.g. `["-stomp2malloc", "-MallocStomp2MinSize=65", "-MallocStomp2MaxSize=80"]` to hunt a memory corruption |
+
+**By default `EditorPath` and `EditorExtraArgs` are refused** and the whole reload changes nothing; they work only when the bridge was started with `allow_reload_launch_command` set to `true`. See [What a reload does not change by default](#what-a-reload-does-not-change-by-default). (`UProjectPath` is not affected.)
 
 `EditorExtraArgs` behaves differently from the other two:
 
@@ -536,6 +565,16 @@ A reload is also refused, with nothing changed, while another tool call is still
 **Guest mode (`attach_only`)** A guest bridge never launches or stops an editor, so the refusal above does not apply, and the response says `EditorRestartScheduled: false`. If the bridge was connected, the reload drops the connection without stopping the editor: the next command is refused once (the refusal says the editor was not stopped and to retry as is), and the one after that attaches to the editor answering on its port. While the connection is dropped, `uaip_get_editor_status` reports a `RecommendedAction` beginning `PROCEED:` if something answers on the port (the next command checks it and connects; nothing is launched), and the usual `CHECK CONFIGURATION:` if nothing does. If it was not connected, the new settings apply to the editor it attaches to next; if an earlier reload dropped the connection and no command has been sent since, that next command is still refused once. Changing only `EditorExtraArgs` in guest mode is answered with a note that the arguments are not used. Earlier versions wrongly answered that the editor would relaunch on the next tool call (`EditorRestartScheduled: true`). Only the "restart or replacement check in progress" and "another call running" refusals apply there.
 
 **Switching `attach_only` in the same reload** If the reload changes only `attach_only` (no setting that needs a new editor), it stops no editor and the next tool call is not refused; the answer says whether the bridge will launch the editor from now on or no longer will (`EditorRestartScheduled: false`). If the same reload also changes a setting that needs a new editor, whether it is refused is decided under the mode in effect before it, and an answer that goes through describes the next tool call under the new mode. Turning guest mode off: the next tool call launches an editor with the new settings (`EditorRestartScheduled: true`); the reload itself stopped nothing, so close an editor that is still answering on the port first. If you do not, the next tool call waits for the port to free up and is then refused with "The config reload did not ask any editor to exit ... Close the editor holding the port, then retry." Turning guest mode on: the bridge no longer launches the editor (`EditorRestartScheduled: false`); the next tool call is refused once (the editor was not stopped; retry as is), and the one after that attaches to the editor answering on the port.
+
+#### What a reload does not change by default
+
+A reload only changes settings the AI cannot use to run something new:
+
+- **The launch command is fixed when the bridge starts.** `editor_path`, the extra launch arguments (`EditorExtraArgs`), `enable_scenario` and `launch_attended` keep the values the bridge started with. Passing one of them to `uaip_reload_config`, or editing it in `config.json` and then reloading, makes the whole reload fail with `PolicyViolation`: nothing changes and no editor is restarted or stopped. Passing the same value again is not refused. If `config.json` was edited, the answer lists the changed items with their new values and tells you that reconnecting the MCP client would launch the editor with those values, so check them first; a reload that goes through still returns the same note as a warning while `config.json` differs. This also means switching the engine version with `uaip_reload_config(EditorPath=...)` no longer works unless `allow_reload_launch_command` is `true`.
+- **The bridge's own code is not re-read.** The bridge keeps running the code it loaded at start. If any file it loaded has changed since then (a file it could not read at start counts too), the reload is refused with `PolicyViolation`, naming the changed files. Reconnect the MCP client to use the new code. After it has started, the bridge also removes its own folder from Python's import path, so a file placed there later is never loaded.
+- **Still reloadable:** `uproject_path` and `http_port`, and everything else that does not change the launch command. While an editor the bridge launched is still running, a reload that changes `uproject_path` is refused with nothing changed: close that editor (`ShutdownEditor`, or by hand) and reload again.
+
+To get the old behaviour back, set `allow_reload_launch_command` and/or `allow_reload_bridge_code` to `true` in `config.json` (or set the environment variable) **before** the bridge starts. They lower the bridge's safety posture, and they cannot be switched by a reload.
 
 ---
 
