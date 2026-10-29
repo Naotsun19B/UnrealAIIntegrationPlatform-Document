@@ -596,7 +596,7 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `GetPluginTemplateDescriptions` | 利用可能なプラグインテンプレートの一覧を返す |
 | 🆓 `IsPluginCreationAllowed` | 現在の環境でプラグイン作成が許可されているか確認 |
 | 🆓 `IsPluginModificationAllowed` | 指定プラグインの変更が許可されているか確認 |
-| `SetPluginEnabled` | プラグインを有効化または無効化する（`PluginEnableToggle` 必要；`RestartRequired: true` を返す） |
+| `SetPluginEnabled` | プラグインを有効化または無効化する（`PluginEnableToggle` 必要；`RestartRequired: true` と `RestartReason: PluginModuleReloadRequired` を返す。`DryRun` でも同じ） |
 | `UpdatePluginDescriptor` | プラグインの `.uplugin` 内の選択フィールドを上書き（`PluginDescriptorEdit` 必要） |
 | `AddPluginDependency` | プラグインの `.uplugin` に依存エントリを追加（`PluginDependencyEdit` 必要） |
 | `RemovePluginDependency` | プラグインの `.uplugin` から依存エントリを削除（`PluginDependencyEdit` 必要） |

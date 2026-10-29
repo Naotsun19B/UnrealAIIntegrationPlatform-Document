@@ -596,7 +596,7 @@ Plugin management for the editor — read / write plugin state, descriptor, and 
 | 🆓 `GetPluginTemplateDescriptions` | List available plugin scaffold templates |
 | 🆓 `IsPluginCreationAllowed` | Check whether new plugin creation is allowed in the current editor state |
 | 🆓 `IsPluginModificationAllowed` | Check whether a specific plugin is modifiable (not Engine/Marketplace/GFP) |
-| `SetPluginEnabled` | Enable or disable a plugin (`PluginEnableToggle` required; always returns `RestartRequired: true`) |
+| `SetPluginEnabled` | Enable or disable a plugin (`PluginEnableToggle` required; always returns `RestartRequired: true` together with `RestartReason: PluginModuleReloadRequired`, also under `DryRun`) |
 | `UpdatePluginDescriptor` | Overwrite selected fields of a plugin's `.uplugin` file (`PluginDescriptorEdit` required; supports `DryRun`) |
 | `AddPluginDependency` | Add a dependency entry to a plugin's `.uplugin` (`PluginDependencyEdit` required) |
 | `RemovePluginDependency` | Remove a dependency entry from a plugin's `.uplugin` (`PluginDependencyEdit` required) |
