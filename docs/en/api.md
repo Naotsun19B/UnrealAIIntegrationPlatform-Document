@@ -165,6 +165,16 @@ The server may also push unprompted events:
 | `ScenarioResponse` | server → client | Reply to a `ScenarioRequest` |
 | `OutputLogEntry` | server → client | UE log streaming (suppressible with `-uaip-ws-no-output-log`) |
 
+**Subscribing to the log stream.** The client sends a frame whose `Type` is `SubscribeOutputLog` (and `UnsubscribeOutputLog` to stop). How a subscription ends up is told by the next frame:
+
+| Outcome | What arrives |
+|---|---|
+| Subscribed | a frame whose `Event` is `OutputLogSubscribed`, then `OutputLogEntry` frames |
+| Refused by the SafetyPolicy (`AllowLogDump=False`, the default) | a `CommandResponse` with an **empty** `RequestId` and `ErrorCode` `PolicyViolation`; no subscription is made and no log line is ever sent. The message names `AllowLogDump` and the launch flag `-uaip-policy-allow-log-dump=True`, and says it is read at startup |
+| The server runs without log capture (`-uaip-ws-no-output-log`, or `-uaip-ws-no-auth`, because a connection without authentication must not receive log text) | a `CommandResponse` with an empty `RequestId` and `ErrorCode` `NotAllowed`; the message names the launch flag |
+
+The policy is judged first, then whether the server captures the log. The connection stays usable after a refusal. `UnsubscribeOutputLog` always succeeds, whatever the settings. Only `AllowLogDump` stops the stream: `+DeniedCommands=UAIP.Editor.Observation.DumpOutputLog` does not. ⚠️ A subscription used to be accepted whatever `AllowLogDump` said, and a server started without log capture used to accept it and never deliver a line.
+
 ### 3.3 CLI response
 
 When `-uaip-response-file=<path>` is supplied the JSON is written there. Without it, the response is bracketed by stdout markers:

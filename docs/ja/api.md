@@ -165,6 +165,16 @@ uaip_execute(
 | `ScenarioResponse` | サーバ → クライアント | `ScenarioRequest` への返信 |
 | `OutputLogEntry` | サーバ → クライアント | UE ログストリーミング（`-uaip-ws-no-output-log` で抑止可能） |
 
+**ログのストリームの購読。** クライアントは `Type` が `SubscribeOutputLog` のフレームを送ります（止めるときは `UnsubscribeOutputLog`）。購読の成否は、次に届くフレームで見分けます。
+
+| 結果 | 届くもの |
+|---|---|
+| 購読された | `Event` が `OutputLogSubscribed` のフレーム。その後に `OutputLogEntry` のフレーム |
+| SafetyPolicy で断られた（`AllowLogDump=False`。既定） | `RequestId` が**空**で `ErrorCode` が `PolicyViolation` の `CommandResponse`。購読は立たず、ログは 1 行も届きません。文言は `AllowLogDump` と起動引数 `-uaip-policy-allow-log-dump=True` を案内し、起動時に読むことを伝えます |
+| サーバーがログの取り込み無しで動いている（`-uaip-ws-no-output-log`、または認証の無い接続にログを流さないための `-uaip-ws-no-auth`） | `RequestId` が空で `ErrorCode` が `NotAllowed` の `CommandResponse`。文言は起動引数を案内します |
+
+判定は、安全設定、ログの取り込みの有無の順です。断られた後も接続はそのまま使えます。`UnsubscribeOutputLog` は設定に関係なく常に成功します。ストリームを止めるのは `AllowLogDump` だけで、`+DeniedCommands=UAIP.Editor.Observation.DumpOutputLog` では止まりません。⚠️ 以前は `AllowLogDump` に関係なく購読を受け付け、ログの取り込み無しで起動したサーバーも受け付けたうえで 1 行も届けませんでした。
+
 ### 3.3 CLI レスポンス
 
 `-uaip-response-file=<path>` 指定時は JSON をそのパスに書き出します。指定なしの場合、レスポンスは stdout マーカーで囲まれます：

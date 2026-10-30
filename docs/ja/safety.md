@@ -1004,8 +1004,30 @@ CommonUI のコマンド（[`UAIP.Runtime.CommonUI`](commands.md#uaipruntimecomm
 | `UAIP.Editor.Property.GetProjectSetting`、`GetAssetProperty`、`GetActorProperty`、`GetBlueprintDefault`、`GetWorldSetting`、`GetDataTableRow` | `Value` |
 | `UAIP.Editor.Level.GetActorComponentProperty`、`UAIP.Editor.Blueprint.GetBlueprintComponentProperty` | `Value` |
 | `UAIP.Editor.UMG.GetWidgetProperties` | プロパティの値（パスワード欄のテキストを含む） |
+| `UAIP.Editor.Blueprint.GetPinDefaultValue` | ピンの既定値 |
+| `UAIP.Editor.Mass.DumpMassEntityConfig` | 応答に出したトレイトのプロパティ（応答の件数の上限で切られたトレイトは解禁されません） |
+| `UAIP.Editor.ControlRig.GetComponent`、`GetPinValue`、`Toolset.Editor.ControlRig.GetPinValue`、`ListVariables`、`GetVariable` | コンポーネントの平文の `ContentText` と `Content`、ピンと変数の値 |
+| `Toolset.Editor.ControlRig.SetPinValue` | 値を返すためではなく、実行を許すためだけに受け付けます。秘密の配列ピン（秘密かどうか確かめられない配列を含む）の要素を指す `Pin` は、3 つの許可がそろわなければ、Toolset を呼ぶ前に native の `SetPinValue` と同じ文言の `PolicyViolation` で断られます。応答と artifact は変わりません（もともと値を返しません）。Toolset の中でエンジンが作る失敗の文言はこの保護の外で、呼び出し元が送った値を引用することがあります |
+| `UAIP.Editor.Sequencer.GetSectionProperty`、`UAIP.Editor.Dataflow.GetDataflowNodeProperty`、`UAIP.Editor.AnimBlueprint.GetAnimGraphNodeDetails` | プロパティの値 |
+| `UAIP.Editor.Subsonic.GetSubsonicEventCollectionInfo` | パラメータ、アクション・モディファイアのプロパティの値 |
+| `UAIP.Editor.SoundSettings.GetSoundMixInfo`、`GetSoundClassInfo`、`GetSoundAttenuationInfo` | プロパティの値 |
+| `UAIP.Editor.BehaviorTree.GetBehaviorTreeNodeProperties`、`UAIP.Editor.EnhancedInput.GetInputActionInfo`、`GetMappingContextInfo`、`UAIP.Editor.StateTree.GetStateTreeParameters`、`UAIP.Editor.Niagara.GetStackInputData`（と Toolset 版）、`UAIP.Editor.UMG.GetSlotProperties`、`UAIP.Editor.EQS.GetEQSQueryInfo` | 値 |
 
-`Toolset.ConfigSettings.GetSectionSchema` は対象外です。プロパティの型・説明・範囲・enum の名前を返すだけで、値は返さないためです。そのほかのプロパティを読むコマンドは、秘密の値を伏せたままにし、解禁はできません。
+`Toolset.ConfigSettings.GetSectionSchema` は対象外です。プロパティの型・説明・範囲・enum の名前を返すだけで、値は返さないためです。下の「伏せるだけで解禁の無いもの」に挙げた読み取りは、秘密の値を伏せたままにし、解禁はできません。
+
+**実行を許すためだけに `IncludeSecretValues` を受け付けるコマンド。** プロパティを書くコマンド（`SetActorProperty`・`SetAssetProperty`・`SetBlueprintDefault`・`SetWorldSetting`・`SetProjectSetting`・`SetDataTableRow`・`SetActorComponentProperty`・`SetBlueprintComponentProperty`・`SetAnimNotifyProperty`・`SetPoseSearchSchemaChannelProperty`・`SetEQSGeneratorProperty`・`SetEQSTestProperty`・`SetSectionProperty`・`SetDataflowNodeProperty`・`SetAnimGraphNodeProperty`・Subsonic の 3 本・`SetSoundCueNodeProperty`・`SetSoundMixSettings`・`SetSoundClassSettings`・`SetSoundAttenuationSettings`）、ControlRig の `SetPinValue`、`AssertActorProperty` / `AssertWorldState` / `WaitForCondition`、`ExportDataTableToCSV` / `DeleteDataTableRow` / `ImportDataTableFromCSV` は `IncludeSecretValues` を受け付けますが、**平文を返すためではありません**。秘密の形や値を明かしうる操作を、実行してよいとするための引数です。
+
+- 秘密の配列・Set・Map の要素を指す操作（`Insert` / `Remove`、添字・キーを指定した `Replace`）と、プロパティのパスに秘密の配列への添字を書くこと（`SecretList[5]`）。読み取りも書き込みも対象です
+- アサートで秘密のプロパティを比べること
+- 行の構造体が秘密を含む（ファイルパスの列も含む）データテーブルの書き出し・行の削除・取り込み
+
+3 つの許可（引数、Capability `SecretValueRead`、`AllowSecretValueRead=True`）がすべて要ります。欠けていれば、対象を調べる前に `PolicyViolation` で断ります。何も書かず、Undo の記録も作らず、文言は 3 つの許可を案内し、パス・列名・値は含めません（アサートは、読めないプロパティと同じ形で失敗します）。そろっていれば今までどおり実行しますが、書き込みが平文を返すことはありません。
+
+**書き込みは応答で秘密を伏せます。** 書き込みのコマンドの応答と artifact は、秘密の対象の書く前の値・書いた値・値の反響・要素のキーを `***` と `IsMasked: true` で返し、`Changed` は出しません（秘密が変わったかどうかを示してしまうため）。書く前の値は読まず、UAIP が組み立てる失敗の文言には値・要素数・範囲を入れません。平文は、対応する読み取りのコマンドを 3 つの許可付きで呼んで読みます。Set 系に解禁の口はありません（`SetConfigValue` の既存の `OldValue` の解禁は変わりません）。
+
+**伏せるだけで解禁の無いもの。** 秘密を伏せるだけで、平文を読む方法が無いコマンドがあります。PoseSearch のチャンネルのスキーマ（`GetPoseSearchChannelClassSchema` と、`SetPoseSearchSchemaChannelProperty` が書いた値）、`GetDataTableRowStruct`、`SetSoundCueNodeProperty` と `SetAnimNotifyProperty` の値・キーの反響、`GetAnimNotifyProperty` です。
+
+**確かめられなかったものは解禁されません。** 秘密でないとコマンドが確かめられなかった値（ピンや ControlRig を引き当てられない、定義するプロパティを引けない）は伏せられ、`UnverifiedMaskedFields` に載り、3 つの許可がそろっていても返りません。
 
 **何を秘密とみなすか。** 次のどれか 1 つに当たるプロパティが秘密です。メタデータ `Password` / `Secret` / `PasswordField=true`。名前のパターン（パスワード、API キー、トークンなど）。ファイルパス・ディレクトリパスの型（`FFilePath` / `FDirectoryPath`）。固定の一覧の項目（今は CryptoKeys の設定 `EncryptionKey`、`SigningPrivateExponent`、`SecondaryEncryptionKeys`）。`MyPath.FilePath` のようなパスは、途中のどれか 1 段でも秘密なら値全体が伏せられます。Widget Blueprint のウィジェットでは、`IsPassword` が立っている文字入力ウィジェットの `Text` も秘密です。呼び出した時点のウィジェットの状態で判定します。`SetWidgetProperties` は、書き込みの前か後のどちらかでテキストが秘密なら、前の値を伏せます。伏せる判定と解禁の判定は同じなので、伏せられるものは必ず解禁できます。`SetSettingsValues` と `Toolset.ConfigSettings.SetSectionProperties` で書く `Properties` は、秘密かどうかによらず、監査ログと完了通知で伏せられます。
 
@@ -1207,18 +1229,18 @@ AllowProjectNetDriverNetModeQuery=False
 | キー | デフォルト | 効果 |
 |---|---|---|
 | `ReadOnly` | `False` | 書き込みコマンドを拒否。エディタライフサイクルの 2 コマンドのみ例外 — 下記参照 |
-| `DisableSave` | `False` | ディスク書き込みコマンド（ファイルの削除・移動・リネームを含む）を拒否 — 下記参照 |
-| `AllowLogDump` | `False` | `DumpOutputLog` / `DumpMessageLog` と `GetLogEntries`（`UAIP.Editor.Engine.Log.GetLogEntries` と `Toolset.Editor.Toolset.Logs.GetLogEntries`）を許可。`QueryCapabilities` は `OperationalConstraints.IsLogDumpAllowed` として報告します |
+| `DisableSave` | `False` | ディスク書き込みコマンド（ファイルの削除・移動・リネームを含む）を拒否 — 下記参照 ディスクに書く Toolset 版のコマンド（`Toolset.ConfigSettings.SaveSection`、`Toolset.Plugin.*` の書き込み 4 本、Toolset 版 `CreateGameFeaturePlugin`）と、保存を伴う ChaosCloth・MetaHuman のコマンド（native と Toolset 版）にも効きます |
+| `AllowLogDump` | `False` | `DumpOutputLog` / `DumpMessageLog` と `GetLogEntries`（`UAIP.Editor.Engine.Log.GetLogEntries` と `Toolset.Editor.Toolset.Logs.GetLogEntries`）を許可。`QueryCapabilities` は `OperationalConstraints.IsLogDumpAllowed` として報告します WebSocket のログを購読してよいか（`SubscribeOutputLog`。断られた要求には `PolicyViolation` の応答が返り、ログは 1 行も届きません）と、`GetLastCrashReport` がログの末尾を返すかも決めます。`+DeniedCommands=...DumpOutputLog` では WebSocket のストリームは**止まりません**。止めるのはこのフラグだけです |
 | `AllowContextMenuMutation` | `False` | `InvokeContextMenuAction` を許可 |
 | `AllowKeyboardInput` | `False` | `PressKey` を許可（`EditorKeyboardInput` Capability も別途必要） |
 | `AllowKeyboardModifierInput` | `False` | `PressKey` 内の Ctrl/Alt/Shift 修飾キーを許可 |
-| `AllowPasswordFieldWrite` | `False` | `FillForm` でパスワードフィールドへの書き込みを許可 |
+| `AllowPasswordFieldWrite` | `False` | `FillForm` でパスワードフィールドへの書き込みを許可 Toolset 版の `InputText` / `FillForm` にも効きます。`False` の間は、パスワード欄かどうか判定できない対象（古い Ref・テキスト欄でない Ref・型の誤った引数）も断ります。Toolset 版の `PressKey` はウィジェットの参照を受け取らないので、このフラグでは判定できません |
 | `AllowRuntimePasswordFieldWrite` | `False` | `TypeGameViewportText` による、実行中のゲームの UI のパスワード欄と、パスワード欄かどうか判定できない欄への入力を許可（`RuntimeUIInputInjection` も必要）。`AllowPasswordFieldWrite` とは独立。起動引数: `-uaip-policy-allow-runtime-password-field-write=True` |
 | `AllowPasswordFieldRead` | `False` | `SnapshotUI` が、エディタの UI のパスワード欄と、パスワード欄かどうか判定できない欄の平文を返せるようにします（`EditorWidgetPasswordTextRead` も必要）。`AllowRuntimePasswordFieldRead` とは独立。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-password-field-read=True` |
 | `AllowRuntimePasswordFieldRead` | `False` | `DumpGameViewportWidgetTexts` が、実行中のゲームの UI のパスワード欄と、パスワード欄かどうか判定できない欄の平文を返せるようにします（`RuntimeWidgetTextRead` と `RuntimeWidgetPasswordTextRead` も必要）。`AllowPasswordFieldRead` とは独立。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-runtime-password-field-read=True` |
 | `AllowSecretValueRead` | `False` | `IncludeSecretValues` を受け付けるコマンドが、秘密の設定値の平文を返せるようにします（`SecretValueRead` も必要）。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-secret-value-read=True`。[秘密値の平文での読み取り](#秘密値の平文での読み取り) を参照 |
 | `AllowInputModeBypass` | `False` | Inject 系コマンドの `BypassInputMode=true` を許可 |
-| `DisablePIEStart` | `False` | PIE 起動を拒否 |
+| `DisablePIEStart` | `False` | PIE 起動を拒否 Toolset 版の `Toolset.Editor.Toolset.PIE.StartPIE` にも `StartPIE` と同じ文言で効きます。PIE を始められない状態でも、先にこの拒否が返ります |
 | `AllowCheatCVarWrite` | `False` | `SetConsoleVariable` / `ResetConsoleVariable` による `ECVF_Cheat` フラグ付き CVar への書き込みを許可（`RuntimeCVarWrite` も別途必要） |
 | `AllowExternalTraceAnalysis` | `False` | UAIP 以外が採取した `.utrace` の `AnalyzeTrace` による読み取りを許可。**単体では何も許可しません** — `ExternalTraceDirectory` の設定も必須 |
 | `ExternalTraceDirectory` | 未設定 | UAIP 以外が採取した `.utrace` が置かれていなければならないルートディレクトリ。ini のみ（CLI での上書き不可）で、意図的に既定値を持ちません |
@@ -1227,7 +1249,7 @@ AllowProjectNetDriverNetModeQuery=False
 | `AllowProjectNetDriverNetModeQuery` | `False` | 実行時コマンドが、プレイワールドの NetMode（と一時停止中かどうか）を通常の方法でエンジンに問い合わせることを許可する。この方法はネットドライバーの override できるサーバー判定に届きます。既定では、UAIP はエンジン自身の override できない状態から NetMode を求めるので、読み取り専用のコマンドの中でプロジェクトのネットドライバーのコードが実行されることはありません。プロジェクトのネットドライバーが「サーバーであること」の意味を変えていない限り、答えは同じです。そのようなドライバーのときだけオンにしてください。オンの間は、読み取り専用の実行時コマンドが、`ReadOnly` の下でもゲームループが止まっている間でもそのプロジェクトのコードを実行し、エディタまたはゲームは読み込み時に警告を 1 回出します。起動引数: `-uaip-policy-allow-project-net-driver-net-mode-query=True`。再起動後に効きます。`QueryCapabilities` の `OperationalConstraints` には出ません |
 | `AllowedCapabilities` | 空 | DefaultDenied の Capability を解除（`+` 付きで 1 行に 1 つ） |
 | `DeniedCapabilities` | 空 | DefaultAllow の Capability を全セッションから取り除く |
-| `DeniedCommands` | 空 | 完全修飾名で指定したコマンドをブロック。ブロックされたコマンドは `ListCommands` の既定応答からは隠れ、`HiddenReasons.DeniedCommand` に計上される。`IncludeUnavailable=true` を指定すると `Available: false`・`UnavailableReason: "DeniedCommand"` として明示的に列挙できる。`DescribeCommand` では常に表示される |
+| `DeniedCommands` | 空 | 完全修飾名で指定したコマンドをブロック。ブロックされたコマンドは `ListCommands` の既定応答からは隠れ、`HiddenReasons.DeniedCommand` に計上される。`IncludeUnavailable=true` を指定すると `Available: false`・`UnavailableReason: "DeniedCommand"` として明示的に列挙できる。`DescribeCommand` では常に表示される ここに `DumpOutputLog` を入れても WebSocket のログのストリームは止まりません。`AllowLogDump` を使ってください |
 | `AllowCapabilityReload` | `False` | `UAIP.Core.ReloadCapabilities` を有効化（再起動不要で設定反映） |
 
 ### DisableSave と、削除・移動・リネームのコマンド
@@ -1240,6 +1262,8 @@ AllowProjectNetDriverNetModeQuery=False
 - `DeleteInputAction`・`DeleteMappingContext`
 - `DeleteDataLayerAsset`・`DeleteHLODs`
 - `DeleteGameFeaturePlugin`と、`CreateGameFeaturePlugin`（新しいプラグインをディスクに書き出すため）
+- `SetProjectSetting`（設定オブジェクトを ini ファイルへ保存するため。以前は `ExecutionFailed` と独自の文言で断っていましたが、下の共通の文言になりました）
+- ディスクに書く Toolset 版のコマンドは、Toolset を呼ぶ前に断られます。`Toolset.ConfigSettings.SaveSection`、`Toolset.Plugin.SetPluginEnabled`・`UpdatePluginDescriptor`・`AddPluginDependency`・`RemovePluginDependency`、Toolset 版 `CreateGameFeaturePlugin` です。保存を伴う ChaosCloth・MetaHuman のコマンド（native と Toolset 版）も断られます。`DisableSave` を判定するコマンドは、どれも同じ判定と同じ文言なので、native のコマンドと対応する Toolset 版で食い違うことはありません。⚠️ 保存を伴う native の MetaHuman のコマンド 5 本は、以前は `Persisting operations ...` の文言で断っていましたが、下の文言に変わりました。
 
 拒否の文言は "Disk write operations are disabled by the current safety policy." で、何も削除・移動・リネームされません。これらのコマンドでは、この判定を PIE 中かどうかの判定やエディタの状態の確認より先に行うので、PIE 中に依頼しても `NotAllowed` ではなく `PolicyViolation` が返ります。`RestartEditor` と `ShutdownEditor` は、`SaveAll: true` を明示したときだけ拒否されます。以前から `DisableSave` で拒否していたコマンドは、それぞれの文言のままです。それ以外の方法でディスクに書くコマンド（GameplayTag や PrimaryAssetType の設定ファイルへの書き込み、サンドボックスの変更の確定、Niagara の Blueprint ラッパーや Groom の作成など）は `DisableSave` を確認しません。
 
