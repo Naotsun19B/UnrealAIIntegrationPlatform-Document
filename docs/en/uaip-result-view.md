@@ -46,8 +46,10 @@ terminal, the call row is one line and the summary is drawn in the result row be
   change between Claude Code releases; this is why the Mod is versioned `0.x`. If UAIP rows go back
   to raw JSON after a Claude Code update, start Claude Code with `claude --debug` and look for the
   `ui.render (ToolUse)` lines in the log: they say why the drawing was rejected.
-- **The UAIP MCP Bridge**, registered in Claude Code by its installer (the server name starts with
-  `uaip-`). See [Claude Code](clients/claude-code.md) for the bridge setup.
+- **The UAIP MCP Bridge**, registered in Claude Code by its installer. The Mod recognises a server
+  named `uaip`, or a name that starts with `uaip-` or `uaip_`, in any letter case (such as
+  `UAIP_MyProject`); calls to a server named any other way are drawn as usual. See
+  [Claude Code](clients/claude-code.md) for the bridge setup.
 
 ---
 
@@ -106,6 +108,7 @@ Get-FileHash UAIP-ResultView-<version>.zip -Algorithm SHA256
 
 | Version | SHA-256 (`UAIP-ResultView-<version>.zip`) |
 |---|---|
+| 0.1.1 | `959d04947832f386ff486d971218e90908c4aa08de0f7032e9949eb138cb0d3b` |
 | 0.1.0 | `8c30b0a40bc525e62bdbabdaf28ac629718fb9622c432ec0b59a9a6ea74cc39b` |
 
 ---

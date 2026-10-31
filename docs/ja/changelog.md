@@ -355,6 +355,10 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 - **ブリッジが自前で返す応答 6 種類に `Result` が加わりました。** `uaip_execute` 経由の `ShutdownEditor` の no-op、`RestartEditor` のセッションなし起動・アタッチ、シャットダウン転送の 2 種、応答しないエディタの復旧の 2 種です。互換のため、同じ値の `Data` も残します。
 - **`RestartEditor` を拒否した応答の形が変わりました。** 受付時のエディタの応答は、拒否応答の後ろに別の text として続くのをやめ、`Result.AcceptedResponse` に入ります。その artifact は、他の応答と同じ位置の最上位の `_inlined_artifacts` に載ります。応答本文は 1 つの text 部分だけです。受付時の応答が JSON として読めなかったときは、`AcceptedResponse` に `{"RawText": ...}` が入ります。
 
+### Result View 0.1.1 — 2026-10-31
+
+サーバー名 `uaip` だけで登録した UAIP の MCP Bridge、`-` の代わりに `_` で続く名前（`uaip_MyProject`）、大文字を含む名前（`UAIP-MyProject`）も認識するようにしました。0.1.0 は小文字の `uaip-` で始まる名前だけを認識していたため、それ以外の名前で登録したブリッジへの呼び出しは生の JSON のまま表示されていました。ほかに変更はありません。詳細は [Result View](uaip-result-view.md) を参照してください。
+
 ### Result View 0.1.0 — 2026-10-16
 
 初の公開版 `0.1.0`。UAIP の MCP ツール呼び出しを、生の応答 JSON の先頭ではなく要約（呼んだコマンド、成否またはエラーコードとメッセージ、Artifacts、シナリオのステップ）でトランスクリプトに描く Claude Code の Mod です。`Result` の主要フィールドは Details ボタンで開きます（失敗時は最初から開いています）。変わるのは描画だけで、モデルが読む結果は変わりません。MCP Bridge 経由で UAIP を使うセッション向けで、Claude Code Plugin は不要です。このリポジトリの Releases（タグ `ResultView-v<X.Y.Z>`）から `UAIP-ResultView-<version>.zip` として配布し、Claude Code Plugin と同じ marketplace `uaip-tools` に属します（プラグイン名 `uaip-result-view`）。使っている Claude Code の Mod API が EARLY ACCESS のため、版は `0.x` です。詳細は [Result View](uaip-result-view.md) を参照してください。

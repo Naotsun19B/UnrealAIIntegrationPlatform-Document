@@ -355,6 +355,10 @@ The bridge is versioned and released independently of the plugin; see the versio
 - **The six responses the bridge returns itself now carry `Result`.** They are the `ShutdownEditor` no-op, the session-less launch and attach of `RestartEditor`, the two shutdown-forwarding responses, and the two unresponsive-editor recovery responses, all via `uaip_execute`. For compatibility the same value stays in `Data`.
 - **The shape of a rejected `RestartEditor` response changed.** The editor's acceptance response no longer follows the rejection as a separate text part; it is placed in `Result.AcceptedResponse`. Its artifacts appear in the top-level `_inlined_artifacts`, the same position as in other responses. The response body is a single text part. If the acceptance response is not readable as JSON, `AcceptedResponse` holds `{"RawText": ...}`.
 
+### Result View 0.1.1 — 2026-10-31
+
+The Mod now also recognises a UAIP MCP Bridge registered under the server name `uaip` alone, under a name that continues with `_` instead of `-` (`uaip_MyProject`), and under any letter case (`UAIP-MyProject`). In 0.1.0 only a name starting with lowercase `uaip-` was recognised, so calls to a bridge registered any other way were left as raw JSON. Nothing else changes. See [Result View](uaip-result-view.md).
+
 ### Result View 0.1.0 — 2026-10-16
 
 First public release, `0.1.0`. A Claude Code Mod that draws UAIP MCP tool calls in the transcript as a summary — which command ran, success or the error code and message, artifacts, scenario steps — instead of the first characters of the raw response JSON, with the main fields of `Result` behind a Details button (already open when the call failed). Only the drawing changes; the result the model reads is unchanged. For sessions that reach UAIP through the MCP Bridge; it does not need the Claude Code Plugin. Distributed as `UAIP-ResultView-<version>.zip` from this repository's Releases (tag `ResultView-v<X.Y.Z>`), under the same marketplace `uaip-tools` as the Claude Code Plugin (plugin name `uaip-result-view`). Versioned `0.x` because the Claude Code Mod API it uses is early access. See [Result View](uaip-result-view.md).

@@ -45,8 +45,10 @@ VS Code 拡張とデスクトップアプリでは、要約を呼び出しの行
   リリースごとに変わりえます。この Mod の版が `0.x` なのはそのためです。Claude Code の更新後に UAIP の行が
   生の JSON に戻ったら、`claude --debug` で起動し、ログの `ui.render (ToolUse)` の行を見てください。描画が
   拒否された理由が書かれています
-- **UAIP の MCP Bridge**。インストーラーが Claude Code に登録したもの（サーバー名が `uaip-` で始まる）。
-  ブリッジのセットアップは [Claude Code](clients/claude-code.md) を参照してください
+- **UAIP の MCP Bridge**。インストーラーが Claude Code に登録したもの。Mod が認識するサーバー名は、`uaip`
+  そのもの、または `uaip-` か `uaip_` で始まる名前です（大文字小文字は問いません。例: `UAIP_MyProject`）。
+  それ以外の名前のサーバーへの呼び出しは通常どおりに表示されます。ブリッジのセットアップは
+  [Claude Code](clients/claude-code.md) を参照してください
 
 ---
 
@@ -104,6 +106,7 @@ Get-FileHash UAIP-ResultView-<version>.zip -Algorithm SHA256
 
 | バージョン | SHA-256（`UAIP-ResultView-<version>.zip`） |
 |---|---|
+| 0.1.1 | `959d04947832f386ff486d971218e90908c4aa08de0f7032e9949eb138cb0d3b` |
 | 0.1.0 | `8c30b0a40bc525e62bdbabdaf28ac629718fb9622c432ec0b59a9a6ea74cc39b` |
 
 ---
