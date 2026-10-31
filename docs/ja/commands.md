@@ -2516,7 +2516,7 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | コマンド | 説明 |
 |---|---|
 | `GetSequenceInfo` | トラック / セクション / チャンネル / バインド / DisplayRate / 再生範囲 |
-| `GetBindings` | Possessable バインド一覧（GUID・名前・クラス） |
+| `GetBindings` | Possessable と Spawnable のバインド一覧（GUID・名前・バインド種別・クラス。Spawnable はオブジェクトテンプレートのクラス） |
 | `GetTracks` | 指定 BindingGuid のトラック一覧 |
 | `GetSections` | トラックのセクション一覧（フレーム範囲付き） |
 | `GetDisplayRate` | LevelSequence の DisplayRate |

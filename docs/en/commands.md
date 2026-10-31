@@ -2516,7 +2516,7 @@ LevelSequence editing — tracks, sections, keyframes, playback, bindings.
 | Command | Description |
 |---|---|
 | `GetSequenceInfo` | Track / section / channel / binding / DisplayRate / playback range |
-| `GetBindings` | List Possessable bindings (GUID, name, class) |
+| `GetBindings` | List Possessable and Spawnable bindings (GUID, name, binding type, class — for a Spawnable, the class of its object template) |
 | `GetTracks` | List tracks for a BindingGuid |
 | `GetSections` | List sections (with frame range) for a track |
 | `GetDisplayRate` | Get the sequence's DisplayRate |
