@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1324 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1745 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1337 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1758 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -91,35 +91,35 @@ Toolset ブリッジコマンドが、経由する Toolset 連携の準備がで
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 24 | 8 | 一部（10/24） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 23 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 24 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 24 | 13 | — |
-| Editor Material | `UAIP.Editor.Material` | 11 | — | — |
+| Editor Material | `UAIP.Editor.Material` | 12 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
 | Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 5 | 4 | — |
 | Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 52 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
-| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | 7 | — |
+| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 10 | 7 | — |
 | Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 11 | — | — |
 | Editor MetaHuman 🧩 | `UAIP.Editor.MetaHuman` | 56 | 9 | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 8 | — | — |
-| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 19 | — | — |
+| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 21 | — | — |
 | Editor AnimBlueprint UAF 🧩 | `UAIP.Editor.AnimBlueprint.UAF` | 1 | — | — |
-| Editor UAF 🧩 | `UAIP.Editor.UAF` | 19 | — | — |
+| Editor UAF 🧩 | `UAIP.Editor.UAF` | 20 | — | — |
 | Editor UAF AnimGraph 🧩 | `UAIP.Editor.UAF.AnimGraph` | 1 | — | — |
-| Editor SoundCue | `UAIP.Editor.SoundCue` | 8 | — | — |
+| Editor SoundCue | `UAIP.Editor.SoundCue` | 9 | — | — |
 | Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
-| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 18 | 7 | — |
-| Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
-| Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
+| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 19 | 7 | — |
+| Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 11 | — | — |
+| Editor EQS 🧩 | `UAIP.Editor.EQS` | 10 | — | — |
 | Editor Sequencer | `UAIP.Editor.Sequencer` | 131 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG 🧩 | `UAIP.Editor.PCG` | 34 | 31 | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 35 | 31 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
-| Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
-| Editor ControlRig | `UAIP.Editor.ControlRig` | 68 | 107 | — |
+| Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 8 | 5 | — |
+| Editor ControlRig | `UAIP.Editor.ControlRig` | 69 | 107 | — |
 | Editor ControlRig Dynamics 🧩 | `UAIP.Editor.ControlRig.Dynamics` | 17 | — | — |
 | Editor ControlRig Physics 🧩 | `UAIP.Editor.ControlRig.Physics` | 8 | — | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 15 | — | — |
@@ -319,6 +319,92 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ---
 
+## グラフの自動整列
+
+13 個の `Arrange…Graph` コマンドが、1 つのグラフのノードを読みやすい配置へ並べ直します。AI が座標を省いてノードを追加し、全部が (0,0) に重なったときなどに使います。どのコマンドも次のとおりです。
+
+- 変えるのは**位置だけ**（とコメントボックスの枠）。接続・ノードの種類・プロパティは変えず、コンパイル・再構築・再生成もしません
+- **Undo 1 回**で全ノードが整列前の位置に戻り、Redo で整列後に戻ります
+- アセットをエディタで開いていてもいなくても動きます。開いていれば画面のノードがその場で動きます
+- 動くノードが無いときは何も書きません。トランザクションも Undo の履歴も残らず、パッケージも dirty になりません（`MovedNodeCount` は `0`、artifact も付きません）
+- PIE 中は `NotAllowed` で断ります。各ドメインの編集 Capability で守られます（Capability は増やしていません。整列は型の受け入れ判定の対象外なので、どんな種類のノードがあっても整列できます）
+
+Niagara と StateTree には整列コマンドがありません。
+
+| ドメイン | コマンド | グラフの指定 | `NodeIds` の ID | 並び方 | Capability |
+|---|---|---|---|---|---|
+| Blueprint | `ArrangeBlueprintGraph` | `BlueprintPath` + `GraphName` / `GraphGuid` | `NodeGuid`（大文字 16 進 32 桁） | 左→右に実行順。計算だけのノードは使う側の左 | `BlueprintGraphEdit` |
+| AnimBlueprint の AnimGraph | `ArrangeAnimGraph` | `AssetPath` + `TargetGraph` / `GraphGuid`（既定は最初の AnimGraph） | `GetAnimBlueprintInfo` の `NodeId`（ハイフン付き GUID） | 出力が右端、入力が左へ伸びる | `AnimBlueprintGraphEdit` |
+| AnimBlueprint のステートマシン | `ArrangeAnimStateMachine` | `AssetPath` + `StateMachineNodeId` | 状態・コンジットの `NodeId`（ハイフン付き GUID） | 入口が左端、状態が遷移の向きに並ぶ | `AnimStateMachineEdit` |
+| Material / MaterialFunction | `ArrangeMaterialGraph` | `AssetPath` | `MaterialExpressionGuid`、または出力ノードの固定 ID | 出力が右端、入力が左へ伸びる | `MaterialGraphEdit` |
+| SoundCue | `ArrangeSoundCueGraph` | `AssetPath` | `GetSoundCueInfo` の `NodeId` | 出力が右端、音源が左 | `SoundCueGraphEdit` |
+| BehaviorTree | `ArrangeBehaviorTreeGraph` | `AssetPath` | `GetBehaviorTreeNodeList` の `NodeGuid` | 木。ルートが上 | `BehaviorTreeGraphEdit` |
+| Dataflow | `ArrangeDataflowGraph` | `AssetPath`（`/Game/` のみ） | `GetDataflowGraphInfo` の `NodeGuid`（小文字・ハイフン付き） | 左→右にデータの流れ | `DataflowGraphEdit` |
+| PCG | `ArrangePCGGraph` | `AssetPath`（`/Game/` のみ） | `GetPCGGraphInfo` の `NodePath` | 左→右にデータの流れ | `PCGGraphEdit` |
+| MetaSound | `ArrangeMetaSoundGraph` | `AssetPath` | `GetMetaSoundInfo` の `NodeId`（返された表記のまま） | 入力が左、出力が右 | `MetaSoundGraphEdit` |
+| ControlRig | `ArrangeControlRigGraph` | `AssetPath` + `GraphName`（`SetNodePosition` と同じ解決） | `ListNodes` が返すノード名 | 左→右に実行順 | `ControlRigGraphEdit` |
+| UAF ⚠️ | `ArrangeUAFGraph` | `AssetPath` + `EntryName`（必須） | `ListUAFNodes` が返すノード名 | 左→右に実行順 | `UAFGraphEdit` |
+| EQS | `ArrangeEQSGraph` | `AssetPath` | `GetEQSQueryInfo` の `OptionId` | 木。ROOT が上 | `EQSAssetEdit` |
+| Conversation | `ArrangeConversationGraph` | `AssetPath` + `GraphIndex`（既定 `0`） | `AddConversationNode` が返す `NodeGuid`（大文字・ハイフンなし） | 木。入口が上 | `ConversationGraphEdit` |
+
+各コマンドの行は、それぞれのドメインの節にあります。AnimGraph の中の Unified Animation Framework のノードは `ArrangeAnimGraph` が並べます（専用のコマンドはありません）。
+
+### 共通の引数
+
+| 引数 | 型 | 説明 |
+|---|---|---|
+| `Method` | 文字列 | `Auto`（既定）/ `Engine` / `Builtin`。大文字小文字は区別しません。下の「方法の選び方」を参照 |
+| `NodeIds` | 文字列の配列 | 動かしてよいノード。指定外のノードはその場に残り、障害物として扱われます。省略するとグラフ全体を並べます。空配列・重複は不可で、`Method=Engine` とは併用できません |
+| `HorizontalSpacing` / `VerticalSpacing` | 整数（`0`〜`2000`） | 自前の整列でのノード間の横・縦の間隔（既定は左→右・右→左の並びで 80 / 40、木で 40 / 80）。`Method=Engine` とは併用できません |
+
+`NodeIds` は、**そのドメインの一覧コマンドが返す表記と完全に一致**させて渡します（上の表）。同じ ID でも別の表記（GUID の大文字小文字や区切りの違いなど。ドメインの単一ノードのコマンドは受け付けることがあります）は `InvalidParams` で断られ、期待する表記が示されます。コメントボックスは、コメントを指定すると中身ごと動き、中身だけを指定すると枠は動きません。中身の無いコメントは動かず、ほかのノードの障害物になります。BehaviorTree のデコレーターとサービスは位置を持たず（親に追従）指定できません。EQS のテストと ROOT、AnimBlueprint のステートマシンの遷移ノード（エディタが 2 つの状態の間に描くので並べず、`TotalNodeCount` にも数えません）、Conversation のサブノード、PCG と MetaSound のコメントボックスも指定できません。Conversation は一覧のコマンドがノード ID を返さないため、`AddConversationNode` が返した ID を使います（エディタで人が足したノードは指定できませんが、グラフ全体の整列はできます）。
+
+### 方法の選び方
+
+- **`Builtin`** — UAIP 自前の整列。決定的で、冪等（ノードの大きさの決め方が同じなら、整列済みのグラフをもう一度整列しても動きません）。すべてのグラフで使えます
+- **`Engine`** — エンジン自身の整列。持っているのは **BehaviorTree**、**Material / MaterialFunction**、**PCG（UE 5.8 のみ）** の 3 種類だけです。それ以外のグラフ（UE 5.7 の PCG を含む）で指定したとき、また `NodeIds` や間隔と併用したときは `InvalidParams` です。エンジンの整列の前提を満たさないときは `PreconditionFailed` で、足りないものを示して断ります。黙って `Builtin` に切り替えることはありません
+- **`Auto`** — 基本は `Builtin`。**BehaviorTree** だけ、次をすべて満たすときにエンジンの整列を使います。アセットを BehaviorTree エディタで開いていてグラフのタブを表示済みで全ノードが描画済み／`NodeIds`・間隔・中身のあるコメントが無い／全ノードがルートからつながっている／同じ親の下に X が同じ兄弟がいない（エンジンが実行順を入れ替えうるため）。Material と PCG は、エンジンの整列があっても `Auto` では常に `Builtin` です（Material のエンジンの整列は結果が安定せず取り残しがあり、PCG のものはエディタの選択状態で範囲が変わるため）。エンジンの整列を使ったときは、エディタの表示がグラフ全体に合わせてズームし直されます
+
+`Engine` の前提: BehaviorTree — アセットが開いていて全ノードが描画済みであること（`Engine` 明示では `Auto` の残り 2 条件は見ません。ルートにつながっていないノードは動かず、X が同じ兄弟は実行順が入れ替わることがあります）。Material — 前提なし。ただしコメントと出力につながっていないノードは動かず、MaterialFunction は入力側しか並ばないことがあります。PCG — UE 5.8 で、そのグラフ**自身の** PCG エディタで開いていて（別のグラフのエディタの中でサブグラフとして表示しているだけでは不可）、タブが表示されていて、別のグラフのタブにフォーカスが無いこと。エディタでそのグラフのノードを選んでいると選んだノードだけが並ぶので、`MovedNodeCount` が `TotalNodeCount` より小さくなることがあります。
+
+### Result
+
+| キー | 説明 |
+|---|---|
+| `Method` | 実際に使った方法（`Engine` / `Builtin`） |
+| `MethodReason` | `Auto` が `Builtin` を選んだ理由。当てはまるものが複数あるときは、この並びで先のものを 1 つだけ返します: `NoEngineLayout`（エンジンの整列が無い。UE 5.7 の PCG を含む）、`DefaultForThisGraph`（Material・PCG）、`NodeIdsSpecified`、`SpacingSpecified`、`CommentWithContents`、`EditorNotOpen`（BehaviorTree）、`NodeWidgetsMissing`（BehaviorTree：エディタは開いているが描画されていないノードがある）、`UnreachableNodes`（BehaviorTree：ルートから辿れないノードがある）、`AmbiguousSiblingOrder`（BehaviorTree：X が同じ兄弟がいる）。`Method` を明示したとき、またはエンジンの整列を選んだときは空 |
+| `MovedNodeCount` / `TotalNodeCount` | 動いたノードの数（コメントボックスを含む）/ グラフのノードの数 |
+| `UnmovedByEngineCount` | `Engine` のときだけ。エンジンの整列が動かさなかったノードの数 |
+| `Bounds` | 整列後の全ノードの外接矩形。`X` / `Y` / `Width` / `Height`（グラフ座標） |
+| `SizeSource` | `Builtin` のときだけ。`MeasuredCount`（実際のウィジェットで測った数）と `EstimatedCount`（タイトルとピンの数から推定した数）、全体を推定にした理由 `AllEstimatedReason` — `NodeLimitExceeded`（500 ノードを超えたので、時間がかからないよう全ノードを推定にした）/ `MeasurementUnavailable`（この環境ではウィジェットを作れない）/ 空。MetaSound は常に推定、ControlRig と UAF はグラフが持つ大きさか推定を使います |
+| `EditorSync` | `EditorOpen`（bool）。`ArrangeMaterialGraph` はエディタが開いているとき `WorkingCopyOnlyNodeCount` も返します |
+
+応答には、並べたグラフを特定するキー（たとえば `BlueprintPath` / `GraphName` / `GraphGuid`）もドメインごとに付きます。動いたノードがあるときは、JSON の artifact が `MovedNodes`（`NodeId`、`Before`、`After`。`X` / `Y`）を ID の順に並べて返します。個々の位置はこの artifact でだけ返し、`Result` は小さく保ちます。
+
+### 配置の保証
+
+- 並べたノードは、元あった範囲の左上を起点に置かれます（グラフの別の場所へ飛びません）。`NodeIds` を指定していて、結果が動かさないノードと重なるときは、配置全体を 1 つの塊として、動かす量が少ない方（右か下）へずらします
+- 中身のあるコメントは、中身と一緒に動き、後から枠を中身に合わせます。木のレイアウト（BehaviorTree・EQS・Conversation）では木の形と兄弟の順を優先し、枠は後から囲み直すだけなので、枠が別の枝のノードに重なることがあります。動かさないノードを含むコメントや、中身がすべてほかのコメントに含まれるコメントは枠を動かしません。一部だけ重なる 2 つのコメントでは、小さい方が共通のノードを持ちます
+- **実行順は変わりません。** BehaviorTree・EQS・Conversation は、兄弟の左右の順が実行順を決めます。兄弟を今の実行順のまま左から並べ、X を厳密に増加させます。X が同じ兄弟は、アセットが今実行する順（前回アセットを更新した後に足した子は最後）を使います。`NodeIds` を指定したときは、指定したノードを、動かさない兄弟の間に実行順どおりに置きます。動かさない 2 つの兄弟の間に置けるグリッド上の位置が、入れるノードの数より少ないときは、`Conflict` で何も書かずに断ります（`NodeIds` を外してグラフ全体を整列してください）。順は守れるがノードの幅が足りないときは、順を優先してノードが重なることがあります
+- 根が複数あるグラフ（Conversation の複数の入口）は、木ごとに左から ID の順に並べます。主のルートにつながっていない部分木（親のまだ無い Composite とその子など）は、別の木として主の木の下に並べ、どこにもつながっていないノードは一番下の段に置きます
+- 冪等: 自前の整列の結果にもう一度自前の整列をかけても動きません（ノードの大きさの決め方が同じ場合。実測と推定の違いや、500 ノードの上限をまたぐと結果が変わることがあります）
+
+### 断られるとき
+
+| 状況 | ErrorCode |
+|---|---|
+| 引数の誤り: 間隔が `0`〜`2000` の外、未知の `Method`、空・重複・表記違いの `NodeIds`、指定できないノード（上記）、エンジンの整列を持たないグラフでの `Method=Engine`、`NodeIds` / 間隔との併用、`GraphName` と `GraphGuid` の同時指定 | `InvalidParams` |
+| アセット・グラフが無い、`NodeIds` の ID がそのグラフのノードに無い | `NotFound`（ノード ID は、そのドメインの既存のノードのコマンドと同じ ErrorCode。Dataflow は `RemoveDataflowNode` と同じ `ExecutionFailed`） |
+| 同名のグラフが複数ある | そのドメインの既存のコマンドと同じ（`MatchedGraphGuids`、ControlRig は `MatchedFullGraphNames`） |
+| PIE / シミュレート中 | `NotAllowed` |
+| `Method=Engine` で上の前提を満たさない | `PreconditionFailed` |
+| BehaviorTree / EQS / Conversation の `NodeIds` で、実行順を保てる置き場所が無い | `Conflict` |
+| PCG の自前の整列が ±100000 を超える座標になる、書き戻しの途中で失敗した（それまでに書いた分は取り消し、Undo の履歴にも残らない）、PCG の `Engine` のコマンドをエディタが実行しなかった | `ExecutionFailed` |
+| ドメインの Capability が許可されていない | `CapabilityNotAvailable` |
+| 任意プラグイン（PCG・MetaSound・EQS・Conversation・UAF など）が使えない構成 | ドメインの他のコマンドと同じく、理由付きで断る |
+
+---
+
 ## 実行時コマンドの対象プレイワールドを指定する
 
 ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 112 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
@@ -509,8 +595,8 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 | 🆓 `RestartEditor` | UE Editor を再起動する（任意でパッケージ保存）。`Success` は要求を**受け付けた**ことを表し、再起動が済んだことではない。結果は `GetRestartStatus` で確認でき、MCP Bridge 経由なら Bridge が自動で待つ。表の下の注記を参照 |
 | 🆓 `GetRestartStatus` | `RestartEditor` の試行の状態（`Scheduled` / `CloseRetrying` / `Declined` / `ExitStarted`）を返す。読み取り専用で `EditorLifecycle` が必要 |
 | 🆓 `SaveAllPackages` | 変更済みパッケージをすべて保存（任意でマップを含む） |
-| 🆓 `Undo` | 直前の Editor 操作を取り消す |
-| 🆓 `Redo` | 取り消した操作をやり直す |
+| 🆓 `Undo` | 直前の Editor 操作を取り消す。Material エディタが開いていて、元に戻すと閉じられないダイアログが出うるとき（Material エディタは Undo のたびに Apply を行う）は、**`NotAllowed` で断り、何も元に戻さない。** `Result.BlockingAssets` に該当する Material と MaterialFunction、`Result.Refusals` に理由ごとの `Reason` と `AssetPaths` を返す（理由の順は `CurrentCompileErrors`、`DestinationCompileErrors`、`EditorClosed`）。アセットはパッケージ名（例 `/Game/M_Test`）で、重複なしにソートして返す。`CurrentCompileErrors` — 開いている Material エディタの作業中の内容にコンパイルエラーがある（Material と無関係な Undo も断る）。エラーを直すかエディタを閉じる。`DestinationCompileErrors` — 戻す先の状態が、UAIP の書き込みを記録した時点でコンパイルエラーのある状態だった（`StepCount` が 2 以上のときは途中の段も含む）。UAIP の `Undo` ではその書き込みより前へ戻れないので、元に戻す書き込みで直す。`EditorClosed` — UAIP の書き込みを行った Material エディタがその後閉じられ、戻してもアセットが変わらない。元に戻す書き込みで直す。このコマンドを通らない Undo（スクリプト、コンソール）と、人がエディタで行った編集を戻す場合は対象外で、ダイアログが出ることがある |
+| 🆓 `Redo` | 取り消した操作をやり直す。`Undo` と同じ場合に、同じ `BlockingAssets` / `Refusals` を付けて `NotAllowed` で断る。Redo では `DestinationCompileErrors` は、やり直した先の状態を指す |
 | 🆓 `GetUndoHistory` | 取り消し履歴を読む（何も実行しない）。戻せる件数・やり直せる件数と操作名を返す |
 | 🆓 `GetLastCrashReport` | 最新のクラッシュレポートを取得 クラッシュの本体（例外の文言・コールスタック）は設定に関係なく返ります。`CrashTime` はコマンドを実行した時刻ではなくクラッシュの時刻です（UTC。書式は今までと同じ。クラッシュの記録に時刻が無ければ記録のファイルの更新時刻）。`DiagnosticLogTail` はクラッシュフォルダの最新の `.log` の末尾 50 行で、ファイルパスはほかの欄と同じく伏せます。`AllowLogDump=False`（既定）の間は外されます。空のときは `DiagnosticLogTailReason` が理由を示します: `LogDumpNotAllowed`（設定で外した）、`LogFileNotFound`（ログのファイルが無い）、`LogFileUnreadable`（ログのファイルが読めなかった）。⚠️ 以前はログの末尾が常に空で（存在しないファイルを読んでいた）、`CrashTime` はコマンドを実行した時刻でした。 |
 | `WaitForShaderCompilation` | シェーダーコンパイル完了まで待機 |
@@ -1188,7 +1274,7 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 Blueprint 変数・イベントグラフノード・SCS コンポーネントの編集。グラフ・ピン・変数・関数の上書き・コンパイルのコマンドは、エディタで開いているマップのレベル Blueprint も編集できる — [レベル Blueprint](#レベル-blueprint) を参照。
 
-### 変数とグラフ（11）
+### 変数とグラフ（12）
 
 | コマンド | 説明 |
 |---|---|
@@ -1203,6 +1289,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `ListBlueprintPins` | Blueprint グラフノードのピン一覧 |
 | `SetPinDefaultValue` | Blueprint グラフノードのピンにデフォルト値を設定（DefaultValue / DefaultObject / DefaultTextValue を型に応じて自動選択）。⚠️ ノードがコードを実行しうる関数の呼び出し、または Editor Utility の Blueprint の関数の呼び出しのときは、`BlueprintUnrestrictedNodePlace` も必要 — [コードを実行しうる関数の呼び出し](#コードを実行しうる関数の呼び出し) を参照。書き込みの後のコンパイルが失敗したら `ExecutionFailed` を返し、ピンの元の値に戻す `IncludeSecretValues` を受け付けます。秘密のピンの `PreviousValue` / `NewValue` は `***` と `IsMasked: true` で返ります（書き込みは平文を返しません。平文は `GetPinDefaultValue` で読みます）。 |
 | `GetPinDefaultValue` | Blueprint グラフノードのピンのデフォルト値を取得 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `ArrangeBlueprintGraph` | Blueprint の 1 つのグラフ（イベントグラフ・関数・マクロ・Widget Blueprint のグラフ・レベル Blueprint のグラフ）のノードを、左→右に実行順、計算だけのノードは使う側の左に並べ直す。`BlueprintPath` に加え、`GraphName`（空または `EventGraph` でイベントグラフ）か `GraphGuid`（両方は不可。複数のグラフが共有する名前は `MatchedGraphGuids` 付きで拒否）と、`Method` / `NodeIds` / `HorizontalSpacing` / `VerticalSpacing` を取る。`NodeIds` は `NodeGuid`。位置だけを変え、Undo 1 回で戻り、再コンパイルはしない。`BlueprintGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 > **新規 — `AddGraphNode` に `NodeType: "Event"` を渡すと、親クラスまたは実装しているインターフェースのイベントを `FunctionName` で指定してオーバーライドできる**（例: `ReceiveDestroyed`、`ReceiveActorBeginOverlap`）。My Blueprint パネルの Override メニューでイベントノードを追加するのと同じ動作。`EventBeginPlay` と `EventTick` はこれまでどおり使える。1 つの Blueprint で同じイベントをオーバーライドできるのは 1 回だけで、オーバーライドが Blueprint 内のどこかにすでにあるときは、2 つ目を作らずに既存のノードを返す。戻り値・出力パラメータを持つ関数や const 関数はイベントノードにできないため、`AddFunctionOverride` を案内する `InvalidParams` で拒否する。親クラスにもインターフェースにも `BlueprintImplementableEvent` / `BlueprintNativeEvent` として宣言されていない名前も `InvalidParams` で拒否する。
 >
@@ -1393,7 +1480,7 @@ Material グラフ編集とパラメータ管理。
 | コマンド | 説明 |
 |---|---|
 | `GetMaterialInfo` | 基本情報（NodeCount・ShadingModel・BlendMode・bHasErrors） |
-| `ListMaterialNodes` | Material グラフのノード一覧（NodeId・ExpressionClass・座標・bIsParameter） |
+| `ListMaterialNodes` | Material グラフのノード一覧（NodeId・ExpressionClass・座標・bIsParameter）。返される一覧では、出力（ルート）ノードの `NodeId` は、Material エディタを開いているかに関係なく固定値 `4d415445-5249-414c-524f-4f5400000001`。エディタを開いている間は作業中の内容の一覧。下の Note を参照 |
 | `AddMaterialNode` | Material グラフにノードを追加（`ExpressionClass` 指定）— プロジェクト定義またはカスタム HLSL のクラスには Capability が必要、詳細は下記の Note を参照 |
 | `DeleteMaterialNode` | NodeId 指定でノードを削除（ルート削除は Conflict） |
 | `ConnectMaterialPins` | Material グラフの 2 ピンを接続（循環・型不一致検出） |
@@ -1403,6 +1490,17 @@ Material グラフ編集とパラメータ管理。
 | `GetMaterialParameterValue` | マテリアルパラメータの値を取得 |
 | `ListMaterialExpressionClasses` | `UMaterialExpression` 派生クラスの一覧（最大 500 件）。各エントリは `AddMaterialNode` が検証するのと同じポリシー由来の `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持つ。`ClassPath` を `AddMaterialNode` の `ExpressionClass` 引数に使用する。`TotalCount` / `ReturnedCount` / `Truncated` を返す — 詳細は下記の Note を参照 |
 | `RefreshMaterial` | マテリアルを強制再コンパイル（保存済みアセットをパス省略で即時再ビルド） |
+| `ArrangeMaterialGraph` | Material **または MaterialFunction** のノードを、入力が左、出力ノードが右になるよう並べ直す。`AssetPath` と共通の引数を取る。`NodeIds` は `ListMaterialNodes` が返す `NodeId`（`MaterialExpressionGuid`、または出力ノードの固定 ID）。位置だけ（コメントボックスの枠と出力ノードの位置も）を変え、コンパイルも Apply もしない。Material エディタを開いているときは、エディタの作業中の内容とアセット本体の両方を並べ、作業中の内容にしか無い（まだ Apply していない）ノードの数を `EditorSync.WorkingCopyOnlyNodeCount` で返す。`Method=Engine` はエンジンの整列で、コメントと出力につながっていないノードは動かさない。`MaterialGraphEdit` 必須。[グラフの自動整列](#グラフの自動整列) を参照 |
+
+> **Note — Material エディタを開いている間、Material のコマンドはエディタが画面に出している内容に対して動きます。** 対象は書き込み 7 コマンド（`AddMaterialNode`、`DeleteMaterialNode`、`ConnectMaterialPins`、`DisconnectMaterialPins`、`SetMaterialParameterValue`、`CompileMaterial`、`RefreshMaterial`）と読み取り 3 コマンド（`GetMaterialInfo`、`ListMaterialNodes`、`GetMaterialParameterValue`）です。以前は、エディタを開いたまま書き込むとアセットには届くものの、画面にノードが出ませんでした。
+>
+> - **書き込みはエディタの作業中の内容へ入る**ので、追加したノードがその場で画面に出ます。書き込みの後に作業中の内容をコンパイルし、**コンパイルが終わるのを待ちます**。妨げるものが無ければエディタの Apply を行い、変更がアセット本体にも届きます。Apply は、人がエディタでまだ Apply していない編集もまとめて反映します（Apply ボタンと同じ。保存はしません）。待つため、エディタを閉じているときより応答が遅くなることがあります。エディタを閉じているときは、従来どおりアセットに対して動きます
+> - **読み取りは、エディタを開いている間、作業中の内容を返します**（まだ Apply していない編集も含む）
+> - **書き込み 7 コマンドの応答に `Result.EditorSync` が付きます。** `EditorOpen`（bool）と、エディタを開いているときの `Applied`（bool）です。`Applied` が `false` のときは `ApplyDeferredReason` が理由を示します。`CompileErrors`（コンパイルの後も作業中の内容にエラーがあるので Apply を保留した。そのまま Apply すると閉じられないダイアログが出るため。書き込み自体は成功して画面に出ており、エラーを直した後の書き込みで、それまでの変更がまとめて Apply される）、`ApplyNotExecuted`（エディタが Apply を実行しなかった）、`CompileSkipped`（呼び出しが `bSkipCompile` を指定したので、コンパイルも Apply もしなかった）、`NoChange`（既につながっている線をつなぐなど、コマンドが何も変えなかった。前の保留はそのまま残る）。エディタを閉じているときの `EditorSync` は `{ "EditorOpen": false }` です
+> - Apply を保留している間にアセットを保存すると、前の内容が保存されます。エディタを閉じようとすると反映するかの確認が出ます（`ShutdownEditor` は `PreconditionFailed` と `AssetEditorsStillOpen` で断ります）。統計パネルで派生インスタンスのプラットフォーム統計を有効にしていると、UAIP が事前に調べられないエラーでダイアログが出ることがあります
+> - **ノードの ID は、エディタを閉じていても、開いていても、開き直しても同じです。** **出力ノード**の ID は、どの Material でも固定値 `4d415445-5249-414c-524f-4f5400000001` になりました（以前はエディタを開くたびに変わっていました）。`ListMaterialNodes` など出力ノードを返すコマンドはこの値を返し、出力ノードの ID を受け取るコマンドは、以前の出力ノードの `NodeGuid` も引き続き受け付けます。以前に取った ID は使えます。保存した出力ノードの ID と比べている呼び出し側では、この 1 つの値だけが変わって見えます
+> - **Material エディタを開いている間、`Undo` / `Redo` が断られる場合があります。** [`UAIP.Editor.Workspace`](#uaipeditorworkspace) を参照してください。Material エディタは Undo / Redo のたびに Apply を行い、作業中の内容にコンパイルエラーがあるとダイアログで止まるためです
+> - `ArrangeMaterialGraph`（上）はコンパイルも Apply もせず、作業中の内容とアセット本体の両方に位置を書きます
 
 > **Note — プロジェクト定義・カスタム HLSL の ExpressionClass は Capability で制御されます**: エンジン組み込みモジュール（`Engine` / `RenderCore` / `MaterialEditor` / `Landscape`）由来の `ExpressionClass` は従来どおり追加できます。それ以外のモジュール由来のクラス — プロジェクトやプラグインが定義した `UMaterialExpression` 派生クラス — は `MaterialCustomTypeEdit` が必要になりました。`UMaterialExpressionCustom` / `UMaterialExpressionCustomOutput` とその派生クラス（任意の HLSL を含められる）は、どのモジュール由来かに関わらず `MaterialCustomNodeEdit` が必要です — この Capability は以前から登録されていましたが、これまでどのコマンドも要求していませんでした。両方に該当するクラスは両方の Capability が必要で、拒否には不足しているものがすべて挙がります。どちらも既定では付与されません。[Safety & Capabilities](safety.md#マテリアル編集) を参照。
 >
@@ -1751,6 +1849,7 @@ Dataflow グラフ編集。`DataflowEditor` プラグインが必要です。
 | `ListDataflowVariables` 🧩 | グラフ変数一覧 |
 | `GetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を取得（プリミティブ / enum / FName / FString / 単純構造体） `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密の配列への添字を含むプロパティのパスは 3 つの許可が要ります。秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
 | `SetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を設定。ドメイン非依存（Cloth の Weight Map・シミュレーション設定ノード等から利用される）。参照・構造体・コンテナは `ValueJson` で書き込み、コンテナの要素 1 つは `Operation` / `ElementIndex` / `ElementKeyJson` で指定する — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。参照に触れる書き込みは `DataflowGraphEdit` に加えて `DataflowReferenceEdit` が必要で、構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。ハード参照（例: `TObjectPtr<UGroomAsset>`）の値は**既にロード済み**のアセットのオブジェクトパス — プロパティ書き込みが副作用でアセットをロードすることはない。ソフト参照はアセットレジストリに対して検証されるため、対象のロードを必要としない `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
+| `ArrangeDataflowGraph` 🧩 | Dataflow グラフのノードを、左→右にデータが流れるよう並べ直す。`AssetPath`（`/Game/` のみ）と共通の引数を取る。`NodeIds` は `GetDataflowGraphInfo` の `NodeGuid`。どのノードにも当たらない ID は `RemoveDataflowNode` と同じ `ExecutionFailed`。位置だけを変え、評価は走らない。`DataflowGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 ### Toolset ブリッジ — Dataflow（7 件）🧩
 
@@ -2001,6 +2100,8 @@ Anim Blueprint グラフと StateMachine 編集。
 | `RemoveAnimLayerGraph` | 自己完結型の Anim Layer グラフを削除。`RemoveReferencingNodes` が true の場合、参照している `LinkedAnimLayer` ノードも合わせて削除 |
 | `ImplementAnimLayerInterface` | `UAnimLayerInterface` 派生インターフェースを実装し、宣言された anim-layer 関数ごとに 1 つずつレイヤーグラフを生成。`AnimBlueprintReferenceEdit` が必要（実装インターフェース一覧へクラス参照を書き込むため） |
 | `AddLinkedAnimLayerNode` | 自己完結型レイヤー、または（`InterfacePath` 指定時は）実装済みインターフェースのレイヤー関数を指す `LinkedAnimLayer` ノードを配置。後者はさらに `AnimBlueprintReferenceEdit` が必要。ノードを配置するグラフは `TargetGraph`（名前）または `GraphGuid` で選ぶ。詳細は表の下の Note を参照 |
+| `ArrangeAnimGraph` | AnimGraph のノードを自前の整列で並べ直す（出力ノードが右端、それに入るノードが左へ伸びる）。`AssetPath` と、`TargetGraph` か `GraphGuid`（既定は最初の AnimGraph。複数のグラフが共有する名前は `MatchedGraphGuids` 付きで拒否）を取る。`NodeIds` は `GetAnimBlueprintInfo` の `NodeId`。AnimGraph の中の Unified Animation Framework のノードも他のノードと同じように並べる。位置だけを変え、コンパイルはしない。`AnimBlueprintGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
+| `ArrangeAnimStateMachine` | `StateMachineNodeId`（ステートマシンノードの `NodeGuid`）のステートマシングラフを、入口を左端に、状態を遷移の向きに並べ直す。遷移ノードはエディタが 2 つの状態の間に描くので、それ自体は並べない（接続として扱い、サイクルを先に除き、`TotalNodeCount` にも数えない）。`NodeIds` に遷移ノードを指定すると `InvalidParams`。`NodeIds` は状態・コンジットの `NodeId`。`AnimStateMachineEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 > **Note — `AddLinkedAnimLayerNode` の `TargetGraph` / `GraphGuid`（ノードを配置するグラフ）**: `TargetGraph`（Optional String。未指定は最初の AnimGraph）と `GraphGuid`（Optional String。`UEdGraph::GraphGuid`）は排他 — 両方指定すると `InvalidParams`。`TargetGraph` はまず AnimBlueprint 自身の AnimGraph（ルートグラフとその自己完結型レイヤー）の中で探し、そこで一致が無かった場合に限り、実装済みインターフェースのレイヤーグラフへフォールバックする — そのため自己完結型レイヤーが同名のインターフェースレイヤーに負けることはなく、このフォールバック自体が自己側の候補との間で複数一致になることもない（自己側を先に網羅的に確認するため）。実際に一致が生じた側の集合内で複数のグラフに一致した場合は `InvalidParams` を返し、`Result.MatchedGraphGuids` に各候補の `GraphGuid` が入る — いずれかを `GraphGuid` として渡し直せば絞り込める。どちらの集合にも存在しない名前を指定した場合は `NotFound`。
 >
@@ -2057,6 +2158,7 @@ Unified Animation Framework アセット（`UUAFAnimGraph` / `UUAFSystem`）の�
 | `RemoveUAFVariable` | 名前指定でメンバー変数を削除（同名のエントリが存在しない場合も、存在するが変数でない場合も `VariableNotFound`） |
 | `AddUAFEventGraph` | `StructPath` で指定した RigVM Unit 構造体をルートとする新規イベントグラフエントリを追加。`UUAFSystem` 専用 — `UUAFAnimGraph` はアニメーショングラフエントリを 1 つ固定で持ちイベントグラフの余地がないため `UnsupportedOperation` で拒否される |
 | `CompileUAFAsset` | `RequestAssetCompilation` 経由で同期コンパイルを実行。アセットごとにセッション単位のレート制限（`MinCompileIntervalSeconds`）あり |
+| `ArrangeUAFGraph` | UAF アセットの 1 つのエントリの RigVM グラフを、実行ワイヤーに沿って左→右に、値だけを渡すノードは読む側の左に並べ直す。`EntryName`（必須）で、`RemoveUAFGraphNode` と同じようにグラフを持つエントリを選ぶ。グラフを持たないエントリは `InvalidParams`。`NodeIds` は `ListUAFNodes` が返すノード名。位置とコメントの枠だけを変え、Undo 1 回で戻り、コンパイルはしない。`UAFGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 上記の書き込み系 9 コマンドはすべて、静的な必須 Capability として `UAFGraphEdit` を要求します。
 
@@ -2088,6 +2190,7 @@ SoundCue グラフ編集。
 | `DisconnectSoundCuePins` | ピン接続を切断（PinIndex=-1 で全切断）。対象ノードのクラスが `/Script/Engine` の外から来る場合は `SoundCueCustomTypeEdit` が必要 |
 | `SetSoundCueNodeProperty` | SoundCue ノードのプロパティを設定。オブジェクト / クラス / デリゲート参照・構造体・コンテナは恒久的に拒否されなくなり、`ValueJson` で渡して `PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。対象ノードのクラスが `/Script/Engine` の外から来る場合は追加で `SoundCueCustomTypeEdit` が必要 `IncludeSecretValues` を受け付けますが、実行を許すための指定です（[シークレット値の読み取り](#reading-secret-values) を参照）。秘密の対象の `ElementKeyJson` は `***` と `IsMasked: true` になり、`Changed` は出ません。伏せるのは呼び出し元が送った値の反響だけで、SoundCue のノードの値を読むコマンドはありません。 |
 | `CompileSoundCue` | SoundNode ツリーをグラフから再構築。`SoundCueCustomTypeEdit` は一切要求しない — このコマンド自体はノードクラスを一切名指しせず、cue が既に保持しているクラス群は権限を要求しない別の判定で確認されるため、プロジェクト製のノードを含む cue でも権限なしでコンパイルし続けられる |
+| `ArrangeSoundCueGraph` | SoundCue グラフのノードを、音源が左、出力ノードが右になるよう並べ直す。`AssetPath` と共通の引数を取る。`NodeIds` は `GetSoundCueInfo` の `NodeId`。位置だけを変え、キューは再コンパイルしない。`SoundCueGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 > ⚠️ **破壊的変更 — 削除・接続・切断・プロパティ編集は以前ゲートされていませんでした。** この Capability が導入される前は `AddSoundCueNode` だけが追加するノードクラスを確認しており、残り 4 つの mutation コマンドは対象ノードのクラスにかかわらず無条件で実行されていました。一般則については [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
 
@@ -2226,7 +2329,12 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 | `AddBlackboardKey` | キーを追加（重複名チェック）。`/Script/AIModule` 以外のキー型と、書き込み側が指す先を選べる 2 種のキー型には、それぞれ Capability が要ります — 下の Note を参照してください |
 | `RemoveBlackboardKey` | 未参照のキーを削除（使用中は Conflict + 参照元を返す）— そのキーの型が要求する Capability が同じく必要です |
 | `SetBehaviorTreeBlackboard` | BT アセットの参照 Blackboard を変更 |
-| `RequestBehaviorTreeAutoArrange` | 開いている BT エディタで AutoArrange パスを実行 |
+| `RequestBehaviorTreeAutoArrange` | ⚠️ **非推奨** — 代わりに `ArrangeBehaviorTreeGraph` を使用。`Method=Auto` で BT グラフを Undo 1 回の整列で並べる。アセットを BehaviorTree エディタで開いていなくても動く。引数と応答の形は変わらず、`Arranged` は 1 つ以上のノードが動いたときだけ `true` |
+| `ArrangeBehaviorTreeGraph` | BehaviorTree を木として並べ直す（ルートが上、子は親の下に、実行する順に左から。**実行順は変わらない**）。`AssetPath` と共通の引数を取る。`NodeIds` は `GetBehaviorTreeNodeList` の `NodeGuid`（デコレーターとサービスは親に追従するので指定できない）。エディタで開いていないアセットでも動き、Undo 1 回で戻り、ワイヤー・プロパティ・実行時の木は変えない。`Method=Auto` は、アセットが開いていて全ノードが描画済みで、`NodeIds`・間隔・中身のあるコメントが無く、全ノードがルートにつながり、X が同じ兄弟がいないときだけエンジンの整列を使い、それ以外は自前の整列で `MethodReason` に理由を返す。`Method=Engine` はエディタが開いていて全ノードが描画済みであることが必要で、エディタの表示をグラフ全体にズームし直す。`NodeIds` で順を保てる置き場所が無いときは `Conflict`。`BehaviorTreeGraphEdit` 必須。[グラフの自動整列](#グラフの自動整列) を参照 |
+
+> **Note — ノードを追加しても木は並べ直されなくなりました。** `AddBehaviorTreeCompositeNode` と `AddBehaviorTreeTaskNode` は、追加のたびに自動整列を実行していましたが、実行しなくなりました。新しいノードは親の近くに置かれ、ほかのノードは動きません。木を整えたいときは `ArrangeBehaviorTreeGraph` を呼びます。
+>
+> **`RequestBehaviorTreeAutoArrange` は非推奨**になり、移行先は `ArrangeBehaviorTreeGraph` です（移行先は非推奨の案内と一緒に返ります）。引数（`AssetPath` のみ）と応答（`AssetPath`、`Arranged`）の形は変わりませんが、中身は `ArrangeBehaviorTreeGraph` の `Method=Auto` と同じになりました。BehaviorTree エディタで開いていないアセットでも動き、整列は Undo 1 回で戻ります。`Arranged` は、1 つ以上のノードが動いたときだけ `true` です。
 
 > **成功時の `Result`（BehaviorTree の編集 3 コマンド）。** 要求で渡した識別子をそのまま返します（正規化はしません）。**設定した値（`Value`）は載せません。**
 >
@@ -2288,6 +2396,7 @@ MetaSound グラフ編集。`Metasound` プラグインが必要です。
 | `AddMetaSoundOutput` 🧩 | 出力頂点を追加（単一ページアセットのみ） |
 | `SetMetaSoundNodeProperty` 🧩 | 入力デフォルト値を設定（Bool / Int / Float / String、NaN / Inf 拒否）— 対象ノードがそれらのクラスの場合は同じ Capability が必要 |
 | `CompileMetaSound` 🧩 | Frontend に登録（セッション単位 1 秒レートリミット）— カスタム型の Capability を要求することはない |
+| `ArrangeMetaSoundGraph` 🧩 | MetaSound グラフのノードを、入力が左、出力が右になるよう並べ直す。`AssetPath` と共通の引数を取る。`NodeIds` は `GetMetaSoundInfo` の `NodeId`（返された表記のまま）。MetaSound ドキュメントのノードの位置（とコメントの枠）だけを変え、再コンパイルはしない。開いている MetaSound エディタには次の更新で新しい配置が出る。ノードの大きさは常に推定。`MetaSoundGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 > **Note — エンジンの 4 Namespace 外のノードクラスは Capability で制御されます**: `ClassName` の Namespace が `UE` / `Metasound` / `MetasoundStandardNodes` / `MetasoundEditor` のいずれかであれば従来どおり追加できます。それ以外の Namespace のクラス — プロジェクトやプラグインのモジュールが独自に登録したもの — は、無条件で拒否されるのではなく `MetaSoundCustomTypeEdit` が必要になりました。既定では付与されません。[Safety & Capabilities](safety.md#オプショングラフエディタ) を参照。このドメインには（AnimBlueprint・ControlRig・Enhanced Input と同じく、Material とは異なり）対になる「危険な型」用の Capability はありません — MetaSound ノードはレジストリエントリが記述する固定の信号処理を評価するだけで、リクエストが持ち込んだコードは実行しないためです。
 >
@@ -2318,6 +2427,7 @@ EQS クエリ編集。`EnvironmentQueryEditor` プラグインが必要です。
 | `RemoveEQSTest` 🧩 | NodeId 指定で Test を削除 — その Test のクラスが要求する Capability が同じく必要です |
 | `SetEQSGeneratorProperty` 🧩 | Generator プロパティを設定（汎用 ImportText_Direct）— 書き込み対象 Generator のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です `IncludeSecretValues` を受け付けますが、実行を許すための指定です（[シークレット値の読み取り](#reading-secret-values) を参照）。値は返さず、秘密の対象の失敗の文言は汎用になります。 |
 | `SetEQSTestProperty` 🧩 | Test プロパティを設定（`param:<Name>` → `UAIDataProvider_QueryParams`）— 確認内容は上と同じ。`bTestEnabled` の切り替え（`PropertyName: "TestEnabled"`）も、そのフラグ自体はグラフノード側にあり Test インスタンス側にはないにもかかわらず、Test 自身のクラスによってゲートされるようになりました — この経路は従来まったくゲートされていませんでした。下の Note を参照してください `IncludeSecretValues` を受け付けますが、実行を許すための指定です（[シークレット値の読み取り](#reading-secret-values) を参照）。値は返さず、秘密の対象の失敗の文言は汎用になります。 |
+| `ArrangeEQSGraph` 🧩 | EQS クエリを木として並べ直す（ROOT が上、その下にオプションをクエリが実行する順に左から、テストはオプションに追従）。**オプションの順は変わらない**（今の左右の順を保ち、X を厳密に増加させる）。`AssetPath` と共通の引数を取る。`NodeIds` は `GetEQSQueryInfo` の `OptionId`（テストと ROOT は指定できない）。順を保てる置き場所が無いときは `Conflict`。クエリは再構築しない。`EQSAssetEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 > **成功時の `Result`（EQS の編集 4 コマンド）。** 要求で渡した識別子をそのまま返します（正規化はしません）。**設定した値（`Value`）は載せません。**
 >
@@ -2757,13 +2867,14 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 | `ListPCGAvailableSubgraphs` 🧩 | プロジェクト内のサブグラフ候補を列挙 |
 | `GetPCGNativeNodeSchema` 🧩 | ネイティブ PCG ノードクラスの EditAnywhere プロパティを JSON スキーマで返す。`GetCustomPCGNodeSchema` と同じ絞り込みが働き、`HiddenCount` / `HiddenCapabilities` / `HiddenReasons` を返す |
 | `AddPCGSubgraphNode` 🧩 | サブグラフ参照ノードを追加（`PCGGraphEdit` 必須） |
-| `RepositionPCGNode` 🧩 | ノード位置を変更（`PCGGraphEdit` 必須） |
+| `RepositionPCGNode` 🧩 | ノード位置を変更（`PCGGraphEdit` 必須）。Undo 1 回で位置が戻り、開いている PCG エディタにもその場で反映される。エディタを閉じている間に書いた位置も、後で開いたときに出る |
 | `AddPCGCommentBox` 🧩 | コメントボックスを追加（`PCGGraphEdit` 必須） |
 | `UpdatePCGCommentBox` 🧩 | コメントボックスを更新（`PCGGraphEdit` 必須） |
 | `RemovePCGCommentBox` 🧩 | コメントボックスを削除（`PCGGraphEdit` 必須） |
 | `GetPCGNodeDataView` 🧩 | PCG ノードの実行データビューを取得（`PCGNodeInspect` 必須。`PCG_PROFILING_ENABLED=0` 時は CapabilityNotAvailable） |
 | `RunPCGInstantGraph` 🧩 | アクター / コンポーネント不要の fire-and-forget PCG グラフ実行（`PCGGraphExecute` 必須） |
 | `DrawPCGSpline` 🧩 | レベルビューポートで人間がスプラインを描き終える対話を開始し、待たずに `InteractionId` を返す（`IsInteractive: true`）。`GetPendingInteractionStatus` でポーリング、`WaitForPendingInteraction` で短時間ブロック、`CancelPendingInteraction` でキャンセルできる。`PCGSplineDraw` と `SafetyPolicy.AllowUserInteractionPrompt`（別ゲート）が必須。ビューポートを保持できる対話は同時に 1 件のみ |
+| `ArrangePCGGraph` 🧩 | PCG グラフを左→右にデータが流れるよう並べ直す。`AssetPath`（`/Game/` のみ）と共通の引数を取る。`NodeIds` は `GetPCGGraphInfo` の `NodePath`。`NodeIds` を指定しなければ、グラフの入力・出力ノードも並べる。ノードを囲むコメントボックスは中身と一緒に動く。ノードとコメントの大きさは、PCG エディタで一度開いたグラフなら実測し、そうでなければ推定する。エディタを開いているかに関係なく位置を書き（エディタ用のグラフにも届くので、後で開いても新しい位置で出る）、位置だけを変えて再生成はしない。`Method=Auto` は常に自前の整列。**`Method=Engine` は UE 5.8 のみ**（5.7 では `InvalidParams`）で、PCG エディタ自身の Auto Layout を実行する。グラフがそれ自身の PCG エディタで開かれ、タブが表示されていて、別のグラフのタブにフォーカスが無いことが必要で、満たさなければ `PreconditionFailed`。そのエディタでノードを選んでいれば選んだノードだけが並ぶ。自前の結果が ±100000 を超えるときは何も書く前に `ExecutionFailed`。`PCGGraphEdit` 必須。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 ### Toolset ブリッジ — PCG（31 件）🧩
 
@@ -2892,6 +3003,7 @@ ConversationDB グラフ編集。`CommonConversation` プラグインが必要�
 | `ConnectConversationNodes` 🧩 | ノード間の遷移エッジを追加。両端いずれかのクラスが `/Script/CommonConversationRuntime` の外から来る場合 `ConversationCustomTypeEdit` が必要 |
 | `DisconnectConversationNodes` 🧩 | 遷移エッジを削除。両端いずれかのクラスが `/Script/CommonConversationRuntime` の外から来る場合 `ConversationCustomTypeEdit` が必要 |
 | `SetConversationNodeProperty` 🧩 | プロパティを設定（FText は BIDI strip・PUA reject・4096 文字上限）。値は JSON ドキュメント。参照・構造体・コンテナは恒久的に拒否されなくなり、`PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。対象ノードのクラスが `/Script/CommonConversationRuntime` の外から来る場合、追加で `ConversationCustomTypeEdit` が必要 |
+| `ArrangeConversationGraph` 🧩 | 会話データベースの 1 つの編集グラフを木として並べ直す（入口が上、そこから続くノードが下に、会話が実行する順に左から。複数の入口は左右に並べる。**後でデータベースをコンパイルしても実行順は変わらない**）。`AssetPath`、`GraphIndex`（既定 `0`）と共通の引数を取る。`NodeIds` は `AddConversationNode` が返す `NodeGuid`（大文字・ハイフンなし。一覧のコマンドはノード ID を返さない）。サブノードはホストに追従するので指定できない。順を保てる置き場所が無いときは `Conflict`。ノードとワイヤーは変えず、コンパイル済みのバンクも再構築しない。`ConversationGraphEdit` 必須。PIE 中は拒否。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 > ⚠️ **破壊的変更 — 削除・接続・切断・プロパティ編集は以前ゲートされていませんでした。** この Capability が導入される前は `AddConversationNode` / `AddConversationSubNode` だけが追加するノードクラスを確認しており、残り 4 つの mutation コマンドは対象ノードのクラスにかかわらず無条件で実行されていました。一般則については [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。すべての mutation はデータベースのコンパイル済みバンクも再構築しますが、これはデータベースが既に保持している全ノードクラスに対しても同じ確認を行います — プロジェクト製のノードを既に含むデータベースは、コンパイルも既存ノードの削除も、Capability の付与なしに引き続き行えます。既存インスタンスへの操作はリクエストが持ち込んだコードを一切実行しないためです。
 
@@ -2953,7 +3065,7 @@ UE 5.8 の Control Rig アセットには 2 つの形式があります。ここ
 - **型の変更・追加が成立しなかったときは失敗として返ります。** ネイティブの `ChangeVariableType` と、Toolset ブリッジの `AddVariable` / `ChangeVariableType` は、実行後に変数を読み直して確かめます。変数が消えている、または要求と違う型になっているときは `ExecutionFailed` で、`Result` に `VariableLost` と `ActualType`（変数の実際の型）が載ります。ネイティブは artifact にも同じ項目を載せ、ブリッジも同じ形で応答します。変更は自動では元に戻されず、エディタの元に戻す履歴に残ります。ランタイムアセットの Control Rig で、エンジンが型を引き直すときにアセットの読み込みが要る型（ユーザー定義の列挙型など）への変更は、何も変更せず `UnsupportedOperation` で拒否されます（以前は変数が消えたまま成功が返っていました）。同じ短い名前の別の型がある型への変更も同様です。
 - **Toolset ブリッジの `AddVariable` で、エンジンが別の名前を付けた場合は確かめられません。** 委譲先が実際の名前を返さないため、「要求した名前の変数が見つからない」という `ExecutionFailed` になり、作られた変数がどれかは示されません。
 
-### ネイティブ（68）
+### ネイティブ（69）
 
 #### ヒエラルキー観測（10）
 
@@ -3010,7 +3122,7 @@ UE 5.8 の Control Rig アセットには 2 つの形式があります。ここ
 | `AddBackwardSolveGraph` | BackwardSolve グラフを追加 |
 | `AddInteractionGraph` | Interaction グラフを追加 |
 
-#### ノード（10）
+#### ノード（11）
 
 | コマンド | 説明 |
 |---|---|
@@ -3024,6 +3136,7 @@ UE 5.8 の Control Rig アセットには 2 つの形式があります。ここ
 | `DuplicateNode` | ノードを複製（複製後の名前を返す） |
 | `AddEventNode` | イベントノードを追加 |
 | `AddVariableNode` | 変数ノードを追加 |
+| `ArrangeControlRigGraph` | ControlRig グラフを、実行ワイヤーに沿って左→右に、値だけを渡すノードは読む側の左に並べ直す。`AssetPath` と `GraphName`（`SetNodePosition` と同じ解決。曖昧な名前は `MatchedFullGraphNames` 付きで拒否）と共通の引数を取る。`NodeIds` は `ListNodes` が返すノード名。ノードの位置とコメントの枠だけを変え、リグは再コンパイルしない。ModularRig のアセットは拒否。`ControlRigGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 #### ピン（7）
 

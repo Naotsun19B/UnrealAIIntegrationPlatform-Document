@@ -2,7 +2,7 @@
 
 # Commands Reference
 
-UAIP exposes 1324 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1745 commands organized by domain. These totals count every command the plugin defines for the UE 5.8 editor on Win64, including commands listed with `Available: false` because a plugin they need is disabled. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
+UAIP exposes 1337 **UAIP commands** (provided directly by the plugin itself) and 421 **Toolset bridge commands** (delegating to the UE 5.8 official Toolset framework), for a combined total of 1758 commands organized by domain. These totals count every command the plugin defines for the UE 5.8 editor on Win64, including commands listed with `Available: false` because a plugin they need is disabled. Each command name is fully-qualified — e.g. `UAIP.Editor.Observation.CaptureActiveWindowImage`. This page omits the provider prefix in the tables; the section header tells you what to prepend.
 
 ## How to use this reference
 
@@ -91,35 +91,35 @@ Calling a command by name while it is `Available: false` fails, and **which erro
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 24 | 8 | partial (10/24) |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | partial (6/12) |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 23 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 24 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 24 | 13 | — |
-| Editor Material | `UAIP.Editor.Material` | 11 | — | — |
+| Editor Material | `UAIP.Editor.Material` | 12 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
 | Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 5 | 4 | — |
 | Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 52 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
-| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | 7 | — |
+| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 10 | 7 | — |
 | Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 11 | — | — |
 | Editor MetaHuman 🧩 | `UAIP.Editor.MetaHuman` | 56 | 9 | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 8 | — | — |
-| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 19 | — | — |
+| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 21 | — | — |
 | Editor AnimBlueprint UAF 🧩 | `UAIP.Editor.AnimBlueprint.UAF` | 1 | — | — |
-| Editor UAF 🧩 | `UAIP.Editor.UAF` | 19 | — | — |
+| Editor UAF 🧩 | `UAIP.Editor.UAF` | 20 | — | — |
 | Editor UAF AnimGraph 🧩 | `UAIP.Editor.UAF.AnimGraph` | 1 | — | — |
-| Editor SoundCue | `UAIP.Editor.SoundCue` | 8 | — | — |
+| Editor SoundCue | `UAIP.Editor.SoundCue` | 9 | — | — |
 | Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
-| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 18 | 7 | — |
-| Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
-| Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
+| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 19 | 7 | — |
+| Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 11 | — | — |
+| Editor EQS 🧩 | `UAIP.Editor.EQS` | 10 | — | — |
 | Editor Sequencer | `UAIP.Editor.Sequencer` | 131 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG 🧩 | `UAIP.Editor.PCG` | 34 | 31 | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 35 | 31 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
-| Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
-| Editor ControlRig | `UAIP.Editor.ControlRig` | 68 | 107 | — |
+| Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 8 | 5 | — |
+| Editor ControlRig | `UAIP.Editor.ControlRig` | 69 | 107 | — |
 | Editor ControlRig Dynamics 🧩 | `UAIP.Editor.ControlRig.Dynamics` | 17 | — | — |
 | Editor ControlRig Physics 🧩 | `UAIP.Editor.ControlRig.Physics` | 8 | — | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 15 | — | — |
@@ -319,6 +319,92 @@ Component classes are gated the same way but by a rule of their own, described i
 
 ---
 
+## Arranging a graph
+
+Thirteen `Arrange…Graph` commands put the nodes of one graph into a layout that reads well — typically after an AI has added nodes without coordinates and they all sit at (0,0). Every one of them:
+
+- changes **only positions** (and the frame of a comment box): wires, node types and properties are untouched, and nothing is compiled, rebuilt or regenerated;
+- is **one undoable step** — a single Ctrl+Z restores every position, Ctrl+Y brings the layout back;
+- works whether or not the asset is open in an editor; an open editor shows the new positions at once;
+- writes nothing when no node has to move: no transaction, no undo entry, the package is not marked dirty (`MovedNodeCount` is `0`, there is no artifact);
+- is refused with `NotAllowed` during Play-in-Editor, and is gated by the editing capability of its domain (no new capability was added; the layout is not an admission-checked type, so a graph containing any node type can be arranged).
+
+Niagara and StateTree have no arrange command.
+
+| Domain | Command | Graph is chosen by | `NodeIds` are | Layout | Capability |
+|---|---|---|---|---|---|
+| Blueprint | `ArrangeBlueprintGraph` | `BlueprintPath` + `GraphName` / `GraphGuid` | `NodeGuid` (32 upper-case hex digits) | execution flows left to right, pure nodes left of their user | `BlueprintGraphEdit` |
+| AnimBlueprint AnimGraph | `ArrangeAnimGraph` | `AssetPath` + `TargetGraph` / `GraphGuid` (default: the first AnimGraph) | `NodeId` of `GetAnimBlueprintInfo` (hyphenated GUID) | output on the right, inputs extend left | `AnimBlueprintGraphEdit` |
+| AnimBlueprint state machine | `ArrangeAnimStateMachine` | `AssetPath` + `StateMachineNodeId` | `NodeId` of states and conduits (hyphenated GUID) | entry at the left, states follow the transitions | `AnimStateMachineEdit` |
+| Material / MaterialFunction | `ArrangeMaterialGraph` | `AssetPath` | `MaterialExpressionGuid`, or the fixed id of the output node | output on the right, inputs extend left | `MaterialGraphEdit` |
+| SoundCue | `ArrangeSoundCueGraph` | `AssetPath` | `NodeId` of `GetSoundCueInfo` | output on the right, sources on the left | `SoundCueGraphEdit` |
+| BehaviorTree | `ArrangeBehaviorTreeGraph` | `AssetPath` | `NodeGuid` of `GetBehaviorTreeNodeList` | tree, root on top | `BehaviorTreeGraphEdit` |
+| Dataflow | `ArrangeDataflowGraph` | `AssetPath` (`/Game/` only) | `NodeGuid` of `GetDataflowGraphInfo` (lower-case, hyphenated) | data flows left to right | `DataflowGraphEdit` |
+| PCG | `ArrangePCGGraph` | `AssetPath` (`/Game/` only) | `NodePath` of `GetPCGGraphInfo` | data flows left to right | `PCGGraphEdit` |
+| MetaSound | `ArrangeMetaSoundGraph` | `AssetPath` | `NodeId` of `GetMetaSoundInfo`, in exactly that spelling | inputs left, outputs right | `MetaSoundGraphEdit` |
+| ControlRig | `ArrangeControlRigGraph` | `AssetPath` + `GraphName` (resolved like `SetNodePosition`) | node name, as `ListNodes` returns it | execution flows left to right | `ControlRigGraphEdit` |
+| UAF ⚠️ | `ArrangeUAFGraph` | `AssetPath` + `EntryName` (required) | node name, as `ListUAFNodes` returns it | execution flows left to right | `UAFGraphEdit` |
+| EQS | `ArrangeEQSGraph` | `AssetPath` | `OptionId` of `GetEQSQueryInfo` | tree, ROOT on top | `EQSAssetEdit` |
+| Conversation | `ArrangeConversationGraph` | `AssetPath` + `GraphIndex` (default `0`) | `NodeGuid` as `AddConversationNode` returns it (upper-case, no hyphens) | tree, entry points on top | `ConversationGraphEdit` |
+
+The rows are listed in each domain's own section below. The nodes of the Unified Animation Framework inside an AnimGraph are arranged by `ArrangeAnimGraph`; there is no separate command for them.
+
+### Common arguments
+
+| Argument | Type | Description |
+|---|---|---|
+| `Method` | string | `Auto` (default), `Engine` or `Builtin`, compared without regard to case. See below |
+| `NodeIds` | array of strings | The nodes that may move; every node left out stays where it is and is treated as an obstacle. Omit it to arrange the whole graph. It must not be empty or contain duplicates, and cannot be combined with `Method=Engine` |
+| `HorizontalSpacing` / `VerticalSpacing` | integer, `0` to `2000` | Gap between nodes for the built-in layout (default: 80 / 40 for left-to-right and right-to-left layouts, 40 / 80 for trees). Cannot be combined with `Method=Engine` |
+
+`NodeIds` must be written **exactly as the listing command of the domain returns them** (the table above). A different spelling of the same id — for example a GUID in other letter case or with other separators, which the single-node commands of the domain may accept — is refused with `InvalidParams`, naming the expected form. Comment boxes: naming a comment moves it together with its content; naming only the content leaves the frame alone. A comment box without content never moves and is an obstacle for the others. In BehaviorTree, decorators and services have no position (they follow their parent) and cannot be named; in EQS the tests and the ROOT node cannot be named; in the AnimBlueprint state machine a transition node cannot be named (the editor draws it between its two states, so it is not arranged and not counted in `TotalNodeCount`); in Conversation sub-nodes cannot be named; in PCG and MetaSound comment boxes cannot be named. The Conversation listing commands do not return node ids, so use the id `AddConversationNode` returned; a node a person added in the editor cannot be named, but the whole graph can be arranged.
+
+### Choosing the method
+
+- **`Builtin`** — UAIP's own layout. Deterministic, idempotent (arranging an arranged graph again moves nothing as long as node sizes are obtained the same way), and available for every graph.
+- **`Engine`** — the engine's own arrangement. Only three kinds of graph have one: **BehaviorTree**, **Material / MaterialFunction** and **PCG (UE 5.8 only)**. Asking for it on any other graph — or for PCG on UE 5.7 — is `InvalidParams`, as is combining it with `NodeIds` or a spacing. When the preconditions of the engine's arrangement are not met the command is refused with `PreconditionFailed` and says what is missing; it never silently falls back to `Builtin`.
+- **`Auto`** — `Builtin`, except for **BehaviorTree**, where the engine's arrangement is used when all of this holds: the asset is open in the BehaviorTree editor and its graph tab has been shown with every node drawn; no `NodeIds`, no spacing and no comment box with content; every node is connected to the root; and no two siblings share the same X (the engine could reorder them). Material and PCG always use `Builtin` under `Auto`, even though the engine has an arrangement (Material's is not stable and leaves nodes behind; PCG's depends on the editor selection). When the engine's arrangement is used the editor zooms to fit the whole graph.
+
+Engine preconditions: BehaviorTree — the asset is open and every node has been drawn (with `Engine` the other two `Auto` conditions are not checked: nodes that are not connected to the root stay where they are, and siblings at the same X may swap their execution order). Material — none, but comments and nodes not wired to an output stay where they are, and for a MaterialFunction only the input side may be arranged. PCG — UE 5.8; the graph is open in **its own** PCG editor (showing it only as a subgraph inside another graph's editor does not count), its tab is visible and no other graph tab has the focus. If nodes are selected in that editor, only the selected nodes are arranged, so `MovedNodeCount` can be smaller than `TotalNodeCount`.
+
+### Result
+
+| Key | Description |
+|---|---|
+| `Method` | The method actually used: `Engine` or `Builtin` |
+| `MethodReason` | Why `Auto` chose `Builtin` — one value, the first that applies in this order: `NoEngineLayout` (the graph has no engine arrangement; this includes PCG on UE 5.7), `DefaultForThisGraph` (Material, PCG), `NodeIdsSpecified`, `SpacingSpecified`, `CommentWithContents`, `EditorNotOpen` (BehaviorTree), `NodeWidgetsMissing` (BehaviorTree: the editor is open but some nodes have not been drawn), `UnreachableNodes` (BehaviorTree: some nodes cannot be reached from the root), `AmbiguousSiblingOrder` (BehaviorTree: siblings share an X). Empty when `Method` was given or the engine's arrangement was chosen |
+| `MovedNodeCount` / `TotalNodeCount` | Nodes (comment boxes included) that moved / that the graph has |
+| `UnmovedByEngineCount` | `Engine` only: nodes the engine's arrangement left where they were |
+| `Bounds` | Bounding rectangle of all nodes after the arrangement: `X`, `Y`, `Width`, `Height` in graph units |
+| `SizeSource` | `Builtin` only: `MeasuredCount` and `EstimatedCount` (node sizes read from a real widget, or estimated from title and pin count), and `AllEstimatedReason` — `NodeLimitExceeded` (more than 500 nodes, so every size is estimated to stay fast), `MeasurementUnavailable` (no widget can be built in this environment), or empty. MetaSound always estimates; ControlRig and UAF use the size the graph holds or an estimate |
+| `EditorSync` | `EditorOpen` (bool). `ArrangeMaterialGraph` adds `WorkingCopyOnlyNodeCount` while the editor is open |
+
+Each domain's response also carries the keys that identify the graph that was arranged (for example `BlueprintPath` / `GraphName` / `GraphGuid`). When nodes moved, a JSON artifact lists them as `MovedNodes`, each with `NodeId`, `Before` and `After` (`X` / `Y`), sorted by id. The individual positions are returned only in this artifact, so `Result` stays small.
+
+### Layout guarantees
+
+- The arranged nodes are placed starting at the top-left of the area they occupied before, not in some other part of the graph. When `NodeIds` is given and the result would overlap a node that stays, the whole arrangement shifts to the right of or below it (whichever moves less) as one block.
+- A comment box with content is moved together with its content and fitted around it afterwards. In the tree layouts (BehaviorTree, EQS, Conversation) the structure and sibling order take priority: the boxes are only refitted afterwards, so a box can overlap nodes of another branch. A box that holds a node that does not move, or whose content all belongs to another box, keeps its frame; of two partly overlapping boxes the smaller one owns the shared nodes.
+- **Execution order is preserved** in BehaviorTree, EQS and Conversation, where the horizontal order of siblings decides what runs first. Siblings are laid out left to right in their current execution order and given strictly increasing X values; when two siblings had the same X, the order the asset currently runs in is used (children added since the asset was last updated come last). With `NodeIds`, the named nodes are placed between the siblings that stay, in execution order; if the room between two staying siblings has fewer free grid positions than nodes to place, the command is refused with `Conflict` and nothing is written — drop `NodeIds` and arrange the whole graph. When there is room for the order but not for the node width, the order wins and nodes may overlap.
+- Trees with several roots (Conversation entry points) place each tree side by side, ordered by id. A subtree that is not connected to the main root (for example a composite that has no parent yet, with its children) is arranged as a separate tree below the main one, and nodes with no connection at all go to the bottom row.
+- Idempotence: running the built-in layout again on its own result moves nothing, provided node sizes were obtained the same way (measuring vs estimating, or crossing the 500-node limit, can change the outcome).
+
+### Refusals
+
+| Situation | ErrorCode |
+|---|---|
+| Malformed argument: spacing outside `0`–`2000`, unknown `Method`, empty / duplicated / misspelled `NodeIds`, a node that cannot be named (see above), `Method=Engine` on a graph without an engine arrangement or together with `NodeIds` / a spacing, both `GraphName` and `GraphGuid` | `InvalidParams` |
+| Asset or graph not found; a `NodeIds` entry that names no node of the graph | `NotFound` (a node id: the error code of the domain's existing node commands — Dataflow answers `ExecutionFailed`, like `RemoveDataflowNode`) |
+| Several graphs share the name | as the domain's existing commands (`MatchedGraphGuids`; ControlRig: `MatchedFullGraphNames`) |
+| Play-in-Editor or Simulate is running | `NotAllowed` |
+| `Method=Engine` and the preconditions above are not met | `PreconditionFailed` |
+| BehaviorTree / EQS / Conversation with `NodeIds`: no room to keep the execution order | `Conflict` |
+| PCG built-in layout would put a node outside ±100000; a write failed part way (everything already written is rolled back, nothing stays in the undo history); PCG `Engine` command not executed by the editor | `ExecutionFailed` |
+| The domain's capability is not granted | `CapabilityNotAvailable` |
+| Optional plugin (PCG, MetaSound, EQS, Conversation, UAF…) not available | refused with a reason, as the domain's other commands |
+
+---
+
 ## Choosing which play world a Runtime command acts on
 
 A networked Play-in-Editor session runs **more than one world inside the same editor process** — a server and one or more clients. 112 Runtime commands therefore take two optional parameters saying which of those worlds to act on. Both are optional, and omitting both gives exactly the behaviour these commands had before the parameters existed, so **no existing call changes meaning**.
@@ -509,8 +595,8 @@ Editor lifecycle, tab management, graph layout, shader compilation, Live Coding.
 | 🆓 `RestartEditor` | Restart the UE Editor (optionally save packages). `Success` means the request was **accepted**, not that the editor has restarted — the outcome is read with `GetRestartStatus`, and the MCP Bridge waits for it automatically. See the note below the table |
 | 🆓 `GetRestartStatus` | Report the state of a `RestartEditor` attempt (`Scheduled` / `CloseRetrying` / `Declined` / `ExitStarted`). Read-only; requires `EditorLifecycle` |
 | 🆓 `SaveAllPackages` | Save all modified packages (optionally include maps) |
-| 🆓 `Undo` | Undo the last editor operation |
-| 🆓 `Redo` | Redo the last undone operation |
+| 🆓 `Undo` | Undo the last editor operation. **Refused with `NotAllowed`, and nothing is undone,** when a Material Editor is open and the undo could raise a dialog that cannot be dismissed (the Material Editor applies on every undo): `Result.BlockingAssets` lists the Materials and MaterialFunctions concerned, and `Result.Refusals` gives one entry per reason (in the order `CurrentCompileErrors`, `DestinationCompileErrors`, `EditorClosed`) with its `Reason` and `AssetPaths`. Assets are named by package name (for example `/Game/M_Test`), each once, sorted. `CurrentCompileErrors` — an open Material Editor holds a working copy with compile errors (this refuses every undo, even one unrelated to Materials); fix the errors or close the editor. `DestinationCompileErrors` — the state the undo would restore had compile errors when a UAIP write was recorded (with `StepCount` above 1, any step on the way counts); UAIP's `Undo` cannot go back past that write, so write the inverse change instead. `EditorClosed` — the Material Editor that held a UAIP write has since been closed, and undoing it would no longer change the asset; write the inverse change instead. Undo that does not go through this command (scripts, the console) and edits a person made in the editor are not covered, and may still raise the dialog |
+| 🆓 `Redo` | Redo the last undone operation. Refused with `NotAllowed` in the same situations and with the same `BlockingAssets` / `Refusals` as `Undo`; for a redo, `DestinationCompileErrors` refers to the state the redo would restore |
 | 🆓 `GetUndoHistory` | Read the undo history without executing anything. Returns how many steps can be undone or redone, and their names |
 | 🆓 `GetLastCrashReport` | Get the most recent crash report The crash's own part (exception text, call stack) is always returned. `CrashTime` is the time of the crash (UTC, same format as before; the record file's modification time when the crash record has none), not the time the command ran. `DiagnosticLogTail` is the last 50 lines of the newest `.log` in the crash folder, with file paths masked like the other fields; it is dropped while `AllowLogDump=False` (the default). When it is empty, `DiagnosticLogTailReason` is one of `LogDumpNotAllowed`, `LogFileNotFound`, `LogFileUnreadable`. `LogDumpNotAllowed` means the policy dropped it, `LogFileNotFound` that there is no log file, and `LogFileUnreadable` that the log file could not be read. ⚠️ The log tail used to be always empty (the wrong file was read), and `CrashTime` used to be the time the command ran. |
 | `WaitForShaderCompilation` | Wait until shader compilation completes |
@@ -1189,7 +1275,7 @@ These writes used to go through: they changed the object without compiling the B
 
 Edit Blueprint variables, event graph nodes, and SCS components. The graph, pin, variable, function override and compile commands also edit the level Blueprint of a map that is open in the editor — see [Level Blueprints](#level-blueprints).
 
-### Variables & graph (11)
+### Variables & graph (12)
 
 | Command | Description |
 |---|---|
@@ -1204,6 +1290,7 @@ Edit Blueprint variables, event graph nodes, and SCS components. The graph, pin,
 | `ListBlueprintPins` | List pins of a Blueprint graph node |
 | `SetPinDefaultValue` | Set a default value on a Blueprint graph node pin (auto-selects DefaultValue / DefaultObject / DefaultTextValue based on pin type). ⚠️ Needs `BlueprintUnrestrictedNodePlace` as well when the node calls a function that can run code, or is a function call in an Editor Utility Blueprint — see [Function calls that can run code](#function-calls-that-can-run-code). When the compile that follows the write fails, the command answers `ExecutionFailed` and puts the pin's previous value back Takes `IncludeSecretValues`; the `PreviousValue` / `NewValue` of a secret pin are `***` with `IsMasked: true` (the plain value never comes back from a write — read it with `GetPinDefaultValue`). |
 | `GetPinDefaultValue` | Get the current default value of a Blueprint graph node pin Takes `IncludeSecretValues`: a secret value is `***` with `IsMasked: true` unless all three layers allow the plain value in `Result.SecretFieldValues` — see [Reading secret values](#reading-secret-values). A value that could not be proven non-secret stays masked and is listed in `UnverifiedMaskedFields`. |
+| `ArrangeBlueprintGraph` | Arrange the nodes of one Blueprint graph — event graph, function, macro, widget graph or the graph of a level Blueprint — so that execution flows left to right and pure nodes sit to the left of the nodes that use them. Takes `BlueprintPath`, then `GraphName` (empty or `EventGraph` selects the event graph) or `GraphGuid` (never both; a name several graphs share is refused with `MatchedGraphGuids`), plus `Method` / `NodeIds` / `HorizontalSpacing` / `VerticalSpacing`. `NodeIds` are `NodeGuid` values. Position only, one undo step, no recompile. Requires `BlueprintGraphEdit`; `Method=Engine` is `InvalidParams`. See [Arranging a graph](#arranging-a-graph) |
 
 > **New — `AddGraphNode` with `NodeType: "Event"` overrides any event of the parent classes or of an implemented interface, named by `FunctionName`** (for example `ReceiveDestroyed` or `ReceiveActorBeginOverlap`), the way the Override menu of the My Blueprint panel adds an event node. `EventBeginPlay` and `EventTick` keep working as before. A Blueprint can override an event only once: when the override already exists anywhere in the Blueprint, the existing node is returned instead of a second one. A function that returns a value, has output parameters or is const cannot be an event node and is refused with `InvalidParams` naming `AddFunctionOverride`; a name that no parent class or interface declares as a `BlueprintImplementableEvent` / `BlueprintNativeEvent` is refused with `InvalidParams` as well.
 >
@@ -1394,7 +1481,7 @@ Material graph editing and parameter management.
 | Command | Description |
 |---|---|
 | `GetMaterialInfo` | Basic info (NodeCount, ShadingModel, BlendMode, bHasErrors) |
-| `ListMaterialNodes` | List of Material graph nodes (NodeId, ExpressionClass, position, bIsParameter) |
+| `ListMaterialNodes` | List of Material graph nodes (NodeId, ExpressionClass, position, bIsParameter). In the returned list the output (root) node always has the fixed `NodeId` `4d415445-5249-414c-524f-4f5400000001`, whether or not a Material Editor is open; with an editor open the list is the editor's working copy. See the note below |
 | `AddMaterialNode` | Add a node to the Material graph (`ExpressionClass`-specified) — a project-defined or custom-HLSL class needs a capability, see the note below |
 | `DeleteMaterialNode` | Delete a node by NodeId (root deletion returns Conflict) |
 | `ConnectMaterialPins` | Connect two pins in a Material graph (cycle / type-mismatch detection) |
@@ -1404,6 +1491,17 @@ Material graph editing and parameter management.
 | `GetMaterialParameterValue` | Get a material parameter value |
 | `ListMaterialExpressionClasses` | List `UMaterialExpression` derived classes (max 500), each with `Admission` (`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`) plus `RequiredCapabilities` / `MissingCapabilities` from the same policy `AddMaterialNode` validates against. Use the returned `ClassPath` as the `ExpressionClass` argument. Reports `TotalCount`, `ReturnedCount`, `Truncated` — see the note below |
 | `RefreshMaterial` | Force-recompile a material (recompiles a saved asset immediately without arguments) |
+| `ArrangeMaterialGraph` | Arrange the nodes of a Material **or MaterialFunction**: inputs on the left, the output node on the right. Takes `AssetPath` plus the common arguments. `NodeIds` are the `NodeId` values of `ListMaterialNodes` (the `MaterialExpressionGuid`, or the fixed id of the output node). Position only (also the frame of comment boxes, and the output node's position); nothing is compiled or applied. With a Material Editor open, both the editor's working copy and the asset itself are arranged, and `EditorSync.WorkingCopyOnlyNodeCount` counts the nodes that exist only in the working copy (not yet applied). `Method=Engine` uses the engine's layout, which leaves comments and nodes not wired to an output in place. Requires `MaterialGraphEdit`. See [Arranging a graph](#arranging-a-graph) |
+
+> **Note — with a Material Editor open, the Material commands work on what the editor shows.** This covers the seven writing commands (`AddMaterialNode`, `DeleteMaterialNode`, `ConnectMaterialPins`, `DisconnectMaterialPins`, `SetMaterialParameterValue`, `CompileMaterial`, `RefreshMaterial`) and the three reading commands (`GetMaterialInfo`, `ListMaterialNodes`, `GetMaterialParameterValue`). Before this change a write while the editor was open reached the asset but never appeared on screen.
+>
+> - **Writes go to the editor's working copy**, so an added node shows up at once. After the write the working copy is compiled and the command **waits for the compile to finish**; if nothing blocks it, the editor's Apply runs and the change reaches the asset itself. Apply also carries any edit a person has not applied yet, exactly like the Apply button (it does not save). Because of the wait, a command can answer more slowly than with the editor closed. With the editor closed the commands work on the asset as before.
+> - **Reads return the working copy** while the editor is open, including edits that have not been applied.
+> - **Every response of the seven writing commands now carries `Result.EditorSync`**: `EditorOpen` (bool) and, while the editor is open, `Applied` (bool). When `Applied` is `false`, `ApplyDeferredReason` says why: `CompileErrors` (the working copy still has compile errors after compiling, so Apply is held back — the editor would otherwise show a dialog that cannot be dismissed; the write itself succeeded and shows on screen, and the next write after the errors are fixed applies everything), `ApplyNotExecuted` (the editor declined to run Apply), `CompileSkipped` (the call set `bSkipCompile`, so nothing was compiled or applied) or `NoChange` (the command changed nothing, for example connecting pins that are already connected; an earlier held Apply stays held). With the editor closed `EditorSync` is `{ "EditorOpen": false }`.
+> - While an Apply is held back, saving the asset saves its previous content, and closing the editor asks whether to apply (`ShutdownEditor` then refuses with `PreconditionFailed` and `AssetEditorsStillOpen`). Enabling the platform statistics of derived instances in the statistics panel can still raise a dialog that UAIP cannot check for in advance.
+> - **Node ids are the same whether the editor is closed, open or reopened.** The id of the **output node** is now a fixed value, `4d415445-5249-414c-524f-4f5400000001`, in every Material (it used to change each time the editor was opened). `ListMaterialNodes` and the other commands that return it report this value, and every command that takes it also still accepts the `NodeGuid` the output node had before, so ids obtained earlier keep working. A caller that compared stored output-node ids with new ones will see this one value change.
+> - **`Undo` / `Redo` are refused in some situations while a Material Editor is open** — see [`UAIP.Editor.Workspace`](#uaipeditorworkspace). The Material Editor applies on every undo and redo, and an open editor whose working copy has compile errors would block on a dialog.
+> - `ArrangeMaterialGraph` (above) does not compile or apply; it writes positions to both the working copy and the asset.
 
 > **Note — project-defined and custom-HLSL expression classes are capability-gated**: an `ExpressionClass` from one of the engine's built-in modules (`Engine`, `RenderCore`, `MaterialEditor`, `Landscape`) is added the same way as before. A class outside those modules — a project- or plugin-defined `UMaterialExpression` subclass — now requires `MaterialCustomTypeEdit`. `UMaterialExpressionCustom`, `UMaterialExpressionCustomOutput` and their subclasses (arbitrary HLSL) require `MaterialCustomNodeEdit` regardless of which module they come from — this capability was already registered, but no command enforced it until now. A class that is both needs both capabilities together, and the refusal names whichever ones are missing. Neither is granted by default; see [Safety & Capabilities](safety.md#material-editing).
 >
@@ -1752,6 +1850,7 @@ Dataflow graph editing. Requires `DataflowEditor` plugin.
 | `ListDataflowVariables` 🧩 | List graph variables |
 | `GetDataflowNodeProperty` 🧩 | Read a node's `EditAnywhere` property value (primitives / enum / FName / FString / simple structs) Takes `IncludeSecretValues`: a secret value is `***` with `IsMasked: true` unless all three layers allow the plain value in `Result.SecretFieldValues` — see [Reading secret values](#reading-secret-values). A property path that indexes a secret array needs all three layers. A value that could not be proven non-secret stays masked and is listed in `UnverifiedMaskedFields`. |
 | `SetDataflowNodeProperty` 🧩 | Write a node's `EditAnywhere` property value. Domain-agnostic — used by Cloth Weight Map / simulation config nodes among others. References, structs and containers are written through `ValueJson`, with a single container element addressed by `Operation` / `ElementIndex` / `ElementKeyJson` — see [Writing references, structs and containers](#writing-references-structs-and-containers). A write that touches a reference requires `DataflowReferenceEdit` on top of `DataflowGraphEdit`; a struct or container requires `PropertyStructuredEdit` as well. A hard reference (e.g. `TObjectPtr<UGroomAsset>`) is the object path of an **already-loaded** asset, since a property write never loads an asset as a side effect; soft references are validated against the asset registry and do not need the target loaded Takes `IncludeSecretValues` as a permission only (it allows an element operation on a secret container and never returns a plain value). A secret target's response is masked and carries no `Changed` — see [Reading secret values](#reading-secret-values). |
+| `ArrangeDataflowGraph` 🧩 | Arrange the nodes of a Dataflow graph so the data flows left to right. Takes `AssetPath` (`/Game/` only) plus the common arguments; `NodeIds` are the `NodeGuid` values of `GetDataflowGraphInfo`, and an id that names no node answers `ExecutionFailed` like `RemoveDataflowNode`. Position only; nothing is evaluated. Requires `DataflowGraphEdit`; `Method=Engine` is `InvalidParams`. See [Arranging a graph](#arranging-a-graph) |
 
 ### Toolset bridges — Dataflow (7) 🧩
 
@@ -2002,6 +2101,8 @@ Anim Blueprint graph and StateMachine editing.
 | `RemoveAnimLayerGraph` | Remove a self-contained Anim Layer graph, and every `LinkedAnimLayer` node still referencing it when `RemoveReferencingNodes` is true |
 | `ImplementAnimLayerInterface` | Implement a `UAnimLayerInterface`-derived interface, generating one layer graph per anim-layer function it declares. Requires `AnimBlueprintReferenceEdit` (writes a class reference into the implemented interface list) |
 | `AddLinkedAnimLayerNode` | Place a `LinkedAnimLayer` node pointing at a self-contained layer, or (with `InterfacePath` set) at one of an already-implemented interface's layer functions — the latter additionally requires `AnimBlueprintReferenceEdit`. `TargetGraph` (name) or `GraphGuid` selects which graph the node lands in; see the note below the table |
+| `ArrangeAnimGraph` | Arrange the nodes of an AnimGraph with the built-in layout: the output node at the right edge, the nodes that feed it extending left. Takes `AssetPath`, then `TargetGraph` or `GraphGuid` (default: the first AnimGraph; a name several graphs share is refused with `MatchedGraphGuids`). `NodeIds` are `NodeId` values of `GetAnimBlueprintInfo`. Unified Animation Framework nodes in the AnimGraph are arranged like any other node. Position only, no compile. Requires `AnimBlueprintGraphEdit`; `Method=Engine` is `InvalidParams`. See [Arranging a graph](#arranging-a-graph) |
+| `ArrangeAnimStateMachine` | Arrange the state machine graph of the state machine node `StateMachineNodeId` (its `NodeGuid`): the entry node at the left, the states following the direction of their transitions. A transition node is placed by the editor between its two states, so it is not arranged itself (it counts as a connection, cycles are broken first, and `TotalNodeCount` leaves it out); naming one in `NodeIds` is `InvalidParams`. `NodeIds` are `NodeId` values of states and conduits. Requires `AnimStateMachineEdit`; `Method=Engine` is `InvalidParams`. See [Arranging a graph](#arranging-a-graph) |
 
 > **Note — `AddLinkedAnimLayerNode`'s `TargetGraph` / `GraphGuid` (which graph the node lands in)**: `TargetGraph` (optional string; unset defaults to the first AnimGraph) and `GraphGuid` (optional string, `UEdGraph::GraphGuid`) are mutually exclusive — supplying both is `InvalidParams`. `TargetGraph` is looked up first among the AnimBlueprint's own AnimGraphs (the root graph plus its self-contained layers); only when nothing matches there does the lookup fall back to the layer graphs of already-implemented interfaces — so a self-contained layer never loses to an interface layer of the same name, and this fallback itself cannot report ambiguity against the self set (self graphs are checked exhaustively first). A name matching more than one graph within whichever set actually produced the match answers `InvalidParams` with `Result.MatchedGraphGuids` carrying every candidate's `GraphGuid`; pass one of those back as `GraphGuid` to disambiguate. Naming a graph that exists nowhere answers `NotFound`.
 >
@@ -2058,6 +2159,7 @@ Editing and inspection of Unified Animation Framework assets (`UUAFAnimGraph` / 
 | `RemoveUAFVariable` | Remove a member variable by name (`VariableNotFound` both when nothing of that name exists and when it exists but is not a variable) |
 | `AddUAFEventGraph` | Add a new event graph entry rooted at the RigVM unit struct named by `StructPath`. `UUAFSystem` only — refused with `UnsupportedOperation` on `UUAFAnimGraph`, which has a single fixed animation graph entry and no room for one |
 | `CompileUAFAsset` | Trigger a synchronous compile via `RequestAssetCompilation`, subject to per-session rate limiting (`MinCompileIntervalSeconds` between calls per asset) |
+| `ArrangeUAFGraph` | Arrange the RigVM graph of one UAF asset entry left to right along the execution wires, with value-only nodes to the left of the node that reads them. `EntryName` (required) selects the graph-bearing entry like `RemoveUAFGraphNode`; an entry without a graph is `InvalidParams`. `NodeIds` are node names as `ListUAFNodes` returns them. Position and comment frames only; one undo step, no compile. Requires `UAFGraphEdit`; `Method=Engine` is `InvalidParams`. See [Arranging a graph](#arranging-a-graph) |
 
 All nine mutating commands above require `UAFGraphEdit` as their static capability.
 
@@ -2089,6 +2191,7 @@ SoundCue graph editing.
 | `DisconnectSoundCuePins` | Disconnect a pin connection (PinIndex=-1 disconnects all). Requires `SoundCueCustomTypeEdit` when the target node's class is from outside `/Script/Engine` |
 | `SetSoundCueNodeProperty` | Set a SoundCue node property. Object / class / delegate references, structs and containers are no longer refused outright — they go in `ValueJson` and are gated by `PropertyReferenceEdit` / `PropertyStructuredEdit`, see [Writing references, structs and containers](#writing-references-structs-and-containers). Requires `SoundCueCustomTypeEdit` in addition when the target node's class is from outside `/Script/Engine` Takes `IncludeSecretValues` as a permission only (see [Reading secret values](#reading-secret-values)). The `ElementKeyJson` of a secret target is `***` with `IsMasked: true` and there is no `Changed`; only an echo of the value the caller sent is masked, and no command reads a SoundCue node's values back. |
 | `CompileSoundCue` | Rebuild the SoundNode tree from the graph. Never requires `SoundCueCustomTypeEdit`: it names no node class of its own, and the classes a cue already holds are judged by a separate, permission-free question this domain always answers the same way — a cue containing a project's own node stays compilable without it |
+| `ArrangeSoundCueGraph` | Arrange the nodes of a SoundCue graph: sound sources on the left, the output node on the right. Takes `AssetPath` plus the common arguments; `NodeIds` are the `NodeId` values of `GetSoundCueInfo`. Position only; the cue is not recompiled. Requires `SoundCueGraphEdit`; `Method=Engine` is `InvalidParams`. See [Arranging a graph](#arranging-a-graph) |
 
 > ⚠️ **Breaking change — delete, connect, disconnect and property edits used to be ungated.** Before this capability existed, only `AddSoundCueNode` checked the node class being added; the other four mutating commands went through unconditionally, whatever class the node was. See [Capability-gated custom types](#capability-gated-custom-types) for the general rule this follows.
 
@@ -2227,7 +2330,12 @@ Behavior Tree graph editing and Blackboard key management.
 | `AddBlackboardKey` | Add a key (duplicate-name check). A key type outside `/Script/AIModule`, and the two key kinds that hold a reference the writer chooses, each need a capability — see the note below |
 | `RemoveBlackboardKey` | Remove an unreferenced key (returns Conflict + referencers if in use) — needs the same capabilities the key's own type asks for |
 | `SetBehaviorTreeBlackboard` | Change the Blackboard asset a BT references |
-| `RequestBehaviorTreeAutoArrange` | Run the AutoArrange pass on an open BT editor |
+| `RequestBehaviorTreeAutoArrange` | ⚠️ **Deprecated** — use `ArrangeBehaviorTreeGraph` instead. Arranges the BT graph as one undo step with `Method=Auto`; the asset no longer has to be open in the BehaviorTree editor. Parameters and response shape are unchanged; `Arranged` is `true` only when at least one node moved |
+| `ArrangeBehaviorTreeGraph` | Arrange a BehaviorTree as a tree: the root on top, children below their parent, left to right in the order they execute (**the execution order never changes**). Takes `AssetPath` plus the common arguments; `NodeIds` are `NodeGuid` values of `GetBehaviorTreeNodeList` (decorators and services follow their parent and cannot be named). Works on an asset that is not open in the editor, is one undo step, and leaves wires, properties and the runtime tree alone. `Method=Auto` uses the engine's arrangement only when the asset is open with every node drawn, there are no `NodeIds`, spacing or comment with content, every node is connected to the root and no siblings share an X; otherwise it uses the built-in layout and names the reason in `MethodReason`. `Method=Engine` needs the editor open with every node drawn and zooms the editor to fit. `NodeIds` that leave no room to keep the order answer `Conflict`. Requires `BehaviorTreeGraphEdit`. See [Arranging a graph](#arranging-a-graph) |
+
+> **Note — adding a node no longer rearranges the tree.** `AddBehaviorTreeCompositeNode` and `AddBehaviorTreeTaskNode` used to run an auto-arrange pass after every addition. They no longer do: the new node is placed near its parent and every other node stays where it is. Call `ArrangeBehaviorTreeGraph` when you want the tree tidied.
+>
+> **`RequestBehaviorTreeAutoArrange` is deprecated** in favour of `ArrangeBehaviorTreeGraph` (the migration target is reported with the deprecation). Its parameters (`AssetPath` only) and response (`AssetPath`, `Arranged`) are unchanged, but it now does what `ArrangeBehaviorTreeGraph` does with `Method=Auto`: it works on an asset that is not open in the BehaviorTree editor, and the arrangement is one undo step. `Arranged` is `true` only when at least one node moved.
 
 > **`Result` on success (the three Behavior Tree editing commands).** The identifiers passed in the request are returned as given (they are not normalized). **The value that was set (`Value`) is not included.**
 >
@@ -2289,6 +2397,7 @@ MetaSound graph editing. Requires `Metasound` plugin.
 | `AddMetaSoundOutput` 🧩 | Add an output vertex (single-page assets only) |
 | `SetMetaSoundNodeProperty` 🧩 | Set an input default (Bool / Int / Float / String, NaN / Inf rejected) — needs the same capability when the node is one of those classes |
 | `CompileMetaSound` 🧩 | Register with Frontend (per-session 1 s rate limit) — never gated by the custom-type capability |
+| `ArrangeMetaSoundGraph` 🧩 | Arrange the nodes of a MetaSound graph: inputs on the left, outputs on the right. Takes `AssetPath` plus the common arguments; `NodeIds` are the `NodeId` values of `GetMetaSoundInfo` in exactly that spelling. Changes node locations (and comment frames) in the MetaSound document only — nothing is recompiled; an open MetaSound editor shows the new layout on its next update. Node sizes are always estimated. Requires `MetaSoundGraphEdit`; `Method=Engine` is `InvalidParams`. See [Arranging a graph](#arranging-a-graph) |
 
 > **Note — node classes outside the four engine namespaces are capability-gated**: a `ClassName` whose namespace is `UE`, `Metasound`, `MetasoundStandardNodes` or `MetasoundEditor` is added the same way as before. A class from any other namespace — one a project or plugin module registered under its own — now requires `MetaSoundCustomTypeEdit` instead of being refused outright. Not granted by default; see [Safety & Capabilities](safety.md#optional-graph-editors). There is no companion "dangerous type" capability for this domain, as in AnimBlueprint, ControlRig and Enhanced Input and unlike Material: a MetaSound node evaluates the fixed signal operation its registry entry describes and runs nothing the caller supplied.
 >
@@ -2319,6 +2428,7 @@ EQS query editing. Requires `EnvironmentQueryEditor` plugin.
 | `RemoveEQSTest` 🧩 | Remove a Test by NodeId — needs the same capabilities the Test's own class asks for |
 | `SetEQSGeneratorProperty` 🧩 | Set a Generator property (generic ImportText_Direct) — needs the capabilities asked for by the class of the Generator being written **and** by the class that declares the property Takes `IncludeSecretValues` as a permission only (see [Reading secret values](#reading-secret-values)). It returns no value; the failure message for a secret target is generic. |
 | `SetEQSTestProperty` 🧩 | Set a Test property (`param:<Name>` → `UAIDataProvider_QueryParams`) — same checks as above; toggling `bTestEnabled` (`PropertyName: "TestEnabled"`) is gated by the Test's own class too, even though the flag itself lives on the graph node rather than on the Test instance — this route was previously ungated entirely, see the note below Takes `IncludeSecretValues` as a permission only (see [Reading secret values](#reading-secret-values)). It returns no value; the failure message for a secret target is generic. |
+| `ArrangeEQSGraph` 🧩 | Arrange an EQS query as a tree: ROOT on top, the options below it left to right in the order the query runs them, tests following their option. **The option order does not change** — the arrangement keeps the current left-to-right order and gives the options strictly increasing X. Takes `AssetPath` plus the common arguments; `NodeIds` are `OptionId` values of `GetEQSQueryInfo` (tests and ROOT cannot be named); `Conflict` when there is no room to keep the order. The query is not rebuilt. Requires `EQSAssetEdit`; `Method=Engine` is `InvalidParams`. See [Arranging a graph](#arranging-a-graph) |
 
 > **`Result` on success (the four EQS editing commands).** The identifiers passed in the request are returned as given (they are not normalized). **The value that was set (`Value`) is not included.**
 >
@@ -2757,13 +2867,14 @@ PCG graph editing. Requires `PCG` plugin.
 | `ListPCGAvailableSubgraphs` 🧩 | List subgraph candidates in the project |
 | `GetPCGNativeNodeSchema` 🧩 | JSON schema of native PCG node class EditAnywhere properties. Narrowed the same way as `GetCustomPCGNodeSchema`, and reports `HiddenCount` / `HiddenCapabilities` / `HiddenReasons` |
 | `AddPCGSubgraphNode` 🧩 | Add a subgraph reference node (requires `PCGGraphEdit`) |
-| `RepositionPCGNode` 🧩 | Move a node to a new position (requires `PCGGraphEdit`) |
+| `RepositionPCGNode` 🧩 | Move a node to a new position (requires `PCGGraphEdit`). Now one undoable step (Ctrl+Z restores the position) and reflected in an open PCG editor at once; a position written while the editor is closed shows when it is opened later |
 | `AddPCGCommentBox` 🧩 | Add a comment box (requires `PCGGraphEdit`) |
 | `UpdatePCGCommentBox` 🧩 | Update a comment box (requires `PCGGraphEdit`) |
 | `RemovePCGCommentBox` 🧩 | Remove a comment box (requires `PCGGraphEdit`) |
 | `GetPCGNodeDataView` 🧩 | Get a PCG node's execution data view (requires `PCGNodeInspect`; returns CapabilityNotAvailable when `PCG_PROFILING_ENABLED=0`) |
 | `RunPCGInstantGraph` 🧩 | Fire-and-forget PCG graph execution with no actor or component required (requires `PCGGraphExecute`) |
 | `DrawPCGSpline` 🧩 | Starts an interactive spline draw the human finishes in the level viewport and returns an `InteractionId` right away (`IsInteractive: true`) — poll with `GetPendingInteractionStatus`, block briefly with `WaitForPendingInteraction`, or cancel with `CancelPendingInteraction`. Requires `PCGSplineDraw` and `SafetyPolicy.AllowUserInteractionPrompt` (a separate gate); one interaction may hold the level viewport at a time |
+| `ArrangePCGGraph` 🧩 | Arrange a PCG graph so the data flows left to right. Takes `AssetPath` (`/Game/` only) plus the common arguments; `NodeIds` are the `NodePath` values of `GetPCGGraphInfo`. The graph's input and output nodes are arranged too unless `NodeIds` is given. A comment box that encloses nodes moves with them; box sizes and node sizes are measured when the graph has been opened in a PCG editor and estimated otherwise. Positions are written whether or not an editor is open (and reach the editor graph, so a later open shows them). Position only; nothing is regenerated. `Method=Auto` always uses the built-in layout. **`Method=Engine` exists on UE 5.8 only** (`InvalidParams` on 5.7) and runs the PCG editor's own Auto Layout: the graph must be open in its own PCG editor with its tab visible and no other graph tab focused, otherwise `PreconditionFailed`; if nodes are selected there, only they are arranged. A built-in result outside ±100000 is refused with `ExecutionFailed` before anything is written. Requires `PCGGraphEdit`. See [Arranging a graph](#arranging-a-graph) |
 
 ### Toolset bridges — PCG (31) 🧩
 
@@ -2892,6 +3003,7 @@ ConversationDB graph editing. Requires `CommonConversation` plugin.
 | `ConnectConversationNodes` 🧩 | Add a transition edge between nodes. Requires `ConversationCustomTypeEdit` when either endpoint's class is from outside `/Script/CommonConversationRuntime` |
 | `DisconnectConversationNodes` 🧩 | Remove a transition edge. Requires `ConversationCustomTypeEdit` when either endpoint's class is from outside `/Script/CommonConversationRuntime` |
 | `SetConversationNodeProperty` 🧩 | Set a property (FText sanitized — BIDI strip, PUA reject, 4096 char limit). The value is a JSON document; references, structs and containers are no longer refused permanently but gated by `PropertyReferenceEdit` / `PropertyStructuredEdit` — see [Writing references, structs and containers](#writing-references-structs-and-containers). Requires `ConversationCustomTypeEdit` in addition when the target node's class is from outside `/Script/CommonConversationRuntime` |
+| `ArrangeConversationGraph` 🧩 | Arrange one edit graph of a conversation database as a tree: each entry point on top, the nodes it leads to below, left to right in the order the conversation runs them (several entry points side by side; **the run order does not change** when the database is compiled later). Takes `AssetPath`, `GraphIndex` (default `0`) plus the common arguments; `NodeIds` are the `NodeGuid` values `AddConversationNode` returns (upper-case, no hyphens; the listing commands do not return node ids); sub-nodes follow their host and cannot be named; `Conflict` when there is no room to keep the order. Nodes and wires are untouched, the compiled bank is not rebuilt. Requires `ConversationGraphEdit`; rejected during PIE. See [Arranging a graph](#arranging-a-graph) |
 
 > ⚠️ **Breaking change — delete, connect, disconnect and property edits used to be ungated.** Before this capability existed, only `AddConversationNode` / `AddConversationSubNode` checked the node class being added; the other four mutating commands went through unconditionally, whatever class the node was. See [Capability-gated custom types](#capability-gated-custom-types) for the general rule this follows. Every mutation also rebuilds the database's compiled bank, which judges every node class the database already holds the same way — a database that already contains a project's own node stays compilable and repairable without a grant, since nothing about compiling or removing an existing node runs code the request itself supplies.
 
@@ -2953,7 +3065,7 @@ Which format a new asset gets is decided by the project's console variable `RigV
 - **A type change or an addition that did not take effect is a failure.** `ChangeVariableType` (native) and the Toolset bridge `AddVariable` / `ChangeVariableType` read the variable back afterwards. If it is lost, or has a type other than the one asked for, the answer is `ExecutionFailed`, and `Result` carries `VariableLost` and `ActualType` (the type the variable actually has). The native command also adds the same fields to its artifact, and the bridge answers in the same shape. The change is not undone automatically; it is in the editor's undo history. On a runtime-asset Control Rig, a type change to a type the engine would have to load an asset to find again (a user-defined enum, for example) is refused with `UnsupportedOperation` before anything is changed (it used to lose the variable and answer success), and so is a change to a type whose short name another type shares.
 - **A Toolset bridge `AddVariable` for which the engine chose another name cannot be checked.** The delegated call does not report the name it used, so the answer is `ExecutionFailed` ("the variable with the requested name was not found") and does not say which variable was created.
 
-### Native (68)
+### Native (69)
 
 #### Hierarchy observation (10)
 
@@ -3010,7 +3122,7 @@ Which format a new asset gets is decided by the project's console variable `RigV
 | `AddBackwardSolveGraph` | Add a BackwardSolve graph |
 | `AddInteractionGraph` | Add an Interaction graph |
 
-#### Nodes (10)
+#### Nodes (11)
 
 | Command | Description |
 |---|---|
@@ -3024,6 +3136,7 @@ Which format a new asset gets is decided by the project's console variable `RigV
 | `DuplicateNode` | Duplicate a node (returns the duplicate's name) |
 | `AddEventNode` | Add an event node |
 | `AddVariableNode` | Add a variable node |
+| `ArrangeControlRigGraph` | Arrange a ControlRig graph left to right along the execution wires, with value-only nodes to the left of the node that reads them. Takes `AssetPath` and `GraphName` (resolved like `SetNodePosition`; an ambiguous name is refused with `MatchedFullGraphNames`) plus the common arguments; `NodeIds` are node names as `ListNodes` returns them. Changes node positions and comment frames only; the rig is not recompiled. ModularRig assets are rejected. Requires `ControlRigGraphEdit`; `Method=Engine` is `InvalidParams`. See [Arranging a graph](#arranging-a-graph) |
 
 #### Pins (7)
 

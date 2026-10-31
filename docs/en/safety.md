@@ -325,7 +325,7 @@ Requires the Engine's own `UAF` plugin; if it is disabled none of the commands b
 
 | Capability | What it unlocks |
 |---|---|
-| `UAFGraphEdit` | Graph, variable, and compile editing on a UAF asset (`AddUAFGraphNode` / `RemoveUAFGraphNode` / `ConnectUAFPins` / `DisconnectUAFPins` / `SetUAFPinValue` / `AddUAFVariable` / `RemoveUAFVariable` / `AddUAFEventGraph` / `CompileUAFAsset`) |
+| `UAFGraphEdit` | Graph, variable, and compile editing on a UAF asset (`AddUAFGraphNode` / `RemoveUAFGraphNode` / `ConnectUAFPins` / `DisconnectUAFPins` / `SetUAFPinValue` / `AddUAFVariable` / `RemoveUAFVariable` / `AddUAFEventGraph` / `ArrangeUAFGraph` / `CompileUAFAsset`) |
 | `UAFCustomTypeEdit` | Required when a RigVM unit struct or animation trait used by an add / connect / disconnect / remove operation does not come from the framework's own packages — a type contributed by an optional UAF sub-plugin, a project module, or anything else outside that set. `GetAvailableUAFUnitStructs` and `GetAvailableUAFTraits` report which capability each entry would need |
 | `UAFReferenceEdit` | Required when `SetUAFPinValue` writes an object or class reference into a pin — either the pin's own declared type, or a struct that declares a reference anywhere in its own type graph |
 
