@@ -209,7 +209,7 @@ CLI transport が何かを実行する前にリクエストを拒否した場合
 |---|---|---|---|
 | `Success` | 200 | コマンド完了 | — |
 | `CommandNotFound` | 404 | 指定したコマンドが未登録 | `UAIP.Core.ListCommands` で確認。オプションプラグインコマンドはプラグインロードが必要 |
-| `InvalidParams` | 400 | 必須欠落 / 型不一致 / `AdditionalProperties:false` での未知フィールド。シナリオでは `${...}` テンプレート参照が解決できなかった場合も含む | `UAIP.Core.DescribeCommand` でスキーマ再取得。テンプレートの失敗は `RetryCount` によるリトライ対象**外**です — [シナリオ API](scenario.md#テンプレート解決の失敗) を参照 |
+| `InvalidParams` | 400 | 必須欠落 / 型不一致 / `AdditionalProperties:false` での未知フィールド。名前や ID が複数の要素に当たる（応答の `Matched*` の欄が候補を示す）。シナリオでは `${...}` テンプレート参照が解決できなかった場合も含む | `UAIP.Core.DescribeCommand` でスキーマ再取得。名前や ID が曖昧なときは、応答が示す候補の 1 つを指定して呼び直す。テンプレートの失敗は `RetryCount` によるリトライ対象**外**です — [シナリオ API](scenario.md#テンプレート解決の失敗) を参照 |
 | `CapabilityNotAvailable` | 403 | セッションに必要 Capability 不足 | `ErrorMessage` に不足 Capability 名。`Config/DefaultUAIP.ini` で有効化して再起動、または `UAIP.Core.ReloadCapabilities` |
 | `AbilityUnavailable` | 501 | このコマンドの `IsAvailable()` が、環境またはビルドに起因する理由で `false` になっている：必要な Optional モジュール／プラグイン（例：Sequencer、LevelSequenceEditor）が読み込まれていない、必要な構成でこのプロセスがビルドされていない、稼働中のエンジンバージョンがこのコマンドに対応していない、またはこのコマンド（ネイティブ・Toolset ブリッジ転送のいずれも）にそもそも到達できる実装経路が無い、**あるいは引数で求めたコマンドの一部の機能が、このビルド・環境では使えない**（例：打ち切りに対応しない Python のバージョンで `AbortAfterSeconds` を付けた `RunEditorPythonScript`） | `ErrorMessage` に何が欠けているかが載る。`UAIP.Core.DescribeCommand` を呼んで `UnavailableDetail`（`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`）を読み、値ごとの対処に従う — `EngineApiNotExported` と `DelegationTargetMissing` は設定変更では解決しないので、Toolset ブリッジまたはネイティブの代替コマンドを探す。引数で求めた一部の機能だけが使えない場合は `IsAvailable()` が `true` なので `UnavailableDetail` は手掛かりにならない — `ErrorMessage` を読み、その機能を外して呼び直す（`AbortAfterSeconds` なら `0` を渡す） |
 | `UnsupportedOperation` | 501 | 要求された操作の実装が、このプラットフォーム／ビルド構成に**構造的に**存在しない。バージョンに依存しない恒久的な非対応（例：ControlRig の ModularRig 編集） | 設定変更では解決しない。このドメインでは別の手段を使う |
@@ -221,6 +221,8 @@ CLI transport が何かを実行する前にリクエストを拒否した場合
 | `ExecutionFailed` | 500 | ハンドラ内の Runtime 失敗 | `ErrorMessage` に詳細。シナリオでは `RetryCount` 活用 |
 | `Timeout` | 408 | ステップ単位 / シナリオ単位の壁時計上限超過、またはコマンド自身の打ち切り期限の到来（`AbortAfterSeconds` を付けた `RunEditorPythonScript`） | `TimeoutSeconds` を増やすかシナリオ分割。応答の `Data` に `NotExecuted: false` があれば、コマンドは**部分的に実行済み**で、その編集は残っている — 再実行の前にエディタの状態を確かめる。`NotExecuted` が無い場合（シナリオやステップの期限切れ）は従来どおり |
 | `TooManyRequests` | 429 | 並行性制限ヒット — 単一コマンド枠、シナリオの同時実行（1 件まで）、シナリオ実行中の単発コマンド（逆方向も含む）、有効化時の受動的待機プールのいずれか — [設定リファレンス → `[UAIP.Transport]` 受動的待機の同時実行](config.md#uaiptransport--受動的待機の同時実行既定オフ) と [シナリオ実行 → 単発コマンドとの排他](scenario.md#単発コマンドとの排他) を参照 | 進行中リクエスト終了待ち。HTTP レスポンスには `Retry-After: 1` が付く |
+
+| `ModalDialogPending` | 202（REST）、MCP は 200 | 書き込みがモーダルダイアログを開き、**まだ実行中**。結果ではなく早期の報告。`Success` は `false`（MCP は `isError` が立つ）だが、コマンドは失敗していない。成否は状態ではなく `ErrorCode` で判断する | コマンドを送り直さない。`Result.Dialog` と `Result.CanAnswer` を読み、`AcceptDialog` / `CancelDialog`（`ExpectedDialogId` と応答の `SessionId` を付ける）で答え、`GetActiveDialog` で最終結果を読む — [書き込みが開いたモーダルダイアログ](commands.md#書き込みが開いたモーダルダイアログ)を参照 |
 | `InternalError` | 500 | プロセス障害レベル（ハンドラ例外、ディスパッチャ不変条件違反）。CLI transport では、レスポンスファイルを書き出せない場合とシナリオモジュールが利用できない場合にも返る。それ以外の CLI の拒否は `InvalidParams` / `NotFound` / `PolicyViolation` / `Timeout`（[CLI レスポンス](#33-cli-レスポンス) を参照） | `RestartEditor`、継続なら `Saved/Crashes/` 添付で Issue 起票 |
 
 HTTP ステータスは参考値 — 分岐は常に `ErrorCode` で。WebSocket と CLI は HTTP ステータスを持ちません。
@@ -897,6 +899,8 @@ UAIP はコマンドレベルで **セマンティックバージョニング** 
 | `Stable` | スキーマはマイナーバージョン間で固定。リネーム / 削除はメジャー昇格時のみ |
 | `Experimental` | 任意のリリースでスキーマ変更可能。スキーマダンプはスナップショット扱い、契約ではない |
 | `Deprecated` | 次のメジャーで削除予定。`DeprecationMessage` + `MigrationTarget` が設定される |
+
+`Stable` のコマンドが返す内容にも同じ契約が当てはまりますが、例外が 1 つあります。値を伏せる変更や、安全のために呼び出しを拒否する変更は、応答に印があり、同じバージョンに同じ結果を得る経路があり、changelog に ⚠️ があるときは、マイナーバージョンでリリースすることがあります。詳しくは[安全の強化の例外](changelog.md#安全の強化の例外)を参照してください。
 
 ### Capability リネーム
 

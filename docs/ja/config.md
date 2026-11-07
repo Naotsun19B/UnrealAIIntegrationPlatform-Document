@@ -57,6 +57,12 @@ CLI フラグ：なし。
 
 対応する CLI フラグ：`-uaip-command-pump-starved-tick-allow-list=...`
 
+書き込みが開いたダイアログに AI が答えられるようにするには（[書き込みが開いたモーダルダイアログ](commands.md#書き込みが開いたモーダルダイアログ)を参照）、`UAIP.Editor.UIAutomation.AcceptDialog`、`UAIP.Editor.UIAutomation.CancelDialog`、またはその両方をこの一覧に足します（例：`StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.AcceptDialog,UAIP.Editor.UIAutomation.CancelDialog`）。既定の項目は残し、エディタを再起動し、起動ログの 1 行で確かめてください。注意が 3 つあります。
+
+- **`ShutdownEditor` と `RestartEditor` は一覧に載せないでください。** エディタは要求を受け付けますが、ダイアログが閉じるまで終了せず、ブリッジも回復できなくなります。
+- **`CancelDialog` だけでは、中止のみを許せません。** 一覧はコマンド単位で、`ButtonLabel` を指定すれば `Continue` を含む任意のボタンを押せます。
+- `GetActiveDialog` と `HealthCheck` は、ダイアログが開いている間は常に通り、一覧への記載は要りません。`AcceptDialog` も `CancelDialog` も一覧に無いと、Material の Apply と `Undo` / `Redo` の確認は、表示されず中止を選んだ扱いになります。
+
 モーダルダイアログの中から開いたメニューを閉じるには、このリストに `UAIP.Editor.UIAutomation.DismissMenus` を足し（例：`StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.DismissMenus`。このキーは既定値を置き換えるので、既定のエントリも値に残してください）、エディタを再起動します。コマンドポンプの有効化は不要です。足さないと、`DismissMenus` はダイアログが開いている間は断られます（ポンプが有効なら、ダイアログが閉じるまでキューで待ちます）。足すことを想定しているのはこの UI コマンドだけです。変えるのは Slate のメニュースタックの状態だけだからです。
 
 実効値は起動時に解決され、Output Log に 1 行だけ記録されます（`Starved tick allowlist: ...`）。ini に書いたのに効いていない場合や、書式を誤って無視されたエントリがある場合は、**起動直後のログで確認できます**。CVar `uaip.Command.StarvedTickAllowList` を読んでも既定値しか返らない点に注意してください — ini とコマンドラインは CVar を書き換えず、その上に重ねます。
@@ -71,6 +77,20 @@ CLI フラグ：なし。
 | `uaip.Command.StarvedTickAllowList` | 上表のとおり | **不可** | 読み取り専用。ini またはコマンドラインからのみ設定できます |
 
 `StarvedTickAllowList` を読み取り専用にしているのは、コンソールがまさにこの制限で守ろうとしている経路から到達できるためです。実行中に広げられる防御は防御になりません。
+
+### `[UAIP.ModalDialog]` — 応答のないダイアログの打ち切り（既定で無効）
+
+モーダルダイアログが開いたまま誰も答えないと、それを開いたコマンドは止まったままになります。この設定は、そのようなダイアログの窓を、一定時間後にエディタ自身が閉じるようにします。無人の環境向けです。
+
+| キー | 型 | デフォルト | 説明 |
+|---|---|---|---|
+| `UnansweredTimeoutSeconds` | number | 未設定（無効） | モーダルダイアログが入力無しのまま過ごせる秒数。過ぎるとエディタが窓を閉じます。指定できるのは **5〜3600** です。範囲外の値は警告をログに出し、無効のままになります。**無効にするならキーを書かないでください。** `UnansweredTimeoutSeconds=0` も範囲外なので、警告が出るだけです。起動時に 1 回だけ読まれるので、変更後はエディタを再起動してください |
+
+- 時間は、ダイアログが開いた時刻と最後の入力の遅い方から数えます。マウスやキーの入力、UAIP が注入する入力（クリックなど）で数え直されます。AI の読み取りコマンドでは数え直されません。そのため、人が操作せずに読んでいるだけでも打ち切られます。
+- コマンドの実行中に開いたダイアログと、`ClickWidget` が開いたダイアログが対象です。経路と `CanAnswer` は問いません。
+- エディタは窓を自分で閉じ、ボタンは押しません。**閉じた後の結果はダイアログの種類で決まるので、書き込みが中止になることも続行することもあります。** ボタンに結び付いた処理は走りません。書き込みの結果に `DialogAutoClosed` が加わり、`GetActiveDialog` の `PendingCommand.Response.Result` で読めます。`ClickWidget` が開いた窓には結果を載せる応答が無いので、ログに残るだけで、`DialogOpen` が偽になります。
+- 閉じるボタンの無い窓は閉じずに残り、`GetActiveDialog` の `Dialog.AutoCloseFailed` とログに出ます。試すのは 1 つの窓につき 1 回だけです。
+- コマンドに結び付かないダイアログ（コマンドの実行の外や、非同期の処理の途中で開いたもの）は対象外です。
 
 ### `[UAIP.UIAutomation]` — 書き込み系コマンドのガード（既定で無効）
 
@@ -421,7 +441,7 @@ UnrealEditor-Cmd.exe MyProject.uproject \
 
 **どのフラグも値が必要です。** 設定をオンにするには `-uaip-policy-read-only=True`、ini でオンにした設定をオフにするには `=False` と書きます。値は `True` / `False`、`Yes` / `No`、`On` / `Off`、`1` / `0` のいずれかで、大文字小文字は区別しません。`-uaip-policy-read-only` のように値を付けずに書いたフラグは**警告なしに無視され**、ini の値のままになります。これら以外の値は、ログに警告を出して無視されます。
 
-`AllowCapabilityReload` / `AllowedCapabilities` / `DeniedCapabilities` / `DeniedCommands` / `AllowedArtifactDirectory` / `ExternalTraceDirectory` は **ini 専用**（CLI フラグなし — Capability の昇格やサンドボックス境界に関わるため、プロセスコマンドラインからの変更を許可しない設計）。
+`AllowCapabilityReload` / `AllowToolsetErrorText` / `AllowedCapabilities` / `DeniedCapabilities` / `DeniedCommands` / `AllowedArtifactDirectory` / `ExternalTraceDirectory` は **ini 専用**（CLI フラグなし — Capability の昇格やサンドボックス境界に関わるため、プロセスコマンドラインからの変更を許可しない設計）。
 
 ---
 
@@ -505,6 +525,15 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 ### プロジェクトごとに `http_port` を分ける
 
 同じ `http_port`（既定は `8765`）を使う 2 つのプロジェクトが、ほぼ同時にエディタを起動すると、ポートを取り合うことがあります。取れなかった側の Bridge はそれに気づき、ポートを持っているエディタにはコマンドを送らず、起動したばかりの自分のエディタを閉じ（既に使い始めていたエディタは閉じません）、理由を添えて拒否します。`uaip_get_editor_status` は `PORT_OCCUPIED`（理由 `LAUNCHED_EDITOR_LOST_PORT`）を表示します。取り合いそのものを避けるには、プロジェクトごとの `config.json` に別々の `http_port` を設定し（エディタも対応する `-uaip-http-port` で起動します）、またはもう一方のエディタを閉じてください。
+
+### ポートを手放した後も動き続けるエディタ
+
+Bridge が起動したエディタがポートで応答しなくなっても、プロセスが動き続けている場合（固まった、`.bat` ラッパーだけが残った、など）、Bridge はそれを「まだ動いている」と覚え、**終了するまで同じプロジェクトの 2 本目を起動しません**。新しいエディタが要るのはポートに誰も応答していないときだけで、その呼び出しは拒否され、`uaip_get_editor_status` は「エディタがまだ動いている。ポートで応答すれば次の呼び出しがつなぐ。応答しなければ手で閉じる。閉じた後の呼び出しが新しく起動する」と案内します。同じプロジェクトのエディタがポートで応答していれば、今までどおりそれにつなぎます。
+
+- **記録は Bridge をまたいで残ります。** 覚えたエディタは、プロジェクトのロックファイルと同じフォルダの記録ファイル `<プロジェクト>/Saved/UAIP/mcp_proxy.lock.survivors.json` に書かれます。MCP の再接続（`editor_path` を変えての再接続を含む）、Bridge の強制終了、別セッションの Bridge、エディタが残ったまま `.bat` ラッパーだけが終了した場合でも残ります。記録ファイルを書けないときはエディタを起動しません。ロックファイルを使えない環境では、警告を出して今までどおり起動し、記録も使いません（Bridge をまたいだ 2 本目の防止は効きません）。
+- **エディタを閉じれば足ります。** 覚えたエディタが終了すれば、次の呼び出しが新しく起動します。ファイルを消す必要はありません。記録したエディタが全て終了したことを Bridge が確かめると、記録ファイルは Bridge が消します。
+- **OS に動いているかを確かめられないとき**は、動いているとみなして起動しないままになり、記録ファイルも消しません。拒否と `uaip_get_editor_status` に記録ファイルの場所が載るので、そのエディタが既に無いことを確かめたら、**人がそのファイルを削除してください**。動いている Bridge も次の呼び出しから起動できます。
+- エディタが起動する常駐プロセス（`zenserver.exe` など）は記録しません。記録ファイルを書き換えられる人は、偽の記録で起動を止められます（止められるのは起動だけです）。
 
 ### タイムアウトの不変条件
 

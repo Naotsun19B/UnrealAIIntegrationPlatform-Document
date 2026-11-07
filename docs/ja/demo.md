@@ -323,7 +323,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.Property.GetProjectSetting` | プロジェクト設定オブジェクトのプロパティを取得する |
 | `UAIP.Editor.Property.GetDataTableRow` | DataTable の行のプロパティを取得する |
 
-秘密情報と思われるプロパティの値はマスクして返します。
+秘密情報と思われるプロパティの値はマスクして返します。デモ版には `SecretValueRead` の Capability が無いので、伏せた値を平文で読むことはできません。`GetAssetTags` と、ランタイムのダンプ `DumpSubsystemState`・`DumpAnimInstanceVariables`・`GetBlackboardValues`・`DumpAIPerceptionSenseConfigs` の秘密も `***` のままです（[秘密値の平文での読み取り](safety.md#秘密値の平文での読み取り)）。
 
 ### `UAIP.Editor.Engine.*`（読み取り専用の一部）
 

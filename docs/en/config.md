@@ -57,6 +57,12 @@ The default list is deliberately two commands: a modal dialog means the editor i
 
 Matching CLI flag: `-uaip-command-pump-starved-tick-allow-list=...`
 
+To let the AI answer a dialog that a write opened (see [Modal dialogs opened by a write](commands.md#modal-dialogs-opened-by-a-write)), list `UAIP.Editor.UIAutomation.AcceptDialog`, `UAIP.Editor.UIAutomation.CancelDialog` or both, for example `StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.AcceptDialog,UAIP.Editor.UIAutomation.CancelDialog`. Keep the default entries, restart the editor, and check the startup log line. Three cautions:
+
+- **Do not put `ShutdownEditor` or `RestartEditor` on the list.** The editor would accept the request but not exit until the dialog closes, and the bridge could no longer recover from it.
+- **`CancelDialog` alone cannot allow cancelling only.** The list is per command, and `ButtonLabel` lets it press any button, `Continue` included.
+- `GetActiveDialog` and `HealthCheck` are always allowed while a dialog is open and need no entry. Without `AcceptDialog` or `CancelDialog` on the list, the Material Apply and `Undo` / `Redo` confirmations are treated as canceled instead of being shown.
+
 To close a menu that was opened from inside a modal dialog, add `UAIP.Editor.UIAutomation.DismissMenus` to this list (for example `StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.DismissMenus`; the default entries must be kept in the value because the key replaces the default) and restart the editor; the command pump does not need to be on. Without it, `DismissMenus` is refused while the dialog is up (or, with the pump on, waits in the queue until the dialog is closed). Only this one UI command is meant to be added: it changes the state of Slate's menu stack and nothing else.
 
 The effective list is resolved at startup and written to the Output Log as a single line (`Starved tick allowlist: ...`). If an ini edit does not appear to take effect, or an entry was dropped for being malformed, **the startup log is where to look**. Note that reading the `uaip.Command.StarvedTickAllowList` console variable only ever returns the default — the ini and the command line layer on top of it rather than writing back to it.
@@ -71,6 +77,20 @@ The effective list is resolved at startup and written to the Output Log as a sin
 | `uaip.Command.StarvedTickAllowList` | as above | **No** | Read-only; set it from an ini file or the command line |
 
 `StarvedTickAllowList` is read-only because the console is reachable through the very interface this list exists to constrain. A boundary that can be widened from inside is not a boundary.
+
+### `[UAIP.ModalDialog]` — Closing a dialog nobody answers (off by default)
+
+When a modal dialog stays open and nobody answers it, the command that opened it stays stopped. This setting makes the editor close the window of such a dialog by itself after a time. It is for unattended environments.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `UnansweredTimeoutSeconds` | number | not set (off) | Seconds a modal dialog may go without input before the editor closes its window. Accepted values are **5 to 3600**. A value outside that range is logged as a warning and the timeout stays off. **To leave it off, do not write the key**: `UnansweredTimeoutSeconds=0` is also outside the range and only produces the warning. Read once at startup, so restart the editor after changing it |
+
+- The time is counted from the later of the moment the dialog opened and the last input. A mouse or key input, and an input injected by UAIP (a click, for example), restart the count. A read command of the AI does not. A person who is only reading the dialog, without touching it, is therefore also cut off.
+- It applies to a dialog opened while a command was running and to one opened by `ClickWidget`, whatever the route and whatever `CanAnswer` says.
+- The editor closes the window itself and presses no button. **What happens next is decided by the kind of dialog, so the write may be cancelled or may go on**; code tied to a button does not run. `DialogAutoClosed` is added to the result of the write; read it in `PendingCommand.Response.Result` of `GetActiveDialog`. A dialog opened by `ClickWidget` has no response to carry it, so it is only logged and `DialogOpen` becomes `false`.
+- A window with no close button is left open, and `Dialog.AutoCloseFailed` appears in `GetActiveDialog` and in the log. Only one attempt is made per window.
+- A dialog that is not tied to a command (opened outside a command, or in the middle of asynchronous work) is not covered.
 
 ### `[UAIP.UIAutomation]` — Guarding the write commands (off by default)
 
@@ -421,7 +441,7 @@ Every `[UAIP.SafetyPolicy]` bool flag has a matching `-uaip-policy-*` CLI flag, 
 
 **Every flag takes a value.** Write `-uaip-policy-read-only=True` to turn a setting on, or `=False` to turn off one the ini turns on. The value may be `True` / `False`, `Yes` / `No`, `On` / `Off` or `1` / `0`, in any case. A flag written without a value, such as `-uaip-policy-read-only`, is **ignored without a warning** and the ini value stays; a value that is none of these is ignored with a warning in the log.
 
-`AllowCapabilityReload`, `AllowedCapabilities`, `DeniedCapabilities`, `DeniedCommands`, `AllowedArtifactDirectory`, and `ExternalTraceDirectory` are **ini-only** (no CLI equivalents — they control capability escalation and sandbox boundaries that must not be alterable via the process command line).
+`AllowCapabilityReload`, `AllowToolsetErrorText`, `AllowedCapabilities`, `DeniedCapabilities`, `DeniedCommands`, `AllowedArtifactDirectory`, and `ExternalTraceDirectory` are **ini-only** (no CLI equivalents — they control capability escalation and sandbox boundaries that must not be alterable via the process command line).
 
 ---
 
@@ -505,6 +525,15 @@ Limits: a project whose path contains parentheses cannot be launched through a `
 ### One `http_port` per project
 
 Two projects that use the same `http_port` (the default is `8765`) can start their editors at almost the same time and compete for the port. The bridge that loses detects it: it sends no command to the editor that holds the port, closes the editor it has just launched (an editor it had already been using is never closed), and refuses with an explanation. `uaip_get_editor_status` then reports `PORT_OCCUPIED` with the reason `LAUNCHED_EDITOR_LOST_PORT`. To avoid the clash altogether, give each project's `config.json` its own `http_port` (and start its editor with the matching `-uaip-http-port`), or close the other editor.
+
+### An editor that keeps running after letting go of the port
+
+If an editor the bridge launched stops answering on its port but its process keeps running (it hangs, or only a `.bat` wrapper is left), the bridge remembers it as still running and **does not launch a second editor for the same project until it has exited**. A new editor is needed only when nothing answers on the port; the call is then refused, and `uaip_get_editor_status` recommends: the editor is still running; if it answers on the port the next call connects to it, otherwise close it by hand, and the call after that launches a new one. If an editor of the same project answers on the port, the bridge still connects to it as usual.
+
+- **The record outlives the bridge.** The remembered editor is written to a record file beside the project lock file: `<project>/Saved/UAIP/mcp_proxy.lock.survivors.json`. It stays across an MCP reconnect (also one that changes `editor_path`), a force-killed bridge, another session's bridge, and a `.bat` wrapper that exited while the editor kept running. If the record file cannot be written, the editor is not launched. Where lock files cannot be used at all, the bridge warns and launches as before, and no record is used, so a second editor is not prevented across bridges.
+- **Closing the editor is enough.** Once the remembered editor has exited, the next call launches a new one; nothing needs to be deleted. When the bridge sees that every editor in the record has exited, it removes the record file itself.
+- **When the OS cannot tell whether it still runs,** the bridge assumes it does and keeps refusing to launch, and it does not remove the record file. The refusal and `uaip_get_editor_status` then name the record file. After you have made sure that editor is gone, **delete that file yourself**; the running bridge launches again from its next call.
+- Helper processes the editor starts (such as `zenserver.exe`) are not recorded. Anyone who can write the record file can block launching with a false record (only launching is blocked).
 
 ### Timeout invariants
 
