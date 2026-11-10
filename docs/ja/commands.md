@@ -735,11 +735,11 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `ListSettingsContainers` | 登録済みの設定コンテナ（`Project`、`Editor` など）を一覧表示。Capability 不要 |
 | 🆓 `ListSettingsCategories` | コンテナ内の設定カテゴリを一覧表示。Capability 不要 |
 | 🆓 `ListSettingsSections` | カテゴリ内の設定セクションを一覧表示。Capability 不要 |
-| 🆓 `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） シークレットプロパティの既定値は `***` と `IsMasked: true` になる（以前は平文）。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
-| 🆓 `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） 名前だけでシークレットと分かるプロパティもマスクされる。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
-| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可。値はエンジンのテキスト形式のみを受け取るため、参照・コンテナ・組み込みカタログ外の構造体は **どの Capability を付与しても拒否されます** — これらは同じ設定オブジェクトへ届き `ValueJson` を受け取る `SetProjectSetting` で書いてください。途中までしか解釈できない値は、断片が適用されるのではなく `InvalidParams` で拒否されるようになりました 渡した `Properties` は、シークレットかどうかに関わらず監査ログ・完了通知・コマンドの記録で伏せられ、失敗理由の文も伏せられる。呼び出し側への応答は変わらない。拒否の文は送った値を引用せず、プロパティ・型やフラグ・足りない Capability の名前だけを示す。`DryRun` では、シークレットプロパティの変更前・変更後の値が `***` と `IsMasked: true` になる（以前は `null`）。`IncludeSecretValues` は `DryRun` の平文を返す。`DryRun` なしの応答には値が含まれないので何もしない — [シークレット値の読み取り](#reading-secret-values)を参照。プロパティが宣言する `ClampMin` / `ClampMax` の外の数値は、詳細パネルと同じく `DryRun` の有無にかかわらず `InvalidParams` で拒否される。文はプロパティ名と範囲を示し、値は含まない |
+| 🆓 `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） シークレットプロパティの既定値は `***` と `IsMasked: true` になる（以前は平文）。`IsSecret` は、既定値の中にシークレットがあるプロパティでも真になる（宣言だけでなく、設定クラスの既定値が持つ値で判定する）。新しい `HoldsDynamicValue` は、中身が実行時にしか決まらない型（`FInstancedStruct` など）のプロパティで真になり、そうした値は中身によってシークレットになりうる。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
+| 🆓 `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） 名前だけでシークレットと分かるプロパティもマスクされる。値の中にシークレットがある、または中身を読めない型の値を持つフィールドもマスクされる（`FInstancedStruct` のような動的な型の構造体は中身まで見る）ので、1.2.0 で読めた値が `***` になる場合がある。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
+| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可。値はエンジンのテキスト形式のみを受け取るため、参照・コンテナ・組み込みカタログ外の構造体は **どの Capability を付与しても拒否されます** — これらは同じ設定オブジェクトへ届き `ValueJson` を受け取る `SetProjectSetting` で書いてください。途中までしか解釈できない値は、断片が適用されるのではなく `InvalidParams` で拒否されるようになりました 渡した `Properties` は、シークレットかどうかに関わらず監査ログ・完了通知・コマンドの記録で伏せられ、失敗理由の文も伏せられる。呼び出し側への応答は変わらない。拒否の文は送った値を引用せず、プロパティ・型やフラグ・足りない Capability の名前だけを示す。`DryRun` では、シークレットプロパティの変更前・変更後の値が `***` と `IsMasked: true` になる（以前は `null`）。変更の一覧は値を読まないので、中身が実行時にしか決まらない型（`FInstancedStruct` など）のプロパティは、中身に関わらず伏せられ、そのプロパティの拒否の文も値を引用しない。`IncludeSecretValues` は `DryRun` の平文を返す。`DryRun` なしの応答には値が含まれないので何もしない — [シークレット値の読み取り](#reading-secret-values)を参照。プロパティが宣言する `ClampMin` / `ClampMax` の外の数値は、詳細パネルと同じく `DryRun` の有無にかかわらず `InvalidParams` で拒否される。文はプロパティ名と範囲を示し、値は含まない |
 | `SaveSettings` | `ISettingsSection::Save()` 経由で設定を ini ファイルに書き出す。`ConfigSettingsSave` 必要。PIE 中および `bDisableSave` 設定時は実行不可 |
-| `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 シークレット値は `DryRun` のプレビューでも、実行時の元の値のバックアップ（アーティファクト）でも `***` になる。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照。既定値へ戻せないセクション（`ListSettingsSections` で `CanResetDefaults: false`）は `DryRun` の有無にかかわらず `NotAllowed` で拒否されるので、実行で拒否されるリセットをプレビューが表示することはない |
+| `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 シークレット値は `DryRun` のプレビューでも、実行時の元の値のバックアップ（アーティファクト）でも `***` になる。`DryRun` のプレビューでは、中身にシークレットがある、または中身を読めない型の値は、現在値と既定値の両方を判定し、どちらかが秘密なら両方を伏せる。実行時のバックアップは現在値だけを持ち、現在値だけで判定する。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照。既定値へ戻せないセクション（`ListSettingsSections` で `CanResetDefaults: false`）は `DryRun` の有無にかかわらず `NotAllowed` で拒否されるので、実行で拒否されるリセットをプレビューが表示することはない |
 
 ### Toolset ブリッジ — ConfigSettings（8 コマンド）🧩
 
@@ -778,7 +778,7 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 
 次の型のプロパティは、値によらず拒否されます（このコマンドでは書けません）: `TMap`・`FColor`・固定長配列・`FTransform`・`FTopLevelAssetPath`・独自の文字列表現を持つ構造体（GameplayTag など）・Instanced な参照・弱い参照／遅延参照／インターフェース参照・optional・delegate・field path。これらは `UAIP.Editor.Engine.ConfigSettings.SetSettingsValues` で書いてください。`Properties` は 1 つ以上のプロパティ名を指定する必要があり、コンテナ・カテゴリ・セクション・プロパティの名前が 1024 文字以上のときも拒否されます。Toolset が書き込みの途中で失敗した場合、または「書けなかった」と答えた場合は、呼び出しが失敗し、一部のプロパティが既に書かれている可能性があるので値を読み直して確かめるよう案内されます。
 
-**`GetSectionPropertyValues`** は `PropertyNames` に挙げた名前だけを読みます。要求していない名前や、セクションに存在しない名前が結果に混ざっていた場合も、安全のため隠されます。応答には `MaskedFields`（隠した名前）と `MaskedFieldCount` が付きます。秘密かどうかを判断できずに隠した名前は `UnverifiedMaskedFields` にも載り、`IncludeSecretValues` でも平文になりません。マスクされた数値や真偽値は文字列の `"***"` になります。読んでいる途中で設定が変わった（設定やコードの再読み込みと重なった）場合は失敗し、呼び直すよう案内されます。Toolset の戻りが UAIP の読めない形のときは、隠せない値を返さないよう失敗にするので、代わりに `UAIP.Editor.Engine.ConfigSettings.GetSettingsValues` で読んでください。存在しないコンテナ・カテゴリ・セクションは、ネイティブの設定コマンドと同じ文の `NotFound` になります。
+**`GetSectionPropertyValues`** は `PropertyNames` に挙げた名前だけを読みます。要求していない名前や、セクションに存在しない名前が結果に混ざっていた場合も、安全のため隠されます。応答には `MaskedFields`（隠した名前）と `MaskedFieldCount` が付きます。セクションに定義が無い名前と、要求していないのに結果に混ざった名前（結果の形が想定と違う）は `UnverifiedMaskedFields` にも載り、`IncludeSecretValues` でも平文になりません。マスクされた数値や真偽値は文字列の `"***"` になります。読んでいる途中で設定が変わった（設定やコードの再読み込みと重なった）場合は失敗し、呼び直すよう案内されます。Toolset の戻りが UAIP の読めない形のときは、隠せない値を返さないよう失敗にするので、代わりに `UAIP.Editor.Engine.ConfigSettings.GetSettingsValues` で読んでください。存在しないコンテナ・カテゴリ・セクションは、ネイティブの設定コマンドと同じ文の `NotFound` になります。
 
 **Toolset ブリッジコマンドの失敗**は `Toolset.<ツール名> failed: <原因>` の形で返ります。`<ツール名>` は委譲先の Toolset の関数名で、コマンド名の最後の部分と一致しないことがあります（`Toolset.SetSectionProperties failed: ...`、`Toolset.set_anim_mode_gizmo_scale failed: ...`）。原因からは、コマンドが秘密と宣言した入力値と、URL・ID・ファイルシステムのパスの類が取り除かれ、256 文字を超えた分は切り詰められます。ログにも同じ文が出ます。秘密の入力に確実には伏せられない値（1〜3 文字の値、数値）が含まれる場合と、秘密の値を読むコマンドでは、原因を付けずに `Toolset.<ツール名> failed.` だけになります。`SetSectionProperties` は値に数値を含むことが多いため、この形になりがちです（型の誤りは、その前に原因付きで拒否されます）。秘密と宣言されていない入力値（アセットのパスなど）は、原因の文に現れることがあります。 秘密かもしれない値を返す・書く Toolset コマンド（[秘密の値を読む](#reading-secret-values) の Toolset 版の読み取り、値を設定する Control Rig・PCG・Niagara のコマンド、`Toolset.ConfigSettings.SetSectionProperties`、`SnapshotUI`）は、Toolset を呼んだ後の失敗を、対象が何であっても、Toolset が返した `ErrorCode` のまま固定の文 `Toolset.<ツール名> failed.` で返します。Toolset の文は値を引用しうるためです。原因は応答にもログにも出ません。調べるときは、対応する native の `UAIP.*` コマンドで呼び直してください。
 
@@ -798,15 +798,19 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 
 **伏せた値の見え方。** ほとんどのコマンドは、値のあった場所に `***` を置き、隣に `IsMasked: true` を付けます。値に印を付けられない形のコマンドは、兄弟の欄で伏せたものを示します。Subsonic・UMG・EQS のコマンドは伏せた名前を `MaskedFields` に並べ（`GetEQSQueryInfo` は option に `IsMasked: true` も付けます）、Enhanced Input の読み取りはトリガー・モディファイアのエントリごとの `IsMasked: true` と `MaskedFields` を使います。`GetAnimGraphNodeDetails` は従来の形（値を省いて `IsSecret: true`）のままです。秘密は、値が空でも伏せます。
 
-**伏せた欄の平文を読む。** 3 つの許可がそろえば、平文は `Result.SecretFieldValues` に入ります。Enhanced Input の読み取りのキーは `Triggers[0].Params.CredentialList[1].ApiToken` のようなパスです（Mapping Context は先頭に `Mappings[m].` が付きます）。コマンドが定義がまだ解決できない値（ControlRig を引き当てられない、値を定義するプロパティを引けない）は伏せられ、3 つの許可がそろっていても**解禁されず**、名前が `UnverifiedMaskedFields` に載ります。アセットを保存し直して定義を引ける状態にしてから、読み直してください。対象は ControlRig の読み取り、Sequencer・Dataflow・Subsonic・Sound・StateTree の読み取りです。`GetPinDefaultValue` は Blueprint のピンを別に判定します。秘密と推定されただけの値（`Secret`）は伏せられ、3 つの許可がそろえば平文で読めます。伏せたままで解禁されないのは、定義が今は解決できないピン（見つからない関数や変数、Blueprint のコンパイル前の引数）だけで、`UnverifiedMaskedFields` に載ります。
+**伏せた欄の平文を読む。** 3 つの許可がそろえば、平文は `Result.SecretFieldValues` に入ります。Enhanced Input の読み取りのキーは `Triggers[0].Params.CredentialList[1].ApiToken` のようなパスです（Mapping Context は先頭に `Mappings[m].` が付きます）。定義がまだ解決できない値（ControlRig を引き当てられない、値を定義するプロパティを引けない）と、結果の形が想定と違う値は伏せられ、3 つの許可がそろっていても**解禁されず**、名前が `UnverifiedMaskedFields` に載ります。定義を解決できないときは、アセットを保存し直して定義を引ける状態にしてから、読み直してください。この一覧はすべての読み取りが返すわけではなく、説明に `UnverifiedMaskedFields` を挙げているコマンドが返します（ControlRig・Sequencer・Dataflow・Subsonic・StateTree の読み取りなど）。`GetPinDefaultValue` は Blueprint のピンを別に判定します。秘密と推定されただけの値（`Secret`）は伏せられ、3 つの許可がそろえば平文で読めます。伏せたままで解禁されないのは、定義が今は解決できないピン（見つからない関数や変数、Blueprint のコンパイル前の引数）だけで、`UnverifiedMaskedFields` に載ります。
 
-**新しく `IncludeSecretValues` を受け付け、平文を返せるようになったコマンド:** `GetPinDefaultValue`、`DumpMassEntityConfig`、ControlRig の `GetComponent` と `GetPinValue`（native と `Toolset.Editor.ControlRig.GetPinValue`）、`Toolset.Editor.ControlRig.ListVariables` / `GetVariable`、`GetSectionProperty`、`GetDataflowNodeProperty`、`GetAnimGraphNodeDetails`、`GetSubsonicEventCollectionInfo`、`GetSoundMixInfo` / `GetSoundClassInfo` / `GetSoundAttenuationInfo`、`GetBehaviorTreeNodeProperties`、`GetInputActionInfo` / `GetMappingContextInfo`、`GetStateTreeParameters`、`GetStackInputData`（native と Toolset 版）、`GetSlotProperties`、`GetEQSQueryInfo`。
+**中身が実行時にしか決まらない欄。** `FInstancedStruct` やプロパティバッグのような型の欄は、値を入れたときに型が決まるので、宣言だけでは秘密を持つか分かりません。値を見る読み取り（上の設定系の読み取り、`GetActorProperty`・`GetAssetProperty`・`GetBlueprintDefault`・`GetProjectSetting`・`GetWorldSetting`・`GetDataTableRow` のようなパスで読むコマンド、BehaviorTree・EQS・Subsonic のアクションとモディファイア・UMG・Sound・Enhanced Input・AnimBlueprint・Mass・AnimNotify・DataRegistry の読み取り）は、そうした欄の中身に秘密がある、または中身を読めない型のときに伏せ、そうでなければ今までどおり返します。1.2.0 で読めた値が `***` になる場合があります。`GetAnimGraphNodeDetails` は、そうした欄では応答から `Value` のキー自体を省きます（`IsSecret: true` は残ります）。値を見ない経路 — `SetSettingsValues` の `DryRun` の変更一覧、設定のブリッジ、ControlRig と UAF のピンと変数の値の読み書き、Blueprint のピンの値の読み書き（Blueprint の変数の既定値は値で判定します）、`GetStackInputData`、ControlRig の `GetComponent`、Subsonic のイベントと StateTree（`GetStateTreeParameters`）のパラメータ — は、そうした欄を**中身に関わらず**（秘密の無い値でも）伏せます。`IncludeSecretValues` を取るコマンドでは、3 つの許可で読めます。DataRegistry の項目の `Map` / `Set` は、伏せると JSON のオブジェクトや配列から文字列 `***` へ形が変わります。`UAIP.Editor.DataRegistry.GetSchema` も、`GetSettingsSchema` と同じく `HoldsDynamicValue` をプロパティごとに返します。
+
+**値を返す書き込み。** 変更前の値や変更後の値（`PreviousValue`・`NewValue`・`Value`・`AppliedValue`・`PinValue`・`DefaultValue`）を返す書き込みは、今までどおり成功しますが、書く前の値**または**書いた後の値のどちらかが、秘密を含む、または中身を読めない型の値だったときは、それらを `***` と `IsMasked: true` にし、`Changed` を出しません。秘密の無い値を秘密のある値で上書きした場合も伏せます。`SetBlueprintVariableDefault` も含みます。そうした欄での失敗の文は値を引用しません。値は対応する `Get*` を 3 つの許可で呼んで読みます。
+
+**新しく `IncludeSecretValues` を受け付け、平文を返せるようになったコマンド:** `GetPinDefaultValue`、`DumpMassEntityConfig`、ControlRig の `GetComponent` と `GetPinValue`（native と `Toolset.Editor.ControlRig.GetPinValue`）、`Toolset.Editor.ControlRig.ListVariables` / `GetVariable`、`GetSectionProperty`、`GetDataflowNodeProperty`、`GetAnimGraphNodeDetails`、`GetSubsonicEventCollectionInfo`、`GetSoundMixInfo` / `GetSoundClassInfo` / `GetSoundAttenuationInfo`、`GetBehaviorTreeNodeProperties`、`GetInputActionInfo` / `GetMappingContextInfo`、`GetStateTreeParameters`、`GetStackInputData`（native と Toolset 版）、`GetSlotProperties`、`GetEQSQueryInfo`、`GetPoseSearchChannelClassSchema`、`GetDataTableRowStruct`、`GetAnimNotifyProperty` / `GetAnimNotifyClassSchema`。
 
 **さらに `IncludeSecretValues` を受け付ける読み取り。** 秘密は `***` で返り、平文は同じ 3 つの許可で返ります。Toolset 版は UE 5.8 以降です。
 
 | グループ | コマンド |
 |---|---|
-| Editor の読み取り | `GetStateNodeProperty`・`GetDataflowGraphInfo`・`ListDataflowVariables`・`GetPCGGraphInfo`・`GetPCGGraphInstanceParams`・`GetPCGGraphSchema`・`GetUAFPinValue`・`GetUAFVariable`・`ListUAFVariables`・`ListViewModelProperties`・`GetWorldConditionInfo`・`GetChooserTableInfo`・`GetChooserTableRow`・`ListChooserTableRows`・`ListChooserColumns`・`GetMetaSoundInfo`・`GetAssetTags` |
+| Editor の読み取り | `GetStateNodeProperty`・`GetDataflowGraphInfo`・`ListDataflowVariables`・`GetPCGGraphInfo`・`GetPCGGraphInstanceParams`・`GetPCGGraphSchema`・`GetUAFPinValue`・`GetUAFVariable`・`ListUAFVariables`・`ListViewModelProperties`・`GetWorldConditionInfo`・`GetChooserTableInfo`・`GetChooserTableRow`・`ListChooserTableRows`・`ListChooserColumns`・`GetMetaSoundInfo`・`GetAssetTags`・`UAIP.Editor.DataRegistry.GetItems` / `GetAllCachedItems` / `AcquireItems` |
 | Toolset 版の読み取り | `Toolset.Editor.StateTree.GetTasks` / `GetEvaluators` / `GetGlobalTasks` / `GetEnterConditions` / `GetTransitions`、`Toolset.Editor.PCG.GetGraphInstanceParams` / `GetNodeDataView`、`Toolset.Editor.DataflowAgent.ListDataflowVariables`、`Toolset.Editor.Niagara.GetSystemData` / `GetEmitterData` / `GetRendererData` / `GetUserVariables`、`Toolset.Runtime.Niagara.GetUserVariables` / `GetVariable`、`Toolset.Editor.DataRegistry.GetItems` |
 | ランタイムのダンプ（それぞれの DefaultDenied の Capability も要る） | `DumpSubsystemState`・`DumpAnimInstanceVariables`・`DumpReplicatedPropertyValues`・`DumpStateTreeInstanceData`・`GetMassEntityFragments`・`GetBlackboardValues`・`DumpAIPerceptionSenseConfigs`・`DumpSaveGame` |
 | 値ではなく制限の解除 | `FindGameplayTagReferencers`・`CompareReplicatedProperties`・`Toolset.Editor.PCG.GetNodeInfo` / `GetGraphStructure`: 引数で、[安全と Capability](safety.md#秘密値の平文での読み取り) の **一致だけが分かる読み取り** にある除外や拒否を解く |
@@ -815,11 +819,13 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 
 **実行を許すためだけに `IncludeSecretValues` を受け付けるコマンド。** プロパティを書く `Set*` のすべて（`UAIP.Editor.Property` の 6 本、`SetActorComponentProperty`、`SetBlueprintComponentProperty`、`SetAnimNotifyProperty`、`SetPoseSearchSchemaChannelProperty`、`SetEQSGeneratorProperty`、`SetEQSTestProperty`、`SetSectionProperty`、`SetDataflowNodeProperty`、`SetAnimGraphNodeProperty`、Subsonic の 3 本、`SetSoundCueNodeProperty`、`SetSoundMixSettings` / `SetSoundClassSettings` / `SetSoundAttenuationSettings`）、ControlRig の `SetPinValue`、アサート・待機の 3 本、下の DataTable の 3 本です。これらの応答が平文を返すことは決してなく、平文は対応する `Get*` で読みます。
 
-- **秘密のコンテナの要素を指す操作。** 秘密の配列・Set・Map に対する `Insert` / `Remove`、`ElementIndex` / `ElementKeyJson` を指定した `Replace` は、3 つの許可がそろわなければ `PolicyViolation` で断られます。プロパティのパスに秘密の配列への添字を書いた読み書き（`SecretList[5]`、`SecretList[5].Field`）も、読み取りを含めて同じです。ControlRig の `GetPinValue` / `SetPinValue` で配列のピンの要素を指すときも同じです。判定は対象を調べる前に行うので、何も書かず、Undo の記録も作らず、添字が範囲内でも範囲外でも同じ拒否になります。文言は 3 つの許可を案内し、パスや値は含めません。宣言の型でたどれず、添字の先が秘密の配列かどうか分からないパスも、許可がそろっていなければ、以前の「見つからない」ではなく同じ拒否になります。コンテナ全体の置き換えと `Clear` は今までどおり受け付け、固定長の配列を添字で読み書きすること（`Values[3]`）も同じです。
+- **秘密のコンテナの要素を指す操作。** 秘密の配列・Set・Map に対する `Insert` / `Remove`、`ElementIndex` / `ElementKeyJson` を指定した `Replace` は、3 つの許可がそろわなければ `PolicyViolation` で断られます。プロパティのパスに秘密の配列への添字を書いた読み書き（`SecretList[5]`、`SecretList[5].Field`）も、読み取りを含めて同じです。ControlRig の `GetPinValue` / `SetPinValue` で配列のピンの要素を指すときも同じです。判定は対象を調べる前に行うので、何も書かず、Undo の記録も作らず、添字が範囲内でも範囲外でも同じ拒否になります。文言は 3 つの許可を案内し、パスや値は含めません。宣言の型でたどれず、添字の先が秘密の配列かどうか分からないパスも、許可がそろっていなければ、以前の「見つからない」ではなく同じ拒否になります。コンテナ全体の置き換えと `Clear` は今までどおり受け付け、どのコンテナが秘密かは、値を見られるコマンドでは値で判定します。中身に秘密がある、または中身を読めない型のときだけ 3 つの許可を要し、秘密の無いコンテナは許可なしで操作できます。`GetPinValue`（native も Toolset も）の要素のパスは値を読むので、動的な型のコンテナでは許可を要します。`SetPinValue`（native も Toolset も）の要素のパスは宣言された秘密だけで判定するので、許可を要しません。固定長の配列を添字で読み書きすること（`Values[3]`）も同じです。
 - **アサートのコマンド。** `AssertActorProperty`・`AssertWorldState`・`WaitForCondition` は、秘密のプロパティを、3 つの許可（各コマンドの `IncludeSecretValues` を含む）がそろわなければ比べません。そろわないときは、読めないプロパティと同じ形で失敗し、文言は許可を案内しません。比べたときも、ログには期待値・実際の値を書きません。
-- **DataTable のコマンド。** `ExportDataTableToCSV`・`DeleteDataTableRow`・`ImportDataTableFromCSV` は、行の構造体が秘密を含む（⚠️ ほかと同じく、ファイルパスの列も含みます）とき、3 つの許可がそろわなければ `PolicyViolation` で断られます。書き出し・削除・取り込み・スナップショットのどれも行わず、文言は表のパスも列名も含みません。そろっていれば、書き出しの CSV と、削除・取り込みの前のスナップショットには平文が入ります。削除・取り込みには常に戻せるスナップショットが付きます。秘密を含まない表は影響を受けません。
+- **DataTable のコマンド。** `ExportDataTableToCSV`・`DeleteDataTableRow`・`ImportDataTableFromCSV` は、行の構造体が秘密を含む（⚠️ ほかと同じく、ファイルパスの列も含みます）、または行の**値**が秘密や中身を読めない型の値を含む（`FInstancedStruct` のような動的な型の構造体は中身まで見ます）とき、3 つの許可がそろわなければ `PolicyViolation` で断られます。`ExportDataTableToCSV` と `ImportDataTableFromCSV` は全行を、`DeleteDataTableRow` は削除する行だけを見ます。書き出し・削除・取り込み・スナップショットのどれも行わず、文言は表のパスも列名も含みません。そろっていれば、書き出しの CSV と、削除・取り込みの前のスナップショットには平文が入ります。削除・取り込みには常に戻せるスナップショットが付きます。秘密を含まない表は影響を受けません。
 
-**伏せるだけで解禁の無いもの。** `ListBlueprintPins` と `GetBlueprintGraphInfo`（ピンの値を伏せ、平文を読む経路はありません）、`GetPoseSearchChannelClassSchema`、`SetPoseSearchSchemaChannelProperty` が書いた値（`AppliedValue`）、`GetDataTableRowStruct`、`SetSoundCueNodeProperty` の `ElementKeyJson`、`SetAnimNotifyProperty` の書いた値とキーは、伏せるだけで平文を読む方法はありません。`GetAnimNotifyProperty` も秘密を伏せ、解禁はできません。通知のクラスを引けないときは、名前に関係なく全プロパティの値を伏せます。
+**伏せるだけで解禁の無いもの。** `ListBlueprintPins` と `GetBlueprintGraphInfo`（ピンの値を伏せ、平文を読む経路はありません）、`SetPoseSearchSchemaChannelProperty` が書いた値（`AppliedValue`）、`SetSoundCueNodeProperty` の `ElementKeyJson`、`SetAnimNotifyProperty` の書いた値とキーは、伏せるだけで平文を読む方法はありません。`GetPoseSearchChannelClassSchema`・`GetDataTableRowStruct`・`GetAnimNotifyProperty` はこの一覧から外れました。`IncludeSecretValues` を取り、`GetAnimNotifyClassSchema` や DataRegistry の `GetItems` / `GetAllCachedItems` / `AcquireItems` と同じく、3 つの許可がそろえば平文を `Result.SecretFieldValues` に返します。SoundCue のノードと PoseSearch のチャンネルのインスタンスには読み取りのコマンドが無いので、その書き込みの応答で伏せた値は、どの許可でも読み戻せません。通知のクラスを引けないときは、`GetAnimNotifyProperty` は名前に関係なく全プロパティの値を伏せます。
+
+**伏せる echo。** `SetUAFPinValue`・`AddBlueprintVariable`・`AddViewModelProperty`・`AddUAFVariable` は、送った値（`AddUAFVariable` は変数の追加直後に読み戻した既定値）をそのまま返していました。秘密のピンや変数では、応答は `***` と `IsMasked: true` を返します。書き込み自体は今までどおり成功します。`AddBlueprintVariable` は、既定値を書く前と書いた後の中身で判定し、`DefaultValue` を送らなくても秘密なら伏せます。
 
 **Toolset 版の読み取り。** `Toolset.Editor.ControlRig.GetPinValue` / `ListVariables` / `GetVariable` と、Toolset 版の `GetStackInputData` は、native と同じく秘密を伏せます（まだ読み込まれていない ControlRig は、先に読み込みます）。成功・失敗を問わず Toolset の成果物を返さず、保存も残しません。Toolset を呼んだ**後**の失敗は、理由が値を引用しうるので、エンジンの失敗理由ではなく固定の文言 `Toolset.<Tool> failed.`（例: `Toolset.GetStackInputData failed.`）を返します。秘密でないピンの失敗でも同じです。原因は、同じ操作を native のコマンドで試して確かめてください。呼ぶ**前**の拒否（引数の不足、名前が長すぎる、ランタイムのアセット）は、要求だけから作った文言なので、今までのままです。Toolset 版 `GetStackInputData` で秘密の入力は、値の欄の全メンバーが `"***"` になって `IsMasked: true` が付き、値の指定の仕方を示す欄だけが残ります。引き当てられない入力は伏せて `UnverifiedMaskedFields` に載せます。
 
@@ -1349,7 +1355,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 
 | コマンド | 説明 |
 |---|---|
-| `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。Blueprint で変数の型として使えない型は、エディタの変数型メニューと同じ規則で `InvalidParams` として拒否されます。クラスは自身または祖先に `BlueprintType`（または `BlueprintSpawnableComponent`）が必要で、`NotBlueprintType` のものは拒否されます。構造体は `BlueprintType` が必要で、`BlueprintInternalUseOnly` のものは拒否されます。拒否された呼び出しは Blueprint を変更しません（変数は追加されず、アセットも dirty になりません）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください |
+| `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。Blueprint で変数の型として使えない型は、エディタの変数型メニューと同じ規則で `InvalidParams` として拒否されます。クラスは自身または祖先に `BlueprintType`（または `BlueprintSpawnableComponent`）が必要で、`NotBlueprintType` のものは拒否されます。構造体は `BlueprintType` が必要で、`BlueprintInternalUseOnly` のものは拒否されます。拒否された呼び出しは Blueprint を変更しません（変数は追加されず、アセットも dirty になりません）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください。秘密の変数（既定値を書く前と書いた後で判定）では、応答の `DefaultValue` は、送らなくても `***` と `IsMasked: true` になる |
 | `DeleteBlueprintVariable` | メンバー変数を削除 |
 | `SetBlueprintVariableDefault` | Blueprint 変数の CDO デフォルト値を更新 秘密の変数の `PreviousValue` / `NewValue` は、応答と artifact のどちらでも `***` と `IsMasked: true` になります。 |
 | `AddGraphNode` | Blueprint アセットの**あらゆるグラフ**（イベントグラフと関数グラフに限らない）、または開いているマップのレベル Blueprint にノードを追加。`NodeType` は 20 種類 — 変数の Get/Set・関数呼び出し・BeginPlay/Tick・親やインターフェースのイベント（`Event`）・カスタムイベント・キー入力と Enhanced Input のイベント・コンポーネントとアクターとイベントディスパッチャーのイベント・Create Widget・Branch・Sequence・標準のマクロ・Self・Cast — [`AddGraphNode` のノードの種類](#addgraphnode-のノードの種類) を参照。各種類は自分の引数しか受け付けない。`Result` と artifact が `NodeId`・`AlreadyExisted`・`AdditionalNodes` を返す。対象は `GraphName`・`GraphGuid`・`GraphPath` のいずれかで選ぶ。グラフの選び方・複数一致時の扱い・2 段階の受け入れ判定は表の下の注記を参照 |
@@ -1532,7 +1538,7 @@ Widget Blueprint 編集 — ツリー・変数・アニメーション・バイ�
 | `SetNamedSlotContent` | NamedSlot ウィジェットの内容を設定 |
 | `GetNamedSlots` | Widget Blueprint の NamedSlot 一覧 |
 | `ReparentWidgetBlueprint` | Widget Blueprint の親クラスを変更 |
-| `GetSlotProperties` | ウィジェットのスロットプロパティを取得（CPF フィルタ・最大 64 キー）。あわせて `PropertyWriteRequirements` マップを返し、各プロパティへの書き込みに何が必要か・どの入力形式で渡すかを示します `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 `Properties` は「名前 → 値」の辞書のままです。秘密の値は `***` になり、伏せた名前は `MaskedFields` に並びます（`GetWidgetProperties` と同じく `IsMasked` は付きません）。`PropertyWriteRequirements` は値を含まないので、秘密のプロパティも今までどおり載ります。秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetSlotProperties` | ウィジェットのスロットプロパティを取得（CPF フィルタ・最大 64 キー）。あわせて `PropertyWriteRequirements` マップを返し、各プロパティへの書き込みに何が必要か・どの入力形式で渡すかを示します `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 `Properties` は「名前 → 値」の辞書のままです。秘密の値は `***` になり、伏せた名前は `MaskedFields` に並びます（`GetWidgetProperties` と同じく `IsMasked` は付きません）。`PropertyWriteRequirements` は値を含まないので、秘密のプロパティも今までどおり載ります。 |
 | `SetSlotProperties` | ウィジェットのスロットプロパティを設定（32 KiB 制限・UObject 参照は `/Game/` 以下のみ）。参照には `WidgetSlotReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要になり、これらの値はエンジンの括弧表記ではなく **JSON ドキュメント** で渡します — 書く前に取得系の `WriteInputForm` を確認してください。拒否された書き込みは undo エントリを残さず、アセットを dirty にもしません。成功した書き込みは Widget Blueprint をコンパイルし、実行時に作られるウィジェットへ変更が届きます。`bSkipCompile: true` を渡すと変更済みの印だけを付け（応答は `bRequiresFollowupCompile: true` になる）、複数の編集のあとに `CompileWidgetBlueprint` で 1 回コンパイルできます |
 | `GetWidgetProperties` | Widget Blueprint のウィジェット（ルートウィジェットを含む）のプロパティを UE のテキストエクスポート形式で読む。`PropertyNames` を省くと、編集可能で非推奨でないすべてのプロパティを artifact に載せる。`PropertyNames`（64 個まで）を渡すと、指定した値を `Result` にも載せる。どのプロパティにも一致しない名前、編集できない・非推奨のプロパティの名前は `InvalidParams`。artifact には `PropertyWriteRequirements` も載り、各プロパティの書き込みに何が要るかを示す。ほかのコマンドの担当なので `SetWidgetProperties` が断るプロパティも含む。秘密の値（パスワード欄のテキストを含む）は `***` になり、`MaskedFields` に載る。平文の値は `IncludeSecretValues` で求める — [シークレット値の読み取り](#reading-secret-values) を参照。PIE 中は断る。`EditorInspect` が必要 |
 | `SetWidgetProperties` | Widget Blueprint のウィジェット（ルートウィジェットを含む）のプロパティを、Designer の詳細パネルで変えるのと同じく設定する。`Properties` は、プロパティ名からその値の文字列への対応 — 64 プロパティ・値の合計 32 KiB まで。スカラーと単純な値の構造体は UE のテキストエクスポート形式、参照は完全修飾のオブジェクトパス、そのほかの構造体とコンテナは文字列に書いた JSON ドキュメント。すべてのプロパティを書くか、1 つも書かないかのどちらか。`bSkipCompile` が `true` でなければ、後で Widget Blueprint をコンパイルするので、次に作られるウィジェット（PIE を含む）に値が届く。`WidgetPropertyEdit` が必要で、参照には `PropertyReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` も要る — 下の注記を参照 |
@@ -1656,10 +1662,10 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 | コマンド | 説明 |
 |---|---|
 | `ListGameFeatures` 🧩 | GameFeature Plugin 一覧（`FilterState`：All / Installed / Mounted / Registered / Loaded / Active） |
-| `GetGameFeatureInfo` 🧩 | GFP 詳細（State・Actions・依存関係） |
+| `GetGameFeatureInfo` 🧩 | GFP 詳細（State・Actions・依存関係）。`PluginName` で指定し、プラグインマネージャーが知っているプラグインのときは、アーティファクトに `DeletionRequiredCapabilities` と `DeletionRefusedReason` も入る。表の下の注記を参照 |
 | `GetGameFeatureActions` 🧩 | GameFeature Plugin の `UGameFeatureData` が宣言する Action 一覧 |
 | `CreateGameFeaturePlugin` 🧩 | プロジェクトの `Plugins/GameFeatures/` の下に新しい GameFeature Plugin を作り、Game Feature サブシステムに登録して `InitialState` まで進める。表の下の注記を参照 |
-| `DeleteGameFeaturePlugin` 🧩 | プロジェクトの `Plugins/GameFeatures/` にあるコンテンツのみの GameFeature Plugin を削除。`GameFeatureDelete` が必要。`DisableSave` が有効なときは `PolicyViolation` で拒否。表の下の注記を参照 |
+| `DeleteGameFeaturePlugin` 🧩 | プロジェクトの `Plugins/GameFeatures/` にあるコンテンツのみの GameFeature Plugin を削除。`GameFeatureDelete` が必要。フォルダに別のプラグインやリンクがある、別のプラグインの中にある、またはリンク経由で届くときは、`GameFeatureDeleteNestedPlugin` / `GameFeatureDeleteLinks` も必要。`DisableSave` が有効なときは `PolicyViolation` で拒否。表の下の注記を参照 |
 
 > **`CreateGameFeaturePlugin`** には `GameFeatureCreate` と `PluginName`（英字で始まり、英数字と `_` を合わせて最大 64 文字）が必要です。省略可能な `OutputPath` の既定はプロジェクトの `Plugins/GameFeatures/` で、相対パスで指定するとプロジェクトルートが基準になります（`Plugins/GameFeatures/Combat` なら、`Plugins/GameFeatures/Combat/<PluginName>/` に作成）。省略可能な `InitialState`（`Installed` / `Registered` / `Loaded` / `Active`。既定は `Active`）は、作成後に進める状態で、再起動後に始まる状態でもあります。プラグインには同名の GameFeature データのアセットが作られ、作成したセッションのうちに（通常は数秒以内）GameFeature として登録されます。エディタを再起動しても同じように登録されます。`.uproject` は変更しません。
 >
@@ -1667,7 +1673,25 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 > - **`InvalidParams`**: `OutputPath` がプロジェクトの `Plugins/GameFeatures/` の外（`Plugins/` の直下やプロジェクトの外など）・既存プラグインの中・ジャンクション経由でプロジェクト外を指す場合、名前や `InitialState` が不正な場合。何も作りません。同名のフォルダやプラグインがあると `Conflict`、エディタが終了中・PIE 中・コマンドレット実行中は `NotAllowed`、安全ポリシーがディスク書き込みを無効にしていると `PolicyViolation` です。
 > - **`ExecutionFailed`**: 途中の手順（プラグイン作成・データアセットの作成や保存・登録）が失敗した、登録が 30 秒以内に終わらなかった、エディタの終了が始まった、または作成後にもう一度場所を確かめたらプロジェクトの外だった場合。作ったものは消さずに残し、`Data` にどこまで進んだか（`CreatedOnDisk` / `Mounted` / `DataAssetCreated` / `DataAssetSaved` / `Registered`）・到達した `State`・`PluginPath` を載せます。同じ内容を JSON の成果物にも残し、`.uplugin` があればその写しも付けます。後始末には `DeleteGameFeaturePlugin` を使ってください。ただし場所の確認で外れた場合は例外で、プラグインはエディタから外されますがファイルは残り、`DeleteGameFeaturePlugin` も拒否するので、手で確認して削除してください。
 >
-> **`DeleteGameFeaturePlugin`** は `PluginName` を取ります。GameFeature の登録を解除し（作成の途中で失敗して一度も登録されなかったものは、この手順を飛ばします）、アセットの読み込みを解除し、削除してよい対象かをもう一度確かめてから、プラグインを外してフォルダを削除します。次の場合は拒否し、何も消しません。プラグインが無い（`NotFound`）。対象が GameFeature ではない（`Plugins/GameFeatures/` の外にあるプラグイン、旧版が `Plugins/` 直下に作ったもの）、`GameFeatures` フォルダそのもの、他のプラグインを含む、コードのモジュールを持つ、またはジャンクションなどのリンクを含む（`NotAllowed`）。GameFeature の状態が切り替わっている最中（`PreconditionFailed`。待ってから再試行）。アセットの読み込み解除に失敗した、登録の解除が 30 秒以内に終わらなかった、またはエディタの終了が始まった（`ExecutionFailed`）。
+> **`DeleteGameFeaturePlugin`** は `PluginName` を取ります。GameFeature の登録を解除し（作成の途中で失敗して一度も登録されなかったものは、この手順を飛ばします）、アセットの読み込みを解除し、削除してよい対象かをもう一度確かめてから、プラグインを（中にあるプラグインから先に）プラグイン一覧から外し、フォルダを削除します。次の場合は拒否し、何も消しません。
+>
+> - プラグインが無い（`NotFound`）。
+> - **どの Capability でも解除できない拒否**（`NotAllowed`。セッションが何を持っていても同じです）。対象が GameFeature ではない（`Plugins/GameFeatures/` の外にあるプラグイン、旧版が `Plugins/` 直下に作ったもの）、`GameFeatures` フォルダそのもの、またはコードのモジュールを持つ。プラグイン自身のフォルダがジャンクションなどのリンク。プラグインの実体の場所が、コマンドが守るフォルダ（`GameFeatures` フォルダ、`Plugins` フォルダ、プロジェクトのフォルダ、エンジンのフォルダ、それらの親フォルダ、ドライブのルート）と同じか、その上にある。実体の場所を割り出せない。中にある有効なプラグインの場所を調べられない。フォルダを走査できない。プロジェクトのフォルダの外にあるのに、そこへ導いたリンクを見つけられない（理由を言い切れない）。理由は `GetGameFeatureInfo` が返します（下記）。
+> - **Capability が足りない**（`CapabilityNotAvailable`。足りないものを全部名指しします。運用者が明示的に禁止していると `PolicyViolation`）。`GameFeatureDelete` に加えて、フォルダに別のプラグインがある、または別のプラグインの中にあるときは `GameFeatureDeleteNestedPlugin`（エンジンに登録されていない内側のプラグインは、**コードのモジュールを持っていても**ふつうのファイルとして消えます。登録済みで無効な内側のプラグインは、外側と一緒にプラグイン一覧から外れます）、フォルダにリンクがある、またはその上のフォルダ（たとえば `Plugins/GameFeatures` 自身）がリンクのときは `GameFeatureDeleteLinks`。中のリンクはリンクだけが消え、**リンク先の中身は消えません**。上のリンクは違い、リンクが導く先の実体のプラグインが消え、それはプロジェクトの外にあることもあります。両方に当たるプラグインは両方を要します。この 2 つは既定で拒否されているので、拒否の応答が名指しします。
+> - **内側に有効なプラグインが残っている**（`PreconditionFailed`。残っているプラグインの名前を挙げます）。外側は消しません。内容だけの GameFeature なら先に消せます。GameFeature でないプラグインは、`SetPluginEnabled` とエディタの再起動で無効にしてから消します。コード付きの GameFeature は UAIP では解けません。
+> - GameFeature の状態が切り替わっている最中（`PreconditionFailed`。待ってから再試行）。
+> - アセットの読み込み解除に失敗した、登録の解除が 30 秒以内に終わらなかった、またはエディタの終了が始まった（`ExecutionFailed`）。
+>
+> **削除の直前にもう一度確かめます。** Capability（`GameFeatureDelete` も）と、フォルダが同じものかどうかを再確認します。途中で許可が外れた、またはフォルダが別のものに差し替わったときは、何も消しません。プラグインはすでに止まっていて、ファイルは残り、応答の文にその状態が書かれます。プラグインマネージャーが内側のプラグインを一覧から外せなかったとき（有効なままのものなど）は、削除を続け、`Warnings` にそのプラグインを載せます。成功のときも、その後で失敗したときも載ります。
+>
+> **`GetGameFeatureInfo`** は、`PluginName` で指定し、プラグインマネージャーが知っているプラグインのとき、アーティファクトに 2 つのキーを足します（`PluginUrl` で指定したとき、削除を評価できない構成では出ません）。
+>
+> | キー | 意味 |
+> |---|---|
+> | `DeletionRequiredCapabilities` | `DeleteGameFeaturePlugin` が `GameFeatureDelete` に**加えて**要る Capability（`GameFeatureDeleteLinks`、`GameFeatureDeleteNestedPlugin`）。不要なときは空。削除が拒否されるときも空 |
+> | `DeletionRefusedReason` | セッションが何を持っていても削除を拒否する規則。拒否が無ければ空文字列 |
+>
+> `DeletionRefusedReason` の値は `NotAssessed`・`PolicyUnavailable`・`OutsideGameFeatures`・`NotAGameFeature`・`HasCodeModules`・`RootIsLink`・`FinalPathUnresolved`・`InnerPluginUnresolved`・`ProtectedFinalPath`・`LinkNotProven`・`ScanFailed` のいずれかです。最初の検査を通ったプラグインのフォルダだけを走査し、何も書き込みません。
 
 ### Toolset ブリッジ — GameFeatures（4 件）🧩
 
@@ -1945,7 +1969,7 @@ Dataflow グラフ編集。`DataflowEditor` プラグインが必要です。
 | `ConnectDataflowPins` 🧩 | 2 ピンを接続 |
 | `DisconnectDataflowPins` 🧩 | ピン接続を切断 |
 | `ListDataflowVariables` 🧩 | グラフ変数一覧 |
-| `GetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を取得（プリミティブ / enum / FName / FString / 単純構造体） `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密の配列への添字を含むプロパティのパスは 3 つの許可が要ります。秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を取得（プリミティブ / enum / FName / FString / 単純構造体） `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密の配列への添字を含むプロパティのパスは 3 つの許可が要ります。定義がまだ解決できない値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
 | `SetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を設定。ドメイン非依存（Cloth の Weight Map・シミュレーション設定ノード等から利用される）。参照・構造体・コンテナは `ValueJson` で書き込み、コンテナの要素 1 つは `Operation` / `ElementIndex` / `ElementKeyJson` で指定する — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。参照に触れる書き込みは `DataflowGraphEdit` に加えて `DataflowReferenceEdit` が必要で、構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。ハード参照（例: `TObjectPtr<UGroomAsset>`）の値は**既にロード済み**のアセットのオブジェクトパス — プロパティ書き込みが副作用でアセットをロードすることはない。ソフト参照はアセットレジストリに対して検証されるため、対象のロードを必要としない `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
 | `ArrangeDataflowGraph` 🧩 | Dataflow グラフのノードを、左→右にデータが流れるよう並べ直す。`AssetPath`（`/Game/` のみ）と共通の引数を取る。`NodeIds` は `GetDataflowGraphInfo` の `NodeGuid`。どのノードにも当たらない ID は `RemoveDataflowNode` と同じ `ExecutionFailed`。位置だけを変え、評価は走らない。`DataflowGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
@@ -2164,11 +2188,11 @@ DataTable 行の管理とインポート / エクスポート。
 |---|---|
 | `ListDataTableRows` | DataTable の行キー一覧 |
 | `AddDataTableRow` | 新規行を追加 |
-| `DeleteDataTableRow` | 行を削除 行の構造体が秘密を含む（ファイルパスの列も含む）とき、3 つの許可がそろわなければ、何も読まず・削除せず・スナップショットも作らずに `PolicyViolation` で断ります。`IncludeSecretValues` を受け付けます — [シークレット値の読み取り](#reading-secret-values) を参照。秘密を含まない表は影響を受けません。 |
+| `DeleteDataTableRow` | 行を削除 行の構造体が秘密を含む（ファイルパスの列も含む）、または対象の行の値が秘密や中身を読めない型の値を含む（`FInstancedStruct` のような動的な型の構造体は中身まで見ます）とき、3 つの許可がそろわなければ、何も削除せず・スナップショットも作らずに `PolicyViolation` で断ります。見るのは削除する行だけです。`IncludeSecretValues` を受け付けます — [シークレット値の読み取り](#reading-secret-values) を参照。秘密を含まない表は影響を受けません。 |
 | `DuplicateDataTableRow` | 行を複製 |
-| `ImportDataTableFromCSV` | CSV 文字列を一括インポート（Replace / Merge モード） 行の構造体が秘密を含む（ファイルパスの列も含む）とき、3 つの許可がそろわなければ、何も取り込まず・スナップショットも作らずに `PolicyViolation` で断ります。`IncludeSecretValues` を受け付けます — [シークレット値の読み取り](#reading-secret-values) を参照。秘密を含まない表は影響を受けません。 |
-| `ExportDataTableToCSV` | DataTable を CSV Artifact としてエクスポート 行の構造体が秘密を含む（ファイルパスの列も含む）とき、3 つの許可がそろわなければ、何も書き出さずに `PolicyViolation` で断ります（そろえば CSV には平文が入ります）。`IncludeSecretValues` を受け付けます — [シークレット値の読み取り](#reading-secret-values) を参照。秘密を含まない表は影響を受けません。 |
-| `GetDataTableRowStruct` | 行構造（UScriptStruct）フィールド定義を取得 秘密のフィールドの既定値は `***` と `IsMasked: true` で返り、解禁する方法はありません。 |
+| `ImportDataTableFromCSV` | CSV 文字列を一括インポート（Replace / Merge モード） 行の構造体が秘密を含む（ファイルパスの列も含む）、または表のどれかの行の値が秘密や中身を読めない型の値を含む（`FInstancedStruct` のような動的な型の構造体は中身まで見ます）とき、3 つの許可がそろわなければ、何も取り込まず・スナップショットも作らずに `PolicyViolation` で断ります。`IncludeSecretValues` を受け付けます — [シークレット値の読み取り](#reading-secret-values) を参照。秘密を含まない表は影響を受けません。 |
+| `ExportDataTableToCSV` | DataTable を CSV Artifact としてエクスポート 行の構造体が秘密を含む（ファイルパスの列も含む）、またはどれかの行の値が秘密や中身を読めない型の値を含む（`FInstancedStruct` のような動的な型の構造体は中身まで見ます）とき、3 つの許可がそろわなければ、何も書き出さずに `PolicyViolation` で断ります（そろえば CSV には平文が入ります）。`IncludeSecretValues` を受け付けます — [シークレット値の読み取り](#reading-secret-values) を参照。秘密を含まない表は影響を受けません。 |
+| `GetDataTableRowStruct` | 行構造（UScriptStruct）フィールド定義を取得 秘密のフィールドの既定値は、アーティファクトでは `***` と `IsMasked: true` で返る。秘密かどうかは、名前やメタデータに加えて、既定値が持つ中身でも判定し、中身に秘密がある値、または中身を読めない型の値は伏せる。`IncludeSecretValues` / `SecretValuesOffset` を取る。3 つの許可がそろえば、平文の既定値が `Result.SecretFieldValues`（キーはフィールド名）に返り、アーティファクトは伏せたまま。応答には常に `Result` が付き、`FieldCount` と `MaskedFieldCount` が入る。許可が足りないときは、コマンドは成功し、値は伏せたまま、`Result.SecretValuesWithheldReason` が理由を返す — [シークレット値の読み取り](#reading-secret-values)を参照。 |
 | `ListDataTableRowStructs` | 行構造に使える `FTableRowBase` 派生 struct の一覧 — `ClassPath` を `CreateAsset` の `FactoryParams.RowStructPath` に渡す |
 
 ---
@@ -2251,8 +2275,8 @@ Unified Animation Framework アセット（`UUAFAnimGraph` / `UUAFSystem`）の�
 | `RemoveUAFGraphNode` | 名前指定で RigVM ノードを削除。削除するノードの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit` が必要 |
 | `ConnectUAFPins` | 出力ピンと入力ピンを接続（`NodeName.PinName` 形式）。接続の両端いずれかの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit` が必要 |
 | `DisconnectUAFPins` | 出力ピンと入力ピンの接続を切断。`ConnectUAFPins` と同じ `UAFCustomTypeEdit` の条件が適用される |
-| `SetUAFPinValue` | ピンの既定値を設定（UE テキストインポート表記）。所有ノードの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit`、ピンの宣言型がオブジェクト／クラス参照を含む場合は `UAFReferenceEdit` が必要 |
-| `AddUAFVariable` | メンバー変数を新規作成。`ValueType` / `ContainerType` は `EPropertyBagPropertyType` / `EPropertyBagContainerType` の列挙子名。参照型の変数には `UAFReferenceEdit` が必要。⚠️ 型は、アセットを開く前に UAF エディタの変数型メニューで選べるものに限られます。64 ビット整数、テキスト型、ソフト参照、ユーザー定義構造体、Blueprint で使えない型は `InvalidParams` で拒否され（権限では解除できません）、`ValueType` と種類が合わない `TypeObject` も同じです。UAF のエンジンが扱えない `Int8` / `Int16` / `UInt16` / `UInt32` / `UInt64` も、アセットを開く前に拒否されます。`ValueTypeObjectPath` にはユーザー定義の構造体・列挙型（コンテンツ上のパス）を渡せず、`/Script/<Module>.<Class>` の型を指定します。`ContainerType` は `None` か `Array` で、セット・マップは `UnsupportedOperation` です |
+| `SetUAFPinValue` | ピンの既定値を設定（UE テキストインポート表記）。所有ノードの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit`、ピンの宣言型がオブジェクト／クラス参照を含む場合は `UAFReferenceEdit` が必要。秘密のピン（秘密かどうか分からないものを含む）では、応答の `PinValue` は `***` と `IsMasked: true` になる |
+| `AddUAFVariable` | メンバー変数を新規作成。`ValueType` / `ContainerType` は `EPropertyBagPropertyType` / `EPropertyBagContainerType` の列挙子名。参照型の変数には `UAFReferenceEdit` が必要。⚠️ 型は、アセットを開く前に UAF エディタの変数型メニューで選べるものに限られます。64 ビット整数、テキスト型、ソフト参照、ユーザー定義構造体、Blueprint で使えない型は `InvalidParams` で拒否され（権限では解除できません）、`ValueType` と種類が合わない `TypeObject` も同じです。UAF のエンジンが扱えない `Int8` / `Int16` / `UInt16` / `UInt32` / `UInt64` も、アセットを開く前に拒否されます。`ValueTypeObjectPath` にはユーザー定義の構造体・列挙型（コンテンツ上のパス）を渡せず、`/Script/<Module>.<Class>` の型を指定します。`ContainerType` は `None` か `Array` で、セット・マップは `UnsupportedOperation` です。秘密の変数（秘密かどうか分からないものを含む）では、追加直後に読み戻した `DefaultValue` は `***` と `IsMasked: true` になる |
 | `RemoveUAFVariable` | 名前指定でメンバー変数を削除（同名のエントリが存在しない場合も、存在するが変数でない場合も `VariableNotFound`） |
 | `AddUAFEventGraph` | `StructPath` で指定した RigVM Unit 構造体をルートとする新規イベントグラフエントリを追加。`UUAFSystem` 専用 — `UUAFAnimGraph` はアニメーショングラフエントリを 1 つ固定で持ちイベントグラフの余地がないため `UnsupportedOperation` で拒否される |
 | `CompileUAFAsset` | `RequestAssetCompilation` 経由で同期コンパイルを実行。アセットごとにセッション単位のレート制限（`MinCompileIntervalSeconds`）あり |
@@ -2302,15 +2326,15 @@ SoundClass ツリー・SoundAttenuation・SoundMix アセットのプロパテ�
 
 | コマンド | 説明 |
 |---|---|
-| `GetSoundClassInfo` | SoundClass の Properties（FSoundClassProperties）・ChildClasses・ParentClass・PassiveSoundMixModifiers を返す `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetSoundClassInfo` | SoundClass の Properties（FSoundClassProperties）・ChildClasses・ParentClass・PassiveSoundMixModifiers を返す `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。  |
 | `SetSoundClassSettings` | SoundClass の FSoundClassProperties フィールドを 1 プロパティ単位で設定（LoadingBehavior の変更は拒否） `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
 | `ListSoundClasses` | プロジェクト内 SoundClass を列挙（AssetPath / ParentClassPath / ChildClassPaths；最大 1000 件） |
 | `AddSoundClassChild` | SoundClass 階層に子クラスを追加（循環参照検出・深度上限 32） |
 | `RemoveSoundClassChild` | SoundClass 階層から子クラスを削除し、双方向リンクを解除 |
-| `GetSoundAttenuationInfo` | SoundAttenuation の FSoundAttenuationSettings を JSON で返す `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetSoundAttenuationInfo` | SoundAttenuation の FSoundAttenuationSettings を JSON で返す `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。  |
 | `SetSoundAttenuationSettings` | SoundAttenuation の FSoundAttenuationSettings フィールドを 1 プロパティ単位で設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
 | `ListSoundAttenuations` | プロジェクト内 SoundAttenuation を列挙（最大 1000 件） |
-| `GetSoundMixInfo` | SoundMix の全設定（EQ・SoundClassEffects・Fade タイミング）を JSON で返す `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 C++ で派生したサウンドミックスのクラスのプロパティも返すようになりました（以前は基本のクラスのプロパティだけ）。`USoundMix` より上のプロパティは今までどおり返しません。秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetSoundMixInfo` | SoundMix の全設定（EQ・SoundClassEffects・Fade タイミング）を JSON で返す `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 C++ で派生したサウンドミックスのクラスのプロパティも返すようになりました（以前は基本のクラスのプロパティだけ）。`USoundMix` より上のプロパティは今までどおり返しません。 |
 | `SetSoundMixSettings` | SoundMix のトップレベルフィールドを 1 プロパティ単位で設定（SoundClassEffects 配列の直接書き込みは拒否） `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
 | `SetSoundMixAdjuster` | SoundClassAdjuster を追加または更新（SoundClass パスをキーとした Upsert；省略フィールドは既存値を維持または既定値） |
 | `RemoveSoundMixAdjuster` | SoundMix から対象 SoundClass の SoundClassAdjuster を削除 |
@@ -2329,7 +2353,7 @@ ViewModel Blueprint のプロパティ管理、View Binding / Event の作成、
 | コマンド | 説明 |
 |---|---|
 | `ListViewModelClasses` | AssetRegistry から `UMVVMViewModelBase` 派生 Blueprint クラスを列挙する（`SearchPath` フィルタ省略可；最大 1000 件） |
-| `AddViewModelProperty` | ViewModel Blueprint にプロパティを追加する（7 種類の PropertyType；`DefaultValue` 省略可；Getter / Setter 生成省略可） |
+| `AddViewModelProperty` | ViewModel Blueprint にプロパティを追加する（7 種類の PropertyType；`DefaultValue` 省略可；Getter / Setter 生成省略可）。名前が秘密を示すプロパティでは、応答の `DefaultValue` は `***` と `IsMasked: true` になる |
 | `RemoveViewModelProperty` | ViewModel Blueprint からプロパティを名前指定で削除する |
 | `ListViewModelProperties` | ViewModel Blueprint の全プロパティを一覧返却する |
 
@@ -2421,7 +2445,7 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 | `AddBehaviorTreeDecoratorNode` | 親ノードに Decorator を附加 — 確認内容は上と同じ |
 | `AddBehaviorTreeServiceNode` | 親 Composite ノードに Service を附加 — 確認内容は上と同じ |
 | `RemoveBehaviorTreeNode` | NodeId 指定でノードを削除 — そのノードのクラスが要求する Capability が同じく必要です |
-| `GetBehaviorTreeNodeProperties` | ノードの `NodeInstance` が宣言する全プロパティ — `PropertyName`・`PropertyType`（C++ の型名）・`SetBehaviorTreeNodeProperty` がそのまま書き戻せる形の `PropertyValue`・入れ子の `WriteRequirements` オブジェクトを返す。`FBlackboardKeySelector` プロパティはベアなキー名として報告され、書き込みコマンド側の特別扱いと一致する。列挙される `ExecutionIndex` プロパティはアセットに保存されない一時的なエンジンの値で、BehaviorTree エディタで開いた後にだけ値が入り、アセットを読み込んだ直後は 0 のままのため、実行時の応答と突き合わせるには代わりに `GetBehaviorTreeNodeList` / `GetBehaviorTreeSubtree` の `ExecutionIndex` を使う。読み取り専用、PIE 中も許可（縮退モード）。要 `EditorInspect` `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetBehaviorTreeNodeProperties` | ノードの `NodeInstance` が宣言する全プロパティ — `PropertyName`・`PropertyType`（C++ の型名）・`SetBehaviorTreeNodeProperty` がそのまま書き戻せる形の `PropertyValue`・入れ子の `WriteRequirements` オブジェクトを返す。`FBlackboardKeySelector` プロパティはベアなキー名として報告され、書き込みコマンド側の特別扱いと一致する。列挙される `ExecutionIndex` プロパティはアセットに保存されない一時的なエンジンの値で、BehaviorTree エディタで開いた後にだけ値が入り、アセットを読み込んだ直後は 0 のままのため、実行時の応答と突き合わせるには代わりに `GetBehaviorTreeNodeList` / `GetBehaviorTreeSubtree` の `ExecutionIndex` を使う。読み取り専用、PIE 中も許可（縮退モード）。要 `EditorInspect` `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。  |
 | `SetBehaviorTreeNodeProperty` | ノードプロパティを設定（FBlackboardKeySelector / 汎用 ImportText_Direct）。書き込み対象ノードのクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です。ツリーに Blackboard アセットが設定されていない場合、キーセレクタへの書き込みは拒否されるようになりました — Blackboard が無いとキー名の妥当性を確認できず、従来は名前と種類が食い違った状態が残ることがありました。拒否された書き込みはアセットを dirty にせず、空の undo エントリも残しません |
 | `ListBlackboardKeys` | Blackboard アセットのキー一覧（PIE 中も許可） |
 | `AddBlackboardKey` | キーを追加（重複名チェック）。`/Script/AIModule` 以外のキー型と、書き込み側が指す先を選べる 2 種のキー型には、それぞれ Capability が要ります — 下の Note を参照してください |
@@ -2520,7 +2544,7 @@ EQS クエリ編集。`EnvironmentQueryEditor` プラグインが必要です。
 
 | コマンド | 説明 |
 |---|---|
-| `GetEQSQueryInfo` 🧩 | EQS Generator Option / Test 構造。すべての Option と Test が実際のクラス名を返すようになりました — degraded（PIE 中）の読み取りでも伏せ字にしません — あわせて `Admission` / `RequiredCapabilities` / `MissingCapabilities` を報告します。詳細は下記の Note を参照。degraded モードでは引き続き `NodeX` / `NodeY` と `GeneratorProperties` を省略します。`SchemaVersion` は `2` になりました `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 `GeneratorProperties` は「名前 → 値」の辞書のままです。秘密の値は `***` になり、その option に `IsMasked: true` と、伏せた名前の一覧 `MaskedFields` が付きます。値を返すのは今までどおり、エンジンの AI モジュールが宣言したプロパティだけです。秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetEQSQueryInfo` 🧩 | EQS Generator Option / Test 構造。すべての Option と Test が実際のクラス名を返すようになりました — degraded（PIE 中）の読み取りでも伏せ字にしません — あわせて `Admission` / `RequiredCapabilities` / `MissingCapabilities` を報告します。詳細は下記の Note を参照。degraded モードでは引き続き `NodeX` / `NodeY` と `GeneratorProperties` を省略します。`SchemaVersion` は `2` になりました `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 `GeneratorProperties` は「名前 → 値」の辞書のままです。秘密の値は `***` になり、その option に `IsMasked: true` と、伏せた名前の一覧 `MaskedFields` が付きます。値を返すのは今までどおり、エンジンの AI モジュールが宣言したプロパティだけです。 |
 | `GetAvailableEQSGeneratorClasses` 🧩 | `UEnvQueryGenerator` サブクラス一覧 — `ClassPath` を `AddEQSGenerator` に渡す。各エントリは追加コマンドと同じ policy から得た `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を併記するようになりました。このドメインが出荷しているモジュールでの絞り込みは廃止しています。`ClassPath` 昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200 件）を報告します。`SchemaVersion` は `2` になりました — 下の Note を参照してください |
 | `GetAvailableEQSTestClasses` 🧩 | `UEnvQueryTest` サブクラス一覧 — `ClassPath` を `AddEQSTest` に渡す。上と同じ Admission・件数フィールドを報告します |
 | `AddEQSGenerator` 🧩 | Generator Option を追加 — このドメインが出荷していないモジュール由来のクラスには Capability が要ります。下の Note を参照してください |
@@ -2649,7 +2673,7 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 
 | コマンド | 説明 |
 |---|---|
-| `GetSectionProperty` | UMovieSceneSection のプロパティ値を取得 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密の配列への添字を含むプロパティのパス（`SecretList[5]`）は、書き込みと同じく 3 つの許可が要ります。秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetSectionProperty` | UMovieSceneSection のプロパティ値を取得 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密の配列への添字を含むプロパティのパス（`SecretList[5]`）は、書き込みと同じく 3 つの許可が要ります。定義がまだ解決できない値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
 | `SetSectionProperty` | UMovieSceneSection のプロパティを設定。値はエンジンテキストなら `PropertyValue`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
 | `GetSectionWeight` | セクションの重みを取得 |
 | `SetSectionWeight` | セクションの重みを設定 |
@@ -2875,7 +2899,7 @@ StateTree 編集。
 
 | コマンド | 説明 |
 |---|---|
-| `GetStateTreeParameters` | ルートパラメータのディスクリプタ（`Name`・`ParameterType`・現在のシリアライズ値）と、パラメータごとに入れ子の `WriteRequirements` オブジェクト。`ParameterType` は enum / struct / object / soft object / class / soft class と残りの整数幅を名前で返すようになりました（従来は非スカラーを一律 `Unknown` と報告していました） `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetStateTreeParameters` | ルートパラメータのディスクリプタ（`Name`・`ParameterType`・現在のシリアライズ値）と、パラメータごとに入れ子の `WriteRequirements` オブジェクト。`ParameterType` は enum / struct / object / soft object / class / soft class と残りの整数幅を名前で返すようになりました（従来は非スカラーを一律 `Unknown` と報告していました） `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 定義がまだ解決できない値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
 | `AddStateTreeParameter` | ルートパラメータを追加（Bool / Byte / Int32 / Int64 / Float / Double / Name / String / Text） |
 | `RemoveStateTreeParameter` | 名前指定でルートパラメータを削除 |
 | `SetStateTreeParameter` | ルートパラメータ値を設定。参照には `StateTreeParameterReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要で、これらの値は括弧表記ではなく JSON で渡します。拒否コードは一律 `NotFound` ではなく `CapabilityNotAvailable` / `PolicyViolation` / `InvalidParams` / `NotFound` に細分化され、拒否された書き込みはアセットを dirty にせず、成功した書き込みは undo できるようになりました |
@@ -3156,7 +3180,15 @@ UE 5.8 の Control Rig アセットには 2 つの形式があります。ここ
 `AddVariable` と `ChangeVariableType`（ネイティブも Toolset ブリッジも）は、変数の型をエディタの変数型メニューで選べるものに限ります。また、Control Rig のコマンドに渡される名前は、エンジンに届く前に長さの上限で検査されます。どちらもアセットを開く前に確かめるので、拒否されたときにアセットは変わりません。
 
 - ⚠️ **型は基本型名か完全なパスで書き、それ以外は受け付けません。** 基本型名は `bool` / `int32` / `float` / `double` / `FName` / `FString`（大文字小文字を区別）で、ほかは `/Script/CoreUObject.Vector` のような完全なオブジェクトパスです。配列は、そのどちらかを 1 段の `TArray<...>` で包みます。短い名前（`Vector`）、C++ の書き方（`FVector` / `TObjectPtr<AActor>` / `TSubclassOf<AActor>` / `EMyEnum`）、引用付きの書き方（`Class'/Script/Engine.Actor'`）、入れ子の配列、閉じていない `TArray<` は `InvalidParams` で拒否されます。クラスのパスは、そのクラスのオブジェクトへの参照を意味します。読み込み済みの型に解決できない完全なパスも `InvalidParams` です。型を含むアセットやモジュールを読み込んでから再実行してください。型の指定が 1023 文字を超える場合も拒否されます。
-- ⚠️ **変数型メニューで選べない型は `InvalidParams` で拒否され、権限を付けても解除されません。** 例: テキスト型（`FText`）、メニューに無い 64 ビット整数などの整数型、素のバイト型、ワイルドカード、Blueprint で使えない構造体・列挙型・クラス、実行ピン系の構造体、（エディタがオブジェクトを扱わない設定のときの）オブジェクト型。マップ・セットの型は `UnsupportedOperation` です。
+- ⚠️ **変数型メニューで選べない型は拒否されますが、Capability で解除できるかは型によって違います。** 型は次の 3 つに分かれます（配列は要素の型で判定します）。マップ・セットの型はどの区分でも `UnsupportedOperation` です。
+
+  | 区分 | 該当する型 | ネイティブの `UAIP.Editor.ControlRig.AddVariable` / `ChangeVariableType` | `Toolset.Editor.ControlRig.*` ブリッジ |
+  |---|---|---|---|
+  | **Offered** | メニューが提示する型。基本型、Blueprint で使える構造体・列挙型・クラス、組み込みの `Vector` / `Rotator` / `Transform` | 使える | 使える |
+  | **OffMenu** | メニューには無いが、変数としては動く型。BlueprintType でない（または内部用の印がある）構造体・列挙型・クラス、Control Rig のグラフのスキーマが受けない型 | `ControlRigOffMenuVariableType` を名指しして `CapabilityNotAvailable` で拒否（運用者が明示的に禁止していると `PolicyViolation`）。セッションが `ControlRigOffMenuVariableType`（既定で拒否）を持てば使える | 解禁されない。`InvalidParams` で、文がネイティブのコマンドを案内する |
+  | **Invalid** | 動く変数にならない型。テキスト型（`FText`）、メニューに無い 64 ビット整数などの整数型、素のバイト型、ワイルドカード、インターフェース、実行ピン・実行コンテキスト・ディスパッチファクトリの構造体、非推奨のクラス、Blueprint のスケルトン、新しい版に置き換わった型、レベルスクリプトのクラス、更新されていないユーザー定義構造体、テスト用フィクスチャの型、（エディタがオブジェクトを扱わない設定のときの）クラス型 | `InvalidParams`。文に、セッションの Capability では変わらないと書かれる | `InvalidParams`（同じ） |
+
+  `ControlRigOffMenuVariableType` を判定するのはネイティブのコマンドだけで、Toolset ブリッジは拒否を解除しません。読み込まれていない型を代わりに探すことはしないので、先にアセットやモジュールを読み込んでください。UE 5.7 では、クラス型はセッションの Capability に関わらず `UnsupportedOperation`（UE 5.8 より前のエンジンは、レガシー形式のメンバー変数にオブジェクト参照を持てません。文は Capability を名指ししません）で、ブリッジ経由では `InvalidParams` です。構造体と列挙型は使えます。`OffMenu` の型には、メニューにある `Texture2D` と同じく、Get / Set ノードを置けないものがあります。
 - ⚠️ **拒否の優先順が変わりました。** 型の判定はアセットを開く前に行われるため、存在しないアセット（`AddVariable` では、既にある名前も）に不正な型を指定すると、`NotFound` や重複ではなく型の拒否が返ります。UE 5.7 で存在しないパスのオブジェクト型を指定した場合は、`UnsupportedOperation` ではなく `InvalidParams`（型が見つからない）になります。UE 5.8 では、**インターフェース**のクラスパスは `InvalidParams` で拒否されます（以前は、インターフェースとして働かない変数が作られていました）。
 - ⚠️ **名前に長さの上限があります。** グラフ名・要素名・コンポーネント名・変数名・イベント名などの名前は、1023 文字を超えると `InvalidParams` で拒否されます。新しく作るグラフの名前は 1012 文字まで、ノード名とコントロール名は従来どおり 128 文字までです。メッセージにはフィールドと上限が示されます。Toolset ブリッジのコマンドにも同じ上限が掛かります。
 - ⚠️ **ピン系のコマンドは、より長いアセットパスを受け付けます。** 257〜512 文字の `AssetPath` を誤って拒否していたピン系の 7 コマンドが、512 文字まで受け付けるようになりました。
@@ -3245,7 +3277,7 @@ UE 5.8 の Control Rig アセットには 2 つの形式があります。ここ
 | コマンド | 説明 |
 |---|---|
 | `ListPins` | ノードのピン一覧 |
-| `GetPinValue` | ピンの値を取得 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 配列のピンの要素を指す（`Pin[5]`）には 3 つの許可が要ります。秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetPinValue` | ピンの値を取得 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 配列のピンの要素を指す（`Pin[5]`）には 3 つの許可が要ります。定義がまだ解決できない値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
 | `SetPinValue` | ピンの値を設定 `IncludeSecretValues` を受け付けます。秘密のピンの `PinValue` は `***` と `IsMasked: true` で返ります。配列のピンの要素を指すには 3 つの許可が要ります。 |
 | `ResetPinValue` | ピン値をデフォルトに戻す |
 | `GetConnectedPins` | ピンの接続情報 |
@@ -3273,7 +3305,7 @@ UE 5.8 の Control Rig アセットには 2 つの形式があります。ここ
 | コマンド | 説明 |
 |---|---|
 | `ListComponents` | 1 要素のコンポーネント一覧。`ElementName` と `ElementType` をどちらも省略するとヒエラルキー全体を列挙する。各エントリは所属要素・型パス・`IsProcedural` を持ち、レスポンスは `TotalCount` / `ReturnedCount` / `Truncated` を返す |
-| `GetComponent` | 1 コンポーネントの型と内容。`ContentText`（エンジンのエクスポート形式）は常に返る。`Content`（JSON）は JSON で表現できない型の場合に明示的な `null` と `ContentConversion` 理由になり、変換不能なコンポーネントが空のものと取り違えられることはない `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 コンポーネントの構造体が秘密を 1 つでも含めば、`ContentText` は全体が `***` になります（一部だけ伏せたテキストは `SetComponentContent` に戻せる形か保証できないため）。`Content` は秘密のキーだけを伏せ、そのキーは `MaskedFields` に並びます。そのようなコンポーネントを往復させるには、3 つの許可付きで読み、平文の `ContentText` を使います。秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetComponent` | 1 コンポーネントの型と内容。`ContentText`（エンジンのエクスポート形式）は常に返る。`Content`（JSON）は JSON で表現できない型の場合に明示的な `null` と `ContentConversion` 理由になり、変換不能なコンポーネントが空のものと取り違えられることはない `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 コンポーネントの構造体が秘密を 1 つでも含めば、`ContentText` は全体が `***` になります（一部だけ伏せたテキストは `SetComponentContent` に戻せる形か保証できないため）。`Content` は秘密のキーだけを伏せ、そのキーは `MaskedFields` に並びます。そのようなコンポーネントを往復させるには、3 つの許可付きで読み、平文の `ContentText` を使います。 |
 | `ListAddableComponentTypes` | エディタが知る `FRigBaseComponent` 派生構造体をすべて列挙する（対象ヒエラルキーにコンポーネントが 1 つも無くても列挙できる）。各エントリは `AddComponent` が検証するのと同じポリシー由来の `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持ち、レスポンスは `TotalCount` / `ReturnedCount` / `Truncated` を返す — 詳細は下記の Note を参照 |
 | `CanAddComponent` | ある型をある要素に取り付けられるかどうかを、実際に取り付けずに判定する。上記一覧と同じ `Admission` と `RequiredCapabilities` / `MissingCapabilities` を返し、**このセッションが既にその型を扱える場合に限り**エンジンにも問い合わせて `CanAdd` / `FailureReason` にその答えを返す — 詳細は下記の Note を参照 |
 | `AddComponent` | 新しいコンポーネントを取り付ける。初期内容は任意で、`Content`（JSON）**または** `ContentText`（エクスポート形式）のどちらか一方のみ。作成前に内容を完全に検証するため、拒否された要求はコンポーネントを残さない 秘密を含むコンポーネントの `ContentText` は全体が `***` になり、`Content` は秘密のキーだけを伏せます（`MaskedFields`）。追加に失敗したときは、値を引用しうるエンジンの取り込みの詳細を文言から省きます。 |
@@ -3634,9 +3666,9 @@ UE 5.8 Data Registry のエディタ時観測 — 一覧・スキーマ取得・
 | `ListItems` | レジストリに登録済みのアイテム ID を一覧表示（キャッシュ済みとは限らない） |
 | `ListDataSources` | レジストリの編集時定義データソースを一覧表示 |
 | `ListRuntimeSources` | レジストリの実行時展開後データソースを一覧表示 |
-| `GetItems` | 指定名のキャッシュ済みアイテムを機密フィールドマスキング付きで取得。未キャッシュのアイテムは黙って省略せず `MissingItems` に理由付きで報告 |
-| `GetAllCachedItems` | アイテム名を事前指定せず、現在キャッシュ済みの全アイテムを取得（1000件・1MiB を上限。Toolset に対応なし） |
-| `AcquireItems` | 指定アイテムの非同期キャッシュロードをトリガー — カスタム/Remote ソースで必要（DataTable ソースは自動事前ロード済み。Toolset に対応なし） |
+| `GetItems` | 指定名のキャッシュ済みアイテムを機密フィールドマスキング付きで取得。未キャッシュのアイテムは黙って省略せず `MissingItems` に理由付きで報告。`IncludeSecretValues` / `SecretValuesOffset` を受け付け、同じ 3 層がそろうと秘密の欄の平文を `Result.SecretFieldValues`（エントリは `{ Key, Value }`、キーは `<ItemName>.<フィールドパス>`）で返す（[秘密の値を読む](#reading-secret-values)）。アーティファクトは常に伏せたまま。引数を付けない呼び出しの応答は今までと変わらない |
+| `GetAllCachedItems` | アイテム名を事前指定せず、現在キャッシュ済みの全アイテムを取得（1000件・1MiB を上限。Toolset に対応なし）。`GetItems` と同じく `IncludeSecretValues` / `SecretValuesOffset` を受け付ける（`Result.SecretFieldValues`、キーは `<ItemName>.<フィールドパス>`、`SecretValuesWithheldReason`、`NextSecretValuesOffset`、`SecretFieldValuesOmittedCount`）。アーティファクトは常に伏せたまま。引数を付けない呼び出しの応答は今までと変わらない |
+| `AcquireItems` | 指定アイテムの非同期キャッシュロードをトリガー — カスタム/Remote ソースで必要（DataTable ソースは自動事前ロード済み。Toolset に対応なし）。`GetItems` と同じく `IncludeSecretValues` / `SecretValuesOffset` を受け付ける。3 層の判定は非同期ロードの完了時ではなくコマンドの呼び出し時に 1 回だけ行う。タイムアウトしたとき（`ErrorCode=Timeout`、読み込めたアイテムだけの部分結果）は、3 層がそろっていても平文を返さない（`SecretFieldValues` を載せず、`Result.SecretValuesWithheldReason` は `SecretValuesWithheldOnTimeout`。許可が足りないときは従来どおり `SecretValuesWithheldBySafetyPolicy` / `SecretValuesWithheld` が優先して入る）。アーティファクトは常に伏せたまま。引数を付けない呼び出しの応答は今までと変わらない |
 
 ### Toolset ブリッジ（7 コマンド）🧩
 
@@ -3685,7 +3717,7 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 | `SetPoseSearchSchemaChannelProperty`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルのトップレベルプロパティへ書き込む — `Value`（UE テキストインポート形式、最大 4 KiB）または `ValueJson`（JSON）で値を渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。参照を内包する型はセッションの保有 Capability に関わらず `PolicyViolation` で拒否される — チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうため、チャンネルの追加は専用コマンドで行うこと。書き込み後の検証に失敗した場合は書き込みをロールバック。チャンネル自身のクラス、または書き込み対象プロパティを宣言しているクラスのいずれかがこのドメインの出荷対象外の場合は `MotionMatchingCustomTypeEdit` が必要 — なぜこれが新規の制限なのかは下の Note を参照 `IncludeSecretValues` を受け付けますが、実行を許すための指定です（[シークレット値の読み取り](#reading-secret-values) を参照）。秘密の対象の `AppliedValue` / `ElementKeyJson` は `***` と `IsMasked: true` になり、`Changed` は出ません。値を読み戻す方法はありません。 |
 | `AddDefaultPoseSearchSchemaChannels`（要 `PoseSearchAssetEdit`） | エディタの Schema ファクトリが作成するのと同じ既定チャンネル（Trajectory + Pose）を追加。既存チャンネルは削除されず維持される — 2 回呼ぶと重複したペアが追加される。追加されるのは常にエンジン自身の 2 チャンネルで呼び出し元が指定できるクラスは無いため、`MotionMatchingCustomTypeEdit` は一切要求しない |
 | `GetAvailablePoseSearchChannelClasses` | 構造的なチェックだけでチャンネルとして認められる `UPoseSearchFeatureChannel` サブクラスをすべて一覧表示する — `AddPoseSearchSchemaChannel` が `ChannelClass` を解決する集合と同じ — このセッションが今すぐ配置できるかどうかを問わない。各エントリは `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities`、そして有効な `ParentChannelPath` の対象を示す `bCanHostSubChannels` を返す。エントリはフルクラスパス（`/Script/<Module>.<Class>`）順に整列され、アーティファクトは `TotalCount`、`ReturnedCount`、`Truncated`（上限 500）を報告する。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること |
-| `GetPoseSearchChannelClassSchema` | チャンネルクラスの Details パネル表示プロパティを一覧表示。各プロパティは入れ子の `WriteRequirements` オブジェクトを持ち、`SetPoseSearchSchemaChannelProperty` で書き込み可能かを `IsWritable` / `RefusalReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と、構造化形式での書き込みが要求する `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。`DefaultValueText` はそのまま使えるテキストインポート形式の例を提供 秘密のプロパティの既定値は `***` と `IsMasked: true` で返り、解禁する方法はありません。 |
+| `GetPoseSearchChannelClassSchema` | チャンネルクラスの Details パネル表示プロパティを一覧表示。各プロパティは入れ子の `WriteRequirements` オブジェクトを持ち、`SetPoseSearchSchemaChannelProperty` で書き込み可能かを `IsWritable` / `RefusalReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と、構造化形式での書き込みが要求する `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。`DefaultValueText` はそのまま使えるテキストインポート形式の例を提供 秘密のプロパティの既定値は、アーティファクトでは `***` と `IsMasked: true` で返る。秘密かどうかは、名前やメタデータに加えて、既定値が持つ中身でも判定し、中身に秘密がある値、または中身を読めない型の値は伏せる。`IncludeSecretValues` / `SecretValuesOffset` を取る。3 つの許可がそろえば、平文の既定値が `Result.SecretFieldValues`（キーはプロパティ名）に返り、アーティファクトは伏せたまま。既定の応答の `Result` には `NumProperties` が入る。`IncludeSecretValues` を指定して許可が足りないときは、コマンドは成功し、値は伏せたまま、`Result.SecretValuesWithheldReason` が理由を返す — [シークレット値の読み取り](#reading-secret-values)を参照。 |
 | `AddSkeletonToPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Role` のロール付きスケルトンエントリを追加または置き換え。任意で `MirrorDataTablePath` を指定可能。既存の `Role` を置き換えるには `bAllowOverwrite` が必要 |
 | `RemoveSkeletonFromPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Skeletons` 配列から `Role` のロール付きスケルトンエントリを削除 |
 
@@ -3768,8 +3800,8 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 |---|---|
 | `GetAnimNotifyInfo` | アセット上の全通知トラック（`TrackIndex` / `TrackName` / `TrackColor`）と全通知/通知ステートエントリ（guid・クラス・タイミング・Montage 固有フィールド）、およびアセットレベルのスカラー値（`AssetKind` / `PlayLength` / `NumTracks` / `NumNotifies` / `NumInvalidGuids`）を取得。`UAnimComposite` の場合、対象はアセット自身の `Notifies` 配列のみで、セグメントの `AnimSequence` が持つ通知は含まれない。読み取り専用、要 `EditorInspect` |
 | `GetAvailableAnimNotifyClasses` | `AddAnimNotify` / `AddAnimNotifyState` が `ClassPath` として受け付ける全 `UAnimNotify` / `UAnimNotifyState` サブクラスを一覧表示。`bIsNotifyState` / `bCanBePlaced` / `NotPlaceableReason` を付与。現在ロード済みのクラスのみが対象。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること。読み取り専用、要 `EditorInspect` |
-| `GetAnimNotifyClassSchema` | `UAnimNotify` / `UAnimNotifyState` サブクラスの Details パネル表示プロパティを一覧表示。各プロパティは入れ子の `WriteRequirements` オブジェクトを持ち、`SetAnimNotifyProperty` で書き込み可能かを `IsWritable` / `RefusalReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。加えて `bIsObjectReference` と、そのまま使えるテキストインポート形式の例 `DefaultValueText` を提供。読み取り専用、要 `EditorInspect` |
-| `GetAnimNotifyProperty` | `NotifyGuid` で識別される通知インスタンスについて、プロパティ 1 件（`PropertyName`）、または省略時・空文字時は `GetAnimNotifyClassSchema` が列挙する全プロパティを読み取る。全件読み取りは `PropertyName` / `Value` の代わりに `NumProperties` / `bTruncated` を報告し、上限超過時は切り詰める。単一プロパティ読み取りは切り詰めず、上限超過は `InvalidParams` で拒否する。秘密扱いの値は `GetAnimNotifyClassSchema` の `DefaultValueText` や `SetAnimNotifyProperty` の `AppliedValue` と同じ方式でマスクされる。各プロパティは入れ子の `WriteRequirements` オブジェクトも持ち（`GetAnimNotifyClassSchema` と同じキー名・同じ入れ子の形。判定はクラスのデフォルトではなく通知インスタンスに対して行われる）、`IsWritable` / `RefusalReason`、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）、`RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す。単一プロパティ読み取りでは `Data` に直接載る（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。アセットを変更しない。読み取り専用かつ冪等、要 `EditorInspect` 秘密の値は伏せられ、解禁する方法はありません。通知のクラスを引けないときは、名前に関係なく全プロパティの値を伏せます（書き込み側と同じ扱い）。 |
+| `GetAnimNotifyClassSchema` | `UAnimNotify` / `UAnimNotifyState` サブクラスの Details パネル表示プロパティを一覧表示。各プロパティは入れ子の `WriteRequirements` オブジェクトを持ち、`SetAnimNotifyProperty` で書き込み可能かを `IsWritable` / `RefusalReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。加えて `bIsObjectReference` と、そのまま使えるテキストインポート形式の例 `DefaultValueText` を提供。秘密の既定値は、アーティファクトでは `***` と `IsMasked: true` で返る（名前やメタデータに加えて、クラスの既定値が持つ中身でも判定）。`IncludeSecretValues` / `SecretValuesOffset` を取る。3 つの許可がそろえば平文が `Result.SecretFieldValues`（キーはプロパティ名）に返り、許可が足りないときはコマンドは成功し、`Result.SecretValuesWithheldReason` が理由を返す — [シークレット値の読み取り](#reading-secret-values)を参照。読み取り専用、要 `EditorInspect` |
+| `GetAnimNotifyProperty` | `NotifyGuid` で識別される通知インスタンスについて、プロパティ 1 件（`PropertyName`）、または省略時・空文字時は `GetAnimNotifyClassSchema` が列挙する全プロパティを読み取る。全件読み取りは `PropertyName` / `Value` の代わりに `NumProperties` / `bTruncated` を報告し、上限超過時は切り詰める。単一プロパティ読み取りは切り詰めず、上限超過は `InvalidParams` で拒否する。秘密扱いの値は `GetAnimNotifyClassSchema` の `DefaultValueText` や `SetAnimNotifyProperty` の `AppliedValue` と同じ方式でマスクされる。各プロパティは入れ子の `WriteRequirements` オブジェクトも持ち（`GetAnimNotifyClassSchema` と同じキー名・同じ入れ子の形。判定はクラスのデフォルトではなく通知インスタンスに対して行われる）、`IsWritable` / `RefusalReason`、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）、`RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す。単一プロパティ読み取りでは `Data` に直接載る（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。アセットを変更しない。読み取り専用かつ冪等、要 `EditorInspect` 秘密の値は `IsMasked: true` 付きで伏せられる（単一プロパティの読み取りでは `Data` にも付く）。秘密かどうかは、プロパティの名前やメタデータに加えて、通知インスタンスが持つ中身でも判定する。`IncludeSecretValues` / `SecretValuesOffset` を取る。3 つの許可がそろえば平文が `Result.SecretFieldValues`（キーはプロパティ名。全プロパティの読み取りでは、上の切り詰めの後の値）に返り、許可が足りないときはコマンドは成功し、`Result.SecretValuesWithheldReason` が理由を返す — [シークレット値の読み取り](#reading-secret-values)を参照。通知のクラスを引けないときは、名前に関係なく全プロパティの値を伏せます（書き込み側と同じ扱い）。 |
 | `AddAnimNotifyTrack`（要 `AnimNotifyEdit`） | `TrackName` という名前の通知トラックが存在することを保証し、存在しない場合は作成する（任意の `TrackColor`、既定は白）。既存判定に対して冪等 — 既存トラックの `TrackIndex` はそのまま返され、`TrackColor` は無視される。PIE/SIE 実行中は拒否 |
 | `RemoveAnimNotifyTrack`（要 `AnimNotifyEdit`） | `TrackName` という名前の通知トラックを削除し、その上に置かれた全通知も削除する。以降のトラックのインデックスは 1 つずつ繰り上がる — 応答の `RemovedNotifyGuids` / `ReindexedNotifies` が影響範囲全体を報告する。すでに削除済みのトラックには `NotFound` で失敗。PIE/SIE 実行中は拒否 |
 | `AddAnimNotify`（要 `AnimNotifyEdit`） | `TrackName` の `StartTime` へ単発の点通知を追加する。`ClassPath`（`UAnimNotify` サブクラス）/ `NotifyName`（クラスなし、`bRegisterOnSkeleton` で Skeleton へ任意登録可能）のいずれか一方が必須。冪等ではない — 繰り返し呼ぶと新しい `NotifyGuid` を持つ独立した通知が作成される。PIE/SIE 実行中は拒否 |
@@ -3868,7 +3900,7 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 | コマンド | 説明 |
 |---|---|
 | `ListSubsonicEventCollections` | AssetRegistry 経由で `USubsonicEventCollection` アセットを `AssetPath` 順に一覧表示。各エントリは `AssetPath` のみ — 詳細には `GetSubsonicEventCollectionInfo` を使用。`PageIndex` / `PageSize` でページング、`PathFilter` でコンテンツブラウザのパスプレフィックスによる絞り込みが可能 |
-| `GetSubsonicEventCollectionInfo` | 1 つのコレクションの完全な event/action/modifier/parameter/binding 内訳を取得。`EventTagFilter` は `EventTag` に対するプレフィックス一致で絞り込む。`MaxEvents` / `MaxTotalItems` / `MaxResponseBytes` / `MaxContainerElements` / `MaxRecursionDepth` で上限を設定できる（下げることのみ可能、ハード上限は超えられない）。応答本文は artifact として保存され、`Data` にはサマリのみが入る。PIE 実行中でも呼び出し可能 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 アクション・モディファイアの `Properties` は「名前 → 値」の辞書のままです。秘密の値は `***` になり、伏せた名前は隣の `MaskedFields` に並びます（伏せたものが無ければこの欄は出ません）。パラメータは値に `IsMasked: true` が付きます。秘密でないと確かめられなかった値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `GetSubsonicEventCollectionInfo` | 1 つのコレクションの完全な event/action/modifier/parameter/binding 内訳を取得。`EventTagFilter` は `EventTag` に対するプレフィックス一致で絞り込む。`MaxEvents` / `MaxTotalItems` / `MaxResponseBytes` / `MaxContainerElements` / `MaxRecursionDepth` で上限を設定できる（下げることのみ可能、ハード上限は超えられない）。応答本文は artifact として保存され、`Data` にはサマリのみが入る。PIE 実行中でも呼び出し可能 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 アクション・モディファイアの `Properties` は「名前 → 値」の辞書のままです。秘密の値は `***` になり、伏せた名前は隣の `MaskedFields` に並びます（伏せたものが無ければこの欄は出ません）。パラメータは値に `IsMasked: true` が付きます。定義がまだ解決できない値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
 | `ListSubsonicActionTypes` | 検出可能な Subsonic アクション構造体型（非 `Abstract` / 非 `Hidden` / 非 `Deprecated`）を、各型ごとに `SetSubsonicEventActionProperty` が受け付けるプロパティスキーマとともに一覧表示。必須入力は無し。`MaxTotalItems` / `MaxResponseBytes` で上限を設定可能 |
 | `ListSubsonicModifierTypes` | `ActionStructPath` / `PropertyName` で指定された、ネストされた instanced-struct 配列の検出可能な派生型をすべて一覧表示し、各型について `SetSubsonicActionModifierProperty` が受け付けるプロパティスキーマを付与する。基底型はプロパティの `BaseStruct` メタデータから解決されるため、任意の `TArray<TInstancedStruct<...>>` プロパティに対して機能する |
 
@@ -4318,14 +4350,17 @@ PIE / Standalone でのテスト実行。
 >
 > **`TestName`** は 512 文字以下で、カンマ区切りのテスト指定の並びです。例は `UE.BootTest` です。
 >
-> - 各指定はドット区切りの名前です。各部分は ASCII の英字か `_` で始まり、その後ろは ASCII の英字・数字・`_` です。
-> - 指定の後ろに、括弧で囲んだテスト単位のパラメータリストを 1 つ付けられます。リストには ASCII の英字・数字と `_ . , = + - '` を書けますが、`..` と括弧の入れ子は使えません。
-> - `/`、`\`、`:`、空白、引用符などの文字は拒否されます。
+> - 各指定はドット区切りの名前です。各部分は ASCII の英字か `_` で始まり、その後ろは ASCII の英字・数字・`_` です。これが既定の形です。
+> - 指定の後ろに、括弧で囲んだテスト単位のパラメータリストを 1 つ付けられます（例: `UE.BootTest(Map=Foo)`）。リストにはどんな形でも `GauntletUnrestrictedArguments` が必要です（下記）。
+> - 広げた形にも `GauntletUnrestrictedArguments` が必要です。エンジンが自分のテストについて示す名前（`Test1, Test2`（カンマの後ろに空白）、`A(p2=foo bar)`、`Ns.Outer+Inner`）を受け付けます。名前には、拒否されない文字ならどれでも使えます（下の「文字」を参照）。`/` `:`、括弧の外の記号、数字で始まる名前も含まれます。パラメータリストにも拒否されない文字を書け、括弧は対応が取れていれば入れ子にできます。`-` で始まる名前は RunUAT.bat が自身のスイッチとして読むため、同じくこの Capability が必要です。
+> - この文法から外れる形は `InvalidParams` で拒否されます。括弧の対応が取れない、空の要素（`A,,B`、`A,`）、名前のないリスト（`(x)`）、閉じ括弧の後ろの文字（`A(x)y`）、空白だけの名前です。ここで空白とみなすのは ASCII の空白だけで、タブは制御文字です。
+> - 入れ子の括弧は受け付けますが、Gauntlet は括弧の対応を見ずに `),` でテスト名を切ります。`A(x=(1),y=2)` は `y=2)` という名前のテストを探して失敗します。`A(x=(1))` と `A(x=(1) y=2)` には `),` が無いので、そのまま届くと見込まれます（ソースの読解で、実測はしていません）。
 >
-> **`TestParams`** は 32 件以下のオブジェクトで、値はすべて文字列です。パラメータは Gauntlet に `-Key="Value"` の形で渡されます。
+> **`TestParams`** は 32 件以下のオブジェクトです。値は文字列・数値・真偽値のどれかで、数値と真偽値はその文字列として渡されます（`600` は `"600"`、`true` は `"true"`）。`null`・配列・オブジェクトは `InvalidParams` で拒否されます。パラメータは Gauntlet に `-Key="Value"` の形で渡されます。
 >
-> - **キー**: 1 から 128 文字で `[A-Za-z][A-Za-z0-9_]*` に一致するもの。先頭に `-` を付けずに書きます。`.` は使えません。
-> - **値**: `[A-Za-z0-9_.:/+-]` の文字だけで 1024 文字以下。`..` は含められません。空の値は許可されます。
+> - **キー**: 1 から 128 文字。既定の形は `[A-Za-z][A-Za-z0-9_]*` です。検査の前に、先頭の `-` が 1 個外されます（`-Foo` は `Foo`）。先頭の `-` の有無が違い、外した後に大文字小文字を無視して同じになる 2 つのキー（`Foo` と `-FOO`）は `InvalidParams` で拒否されます。大文字小文字だけが違う 2 つのキー（`Foo` と `FOO`）は JSON のオブジェクトを読んだ時点で 1 件になるので、要求はそのどちらか一方で受理されます。どちらの値が残るかは JSON の順序で決まります。下の危険なキーの判定は、先頭の `-` を全部外した名前で行うので、`--compile` と `-compile` は `Compile` として扱われます。
+> - **広げたキー**（`GauntletUnrestrictedArguments` が必要）: ASCII の英数字と `_ . - : / +`。`..` は含められません。数字か `_` で始まるキーもこの形です。エラー文とログには、このようなキーは既定の形に入る先頭の部分と長さだけが出ます。成果物の `TestParamKeys` には、受理したキー（外した先頭の `-` 1 個を除いたもの）が載ります。キーに秘密を入れないでください。
+> - **値**: 1024 文字以下。既定の形は `[A-Za-z0-9_.:/+-]` の文字だけで、`..` は含められません。空の値は許可されます。それ以外の文字は、下の「文字」の表に従います。
 >
 > 書式が正しくても、テストやその子プロセスの動作を変えるものがあります。これらには `GauntletUnrestrictedArguments` Capability が必要で、既定では拒否されます（[Safety & Capabilities](safety.md) 参照）。持っていない場合は `CapabilityNotAvailable` で失敗します。以下の照合はすべて大文字小文字を無視します。
 >
@@ -4337,7 +4372,33 @@ PIE / Standalone でのテスト実行。
 > - `:` を含む値、または `+` で区切った要素のどれかが `/` で始まる値（絶対パス・UNC パス・URL）。
 > - `-` と ASCII の英字で始まる値。RunUAT.bat が自身のスイッチとして読むためです。
 >
-> `TestName` と `TestParams` に含まれるシェルやバッチの特殊文字は、この Capability があっても拒否されたままです。
+> **文字。** `TestName`・値・キーの文字は、次の 3 つの区分のどれかに入ります。
+>
+> | 区分 | `TestName` と値 | キー |
+> |---|---|---|
+> | 既定で通る | 値: ASCII の英数字と `_ . : / + -`（既定の形。上に挙げた値は、それでも Capability が要ります）。`TestName`: 上の既定の形だけ。ドット区切りの名前を、空白を挟まずに `,` で区切ったもの（`A.Test,B.Test`） | `[A-Za-z][A-Za-z0-9_]*` |
+> | `GauntletUnrestrictedArguments` で解禁する | 空白、`, ; = ( ) ' ! @ # $ ~ [ ] { } * ?`、バッククォート、下で拒否するもの以外の非 ASCII の文字。上の広げた形の `TestName`（名前の中の `: / + -` と、数字で始まる名前を含む。`TestName` の要素を区切る `,` はこれに当たりません） | ASCII の英数字と `_ . - : / +`（`..` は不可） |
+> | 呼び出し側が何を持っていても拒否する（`InvalidParams`） | 下に列挙 | それ以外の全部（空白、`,` `;` `=`、下に列挙する文字、非 ASCII の文字） |
+>
+> 何を持っていても拒否されるもの:
+>
+> - **`& | < > % ^`**: `cmd.exe` が解釈してしまうためです。エラー文は Gauntlet のプロファイルファイルを案内し、Gauntlet はそのファイルをシェルを通さずに読むと伝えます（下記）。
+> - **`"`**: どの経路でも、文字としてはテストに届きません。エラー文はこの旨を別の文で伝え、プロファイルファイルは案内しません。`TestName` と値はどれも二重引用符の中に書かれるので、空白などをまとめる目的なら引用符は要りません。`&` を運ぶためだけに `"x&y"` と書いていた場合は、プロファイルファイルを使ってください。
+> - **常に**: `..`、`\`、制御文字（C0・DEL・C1）、U+2028、U+2029、双方向の制御文字（U+200E、U+200F、U+202A〜U+202E、U+2066〜U+2069）、孤立サロゲート、長さの上限。
+>
+> `Name=Value` の形で書いたキーは拒否されます。キー `Name`、値 `Value` として渡してください。入力に複数の区分の文字が混ざっているときは拒否が報告されます。付与しても足りないときに Capability が案内されないようにするためです。Capability が無いと `CapabilityNotAvailable` で失敗し、`DeniedCapabilities` で明示的に拒否されていれば `PolicyViolation` で失敗します。
+>
+> **拒否される文字を渡すには: Gauntlet のプロファイルファイル。** Gauntlet はプロファイルの JSON ファイルをシェルを通さずに読むので、`& | < > % ^` はその経路ならそのままテストに届きます。ファイルの絶対パスを `TestParams` のキー `profile`（小文字で完全一致）で渡します。
+>
+> - `{"profile":"C:/path/to/profile.json"}` のように、区切りは `/` で書きます（`\` は拒否されます）。`profile` は危険なキーで、値は絶対パスなので、`GauntletUnrestrictedArguments` が必要です。
+> - ファイルは `{"scripts":[{"script":"RunUnreal","ExecCmds":"..."}]}` の形です。空白と拒否される記号を同時に含む値は、1 要素のリストにします（`"ExecCmds":["a b&c"]`）。文字列のままだと空白で切れます。`"` はどうやっても運べません。
+> - ファイルの中の JSON のキーには、`TestParams` のキーに使えない文字も書けます。Gauntlet は `-args` の値を空白で分け、`-` で始まらない語を捨てます。どの経路でも同じです。
+> - 文字列の `"true"` と `"false"` はどちらも裸のスイッチ `-Key` になります。JSON の真偽値は `true` が `-Key` になり、`false` は落ちます。空の値も落ちます。`test` キーは `TestName` に**追加**されます。置き換えません。
+> - テスト単位のパラメータリストの中の値は、ファイルには書けません。同じ名前のキーとしてファイルに書いてください。全テストに適用されるので、テストごとに違う値は表せません。
+> - **存在しないパスは Gauntlet に黙って無視されます。** 値が届かなくても、テストは成功することがあります。
+> - 運用者向け: プロファイルファイルは別の AutomationTool コマンド（`script`）を実行でき、環境変数を設定できます（空のキー）。同じ Capability で以前から届く範囲です。付与する前に [Safety & Capabilities](safety.md) を読んでください。
+>
+> **RunUAT が `cmd.exe` ではなく bash を通って動く場合**（サポートする起動は Windows です）、引用に頼る入力（広げた文字・キー・`TestName` の形）は、Capability があっても `ExecutionFailed` で拒否されます。
 >
 > **パス。** コマンドラインに載るパスは 1 つずつ検査されます。RunUAT.bat は引数を展開する前に引用符を外すためです。どの記号が許されるかは、そのパスが何かで決まります。
 >
@@ -4355,9 +4416,9 @@ PIE / Standalone でのテスト実行。
 > エンジンのパスの `&` `%` `^` と、Windows がファイル名に使えない記号は、1.2.0 でも起動できず、`ExecutionFailed` で拒否されたままです。
 >
 >
-> パラメータの値と、テスト単位のパラメータリストの中身は、ログ・エラー・成果物のどこにも残りません。パラメータリストは `(<redacted>)` と表示され、記録されるのはパラメータのキーだけです。
+> パラメータの値と、テスト単位のパラメータリストの中身は、ログ・エラー・成果物のどこにも残りません。パラメータリストは `(<redacted>)`、広げた形の `TestName` の要素は `<redacted>` と表示され、既定の形の外にあるキーはエラーとログでは先頭の部分と長さだけが出ます。成果物の `TestParamKeys` には、受理したキー（外した先頭の `-` 1 個を除いたもの）が残ります。
 >
-> エラー: 引数の拒否は `InvalidParams`、`GauntletUnrestrictedArguments` が要るのに持っていない場合、または `&` を含むプロジェクトのパスに必要な `GauntletUnsafeProjectPath` を持っていない場合は `CapabilityNotAvailable`（その Capability が `DeniedCapabilities` で明示的に拒否されているなら `PolicyViolation`）、拒否される文字を含む、または `Saved/UAIP/` の外へレポートのディレクトリを出してしまうセッション ID は `PolicyViolation`、起動できなかった場合（別の Gauntlet テストが実行中、RunUAT やシェルが見つからない、RunUAT.bat が運べないパス、`cmd.exe` が展開する `%` の組、プロセスの起動失敗）は `ExecutionFailed` です。
+> エラー: 引数の拒否は `InvalidParams`、`GauntletUnrestrictedArguments` が要るのに持っていない場合、または `&` を含むプロジェクトのパスに必要な `GauntletUnsafeProjectPath` を持っていない場合は `CapabilityNotAvailable`（その Capability が `DeniedCapabilities` で明示的に拒否されているなら `PolicyViolation`）、拒否される文字を含む、または `Saved/UAIP/` の外へレポートのディレクトリを出してしまうセッション ID は `PolicyViolation`、起動できなかった場合（別の Gauntlet テストが実行中、RunUAT やシェルが見つからない、RunUAT.bat が運べないパス、`cmd.exe` が展開する `%` の組、bash で `cmd.exe` の引用が要る引数、プロセスの起動失敗）は `ExecutionFailed` です。
 
 ---
 
@@ -4560,7 +4621,7 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 
 ### Toolset ブリッジ（4）🧩
 
-プロバイダ：`Toolset.Runtime.Niagara.*`。UE 5.8+ と `NiagaraToolsets` が必要。ネイティブコマンドをミラー。
+プロバイダ：`Toolset.Runtime.Niagara.*`。UE 5.8+ と `NiagaraToolsets` が必要。ネイティブコマンドをミラー。`GetVariable` と `GetUserVariables` は、Toolset が値を返さないとき、または想定外の形の値を返したとき、`ExecutionFailed` と固定の文 `Toolset.<ツール名> failed.` で失敗する。
 
 ---
 
