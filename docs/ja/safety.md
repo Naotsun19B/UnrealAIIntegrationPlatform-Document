@@ -553,6 +553,7 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `RuntimeNiagaraMutation` 🧩 | Runtime での Niagara ユーザー変数設定・Niagara システム差し替え（`SetVariable`、`SetSystem`；`Niagara` プラグイン必須） |
 | `GauntletExecution` | Gauntlet 自動テストセッションの起動 |
 | `GauntletUnrestrictedArguments` | `RunGauntletTest` で、テストの対象や子プロセスの動作を変える引数を許可します。テスト名に付ける括弧のテストごとのパラメータの構文、危険なキー、テスト名で始まるキー、絶対パス / UNC / URL などの値（`-` と英字で始まる値を含む）が対象です。外部プロセスのコマンドラインに安全に渡せない文字（空白・引用符・記号）は、この Capability でも解禁されません |
+| `GauntletUnsafeProjectPath` | `RunGauntletTest` で、`&` を含むプロジェクトのパス（またはレポートのディレクトリの元になるプロジェクトの `Saved` ディレクトリ）を許可します。持っていないと `CapabilityNotAvailable` で失敗します（`DeniedCapabilities` に入っていれば `PolicyViolation`）。**付与すると、テストに加えて、`&` より後ろの文字列を `cmd.exe` が独立したコマンドとして実行します**。信頼できるプロジェクトの場所にだけ付与してください。レポートのディレクトリに `&` があるときは、呼び出し側がそのコマンドに語句を足せないよう、セッション ID を ASCII の英数字と `-` `_` `/` に限り、それ以外の文字は `PolicyViolation` で拒否します。ほかのパスの規則は解きません（プロジェクトのパスの `"` `\|` `<` `>`、`&` `%` `^` を含むエンジンのパスは拒否されたまま）。`GauntletUnrestrictedArguments` でも付与されません |
 
 #### Runtime Insights トレース採取
 

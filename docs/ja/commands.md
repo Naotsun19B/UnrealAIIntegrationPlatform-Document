@@ -472,7 +472,7 @@ Niagara と StateTree には整列コマンドがありません。
 
 ゲームビューポートの UI のコマンド（[`UAIP.Runtime.Observation`](#uaipruntimeobservation)・[`UAIP.Runtime.Input`](#uaipruntimeinput)）の追加にあわせて、既存の実行時コマンドがプレイワールドが無いことを報告する方法を揃えました。プレイワールドがあるあいだは何も変わりません。以下の違いが現れるのは、プレイワールドが無いとき、または Capability を拒否しているときだけです。
 
-**プレイワールドが無いとき: エラーコードは `NotAllowed` になります。** プレイワールドを必要とする実行時コマンドは、共通の 1 つの対応表を通して、同じ `NotAllowed` で拒否するようになりました。シナリオがステップを自動で再試行するのは `ExecutionFailed` と `PreconditionFailed` の後だけなので、**これらのコマンドは、プレイワールドが無いときに再試行されなくなります**。PIE の起動を再試行で待っていたシナリオは、明示的に待つ形へ書き換えてください。
+**プレイワールドが無いとき: エラーコードは `NotAllowed` になります。ただし Niagara のネイティブ 4 コマンドは除きます。** プレイワールドを必要とする実行時コマンドは、共通の 1 つの対応表を通して、同じ `NotAllowed` で拒否するようになりました。例外は `UAIP.Runtime.Niagara` の `GetUserVariables`・`GetVariable`・`SetVariable`・`SetSystem`（ネイティブのコマンド）で、これらは従来どおり `PreconditionFailed` を返します。シナリオがステップを自動で再試行するのは `ExecutionFailed` と `PreconditionFailed` の後だけなので、**ほかのコマンドは、プレイワールドが無いときに再試行されなくなります**。Niagara のネイティブ 4 コマンドは引き続き再試行されます。PIE の起動を再試行で待っていたシナリオは、この 4 コマンドを除いて、明示的に待つ形へ書き換えてください。
 
 | モジュール | コマンド | 変更前 | 変更後 |
 |---|---|---|---|
@@ -482,9 +482,11 @@ Niagara と StateTree には整列コマンドがありません。
 | GAS 🧩 | 14 コマンドすべて | `ExecutionFailed` | `NotAllowed` |
 | Assertion | `AssertActorProperty`・`AssertWorldState`・`WaitForCondition` | `ExecutionFailed` | `NotAllowed` |
 | Execution | `RunFunctionalTest`・`RunRuntimeAutomationTest` | `ExecutionFailed` | `NotAllowed` |
-| Niagara 🧩 — **向きが逆です** | `GetUserVariables`・`GetVariable`・`SetSystem`・`SetVariable`（Toolset ブリッジ経由も同じ） | `PreconditionFailed` | `NotAllowed` |
+| Niagara 🧩 — **例外** | `GetUserVariables`・`GetVariable`・`SetSystem`・`SetVariable`（ネイティブのコマンド） | `PreconditionFailed` | `PreconditionFailed`（変更なし。`RetryCount` で引き続き再試行される） |
+| Niagara 🧩 Toolset ブリッジ | `Toolset.Runtime.Niagara.GetUserVariables`・`GetVariable`・`SetSystem`・`SetVariable` | `PreconditionFailed` | `NotAllowed`（`Experimental`） |
 
 - GAS の読み取り系 5 コマンド（`GetActiveEffects`・`GetActiveTags`・`GetAttributeValues`・`GetGrantedAbilities`・`FindAttributeSetClasses`）は、**ワールドを指定しなければ**（`TargetNetRole` / `TargetPIEInstance` を渡さなければ）、プレイワールドが無いとき、これまでどおり編集中のレベルを読みます。`NotAllowed` になるのは、ワールドを指定したのにそれが動いていない場合だけです。
+- Niagara のネイティブ 4 コマンドが `PreconditionFailed` を返すのは、プレイワールドが全く無いときだけです。プレイワールドはあるが、指定した `TargetNetRole` / `TargetPIEInstance` に合うものが無いときは `NotAllowed`、選択子が曖昧なとき、または指定した PIE インスタンスの役割が `TargetNetRole` と食い違うときは `InvalidParams` です。どちらの選択子もこのリリースで新設されたため、1.2.0 向けに書かれた呼び出しがこれに当たることはありません。
 - `WaitForCondition` は、待機の最初の判定でプレイワールドが無ければ `NotAllowed` になります。一度ワールドが見つかった後、待機の途中で消えた場合は、これまでどおり `ExecutionFailed` で終わり、シナリオは再試行します。
 - `RunFunctionalTest` / `RunRuntimeAutomationTest` の実行の**途中で**プレイワールドが消えた場合は、これまでどおり `NotAllowed` ではなく、タイムアウトまたはテストの失敗として返ります。
 
@@ -845,9 +847,9 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 |---|---|
 | 🆓 `CaptureActiveWindowImage` | アクティブな最上位ウィンドウのスクリーンショット（PNG Artifact）。エディタがフォアグラウンドである必要はない — アクティブなウィンドウがない場合はメインウィンドウを撮影し、どちらを撮ったかを `Result.CapturedWindow`（`"ActiveWindow"` / `"MainWindow"`）で返す。フォールバックはメインウィンドウにしか届かないため、フローティングのアセットエディタやモーダルダイアログは `CaptureEditorTabImage` を使う。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
 | 🆓 `CaptureEditorTabImage` | 指定エディタタブのウィジェット領域のスクリーンショット。Slate レイアウト識別子で指定するため、`DumpEditorState` が返す `ActiveTabId` をそのまま渡せる。エディタが背面でも動作する。⚠️ 撮影前に対象タブを前面へ出すため（背面のタブは描画されておらず空の画像になる）、それを収めた外側のエディタのタブ（たとえばブループリントエディタが手前にあるときのレベルエディタのタブ）ごと前に出る。**ユーザーに見えているタブが切り替わり**、タブが点滅する。エディタの OS ウィンドウは他のアプリの前には出さない。タブを前に出したときは、描かれるのを最長 2 秒待ってから撮る。すでに前にあるタブはすぐ撮る。それでも描かれないときは、文がユーザーにタブを前に出してもらうよう案内する。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
-| 🆓 `CaptureGraphViewportImage` | SGraphEditor ビューポートのスクリーンショット。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） （`TabId` は、開いているアセットの `/` で始まる完全なアセットパス〔レベル Blueprint のパスを含む〕も受け付け、完全一致で照合する） |
+| 🆓 `CaptureGraphViewportImage` | SGraphEditor ビューポートのスクリーンショット。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） （`TabId` は、開いているアセットの `/` で始まる完全なアセットパス〔レベル Blueprint のパスを含む〕も受け付け、完全一致で照合する。`/` で始まる値が開いているどのグラフエディタにも解決できない場合〔アセットが開いていない、またはグラフのタブが無い〕は従来どおり `InvalidParams`、`/` を含まない値が見つからない場合は `NotFound`） |
 | 🆓 `DumpEditorState` | アクティブタブ・開いているアセット・ウィンドウサイズ等（JSON）。あわせてプレイセッションの状態を `IsPIERunning` / `IsPIEPaused` / `IsSimulatingInEditor` の 3 つの真偽値で返す。編集系コマンドの多くはセッション実行中に拒否され、その間に取ったワールドのダンプはエディタワールドではなくプレイワールドを表すため、変更を加える前にここを読む。3 つとも常に存在するので「何も再生されていない」と「報告されていない」を区別できる。`MainWindowSize` は最初の最上位ウィンドウの大きさで、メインフレームとは限らない。メインフレームそのものは `MainWindowState` で読む。`MainWindowState` は `State`（`Normal` / `Minimized` / `Maximized` / `Hidden` / `NoWindow`。一度も表示されていないウィンドウは `Hidden`）・`Size` と `RestoredSize`（どちらも `Width` と `Height` を持つオブジェクト。ウィンドウが無いときは 0）・`CaptureBlocker`（キャプチャが撮れるときは `None`、そうでなければキャプチャが拒否される[`Reason`](#キャプチャが断られるとき)）を持つ。このコマンドは読み取りだけで同期はしないので、キャプチャや `SetEditorWindowState` なら自動で直る食い違いでも、`CaptureBlocker` が `WindowSizeMismatch` になりうる。`MainWindowState` には `SizeCheck`（`NotQueryable` / `Minimized` / `Matched` / `Mismatched`）・`SizeMismatched`（bool または null）・`OsClientSize` と `SlateSize`（どちらも `Width` / `Height`。`SizeCheck` が `Matched` / `Mismatched` 以外のときは null）もある。ルートには `WindowMessageRecording` がある: `RecordingEnabled`・`RecordingActive`・`RecordingStatus`（`Disabled` / `NotRegistered` / `WaitingForMessages` / `Recording`）・`TotalRecordedCount`・`Capacity`（64。優先でないウィンドウが共有するリングの容量）・`PriorityWindowCapacity`（64。優先ウィンドウ 1 つあたり）・`MaxPriorityWindowCount`（8）・`PriorityMessageCount`・`SharedMessageCount`（この 2 つの合計が `RecentMessages` の件数）・`RecentMessages`（古い順。1 件は `Kind`・`WindowHandle`・`IsPriorityWindow`・`SizeType`・`MessageSize`・`MessageSizeMeaning`・`WindowPosFlags`・`ClientStateAtArrival`・`TimeSeconds`・`SequenceNumber`）。Slate の通常のウィンドウ（メインウィンドウ、別ウィンドウになったフローティングタブやアセットエディタ、モーダルダイアログ）のメッセージは優先として扱われ、ウィンドウごとに専用のリングで直近 64 件を保持する（最大 8 ウィンドウ。9 つ目が送ってきたら、最後のメッセージが最も古いウィンドウが記録ごと外れる）。数百件のメッセージを送る通知トーストやメニューは優先ウィンドウではないため、これらを押し出さない。それ以外のウィンドウのメッセージも、共有の 1 つのリング（直近 64 件）に記録される。一覧は合計で最大 576 件になりうる。どちらの記録かは `IsPriorityWindow` で分かる。`MessageSizeMeaning` は `MessageSize` が何の大きさかを示す: `ClientArea`（`WM_SIZE`）・`WholeWindow`（`WM_WINDOWPOSCHANGED`。クライアント領域ではなくウィンドウ全体なので、`ClientArea` とそのまま比べない）・`ProposedWholeWindow`（`WM_NCCALCSIZE`）。メッセージが大きさを持たなかったときは `MessageSize` が null、`WM_SIZE` 以外では `SizeType` が null、OS にウィンドウの状態を問い合わせられなかったときは `ClientStateAtArrival` が null になる。記録の有無は [`RecordWindowMessages`](config.md#uaipruntimeobservation--ウィンドウサイズメッセージの記録と-hud-描画統計) で切り替える |
-| 🆓 `DumpSelectionState` | 現在の選択状態（JSON）。`SelectedActors` / `SelectedObjects` は常に返る。`TabId` が開いているグラフエディタタブを指す場合に限り `SelectedNodes`（ノードごとに `NodeId` / `NodeClass` / `NodeTitle` / `Position`）も返る — 解決方法は `CaptureGraphViewportImage` の `TabId` と同じ（Slate タブへの完全一致、続いて開いているアセットの名前への大小文字を区別しない部分一致。`/` で始まる値は開いているアセットの完全なアセットパス〔レベル Blueprint のパスを含む〕で、完全一致で照合される。それ以外の値は `/` を含められない）。`TabId` がどのタブにも一致しない場合は `SelectedNodes` を空にして成功させるのではなく `NotFound` を返す。`TabId` を省略した場合の挙動は変更なし — `SelectedNodes` は空のままで、アクター/オブジェクトの選択は従来どおり返る |
+| 🆓 `DumpSelectionState` | 現在の選択状態（JSON）。`SelectedActors` / `SelectedObjects` は常に返る。`TabId` が開いているグラフエディタタブを指す場合に限り `SelectedNodes`（ノードごとに `NodeId` / `NodeClass` / `NodeTitle` / `Position`）も返る — 解決方法は `CaptureGraphViewportImage` の `TabId` と同じ（Slate タブへの完全一致、続いて開いているアセットの名前への大小文字を区別しない部分一致。`/` で始まる値は開いているアセットの完全なアセットパス〔レベル Blueprint のパスを含む〕で、完全一致で照合される。それ以外の値は `/` を含められない）。`TabId` がどのタブにも一致しない場合は `SelectedNodes` を空にして成功させるのではなく `NotFound` を返す。ただし `/` で始まる値が開いているどのグラフエディタにも解決できない場合（アセットが開いていない、またはグラフのタブが無い）は、アセットパスを受け付ける前と同じく `InvalidParams` を返す。`TabId` を省略した場合の挙動は変更なし — `SelectedNodes` は空のままで、アクター/オブジェクトの選択は従来どおり返る |
 | 🆓 `DumpOpenTabs` | 開いているアセットエディタタブ一覧（JSON） |
 | 🆓 `DumpOutputLog` | バッファリングされた Output Log（テキスト Artifact、行数・フィルタ対応） |
 | 🆓 `DumpMessageLog` | Message Log エントリ（カテゴリフィルタ付き JSON Artifact） |
@@ -879,10 +881,11 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 - **`InBackgroundTab` だけは表の順と違う**: `Headless` と Slate 未初期化の `NoWindow` の後、ほかのウィンドウの確認より前に確認する。表の末尾近くにあるのは、後から足したため。`WindowSizeMismatch` は `Minimized` / `Hidden` の後、`NotRenderable` の前に確認する。
 - **`NoWindow` と `NotRenderable` は `PreconditionFailed`**: 土台がまだ無く、待てば直る。シナリオのステップに `RetryCount` があれば再試行される。
 - **それ以外の `Reason` は `NotAllowed`**: 既にあるウィンドウの状態がキャプチャを許さない。シナリオの `RetryCount` は `NotAllowed` を**再試行しない**。以前は最小化されたウィンドウに `ExecutionFailed` が返っていたため再試行の対象だったステップも、今は 1 回で失敗する。表のとおり、先に状態を変える。
-- 親のウィンドウが描かれないとき、子のウィンドウも描かれない。そのため、親が最小化または非表示のウィンドウの子（浮いているウィンドウなど）は、子自身が最小化されていなくても、親の状態（`Minimized` または `Hidden`）で拒否される。モーダルが開いている間は、モーダル・その子・ツールチップ・通知だけが撮れる。
+- **親のウィンドウが最小化または非表示の子ウィンドウは、対象にエディタの 3D ビューポートが含まれない限り撮れる。** スクリーンショットはグラフ・Slate ウィジェット・通常のタブやウィンドウを自力で描き直すため、親が描かれていなくても画像は現在の内容を映す。そのため、親の状態を理由には拒否しない。エディタの 3D ビューポートは例外で、フレームループでしか更新されず、親が最小化または非表示のあいだはそのループが回らない。3D ビューポートを含むタブやウィンドウ（レベルエディタのビューポート、Blueprint やメッシュのプレビューのビューポートなど）を撮ると古い画像が返るため、子自身が最小化されていなくても、親の状態（`Minimized` または `Hidden`）で拒否される。親のウィンドウを戻してから撮り直す。`CaptureViewportImageAnnotated` はレベルエディタのビューポートを撮るので、常にこちらの組に入る。対象のウィンドウ自身が最小化または非表示なら、どちらの組でも拒否される。
+- モーダルが開いている間は、モーダル・その子・ツールチップ・通知だけが撮れる。3D ビューポートを含むかどうかにかかわらずこれは変わらず、親が描かれていても、モーダルの外の対象は通常は拒否される。
 - 撮れる状態のはずが撮影に失敗した場合（エンジンが画像を返さない、画像が空、PNG への変換に失敗）は、`Reason` なしの `ExecutionFailed` で、文がどの段階の失敗かを言う。
 
-**ゲームビューポートのコマンドも同じように断る。** `CaptureViewportImage`（`UAIP.Runtime.Observation`）は、撮る前にゲームビューポートが描かれる状態かを確かめる。描かれない状態（ビューポートを持つウィンドウが最小化・非表示、モーダルが開いている、など）なら、撮らずに拒否する。`Reason`・エラーコード・`Result.Reason` は上の表と同じで、エラー文が直し方を言う。最小化されたウィンドウがエディタのメインウィンドウ（そこに収まった Play In Editor のウィンドウ）なら `SetEditorWindowState` の案内、別ウィンドウの PIE やスタンドアロンのゲームなら、そのウィンドウを戻してもらう案内になる。撮れる状態のはずが撮影に失敗した場合は、従来どおり `Reason` なしの `ExecutionFailed`。
+**ゲームビューポートのコマンドも同じように断る。** `CaptureViewportImage`（`UAIP.Runtime.Observation`）は、撮る前にゲームビューポートが描かれる状態かを確かめる。描かれない状態（ビューポートを持つウィンドウが最小化・非表示、モーダルが開いている、など）なら、撮らずに拒否する。`Reason`・エラーコード・`Result.Reason` は上の表と同じで、エラー文が直し方を言う。最小化されたウィンドウがエディタのメインウィンドウ（そこに収まった Play In Editor のウィンドウ）なら `SetEditorWindowState` の案内、別ウィンドウの PIE やスタンドアロンのゲームなら、そのウィンドウを戻してもらう案内になる。撮れる状態のはずが撮影に失敗した場合は、従来どおり `Reason` なしの `ExecutionFailed`。別ウィンドウのゲームビューポートは、その親のウィンドウが最小化または非表示でも撮れる（ゲームが描き続けるため）。ただし、ビューポートを持つウィンドウ自身は描かれている必要がある。
 
 - **`CheckpointCapture` は拒否をそのまま引き継ぐ。** 最初に `CaptureViewportImage` で撮るため、それが拒否されると、チェックポイントも同じ `NotAllowed` または `PreconditionFailed` で拒否し、`Reason` を自分の `Result.Reason` にコピーする。エラー文は `CheckpointCapture: CaptureViewportImage failed: ` に `CaptureViewportImage` の文が続く形。組み合わせている 2 つのコマンドのそれ以外の失敗は `ExecutionFailed` のまま。
 - **ゲームビューポートの UI 操作は、ホストウィンドウの状態で拒否される。** `ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText` は、何かを送る前にゲームを載せているウィンドウを確かめ、`Reason: HostWindowUnavailable` で拒否する。`NoWindow`（ゲームビューポートのウィンドウがまだ無い）は `PreconditionFailed`（`The game viewport has no window yet. Retry after the game window has been created.`）、`Hidden` と `Minimized` は `NotAllowed`（`The window that hosts the game is not visible, so nothing in it is laid out.` / `The window that hosts the game is minimized, so nothing in it is laid out.`）。最小化は `PreconditionFailed` ではなく `NotAllowed` なので、シナリオの `RetryCount` は再試行しない。先にウィンドウを戻す。
@@ -2424,12 +2427,16 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 | `AddBlackboardKey` | キーを追加（重複名チェック）。`/Script/AIModule` 以外のキー型と、書き込み側が指す先を選べる 2 種のキー型には、それぞれ Capability が要ります — 下の Note を参照してください |
 | `RemoveBlackboardKey` | 未参照のキーを削除（使用中は Conflict + 参照元を返す）— そのキーの型が要求する Capability が同じく必要です |
 | `SetBehaviorTreeBlackboard` | BT アセットの参照 Blackboard を変更 |
-| `RequestBehaviorTreeAutoArrange` | ⚠️ **非推奨** — 代わりに `ArrangeBehaviorTreeGraph` を使用。`Method=Auto` で BT グラフを Undo 1 回の整列で並べる。アセットを BehaviorTree エディタで開いていなくても動く。引数と応答の形は変わらず、`Arranged` は 1 つ以上のノードが動いたときだけ `true` |
+| `RequestBehaviorTreeAutoArrange` | ⚠️ **非推奨** — 代わりに `ArrangeBehaviorTreeGraph` を使用。BehaviorTree エディタで開いている Behavior Tree に対して、エンジンの整列を Undo 1 回で実行する。引数と応答の形は変わらず、`Arranged: true` は整列が実行されたことを表し、ノードが動いたことは表さない。開いていないアセット、または開いていても描画がまだのノードがあるツリーは、何も変えずに `Arranged: false` を返す。閉じているアセットを整列するには `ArrangeBehaviorTreeGraph` を使う |
 | `ArrangeBehaviorTreeGraph` | BehaviorTree を木として並べ直す（ルートが上、子は親の下に、実行する順に左から。**実行順は変わらない**）。`AssetPath` と共通の引数を取る。`NodeIds` は `GetBehaviorTreeNodeList` の `NodeGuid`（デコレーターとサービスは親に追従するので指定できない）。エディタで開いていないアセットでも動き、Undo 1 回で戻り、ワイヤー・プロパティ・実行時の木は変えない。`Method=Auto` は、アセットが開いていて全ノードが描画済みで、`NodeIds`・間隔・中身のあるコメントが無く、全ノードがルートにつながり、X が同じ兄弟がいないときだけエンジンの整列を使い、それ以外は自前の整列で `MethodReason` に理由を返す。`Method=Engine` はエディタが開いていて全ノードが描画済みであることが必要で、エディタの表示をグラフ全体にズームし直す。`NodeIds` で順を保てる置き場所が無いときは `Conflict`。`BehaviorTreeGraphEdit` 必須。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 > **Note — ノードを追加しても木は並べ直されなくなりました。** `AddBehaviorTreeCompositeNode` と `AddBehaviorTreeTaskNode` は、追加のたびに自動整列を実行していましたが、実行しなくなりました。新しいノードは親の近くに置かれ、ほかのノードは動きません。木を整えたいときは `ArrangeBehaviorTreeGraph` を呼びます。
 >
-> **`RequestBehaviorTreeAutoArrange` は非推奨**になり、移行先は `ArrangeBehaviorTreeGraph` です（移行先は非推奨の案内と一緒に返ります）。引数（`AssetPath` のみ）と応答（`AssetPath`、`Arranged`）の形は変わりませんが、中身は `ArrangeBehaviorTreeGraph` の `Method=Auto` と同じになりました。BehaviorTree エディタで開いていないアセットでも動き、整列は Undo 1 回で戻ります。`Arranged` は、1 つ以上のノードが動いたときだけ `true` です。
+> **`RequestBehaviorTreeAutoArrange` は非推奨**になり、移行先は `ArrangeBehaviorTreeGraph` です（移行先は非推奨の案内と一緒に返ります）。引数（`AssetPath` のみ）と応答（`AssetPath`、`Arranged`）の形は変わらず、1.2.0 と同じ動作を保ちます。BehaviorTree エディタで開いているツリーを、エンジンの整列で並べます。新しくなったのは、整列が Undo 1 回で戻ること、ノードが 1 つも動かなかったときに変更済みの印を付けないこと、応答に非推奨の案内が付くことです。
+>
+> - **`Arranged: true`** — アセットが開いていて、整列が実行された。ノードが動いたかどうかは表さない。動かすノードが無い、ルートノードの無いツリーも `true` を返す。
+> - **`Arranged: false`** — 何も変更していない。アセットがエディタで開いていない、描画済みのノードがまだ無い、または整列に必要なノードの準備ができていない（ルートから辿れるノードにウィジェットがまだ無い、ルートのグラフパネルが無い、リンクが輪になっている）。アセットを開いてツリーが描かれるのを待ってから呼び直すか、閉じたアセットにも使える `ArrangeBehaviorTreeGraph` を使う。
+> - パスが不正、見つからない、Play-in-Editor 中で使用中、またはグラフを取得できない場合は、従来どおり `InvalidParams` / `NotFound` / `NotAllowed` / `ExecutionFailed` を返す。
 
 > **成功時の `Result`（BehaviorTree の編集 3 コマンド）。** 要求で渡した識別子をそのまま返します（正規化はしません）。**設定した値（`Value`）は載せません。**
 >
@@ -4330,11 +4337,27 @@ PIE / Standalone でのテスト実行。
 > - `:` を含む値、または `+` で区切った要素のどれかが `/` で始まる値（絶対パス・UNC パス・URL）。
 > - `-` と ASCII の英字で始まる値。RunUAT.bat が自身のスイッチとして読むためです。
 >
-> シェルやバッチの特殊文字は、この Capability があっても拒否されたままです。
+> `TestName` と `TestParams` に含まれるシェルやバッチの特殊文字は、この Capability があっても拒否されたままです。
+>
+> **パス。** コマンドラインに載るパスは 1 つずつ検査されます。RunUAT.bat は引数を展開する前に引用符を外すためです。どの記号が許されるかは、そのパスが何かで決まります。
+>
+> | パス | そのまま通る | `GauntletUnsafeProjectPath` が要る | 拒否 |
+> |---|---|---|---|
+> | エンジン（RunUAT） | `!` | - | `"` `%` `&` `\|` `<` `>` `^`、制御文字 |
+> | プロジェクトファイルと、レポートのディレクトリのうちプロジェクトの `Saved` ディレクトリ由来の部分 | `!` `^` `%` | `&` | `"` `\|` `<` `>`、制御文字 |
+> | レポートのディレクトリのセッション ID | それ以外のすべて（下記参照） | - | `"` `%` `!` `&` `\|` `<` `>` `^`、制御文字。プロジェクト側に `&` があるときは、ASCII の英数字と `-` `_` `/` 以外すべて |
+>
+> - **プロジェクトのパスの `&`** には `GauntletUnsafeProjectPath` Capability が要ります。既定では拒否されており、`GauntletUnrestrictedArguments` では**付与されません**。持っていないと `CapabilityNotAvailable` で失敗し、Capability 名が案内されます（`DeniedCapabilities` で明示的に拒否されているなら `PolicyViolation`）。**付与すると、`&` より後ろの文字列が `cmd.exe` で独立したコマンドとして実行されます**。信頼できるプロジェクトの場所にだけ付与してください。付与すれば、`&` を含むパスのプロジェクトも 1.2.0 と同じように起動します。
+> - **`cmd.exe` が展開する `%` の組**（2 つの `%` の間の文字列が環境変数の名前、または `CD` や `DATE` のように `cmd.exe` 自身が値を入れる名前になっているもの）は、パスが別のパスとして RunUAT に届いてしまうため、`ExecutionFailed` で拒否されます。単独の `%`、または存在しない名前を挟んだ組は通ります。
+> - **レポートのディレクトリ**はプロジェクト配下の `Saved/UAIP/<SessionId>/...` です。セッション ID によって `Saved/UAIP/` の外へ出てしまう場合（`../` を含む、`...` のようなセグメントがある、など）は、何も作らずに `PolicyViolation` で拒否されます。セッション ID に `"` `%` `!` `&` `|` `<` `>` `^` のいずれか、または制御文字が含まれる場合も `PolicyViolation` で拒否され、プロセスは起動しません（以前は起動していました）。この拒否はどの権限でも解けません。値を決めるのは呼び出し側であり、ASCII の英数字と `-` `_` で作った ID でも同じ結果になるためです。プロジェクトのパスに `&` があり（`GauntletUnsafeProjectPath` を付与している場合）、レポートのディレクトリのうち `&` より後ろの部分がコマンドとして実行されるため、セッション ID は ASCII の英数字と `-` `_` `/` に限られ、空白や `=` も `PolicyViolation` で拒否されます。
+> - パスに拒否される文字が複数ある場合は、どの権限でも解けないものが先に報告されます。付与しても足りないときに Capability が案内されないようにするためです。
+>
+> エンジンのパスの `&` `%` `^` と、Windows がファイル名に使えない記号は、1.2.0 でも起動できず、`ExecutionFailed` で拒否されたままです。
+>
 >
 > パラメータの値と、テスト単位のパラメータリストの中身は、ログ・エラー・成果物のどこにも残りません。パラメータリストは `(<redacted>)` と表示され、記録されるのはパラメータのキーだけです。
 >
-> エラー: 引数の拒否は `InvalidParams`、`GauntletUnrestrictedArguments` が要るのに持っていない場合は `CapabilityNotAvailable`（その Capability が `DeniedCapabilities` で明示的に拒否されているなら `PolicyViolation`）、起動できなかった場合（別の Gauntlet テストが実行中、RunUAT やシェルが見つからない、RunUAT.bat が運べないパス、プロセスの起動失敗）は `ExecutionFailed` です。
+> エラー: 引数の拒否は `InvalidParams`、`GauntletUnrestrictedArguments` が要るのに持っていない場合、または `&` を含むプロジェクトのパスに必要な `GauntletUnsafeProjectPath` を持っていない場合は `CapabilityNotAvailable`（その Capability が `DeniedCapabilities` で明示的に拒否されているなら `PolicyViolation`）、拒否される文字を含む、または `Saved/UAIP/` の外へレポートのディレクトリを出してしまうセッション ID は `PolicyViolation`、起動できなかった場合（別の Gauntlet テストが実行中、RunUAT やシェルが見つからない、RunUAT.bat が運べないパス、`cmd.exe` が展開する `%` の組、プロセスの起動失敗）は `ExecutionFailed` です。
 
 ---
 
@@ -4532,6 +4555,8 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 | `GetVariable` 🧩 | 特定のユーザー変数の値を取得 |
 | `SetVariable` 🧩 | ユーザー変数の値を Runtime で設定 |
 | `SetSystem` 🧩 | コンポーネントの Niagara System アセットを Runtime で差し替え |
+
+プレイワールドが無いあいだ、ネイティブの 4 コマンドは `PreconditionFailed` を返すため、`RetryCount` を付けたシナリオのステップは PIE が始まるまで再試行されます。ほかの Runtime コマンドが共通で返す `NotAllowed` の、唯一の例外です。[互換性](#互換性-すでにあったコマンドで変わったこと)を参照してください。下の Toolset ブリッジは `NotAllowed` を返します。
 
 ### Toolset ブリッジ（4）🧩
 
