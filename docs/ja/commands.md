@@ -2,7 +2,7 @@
 
 # コマンドリファレンス
 
-UAIP は 1342 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1763 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1343 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1764 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
@@ -99,7 +99,7 @@ Play-in-Editor または Simulate のセッション中は、エディタを変�
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
 | Editor Level | `UAIP.Editor.Level` | 24 | 8 | 一部（10/24） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 28 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 29 | — | — |
 | Editor UMG | `UAIP.Editor.UMG` | 24 | 13 | — |
 | Editor Material | `UAIP.Editor.Material` | 12 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
@@ -1351,15 +1351,16 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 Blueprint 変数・イベントグラフノード・SCS コンポーネントの編集。グラフ・ピン・変数・関数の上書き・コンパイルのコマンドは、エディタで開いているマップのレベル Blueprint も編集できる — [レベル Blueprint](#レベル-blueprint) を参照。
 
-### 変数とグラフ（12）
+### 変数とグラフ（13）
 
 | コマンド | 説明 |
 |---|---|
-| `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。Blueprint で変数の型として使えない型は、エディタの変数型メニューと同じ規則で `InvalidParams` として拒否されます。クラスは自身または祖先に `BlueprintType`（または `BlueprintSpawnableComponent`）が必要で、`NotBlueprintType` のものは拒否されます。構造体は `BlueprintType` が必要で、`BlueprintInternalUseOnly` のものは拒否されます。拒否された呼び出しは Blueprint を変更しません（変数は追加されず、アセットも dirty になりません）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください。秘密の変数（既定値を書く前と書いた後で判定）では、応答の `DefaultValue` は、送らなくても `***` と `IsMasked: true` になる |
+| `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。Blueprint で変数の型として使えない型は、エディタの変数型メニューと同じ規則で `InvalidParams` として拒否されます。クラスは自身または祖先に `BlueprintType`（または `BlueprintSpawnableComponent`）が必要で、`NotBlueprintType` のものは拒否されます。構造体は `BlueprintType` が必要で、`BlueprintInternalUseOnly` のものは拒否されます。拒否された呼び出しは Blueprint を変更しません（変数は追加されず、アセットも dirty になりません）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください。秘密の変数（既定値を書く前と書いた後で判定）では、応答の `DefaultValue` は、送らなくても `***` と `IsMasked: true` になる。レベル Blueprint の無いマップでは、レベル Blueprint が呼び出しと一緒に作られ、その作成は Undo で戻らない |
 | `DeleteBlueprintVariable` | メンバー変数を削除 |
 | `SetBlueprintVariableDefault` | Blueprint 変数の CDO デフォルト値を更新 秘密の変数の `PreviousValue` / `NewValue` は、応答と artifact のどちらでも `***` と `IsMasked: true` になります。 |
-| `AddGraphNode` | Blueprint アセットの**あらゆるグラフ**（イベントグラフと関数グラフに限らない）、または開いているマップのレベル Blueprint にノードを追加。`NodeType` は 20 種類 — 変数の Get/Set・関数呼び出し・BeginPlay/Tick・親やインターフェースのイベント（`Event`）・カスタムイベント・キー入力と Enhanced Input のイベント・コンポーネントとアクターとイベントディスパッチャーのイベント・Create Widget・Branch・Sequence・標準のマクロ・Self・Cast — [`AddGraphNode` のノードの種類](#addgraphnode-のノードの種類) を参照。各種類は自分の引数しか受け付けない。`Result` と artifact が `NodeId`・`AlreadyExisted`・`AdditionalNodes` を返す。対象は `GraphName`・`GraphGuid`・`GraphPath` のいずれかで選ぶ。グラフの選び方・複数一致時の扱い・2 段階の受け入れ判定は表の下の注記を参照 |
-| `AddFunctionOverride` | 値を返す・出力引数を持つ・const の、親クラスかインターフェースの関数を、Override メニューと同じく関数グラフとして上書きする。グラフと、その入口・結果ノードの GUID を返す |
+| `AddGraphNode` | Blueprint アセットの**あらゆるグラフ**（イベントグラフと関数グラフに限らない）、または開いているマップのレベル Blueprint にノードを追加。`NodeType` は 21 種類 — 変数の Get/Set・関数呼び出し・BeginPlay/Tick・親やインターフェースのイベント（`Event`）・カスタムイベント・キー入力と Enhanced Input のイベント・コンポーネントとアクターとイベントディスパッチャーのイベント・Create Widget・Branch・Sequence・MultiGate・標準のマクロ・Self・Cast — [`AddGraphNode` のノードの種類](#addgraphnode-のノードの種類) を参照。各種類は自分の引数しか受け付けない。`Result` と artifact が `NodeId`・`AlreadyExisted`・`AdditionalNodes` を返す。対象は `GraphName`・`GraphGuid`・`GraphPath` のいずれかで選ぶ。グラフの選び方・複数一致時の扱い・2 段階の受け入れ判定は表の下の注記を参照。レベル Blueprint の無いマップでは、レベル Blueprint が呼び出しと一緒に作られ（それまではイベントグラフだけを対象にできる）、その作成は Undo で戻らない |
+| `AddFunctionOverride` | 値を返す・出力引数を持つ・const の、親クラスかインターフェースの関数を、Override メニューと同じく関数グラフとして上書きする。グラフと、その入口・結果ノードの GUID を返す。マップにまだ無いレベル Blueprint は呼び出しと一緒に作られ、その作成は Undo で戻らない |
+| `ApplyBlueprintGraphEdit` ⚠️ | Blueprint の 1 つのグラフを宣言的に編集する。ノードの作成、実行ピンをたどる文（`If`・`Sequence`・`MultiGate`・`Loop`・`Break`・`DoOnce`・`DoN`・`Gate`・`FlipFlop`）による連結、ピンの接続、既定値の設定、接続の切断、ノードの削除を、1 つの要求から 1 回の Undo の単位で行う。DefaultDenied の `BlueprintGraphEdit` が必要。[ApplyBlueprintGraphEdit](#applyblueprintgraphedit) を参照 |
 | `DeleteGraphNode` | グラフノードを GUID 指定で削除（EntryNode・Tunnel は削除不可）。`GraphName`・`GraphGuid`・`GraphPath` で探すグラフを 1 つに絞り、`NodeId` を共有するノードは `NodeObjectName` で選ぶ。読み取り専用のグラフでも削除は成功し、`Result.Warnings` で知らせる。[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) を参照 |
 | `ConnectBlueprintPins` | Blueprint グラフの 2 ピンを接続。⚠️ どちらかの端がコードを実行しうる関数の呼び出し、または Editor Utility の Blueprint の関数の呼び出しのときは、`BlueprintUnrestrictedNodePlace` も必要 — [コードを実行しうる関数の呼び出し](#コードを実行しうる関数の呼び出し) を参照。ピン名の代わりに `SourcePinId` / `TargetPinId`、グラフの指定（両方のノードに効く。無いと、別々のグラフのノードは `ExecutionFailed` で断る）、`SourceNodeObjectName` / `TargetNodeObjectName` を取る。孤立ピンは `ExecutionFailed`、読み取り専用のグラフでの接続は成功して `Result.Warnings` で知らせる。[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) を参照 |
 | `DisconnectBlueprintPins` | ピン接続を切断。ピン名の代わりに `SourcePinId` / `TargetPinId`、グラフの指定、`SourceNodeObjectName` / `TargetNodeObjectName` を取る。ID で指した孤立ピンは扱え、`Result.Warnings` で知らせる。読み取り専用のグラフでの変更も同じ。[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) を参照 |
@@ -1404,7 +1405,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 - **読み取り専用のグラフ。** エディタが読み取り専用として表示するグラフでも、`ConnectBlueprintPins`・`DisconnectBlueprintPins`・`SetPinDefaultValue`・`DeleteGraphNode` は成功し、`Result.Warnings` で知らせます。`AddGraphNode` などの配置コマンドは従来どおり `NotAllowed` で、2 つの Regenerate コマンドも `NotAllowed` です。
 - **ID の振り直し。** `BlueprintReferencedGuidRegenerate`（DefaultDenied）が必要なのは、ノードではコンポーネントのノード、Animation Blueprint のすべてのノード、エンジンの `BlueprintGraph` モジュールが定義していないクラスのノード（別モジュールで派生したイベントを含む）、グラフでは折りたたみノードが持つグラフ以外のすべてと、Animation Blueprint のすべてのグラフです。イベントとカスタムイベントのノードは Capability なしで振り直せ、`Warnings` が、呼び出し側の Blueprint を保存するまで呼び出し側は改名されないことを知らせます。判定はコマンドの実行中に行うので、コマンドが宣言する `RequiredCapabilities` には載りません。無ければ `CapabilityNotAvailable`（安全ポリシーが明示的に拒否しているときは `PolicyViolation`）で、許可して実行した場合は失いうる参照が `Warnings` に載ります。
 - **秘密の値。** ⚠️ ピンのデフォルト値は、害がないと示せるときだけ平文で見えます。定義に秘密の印が無い関数・変数のピン、数値・真偽値・列挙（とそれだけで成る構造体）、書式・配列/マップ/セットの生成・Select・整数/名前/文字列/列挙の Switch・Knot などの一部のエンジンのノードのピンです。それ以外のノード（プロジェクトやプラグインのノードを含む）の文字列・名前・テキスト・オブジェクト/クラス/ソフト参照と、それらを含む構造体は、`***` と `IsMasked: true` になります。定義が今は解決できないピンも未確認として載り、解禁はできません。`ListBlueprintPins`・`GetPinDefaultValue`・`GetBlueprintGraphInfo` と、`SetPinDefaultValue` の応答に当てはまります。対象外は、別のノードのリテラルから Password ピンへ届く値、`Comment`、ノードの表示名、ピン名（文字列 Switch のケース）、パス、書式ノードに直接書いた文字列、Control Rig のピン（別の判定）です。[Safety & Capabilities](safety.md#秘密値の平文での読み取り) を参照。
-- **PIE。** ⚠️ PIE または Simulate の間は、通常の Blueprint を編集する 20 本のコマンドを `NotAllowed` で断ります。`AddBlueprintComponent`・`AddBlueprintVariable`・`AddFunctionOverride`・`AddGraphNode`・`AddGraphNodeByAction`・`ArrangeBlueprintGraph`・`CompileBlueprint`・`ConnectBlueprintPins`・`DeleteBlueprintComponent`・`DeleteBlueprintVariable`・`DeleteGraphNode`・`DisconnectBlueprintPins`・`DuplicateBlueprintComponent`・`GetPinDefaultValue`・`ListBlueprintPins`・`RenameBlueprintComponent`・`ReparentBlueprintComponent`・`SetBlueprintComponentProperty`・`SetBlueprintVariableDefault`・`SetPinDefaultValue` です。以前は `ExecutionFailed` で、シナリオの `RetryCount` が再試行しましたが、`NotAllowed` は再試行されません。このうち `AddBlueprintComponent`・`ArrangeBlueprintGraph`・`CompileBlueprint`・`DeleteBlueprintComponent` の 4 本は、以前から `NotAllowed` でした。`RegenerateGraphNodeGuid` と `RegenerateGraphGuid` も同じく断ります。`ListBlueprintGraphs` と `GetBlueprintGraphInfo` は、通常の Blueprint を引き続き読めます。
+- **PIE。** ⚠️ PIE または Simulate の間は、通常の Blueprint を編集する 21 本のコマンドを `NotAllowed` で断ります。`AddBlueprintComponent`・`AddBlueprintVariable`・`AddFunctionOverride`・`AddGraphNode`・`AddGraphNodeByAction`・`ApplyBlueprintGraphEdit`・`ArrangeBlueprintGraph`・`CompileBlueprint`・`ConnectBlueprintPins`・`DeleteBlueprintComponent`・`DeleteBlueprintVariable`・`DeleteGraphNode`・`DisconnectBlueprintPins`・`DuplicateBlueprintComponent`・`GetPinDefaultValue`・`ListBlueprintPins`・`RenameBlueprintComponent`・`ReparentBlueprintComponent`・`SetBlueprintComponentProperty`・`SetBlueprintVariableDefault`・`SetPinDefaultValue` です。以前は `ExecutionFailed` で、シナリオの `RetryCount` が再試行しましたが、`NotAllowed` は再試行されません。このうち `AddBlueprintComponent`・`ArrangeBlueprintGraph`・`CompileBlueprint`・`DeleteBlueprintComponent` の 4 本は、以前から `NotAllowed` で、`ApplyBlueprintGraphEdit` は新しいコマンドです。`RegenerateGraphNodeGuid` と `RegenerateGraphGuid` も同じく断ります。`ListBlueprintGraphs` と `GetBlueprintGraphInfo` は、通常の Blueprint を引き続き読めます。
 
 #### `AddGraphNode` のノードの種類
 
@@ -1426,6 +1427,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `CreateWidget` | `WidgetClass` | ユーザーウィジェットのクラス（読み込み済みのもの）の Create Widget |
 | `Branch` | — | Branch |
 | `Sequence` | `OutputCount`（省略可。2〜32、既定 2） | その数の出力を持つ Sequence |
+| `MultiGate` | `OutputCount`（省略可。2〜32、既定 2） | その数の実行出力を持つ MultiGate |
 | `Macro` | `MacroName` | エンジンの標準マクロライブラリのマクロ（`ForEachLoop` など） |
 | `Self` | — | Self の参照 |
 | `Cast` | `TargetClass`、`Pure`（省略可） | クラス（読み込み済みのもの）へのキャスト。`Pure: true` で、実行ピンの無いピュアなキャストを置く |
@@ -1455,6 +1457,82 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 - **`SetPinDefaultValue` と `ConnectBlueprintPins` では**、対象のノード（接続ならどちらかの端）が、上のどれかに当たる関数の呼び出しのときです。関数を解決できないノードも要求します。関数を呼ばないノード（Branch など）は要求しません。
 
 判定は関数を解決した後に行うので、親のネイティブクラスにあるそうした関数を `FunctionClassName` を省いて名前で指定しても要求します。Open Level や Print String のような普段の関数と、Blueprint で定義した関数・カスタムイベントは、Editor Utility の Blueprint 以外では追加の Capability なしで置けます。この Capability が、コードを実行するすべての経路を塞ぐわけではありません。[Safety & Capabilities](safety.md#blueprintanimblueprint-編集) を参照してください。
+
+#### `ApplyBlueprintGraphEdit`
+
+⚠️ **Experimental。** Blueprint、または開いているマップのレベル Blueprint の 1 つのグラフを宣言的に編集します。ノードの作成、接続、既定値の設定、接続の切断、ノードの削除を、1 つの要求から 1 回の Undo の単位で行います。ノードごと・接続ごとに呼び出す代わりに、結果を記述します。`Nodes` が新しいノードを定義し、`Flows` が実行ピンをたどる文を連ね、`Links`・`Defaults`・`Unlinks`・`Deletes` が残りを行います。DefaultDenied の Capability `BlueprintGraphEdit` が必要です。`ActionId` でアクションを置くノード定義は `BlueprintUnrestrictedNodePlace` も要り、`AddGraphNode` で要るノードの種類も同じです（[コードを実行しうる関数の呼び出し](#コードを実行しうる関数の呼び出し) を参照）。
+
+**パラメータ。** `Nodes`・`Flows`・`Links`・`Defaults`・`Unlinks`・`Deletes` のうち少なくとも 1 つが必要です。どれも無い要求（空の要求）は `InvalidParams` で断り、そのために何かを解決・作成・コンパイルすることはありません。スキーマに無いキーも断ります。
+
+| キー | 説明 |
+|---|---|
+| `BlueprintPath`（必須） | Blueprint、またはレベル Blueprint を編集するためにエディタで開いているマップ。マップに無いレベル Blueprint は、すべての検査を通った後にだけ作ります。作成は Undo で戻らず、`LevelScriptBlueprintCreated` と `Warnings` がそれを知らせます |
+| `GraphName` / `GraphGuid` / `GraphPath` | 対象のグラフ。1 つだけ指定する。空または `EventGraph` はイベントグラフ |
+| `Nodes` | 新しいノード（最大 256）。それぞれ、要求の残りが参照する `Id`（`NodeRef`）、`NodeType` か `ActionId`（どちらか一方）、その種類のキー（`AddGraphNode` が受け取るもの）、省略可の `NodeX` / `NodeY`、省略可の `Inputs`（ピンごとに、リテラルの `Value` を入れるか、ピンから `From` で接続する）を持つ |
+| `Flows` | 文の連なり（最大 64）。それぞれ `After` で指した実行出力から続く。下を参照 |
+| `Links` | 接続。`From`（出力ピン）、`To`（入力ピン）、省略可の `AllowBreakOthers`（対象のピンがすでに持つ接続を切る） |
+| `Defaults` | 入力ピンの既定値。`Target`（ピン）と `Value`（エンジンのテキスト） |
+| `Unlinks` | 切る接続。`From` と、省略可の `To`（省略すると `From` のすべての接続） |
+| `Deletes` | 削除する既存のノード。`NodeId` と、`NodeId` を共有するノードを区別する省略可の `NodeObjectName` |
+| `SkipCompile` | 編集後のコンパイルを省く。既定 `false` |
+| `AllowNonTransactional` | Undo で復元できないオブジェクトに触れる編集でも適用する。既定 `false` |
+
+ピンは `NodeRef`（この要求で定義したノード）か `NodeId`（既存のノード。`NodeObjectName` は省略可）と、`PinName` か `PinId`（`PinId` は既存のノードにだけ）で指します。`Unlinks` と `Deletes` は、何かを作るより前に実行されます。型の異なるピンの間に変換ノードや昇格ノードは挿入されず、そのような接続は失敗します。値は、`***` を含め、特別扱いされません。
+
+**`Flows` の文。** 1 つの文は、文の種類をちょうど 1 つ持ちます。ノードへの単なる参照 `Exec`（ノードの出力ピンが複数あるときは `Out` で選ぶ）、`If`（`Condition` と `Then`・`Else`）、`Sequence` と `MultiGate`（`Branches` が 2〜32）、`Loop`、`Break`、`DoOnce`、`DoN`、`Gate`、`FlipFlop`（`Branches` がちょうど 2）です。文は深さ 3 までネストできます。それより深くするときは、ネストを閉じ、その実行出力の 1 つから、`After` がそのピンを指す別の `Flows` の要素で続けます。実行出力を接続元に使えるのは 1 回だけで、明示した使い方（`Flows` の `After` や `Links` の `From`）が、文の暗黙の継続より優先されます。`Break` は、いちばん内側の囲むループを抜けます。そのループは、`Break` の入力を持つ 2 つのループマクロ、`ForLoopWithBreak` か `ForEachLoopWithBreak` でなければなりません。
+
+`Loop`・`DoOnce`・`DoN`・`Gate`・`FlipFlop` は、`Nodes` で定義した `Macro` ノードの `Id` を指し、そのノードの `MacroName` が文に合っていなければなりません。
+
+| 文 | 受け付ける `MacroName` |
+|---|---|
+| `Loop` | `ForLoop`、`ForLoopWithBreak`、`ForEachLoop`、`ForEachLoopWithBreak`、`ReverseForEachLoop`、`WhileLoop` |
+| `DoOnce` | `DoOnce` |
+| `DoN` | `Do N`（**空白あり**。`DoN` という名前のマクロは無い） |
+| `Gate` | `Gate` |
+| `FlipFlop` | `FlipFlop` |
+
+`Macro` でないノード、`MacroName` の無いノード、名前が合わないノードは、グラフに触れる前に `InvalidParams` で断ります。名前は大文字小文字を区別せずに比べます。
+
+**検査とコンパイル。** 事前に決められることはすべて、グラフに触れる前に検査し、断った場合は何も変えません。`SkipCompile` が `true` でなければ、編集後に Blueprint をコンパイルします。新しいエラーとは、編集前に取ったコンパイルが報告しなかったコンパイルエラーで、ノードとメッセージで比べます。もともとあったエラーは編集を失敗させず（対照的に `SetPinDefaultValue` は、どんなエラー状態でも失敗します）、`PreexistingErrorCount` に数えるだけです。新しいエラーは編集を失敗させ、変更は巻き戻されます。ピンの値を明らかにしうるメッセージは伏せられ、ノードと重要度だけを持ち、`Masked` が `true` になります。本文は返しません。
+
+**ErrorCode。**
+
+| ErrorCode | 場合 |
+|---|---|
+| `InvalidParams` | 形が誤っている、または矛盾する要求。空の要求、種類の合わないマクロを指す文、2 回削除されるノードを含む |
+| `NotFound` | 存在しない Blueprint・ノード・ピン。`ListBlueprintGraphs` か `GetBlueprintGraphInfo` でグラフを読み直す |
+| `NotAllowed` | 書き込めない対象。読み取り専用のグラフ、`/Engine/` の Blueprint、Play-in-Editor、削除できないノード（ここでは `DeleteGraphNode` が返す `Conflict` ではなく `NotAllowed`） |
+| `PreconditionFailed` | `AllowNonTransactional` が `true` でないときの、Undo で復元できないオブジェクト。開いていないマップ |
+| `CapabilityNotAvailable` / `PolicyViolation` | Capability が無い（安全ポリシーが明示的に拒否しているときは `PolicyViolation`） |
+| `AbilityUnavailable` | 連携やエディタモジュールが読み込まれていないノードの種類（`AddGraphNode` と同じ） |
+| `ExecutionFailed` | 適用中の失敗、新しいエラーが見つかったコンパイル、接続済みのピンやコンテナを持つピンに対して拒否された既定値 |
+
+**応答。** 成功すると、`Result` に次を返します（artifact には書きません）。
+
+- `GraphIntegrityState`。成功後は `NotApplicable`。
+- `CreatedNodes`。ノードごとの要素で、`Id` で引く（要求が名前を付けなかったノードは、作った文の位置を示す `Source` を持つ）。`NodeId`・`NodeObjectName`・`NodeType`・`ActionId`（`ActionId` で置いたノードだけ）・`NodeX`・`NodeY`・`AlreadyExisted`・`AdditionalNodes`（配置が自身のノードのほかに作ったノード。それぞれ `Role`・`NodeType`・`NodeId`・`NodeClass` を持つ）。
+- `Links`、`BrokenLinks`（副作用として切れた接続。それぞれ下の表の `Reason` を持つ）、`DeletedNodeIds`、`Defaults`（ピンだけ。送った値は返さない）。
+- `CompileStatus`、`NewErrors`、`NewWarnings`、`NewErrorCount`、`NewWarningCount`、`PreexistingErrorCount`、`Truncated`（一覧は上限で打ち切られ、件数は打ち切られない）。メッセージはそれぞれ `Severity`、参照する `NodeId`、本文を持つ。伏せたメッセージは本文の代わりに `Masked: true` を持つ。
+- `TargetKind` / `ResolvedBlueprintPath`（[レベル Blueprint](#レベル-blueprint) を参照）、レベル Blueprint では `LevelScriptBlueprintCreated`、`Warnings`。
+
+| Reason | 意味 |
+|---|---|
+| `Insertion` | 既存の連なりに流れを挿入したため、流れの始点から連なりの残りへの接続を切った |
+| `ReplacedByConnection` | 他を置き換えてよい接続（`AllowBreakOthers`）がその場所を取った |
+| `NodeDeleted` | 接続の片方のノードが削除された |
+
+失敗は、`GraphIntegrityState`、`FailedAt`（原因になった要求内の位置。1 か所に決まらないときは空）、`Warnings`、Blueprint が分かった後は対象の項目、コンパイルが失敗したときは上のコンパイルの項目を返します。**失敗は `CreatedNodes` を返しません**（`Links`・`BrokenLinks`・`DeletedNodeIds`・`Defaults` も）。巻き戻しの後や `ChangesRemain` では、もう存在しないノードを指しうるからです。失敗が `ChangesRemain` を報告したときは、`GetBlueprintGraphInfo` でグラフを読み直してください。
+
+**`GraphIntegrityState`** はグラフの編集だけを表し、レベル Blueprint の作成や編集前のコンパイルは含みません。
+
+| 値 | 意味 |
+|---|---|
+| `NotApplicable` | 編集は成功した |
+| `Intact` | グラフが変わる前に、要求が断られた、または止まった |
+| `RestoredByRollback` | この編集の変更を元に戻した。その後のコンパイルの影響は含まない |
+| `ChangesRemain` | 変更を元に戻せず、グラフに残っている |
+
+**Undo。** 1 回の Undo で編集全体が戻るのは、単独の要求のときだけです。シナリオの中や `AllowNonTransactional` では、編集を Undo できないことがあり、その場合に失敗すると `ChangesRemain` が残ります。ユーザーが編集を Undo した後は生成クラスが古くなるので、`CompileBlueprint` を実行してください。レベル Blueprint の作成は Undo で戻りません（[レベル Blueprint](#レベル-blueprint) を参照）。
 
 ### グラフの読み取りと GUID の修復（4）
 
@@ -1509,10 +1587,10 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 
 `BlueprintPath` にマップのパッケージパスを渡すと — `/Game/Maps/L_Puzzle` でも `/Game/Maps/L_Puzzle.L_Puzzle` でもよい — そのマップのレベル Blueprint を対象にします。
 
-- **マップのパスを受け付けるコマンド**: `AddGraphNode`、`DeleteGraphNode`、`ConnectBlueprintPins`、`DisconnectBlueprintPins`、`ListBlueprintPins`、`SetPinDefaultValue`、`GetPinDefaultValue`、`AddBlueprintVariable`、`DeleteBlueprintVariable`、`SetBlueprintVariableDefault`、`AddFunctionOverride`、`CompileBlueprint`、`GetBlueprintCompileStatus`、`FindGraphNodeActions`、`AddGraphNodeByAction`、`ListBlueprintGraphs`、`GetBlueprintGraphInfo`、`RegenerateGraphNodeGuid`、`RegenerateGraphGuid`。[コンポーネント — SCS](#コンポーネント--scs8) の 8 コマンドは、レベル Blueprint にコンポーネントが無いので、マップのパスを `InvalidParams` で断ります。そのほかの Blueprint のコマンドは、マップのパスに対してこれまでどおり失敗します。
+- **マップのパスを受け付けるコマンド**: `AddGraphNode`、`DeleteGraphNode`、`ConnectBlueprintPins`、`DisconnectBlueprintPins`、`ListBlueprintPins`、`SetPinDefaultValue`、`GetPinDefaultValue`、`AddBlueprintVariable`、`DeleteBlueprintVariable`、`SetBlueprintVariableDefault`、`AddFunctionOverride`、`ApplyBlueprintGraphEdit`、`CompileBlueprint`、`GetBlueprintCompileStatus`、`FindGraphNodeActions`、`AddGraphNodeByAction`、`ListBlueprintGraphs`、`GetBlueprintGraphInfo`、`RegenerateGraphNodeGuid`、`RegenerateGraphGuid`。[コンポーネント — SCS](#コンポーネント--scs8) の 8 コマンドは、レベル Blueprint にコンポーネントが無いので、マップのパスを `InvalidParams` で断ります。そのほかの Blueprint のコマンドは、マップのパスに対してこれまでどおり失敗します。
 - **対象にできるマップ**: エディタで開いているマップと、その読み込み済みのサブレベル。開いていないマップは `PreconditionFailed` で断り、開くよう求めます。何も読み込まず、何も変えません。レベルインスタンスと、プレビューなど一時的なワールドのレベルは `InvalidParams` です。PIE 中はレベル Blueprint を、読み取りも含めて `NotAllowed` で断ります。通常の Blueprint を編集するコマンドも、PIE 中は `NotAllowed` で断ります（[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) の PIE の項を参照）。
 - **応答。** これらのコマンドは `Result`（artifact を書くコマンドでは artifact にも）に `TargetKind` を載せます。値は `Blueprint` または `LevelScriptBlueprint` です。レベル Blueprint では、`ResolvedBlueprintPath` が、マップのパスから解決したレベル Blueprint のオブジェクトパスです。これまで `Result` を返さなかったコマンドも、これらの項目を持つ `Result` を返すようになりました。
-- **レベル Blueprint の無いマップ。** レベル Blueprint を作るのは、何かを追加する 3 コマンド — `AddGraphNode`、`AddBlueprintVariable`、`AddFunctionOverride` — だけで、要求を断りうる検査をすべて通った後に作ります。作ったときの応答は、結果に関わらず `Result.Warnings` に警告を載せます。マップに未保存の変更ができたことと、エディタで要求を Undo すればレベル Blueprint も消えることを示します。エンジンは新しいレベル Blueprint に既定のイベントを置くので、新しいマップへの `EventBeginPlay` は `AlreadyExisted: true` を返します。レベル Blueprint を作った後に要求が断られるまれな場合は、エディタで Open Level Blueprint を押した後と同じく、空のレベル Blueprint が残ります。ほかのコマンドは作らずに `NotFound` を返し、メッセージが作るコマンド（`UAIP.Editor.Blueprint.AddGraphNode, UAIP.Editor.Blueprint.AddBlueprintVariable, UAIP.Editor.Blueprint.AddFunctionOverride`）を示します。マップに変更の印は付きません。レベル Blueprint がまだ無いあいだは、`GraphGuid` は `NotFound`、`FunctionClassName` の無い `FunctionCall` はクラスの指定を求める `NotFound`、`AddFunctionOverride` はイベントとして置かれる関数（`ReceiveBeginPlay` など）を `AddGraphNode` を案内する `InvalidParams` で断ります。
+- **レベル Blueprint の無いマップ。** レベル Blueprint を作るのは、何かを追加する 4 コマンド — `AddGraphNode`、`AddBlueprintVariable`、`AddFunctionOverride`、`ApplyBlueprintGraphEdit` — だけで、要求を断りうる検査をすべて通った後に作ります。作ったときの応答は、結果に関わらず `Result.Warnings` に警告を載せます。マップに未保存の変更ができたことを示します。⚠️ **レベル Blueprint の作成は Undo で戻りません。** エディタで要求を Undo しても、戻るのは要求が追加した内容だけで、レベル Blueprint は残ります（エンジンが生成するクラスを、どの Undo の単位も記録しないため）。これは 4 コマンドすべてに当てはまり、`AddGraphNode`・`AddBlueprintVariable`・`AddFunctionOverride` は説明文でもそう述べています。エンジンは新しいレベル Blueprint に既定のイベントを置くので、新しいマップへの `EventBeginPlay` は `AlreadyExisted: true` を返します。レベル Blueprint を作った後に要求が断られるまれな場合は、エディタで Open Level Blueprint を押した後と同じく、空のレベル Blueprint が残ります。ほかのコマンドは作らずに `NotFound` を返し、メッセージが作るコマンドのうち 3 つ（`UAIP.Editor.Blueprint.AddGraphNode, UAIP.Editor.Blueprint.AddBlueprintVariable, UAIP.Editor.Blueprint.AddFunctionOverride`）を示します。マップに変更の印は付きません。レベル Blueprint がまだ無いあいだは、`GraphGuid` は `NotFound`、`FunctionClassName` の無い `FunctionCall` はクラスの指定を求める `NotFound`、`AddFunctionOverride` はイベントとして置かれる関数（`ReceiveBeginPlay` など）を `AddGraphNode` を案内する `InvalidParams` で断ります。
 - **コンパイル。** レベル Blueprint をコンパイルすると、エンジンがレベルスクリプトアクターを作り直します。配置のたびに、`SkipCompile` が `true` でなければコンパイルします。
 - **保存。** `SaveAsset` にマップのパスを渡して保存します。マップのパッケージ全体を書き込むので、UAIP の Blueprint 編集によらない未保存の変更がマップにあったかもしれないときは、応答の `Result.Warnings` に警告を載せたうえで保存します。World Partition のマップでは、未保存の外部アクターのパッケージも一緒に書き込み、警告はそれらも数えます。一度も保存していないワールドは `OpenLevel` で開き直せません。先に `SaveAsset` で保存してください。別のマップに切り替える前に保存してください。
 - **`SkipCompile` の綴りはドメインで違います**: これらのグラフのコマンドは `SkipCompile`、`SetWidgetProperties` などの UMG の書き込みは `bSkipCompile` です。グラフのコマンドは、後からコンパイルが要るかを返しません。`GetBlueprintCompileStatus` で確かめてください。
