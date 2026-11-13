@@ -184,6 +184,7 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 **変更**
 
+- **Chorded Action（同時押し）の Trigger を組めるようになりました**（`UAIPEditorEnhancedInput` モジュール）: `UInputTriggerChordAction` は、これまでどの Capability を持っていても拒否されていましたが、他の Enhanced Input の Trigger と同じく受け付けられるようになりました。`SetInputMappingTrigger` / `SetInputActionTrigger` に `{"Class": "ChordAction", "Params": {"ChordAction": "<Input Action のパス>"}}` を渡すと、「Shift を押しながら R」のような同時押しを組めます。`ChordAction` の書き込みには `EnhancedInputReferenceEdit` が要ります。既存の Chorded Action の書き直しもできるようになりました。`GetAvailableInputTriggerClasses` では `Admission: Allowed` になります。拒否されるのは、Chorded Action が内部で生成する `UInputTriggerChordBlocker` だけになりました。Enhanced Input の外で宣言された Chorded Action の派生クラスは、拒否ではなく `EnhancedInputCustomTypeEdit` を要求します。詳細は [コマンド — UAIP.Editor.EnhancedInput](commands.md#uaipeditorenhancedinput) を参照してください。
 - **⚠️ 挙動の変更 — マップのレベル Blueprint の作成は Undo で戻りません**（`UAIPEditorBlueprint` モジュール）: `AddGraphNode`・`AddBlueprintVariable`・`AddFunctionOverride` と新しい `ApplyBlueprintGraphEdit` は、レベル Blueprint の無いマップにそれを作ります。エンジンが生成するクラスは、どの Undo の単位にも記録されません。エディタで要求を Undo しても、戻るのは要求が追加した内容だけで、レベル Blueprint は残ります。既存 3 コマンドの説明文、`Result.Warnings` の警告、ドキュメントはこのとおりに改めました。以前の記述は Undo でレベル Blueprint も消えるとしていましたが、実際には消えません。要求やほかの応答は変わりません。詳細は [コマンド — レベル Blueprint](commands.md#レベル-blueprint) を参照してください。
 - **モーダルダイアログに関する既存コマンドの変更**（`UAIPEditorUIAutomation` モジュール）: `CancelDialog` は `Abort` も探します（順序は Cancel、No、Close、Abort）。`ButtonLabel` は `AcceptDialog` でも `CancelDialog` でも、指定した名前のボタンを押します。その名前のボタンが無ければ何も押さず、別のボタンへは進みません。どちらのコマンドも、窓が閉じなくても成功を返していましたが、`ExecutionFailed` で失敗するようになりました。`SnapshotUI` は `SPrimaryButton` などの派生のボタンにも `b-` の参照を出すようになり、同じ画面でも参照の番号が変わることがあります。古い参照を使い回さないでください。`ShutdownEditor` / `RestartEditor` は、書き込みを止めたダイアログが開いている間、`NotAllowed` と `Result.ModalDialogBlocking: true` で断られます。ダイアログに答えるコマンドを使えない環境では、`Undo` / `Redo` の応答に毎回 `Result.DialogGuardActive: true` が付きます（確認が実際に中止されたことは示しません）。MCP ブリッジは 1.3.0 への更新が必要です（下記）。`HealthCheck` が、ブリッジの最低バージョンとして 1.3.0 を報告するようになりました。
 
@@ -369,6 +370,7 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 **修正**
 
+- **Trigger / Modifier の `Class` に短縮名を渡せるようになりました**（`UAIPEditorEnhancedInput` モジュール）: `SetInputMappingTrigger` / `SetInputActionTrigger` / `SetInputMappingModifier` / `SetInputActionModifier` で、`"Pressed"`・`"ChordAction"`・`"Negate"` のような接頭辞の無い名前が `NotFound` になっていました。ドキュメントのとおり、`/Script/EnhancedInput` の中の `InputTriggerPressed`・`InputTriggerChordAction`・`InputModifierNegate` に解決されるようになりました。`"InputTriggerPressed"` のような名前とフルオブジェクトパスは、これまでどおり解決されます。
 - **`DeleteGameFeaturePlugin` が、リンクの先の中身を消さなくなりました**（`UAIPEditorGameFeatures` モジュール）: 1.2.0 では、プラグインのフォルダの中にあるリンクをたどって、リンク先の中身まで削除することがありました。今はリンクだけが消え、リンク先は残ります。
 - **エディタが背面にあるときもクリックが効くようになりました**（`UAIPEditorUIAutomation` モジュール）: 別のアプリが前面にあると、`ClickWidget`・`AcceptDialog`・`CancelDialog`・`FillForm` のコンボの選択は、効かないまま成功を返していました。エディタはそのクリックの間だけ入力を受け付けます（ビューポートの中へのクリックは対象外です）。`AcceptDialog` / `CancelDialog` は、ダイアログが閉じないときも成功ではなく失敗を返します。
 
