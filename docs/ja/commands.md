@@ -739,7 +739,7 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `ListSettingsSections` | カテゴリ内の設定セクションを一覧表示。Capability 不要 |
 | 🆓 `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） シークレットプロパティの既定値は `***` と `IsMasked: true` になる（以前は平文）。`IsSecret` は、既定値の中にシークレットがあるプロパティでも真になる（宣言だけでなく、設定クラスの既定値が持つ値で判定する）。新しい `HoldsDynamicValue` は、中身が実行時にしか決まらない型（`FInstancedStruct` など）のプロパティで真になり、そうした値は中身によってシークレットになりうる。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
 | 🆓 `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） 名前だけでシークレットと分かるプロパティもマスクされる。値の中にシークレットがある、または中身を読めない型の値を持つフィールドもマスクされる（`FInstancedStruct` のような動的な型の構造体は中身まで見る）ので、1.2.0 で読めた値が `***` になる場合がある。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
-| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可。値はエンジンのテキスト形式のみを受け取るため、参照・コンテナ・組み込みカタログ外の構造体は **どの Capability を付与しても拒否されます** — これらは同じ設定オブジェクトへ届き `ValueJson` を受け取る `SetProjectSetting` で書いてください。途中までしか解釈できない値は、断片が適用されるのではなく `InvalidParams` で拒否されるようになりました 渡した `Properties` は、シークレットかどうかに関わらず監査ログ・完了通知・コマンドの記録で伏せられ、失敗理由の文も伏せられる。呼び出し側への応答は変わらない。拒否の文は送った値を引用せず、プロパティ・型やフラグ・足りない Capability の名前だけを示す。`DryRun` では、シークレットプロパティの変更前・変更後の値が `***` と `IsMasked: true` になる（以前は `null`）。変更の一覧は値を読まないので、中身が実行時にしか決まらない型（`FInstancedStruct` など）のプロパティは、中身に関わらず伏せられ、そのプロパティの拒否の文も値を引用しない。`IncludeSecretValues` は `DryRun` の平文を返す。`DryRun` なしの応答には値が含まれないので何もしない — [シークレット値の読み取り](#reading-secret-values)を参照。プロパティが宣言する `ClampMin` / `ClampMax` の外の数値は、詳細パネルと同じく `DryRun` の有無にかかわらず `InvalidParams` で拒否される。文はプロパティ名と範囲を示し、値は含まない |
+| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可。値はエンジンのテキスト形式のみを受け取るため、参照・コンテナ・組み込みカタログ外の構造体は **どの Capability を付与しても拒否されます** — これらは同じ設定オブジェクトへ届き `ValueJson` を受け取る `SetProjectSetting` で書いてください。途中までしか解釈できない値は、断片が適用されるのではなく `InvalidParams` で拒否されるようになりました 渡した `Properties` は、シークレットかどうかに関わらず監査ログ・完了通知・コマンドの記録で伏せられ、失敗理由の文も伏せられる。呼び出し側への応答は変わらない。拒否の文は送った値を引用せず、プロパティ・型やフラグ・足りない Capability の名前だけを示す。プロパティが受け付けなかった値は、シークレットかどうかに関わらずプロパティ名だけを示す固定の 1 文（`Property 'X' cannot be written: the value was not accepted for this property.`）で断るため、エンジンの取り込み処理が何に不満だったかは出ない。`DryRun` では、シークレットプロパティの変更前・変更後の値が `***` と `IsMasked: true` になる（以前は `null`）。変更の一覧は値を読まないので、中身が実行時にしか決まらない型（`FInstancedStruct` など）のプロパティは、中身に関わらず伏せられ、そのプロパティの拒否の文も値を引用しない。`IncludeSecretValues` は `DryRun` の平文を返す。`DryRun` なしの応答には値が含まれないので何もしない。`DryRun` のシークレットの欄が 64 件を超えるときは、同じ `Properties` に、応答の `NextSecretValuesOffset` を値にした `SecretValuesOffset` を付けて送り直すと残りを読める（不正な offset は `InvalidParams`） — [シークレット値の読み取り](#reading-secret-values)を参照。プロパティが宣言する `ClampMin` / `ClampMax` の外の数値は、詳細パネルと同じく `DryRun` の有無にかかわらず `InvalidParams` で拒否される。文はプロパティ名と範囲を示し、値は含まない |
 | `SaveSettings` | `ISettingsSection::Save()` 経由で設定を ini ファイルに書き出す。`ConfigSettingsSave` 必要。PIE 中および `bDisableSave` 設定時は実行不可 |
 | `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 シークレット値は `DryRun` のプレビューでも、実行時の元の値のバックアップ（アーティファクト）でも `***` になる。`DryRun` のプレビューでは、中身にシークレットがある、または中身を読めない型の値は、現在値と既定値の両方を判定し、どちらかが秘密なら両方を伏せる。実行時のバックアップは現在値だけを持ち、現在値だけで判定する。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照。既定値へ戻せないセクション（`ListSettingsSections` で `CanResetDefaults: false`）は `DryRun` の有無にかかわらず `NotAllowed` で拒否されるので、実行で拒否されるリセットをプレビューが表示することはない |
 
@@ -1159,10 +1159,10 @@ HTTP と MCP の経路では、書き込みがモーダルダイアログを開�
 | `CopyAsset` | アセットを新しい完全パッケージパスへコピー（コピー先が存在する場合は失敗・`AssetCreate` 必要） |
 | `RenameAsset` | アセットをリネーム / 別パスへ移動。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | `MoveAsset` | 名前を維持したままアセットを別フォルダへ移動し、リダイレクタが残ったかを報告（`AssetMutate` 必要）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
-| `DeleteAsset` | アセットを削除。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `DeleteAsset` | アセットを削除。`DisableSave` が有効なときは `PolicyViolation` で拒否。削除の後もパッケージのファイルがディスクに残ったときは `Deleted: true` ではなく `ExecutionFailed`（artifact なし）を返す: エディタからは消えたがファイルは削除できず、次のエディタ起動で戻る |
 | `CreateFolder` | Content Browser に新規フォルダを作成 |
 | `DeleteFolder` | 空フォルダを削除（空でない場合 `NotEmpty`）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
-| `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし）。削除した・一部だけ削除した・フォルダが無い・上限を超えた、のどれでも成功を返し、どれだったかは `Result.Status`（`Deleted` / `PartiallyDeleted` / `NotFound` / `TooManyAssets`）に入る。削除まで進んだときは `DeletedAssetCount` / `FailedAssetCount` も入る。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし）。削除した・一部だけ削除した・フォルダが無い・上限を超えた、のどれでも成功を返し、どれだったかは `Result.Status`（`Deleted` / `PartiallyDeleted` / `NotFound` / `TooManyAssets`）に入る。削除まで進んだときは `DeletedAssetCount` / `FailedAssetCount` も入る。`DisableSave` が有効なときは `PolicyViolation` で拒否。エディタからは消えたがパッケージのファイルをディスクから削除できなかった（次のエディタ起動で戻る）アセットは、`DeletedAssetCount` / `DeletedAssetPaths` ではなく `FailedAssetCount` に数え、`Status` は `PartiallyDeleted` になる（応答は `Success` のまま）。フォルダを消す前にディスク上の `.uasset` / `.umap` を走査し（アセットレジストリに載っていないものも含む）、1 つでも残っていればそのフォルダはディスクにも Content Browser にも残る。レジストリに載っていない残存パッケージは 1 パッケージにつき `FailedAssetCount` に 1 足す（そのため `FailedAssetCount` と `DeletedAssetCount` の合計が削除前の件数になるとは限らない）。もう一度呼んでもフォルダは消えない。残ったファイルは手で（ソース管理を通して）消すか、`DeleteAsset` で個別に消す |
 | `MoveFolder` | フォルダ内の全アセットをサブフォルダ構造を保ったまま移動。部分失敗は `FailedAssets` に列挙（`AssetFolderRefactor` 必要）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | 🆓 `GetSelectedAssets` | Content Browser で現在選択中のアセットを返す |
 | `SelectAssets` | Content Browser で指定アセットを選択（`ContentBrowserNavigate` 必要） |
@@ -1346,6 +1346,17 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 これらの書き込みは、以前は通っていました。Blueprint をコンパイルせずにオブジェクトを変えるので、変更は Blueprint が作るものに届かず、専用のコマンドの Capability も迂回できていました。それ以外の Blueprint の中のオブジェクト（タイムラインのテンプレートや、親の C++ クラスが定義したコンポーネントの既定値など）は今までどおり書けます。そのときは、Blueprint をコンパイルしていないことを `Result.Warnings` で示します。
 
 `GetAssetProperty` は、これらのオブジェクトを今までどおり読めます。上の 7 種類では、結果と artifact に `SuggestedCommand` が加わります。値は専用のコマンドの完全名を、カンマと空白で区切って並べたものです（例: `UAIP.Editor.Property.SetBlueprintDefault, UAIP.Editor.Blueprint.SetBlueprintVariableDefault`）。⚠️ `GetAssetProperty` は、パスワード欄（`IsPassword` が真の `EditableTextBox` / `EditableText`）の `Text` も `***` で伏せるようになりました。以前は平文で返していました。
+
+**⚠️ Widget Blueprint の MVVM のビューへの書き込みには、2 つの Capability が要ります。** MVVM のビュー（Widget Blueprint のビューと、その中のもの全部。ビューの設定・イベント・条件）を `SetAssetProperty` で書けるのは、`PropertyEdit` に加えて `ViewModelBindingEdit` と `ViewModelSourceEdit`（どちらも DefaultDenied）の両方をセッションが持つときだけです。以前は `PropertyEdit` だけで足りましたが、これからは前の値を読む前に書き込みを断り、メッセージで足りない Capability と、バインディング・イベント・ViewModel 用の `UAIP.Editor.MVVM` の専用のコマンドを示します。`ErrorCode` は Capability の不足の通常のものです。付与されていなければ `CapabilityNotAvailable`、運用者が明示的に拒否していれば `PolicyViolation` です。専用のコマンドが無い設定（ビュー自体の設定、イベントや条件の有効・無効）は、2 つの Capability を持てば今までどおり `SetAssetProperty` で書けます。ビューの中のグラフは今までどおりグラフとして断り、`InvalidParams` とグラフのコマンドを示します。
+
+`GetAssetProperty` は MVVM のビューを今までどおり読めます。結果と artifact に MVVM のコマンド名を `SuggestedCommand` として添え、`WriteRequirements` に 2 つの Capability と、セッションがどちらを持つか・どちらが足りないかを載せます。運用者が明示的に拒否した Capability は、`ExplicitlyDeniedCapabilities` に分けて示し、付与を頼む対象としては見せません。セッションの無いリクエストでは `RequiredCapabilities` だけを示します。
+
+**Blueprint の中への書き込みは、エディタの詳細パネルと同じ後処理を通ります。** `SetAssetProperty` が、専用のコマンドが無い Blueprint 本体の設定（`BlueprintDescription`・`BlueprintCategory`・`BlueprintNamespace` など）を書くと、エディタで設定を変えたときと同じく Blueprint を「変更あり・未コンパイル」にし、`Result.Warnings`（と artifact）に `The Blueprint was not compiled. Call CompileBlueprint if the change has to take effect.` を載せます。同じ値を書いたときは後処理も警告もありません。Capability が揃った MVVM のビューへの書き込みにも同じ警告が付きます。変わるのは指定した Blueprint だけで、それを使っているレベルのアクターなどは更新しません。
+
+- `BlueprintNamespace` を書くと、名前空間の一覧も更新し、新しい名前空間が登録されます。旧い名前空間が使われていた場合は一覧を作り直すので、時間がかかり、エディタに進捗が出ることがあります。その Blueprint を Blueprint エディタで開いていれば、そのエディタの名前空間のインポートも変更に合わせて付け替えます。複数の Blueprint をまとめて編集するエディタで開いているときは、インポートは変えず、`Warnings` に `A Blueprint editor that edits several Blueprints has this Blueprint open; its namespace imports are updated when the editor is reopened.` が加わります。
+- アニメーション BP の `TargetSkeleton` を書くと、警告がもう 1 つ加わります: `TargetSkeleton was changed without updating the animations this Animation Blueprint references; they can break until they are retargeted or replaced.` 別の資産への参照なので、`PropertyReferenceEdit` も要ります。`bEnableLinkedAnimLayerInstanceSharing` には `PropertyDefaultsOnlyEdit` も要ります。
+- 専用のコマンドがある設定は、今までと同じ `ErrorCode` で断ります。メッセージの末尾に使うべきコマンドが付くようになりました（例: Widget Blueprint の `Bindings` では `Use UAIP.Editor.UMG.AddPropertyBinding, UAIP.Editor.UMG.RemovePropertyBinding instead.`）。断りの文が秘密の値用の汎用の文になる場合や、範囲外の添字など先の検査で止まる場合も同じです。`ReparentWidgetBlueprint` を案内するのは Widget Blueprint だけで、通常の Blueprint には案内しません。編集できず専用のコマンドも無い設定（`ImportedNamespaces` など）は、今までと同じ文で断ります。
+- **⚠️ 親クラスが非推奨のとき、`bDeprecate` は変えられません。** 値が `true` のままでも書き込みは `NotAllowed` で断られ、何も変わりません: `The parent class is deprecated, so this Blueprint stays deprecated and bDeprecate cannot be changed. Remove the deprecation from the parent class instead.` 書いても次のコンパイルで書き戻され、エディタの UI でも変えられないため、この断りを解く Capability はありません。
 
 <a id="write-read-back"></a>
 ### 書き込みの応答: `NewValue`・`Changed`・`NewValueObserved`・`ReadBackError`
@@ -1566,13 +1577,21 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `AbilityUnavailable` | 連携やエディタモジュールが読み込まれていないノードの種類（`AddGraphNode` と同じ） |
 | `ExecutionFailed` | 適用中の失敗、新しいエラーが見つかったコンパイル、接続済みのピンやコンテナを持つピンに対して拒否された既定値 |
 
-**応答。** 成功すると、`Result` に次を返します（artifact には書きません）。
+**応答。** 成功すると、`Result` に次を返します。
 
 - `GraphIntegrityState`。成功後は `NotApplicable`。
 - `CreatedNodes`。ノードごとの要素で、`Id` で引く（要求が名前を付けなかったノードは、作った文の位置を示す `Source` を持つ）。`NodeId`・`NodeObjectName`・`NodeType`・`ActionId`（`ActionId` で置いたノードだけ）・`NodeX`・`NodeY`・`AlreadyExisted`・`AdditionalNodes`（配置が自身のノードのほかに作ったノード。それぞれ `Role`・`NodeType`・`NodeId`・`NodeClass` を持つ）。
 - `Links`、`BrokenLinks`（副作用として切れた接続。それぞれ下の表の `Reason` を持つ）、`DeletedNodeIds`、`Defaults`（ピンだけ。送った値は返さない）。
 - `CompileStatus`、`NewErrors`、`NewWarnings`、`NewErrorCount`、`NewWarningCount`、`PreexistingErrorCount`、`Truncated`（一覧は上限で打ち切られ、件数は打ち切られない）。メッセージはそれぞれ `Severity`、参照する `NodeId`、本文を持つ。伏せたメッセージは本文の代わりに `Masked: true` を持つ。
 - `TargetKind` / `ResolvedBlueprintPath`（[レベル Blueprint](#レベル-blueprint) を参照）、レベル Blueprint では `LevelScriptBlueprintCreated`、`Warnings`。
+
+**大きな報告は artifact で返ります。** 上の報告が 64 KiB（UTF-8 のバイト数。ちょうど 64 KiB は `Result` に残る）を超えると、報告全体を同じ形のまま JSON の artifact として保存して添付し、`Result` には要約だけを残します。
+
+- 残るもの: `GraphIntegrityState`、対象の項目（`TargetKind`・`ResolvedBlueprintPath`・`LevelScriptBlueprintCreated`）、`Warnings`、コンパイルの報告（`CompileStatus`・`NewErrors`・`NewWarnings`・`NewErrorCount`・`NewWarningCount`・`PreexistingErrorCount`・`Truncated`）。
+- 省かれるもの: `CreatedNodes`・`Links`・`BrokenLinks`・`DeletedNodeIds`・`Defaults`。
+- 加わるもの: `ResultInArtifact`（`true`）、省かれた各一覧の件数を示す `CreatedNodeCount`・`LinkCount`・`BrokenLinkCount`・`DeletedNodeCount`・`DefaultCount`、`GetArtifact` で読む artifact を示す `ArtifactId`。artifact には、要求の各 `Id` を作ったノードの `NodeId` に対応づける `CreatedNodes` を含む報告の全体が入ります。続けて編集するときにこの対応が要ります。
+
+artifact を保存できなかったときも編集は成功のままで（報告のために編集を取り消しません）、`Result` は小さな報告のときと同じく報告の全体を返し、`ArtifactsNotSaved` が理由を示します（[共通の応答キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved)を参照）。上限以内の報告は従来と同じ形で、加わるキーは載りません。失敗はこの種類の artifact を返しません。
 
 | Reason | 意味 |
 |---|---|
@@ -1591,7 +1610,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `RestoredByRollback` | この編集の変更を元に戻した。その後のコンパイルの影響は含まない |
 | `ChangesRemain` | 変更を元に戻せず、グラフに残っている |
 
-**Undo。** 1 回の Undo で編集全体が戻るのは、単独の要求のときだけです。シナリオの中や `AllowNonTransactional` では、編集を Undo できないことがあり、その場合に失敗すると `ChangesRemain` が残ります。ユーザーが編集を Undo した後は生成クラスが古くなるので、`CompileBlueprint` を実行してください。レベル Blueprint の作成は Undo で戻りません（[レベル Blueprint](#レベル-blueprint) を参照）。
+**Undo。** 1 回の Undo で編集全体が戻るのは、単独の要求のときだけです。すでに開いているトランザクションの中（ほかのエディタ操作やツールが開いたもの）や `AllowNonTransactional` では、編集を Undo できないことがあり、その場合に失敗すると `ChangesRemain` が残ります。シナリオはトランザクションを開かないので、シナリオの中の要求は単独の要求と同じに振る舞います。ユーザーが編集を Undo した後は生成クラスが古くなるので、`CompileBlueprint` を実行してください。レベル Blueprint の作成は Undo で戻りません（[レベル Blueprint](#レベル-blueprint) を参照）。
 
 ### グラフの読み取りと GUID の修復（4）
 
@@ -1813,8 +1832,8 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 > **`DeleteGameFeaturePlugin`** は `PluginName` を取ります。GameFeature の登録を解除し（作成の途中で失敗して一度も登録されなかったものは、この手順を飛ばします）、アセットの読み込みを解除し、削除してよい対象かをもう一度確かめてから、プラグインを（中にあるプラグインから先に）プラグイン一覧から外し、フォルダを削除します。次の場合は拒否し、何も消しません。
 >
 > - プラグインが無い（`NotFound`）。
-> - **どの Capability でも解除できない拒否**（`NotAllowed`。セッションが何を持っていても同じです）。対象が GameFeature ではない（`Plugins/GameFeatures/` の外にあるプラグイン、旧版が `Plugins/` 直下に作ったもの）、`GameFeatures` フォルダそのもの、またはコードのモジュールを持つ。プラグイン自身のフォルダがジャンクションなどのリンク。プラグインの実体の場所が、コマンドが守るフォルダ（`GameFeatures` フォルダ、`Plugins` フォルダ、プロジェクトのフォルダ、エンジンのフォルダ、それらの親フォルダ、ドライブのルート）と同じか、その上にある。実体の場所を割り出せない。中にある有効なプラグインの場所を調べられない。フォルダを走査できない。プロジェクトのフォルダの外にあるのに、そこへ導いたリンクを見つけられない（理由を言い切れない）。理由は `GetGameFeatureInfo` が返します（下記）。
-> - **Capability が足りない**（`CapabilityNotAvailable`。足りないものを全部名指しします。運用者が明示的に禁止していると `PolicyViolation`）。`GameFeatureDelete` に加えて、フォルダに別のプラグインがある、または別のプラグインの中にあるときは `GameFeatureDeleteNestedPlugin`（エンジンに登録されていない内側のプラグインは、**コードのモジュールを持っていても**ふつうのファイルとして消えます。登録済みで無効な内側のプラグインは、外側と一緒にプラグイン一覧から外れます）、フォルダにリンクがある、またはその上のフォルダ（たとえば `Plugins/GameFeatures` 自身）がリンクのときは `GameFeatureDeleteLinks`。中のリンクはリンクだけが消え、**リンク先の中身は消えません**。上のリンクは違い、リンクが導く先の実体のプラグインが消え、それはプロジェクトの外にあることもあります。両方に当たるプラグインは両方を要します。この 2 つは既定で拒否されているので、拒否の応答が名指しします。
+> - **どの Capability でも解除できない拒否**（`NotAllowed`。セッションが何を持っていても同じです）。対象が GameFeature ではない（`Plugins/GameFeatures/` の外にあるプラグイン、旧版が `Plugins/` 直下に作ったもの）、`GameFeatures` フォルダそのもの、またはコードのモジュールを持つ。プラグイン自身のフォルダがジャンクションなどのリンク。プラグインの実体の場所が、コマンドが守るフォルダ（`GameFeatures` フォルダ、`Plugins` フォルダ、プロジェクトのフォルダ、エンジンのフォルダ、それらの親フォルダ、ドライブのルート）と同じか、その上にある。実体の場所を割り出せない。中にある有効なプラグインの場所を調べられない。フォルダを走査できない。プロジェクトのフォルダの外にあるのに、そこへ導いたリンク（`Plugins` フォルダ自身を含む）を見つけられない（理由を言い切れない。文は「The plugin directory resolves outside the project but no link leads there.」）。理由は `GetGameFeatureInfo` が返します（下記）。
+> - **Capability が足りない**（`CapabilityNotAvailable`。足りないものを全部名指しします。運用者が明示的に禁止していると `PolicyViolation`）。`GameFeatureDelete` に加えて、フォルダに別のプラグインがある、または別のプラグインの中にあるときは `GameFeatureDeleteNestedPlugin`（エンジンに登録されていない内側のプラグインは、**コードのモジュールを持っていても**ふつうのファイルとして消えます。登録済みで無効な内側のプラグインは、外側と一緒にプラグイン一覧から外れます）、フォルダにリンクがある、その上のフォルダ（たとえば `Plugins/GameFeatures` 自身）がリンク、または `Plugins` フォルダ自身がプロジェクトの外へのリンクで、プラグインの実体がプロジェクトの外にあるとき（リンク先がプロジェクトの中なら何も要りません）は `GameFeatureDeleteLinks`。`CreateGameFeaturePlugin` は `Plugins` がプロジェクトの外へのリンクでも従来どおりプラグインを作れますが、そのプラグインの削除には `GameFeatureDeleteLinks` が要ります。中のリンクはリンクだけが消え、**リンク先の中身は消えません**。上のリンクは違い、リンクが導く先の実体のプラグインが消え、それはプロジェクトの外にあることもあります。両方に当たるプラグインは両方を要します。この 2 つは既定で拒否されているので、拒否の応答が名指しします。
 > - **内側に有効なプラグインが残っている**（`PreconditionFailed`。残っているプラグインの名前を挙げます）。外側は消しません。内容だけの GameFeature なら先に消せます。GameFeature でないプラグインは、`SetPluginEnabled` とエディタの再起動で無効にしてから消します。コード付きの GameFeature は UAIP では解けません。
 > - GameFeature の状態が切り替わっている最中（`PreconditionFailed`。待ってから再試行）。
 > - アセットの読み込み解除に失敗した、登録の解除が 30 秒以内に終わらなかった、またはエディタの終了が始まった（`ExecutionFailed`）。
@@ -3740,7 +3759,7 @@ Sandbox セッションのライフサイクル管理。`FileSandbox` プラグ�
 | `ListDataLayers` | 現在のレベルに存在する全 Data Layer インスタンスを一覧表示 |
 | `GetDataLayerInfo` | Data Layer インスタンスの詳細情報を取得 — タイプ・読み込みフィルタ・ランタイム状態・可視性・親階層 |
 | `CreateDataLayerAsset` | コンテンツブラウザに新しい Data Layer アセットを作成（`DataLayerEdit` 必須） |
-| `DeleteDataLayerAsset` | Data Layer アセットを削除（`DataLayerEdit` 必須）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `DeleteDataLayerAsset` | Data Layer アセットを削除（`DataLayerEdit` 必須）。`DisableSave` が有効なときは `PolicyViolation` で拒否。エディタからは消えたがパッケージのファイルを削除できなかったときは `ExecutionFailed`（artifact なし）を返す: ファイルは削除できず、アセットは次のエディタ起動で戻る |
 | `CreateDataLayerInstance` | Data Layer アセットから現在のレベルに Data Layer インスタンスを追加（`DataLayerEdit` 必須） |
 | `DeleteDataLayerInstance` | 現在のレベルから Data Layer インスタンスを削除（`DataLayerEdit` 必須） |
 | `SetDataLayerType` | Data Layer インスタンスのタイプを設定 — Editor または Runtime（`DataLayerEdit` 必須） |
