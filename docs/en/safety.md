@@ -1286,6 +1286,7 @@ AllowPasswordFieldRead=False
 AllowRuntimePasswordFieldRead=False
 AllowSecretValueRead=False
 AllowToolsetErrorText=False
+AllowSecretValuesInFingerprints=False
 AllowInputModeBypass=False
 DisablePIEStart=False
 AllowCheatCVarWrite=False
@@ -1325,6 +1326,7 @@ AllowProjectNetDriverNetModeQuery=False
 | `AllowRuntimePasswordFieldRead` | `False` | Allow `DumpGameViewportWidgetTexts` to return the plain value of password fields of a running game's UI, and of fields whose password state cannot be determined (also requires `RuntimeWidgetTextRead` and `RuntimeWidgetPasswordTextRead`). Independent of `AllowPasswordFieldRead`. Read at startup, not reloadable. CLI flag: `-uaip-policy-allow-runtime-password-field-read=True` |
 | `AllowSecretValueRead` | `False` | Allow the commands that accept `IncludeSecretValues` to return a secret setting's plain value (also requires `SecretValueRead`). Read at startup, not reloadable. CLI flag: `-uaip-policy-allow-secret-value-read=True`. See [Reading secret values in plain text](#reading-secret-values-in-plain-text) |
 | `AllowToolsetErrorText` | `False` | Let the Toolset write bridges that may be released return the engine's own failure text instead of a fixed sentence. Read at startup, not reloadable. **ini only** (no CLI flag, no console variable). Turning it on can put a new secret value in a failure response — see [Toolset failure text](#toolset-failure-text) |
+| `AllowSecretValuesInFingerprints` | `False` | Put the values of secret properties into the Subsonic action fingerprints (`ActionFingerprint` / `ActionsFingerprint`), but only for a session that also holds `SecretValueRead`. Read at startup, not reloadable. **ini only** (no CLI flag, no console variable). Independent of `AllowSecretValueRead`. Turning it on lets a session with `SecretValueRead` work out a secret value from a fingerprint — see [Subsonic fingerprints and secret values](#subsonic-fingerprints-and-secret-values) |
 | `AllowInputModeBypass` | `False` | Allow `BypassInputMode=true` in Inject commands |
 | `DisablePIEStart` | `False` | Reject PIE startup Applies to the Toolset `Toolset.Editor.Toolset.PIE.StartPIE` too, with the same wording as `StartPIE`; the refusal comes first even when PIE could not start anyway |
 | `AllowCheatCVarWrite` | `False` | Allow `SetConsoleVariable` / `ResetConsoleVariable` to write `ECVF_Cheat`-flagged CVars (also requires `RuntimeCVarWrite`) |
@@ -1348,6 +1350,20 @@ When a Toolset write bridge fails, the engine's own failure text can quote the v
 - **What is still removed.** The values the call sent are masked out of the text (`***`). A text is still withheld when the call sent a number, because a number cannot be masked reliably out of a sentence.
 - **How to set it.** In `Config/DefaultUAIP.ini` only; there is no `-uaip-policy-*` flag and no console variable, because it widens what a failure response may disclose. It is read at startup and `ReloadCapabilities` does not re-read it, so restart the editor.
 - **How to check it.** `QueryCapabilities` reports the setting as `OperationalConstraints.IsToolsetErrorTextAllowed`.
+
+### Subsonic fingerprints and secret values
+
+The fingerprints of the Subsonic commands (`ActionFingerprint` / `ActionsFingerprint`, used for optimistic concurrency) are computed **without the values of secret properties**, so someone who can only read cannot work out a secret by trying candidate values and comparing fingerprints. The cost is that a change to only a secret value does not change the fingerprint; the command reference lists what else is affected, and the fingerprint version is 2 (a fingerprint taken before that is refused with `Conflict`; read again).
+
+`AllowSecretValuesInFingerprints=True` under `[UAIP.SafetyPolicy]` brings the secret values back into the fingerprint (the way it was computed before), and the cost is on you: **a session that can read can then recover a secret value from a fingerprint.**
+
+- **Two keys.** The secret values go into the fingerprint only in a session where **both** hold: the operator set `AllowSecretValuesInFingerprints=True` and restarted the editor, **and** the session holds `SecretValueRead`. With either one missing, the fingerprint is the default one. A fingerprint taken with both is therefore different from one taken with only one of them for an action that holds a secret; sending one in the other kind of session is refused with `Conflict` (read again).
+- **Independent of `AllowSecretValueRead`.** This setting is not the one that lets a read return plain values. With `AllowSecretValueRead=False` and this setting on, a session holding `SecretValueRead` still gets the secret values into its fingerprints, and no `IncludeSecretValues` argument is needed. Turning this on does not make any command return a plain value, but it makes a plain value derivable from a fingerprint, so treat it as being as sensitive as `AllowSecretValueRead`.
+- **What stays on disk.** A read result that a session with both saved as an artifact holds fingerprints that depend on the secret values. The artifact keeps the values as `***`, but not that dependence: a session that can read the file can use the fingerprints to check candidate values.
+- **A warning at startup.** When the setting is on, the log says so and says that a session holding `SecretValueRead` can get the secret values out of a fingerprint.
+- **How to set it.** In `Config/DefaultUAIP.ini` only; there is no `-uaip-policy-*` flag and no console variable. It is read at startup and `ReloadCapabilities` does not re-read it, so restart the editor.
+- **How to check it.** `QueryCapabilities` reports the setting as `OperationalConstraints.IsSecretValueInFingerprintAllowed` (the key is singular; the setting is `AllowSecretValuesInFingerprints`).
+- **Where it matters.** It also decides whether `RemoveSubsonicParameter` lists an event in `AffectedEvents` when only a secret value changed (it is listed when both keys are in place), and it brings back the check for a stale Modifier `Index` in an action whose `Modifiers` array is declared secret.
 
 ### DisableSave and the commands that delete, move or rename
 

@@ -387,17 +387,21 @@ Response `Data` (the same fields, plus the catalog):
     { "Name": "PropertyStructuredEdit","DefaultPolicy": "Denied",  "IsGranted": false }
   ],
   "OperationalConstraints": {
-    "IsReadOnly":                    false,
-    "IsSaveDisabled":                false,
-    "IsLogDumpAllowed":              true,
-    "IsContextMenuMutationAllowed":  false,
-    "IsPIEStartDisabled":            false,
-    "HasDeniedCommands":             false,
-    "IsKeyboardInputAllowed":        true,
-    "IsKeyboardModifierInputAllowed":false,
-    "IsPasswordFieldWriteAllowed":   false,
-    "IsPasswordFieldReadAllowed":    false,
-    "IsRuntimePasswordFieldReadAllowed": false
+    "IsReadOnly":                              false,
+    "IsSaveDisabled":                          false,
+    "IsLogDumpAllowed":                        false,
+    "IsContextMenuMutationAllowed":            false,
+    "IsPIEStartDisabled":                      false,
+    "HasDeniedCommands":                       false,
+    "IsKeyboardInputAllowed":                  false,
+    "IsKeyboardModifierInputAllowed":          false,
+    "IsPasswordFieldWriteAllowed":             false,
+    "IsRuntimePasswordFieldWriteAllowed":      false,
+    "IsPasswordFieldReadAllowed":              false,
+    "IsRuntimePasswordFieldReadAllowed":       false,
+    "IsSecretValueReadAllowed":                false,
+    "IsToolsetErrorTextAllowed":               false,
+    "IsSecretValueInFingerprintAllowed":       false
   }
 }
 ```

@@ -1285,6 +1285,7 @@ AllowPasswordFieldRead=False
 AllowRuntimePasswordFieldRead=False
 AllowSecretValueRead=False
 AllowToolsetErrorText=False
+AllowSecretValuesInFingerprints=False
 AllowInputModeBypass=False
 DisablePIEStart=False
 AllowCheatCVarWrite=False
@@ -1324,6 +1325,7 @@ AllowProjectNetDriverNetModeQuery=False
 | `AllowRuntimePasswordFieldRead` | `False` | `DumpGameViewportWidgetTexts` が、実行中のゲームの UI のパスワード欄と、パスワード欄かどうか判定できない欄の平文を返せるようにします（`RuntimeWidgetTextRead` と `RuntimeWidgetPasswordTextRead` も必要）。`AllowPasswordFieldRead` とは独立。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-runtime-password-field-read=True` |
 | `AllowSecretValueRead` | `False` | `IncludeSecretValues` を受け付けるコマンドが、秘密の設定値の平文を返せるようにします（`SecretValueRead` も必要）。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-secret-value-read=True`。[秘密値の平文での読み取り](#秘密値の平文での読み取り) を参照 |
 | `AllowToolsetErrorText` | `False` | 解除できる Toolset の書き込みブリッジが、固定文の代わりにエンジン自身の失敗文を返せるようにします。起動時に読まれ、再読み込みはできません。**ini 専用**（CLI フラグもコンソール変数もありません）。オンにすると、失敗の応答に秘密の新しい値が出ることがあります — [Toolset の失敗文](#toolset-の失敗文) を参照 |
+| `AllowSecretValuesInFingerprints` | `False` | Subsonic のアクションの指紋（`ActionFingerprint` / `ActionsFingerprint`）に、秘密のプロパティの値を含めます。ただし `SecretValueRead` も持つセッションでだけです。起動時に読まれ、再読み込みはできません。**ini 専用**（CLI フラグもコンソール変数もありません）。`AllowSecretValueRead` とは独立です。オンにすると、`SecretValueRead` を持つセッションが指紋から秘密の値を割り出せるようになります — [Subsonic の指紋と秘密の値](#subsonic-の指紋と秘密の値) を参照 |
 | `AllowInputModeBypass` | `False` | Inject 系コマンドの `BypassInputMode=true` を許可 |
 | `DisablePIEStart` | `False` | PIE 起動を拒否 Toolset 版の `Toolset.Editor.Toolset.PIE.StartPIE` にも `StartPIE` と同じ文言で効きます。PIE を始められない状態でも、先にこの拒否が返ります |
 | `AllowCheatCVarWrite` | `False` | `SetConsoleVariable` / `ResetConsoleVariable` による `ECVF_Cheat` フラグ付き CVar への書き込みを許可（`RuntimeCVarWrite` も別途必要） |
@@ -1347,6 +1349,20 @@ Toolset の書き込みブリッジが失敗すると、エンジン自身の失
 - **それでも取り除かれるもの。** 呼び出しが送った値は、文中から伏せられます（`***`）。呼び出しが数値を送っていた場合は、数値を文の中から確実に伏せられないため、文は引き続き返りません。
 - **設定方法。** `Config/DefaultUAIP.ini` だけです。失敗の応答が明かしてよい範囲を広げるため、`-uaip-policy-*` フラグもコンソール変数もありません。起動時に読まれ、`ReloadCapabilities` では再読み込みされないので、エディタを再起動してください。
 - **確認方法。** `QueryCapabilities` が `OperationalConstraints.IsToolsetErrorTextAllowed` として報告します。
+
+### Subsonic の指紋と秘密の値
+
+Subsonic のコマンドの指紋（`ActionFingerprint` / `ActionsFingerprint`。楽観的排他に使います）は、**秘密のプロパティの値を含めずに**計算されます。読み取りの権限しかない人が、値の候補を当てはめて指紋と比べても、秘密の値は当てられません。代償として、秘密の値だけの変更では指紋が変わりません。ほかに影響を受ける点はコマンドリファレンスに載せています。指紋の版は 2 で、これより前に取った指紋は `Conflict` で拒否されます（読み直してください）。
+
+`[UAIP.SafetyPolicy]` の `AllowSecretValuesInFingerprints=True` で、秘密の値を指紋へ戻せます（以前の計算の仕方です）。代償は利用者が負います。**読み取りができるセッションが、指紋から秘密の値を割り出せるようになります。**
+
+- **二重の鍵。** 秘密の値が指紋に入るのは、次の**両方**がそろったセッションだけです。運用者が `AllowSecretValuesInFingerprints=True` を書いてエディタを再起動した、**かつ**セッションが `SecretValueRead` を持っている。どちらかが欠けると、指紋は既定のものです。したがって、秘密を持つアクションの指紋は、両方がそろったセッションで取ったものと、片方しかないセッションで取ったものとで違います。一方で取った指紋を他方のセッションで送ると `Conflict` で拒否されます（読み直してください）。
+- **`AllowSecretValueRead` とは独立です。** この設定は、読み取りが平文を返せるようにするものではありません。`AllowSecretValueRead=False` のままこの設定をオンにしても、`SecretValueRead` を持つセッションの指紋には秘密の値が入り、`IncludeSecretValues` 引数も要りません。これをオンにしても平文を返すコマンドは増えませんが、指紋から平文を導けるようになるので、`AllowSecretValueRead` と同じ重さで扱ってください。
+- **保存されたものに残るリスク。** 両方がそろったセッションが読み取りの結果を artifact として保存すると、そこには秘密の値に依存する指紋が入ります。artifact は値を `***` のままにしますが、その依存までは消えません。ファイルを読めるセッションは、指紋を使って値の候補を照合できます。
+- **起動時の警告。** この設定がオンのとき、ログにその旨と、`SecretValueRead` を持つセッションには指紋から秘密の値を当てられる経路が戻ることが警告として出ます。
+- **設定方法。** `Config/DefaultUAIP.ini` だけです。`-uaip-policy-*` フラグもコンソール変数もありません。起動時に読まれ、`ReloadCapabilities` では再読み込みされないので、エディタを再起動してください。
+- **確認方法。** `QueryCapabilities` が `OperationalConstraints.IsSecretValueInFingerprintAllowed` として報告します（キーは単数形で、設定の名前は `AllowSecretValuesInFingerprints` です）。
+- **影響する場所。** `RemoveSubsonicParameter` が、秘密の値だけが変わったイベントを `AffectedEvents` に載せるかも、これで決まります（両方の鍵がそろえば載ります）。また、`Modifiers` の配列が秘密と宣言されたアクションで、古い Modifier の `Index` を検出する働きも戻ります。
 
 ### DisableSave と、削除・移動・リネームのコマンド
 
