@@ -283,6 +283,8 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 一部のコマンドは独自の判定で書き込み可否を決めており、この報告を添えません。その場合は書き込みを試してください — 拒否の返答に不足している Capability 名が載ります。無いのは事前の案内だけで、進めなくなるわけではありません。
 
+**報告は、値を丸ごと書くときの上限です。** struct・配列など、メンバーを持つ値では、`RequiredCapabilities` に値全体を書くときに要るものを、型の全メンバーについて数えて挙げます。既定値でだけ編集できるメンバー（テンプレートではインスタンスでだけ編集できるメンバー）があれば `PropertyDefaultsOnlyEdit` が加わり、ドメイン固有の Capability が管理するメンバーがあればその Capability が加わります。`ValueJson` で一部のキーだけを書くときは、実際に書くメンバーの分だけが判定されるので、断りに挙がる Capability は報告より少ないことがあります。`MyStruct.X` や `Arr[0]` のようなパスを読んだときは、そのパスへ書くときと同じく、パスのすべての部分が要るものを挙げます。報告が不足として挙げたものを全て許可すれば書き込みは通ります。`IsWritable: false` と報告されたプロパティは、[コンストラクションスクリプトと子アクターの拒否](#writes-reverted-by-construction)と同じく、どの Capability でも開きません。
+
 さらに 10 個の取得系コマンドがこの報告を返すようになりました。既存の値の返し方に合わせて 2 つの形のいずれかを取ります。
 
 | コマンド | 報告の位置 |
@@ -307,7 +309,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 - **参照と複合値はテキスト形式では書けません。** これらの `WriteInputForm` は `JsonOnly` で、Capability を付与してもオブジェクトパスを `Value` に渡すと拒否されます。テキストインポート経路は Capability のゲートの内側で参照を解決・ロードしてしまうためです。`ValueJson`（Subsonic の各コマンドでは元から JSON である `Value`）を使ってください。逆にテキスト形式でしか書けない値型もわずかに存在します。どちらかは `WriteInputForm` が示します。
 - **一部のコマンドは、Capability の有無に関わらず参照そのものを拒否します。** `SetPoseSearchSchemaChannelProperty` は参照を内包する型を一切書き込みません — チャンネルのサブチャンネル配列はチャンネルを作成する経路そのものであり、そこへ直接書けると `AddPoseSearchSchemaChannel` が持つクラス許可リストを迂回できてしまうためです。専用のチャンネルコマンドを使ってください。これは権限で解除できるものではなく `PolicyViolation` として返ります。
 - **ユーザー製 PCG ノードでは、Capability を持たないセッションに見える型が絞られます。** `GetCustomPCGNodeSchema` / `GetCustomBlueprintPCGNodeSchema` / `GetPCGNativeNodeSchema` はそうしたセッションに対して curated な型だけを列挙し、対応する setter の拒否文も意図的に型名を明かしません。ただし応答は「何かが除かれたこと」自体は伝えます — `HiddenCount`、`HiddenCapabilities`（どの権限があれば見えるか）、そして `MissingCapability` / `Unwritable` の 2 キーを常に持ち合計が `HiddenCount` と一致する `HiddenReasons` オブジェクトが返ります。案内された Capability を付与すれば隠れていた項目が現れ、`HiddenCount` は 0 に戻ります。なお**プロパティ名**は元から隠していません — 綴りを間違えれば「そのプロパティは無い」と返るため、打ち間違いと権限不足は引き続き区別できます。
-- **パスの途中のセグメントも検査されます。** `Struct` 自体が読み取り専用・非推奨・Details パネルに現れない場合、`Struct.Inner` は拒否されます — 内側のメンバーを名指しして読み取り専用の階層を通り抜けることはできません。コンテナのインデックスを挟む場合（`Array[0].Inner`）にも同じ検査が働き、判定対象はコンテナ本体になります。
+- **パスの途中のセグメントも検査されます。** `Struct` 自体が読み取り専用・非推奨・Details パネルに現れない場合、`Struct.Inner` は拒否されます — 内側のメンバーを名指しして読み取り専用の階層を通り抜けることはできません。コンテナのインデックスを挟む場合（`Array[0].Inner`）にも同じ検査が働き、判定対象はコンテナ本体になります。既定値でだけ編集できる部分は、インスタンスでは `PropertyDefaultsOnlyEdit` が要ります（テンプレートでは、インスタンスでだけ編集できる部分に要ります）。これは末端だけでなくパスのすべての部分に当てはまり、ドメイン固有のゲートの Capability も同じように効きます。Capability が足りないパスは `CapabilityNotAvailable`（運用者が明示的に拒否した Capability があれば `PolicyViolation`）で断り、足りない Capability の名前を 1 回の拒否で全て挙げます。
 - **アセットパスを保持する値は 1 つのまとまりとして書き込みます。** `FSoftObjectPath` / `FSoftClassPath` / `FTopLevelAssetPath` はメンバー単位では指定できません — 内側を書き換えられると参照のゲートを素通りできてしまうためです。
 - **参照へ書き込むクラス自体が、`PropertyReferenceEdit` に加えてドメイン自身の Capability を要求することがあります。** 従来は `PropertyEdit` + `PropertyReferenceEdit` を持っていれば、`SetAssetProperty` など同型のコマンドで、既にロード済みのどのクラスでもハード参照や instanced subobject プロパティへ書き込めました — そのクラスが何であるかは一切問われませんでした。呼び出し側が名指ししたクラスから instanced subobject を構築する経路も同じ確認を通ります。この 2 つの Capability しか持たないセッションはどちらにしても影響を受けません — そもそも参照書き込みへ到達できたことが一度もないためです。現時点では `UAIP.Editor.Material` にこの確認が配線されています。`UMaterialExpression` 派生クラスを参照または instanced subobject プロパティへ書き込むには、`AddMaterialNode` が要求するのと同じく `MaterialCustomTypeEdit` / `MaterialCustomNodeEdit` が追加で必要になります — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。他のドメインはまだこの確認を登録していないため、汎用プロパティコマンド経由でそのドメイン自身がゲートしている型を書き込んでも、現時点では捕捉されません。
 
@@ -1313,17 +1315,17 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 | コマンド | 説明 |
 |---|---|
 | 🆓 `GetActorProperty` | Editor アクターのプロパティ値を取得 `IncludeSecretValues` を取る |
-| `SetActorProperty` | Editor アクターのプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
+| `SetActorProperty` | Editor アクターのプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 アクターのコンストラクションスクリプトがそのプロパティを戻す場合と、親が作り直す子アクターへの書き込みは、何も書く前に `NotAllowed` で断ります — [コンストラクションスクリプトで戻る書き込みと子アクターの拒否](#writes-reverted-by-construction) を参照。`NewValue` は書いた後に読み直した値です — [書き込みの応答](#write-read-back) を参照。 |
 | 🆓 `GetWorldSetting` | WorldSettings のプロパティ値を取得 `IncludeSecretValues` を取る |
-| `SetWorldSetting` | WorldSettings のプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
+| `SetWorldSetting` | WorldSettings のプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 コンストラクションスクリプトがそのプロパティを戻す場合は、何も書く前に `NotAllowed` で断ります — [コンストラクションスクリプトで戻る書き込みと子アクターの拒否](#writes-reverted-by-construction) を参照。`NewValue` は書いた後に読み直した値です — [書き込みの応答](#write-read-back) を参照。 |
 | 🆓 `GetAssetProperty` | アセット（DataAsset 等）のプロパティ値を取得 `IncludeSecretValues` を取る |
-| `SetAssetProperty` | アセットのプロパティを設定し `MarkPackageDirty` を呼ぶ `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
+| `SetAssetProperty` | アセットのプロパティを設定し `MarkPackageDirty` を呼ぶ `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `NewValue` は書いた後に読み直した値です — [書き込みの応答](#write-read-back) を参照。対象が Blueprint アセットのときの後処理と「コンパイルしていない」警告は、書く前に行った比較で決まるので、`Changed: false` でも出ることがあります。 |
 | 🆓 `GetBlueprintDefault` | Blueprint CDO のプロパティ値を取得 `IncludeSecretValues` を取る。PIE や Simulate の間も読める |
-| `SetBlueprintDefault` | Blueprint CDO のプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 PIE や Simulate の間は、引数を検査したあとに `NotAllowed` で断る（以前は `ExecutionFailed`）。 |
+| `SetBlueprintDefault` | Blueprint CDO のプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 PIE や Simulate の間は、引数を検査したあとに `NotAllowed` で断る（以前は `ExecutionFailed`）。 `NewValue` は書いた後に読み直した値です — [書き込みの応答](#write-read-back) を参照。 |
 | 🆓 `GetProjectSetting` | `UDeveloperSettings` CDO のプロパティ値を取得 `IncludeSecretValues` を取る |
-| `SetProjectSetting` | `UDeveloperSettings` CDO のプロパティを設定し `SaveConfig()` を呼ぶ。`DisableSave` が有効なときは `PolicyViolation` で拒否します（以前は `ExecutionFailed` と "Save operations are disabled by safety policy." でした）。`IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 書く前の値は常に伏せられます。印は `***` と `IsMasked: true` になりました（以前は `***REDACTED***`）。 |
+| `SetProjectSetting` | `UDeveloperSettings` CDO のプロパティを設定し `SaveConfig()` を呼ぶ。`DisableSave` が有効なときは `PolicyViolation` で拒否します（以前は `ExecutionFailed` と "Save operations are disabled by safety policy." でした）。`IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 書く前の値は常に伏せられます。印は `***` と `IsMasked: true` になりました（以前は `***REDACTED***`）。`IsMasked` が指すのは `PreviousValue` だけです。`NewValue` は書いた後に読み直した平文の値です（秘密の設定のときだけ `***`）— [書き込みの応答](#write-read-back) を参照。 |
 | 🆓 `GetDataTableRow` | DataTable 行のプロパティ値を取得 `IncludeSecretValues` を取る |
-| `SetDataTableRow` | DataTable 行のプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
+| `SetDataTableRow` | DataTable 行のプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `NewValue` は書いた後に読み直した値です — [書き込みの応答](#write-read-back) を参照。 |
 
 **失敗の結果コード。** `Get*` コマンドは、プロパティ経路を対応する `Set*` コマンドと同じ `ErrorCode` で断ります。プロパティが無いときは `NotFound`、経路の書式の誤り・深すぎる経路・範囲外の添字・たどれないものを経由する経路（添字なしの構造体の固定長配列など）は `InvalidParams` です。⚠️ これらの読み取りは、以前は理由によらず `ExecutionFailed` を返していました。対象そのもの（アクター・アセット・Blueprint・行・設定のオブジェクト）が見つからないときは、読み取りも書き込みも従来どおり `ExecutionFailed` を返します。次の 2 つのドメインはプロパティ経路について独自の結果コードのままで、理由はメッセージで示します。`GetDataflowNodeProperty` / `SetDataflowNodeProperty` は `InvalidParams`、`GetSectionProperty`（`UAIP.Editor.Sequencer`）は `ExecutionFailed` を返します。
 
@@ -1344,6 +1346,63 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 これらの書き込みは、以前は通っていました。Blueprint をコンパイルせずにオブジェクトを変えるので、変更は Blueprint が作るものに届かず、専用のコマンドの Capability も迂回できていました。それ以外の Blueprint の中のオブジェクト（タイムラインのテンプレートや、親の C++ クラスが定義したコンポーネントの既定値など）は今までどおり書けます。そのときは、Blueprint をコンパイルしていないことを `Result.Warnings` で示します。
 
 `GetAssetProperty` は、これらのオブジェクトを今までどおり読めます。上の 7 種類では、結果と artifact に `SuggestedCommand` が加わります。値は専用のコマンドの完全名を、カンマと空白で区切って並べたものです（例: `UAIP.Editor.Property.SetBlueprintDefault, UAIP.Editor.Blueprint.SetBlueprintVariableDefault`）。⚠️ `GetAssetProperty` は、パスワード欄（`IsPassword` が真の `EditableTextBox` / `EditableText`）の `Text` も `***` で伏せるようになりました。以前は平文で返していました。
+
+<a id="write-read-back"></a>
+### 書き込みの応答: `NewValue`・`Changed`・`NewValueObserved`・`ReadBackError`
+
+上の `Set*` のうち 6 コマンド（`SetActorProperty`・`SetAssetProperty`・`SetWorldSetting`・`SetBlueprintDefault`・`SetDataTableRow`・`SetProjectSetting`）に当てはまります。書き込みとエディタの変更通知が済んだ後で、書いた値を読み直します。`Result` と artifact には同じ観測が入ります。
+
+| フィールド | 意味 |
+|---|---|
+| `PreviousValue` | 書く前に読んだ値 |
+| `NewValue` | 書いた後に読み直した値。書式は `Get*` コマンドと同じです（`1.5` は `1.500000` で返り、JSON で送った値はエンジンのテキストか整形した JSON で返ります）。エディタや所有するオブジェクトが値を補正したとき（範囲への丸めなど）は、送った値ではなく補正後の値です。要素の操作（`Insert` / `Remove` / `Clear`）では `PreviousValue` も `NewValue` もコンテナ全体になります。どの要素かは今までどおり `ElementIndex` / `ElementKeyJson` で示します |
+| `Changed` | `PreviousValue` と `NewValue` が違うかどうか。値が戻された、または元の値に補正された場合は `false` です。比較は文字列で行うので、書き込みで作り直されたサブオブジェクトを含む値は、中身が同じでも `true` になることがあります |
+| `NewValueObserved` | `NewValue` を読み直せたときは `true`。読み直せなかったときは `false` で、`NewValue` は送った値です |
+| `ReadBackError` | `NewValueObserved` が `false` のときだけ載り、読み直せなかった理由を示します。`TargetInvalidated`（書いた後に対象が無くなった）、`PreviousValueUnreadable`（書く前の値を読めず、変わったかどうか判断できない）、`ReadBackFailed`（書いた後の値を読めなかった）。値や要素数は引用しません |
+
+`NewValueObserved` が `false` のとき、書き込みは済んでいて、応答は成功のままです。このとき `NewValue` と `Changed` を実際の値として扱わないでください。`NewValue` は送った値、`Changed` は書く前に行った見込みの判定です。
+
+- **秘密の対象**では、`NewValue` を `***` で返し、`Changed`・`NewValueObserved`・`ReadBackError` は出しません。
+- **`SetProjectSetting`**: `PreviousValue` は常に `***` で `IsMasked: true` が付き、`IsMasked` が指すのは `PreviousValue` だけです。`NewValue` は読み直した平文の値です（秘密の設定のときは `***` で、このとき `IsMasked` は伏せた値すべてを指します）。`Changed` は、UAIP が内部で読んだ書く前の値（報告はしません）と `NewValue` の比較です。
+- **Blueprint アセットへの `SetAssetProperty`**: Blueprint を「変更あり」にするかどうかと、`Warnings` に `The Blueprint was not compiled…` を加えるかどうかは、書く前に行った比較で決まります。そのため `Changed: false` でも出ることがあります。
+- ⚠️ `NewValue` は以前、送った値をそのまま返していました。これからは読み直した値なので、書式が変わることがあり（`1.5` → `1.500000`、JSON で送った値 → エンジンのテキストか整形した JSON）、要素の操作ではコンテナ全体が返り、値が戻された・補正された場合は `Changed: false` になります。`NewValue` を送った値と比べていた呼び出しは、書いた後に期待する値と比べてください。
+- 読み直すのはこの 6 コマンドだけです。同じプロパティ経路を使う他の書き込みコマンド（`SetActorComponentProperty`・`SetBlueprintComponentProperty` など）の応答は今までどおりです。
+
+<a id="writes-reverted-by-construction"></a>
+### コンストラクションスクリプトで戻る書き込みと子アクターの拒否
+
+レベル上のアクターへの書き込みは、値がすぐ消えるときにも成功と返していました。編集の後にアクターのコンストラクションスクリプトが再実行されてプロパティがクラスの既定値に戻る場合と、子アクターが親の作り直しのたびに破棄されて作り直される場合です。これらの書き込みは、何も書く前に `NotAllowed` で断り、理由と、値が残る手段を示します。値・パッケージの未保存の印・Undo の履歴は呼び出し前のままです。
+
+**対象のコマンド。** 断りは共有のプロパティ書き込み経路から返るので、その経路でアクターのインスタンスに書くコマンドすべてに効きます。今のところ `SetActorProperty` と `SetWorldSetting` です。他の書き込みコマンドはコンポーネント・アセット・テンプレート・クラスの既定値に書くもので、コンストラクションスクリプトでは戻らないため、影響を受けません。`SetWorldSetting` が当たるのは最初の断りだけで、子アクターの断りは `SetActorProperty` が返します。
+
+**コンストラクションスクリプトが戻すプロパティ。** パスの先頭が、コンストラクションスクリプトが走るたびにクラスの既定値へ戻す変数のときに断ります。対象は次のとおりです。
+
+- Blueprint で足した、Instance Editable でない変数（struct 変数のメンバー、配列の要素、要素の追加・削除も含む）
+- C++ で「既定値でだけ編集できる」と宣言されているが、Blueprint から書けるプロパティ
+- Blueprint で足した、Instanced なオブジェクトの配列
+
+拒否文は、コンストラクションスクリプトがプロパティを戻すので値が残らないことを述べ、値が残る手段を示します。`SetBlueprintDefault` でクラスの既定値を変えるか、変数を Instance Editable にしてから書き直す方法です。
+
+- 断りは値によって変わりません。今の値や既定値と同じ値も断ります。読んだ値をそのまま書き戻す場合も含みます。値で答えを変えると、書く前の書き込み要件の答えとそろわなくなるためです。
+- どの Capability でも解けません。`PropertyDefaultsOnlyEdit` も同じです。Capability の判定より先に行うので、「Capability を足せ」と案内した後で別の理由で断られることはありません。シナリオステップの `RetryCount` も再試行しません。
+- 断らず、今までどおり書けるもの: Instance Editable の変数、Blueprint から読み取り専用または非公開の変数、レベル Blueprint の変数、イベントの割り当て、C++ で Instanced と宣言したプロパティ、クラスの既定値とテンプレート、アクターのラベル。`RandomStream` も書けますが、現在の種はコンストラクションスクリプトが走るたびに初期の種へ戻ります。
+- Play や Simulate の間は、これらのコマンドはもっと手前の Play / Simulate のガードが断ります（`NotAllowed`、Play や Simulate の間は使えない旨）。
+
+**子アクター。** ChildActor のコンポーネントが作った子アクターは、親が作り直すたびに破棄されて作り直されるので、書いた値は残りません。プロパティの種類を問わず、書き込みは `NotAllowed` で断ります。拒否文は、何が作り直しているかと、取れる手段を述べます。
+
+- Blueprint のコンポーネント一覧で足した ChildActor のコンポーネント: そのコンポーネントと親 Blueprint を名指しし、UAIP にはそのコンポーネントの子アクターのテンプレートを書くコマンドが無いと述べます。
+- コンストラクションスクリプトのグラフで足した ChildActor のコンポーネント: コンポーネントを足したそのグラフで値を設定するよう案内します。
+- 子アクターの中の子アクター: 上へたどった ChildActor のコンポーネントのどれかが Blueprint で足したものなら断ります。孫を直接作ったコンポーネントが Blueprint で足したものなら、それを名指しします。直接作ったのが C++ のコンポーネントで、それより上だけが Blueprint で足したものなら、孫に届くテンプレートが無く、UAIP から値を変える方法が無いと述べます。
+- C++ で作られる ChildActor のコンポーネントの子アクターは、それより上に作り直すものが無ければ断りません。書き込みは通りますが、親を編集したときとレベルを読み直したときに値が消えます。
+- 子アクターが持つコンポーネントは対象外です。`SetActorComponentProperty` で今までどおり書けます。
+
+子アクターの断りには、すべて次の選択肢が添えられます。
+
+⚠️ **`cac.ExperimentalAllowPerInstanceChildActorProperties`。** このエンジンのコンソール変数を `1` にすると書き込みが通り、親が子アクターを作り直しても値が残ります。エンジンの実験的な設定で、レベルを読み込んだときと `ChildActorClass` を変えたときには、値がテンプレートの値に戻ることがあるので、この方法で書いた値は恒久的な変更ではありません。成功の応答からは、後で戻ったかどうかは分かりません。値が後で消えてよいときにだけ使ってください。
+
+**秘密のプロパティ。** 断りは同じく `NotAllowed` ですが、拒否文は書き込みが許されない旨だけを述べる固定の文です。他の秘密のプロパティの断りと同じく、理由も代わりの手段も述べません。
+
+**書き込み要件も同じ答えを返します。** `GetActorProperty` と、書き込み要件を返す Behavior Tree・UMG・StateTree・Enhanced Input のコマンドは、こうしたプロパティを、どの Capability でも開かないものとして報告します。`IsWritable` は `false` で、`RefusalReason` に断りと同じ理由と代わりの手段が入ります。要件が Capability の不足として挙げているなら、挙がったものを全て許可すればその書き込みは通ります。
 
 ---
 
