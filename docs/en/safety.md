@@ -510,6 +510,28 @@ By default only the session whose write was stopped (or that sent the `ClickWidg
 - Grant it with `+AllowedCapabilities=EditorDialogCrossSessionAnswer` under `[UAIP.SafetyPolicy]`. It is DefaultDenied. A dialog nobody can answer is closed by `[UAIP.ModalDialog] UnansweredTimeoutSeconds` instead (see [Configuration](config.md#uaipmodaldialog--closing-a-dialog-nobody-answers-off-by-default)).
 - What can answer at all is decided first by `StarvedTickAllowList`; see [Modal dialogs opened by a write](commands.md#modal-dialogs-opened-by-a-write).
 
+#### Closing floating windows
+
+| Capability | What it unlocks |
+|---|---|
+| `EditorForceCloseFloatingWindows` | Letting `OpenAsset`, `CloseAsset`, `CloseEditorTab`, `OpenTabById`, `CloseTabById`, `SelectAssets` and `SetContentBrowserPath` close a floating window in a way that skips the cleanup its owner would have run, where they refuse by default for safety |
+
+In an editor older than UE 5.8 that does not draw (and was not started with `-RenderOffScreen`), these commands refuse with `NotAllowed` and `Reason: Headless` in two situations, because a floating window left open would terminate the editor at the next layout save (see [Floating window refusals](commands.md#floating-window-refusals)):
+
+- a floating window that does not belong to the command is open;
+- for `CloseTabById`, the floating window of the target tab also holds other tabs, a child window, or a tab that contains its own tabs (an asset editor, for example).
+
+A session that holds this capability gets the command carried out instead: the floating windows are closed in a safe way first (the whole window, for `CloseTabById`), and the command goes on. The response lists what was closed in `Result.ClosedFloatingWindows` (each element has `WindowTitle` and `TabIds`), so the caller can tell that the owners' cleanup did not run. If a window cannot be closed, the answer is `InternalError` with `Result.RemainingFloatingWindows`, and the editor should be shut down at once with `ShutdownEditor`.
+
+- Grant it with `+AllowedCapabilities=EditorForceCloseFloatingWindows` under `[UAIP.SafetyPolicy]`. It is DefaultDenied. It is registered in the demo build too, and it is not marked as unavailable there. It has no effect in UE 5.8 or later, in an editor that draws, or with `-RenderOffScreen`, because nothing is refused there.
+- No command lists it in its required capabilities: the commands stay callable without it, and they check it for the calling session. A request that names no `SessionId` cannot use it.
+- It lifts only the refusals made for safety. It does **not** lift refusals that cannot be avoided by closing something: a tab that has no place in the main window and would open as a floating window (`OpenTabById`, or a Content Browser that opens as one), an `OpenAsset` with no level editor tab to put the editor in, or an operation that leaves a new floating window behind. Those are still refused with `Reason: Headless`.
+
+Two dangers remain even when it is granted, so grant it only for a session that needs it:
+
+1. **A torn-down asset editor can leave a broken registration behind.** An asset editor (or any tab that contains its own tabs) closed this way does not get its own close handling. The editor's asset-editor subsystem can keep a broken toolkit registered, and later operations that touch that editor can be affected.
+2. **A modal window of someone else can be destroyed.** Destroying a floating window also destroys the modal windows opened from it. If another owner is running a modal loop in one of them, that owner's code can end in a way it does not expect.
+
 #### Toolset bridges during a Play session
 
 | Capability | What it unlocks |

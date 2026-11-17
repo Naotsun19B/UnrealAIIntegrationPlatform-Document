@@ -510,6 +510,28 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 - `[UAIP.SafetyPolicy]` に `+AllowedCapabilities=EditorDialogCrossSessionAnswer` を設定して付与します。DefaultDenied です。誰も答えられないダイアログは、代わりに `[UAIP.ModalDialog] UnansweredTimeoutSeconds` で閉じられます（[設定](config.md#uaipmodaldialog--応答のないダイアログの打ち切り既定で無効)を参照）。
 - そもそも答えられるコマンドは、先に `StarvedTickAllowList` で決まります。[書き込みが開いたモーダルダイアログ](commands.md#書き込みが開いたモーダルダイアログ)を参照してください。
 
+#### 別ウィンドウを閉じる
+
+| Capability | 解禁されるもの |
+|---|---|
+| `EditorForceCloseFloatingWindows` | `OpenAsset`・`CloseAsset`・`CloseEditorTab`・`OpenTabById`・`CloseTabById`・`SelectAssets`・`SetContentBrowserPath` が、安全のために既定で断っている場面で、持ち主の後始末を飛ばす方法で別ウィンドウを閉じる |
+
+UE 5.8 未満の、描画しないエディタ（`-RenderOffScreen` を付けていないもの）では、別ウィンドウが残ったままだと次のレイアウトの保存でエディタが終了するため、これらのコマンドは次の 2 つの場面で `NotAllowed`（`Reason: Headless`）で断ります（[別ウィンドウが理由で断られるとき](commands.md#別ウィンドウが理由で断られるとき)を参照）。
+
+- コマンドと関係のない別ウィンドウが開いている。
+- `CloseTabById` で、対象のタブの別ウィンドウに、他のタブ・子ウィンドウ・中にタブを抱えるタブ（たとえばアセットエディタ）もある。
+
+この Capability を持つセッションでは、断る代わりにコマンドを実行します。先に別ウィンドウを安全な方法で閉じ（`CloseTabById` ではウィンドウごと）、そのままコマンドを続けます。応答の `Result.ClosedFloatingWindows` に閉じたものが載る（各要素は `WindowTitle` と `TabIds`）ので、呼び出し側は持ち主の後始末が走っていないことが分かります。閉じられないウィンドウがあったときは、`InternalError` と `Result.RemainingFloatingWindows` を返すので、すぐに `ShutdownEditor` で終了してください。
+
+- `[UAIP.SafetyPolicy]` に `+AllowedCapabilities=EditorForceCloseFloatingWindows` を設定して付与します。DefaultDenied です。デモ版にも登録され、「使えない」の印は付きません。UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きでは何も断らないので、付与しても効果はありません。
+- どのコマンドも必須の Capability には載せていません。コマンドはこの Capability が無くても呼べ、呼び出したセッションについて確認します。`SessionId` を付けない要求は使えません。
+- 解禁するのは、安全のために断っている場面だけです。何かを閉じても避けられない拒否は解禁しません。メインウィンドウに置き場所が無く別ウィンドウに出てしまうタブ（`OpenTabById`、または別ウィンドウに開くコンテンツブラウザ）、エディタを入れるレベルエディタのタブが無い `OpenAsset`、新しい別ウィンドウが残る操作です。これらは付与していても `Reason: Headless` で断られます。
+
+付与しても残る危険が 2 つあるので、必要なセッションにだけ付与してください。
+
+1. **壊したアセットエディタの登録が残ることがあります。** アセットエディタ（中にタブを抱えるタブ）をこの方法で閉じると、そのエディタ自身の閉じる処理が走りません。エディタのアセットエディタ管理に壊れたツールキットが登録されたまま残ることがあり、そのエディタに触れる後続の操作が影響を受けることがあります。
+2. **他の持ち主のモーダルウィンドウを壊すことがあります。** 別ウィンドウを破棄すると、そこから開いたモーダルウィンドウも一緒に破棄されます。別の持ち主がその中でモーダルループを回していると、その持ち主の処理が想定外の終わり方をすることがあります。
+
 #### Play セッション中の Toolset ブリッジ
 
 | Capability | 有効になる操作 |
