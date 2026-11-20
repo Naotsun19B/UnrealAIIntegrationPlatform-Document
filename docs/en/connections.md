@@ -473,6 +473,8 @@ The WebSocket transport provides persistent bidirectional connections with real-
 UnrealEditor.exe MyProject.uproject -uaip-ws-enable
 ```
 
+In a packaged game that is not Shipping, `-uaip-ws-enable` alone starts the server: the WebSocketNetworking plugin does not have to be enabled for the project (UAIP loads the module that is linked into the package, and logs that it did). A Shipping game includes the WebSocket transport only when the project's `.uproject` enables WebSocketNetworking. See [Security](security.md#network-surface).
+
 Custom port (default: `8766` for editor, `8768` for packaged):
 
 ```

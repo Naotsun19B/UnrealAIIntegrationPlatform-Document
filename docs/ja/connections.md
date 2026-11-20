@@ -473,6 +473,8 @@ WebSocket トランスポートはリアルタイムログストリーミング�
 UnrealEditor.exe MyProject.uproject -uaip-ws-enable
 ```
 
+Shipping 以外のパッケージしたゲームでは、`-uaip-ws-enable` だけでサーバーが起動します。プロジェクトで WebSocketNetworking プラグインを有効にする必要はありません（パッケージにリンクされているモジュールを UAIP が読み込み、そのことをログに出します）。Shipping のゲームには、プロジェクトの `.uproject` で WebSocketNetworking を有効にしたときだけ WebSocket トランスポートが入ります。[セキュリティ](security.md#ネットワーク面) を参照してください。
+
 ポートを変更する場合（デフォルト：Editor `8766`・Packaged `8768`）：
 
 ```
