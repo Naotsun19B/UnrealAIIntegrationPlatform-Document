@@ -455,7 +455,8 @@ Response:
 
 | Item | Limit |
 |---|---|
-| Max request body | 64 KiB |
+| Max request body (single command) | 64 KiB — `POST /uaip/commands`, and every `POST /mcp` request other than a `uaip_run_scenario` call. A larger body is answered 413 |
+| Max request body (scenario) | 1 MiB — `POST /uaip/scenarios`, and a `uaip_run_scenario` call on `POST /mcp`. The same cap as the scenario itself and as WebSocket and CLI. A larger body is answered 413 |
 | Max artifact response | 100 MiB |
 | Max concurrent commands | 1 (default; passive-wait commands can be excluded via ini — HTTP / MCP only, see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default)) |
 | Command timeout | 120 s (default; override per request with the optional top-level `TimeoutSeconds` field, 1–1800 s — see [Executing a command](#executing-a-command) above) |
@@ -566,8 +567,9 @@ The server pushes `OutputLogEntry` events for all UE log output in real time. To
 
 | Item | Limit |
 |---|---|
-| Max receive message | 64 KiB |
-| Max scenario payload | 1 MiB |
+| Max message before authentication | 4 KiB — a larger frame closes the connection without being parsed (an `Auth` frame is about a hundred bytes) |
+| Max receive message (`CommandRequest`) | 64 KiB — a larger frame closes the connection |
+| Max scenario payload (`ScenarioRequest`) | 1 MiB — a larger frame closes the connection |
 | Max concurrent connections | 4 |
 | Handshake timeout | 5 s |
 | Command timeout | 12 s |

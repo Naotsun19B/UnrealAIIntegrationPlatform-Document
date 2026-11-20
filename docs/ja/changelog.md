@@ -237,6 +237,7 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 - **警告がテストを失敗させなくなり、専用の配列で報告されるようになりました**: テストが出した警告は、以前は失敗メッセージに混ざっていました。今後は `WarningMessages` に入り、`Result` を変えません。スキップ行は `SkipMessages` に入ります。`FailMessages`・`SkipMessages`・`WarningMessages` は、それぞれ空でないときだけ出力され、ログの成果物は `FAIL:`・`SKIP:`・`WARN:`・`LOG:` の順に並べます。[コマンド](commands.md#automation-test-のレポートの共通契約) を参照してください。
 - **CLI の拒否が、理由に合った `ErrorCode` で報告されるようになりました**（`UAIPTransportCLI` モジュール）: 拒否は、理由によらず `InternalError` として報告されていました。今後は、リクエストの誤り（リクエストの指定元が複数ある、許可ディレクトリの外のパスや許可されない拡張子、読めないファイルやサイズ超過のファイル、壊れた JSON、不正な `Command` / `SessionId` / `Params`）は `InvalidParams`、存在しない `SessionId` は `NotFound`、ロールのゲートがこの transport を止めた場合は `PolicyViolation`、一発実行のコマンドが 120 秒以内に終わらなかった場合は `Timeout` です。`InternalError` は、シナリオモジュールが利用できない場合と、レスポンスファイルを書き出せない場合のために残ります。プロセスの終了コードは変わりません（成功は `0`、コマンドを実行して失敗した場合は `1`、拒否した場合とレスポンスファイルを書き込めなかった場合は `2`）。CLI の拒否に `InternalError` で照合していた呼び出し側は、改めてください。[API](api.md#33-cli-レスポンス) を参照してください。
 - **存在しないセッションや成果物の HTTP 404 が `ErrorCode: NotFound` を返すようになりました**（`UAIPTransportHTTP` モジュール）: `DELETE /uaip/sessions/{sessionId}`、`GET /uaip/artifacts/{artifactId}`、`GET /uaip/sessions/{sessionId}/artifacts` は、未登録のコマンドを意味する `CommandNotFound` を返していました。HTTP ステータス（404）とメッセージの文言は変わりません。これらの応答を `CommandNotFound` で照合していた呼び出し側は、改めてください。WebSocket は変わりません。
+- **シナリオの上限がすべての transport で 1 MiB になり、認証前の WebSocket 接続が送れるのは 4 KiB までになりました**（`UAIPTransportHTTP` / `UAIPTransportWS` モジュール）: `POST /uaip/scenarios` と MCP の `uaip_run_scenario` ツールは、64 KiB を超える本文を 413 で拒否していました。シナリオそのものは 1 MiB まで許されており、WebSocket と CLI はすでに 1 MiB まで受け付けていました。今後はどちらも 1 MiB まで受け付け、超えたときだけ 413 を返します。単発のコマンドの上限は 64 KiB のままです。`POST /uaip/commands` と、それ以外の `POST /mcp` の要求（`uaip_execute` などの他のツール、`initialize`、`ping`、`tools/list`）は、64 KiB を超えると引き続き 413 を返します。WebSocket では、まだ認証していない接続が 4 KiB を超えるフレームを送ると、そのフレームをパースせずに接続を閉じるようになりました。実際の `Auth` フレームは 100 バイト程度です。認証済みの接続は変わりません（`CommandRequest` は 64 KiB、`ScenarioRequest` は 1 MiB）。上限の一覧は [接続方法](connections.md#制限値) を参照してください。
 - **`QuitGame`（`UAIP.Runtime.World`）は、ゲームを実行していないエディタで `ExecutionFailed` を返すようになりました**: これまでは何もせずに `Success: true` を返していました。エディタは閉じません。`QuitGame` が終了させるのは実行中のゲームであってエディタではないため、エディタを閉じるには `ShutdownEditor`（`UAIP.Editor.Workspace.ShutdownEditor`）を使ってください。PIE 実行中は従来どおり PIE を停止します。ゲームを実行していないエディタでの `Success: true` に依存していた呼び出し側は、改めてください。[コマンド](commands.md#uaipruntimeworld) を参照してください。
 
 - **`DumpActorState` と `DumpComponentState`（`UAIP.Runtime.Observation`）が、Actor やコンポーネントが見つからないとき `NotFound` を返すようになりました**（これまでは `ExecutionFailed`）。メッセージの文言は変わりません。シナリオがステップを自動で再試行するのは `ExecutionFailed` と `PreconditionFailed` の後だけなので、**Actor が現れるのを再試行で待つ想定で `RetryCount` を付けていたステップは、再試行されずにすぐ失敗します**。その前に待機用のコマンドを置いてください。
@@ -475,6 +476,14 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 - **ブリッジが自前で返す応答 6 種類に `Result` が加わりました。** `uaip_execute` 経由の `ShutdownEditor` の no-op、`RestartEditor` のセッションなし起動・アタッチ、シャットダウン転送の 2 種、応答しないエディタの復旧の 2 種です。互換のため、同じ値の `Data` も残します。
 - **`RestartEditor` を拒否した応答の形が変わりました。** 受付時のエディタの応答は、拒否応答の後ろに別の text として続くのをやめ、`Result.AcceptedResponse` に入ります。その artifact は、他の応答と同じ位置の最上位の `_inlined_artifacts` に載ります。応答本文は 1 つの text 部分だけです。受付時の応答が JSON として読めなかったときは、`AcceptedResponse` に `{"RawText": ...}` が入ります。
 - **ブリッジは、自分が起動したエディタのクラッシュダイアログだけを閉じるようになりました。** 以前は、エディタの起動・再起動の前と起動待ちの間に、同じ利用者の `WerFault.exe`・`CrashReportClient.exe`・`CrashReportClientEditor.exe` を名前で一括して終了させており、別プロジェクトのエディタや他のアプリケーションのものも含まれていました。今は、ブリッジが起動して今も持っているエディタの子孫として起動されたものだけを閉じます。親子関係を確かめられないダイアログ（例：Windows エラー報告のサービスから起動された `WerFault.exe`）は、自分のエディタのものでも閉じません。それが次の起動を止めているときは、手で閉じてください。ブリッジが起動していないエディタ（既に起動しているエディタにつないだ場合）のダイアログは、以前から閉じず、今も閉じません。
+
+#### Claude Code Plugin — 未リリース
+
+プラグインは UAIP プラグインとは独立に採番・リリースされます（採番規則は上記のバージョニング方針を参照）。
+
+**変更**
+
+- **`/uaip:scenario` が 1 MiB までのシナリオを送るようになりました。** `exec.py` は、64 KiB を超えるシナリオを送る前に終了コード 2 で拒否していました。今後はエディタのシナリオの上限である 1 MiB で判定します。`/uaip:exec` で送る単発のコマンドは 64 KiB のままです。上記の未リリースの版より前の UAIP プラグインは、64 KiB を超えるシナリオに引き続き 413 を返します。[Claude Code Plugin](claude-code-plugin.md) を参照してください。
 
 ### Result View 0.1.1 — 2026-10-31
 

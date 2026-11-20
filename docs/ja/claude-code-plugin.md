@@ -202,7 +202,7 @@ python "<展開先フォルダ>/plugins/uaip/scripts/exec.py" "UAIP.Editor.Execu
 |---|---|
 | 0 | 成功し、すべての Artifact も保存できた |
 | 1 | エディタが失敗を報告した（`Success: false`、または `CapabilityNotAvailable` / `PolicyViolation` / `InvalidParams` / `NotFound` / `CommandNotFound` / `TooManyRequests` 等のエラー） |
-| 2 | 引数または入力の誤り（併用できない引数の組み合わせ、UE プロジェクトフォルダでない、`Saved/UAIP/Requests/` の外のリクエストファイル、不正な JSON、64 KiB を超える入力）。何も送信していない |
+| 2 | 引数または入力の誤り（併用できない引数の組み合わせ、UE プロジェクトフォルダでない、`Saved/UAIP/Requests/` の外のリクエストファイル、不正な JSON、64 KiB を超えるコマンドや 1 MiB を超えるシナリオ）。何も送信していない |
 | 3 | 対象ポートのプログラムに到達できない、このプロジェクトの UAIP エディタと確認できない、または認証できない。何も実行されていない |
 | 4 | タイムアウト。**結果は不明** — エディタがまだ処理している可能性がある。再送しないこと |
 | 5 | コマンド（またはシナリオの全ステップ）は成功したが、1 つ以上の Artifact の取得・保存に失敗した |

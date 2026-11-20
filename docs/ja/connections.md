@@ -455,7 +455,8 @@ Authorization: Bearer <token>
 
 | 項目 | 上限 |
 |---|---|
-| 最大リクエストボディ | 64 KiB |
+| 最大リクエストボディ（単発のコマンド） | 64 KiB — `POST /uaip/commands` と、`uaip_run_scenario` 以外の `POST /mcp` の要求。超えると 413 |
+| 最大リクエストボディ（シナリオ） | 1 MiB — `POST /uaip/scenarios` と、`POST /mcp` の `uaip_run_scenario`。シナリオそのものの上限、WebSocket・CLI の上限と同じ。超えると 413 |
 | 最大 Artifact レスポンス | 100 MiB |
 | 最大同時コマンド数 | 1（既定。ini で受動的待機コマンドを除外可能 — HTTP / MCP のみ。[設定リファレンス → `[UAIP.Transport]` 受動的待機の同時実行](config.md#uaiptransport--受動的待機の同時実行既定オフ) 参照） |
 | コマンドタイムアウト | 120 秒（既定。任意のトップレベルフィールド `TimeoutSeconds`（1〜1800 秒）でリクエストごとに上書き可 — 上記 [コマンド実行例](#コマンド実行例) 参照） |
@@ -568,8 +569,9 @@ sequenceDiagram
 
 | 項目 | 上限 |
 |---|---|
-| 最大受信メッセージサイズ | 64 KiB |
-| 最大シナリオペイロード | 1 MiB |
+| 認証前の最大メッセージサイズ | 4 KiB — 超えるフレームはパースせずに接続を閉じる（`Auth` フレームは 100 バイト程度） |
+| 最大受信メッセージサイズ（`CommandRequest`） | 64 KiB — 超えると接続を閉じる |
+| 最大シナリオペイロード（`ScenarioRequest`） | 1 MiB — 超えると接続を閉じる |
 | 最大同時接続数 | 4 |
 | ハンドシェイクタイムアウト | 5 秒 |
 | コマンドタイムアウト | 12 秒 |
