@@ -541,6 +541,15 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 
 Environment variables (`UAIP_UE_EDITOR_PATH`, `UAIP_UPROJECT_PATH`, `UAIP_ENABLE_SCENARIO`, `UAIP_ROLE_NAME`, `UAIP_ROLE_TOKEN`) override the corresponding JSON values when set. See `config.json.example` (shipped inside the bridge zip; after install, at `<bridge-root>/config.json.example`) for a fully-commented template.
 
+### Boolean keys accept only `true` and `false`
+
+Every key of type bool in `config.json` — the ones in the table above and in [Settings read only when the bridge starts](#settings-read-only-when-the-bridge-starts) — accepts only the JSON values `true` and `false`. Any other value, a quoted `"false"` or `"true"` included, as well as `0`, `1`, `""`, `null`, an array or an object, makes the bridge refuse to start (exit code 2, with the reason in the MCP client's log), and `uaip_reload_config` refuses it with `InvalidParams` and keeps the configuration in effect. The message names the key, as a dotted path such as `inline_artifacts.json`, and the type of the value, but not the value. Write `true` or `false` without quotes, or remove the key to use its default.
+
+- The file is checked even when an environment variable overrides the key, so removing the variable later cannot uncover a value the bridge refuses.
+- The environment variables keep their own spellings (for example `1`, `true` or `yes`); this rule is about `config.json` only.
+- `"inline_artifacts": true` (not an object) is not a bool key: it is still only a warning, and the three keys keep their defaults.
+- The installer names such keys when it runs and says that the bridge will not start.
+
 ### Settings read only when the bridge starts
 
 These keys are read once, when the bridge starts. Editing `config.json` and calling `uaip_reload_config` does not change them (the reload response says the setting takes effect when the bridge is restarted). To change one, edit `config.json` (or set the environment variable) and reconnect the MCP client. The last four lower the bridge's safety posture when `true`; leave them `false` unless you need them.

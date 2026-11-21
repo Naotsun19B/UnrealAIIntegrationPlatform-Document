@@ -541,6 +541,15 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 
 環境変数（`UAIP_UE_EDITOR_PATH`・`UAIP_UPROJECT_PATH`・`UAIP_ENABLE_SCENARIO`・`UAIP_ROLE_NAME`・`UAIP_ROLE_TOKEN`）が設定されている場合は対応する JSON 値を上書きします。フルコメント付きテンプレートは `config.json.example`（Bridge zip 同梱、インストール後は `<bridge-root>/config.json.example`）を参照してください。
 
+### 真偽値のキーは `true` と `false` だけを受け付ける
+
+`config.json` の bool 型のキー（上の表と [ブリッジの起動時にだけ読まれる設定](#ブリッジの起動時にだけ読まれる設定) のもの全て）は、JSON の `true` と `false` だけを受け付けます。それ以外の値（引用符で囲んだ `"false"` や `"true"`、`0`、`1`、`""`、`null`、配列、オブジェクト）が書かれていると、Bridge は起動を拒否します（終了コード 2。理由は MCP クライアントのログに出ます）。`uaip_reload_config` も `InvalidParams` で断り、今の設定のまま動き続けます。メッセージにはキーの名前（`inline_artifacts.json` のような点区切りのパス）と値の型が入り、値そのものは入りません。直すには、引用符を付けずに `true` か `false` を書くか、キーを消して既定値に戻します。
+
+- 環境変数がそのキーを上書きしているときも、ファイルの値は検査されます。後で環境変数を外したとたんに起動しなくなる、ということは起きません。
+- 環境変数の書き方（`1`・`true`・`yes` など）は変わりません。この決まりは `config.json` だけのものです。
+- `"inline_artifacts": true`（オブジェクトでない）は bool 型のキーではありません。これまでどおり警告だけで、3 つのキーは既定値になります。
+- インストーラーは、実行時にこうしたキーを名指しし、Bridge が起動しないことを伝えます。
+
 ### ブリッジの起動時にだけ読まれる設定
 
 次のキーは、Bridge が起動したときに 1 回だけ読まれます。`config.json` を書き換えて `uaip_reload_config` を呼んでも変わりません（reload の応答に「Bridge の再起動で効く」と載ります）。変えるときは `config.json`（または環境変数）を直し、MCP クライアントを再接続してください。後ろの 4 つは、`true` にすると Bridge の安全性が下がります。必要なとき以外は `false` のままにしてください。
