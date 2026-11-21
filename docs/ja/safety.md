@@ -661,7 +661,7 @@ MaxSaveFileBytes=67108864
 | `bAllowWritesDuringPIE` | `False` | エディタでプレイ中（PIE）に `DeleteSaveGame`・`CopySaveGameSlot`・`WriteSaveGame`・`RestoreSaveGame` を実行してよいか。`False` では、実行中のゲームが同じスロットを読んだり上書きしたりしうるため、`NotAllowed` で拒否します。ゲームとこれらのコマンドがスロットを共有することを受け入れる場合に `True` にします。`-game` 起動やパッケージ版には影響しません（この理由で拒否されることはありません） |
 | `MaxSaveFileBytes` | `67108864`（64 MiB） | コマンドが読むセーブファイルの最大バイト数。範囲は `1048576`（1 MiB）〜`1073741824`（1 GiB）。超えるファイルは、`ListSaveGameSlots` と `GetSaveGameInfo` では `TooLarge` として報告し、それ以外のコマンドでは `NotAllowed` で拒否します（`SkipValidation` でも省けません）。`ExpectedHash` を渡さずにスロットを置き換える・削除する場合は、スロットを読まないためこの上限はかかりません |
 
-範囲外の値や数値として読めない値は、警告を出して無視し、既定値のままになります。どちらのキーもコマンドラインからは上書きできません。どちらもコマンドを実行するたびに読み込み済みの設定から読むため、設定を読み直した後（`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` が `DefaultUAIP.ini` を読み直します）またはエディタを再起動した後の次のコマンドから反映されます。
+範囲外の値や数値として読めない値は、警告を出して無視し、既定値のままになります。どちらのキーにも専用のコマンドラインフラグはありません。Shipping 以外のビルドではエンジン標準の `-ini:` 引数でどちらも上書きできますが、MCP Bridge はエージェントが渡す起動引数のこれを拒否します。どちらもコマンドを実行するたびに読み込み済みの設定から読むため、設定を読み直した後（`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` が `DefaultUAIP.ini` を読み直します）またはエディタを再起動した後の次のコマンドから反映されます。
 
 #### Runtime AI の感知
 
@@ -1353,13 +1353,13 @@ AllowProjectNetDriverNetModeQuery=False
 | `AllowPasswordFieldRead` | `False` | `SnapshotUI` が、エディタの UI のパスワード欄と、パスワード欄かどうか判定できない欄の平文を返せるようにします（`EditorWidgetPasswordTextRead` も必要）。`AllowRuntimePasswordFieldRead` とは独立。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-password-field-read=True` |
 | `AllowRuntimePasswordFieldRead` | `False` | `DumpGameViewportWidgetTexts` が、実行中のゲームの UI のパスワード欄と、パスワード欄かどうか判定できない欄の平文を返せるようにします（`RuntimeWidgetTextRead` と `RuntimeWidgetPasswordTextRead` も必要）。`AllowPasswordFieldRead` とは独立。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-runtime-password-field-read=True` |
 | `AllowSecretValueRead` | `False` | `IncludeSecretValues` を受け付けるコマンドが、秘密の設定値の平文を返せるようにします（`SecretValueRead` も必要）。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-secret-value-read=True`。[秘密値の平文での読み取り](#秘密値の平文での読み取り) を参照 |
-| `AllowToolsetErrorText` | `False` | 解除できる Toolset の書き込みブリッジが、固定文の代わりにエンジン自身の失敗文を返せるようにします。起動時に読まれ、再読み込みはできません。**ini 専用**（CLI フラグもコンソール変数もありません）。オンにすると、失敗の応答に秘密の新しい値が出ることがあります — [Toolset の失敗文](#toolset-の失敗文) を参照 |
-| `AllowSecretValuesInFingerprints` | `False` | Subsonic のアクションの指紋（`ActionFingerprint` / `ActionsFingerprint`）に、秘密のプロパティの値を含めます。ただし `SecretValueRead` も持つセッションでだけです。起動時に読まれ、再読み込みはできません。**ini 専用**（CLI フラグもコンソール変数もありません）。`AllowSecretValueRead` とは独立です。オンにすると、`SecretValueRead` を持つセッションが指紋から秘密の値を割り出せるようになります — [Subsonic の指紋と秘密の値](#subsonic-の指紋と秘密の値) を参照 |
+| `AllowToolsetErrorText` | `False` | 解除できる Toolset の書き込みブリッジが、固定文の代わりにエンジン自身の失敗文を返せるようにします。起動時に読まれ、再読み込みはできません。**ini で設定**（専用の CLI フラグもコンソール変数もありません。表の下の注を参照）。オンにすると、失敗の応答に秘密の新しい値が出ることがあります — [Toolset の失敗文](#toolset-の失敗文) を参照 |
+| `AllowSecretValuesInFingerprints` | `False` | Subsonic のアクションの指紋（`ActionFingerprint` / `ActionsFingerprint`）に、秘密のプロパティの値を含めます。ただし `SecretValueRead` も持つセッションでだけです。起動時に読まれ、再読み込みはできません。**ini で設定**（専用の CLI フラグもコンソール変数もありません。表の下の注を参照）。`AllowSecretValueRead` とは独立です。オンにすると、`SecretValueRead` を持つセッションが指紋から秘密の値を割り出せるようになります — [Subsonic の指紋と秘密の値](#subsonic-の指紋と秘密の値) を参照 |
 | `AllowInputModeBypass` | `False` | Inject 系コマンドの `BypassInputMode=true` を許可 |
 | `DisablePIEStart` | `False` | PIE 起動を拒否 Toolset 版の `Toolset.Editor.Toolset.PIE.StartPIE` にも `StartPIE` と同じ文言で効きます。PIE を始められない状態でも、先にこの拒否が返ります |
 | `AllowCheatCVarWrite` | `False` | `SetConsoleVariable` / `ResetConsoleVariable` による `ECVF_Cheat` フラグ付き CVar への書き込みを許可（`RuntimeCVarWrite` も別途必要） |
 | `AllowExternalTraceAnalysis` | `False` | UAIP 以外が採取した `.utrace` の `AnalyzeTrace` による読み取りを許可。**単体では何も許可しません** — `ExternalTraceDirectory` の設定も必須 |
-| `ExternalTraceDirectory` | 未設定 | UAIP 以外が採取した `.utrace` が置かれていなければならないルートディレクトリ。ini のみ（CLI での上書き不可）で、意図的に既定値を持ちません |
+| `ExternalTraceDirectory` | 未設定 | UAIP 以外が採取した `.utrace` が置かれていなければならないルートディレクトリ。ini で設定（専用の CLI フラグなし。表の下の注を参照）で、意図的に既定値を持ちません |
 | `AllowDisclosingTraceAttachment` | `False` | 採取した `.utrace` のチャネルが**ホスト側パス・画面内容・ネットワークアドレス**を記録しえた場合に、`StopTrace` がそのファイルを artifact として引き渡すことを許可。解析セクションはこれらをサニタイズ / マスク / メタデータ化して返しますが生ファイルは加工しないため、引き渡しは別の判断になります。**ログテキスト**の開示は本キーではなく `AllowLogDump` が担い、未分類チャネルは両方の設定に関わらず拒否されます。`RuntimeInsightsAttachTraceFile` Capability も別途必要。エディタではエンジンが log / screenshot チャネルを自分で有効化するため、通常は `AllowLogDump` との併用が必要です |
 | `AllowUserInteractionPrompt` | `False` | 保留中の対話（自力では完了せずエディタ内の人間へ処理を委ねるコマンド。例：`DrawPCGSpline`）の開始自体を許可する。無効時はリソースの予約やエディタへの変更が一切行われる前に `PolicyViolation` で拒否されます。対話型コマンド自身の DefaultDenied Capability（例：`PCGSplineDraw`）とは別の軸で、Capability が「何に触れてよいか」を表すのに対し、本フラグは「人間のビューポートと入力フォーカスを奪うこと自体を許可するか」を表します。本フラグとは独立に、人間へプロンプトを提示できるものが現在何も登録されていない場合も開始は拒否されます — [コマンドリファレンス](commands.md) の `UAIP.Editor.PCG` セクション参照 |
 | `AllowProjectNetDriverNetModeQuery` | `False` | 実行時コマンドが、プレイワールドの NetMode（と一時停止中かどうか）を通常の方法でエンジンに問い合わせることを許可する。この方法はネットドライバーの override できるサーバー判定に届きます。既定では、UAIP はエンジン自身の override できない状態から NetMode を求めるので、読み取り専用のコマンドの中でプロジェクトのネットドライバーのコードが実行されることはありません。プロジェクトのネットドライバーが「サーバーであること」の意味を変えていない限り、答えは同じです。そのようなドライバーのときだけオンにしてください。オンの間は、読み取り専用の実行時コマンドが、`ReadOnly` の下でもゲームループが止まっている間でもそのプロジェクトのコードを実行し、エディタまたはゲームは読み込み時に警告を 1 回出します。起動引数: `-uaip-policy-allow-project-net-driver-net-mode-query=True`。再起動後に効きます。`QueryCapabilities` の `OperationalConstraints` には出ません |
@@ -1367,6 +1367,8 @@ AllowProjectNetDriverNetModeQuery=False
 | `DeniedCapabilities` | 空 | DefaultAllow の Capability を全セッションから取り除く |
 | `DeniedCommands` | 空 | 完全修飾名で指定したコマンドをブロック。ブロックされたコマンドは `ListCommands` の既定応答からは隠れ、`HiddenReasons.DeniedCommand` に計上される。`IncludeUnavailable=true` を指定すると `Available: false`・`UnavailableReason: "DeniedCommand"` として明示的に列挙できる。`DescribeCommand` では常に表示される ここに `DumpOutputLog` を入れても WebSocket のログのストリームは止まりません。`AllowLogDump` を使ってください |
 | `AllowCapabilityReload` | `False` | `UAIP.Core.ReloadCapabilities` を有効化（再起動不要で設定反映） |
+
+**CLI フラグのないキー。** `AllowToolsetErrorText`・`AllowSecretValuesInFingerprints`・`AllowedCapabilities`・`DeniedCapabilities`・`DeniedCommands`・`AllowCapabilityReload`・`AllowedArtifactDirectory`・`ExternalTraceDirectory` には `-uaip-policy-*` フラグがないので、クライアントが実行中に送る値では変えられません。エディタを起動する人は、Shipping 以外のビルドでエンジン標準の `-ini:` 引数（例: `-ini:UAIP:[UAIP.SafetyPolicy]:+AllowedCapabilities=GameFeatureCreate`）を使えば、どれも設定できます。MCP Bridge は、エージェントが渡す起動引数（`EditorExtraArgs`）の `-ini:UAIP:` を拒否するので、エージェントがこれで自分の権限を広げることはできません（`allow_reload_uaip_ini_override` を `true` にして Bridge を起動した場合を除く。[設定リファレンス](config.md#ブリッジの起動時にだけ読まれる設定)を参照）。
 
 ### Toolset の失敗文
 
