@@ -514,7 +514,7 @@ By default only the session whose write was stopped (or that sent the `ClickWidg
 
 | Capability | What it unlocks |
 |---|---|
-| `EditorForceCloseFloatingWindows` | Letting `OpenAsset`, `CloseAsset`, `CloseEditorTab`, `OpenTabById`, `CloseTabById`, `SelectAssets` and `SetContentBrowserPath` close a floating window in a way that skips the cleanup its owner would have run, where they refuse by default for safety |
+| `EditorForceCloseFloatingWindows` | Letting `OpenAsset`, `CloseAsset`, `CloseEditorTab`, `OpenTabById`, `CloseTabById`, `SelectAssets`, `SetContentBrowserPath` and `FocusEditorTab` (with `GraphName`) close a floating window in a way that skips the cleanup its owner would have run, where they refuse by default for safety |
 
 In an editor older than UE 5.8 that does not draw (and was not started with `-RenderOffScreen`), these commands refuse with `NotAllowed` and `Reason: Headless` in two situations, because a floating window left open would terminate the editor at the next layout save (see [Floating window refusals](commands.md#floating-window-refusals)):
 

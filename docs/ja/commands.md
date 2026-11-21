@@ -592,7 +592,7 @@ Niagara と StateTree には整列コマンドがありません。
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `FocusEditorTab` | 指定アセットのエディタタブを前面に出す。対象は `AssetPath` で指定し、Slate レイアウトのタブ識別子では**ない** — `DumpEditorState` が返す `ActiveTabId`（`"Viewport"` / `"Inspector"` など）はここでは拒否される。レイアウト識別子でタブを指定したい場合は `CaptureEditorTabImage` の `TabId` を使う。任意の `GraphName` を指定すると、そのサブグラフのタブも前面に出す。対象は「アセットの種類が Blueprint かどうか」ではなく「**現在開いているエディタが Blueprint グラフのナビゲーションに対応しているか**」で決まり、素の Blueprint に限らず AnimBlueprint・WidgetBlueprint（UMG）・GameplayAbility Blueprint・ControlRig なども含まれる。空文字列は指定しなかった場合と同じ扱い。`Result` の契約と、エラーコード 2 件の破壊的変更は表の下の注記を参照 |
+| 🆓 `FocusEditorTab` | 指定アセットのエディタタブを前面に出す。対象は `AssetPath` で指定し、Slate レイアウトのタブ識別子では**ない** — `DumpEditorState` が返す `ActiveTabId`（`"Viewport"` / `"Inspector"` など）はここでは拒否される。レイアウト識別子でタブを指定したい場合は `CaptureEditorTabImage` の `TabId` を使う。任意の `GraphName` を指定すると、そのサブグラフのタブも前面に出す。対象は「アセットの種類が Blueprint かどうか」ではなく「**現在開いているエディタが Blueprint グラフのナビゲーションに対応しているか**」で決まり、素の Blueprint に限らず AnimBlueprint・WidgetBlueprint（UMG）・GameplayAbility Blueprint・ControlRig なども含まれる。空文字列は指定しなかった場合と同じ扱い。`Result` の契約と、エラーコード 2 件の破壊的変更は表の下の注記を参照。UE 5.8 未満の、描画しないエディタでは、`GraphName` を付けた呼び出しが `NotAllowed`（`Reason: Headless`。アセットエディタを閉じ、`Result.ClosedAssetEditor: true` を付ける）か `InternalError` で終わること、または `Result.Skipped` を付けて成功することがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照 |
 | 🆓 `CloseEditorTab` | 指定アセットのエディタタブを閉じる。`FocusEditorTab` と同じく `AssetPath` で指定する。UE 5.8 未満の、描画しないエディタでは、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
 | 🆓 `ListSpawnableTabs` | 開けるエディタタブの候補を一覧で返す。各行の `TabId` / `OwnerMajorTabId` / `OwnerInstanceId` はそのまま `OpenTabById` / `CloseTabById` の `TabId` / `OwnerTabId` / `OwnerInstanceId` として渡せる。表示名・ツールチップ・そのタブが既に開いているかどうかも含む。開いているかどうかはその行が示す所属先を基準に判定され、`MajorTabLocal` の行はそのウィンドウ内だけを、`Global` の行はエディタ全体を対象とする（エディタ全体に登録されたタブはレイアウト次第でどのタブウェルにも置かれるが、`"Global"` からは常に到達できるため）。網羅的な一覧ではなく、応答は常に `EnumerationScope: "MenuVisible"` を返す — 一覧に無い `TabId` でも開ける場合があり（生成メニューから外れているだけの場合がある）、逆に設定で恒久的に拒否されている場合もあるため、「一覧に無い」は「未列挙」であって「存在しない」ではない。読み取り専用だが、表示名・ツールチップの取得が第三者のデリゲートを評価しうるため `EditorTabSpawn` を要求する |
 | 🆓 `OpenTabById` | Slate レイアウトのタブ識別子（`TabId`。`FocusEditorTab` の `AssetPath` とは別の識別子空間）を指定してエディタタブを開く。`FocusEditorTab` やメニュー操作代行では届かないタブ — ToolMenus に一度も登録されていないレガシーメニュー経由のタブや、所属ウィンドウが前面にないタブ — にも到達できる。`OwnerTabId` に `"Global"` を指定するとエディタ全体に登録されたタブ（Output Log 等）を、major tab 自身の `TabId`（複数該当する場合は `OwnerInstanceId` で絞り込み）を指定するとその内部のパネルを対象にできる。所属先のウィンドウがまだ開いていなければ先に開く。既に開いている所属先はそのまま使うため、`ListSpawnableTabs` が返した行はそのまま渡せる（所属先に対するスポナー登録と許可の判定は、この呼び出しが所属先を開く必要がある場合にだけ適用される）。応答には実際に開いたタブの `InstanceId`（この応答からしか得られない値）、`WasAlreadyOpen`、`OwnerOpenedByThisCall` が含まれ、後始末で何を閉じるべきかを判断できる（閉じる順序は対象タブ→所属先）。失敗時はこの呼び出しが開いたものを取り除く。候補の発見には `ListSpawnableTabs` を使う（`EditorTabSpawn` 必要）。UE 5.8 未満の、描画しないエディタでは、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがあり、別ウィンドウに出てしまうタブは開かない。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
@@ -604,7 +604,7 @@ Niagara と StateTree には整列コマンドがありません。
 | 🆓 `FrameGraphSelection` | グラフビューポートを選択ノードが収まるようにズーム |
 | 🆓 `SetGraphSelection` | ID リストでグラフノードを選択状態にする |
 | 🆓 `ShutdownEditor` | UE Editor をシャットダウンする（任意でパッケージ保存）。進行中の `RestartEditor` の試行があれば取り消すので、終了が再起動に化けることはない。UE 5.8 未満で描画しないエディタでは、先に別ウィンドウを閉じる（[別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照） |
-| 🆓 `RestartEditor` | UE Editor を再起動する（任意でパッケージ保存）。`Success` は要求を**受け付けた**ことを表し、再起動が済んだことではない。結果は `GetRestartStatus` で確認でき、MCP Bridge 経由なら Bridge が自動で待つ。表の下の注記を参照。UE 5.8 未満の、描画しないエディタでは、再起動でレイアウトを保存しない。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
+| 🆓 `RestartEditor` | UE Editor を再起動する（任意でパッケージ保存）。`Success` は要求を**受け付けた**ことを表し、再起動が済んだことではない。結果は `GetRestartStatus` で確認でき、MCP Bridge 経由なら Bridge が自動で待つ。表の下の注記を参照。UE 5.8 未満の、描画しないエディタでは、再起動でレイアウトを保存せず、終了の途中で別ウィンドウを閉じる。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
 | 🆓 `GetRestartStatus` | `RestartEditor` の試行の状態（`Scheduled` / `CloseRetrying` / `Declined` / `ExitStarted`）を返す。読み取り専用で `EditorLifecycle` が必要 |
 | 🆓 `SaveAllPackages` | 変更済みパッケージをすべて保存（任意でマップを含む） |
 | 🆓 `Undo` | 直前の Editor 操作を取り消す。Material エディタが開いていて、元に戻すと閉じられないダイアログが出うるとき（Material エディタは Undo のたびに Apply を行う）は、**`NotAllowed` で断り、何も元に戻さない。** `Result.BlockingAssets` に該当する Material と MaterialFunction、`Result.Refusals` に理由ごとの `Reason` と `AssetPaths` を返す（理由の順は `CurrentCompileErrors`、`DestinationCompileErrors`、`EditorClosed`）。アセットはパッケージ名（例 `/Game/M_Test`）で、重複なしにソートして返す。`CurrentCompileErrors` — 開いている Material エディタの作業中の内容にコンパイルエラーがある（Material と無関係な Undo も断る）。エラーを直すかエディタを閉じる。`DestinationCompileErrors` — 戻す先の状態が、UAIP の書き込みを記録した時点でコンパイルエラーのある状態だった（`StepCount` が 2 以上のときは途中の段も含む）。UAIP の `Undo` ではその書き込みより前へ戻れないので、元に戻す書き込みで直す。`EditorClosed` — UAIP の書き込みを行った Material エディタがその後閉じられ、戻してもアセットが変わらない。元に戻す書き込みで直す。このコマンドを通らない Undo（スクリプト、コンソール）と、人がエディタで行った編集を戻す場合は対象外で、ダイアログが出ることがある。ダイアログに答えるコマンドを使えない環境（既定。[書き込みが開いたモーダルダイアログ](#書き込みが開いたモーダルダイアログ)を参照）では、取り消しの後に出る確認は表示されず、中止を選んだ扱いになる。取り消しの操作そのものは実行され、`Result.DialogGuardActive: true` がこの扱いで実行したことを示す。実際に確認が中止されたかは示さないので、対象を読み直して確かめる |
@@ -969,7 +969,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 ### 別ウィンドウが理由で断られるとき
 
-`OpenAsset`・`CloseAsset`・`CloseEditorTab`・`OpenTabById`・`CloseTabById`・`SelectAssets`・`SetContentBrowserPath` は、キャプチャとは関係のない理由で、`NotAllowed`（`Result.Reason: Headless`）を返すことがある。原因はウィンドウが無いことではなく、エンジンのクラッシュである。
+`OpenAsset`・`CloseAsset`・`CloseEditorTab`・`OpenTabById`・`CloseTabById`・`SelectAssets`・`SetContentBrowserPath` と、`GraphName` を付けた `FocusEditorTab` は、キャプチャとは関係のない理由で、`NotAllowed`（`Result.Reason: Headless`）を返すことがある。原因はウィンドウが無いことではなく、エンジンのクラッシュである。
 
 **いつ起きるか。** UE 5.8 未満で、**かつ**描画しないエディタ（`-NullRHI` などで起動し、`-RenderOffScreen` を付けていない）でだけ起きる。そこでは、タブやアセットエディタを開閉するたびにレイアウトの保存が予約され、*別ウィンドウ*が残っていると、その保存でエディタごと終了する。別ウィンドウとは、メインウィンドウとは別の、タブを入れる枠を持つウィンドウ（切り離したツールのタブや、専用のウィンドウに開いたアセットエディタ）である。確認ダイアログや通知は別ウィンドウに含まない。UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きのエディタでは今までどおりで、断らず、別ウィンドウがあっても止まらない。`-NullRHI -RenderOffScreen` で起動した UE 5.7 は、別ウィンドウが残ったままレイアウトを保存しても落ちないことを確かめた。描画しない UE 5.7 をこの断りなしに使うには、`-RenderOffScreen` を付けて起動する。
 
@@ -978,22 +978,35 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | 状況 | ErrorCode | 起きたこと | 対処 |
 |---|---|---|---|
 | コマンドと関係のない別ウィンドウが開いている（`CloseTabById` では、閉じる対象のタブを入れた別ウィンドウ以外のすべて）。誰が開いたかは問わない | `NotAllowed` + `Reason: Headless` | 何もしていない。`Result.RemainingFloatingWindows` に、断る原因になった別ウィンドウとそれが持つタブが載るので、何を閉じればよいか分かる | その別ウィンドウを開いた側の手段で閉じる。`ShutdownEditor` で再起動する。`EditorForceCloseFloatingWindows` を付与する（[安全](safety.md#別ウィンドウを閉じる)を参照）。または UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きのエディタのいずれかで実行する |
-| コマンドが別ウィンドウを出した（保存済みのレイアウトに切り離したパネルが残っていた、開く場所の設定に従わないエディタだった、メインウィンドウに置き場所のないコンテンツブラウザや `OpenTabById` のタブだった、など） | `NotAllowed` + `Reason: Headless` | 出た別ウィンドウを安全な方法で閉じ、この呼び出しで開いたものも閉じて元に戻した。すでに開いていたタブは閉じない。`Result.RevertedFloatingWindows` に戻したものが載る。`CloseTabById` では指定したタブがすでに閉じ終わっているので、`Result.CloseMethod` も付く | UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きのエディタのいずれかで実行する。`OpenTabById` で開けるのは、メインウィンドウに置き場所のあるタブだけ |
+| コマンドが別ウィンドウを出した（保存済みのレイアウトに切り離したパネルが残っていた、開く場所の設定に従わないエディタだった、メインウィンドウに置き場所のないコンテンツブラウザや `OpenTabById` のタブだった、など）。下の *断らずに済ませる場面* に当たらないもの | `NotAllowed` + `Reason: Headless` | 出た別ウィンドウを安全な方法で閉じ、この呼び出しで開いたものも閉じて元に戻した。すでに開いていたタブは閉じない。`Result.RevertedFloatingWindows` に戻したものが載る。`CloseTabById` では指定したタブがすでに閉じ終わっているので、`Result.CloseMethod` も付く。`FocusEditorTab` は、前面に出したアセットエディタ（呼ぶ前から開いていたもの）も閉じ、`Result.ClosedAssetEditor: true` を付ける。アセットへの変更はメモリに残り、保存はしない | UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きのエディタのいずれかで実行する。`OpenTabById` で開けるのは、メインウィンドウに置き場所のあるタブだけ。`SuppressLayoutSaveWhenHeadless=True` が理由で断ったときは、`False` に戻すと、パネルを閉じて続けるようになる（下を参照） |
 | `OpenAsset`: メインウィンドウに、アセットエディタを入れるレベルエディタのタブが無い（メインウィンドウの作り直しの最中など） | `NotAllowed` + `Reason: Headless` | アセットエディタを開いていない | メインウィンドウの準備ができてから再試行する |
+| `SelectAssets` / `SetContentBrowserPath`: 移した後のコンテンツブラウザが、指定したフォルダ（`SelectAssets` では、アセットのどれかのフォルダ）に無い。たとえば、鍵をかけたコンテンツブラウザが優先され、別のブラウザが移った | `ExecutionFailed` | コンテンツブラウザが指定の場所へ移ったと確かめられなかったことを、メッセージで伝える。別のブラウザは実際には移っていることがある。この呼び出しがレベルエディタの中に開いたコンテンツブラウザは残る | 鍵をかけたコンテンツブラウザの鍵を外して呼び直す |
 | `CloseTabById`: 対象のタブの別ウィンドウに、他のタブ・子ウィンドウ・中にタブを抱えるタブ（アセットエディタなど）もある（対象自身がそうである場合を含む） | `NotAllowed` + `Reason: Headless` | 何も閉じていない。そのタブだけを閉じるとエディタが落ち、ウィンドウごと閉じると他のタブの持ち主の後始末が走らない。`Result.RemainingFloatingWindows` に、先頭として対象のタブの別ウィンドウ（タイトルと、そのウィンドウに直接置かれたタブの ID すべて）、続いて子のウィンドウを 1 つずつ（子のウィンドウから開いたウィンドウも含む）、同じ形で載る。`Result.ClosedFloatingWindows` は、事前の確認で許可により片付けたものがあるときだけ載る | `EditorForceCloseFloatingWindows` を付与してウィンドウごと閉じる。または UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きのエディタのいずれかで実行する |
 | 別ウィンドウを安全に閉じきれず、まだ開いている | `InternalError` | `Result.RemainingFloatingWindows` に残ったものが載る。その前に閉じられたものは `Result.RevertedFloatingWindows` / `Result.ClosedFloatingWindows` に載る | **すぐに `ShutdownEditor` を呼ぶ。** 次のレイアウトの保存でエディタが落ちうる。終了するまでの間、上のコマンドは再び断られる |
 
-`ClosedFloatingWindows`・`RevertedFloatingWindows`・`RemainingFloatingWindows` の各要素は、`WindowTitle` と `TabIds`（タブの種類の名前。同じ種類のタブが複数あっても区別しない）を持つ。1 行目の断りの `RemainingFloatingWindows` も同じ形（`WindowTitle` と `TabIds`。`CloseFailure` は付かない）である。4 行目の断りでは、先頭の要素が対象のタブの別ウィンドウで、残りはその子のウィンドウである。最終行の `RemainingFloatingWindows` の要素には、さらに `CloseFailure`（例: `ForeignTabsPresent`、`WindowSurvived`）が付き、前から開いていたタブを閉じずに残したときは `HeldPreexistingTab: true` も付く。
+`ClosedFloatingWindows`・`RevertedFloatingWindows`・`RemainingFloatingWindows` の各要素は、`WindowTitle` と `TabIds`（タブの種類の名前。同じ種類のタブが複数あっても区別しない）を持つ。1 行目の断りの `RemainingFloatingWindows` も同じ形（`WindowTitle` と `TabIds`。`CloseFailure` は付かない）である。4 行目の断りでは、先頭の要素が対象のタブの別ウィンドウで、残りはその子のウィンドウである。最終行の `RemainingFloatingWindows` の要素には、さらに `CloseFailure`（例: `ForeignTabsPresent`、`WindowSurvived`）が付き、前から開いていたタブを閉じずに残したときは `HeldPreexistingTab: true` も付く。`FocusEditorTab` が断るときにアセットエディタを閉じきれず最終行になった場合は、`Result.ClosedAssetEditor` が `false` になり、パネルを失ったアセットエディタが残ったことをメッセージで伝える。
+
+**断らずに済ませる場面。** 該当するエディタでも、別ウィンドウを残さずに済む次の場面は、断らずに成功する。
+
+- **コンテンツブラウザ（`SelectAssets` / `SetContentBrowserPath`）。** コンテンツブラウザのタブか、ステータスバーのコンテンツドロワーで受けられるときは、今までどおりそれを使い、タブは増えない。どちらも無いときは、先にレベルエディタの中にコンテンツブラウザを開き、そこへ移す。開いたタブはその後も残るので、レベルエディタのレイアウトにタブが 1 つ増える。そのタブが別ウィンドウに出る（レベルエディタの保存済みのレイアウトに置き場所が無い）ときは、表の 2 行目のとおり断る。移した後に、コンテンツブラウザのフォルダを内部の書き方（`/Game/...`）か表示の書き方（`/All/Game/...`）で読み戻し、違えば `ExecutionFailed` を返す（表の 4 行目）。`SelectAssets` でアセットが 1 つも見つからなかったときは読み戻さない。この確かめは該当するエディタでだけ行うので、同じ呼び出しが、描画するエディタでは成功し、該当するエディタでは `ExecutionFailed` になることがある。描画しないエディタでは、アセットの選択そのものはコンテンツブラウザに反映されない（どのエンジンの版でも同じ）。確かめるのはフォルダだけである。
+- **保存済みのレイアウトが、アセットエディタの一部のパネルを別ウィンドウに置いている（`OpenAsset` と、`GraphName` を付けた `FocusEditorTab`）。** 新しい別ウィンドウに、開いたアセットエディタの補助のパネル（Details・Palette など。エディタの種類ごとに決めたもの）しか入っていないときは、そのウィンドウだけを閉じ、アセットエディタは開いたまま残す。呼び出しは成功し、閉じたパネルが 1 つずつ、`TabId`・`Label`・`Reason: "Headless"` を持って `Result.Skipped` に載る（閉じたものが無ければ `Skipped` のキーは無い）。対象は、普通の Blueprint・Widget Blueprint・Niagara（システム・エミッター・スクリプト）・2D テクスチャ・DataTable・Sound Cue・Behavior Tree・Static Mesh のアセットエディタだけである。ほかの種類は今までどおり断る。閉じたパネルを後から自分で開き直すものがあるため（Material・Material Instance・Animation Blueprint を含むスケルトンやアニメーションのエディタ・レベルスクリプトや Editor Utility Blueprint などほかの種類の Blueprint・2D 以外のテクスチャ・上の種類の派生クラス・調べていない種類）。エディタの主な画面（グラフ・ビューポート・表）、ドキュメントのタブ、決めていないパネルが入った別ウィンドウも断る。中身の無いエディタを成功として返さないためである。
+  - 閉じたパネルは、次にレイアウトが保存されたとき、その種類のアセットエディタの保存済みのレイアウトから消える（`OpenAsset` が断ったときと同じ）。`OpenTabById` で開き直すと別ウィンドウに出るので、断られる。
+  - 保存済みのレイアウトを守りたいときは、[`SuppressLayoutSaveWhenHeadless=True`](config.md#uaipeditorlayout--描画しないエディタで保存済みのレイアウトを守る既定で無効) にする。この場面は今までどおり断るようになり、パネルの置き場所は残る。
+  - `FocusEditorTab` を確認で挟むのは、`GraphName` を付け、Blueprint 系のエディタで、そのグラフが見つかったときだけである。グラフへ移るとエディタのモードが切り替わることがあり（Widget Blueprint の Designer から Graph へ、など）、切り替えた先のモードの保存済みのレイアウトが、パネルを別ウィンドウに置いていることがあるため。`GraphName` を付けない呼び出しは変わらない。`FocusEditorTab` が断ることは、この変更から新しく起きる。
+  - **注意。** この方法でパネルを閉じた後に、そのパネルを開き直すスクリプトやコマンド（Python、Editor Utility、コンソールコマンド）を実行すると、パネルが別ウィンドウに出て、次のレイアウトの保存でエディタが落ちうる。UAIP はこれらの実行を守らない。
+- **`RestartEditor`。** 下の一覧を参照。
+
+次の場面は避けられないので、今までどおり断る。開く場所の設定に従わず、自分で開く先を決めるアセットエディタ（ConsoleVariables・RemoteControlPreset・PipelineQueue・TakePreset が見つかっている）と、メインウィンドウに置き場所の無いコンテンツブラウザや `OpenTabById` のタブである。そのようなタブの行き先を選ぶ公開のエンジン API が無いためである。
 
 **断る以外に、該当するエディタで変わること**
 
 - `OpenAsset` は、エディタの「アセットエディタを開く場所」の設定が何でも、アセットエディタをメインウィンドウの中に開く。設定はこの呼び出しの間だけ切り替え、設定ファイルには書かない。
-- 保存済みのレイアウトがパネルの 1 つを別ウィンドウに置いていたために `OpenAsset` が元に戻されたとき（表の 2 行目）、その種類のアセットエディタの保存済みレイアウトからそのパネルが消える。再起動した後も含め、次にその種類のアセットエディタを開いたとき、そのパネルは無い。ほかのアセットエディタやメインウィンドウの保存済みレイアウトは変わらない。
+- 保存済みのレイアウトがパネルの 1 つを別ウィンドウに置いていたために `OpenAsset` が元に戻されたとき（表の 2 行目）、またはエディタを開くためにそのパネルを閉じたとき（上を参照）、その種類のアセットエディタの保存済みレイアウトからそのパネルが消える。再起動した後も含め、次にその種類のアセットエディタを開いたとき、そのパネルは無い。ほかのアセットエディタやメインウィンドウの保存済みレイアウトは変わらない。
 - すでに開いているタブ（所有者を指定したときは、その所有者も開いているもの）を `OpenTabById` で指定すると、今までどおり前面に出すだけで、他の別ウィンドウがあっても断らない。
 - `CloseTabById` は、メインウィンドウの中のタブを通常の方法で閉じる。対象が専用の別ウィンドウにあるときは、タブに閉じるよう頼む代わりにそのウィンドウごと破棄する。このときタブ自身の閉じる処理（確認や閉じた後の通知）は走らず、別の理由で予約されていたレイアウトの保存も取り消される。
-- `RestartEditor` は、その再起動ではレイアウトの一括保存をしないで再起動する（再起動が取り消されたときは、元の設定に戻す）。そのためその回のレイアウトは保存されない。
+- `RestartEditor` は、その再起動ではレイアウトの一括保存をしないで再起動する（再起動が取り消されたときは、元の設定に戻す）。そのためその回のレイアウトは保存されない。また、終了を後戻りできない地点まで進んだところで、UAIP が開いていないものも含めて、別ウィンドウをすべて安全な方法で閉じる。別ウィンドウに残ったアセットエディタが、終了の途中でエディタを落としうるため。閉じきれないウィンドウは警告としてログに残し、終了は続ける。
 - `ShutdownEditor` は、アセットエディタを閉じる前に、別ウィンドウをすべて安全な方法で閉じる。別ウィンドウにあるアセットエディタを普通に閉じるとエディタが落ちるため。エディタは終了するところなので Capability は要らない。閉じたウィンドウは `Result.ClosedFloatingWindows` に載る（その中のタブ自身の閉じる処理は走らない）。安全に閉じられないウィンドウがあると、`Reason` なしの `InternalError` と、そのウィンドウを載せた `Result.RemainingFloatingWindows` を返し、エディタは動いたままになる（保存も終了の予約もしない）。その場合は利用者にエディタを閉じてもらう。
-- 何も開閉しないコマンド（前面化・タブ画像の取得・グラフの操作・レイアウトの整え直しなど）は変わらず、この理由では断られない。
+- 何も開閉しないコマンド（`GraphName` を付けない `FocusEditorTab` を含む前面化・タブ画像の取得・グラフの操作・レイアウトの整え直しなど）は変わらず、この理由では断られない。
 
 **`CloseTabById` — `Result.CloseMethod`。** 成功の応答に `CloseMethod` が付く。タブに通常の方法で閉じるよう頼んだときは `RequestedClose`（該当するエディタの外では常にこちら）、タブを持つ別ウィンドウを代わりに破棄したときは `DestroyedFloatingWindow`。タブを閉じた後に断る応答（上の表の 2 行目）にも付く。閉じる前に断る応答には付かない。
 
@@ -1253,7 +1266,7 @@ HTTP と MCP の経路では、書き込みがモーダルダイアログを開�
 
 | コマンド | 説明 |
 |---|---|
-| `OpenAsset` | 指定アセットをエディタで開く。エディタ状態の成果物は、フォーカス中のエディタのアセットを `ActiveAssetPath` として返す。⚠️ **非推奨のフィールド:** 同じ成果物の `ActiveTabId` もそのアセットのパスを持つ（`DumpEditorState` が同じ名前で返す Slate レイアウト識別子ではない）。次の MAJOR でレイアウト識別子に切り替わるため、`ActiveAssetPath` を読むこと。成果物の `DeprecatedFields` 配列が同じことを機械可読な形で示す。エディタを `-uaip-active-tab-id-as-layout-id` 付きで起動すると、切り替え後の意味を先行して試せる（1.x の間だけ提供）。UE 5.8 未満の、描画しないエディタでは、アセットエディタをメインウィンドウの中に開き、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
+| `OpenAsset` | 指定アセットをエディタで開く。エディタ状態の成果物は、フォーカス中のエディタのアセットを `ActiveAssetPath` として返す。⚠️ **非推奨のフィールド:** 同じ成果物の `ActiveTabId` もそのアセットのパスを持つ（`DumpEditorState` が同じ名前で返す Slate レイアウト識別子ではない）。次の MAJOR でレイアウト識別子に切り替わるため、`ActiveAssetPath` を読むこと。成果物の `DeprecatedFields` 配列が同じことを機械可読な形で示す。エディタを `-uaip-active-tab-id-as-layout-id` 付きで起動すると、切り替え後の意味を先行して試せる（1.x の間だけ提供）。UE 5.8 未満の、描画しないエディタでは、アセットエディタをメインウィンドウの中に開き、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがある。保存済みのレイアウトが別ウィンドウに置いたパネルを閉じて、`Result.Skipped` を付けて成功することもある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
 | `CloseAsset` | 指定アセットの全エディタを閉じる。UE 5.8 未満の、描画しないエディタでは、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
 | `SaveAsset` | 名指ししたアセットだけをディスクへ書き込む（`AssetMutate` 必要）。確認ダイアログを出さないため非対話でも完結する。World Partition のマップでは、そのマップの未保存の外部アクターのパッケージも一緒に書き込み、それらが未保存だったことを `Result.Warnings` で伝える |
 | 🆓 `ListDirtyPackages` | 未保存の変更を持つパッケージを列挙する（保存前の事前確認用） |
@@ -1271,9 +1284,9 @@ HTTP と MCP の経路では、書き込みがモーダルダイアログを開�
 | `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし）。削除した・一部だけ削除した・フォルダが無い・上限を超えた、のどれでも成功を返し、どれだったかは `Result.Status`（`Deleted` / `PartiallyDeleted` / `NotFound` / `TooManyAssets`）に入る。削除まで進んだときは `DeletedAssetCount` / `FailedAssetCount` も入る。`DisableSave` が有効なときは `PolicyViolation` で拒否。エディタからは消えたがパッケージのファイルをディスクから削除できなかった（次のエディタ起動で戻る）アセットは、`DeletedAssetCount` / `DeletedAssetPaths` ではなく `FailedAssetCount` に数え、`Status` は `PartiallyDeleted` になる（応答は `Success` のまま）。フォルダを消す前にディスク上の `.uasset` / `.umap` を走査し（アセットレジストリに載っていないものも含む）、1 つでも残っていればそのフォルダはディスクにも Content Browser にも残る。レジストリに載っていない残存パッケージは 1 パッケージにつき `FailedAssetCount` に 1 足す（そのため `FailedAssetCount` と `DeletedAssetCount` の合計が削除前の件数になるとは限らない）。もう一度呼んでもフォルダは消えない。残ったファイルは手で（ソース管理を通して）消すか、`DeleteAsset` で個別に消す |
 | `MoveFolder` | フォルダ内の全アセットをサブフォルダ構造を保ったまま移動。部分失敗は `FailedAssets` に列挙（`AssetFolderRefactor` 必要）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | 🆓 `GetSelectedAssets` | Content Browser で現在選択中のアセットを返す |
-| `SelectAssets` | Content Browser で指定アセットを選択（`ContentBrowserNavigate` 必要）。UE 5.8 未満の、描画しないエディタでは、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
+| `SelectAssets` | Content Browser で指定アセットを選択（`ContentBrowserNavigate` 必要）。UE 5.8 未満の、描画しないエディタでは、先にレベルエディタの中に Content Browser を開くことがあり、`NotAllowed`（`Reason: Headless`）・`ExecutionFailed`・`InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
 | 🆓 `GetContentBrowserPath` | Content Browser に現在表示されているフォルダパスを返す |
-| `SetContentBrowserPath` | Content Browser を指定フォルダに移動（`ContentBrowserNavigate` 必要）。UE 5.8 未満の、描画しないエディタでは、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
+| `SetContentBrowserPath` | Content Browser を指定フォルダに移動（`ContentBrowserNavigate` 必要）。UE 5.8 未満の、描画しないエディタでは、先にレベルエディタの中に Content Browser を開くことがあり、`NotAllowed`（`Reason: Headless`）・`ExecutionFailed`・`InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
 | 🆓 `GetOpenAssets` | アセットエディタで現在開いているアセット一覧を返す |
 | 🆓 `ListAssetRedirectors` | フォルダ配下（既定はプロジェクト全体の `/Game`）のアセットリダイレクタを、アセットをロードせずに元パス・先パス付きで一覧取得する |
 | `FixAssetRedirectors`（`RedirectorFixup` 必要） | `/Game` 全体（常に再帰的）を対象に、解決可能なアセットリダイレクタを一括修正・削除する。`DisableSave` が有効なときは `PolicyViolation` で拒否 |

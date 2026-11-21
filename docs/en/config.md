@@ -78,6 +78,24 @@ The effective list is resolved at startup and written to the Output Log as a sin
 
 `StarvedTickAllowList` is read-only because the console is reachable through the very interface this list exists to constrain. A boundary that can be widened from inside is not a boundary.
 
+### `[UAIP.EditorLayout]` — Keeping the saved layout in an editor that does not draw (off by default)
+
+In an editor older than UE 5.8 that does not draw (started with `-NullRHI` or similar, without `-RenderOffScreen`), `OpenAsset` and `FocusEditorTab` close the panels that an asset editor's saved layout puts in a floating window, so that the editor can open (see [Floating window refusals](commands.md#floating-window-refusals)). Such a panel is then lost from the saved layout of that kind of asset editor. The saved layout is a file of the user, shared by every project and every engine version, so an editor run for CI can change the layout a person uses in an editor that draws. This setting keeps it.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `SuppressLayoutSaveWhenHeadless` | bool | `False` | When `True`, the editor does not save its layout while it runs older than UE 5.8 without drawing. `OpenAsset` and `FocusEditorTab` then refuse with `NotAllowed` and `Reason: Headless` instead of closing such panels, so an asset whose saved layout puts a panel in a floating window cannot be opened. It has no effect in UE 5.8 or later, in an editor that draws, or with `-RenderOffScreen` |
+
+- The value is read once at startup, so changing it needs an editor restart. No command changes it. A value that cannot be read as `True` or `False` (a misspelling, for example) is treated as `False`, and the startup log shows a warning.
+- When it is `True` in an affected editor, the startup log has one line saying that the layout is not saved. Use it to check that the setting took effect.
+- The engine can turn the layout save back on by itself (when an exit is canceled, for example). UAIP turns it off again at the start of each command that checks for floating windows and when a `RestartEditor` is canceled. Right after the engine turned it back on by another route, a save can happen before the next such command.
+- No dedicated command line flag, but a non-Shipping build can override it with the engine's `-ini:` argument, for example `-ini:UAIP:[UAIP.EditorLayout]:SuppressLayoutSaveWhenHeadless=True`.
+
+```ini
+[UAIP.EditorLayout]
+SuppressLayoutSaveWhenHeadless=True
+```
+
 ### `[UAIP.ModalDialog]` — Closing a dialog nobody answers (off by default)
 
 When a modal dialog stays open and nobody answers it, the command that opened it stays stopped. This setting makes the editor close the window of such a dialog by itself after a time. It is for unattended environments.

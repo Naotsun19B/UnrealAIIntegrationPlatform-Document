@@ -514,7 +514,7 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 
 | Capability | 解禁されるもの |
 |---|---|
-| `EditorForceCloseFloatingWindows` | `OpenAsset`・`CloseAsset`・`CloseEditorTab`・`OpenTabById`・`CloseTabById`・`SelectAssets`・`SetContentBrowserPath` が、安全のために既定で断っている場面で、持ち主の後始末を飛ばす方法で別ウィンドウを閉じる |
+| `EditorForceCloseFloatingWindows` | `OpenAsset`・`CloseAsset`・`CloseEditorTab`・`OpenTabById`・`CloseTabById`・`SelectAssets`・`SetContentBrowserPath`・`FocusEditorTab`（`GraphName` 付き） が、安全のために既定で断っている場面で、持ち主の後始末を飛ばす方法で別ウィンドウを閉じる |
 
 UE 5.8 未満の、描画しないエディタ（`-RenderOffScreen` を付けていないもの）では、別ウィンドウが残ったままだと次のレイアウトの保存でエディタが終了するため、これらのコマンドは次の 2 つの場面で `NotAllowed`（`Reason: Headless`）で断ります（[別ウィンドウが理由で断られるとき](commands.md#別ウィンドウが理由で断られるとき)を参照）。
 
