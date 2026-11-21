@@ -615,7 +615,7 @@ python docs/scripts/generate_command_schema.py `
 
 Add `--no-auth` if launched with `-uaip-http-no-auth`. Add `--split-by-provider` for one JSON per provider under `by-provider/`.
 
-Runtime scales with the number of registered commands — up to ~1710 with every optional plugin enabled, fewer without.
+Runtime scales with the number of registered commands — up to ~1760 with every optional plugin enabled, fewer without.
 
 ### 9.3 Output shape
 

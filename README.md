@@ -39,9 +39,10 @@
 AI tools such as Claude Code, Codex CLI, Cursor, Windsurf, and GitHub Copilot can connect via the **Model Context Protocol (MCP)** and issue semantic commands — no coordinate clicks, no brittle UI scripting.
 
 Key capabilities:
-- **Editor control** — open/save assets, edit Blueprints, manipulate actors, run Automation Tests, drive the Sequencer, and much more through 1,200+ UAIP commands (plus 420+ [Toolset](docs/en/glossary.md#toolset--toolset-bridge) bridges to the official UE 5.8 Toolset, 1,600+ total)
+- **Editor control** — open/save assets, edit Blueprints, manipulate actors, run Automation Tests, drive the Sequencer, and much more through 1,300+ UAIP commands (plus 420+ [Toolset](docs/en/glossary.md#toolset--toolset-bridge) bridges to the official UE 5.8 Toolset, 1,700+ total)
 - **Visual & structural observation** — capture screenshots of any editor tab or viewport, dump JSON state of the world, Slate widget tree, editor state, and so on, returned as [Artifacts](docs/en/glossary.md#artifact)
 - **Runtime / [PIE](docs/en/glossary.md#pie-play-in-editor) control** — start/stop PIE, spawn actors, inject input, run Gauntlet tests, assert actor properties
+- **Runtime observation & diagnosis** — while the game runs, see what AI characters perceive, which Behavior Tree and StateTree nodes they run, navigation paths, animation state, network replication, Mass entities, Chaos destruction, live subsystems and the game viewport's UI, and set up or restore SaveGame slots so a test starts from a known save
 - **[Scenario](docs/en/glossary.md#scenario) execution** — submit an ordered list of commands as one request with abort-on-failure, retry, and per-step timeouts
 - **Multi-transport** — reachable over [MCP](docs/en/glossary.md#mcp-model-context-protocol), HTTP, WebSocket, or CLI from within the same process
 - **Safety & capability policy** — per-[session](docs/en/glossary.md#session) [Capability](docs/en/glossary.md#capability) gates and process-wide [SafetyPolicy](docs/en/glossary.md#safetypolicy) switches
@@ -109,7 +110,7 @@ For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-clie
 | [Result View](docs/en/uaip-result-view.md) | Claude Code Mod that draws UAIP MCP tool calls in the transcript as readable summaries |
 | [Use Cases](docs/en/use-cases.md) | Who uses UAIP for what — testing, review, audits, pair programming |
 | [Examples / Cookbook](docs/en/cookbook.md) | Recipes — PIE smoke, AI review, asset audit, BP edit, UI automation |
-| [Commands Reference](docs/en/commands.md) | All 933+ commands organized by domain |
+| [Commands Reference](docs/en/commands.md) | All 1,700+ commands organized by domain |
 | [API Reference](docs/en/api.md) | Full per-command schemas as JSON — for tooling, codegen, validation |
 | [Scenario Execution](docs/en/scenario.md) | Multi-step ordered command batches |
 | [Artifacts](docs/en/artifacts.md) | Screenshots, JSON dumps, logs — how to read them |

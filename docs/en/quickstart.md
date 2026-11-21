@@ -34,7 +34,7 @@ The Pro version is **[available on Fab](https://www.fab.com/listings/0eedf909-00
 
 Open your `.uproject` in UE and confirm **UnrealAIIntegrationPlatform** is enabled under **Edit > Plugins**. If you just dropped the folder in, restart the editor once.
 
-For the demo, also copy `Config/DefaultUAIP.ini` from the release zip into your project's `Config/` folder — this pre-enables the demo capabilities (`PIEControl`, `SlateUIAutomation`, `ObservationCapture`).
+For the demo, also copy `Config/DefaultUAIP.ini` from the release zip into your project's `Config/` folder — it sets the SafetyPolicy switches the demo relies on (allowing log dumps, keyboard input, context menu operations and starting PIE) and grants `RuntimeCVarRead` for the console variable commands. Observation, UI automation and PIE control (`EditorObservation`, `EditorUIAutomation`, `PIEControl`) are DefaultAllow and need no entry.
 
 ---
 
@@ -93,7 +93,7 @@ The agent should call `uaip_execute(CommandName="UAIP.Core.HealthCheck")` and re
   "Success": true,
   "Result": {
     "Status": "OK",
-    "UAIPVersion": "1.2.0",
+    "UAIPVersion": "1.3.0",
     "EngineVersion": "5.8.0",
     "BuildConfig": "Development"
   }

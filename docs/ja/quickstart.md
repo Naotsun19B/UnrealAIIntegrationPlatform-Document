@@ -34,7 +34,7 @@
 
 `.uproject` を UE で開き、**Edit > Plugins** から **UnrealAIIntegrationPlatform** が有効になっていることを確認してください。フォルダを置いただけの場合は、エディタを一度再起動する必要があります。
 
-デモ版を使う場合は、リリース zip 内の `Config/DefaultUAIP.ini` をプロジェクトの `Config/` フォルダにコピーしてください。これにはデモ用の Capability（`PIEControl`・`SlateUIAutomation`・`ObservationCapture`）が有効化済みの状態で入っています。
+デモ版を使う場合は、リリース zip 内の `Config/DefaultUAIP.ini` をプロジェクトの `Config/` フォルダにコピーしてください。このファイルは、デモが使う SafetyPolicy のスイッチ（ログのダンプ・キーボード入力・コンテキストメニューの操作・PIE の開始を許可する）を設定し、コンソール変数のコマンド用に `RuntimeCVarRead` を付与します。観測・UI 自動化・PIE 制御（`EditorObservation`・`EditorUIAutomation`・`PIEControl`）は DefaultAllow なので、記述は要りません。
 
 ---
 
@@ -93,7 +93,7 @@ AI クライアントで次のように依頼してみてください：
   "Success": true,
   "Result": {
     "Status": "OK",
-    "UAIPVersion": "1.2.0",
+    "UAIPVersion": "1.3.0",
     "EngineVersion": "5.8.0",
     "BuildConfig": "Development"
   }
