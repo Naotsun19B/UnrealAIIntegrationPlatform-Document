@@ -852,6 +852,7 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | Reason | ErrorCode | 条件 |
 |---|---|---|
 | `MaskPlaceholderValue` | `InvalidParams` | `***` を含む値が、秘密の書き込み先（または秘密でないと判定できない書き込み先）へ、`AllowMaskPlaceholderValue: true` なしで送られた |
+| `SecretTargetResetOnConstruction` | `NotAllowed` | 秘密のプロパティのうち、コンストラクションスクリプトが戻すもの（レベルに置いたアクターで、構築時にリセットされるプロパティ）への書き込み。`SetActorProperty`・`SetWorldSetting`・`SetAssetProperty`（レベルのアクターを指したとき）が、値にかかわらず断ります。同じ値かどうかで応答を変えると、値を推測できてしまうためです |
 
 **`AllowMaskPlaceholderValue`。** 下の一覧のすべてのコマンドが取る省略可能な真偽値で、既定は `false` です。`true` を渡すと、その 1 回の呼び出しの全ての値について `***` の検出を外します。Capability・秘密のほかの確認・型の確認は今までどおり行われます。真偽値以外（文字列 `"true"` など）は、ほかの引数の形の誤りと同じく `InvalidParams` です。読み取りの `IncludeSecretValues` とは無関係です。
 

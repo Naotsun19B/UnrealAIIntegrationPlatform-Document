@@ -852,6 +852,7 @@ Where leaving the field out would lose the stored value, because the command reb
 | Reason | ErrorCode | When |
 |---|---|---|
 | `MaskPlaceholderValue` | `InvalidParams` | A value that holds `***` was sent to a secret target (or one that cannot be shown not to be secret) without `AllowMaskPlaceholderValue: true` |
+| `SecretTargetResetOnConstruction` | `NotAllowed` | A write to a secret property that the construction script resets (on an actor placed in the level). `SetActorProperty`, `SetWorldSetting` and `SetAssetProperty` (when it points at an actor in the level) refuse whatever the value is: answering differently for an equal value would let a caller guess the secret |
 
 **`AllowMaskPlaceholderValue`.** An optional Boolean on every command in the list below, `false` by default. With `true` the `***` check is skipped for that one call and for every value of it; the capability, the other secret checks and the type check are made as before. A value of another type (the string `"true"`, for example) is `InvalidParams`, like any other malformed argument. It is unrelated to `IncludeSecretValues`, which concerns reading.
 

@@ -35,7 +35,7 @@ UAIP は [Semantic Versioning 2.0.0](https://semver.org/lang/ja/) に従って�
 次の 3 つをすべて満たすときに限り、MAJOR としません。
 
 1. **気づける**: 同じ応答に機械可読の印か理由がある（`IsMasked` などの欄、または `PolicyViolation` / `CapabilityNotAvailable` と理由）
-2. **得られる**: 同じ結果を得る経路が同じバージョンにある（Capability、ini の設定、秘密の値の 3 層の解禁、または別のコマンドや引数）
+2. **得られる**: 同じ結果を得る経路が同じバージョンにある（Capability、ini の設定、秘密の値の 3 層の解禁、⚠️ の項目に手順を書いたエディタの外の手作業、または別のコマンドや引数）
 3. **告知する**: changelog の項目に ⚠️ がある
 
 このため、MINOR のリリースでも値が `***` に変わったり、呼び出しが拒否されたりすることがあります。アップグレードの前に ⚠️ の項目を読んでください。1.2.0 の次のリリース以降、`1.x` のリリースで **⚠️ 破壊的変更** と書かれた項目は、この例外にあたる変更です。3 つの条件を満たさない変更には、引き続き MAJOR バンプが必要です。
@@ -373,6 +373,11 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
   | `Toolset.Editor.Niagara.GetSystemData`・`GetEmitterData`・`GetRendererData`・`GetUserVariables`・`Toolset.Runtime.Niagara.GetUserVariables`・`GetVariable` | 秘密のプロパティや変数の値が `***` になり、`MaskedFields` に載る | 3 つの許可 |
   | `Toolset.Editor.DataRegistry.GetItems` | アイテムの秘密の欄が `***` になり、`MaskedFields` に載る | 3 つの許可 |
   | `Toolset.Editor.ControlRig.GetPinValue`・`ListVariables`・`GetVariable`・`Toolset.Editor.Niagara.GetStackInputData` | 秘密の値が `***` と `IsMasked: true` になる。Toolset の artifact を返さなくなる | 値は 3 つの許可（artifact は上の項目を参照） |
+  | `UAIP.Editor.Blueprint.GetPinDefaultValue`・`ListBlueprintPins`・`GetBlueprintGraphInfo` | 無害と示せないピンの既定値が `***` と `IsMasked: true` になる。定義が解決できないピンは `UnverifiedMaskedPins` に載り、解禁されない | 3 つの許可（`GetPinDefaultValue` が平文を返す） |
+  | Control Rig の `GetComponent`・`GetPinValue` | 秘密の値が `***` になる。構造体に秘密を 1 つでも含むコンポーネントの `ContentText` は全体が `***` になり、`Content` は秘密のキーだけを伏せる（`MaskedFields`） | 3 つの許可。`SetComponentContent` へ戻す平文の `ContentText` は、3 つの許可をそろえてコンポーネントを読む |
+  | PoseSearch のチャンネルスキーマ、Sequencer の `GetSectionProperty`、Dataflow の `GetDataflowNodeProperty`、Behavior Tree の `GetBehaviorTreeNodeProperties`、Enhanced Input の `GetInputActionInfo`・`GetMappingContextInfo`、StateTree の `GetStateTreeParameters`、Niagara の `GetStackInputData`、`GetSlotProperties`、EQS の `GetEQSQueryInfo`、`GetDataTableRowStruct`、`DumpMassEntityConfig` | 秘密のプロパティの値が `***` になる。伏せ方の示し方（`IsMasked`・`MaskedFields`・`IsSecret`）はコマンドの形ごとに異なる。定義がまだ解決できない値は伏せたまま `UnverifiedMaskedFields` に載る | 3 つの許可 |
+  | Subsonic の `GetSubsonicEventCollectionInfo` | 秘密を含むアクションの `DisplayInfo` が `***` になり、そのアクションの `MaskedFields` に加わる。秘密の無いアクションは変わらない | 3 つの許可（平文は `SecretFieldValues` に入る） |
+  | Sound の `GetSoundMixInfo`・`GetSoundClassInfo`・`GetSoundAttenuationInfo` | 秘密のプロパティの値が `***` になる。`GetSoundMixInfo` は C++ 派生の SoundMix クラスのプロパティも返すため、応答の項目が以前より増えることがある | 3 つの許可 |
   | Toolset の書き込み `Toolset.Editor.PCG.AddNode`・`AddSubgraphNode`・`UpdateNode`・`SetGraphParams`・`SetGraphInstanceParams`・`SpawnGraphInstance`・`RunPCGInstantGraph`・`Toolset.Editor.Niagara.SetSystemData`・`SetRendererData`・`SetStackInputData`・`Toolset.Editor.ControlRig.SetPinValue`・`Toolset.ConfigSettings.SetSectionProperties` と、`Toolset.Editor.SlateInspector.SnapshotUI` | 失敗文は 1.2.0 と同じ固定の `Toolset.<ツール名> failed.` のままで、ほかのブリッジに今回付く原因は付かない。ControlRig の `SetPinValue` と `SnapshotUI` のほかの変更はそれぞれの項目を参照 | `AllowToolsetErrorText=True` でエンジンの失敗文が返る（秘密の新しい値が入りうる。[安全性と Capability](safety.md#toolset-の失敗文) を参照） |
 
 - **Behavior Tree のノードを追加しても木が並べ直されなくなり、`RequestBehaviorTreeAutoArrange` は 1.2.0 の動きのまま、Undo 1 回で戻るようになりました**（`UAIPEditorBehaviorTree` モジュール）: `AddBehaviorTreeCompositeNode` と `AddBehaviorTreeTaskNode` は、追加のたびに自動整列を行っていました。今は行わず、新しいノードは親の近くに置かれ、他のノードは動きません。木を整えたいときは `ArrangeBehaviorTreeGraph` を呼んでください。`RequestBehaviorTreeAutoArrange` は引数（`AssetPath`）と応答のキー（`AssetPath`、`Arranged`）を保ったまま、従来の動きを続けます。BehaviorTree エディタで開いているツリーを、エンジンの整列で並べます。開いていないアセット（または開いていても描画がまだのノードがあるツリー）は何も変えずに `Arranged: false` を返し、`Arranged: true` は整列が実行されたことを表し、ノードが動いたことは表しません。新しくなったのは、整列が Undo 1 回で戻ること、ノードが動かなければ変更済みの印を付けないこと、応答に非推奨の案内が付くことです。閉じているアセットを整列するには `ArrangeBehaviorTreeGraph` を使ってください。

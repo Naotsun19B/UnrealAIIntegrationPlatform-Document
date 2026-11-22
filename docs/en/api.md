@@ -902,9 +902,9 @@ UAIP follows **semantic versioning** at the command level:
 |---|---|
 | `Stable` | Schema is fixed across minor versions. Renames / removals only on major bumps |
 | `Experimental` | Schema may change in any release. Treat the schema dump as a snapshot, not a contract |
-| `Deprecated` | Will be removed in the next major. `DeprecationMessage` + `MigrationTarget` are populated |
+| `Deprecated` | Keeps working and is not removed as a rule. The only exception is a MAJOR bump after Epic removes the engine API it relies on. `DeprecationMessage` + `MigrationTarget` are populated |
 
-The same contract applies to what a `Stable` command returns, with one exception: a change that masks a value or refuses a call for safety can ship in a minor version when the response marks it, the same version still offers a way to get the result, and the changelog carries ⚠️. See the [safety tightening exception](changelog.md#safety-tightening-exception).
+The same contract applies to what a `Stable` command returns, with one exception: a change that masks a value or refuses a call for safety can ship in a minor version when the response marks it, the same version still offers a way to get the result (a capability, an ini setting, the three-layer reveal of a secret value, a step by hand outside the editor that the changelog ⚠️ spells out, or another command or parameter), and the changelog carries ⚠️. See the [safety tightening exception](changelog.md#safety-tightening-exception).
 
 ### Capability renames
 
