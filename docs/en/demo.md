@@ -323,7 +323,7 @@ The commands that inject input exist only in Pro (see [Excluded commands](#exclu
 | `UAIP.Editor.Property.GetProjectSetting` | Get a property from a project settings object |
 | `UAIP.Editor.Property.GetDataTableRow` | Get a DataTable row property |
 
-Values of secret-looking properties are masked in the responses. The demo has no `SecretValueRead` capability, so a masked value cannot be read in plain text there; the secrets of `GetAssetTags` and of the run-time dumps `DumpSubsystemState`, `DumpAnimInstanceVariables`, `GetBlackboardValues` and `DumpAIPerceptionSenseConfigs` stay `***` as well (see [Reading secret values in plain text](safety.md#reading-secret-values-in-plain-text)).
+Values of secret-looking properties are masked in the responses. The demo unlocks the plain value the same way as the Pro build, with the same three layers: the call passes `IncludeSecretValues: true`, `AllowSecretValueRead=True` is set under `[UAIP.SafetyPolicy]`, and the session holds `SecretValueRead` (DefaultDenied in the demo too — you allow it yourself with `+AllowedCapabilities=SecretValueRead`). By default none of them is given, so the values stay `***`. The same applies to the secrets of `GetAssetTags` and of the run-time dumps `DumpSubsystemState`, `DumpAnimInstanceVariables`, `GetBlackboardValues` and `DumpAIPerceptionSenseConfigs`, which also need their own capability (see [Reading secret values in plain text](safety.md#reading-secret-values-in-plain-text)).
 
 ### `UAIP.Editor.Engine.*` (read-only subset)
 

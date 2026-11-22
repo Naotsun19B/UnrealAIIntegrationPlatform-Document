@@ -53,17 +53,17 @@ Shipping 以外のビルドでは、エンジン標準の `-ini:UAIP:[<節>]:<�
 
 | キー | 型 | デフォルト | 説明 |
 |---|---|---|---|
-| `StarvedTickAllowList` | string | `UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities` | モーダル表示中に実行してよいコマンドの完全修飾名（カンマ区切り）。コマンドポンプの有効・無効によらず読まれます。ポンプが無効（既定）のとき、ここに無い状態を変えるコマンドは**その場で `NotAllowed` で断られ**、モーダルが閉じてから送り直す必要があります。読み取り専用のコマンドは、ここに無くても実行されます。ポンプが有効のときは、ここに無いコマンドは**拒否されず、モーダルが閉じるまで順番待ちのまま**になります |
+| `StarvedTickAllowList` | string | `UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities` | モーダル表示中に実行してよいコマンドの完全修飾名（カンマ区切り）。コマンドポンプの有効・無効によらず読まれます。ポンプが無効（既定）のとき、ここに無い状態を変えるコマンドは**その場で `NotAllowed` で断られ**、モーダルが閉じてから送り直す必要があります（`HandleDialogsOpenedByWrites` が既定の `false` のとき、書き込みが開いたダイアログにはこの扱いは当たりません。他のセッションの要求は、そのダイアログが閉じるまで待ちます）。読み取り専用のコマンドは、ここに無くても実行されます。ポンプが有効のときは、ここに無いコマンドは**拒否されず、モーダルが閉じるまで順番待ちのまま**になります |
 
 `StarvedTickAllowList` を既定の 2 件に絞っているのは、モーダルが開いている最中は「他の処理の途中」だからです。`ListCommands` / `DescribeCommand` は読み取り専用ですが、登録済みの全ハンドラへ問い合わせるため、あらゆるドメインのコードをこの状況で動かすことになります。そのため既定には含めていません。これはコマンドポンプが有効なときの話です。ポンプが無効なとき、このリストが止めるのは状態を変えるコマンドだけなので、この 2 つのような読み取り専用のコマンドはモーダル表示中でも実行されます。
 
 対応する CLI フラグ：`-uaip-command-pump-starved-tick-allow-list=...`
 
-書き込みが開いたダイアログに AI が答えられるようにするには（[書き込みが開いたモーダルダイアログ](commands.md#書き込みが開いたモーダルダイアログ)を参照）、`UAIP.Editor.UIAutomation.AcceptDialog`、`UAIP.Editor.UIAutomation.CancelDialog`、またはその両方をこの一覧に足します（例：`StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.AcceptDialog,UAIP.Editor.UIAutomation.CancelDialog`）。既定の項目は残し、エディタを再起動し、起動ログの 1 行で確かめてください。注意が 3 つあります。
+書き込みが開いたダイアログに AI が答えられるようにするには（[書き込みが開いたモーダルダイアログ](commands.md#書き込みが開いたモーダルダイアログ)を参照）、`UAIP.Editor.UIAutomation.AcceptDialog`、`UAIP.Editor.UIAutomation.CancelDialog`、またはその両方をこの一覧に足します（例：`StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.AcceptDialog,UAIP.Editor.UIAutomation.CancelDialog`）。既定の項目は残し、エディタを再起動し、起動ログの 1 行で確かめてください。これは `[UAIP.ModalDialog] HandleDialogsOpenedByWrites` を `true` にしたときのための設定です。既定の `false` では、ダイアログを開いた書き込みに早期の応答が返らないので、その呼び出し側はダイアログのことを知らされません。答えるのは人か、`EditorDialogCrossSessionAnswer` を持つ別のセッションです（[Safety & Capabilities](safety.md#別のセッションのモーダルダイアログへの回答)を参照）。このとき他のセッションの要求は、上の説明のように断られるのではなく、ダイアログが閉じるまで待ちます。注意が 3 つあります。
 
 - **`ShutdownEditor` と `RestartEditor` は一覧に載せないでください。** エディタは要求を受け付けますが、ダイアログが閉じるまで終了せず、ブリッジも回復できなくなります。
 - **`CancelDialog` だけでは、中止のみを許せません。** 一覧はコマンド単位で、`ButtonLabel` を指定すれば `Continue` を含む任意のボタンを押せます。
-- `GetActiveDialog` と `HealthCheck` は、ダイアログが開いている間は常に通り、一覧への記載は要りません。`AcceptDialog` も `CancelDialog` も一覧に無いと、Material の Apply と `Undo` / `Redo` の確認は、表示されず中止を選んだ扱いになります。
+- `GetActiveDialog` と `HealthCheck` は、ダイアログが開いている間は常に通り、一覧への記載は要りません。[`[UAIP.ModalDialog]`](#uaipmodaldialog--応答のないダイアログの打ち切り既定で無効) の `HandleDialogsOpenedByWrites` が `true` のとき、`AcceptDialog` も `CancelDialog` も一覧に無いと、Material の Apply と `Undo` / `Redo` の確認は、表示されず中止を選んだ扱いになります。既定の `false` では、一覧はこれに影響しません。Material の Apply の確認は常に表示せずに中止され、`Undo` / `Redo` の確認は常に表示されます。
 
 モーダルダイアログの中から開いたメニューを閉じるには、このリストに `UAIP.Editor.UIAutomation.DismissMenus` を足し（例：`StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.DismissMenus`。このキーは既定値を置き換えるので、既定のエントリも値に残してください）、エディタを再起動します。コマンドポンプの有効化は不要です。足さないと、`DismissMenus` はダイアログが開いている間は断られます（ポンプが有効なら、ダイアログが閉じるまでキューで待ちます）。足すことを想定しているのはこの UI コマンドだけです。変えるのは Slate のメニュースタックの状態だけだからです。
 
@@ -100,12 +100,16 @@ SuppressLayoutSaveWhenHeadless=True
 
 ### `[UAIP.ModalDialog]` — 応答のないダイアログの打ち切り（既定で無効）
 
-モーダルダイアログが開いたまま誰も答えないと、それを開いたコマンドは止まったままになります。この設定は、そのようなダイアログの窓を、一定時間後にエディタ自身が閉じるようにします。無人の環境向けです。
+モーダルダイアログが開いたまま誰も答えないと、それを開いたコマンドは止まったままになります。この設定は、そのようなダイアログの窓を、一定時間後にエディタ自身が閉じるようにします。無人の環境向けです。書き込みが開いたダイアログが開いている間に呼び出し側へどう答えるかは、同じ節の `HandleDialogsOpenedByWrites` で決まります。
 
 | キー | 型 | デフォルト | 説明 |
 |---|---|---|---|
+| `HandleDialogsOpenedByWrites` | boolean | `false` | 書き込みコマンドが、自分で開いたモーダルダイアログ（確認や保存の問い合わせなど）で待っているときの扱い。**`false` は 1.2.0 の扱いのままです。** どの経路（HTTP・MCP・WebSocket・CLI・シナリオ）でも、ダイアログは表示されたままになり、呼び出し側は最終結果を待ちます。他のセッションの要求は、ダイアログが閉じるまで待ってから実行されます。ただし `HealthCheck`、`GetActiveDialog`、`ShutdownEditor`、ダイアログに答えるコマンドは、開いている間も応答します。Material の書き込みの中で Material エディタの Apply が出す確認は、1.2.0 では出なかったもので、どの経路でも表示せずに中止されます。書き込みは成功し、`Result.EditorSync` は `Applied: false` と `ApplyDeferredReason: ApplyCanceled` を返します。`Undo` / `Redo` の後に出る確認は、1.2.0 と同じく表示され、答えが来るまで開いたままです。**`true` は 1.3.0 で加わった扱いを有効にします。** HTTP と MCP は最終結果を待たずに `ModalDialogPending` を即座に返し、最終結果は後で `GetActiveDialog` で読みます。ダイアログに答えられない経路では、ダイアログは中止されます。開いている間、他のセッションの要求は断られます（[書き込みが開いたモーダルダイアログ](commands.md#書き込みが開いたモーダルダイアログ)を参照）。**`true` は、AI がこれらのダイアログにコマンド（`AcceptDialog` / `CancelDialog`）で答えることを前提にした設定です。** どちらも下の一覧に無いと `CanAnswer` は `false` のままなので、Material の Apply と `Undo` / `Redo` の確認は表示せずに中止され、それ以外のダイアログは人の答えを待ちます。エディタの外から答えるには、どちらの値でも、答えるコマンドを [`[UAIP.CommandPump]`](#uaipcommandpump--モーダル表示中のコマンド実行既定で無効) の `StarvedTickAllowList` に載せる必要があります。起動時に 1 回だけ読まれるので、変更後はエディタを再起動してください |
 | `UnansweredTimeoutSeconds` | number | 未設定（無効） | モーダルダイアログが入力無しのまま過ごせる秒数。過ぎるとエディタが窓を閉じます。指定できるのは **5〜3600** です。範囲外の値は警告をログに出し、無効のままになります。**無効にするならキーを書かないでください。** `UnansweredTimeoutSeconds=0` も範囲外なので、警告が出るだけです。起動時に 1 回だけ読まれるので、変更後はエディタを再起動してください |
 
+- `UnansweredTimeoutSeconds` は `HandleDialogsOpenedByWrites` とは独立しています。同じ節から読まれ、どちらの値でも効きます。
+- **書き込みが待っている間のエディタの応答の時間切れ（`HandleDialogsOpenedByWrites` が `false` のとき）。** HTTP と MCP では、書き込みが自分のダイアログで待っている間、その要求に対するエディタ自身の時間切れ（120 秒、または呼び出しの `TimeoutSeconds`）は止まります。そのダイアログの後ろで待っている他のセッションの要求の時間切れも止まります。ダイアログが閉じると、時間切れは残りの時間ではなく、元の長さで数え直されます。進捗バーの表示中に開いたダイアログは、こうして追われません。時間切れは進み続け、ダイアログが開いたまま書き込みも続いているのに、要求が `Timeout` で終わることがあります。
+- **ダイアログに誰も答えない環境では。** `HandleDialogsOpenedByWrites` が `false` のとき、呼び出し側にはダイアログが閉じるまで何も返らず、エディタの外での待ち時間は止まりません。エディタの中で書き込みが待ち続けていても、MCP ブリッジは `command_timeout_seconds`（既定 180 秒、または呼び出しの `TimeoutSeconds`。[MCP Bridge `config.json`](#mcp-bridge-configjson) を参照）で待つのをやめます。誰もダイアログに答えない環境では、`HandleDialogsOpenedByWrites` を有効にして AI にコマンドで答えさせるか、`UnansweredTimeoutSeconds` をその待ち時間より短く設定して、書き込みの最終結果が呼び出し側に届くようにしてください。
 - 時間は、ダイアログが開いた時刻と最後の入力の遅い方から数えます。マウスやキーの入力、UAIP が注入する入力（クリックなど）で数え直されます。AI の読み取りコマンドでは数え直されません。そのため、人が操作せずに読んでいるだけでも打ち切られます。
 - コマンドの実行中に開いたダイアログと、`ClickWidget` が開いたダイアログが対象です。経路と `CanAnswer` は問いません。
 - エディタは窓を自分で閉じ、ボタンは押しません。**閉じた後の結果はダイアログの種類で決まるので、書き込みが中止になることも続行することもあります。** ボタンに結び付いた処理は走りません。書き込みの結果に `DialogAutoClosed` が加わり、`GetActiveDialog` の `PendingCommand.Response.Result` で読めます。`ClickWidget` が開いた窓には結果を載せる応答が無いので、ログに残るだけで、`DialogOpen` が偽になります。
