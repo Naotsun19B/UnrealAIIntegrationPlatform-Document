@@ -1527,12 +1527,12 @@ The `PropertyPath` of eight commands can continue into an object that an `Instan
 | The held object has no such member | `NotFound` |
 | Under a secret value, without `IncludeSecretValues` (write: walking, indexing or element operations) | `PolicyViolation` |
 | A capability is missing | `CapabilityNotAvailable` (`PolicyViolation` when explicitly denied), all missing ones listed |
-| A container on the way cannot be edited (`EditConst` and the like), on a write | `NotAllowed` |
+| A container on the way cannot be edited (`EditConst` and the like), on a write | `PolicyViolation` |
 | `SetAssetProperty` reaches an object of a Blueprint that has a dedicated command (see above) | `InvalidParams` naming the command; `GetAssetProperty` still reads it and adds `SuggestedCommand` |
 
 The failures of walking (out of range, empty, another owner, actor or component, no such member, secret) carry the same `ErrorCode` on a `Get*` as on the matching `Set*`, `GetBlueprintComponentProperty` included. Conditions that only a write asks (capabilities, a rebuilt array, a `***` written back) are not refused on a read; `WriteRequirements` lists what a write would need. A refused write changes nothing. A path that does not walk into an object keeps its previous `ErrorCode` on every command, including the fixed `InvalidParams` of the failures of `GetBlueprintComponentProperty`.
 
-When an out-of-range index meets another refusal in the same path, the refusal that comes first in the path wins. For example `Structs[99].Ref.X` now says that `Ref` is not `Instanced` (still `InvalidParams`), and on a write `Structs[99].EditConstInner.Ref.X` is refused as `NotAllowed` instead of `InvalidParams`. Neither path could succeed before.
+When an out-of-range index meets another refusal in the same path, the refusal that comes first in the path wins. For example `Structs[99].Ref.X` now says that `Ref` is not `Instanced` (still `InvalidParams`), and on a write `Structs[99].EditConstInner.Ref.X` is refused as `PolicyViolation` instead of `InvalidParams`. Neither path could succeed before.
 
 **What changed for existing calls (⚠️).**
 

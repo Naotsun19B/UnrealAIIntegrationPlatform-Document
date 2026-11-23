@@ -1526,12 +1526,12 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 | 持っているオブジェクトにそのメンバーが無い | `NotFound` |
 | 秘密の値の下で、`IncludeSecretValues` が無い（書き込みでは辿ること・添字・要素操作） | `PolicyViolation` |
 | Capability が足りない | `CapabilityNotAvailable`（明示的に拒否されていれば `PolicyViolation`）。足りないものを全て挙げる |
-| 書き込みで、途中の入れ物が編集できない（`EditConst` など） | `NotAllowed` |
+| 書き込みで、途中の入れ物が編集できない（`EditConst` など） | `PolicyViolation` |
 | `SetAssetProperty` が、専用のコマンドがある Blueprint のオブジェクトへ辿った（上記参照） | `InvalidParams`（コマンドを案内）。`GetAssetProperty` は今までどおり読み、`SuggestedCommand` を足す |
 
 辿る途中の失敗（範囲外・空・別の持ち主・アクターやコンポーネント・メンバーが無い・秘密）は、`Get*` と対応する `Set*` で同じ `ErrorCode` です（`GetBlueprintComponentProperty` を含む）。Capability・作り直される配列・`***` の書き戻しのように書き込みでだけ問う条件は、読み取りでは断られません（書き込みに要るものは `WriteRequirements` に挙がります）。断られた書き込みは何も変えません。オブジェクトを辿らないパスは、どのコマンドでも従来の `ErrorCode` のままです（`GetBlueprintComponentProperty` の失敗の固定の `InvalidParams` も同じです）。
 
-範囲外の添字と別の拒否が同じパスで重なるときは、パスの前にある段の拒否が先に返ります。たとえば `Structs[99].Ref.X` は「`Ref` が `Instanced` ではない」（`InvalidParams` のまま）になり、書き込みの `Structs[99].EditConstInner.Ref.X` は `InvalidParams` ではなく `NotAllowed` になります。どちらのパスも以前から成功しません。
+範囲外の添字と別の拒否が同じパスで重なるときは、パスの前にある段の拒否が先に返ります。たとえば `Structs[99].Ref.X` は「`Ref` が `Instanced` ではない」（`InvalidParams` のまま）になり、書き込みの `Structs[99].EditConstInner.Ref.X` は `InvalidParams` ではなく `PolicyViolation` になります。どちらのパスも以前から成功しません。
 
 **既存の呼び出しへの影響（⚠️）**
 
