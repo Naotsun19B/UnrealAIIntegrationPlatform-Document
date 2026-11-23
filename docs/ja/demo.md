@@ -255,6 +255,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.UIAutomation.ConnectGraphPins` | グラフピンを接続する | |
 | `UAIP.Editor.UIAutomation.AcceptDialog` | ダイアログを OK で閉じる | |
 | `UAIP.Editor.UIAutomation.CancelDialog` | ダイアログをキャンセルで閉じる | |
+| `UAIP.Editor.UIAutomation.GetActiveDialog` | 今開いているモーダルダイアログ（タイトル・本文・ボタン）を読む | 読み取り専用 |
 | `UAIP.Editor.UIAutomation.InvokeContextMenuAction` | コンテキストメニューアクションを呼び出す | |
 | `UAIP.Editor.UIAutomation.HoverWidget` | ウィジェットをホバーする | |
 | `UAIP.Editor.UIAutomation.PressKey` | キー入力を送る | `EditorKeyboardInput` |

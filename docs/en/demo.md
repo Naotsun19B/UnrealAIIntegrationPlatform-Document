@@ -255,6 +255,7 @@ The commands that inject input exist only in Pro (see [Excluded commands](#exclu
 | `UAIP.Editor.UIAutomation.ConnectGraphPins` | Connect graph pins | |
 | `UAIP.Editor.UIAutomation.AcceptDialog` | Close a dialog with OK | |
 | `UAIP.Editor.UIAutomation.CancelDialog` | Close a dialog with Cancel | |
+| `UAIP.Editor.UIAutomation.GetActiveDialog` | Read the modal dialog that is open now (title, body, buttons) | Read-only |
 | `UAIP.Editor.UIAutomation.InvokeContextMenuAction` | Invoke a context menu action | |
 | `UAIP.Editor.UIAutomation.HoverWidget` | Hover over a widget | |
 | `UAIP.Editor.UIAutomation.PressKey` | Send a key input | `EditorKeyboardInput` |
