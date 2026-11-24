@@ -97,7 +97,7 @@ python Plugins/UAIPMCPBridge/install/check_guides.py --apply --migrate
   "Success": true,
   "Result": {
     "Status": "OK",
-    "UAIPVersion": "1.2.0",
+    "UAIPVersion": "1.3.0",
     "EngineVersion": "5.8.0"
   }
 }

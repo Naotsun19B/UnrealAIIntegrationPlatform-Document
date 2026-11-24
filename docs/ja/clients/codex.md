@@ -75,7 +75,7 @@ Get-Content Plugins/UAIPMCPBridge/install/guides/usage.md `
   "Success": true,
   "Result": {
     "Status": "OK",
-    "UAIPVersion": "1.2.0",
+    "UAIPVersion": "1.3.0",
     "EngineVersion": "5.8.0"
   }
 }
