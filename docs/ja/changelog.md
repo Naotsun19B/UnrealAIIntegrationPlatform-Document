@@ -537,13 +537,14 @@ MINOR リリースです。以下の変更はすべてプラグインリポジ�
 - **要求の途中で接続エラーになった後、Bridge はポートを確かめてから、エディタの再起動と要求の再送を決めるようになりました。** これまでは記録した状態だけで決めていたため、要求の間にエディタが落ちても再起動されませんでした。今は、ポートで何も待ち受けていないときだけ再起動し、再送の前にエディタを確かめ、ポートが開いているのに応答しないとき（要求の間にポートが接続を拒んだとき、期限の切れた起動の待ちが残っているときも）は、再起動も再送もせずに断ります。再試行のエラーは、再起動したかどうかを伝えます。
 - **インストーラ（`install.ps1` / `install.sh`）が、`config.json` で Bridge の安全を緩める設定ごとに警告するようになりました。** 実行のたびに、オンになっているそうした設定（`allow_unverified_attach`・`allow_reload_launch_command`・`allow_reload_uaip_ini_override`・`allow_reload_bridge_code`・`allow_unverified_port_owner`）を名前で挙げます。値は表示しません。
 
-#### Claude Code Plugin — 未リリース
+#### Claude Code Plugin 1.1.0 — 未リリース
 
 プラグインは UAIP プラグインとは独立に採番・リリースされます（採番規則は上記のバージョニング方針を参照）。
 
 **変更**
 
 - **`/uaip:scenario` が 1 MiB までのシナリオを送るようになりました。** `exec.py` は、64 KiB を超えるシナリオを送る前に終了コード 2 で拒否していました。今後はエディタのシナリオの上限である 1 MiB で判定します。`/uaip:exec` で送る単発のコマンドは 64 KiB のままです。上記の未リリースの版より前の UAIP プラグインは、64 KiB を超えるシナリオに引き続き 413 を返します。[Claude Code Plugin](claude-code-plugin.md) を参照してください。
+- **zip に含まれるマーケットプレイス `uaip-tools` に `uaip-result-view` も載るようになりました。** この Mod は別の zip（`UAIP-ResultView-<version>.zip`）で配布しています。その zip が無くても `uaip-result-view` はマーケットプレイスに表示され、インストールすると「Source path does not exist」で失敗します。本プラグインはこの Mod を必要としません。更新するときは、新しい zip を展開する前に `plugins/uaip` フォルダーだけを削除し、インストール済みの `uaip-result-view` を残してください。[Claude Code Plugin](claude-code-plugin.md) を参照してください。
 
 ### Result View 0.1.1 — 2026-10-31
 

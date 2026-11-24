@@ -537,13 +537,14 @@ The bridge is versioned and released independently of the plugin; see the versio
 - **After a request fails with a connection error part-way through, the bridge checks the port before it restarts the editor or sends the request again.** It used to decide from the state it had recorded, so an editor that crashed during a request was not restarted. It now restarts only when nothing is listening on the port, confirms the editor before re-sending, and refuses without restarting or re-sending when the port is open but does not answer (also when the port refused the connection during the request, or while an expired launch wait is still pending). The retry error now says whether a restart happened.
 - **The installers (`install.ps1` / `install.sh`) now warn about each setting in `config.json` that lowers the bridge's safety.** On every run they name each such setting that is turned on (`allow_unverified_attach`, `allow_reload_launch_command`, `allow_reload_uaip_ini_override`, `allow_reload_bridge_code`, `allow_unverified_port_owner`), without printing its value.
 
-#### Claude Code Plugin — Unreleased
+#### Claude Code Plugin 1.1.0 — Unreleased
 
 The plugin is versioned and released independently of the UAIP plugin; see the version numbering above.
 
 **Changed**
 
 - **`/uaip:scenario` now sends a scenario up to 1 MiB.** `exec.py` used to refuse a scenario over 64 KiB with exit code 2 before sending it. It now applies the editor's scenario cap, 1 MiB, and the 64 KiB limit stays for a single command sent with `/uaip:exec`. A UAIP plugin earlier than the Unreleased version above still answers 413 to a scenario over 64 KiB. See [Claude Code Plugin](claude-code-plugin.md).
+- **The marketplace `uaip-tools` in the zip also lists `uaip-result-view`.** That Mod ships in its own zip (`UAIP-ResultView-<version>.zip`); without it, `uaip-result-view` still appears in the marketplace and installing it fails with "Source path does not exist". This plugin does not need it. To update, delete only the `plugins/uaip` folder before extracting the new zip, so that an installed `uaip-result-view` stays. See [Claude Code Plugin](claude-code-plugin.md).
 
 ### Result View 0.1.1 — 2026-10-31
 
