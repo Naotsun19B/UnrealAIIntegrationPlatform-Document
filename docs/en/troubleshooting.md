@@ -94,6 +94,20 @@ This is a UE 5.7 engine defect, fixed in UE 5.8. An asset that embeds a Dataflow
 - Duplicates made with the engine's own tools (the Content Browser's Duplicate, and so on) still are. After duplicating such an asset, save it and restart the editor before deleting or unloading the duplicate: an asset loaded fresh in a new editor session does not carry the listener.
 - UE 5.8 is not affected.
 
+### "Building my C++ project prints many `does not list plugin ... as a dependency` warnings for UnrealAIIntegrationPlatform"
+
+These warnings are harmless. They look like this:
+
+```
+Warning: Plugin 'UnrealAIIntegrationPlatform' does not list plugin 'StateTree' as a dependency, but module 'UAIPRuntimeStateTree' depends on module 'StateTreeModule'.
+```
+
+UAIP integrates with many engine plugins optionally. Its source descriptor lists each of them as a disabled, optional dependency, so that UAIP never turns those plugins on in your project; an integration is loaded only when you enable its plugin yourself. When the plugin is packaged for distribution, the engine rewrites the descriptor and drops the "optional" mark from every dependency that is disabled. UnrealBuildTool then reports each module dependency on those plugins.
+
+- The build still succeeds. Which plugins are enabled, and what is loaded or linked, does not change. You do not need to enable the plugins named in the warnings.
+- They appear for editor targets (around a hundred lines) and, for a few runtime modules, for game targets. On UE 5.8 the same warnings are printed again on every build, incremental builds included.
+- Do not edit UAIP's `.uplugin` to mark those dependencies `"Enabled": true` to silence the warnings: that forces every one of those plugins on in your project.
+
 ### "No response at all while the editor is showing a dialog"
 
 Commands run inside the editor's ticker callback, and a modal dialog stops the game thread with that ticker on it. **Nothing is answered for as long as the dialog is up.** The dialog is sometimes behind another window, so from the AI's side this looks like a frozen editor.
