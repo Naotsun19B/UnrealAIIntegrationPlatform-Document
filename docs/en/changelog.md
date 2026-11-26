@@ -22,7 +22,7 @@ A version number is `MAJOR.MINOR.PATCH`.
 
 ### Current phase: 1.x.y (Fab Pro released)
 
-The current version is **1.2.0**. UAIP is **released on Fab as the Pro product** ([listing](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)). For the changes since 1.0.0 — the first entry of the `1.x.y` series — see the release list below.
+The current version is **1.3.0**. UAIP is **released on Fab as the Pro product** ([listing](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)). For the changes since 1.0.0 — the first entry of the `1.x.y` series — see the release list below.
 
 - Standard SemVer rules now apply strictly: breaking changes require a MAJOR bump (e.g. `2.0.0`), apart from the [safety tightening exception](#safety-tightening-exception)
 - New commands / new capabilities ship as MINOR (e.g. `1.0.x` → `1.1.0`)
@@ -68,9 +68,13 @@ The free demo (GitHub Releases) and Pro (Fab) **always share the same version nu
 
 > Unreleased and upcoming changes are tracked on the [`next` branch changelog](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/en/changelog.md).
 
-### UAIP Plugin 1.3.0 — Unreleased
+### UAIP Plugin 1.3.0 — 2026-11-26
 
-A MINOR release. All changes below have shipped in the plugin repository (`.uplugin` `VersionName` is `1.3.0`) but are not yet released on Fab; the release date is filled in here once Fab review has passed. Entries marked ⚠️ change what an existing call returns: each is either a fix of behavior that went against what the command declared, or a change under the [safety tightening exception](#safety-tightening-exception), and says how to get the previous result where there is a way.
+**UAIP 1.3.0 is now live on Fab.** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
+
+[![Watch the update trailer on YouTube](https://markdown-videos-api.jorgenkh.no/youtube/pXLtOTXmD1M)](https://youtu.be/pXLtOTXmD1M)
+
+A MINOR release. All changes below have shipped in the plugin repository (`.uplugin` `VersionName` is `1.3.0`) and passed Fab review. Entries marked ⚠️ change what an existing call returns: each is either a fix of behavior that went against what the command declared, or a change under the [safety tightening exception](#safety-tightening-exception), and says how to get the previous result where there is a way.
 
 **1.3.0 adds 125 commands and removes none** — all 125 are UAIP commands, and the Toolset bridge commands stay at 421, taking the totals from 1218 / 421 (1639) in 1.2.0 to **1343 / 421 (1764)**. Every command name that existed in 1.2.0 still exists. The largest additions are AI perception, behavior trees and Blackboards (14 — new `UAIP.Runtime.AI`), Mass (13 — new `UAIP.Runtime.Mass` 6 and `UAIP.Editor.Mass` 7), SaveGame (10 — new), Blueprint (9), Chaos destruction (8 — new), Navigation (8 — new), StateTree runtime (7 — new), Network (7 — new) and Animation (7 — new). For the domain breakdown, see [Commands Reference](commands.md). **Before you build on the commands added in this release, read the advance notices for 2.0.0 under Deprecated:** their names, keys, error codes and response shapes change in 2.0.0.
 
@@ -516,7 +520,7 @@ A MINOR release. All changes below have shipped in the plugin repository (`.uplu
 - **Opening a MetaSound after adding an input with `AddMetaSoundInput` no longer crashes the editor** (`UAIPEditorMetaSound` module): an input added with this command had no default value, and the MetaSound editor stopped on an assertion when it opened the asset. The input now gets the default the editor gives a new input: `0.0`, `0`, `false` or an empty string for Float, Int32, Bool and String, and the type's own default for Trigger and Audio. The parameters and the response are unchanged. **⚠️ This does not repair a MetaSound that was already saved with such an input** by an earlier version: opening that asset can still crash the editor.
 - ⚠️ **On UE 5.7, a Chooser cell holding a `FInstancedStruct` now has the same shape as on UE 5.8, and a value read from it can be written back** (`UAIPEditorChooser` module): this concerns a column whose row values are `FInstancedStruct`, such as the `RowValues` of `FOutputStructColumn`. In `ListChooserTableRows` and `GetChooserTableRow` the cell `Value`, and in `SetChooserTableCell` the `Value` you send, used to be a string on UE 5.7 (the engine's text export, with the struct path and its content joined without a separator, for example `/Script/CoreUObject.PrimaryAssetTypeWeapon`). That string could not be read back for `FPrimaryAssetType`, `FPrimaryAssetId`, `FSoftObjectPath`, `FTopLevelAssetPath`, `FGuid`, `FDateTime`, `FTimespan` or a nested `FInstancedStruct`, so writing back a value you had just read returned success but left the cell as an empty `FInstancedStruct`. On UE 5.7, `Value` is now an object `{"_structType": "<struct path>", <fields>...}` (`{}` for an empty `FInstancedStruct`), as on UE 5.8, at any depth: a struct field, an array element or a map value. The earlier string form (for example `/Script/CoreUObject.LinearColor(R=1.000000,G=0.000000,B=0.000000,A=1.000000)`) is still accepted in a write. A write whose `_structType` names a struct that does not exist is refused with `InvalidParams` on both versions. UE 5.8 behaves as before.
 
-#### MCP Bridge 1.3.0 — Unreleased
+#### MCP Bridge 1.3.0 — released 2026-11-26
 
 The bridge is versioned and released independently of the plugin; see the version numbering above.
 
@@ -558,13 +562,13 @@ The bridge is versioned and released independently of the plugin; see the versio
 - **After a request fails with a connection error part-way through, the bridge checks the port before it restarts the editor or sends the request again.** It used to decide from the state it had recorded, so an editor that crashed during a request was not restarted. It now restarts only when nothing is listening on the port, confirms the editor before re-sending, and refuses without restarting or re-sending when the port is open but does not answer (also when the port refused the connection during the request, or while an expired launch wait is still pending). The retry error now says whether a restart happened.
 - **The installers (`install.ps1` / `install.sh`) now warn about each setting in `config.json` that lowers the bridge's safety.** On every run they name each such setting that is turned on (`allow_unverified_attach`, `allow_reload_launch_command`, `allow_reload_uaip_ini_override`, `allow_reload_bridge_code`, `allow_unverified_port_owner`), without printing its value.
 
-#### Claude Code Plugin 1.1.0 — Unreleased
+#### Claude Code Plugin 1.1.0 — released 2026-11-26
 
 The plugin is versioned and released independently of the UAIP plugin; see the version numbering above.
 
 **Changed**
 
-- **`/uaip:scenario` now sends a scenario up to 1 MiB.** `exec.py` used to refuse a scenario over 64 KiB with exit code 2 before sending it. It now applies the editor's scenario cap, 1 MiB, and the 64 KiB limit stays for a single command sent with `/uaip:exec`. A UAIP plugin earlier than the Unreleased version above still answers 413 to a scenario over 64 KiB. See [Claude Code Plugin](claude-code-plugin.md).
+- **`/uaip:scenario` now sends a scenario up to 1 MiB.** `exec.py` used to refuse a scenario over 64 KiB with exit code 2 before sending it. It now applies the editor's scenario cap, 1 MiB, and the 64 KiB limit stays for a single command sent with `/uaip:exec`. A UAIP plugin earlier than 1.3.0 still answers 413 to a scenario over 64 KiB. See [Claude Code Plugin](claude-code-plugin.md).
 - **The marketplace `uaip-tools` in the zip also lists `uaip-result-view`.** That Mod ships in its own zip (`UAIP-ResultView-<version>.zip`); without it, `uaip-result-view` still appears in the marketplace and installing it fails with "Source path does not exist". This plugin does not need it. To update, delete only the `plugins/uaip` folder before extracting the new zip, so that an installed `uaip-result-view` stays. See [Claude Code Plugin](claude-code-plugin.md).
 
 ### Result View 0.1.1 — 2026-10-31

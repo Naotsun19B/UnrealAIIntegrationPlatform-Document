@@ -22,7 +22,7 @@ UAIP は [Semantic Versioning 2.0.0](https://semver.org/lang/ja/) に従って�
 
 ### 現在のフェーズ：1.x.y（Fab 製品版公開済み）
 
-現行バージョンは **1.2.0** で、UAIP は **Fab で製品版として公開済み**（[リスティング](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)）です。1.x.y 系列の初回エントリである 1.0.0 からの変更点は、下記のリリース一覧を参照してください。
+現行バージョンは **1.3.0** で、UAIP は **Fab で製品版として公開済み**（[リスティング](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)）です。1.x.y 系列の初回エントリである 1.0.0 からの変更点は、下記のリリース一覧を参照してください。
 
 - 以降は通常の SemVer ルールが厳格に適用されます。破壊的変更には MAJOR バンプ（`2.0.0` など）が必要（[安全の強化の例外](#安全の強化の例外)を除く）
 - 新コマンド・新 Capability 追加は MINOR バンプ（例: `1.0.x` → `1.1.0`）
@@ -68,9 +68,13 @@ UAIP はエンジンバージョンごとにブランチを分けず、バージ
 
 > 未リリース・開発中の変更は [`next` ブランチの更新履歴](https://github.com/Naotsun19B/UnrealAIIntegrationPlatform-Document/blob/next/docs/ja/changelog.md) で確認できます。
 
-### UAIP Plugin 1.3.0 — 未リリース
+### UAIP Plugin 1.3.0 — 2026-11-26
 
-MINOR リリースです。以下の変更はすべてプラグインリポジトリに取り込み済みですが（`.uplugin` の `VersionName` は `1.3.0`）、まだ Fab ではリリースしていません。リリース日は Fab の審査を通過した時点でここに書きます。⚠️ の付いた項目は、既存の呼び出しの結果を変えます。どれも、コマンドが宣言していたことに反する振る舞いの修正か、[安全の強化の例外](#安全の強化の例外)による変更のどちらかで、以前の結果を得る方法があるものはその方法を書いています。
+**UAIP 1.3.0 を Fab で公開しました。** [https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)
+
+[![YouTube でアップデートトレーラーを見る](https://markdown-videos-api.jorgenkh.no/youtube/pXLtOTXmD1M)](https://youtu.be/pXLtOTXmD1M)
+
+MINOR リリースです。以下の変更はすべてプラグインリポジトリに取り込み済みで（`.uplugin` の `VersionName` は `1.3.0`）、Fab 審査を通過してリリースされました。⚠️ の付いた項目は、既存の呼び出しの結果を変えます。どれも、コマンドが宣言していたことに反する振る舞いの修正か、[安全の強化の例外](#安全の強化の例外)による変更のどちらかで、以前の結果を得る方法があるものはその方法を書いています。
 
 **1.3.0 ではコマンドを 125 件追加し、削除は 0 件です** — 125 件はすべて UAIP コマンドで、Toolset ブリッジコマンドは 421 件のままです。合計は 1.2.0 の 1218 / 421（1639）から **1343 / 421（1764）** になりました。1.2.0 に存在したコマンド名はすべて残っています。追加が多いのは AI の知覚・ビヘイビアツリー・Blackboard（14 — 新規の `UAIP.Runtime.AI`）、Mass（13 — 新規の `UAIP.Runtime.Mass` 6 と `UAIP.Editor.Mass` 7）、SaveGame（10 — 新規）、Blueprint（9）、Chaos の破壊（8 — 新規）、ナビゲーション（8 — 新規）、StateTree のランタイム（7 — 新規）、ネットワーク（7 — 新規）、アニメーション（7 — 新規）です。ドメイン別の内訳は [コマンドリファレンス](commands.md) を参照してください。**このリリースで追加したコマンドを使って組む前に、「非推奨」にある 2.0.0 の事前の告知を読んでください。** これらのコマンドの名前・キー・エラーコード・応答の形は 2.0.0 で変わります。
 
@@ -516,7 +520,7 @@ MINOR リリースです。以下の変更はすべてプラグインリポジ�
 - **`AddMetaSoundInput` で入力を足した MetaSound を開いてもエディタが落ちなくなった** (`UAIPEditorMetaSound` モジュール): このコマンドで足した入力には既定値が無く、MetaSound エディタがアセットを開くときにアサーションで止まっていました。足した入力には、エディタで新しい入力に入るのと同じ既定値が入ります。Float・Int32・Bool・String は `0.0`・`0`・`false`・空文字列で、Trigger と Audio はその型の既定値です。引数と応答は変わりません。**⚠️ 以前の版でそのような入力を持ったまま保存した MetaSound は、この修正では直りません。** そのアセットを開くと引き続きエディタが落ちることがあります。
 - ⚠️ **UE 5.7 で、`FInstancedStruct` を持つ Chooser のセルが UE 5.8 と同じ形になり、読んだ値をそのまま書き戻せるようになりました** (`UAIPEditorChooser` モジュール): 対象は、列の行の値が `FInstancedStruct` のもの（例: `FOutputStructColumn` の `RowValues`）です。`ListChooserTableRows` / `GetChooserTableRow` が返すセルの `Value` と、`SetChooserTableCell` に渡す `Value` は、UE 5.7 ではこれまで文字列（エンジンのテキスト書き出しで、構造体のパスと中身が区切り無しで連結した形。例: `/Script/CoreUObject.PrimaryAssetTypeWeapon`）でした。この形は `FPrimaryAssetType` / `FPrimaryAssetId` / `FSoftObjectPath` / `FTopLevelAssetPath` / `FGuid` / `FDateTime` / `FTimespan` / 入れ子の `FInstancedStruct` などで読み戻せず、読んだ値をそのまま書き戻すと、書き込みは成功を返したままセルが空の `FInstancedStruct` になっていました。これからは UE 5.7 でも UE 5.8 と同じく、`Value` はオブジェクト `{"_structType": "<構造体のパス>", <フィールド>...}`（空の `FInstancedStruct` は `{}`）になります。構造体のフィールド・配列の要素・マップの値など、どの深さの `FInstancedStruct` も同じ形です。従来の文字列の形（例: `/Script/CoreUObject.LinearColor(R=1.000000,G=0.000000,B=0.000000,A=1.000000)`）の書き込みも引き続き受け付けます。`_structType` に存在しない構造体のパスを持つ値の書き込みは、両バージョンとも `InvalidParams` で拒否されます。UE 5.8 の振る舞いは変わりません。
 
-#### MCP Bridge 1.3.0 — 未リリース
+#### MCP Bridge 1.3.0 — 2026-11-26 リリース済み
 
 ブリッジはプラグインとは独立に採番・リリースされます（採番規則は上記のバージョニング方針を参照）。
 
@@ -558,13 +562,13 @@ MINOR リリースです。以下の変更はすべてプラグインリポジ�
 - **要求の途中で接続エラーになった後、Bridge はポートを確かめてから、エディタの再起動と要求の再送を決めるようになりました。** これまでは記録した状態だけで決めていたため、要求の間にエディタが落ちても再起動されませんでした。今は、ポートで何も待ち受けていないときだけ再起動し、再送の前にエディタを確かめ、ポートが開いているのに応答しないとき（要求の間にポートが接続を拒んだとき、期限の切れた起動の待ちが残っているときも）は、再起動も再送もせずに断ります。再試行のエラーは、再起動したかどうかを伝えます。
 - **インストーラ（`install.ps1` / `install.sh`）が、`config.json` で Bridge の安全を緩める設定ごとに警告するようになりました。** 実行のたびに、オンになっているそうした設定（`allow_unverified_attach`・`allow_reload_launch_command`・`allow_reload_uaip_ini_override`・`allow_reload_bridge_code`・`allow_unverified_port_owner`）を名前で挙げます。値は表示しません。
 
-#### Claude Code Plugin 1.1.0 — 未リリース
+#### Claude Code Plugin 1.1.0 — 2026-11-26 リリース済み
 
 プラグインは UAIP プラグインとは独立に採番・リリースされます（採番規則は上記のバージョニング方針を参照）。
 
 **変更**
 
-- **`/uaip:scenario` が 1 MiB までのシナリオを送るようになりました。** `exec.py` は、64 KiB を超えるシナリオを送る前に終了コード 2 で拒否していました。今後はエディタのシナリオの上限である 1 MiB で判定します。`/uaip:exec` で送る単発のコマンドは 64 KiB のままです。上記の未リリースの版より前の UAIP プラグインは、64 KiB を超えるシナリオに引き続き 413 を返します。[Claude Code Plugin](claude-code-plugin.md) を参照してください。
+- **`/uaip:scenario` が 1 MiB までのシナリオを送るようになりました。** `exec.py` は、64 KiB を超えるシナリオを送る前に終了コード 2 で拒否していました。今後はエディタのシナリオの上限である 1 MiB で判定します。`/uaip:exec` で送る単発のコマンドは 64 KiB のままです。1.3.0 より前の UAIP プラグインは、64 KiB を超えるシナリオに引き続き 413 を返します。[Claude Code Plugin](claude-code-plugin.md) を参照してください。
 - **zip に含まれるマーケットプレイス `uaip-tools` に `uaip-result-view` も載るようになりました。** この Mod は別の zip（`UAIP-ResultView-<version>.zip`）で配布しています。その zip が無くても `uaip-result-view` はマーケットプレイスに表示され、インストールすると「Source path does not exist」で失敗します。本プラグインはこの Mod を必要としません。更新するときは、新しい zip を展開する前に `plugins/uaip` フォルダーだけを削除し、インストール済みの `uaip-result-view` を残してください。[Claude Code Plugin](claude-code-plugin.md) を参照してください。
 
 ### Result View 0.1.1 — 2026-10-31
