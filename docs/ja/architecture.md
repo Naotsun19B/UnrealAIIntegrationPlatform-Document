@@ -79,7 +79,7 @@ flowchart TB
 | レイヤー | モジュール | 役割 |
 |---|---|---|
 | **Core** | `UAIPCore` | セッション・Capability・Policy・コマンドレジストリ・Artifact マネージャ。全構成でロード |
-| **Shared** | `UAIPEditorShared`, `UAIPRuntimeShared`, `UAIPExecutionShared`, `UAIPArtifacts`, `UAIPBuildSupport`, `UAIPWatchdogSupport` | ドメイン横断のユーティリティ — コマンドは直接持たない |
+| **Shared** | `UAIPEditorShared`, `UAIPRuntimeShared`, `UAIPExecutionShared`, `UAIPArtifacts`, `UAIPWatchdogSupport` | ドメイン横断のユーティリティ — コマンドは直接持たない |
 | **Transports** | `UAIPTransportHTTP`, `UAIPTransportWS`, `UAIPTransportCLI` | 各 transport リスナー（MCP はエディタ外部の Python Bridge） |
 | **Editor ドメイン** | `UAIPEditor*`（Workspace, Observation, Execution, UIAutomation, Assets, Level, Property, Blueprint, UMG, Material, GameplayTags, GameFeatures, Niagara, Physics, Dataflow, Skeleton, DataTable, AnimBlueprint, SoundCue, BehaviorTree, MetaSound, EQS, Sequencer, StateTree, Curve, PCG, WorldConditions, Conversation, ControlRig, EnhancedInput, GAS, Foliage, WorldPartition, MVVM, Sound, ChaosClothAsset, DataRegistry, EngineManagement, Sandbox, Debugger, PythonExtension） | エディタ側意味的コマンド。`EditorNoCommandlet` フェーズでロード |
 | **Runtime ドメイン** | `UAIPRuntimePIE`, `UAIPRuntimeObservation`, `UAIPRuntimeExecution`, `UAIPRuntimeAssertion`, `UAIPRuntimeWorld`, `UAIPRuntimeGAS`, `UAIPRuntimeInput`, `UAIPRuntimeNiagara`, `UAIPRuntimeEngineManagement` | Runtime / PIE 側コマンド。一部は Gauntlet 用にパッケージビルドへ opt-in 可能 |
@@ -206,7 +206,9 @@ stateDiagram-v2
 
 ## 7. Artifact ライフサイクル
 
-出力を生成するコマンド（キャプチャ・ダンプ・ログ・レポート）はすべて、1 つ以上の **Artifact** を `Saved/UAIP/<SessionId>/` に書き出し、レスポンスには Artifact ID を返します。クライアントは ID を介して内容を取得する仕組みで、ファイルパス自体はレスポンスペイロードに含めません。これによりパスリーク攻撃を防ぎつつ、どのトランスポートからアクセスしても同じ取り扱いに統一できます。
+出力を生成するコマンド（キャプチャ・ダンプ・ログ・レポート）は、1 つ以上の **Artifact** を `Saved/UAIP/<SessionId>/` に書き出し、レスポンスには Artifact ID を返します。クライアントは ID を介して内容を取得する仕組みで、どのトランスポートからアクセスしても同じ取り扱いに統一できます。コマンドのレスポンスには各 Artifact の `FilePath`（エディタの保存先ディレクトリ内のパス）も含まれますが、これは参考情報です。リモートのクライアントからは届かないため、そのパスを読まずに ID で取得してください。シナリオのステップ結果には ID だけが含まれます。
+
+成功した応答は、結果を `Result` か Artifact の少なくとも一方に持ち、Artifact は本体が大きい結果を運ぶ補助です。失敗した応答にも、理由や証拠の Artifact が付くことがあります。コマンドが保存を必須にしていない Artifact を保存できなかったときは、成功のまま `Result.ArtifactsNotSaved`（`Reason` の配列）で理由が分かります。
 
 ディスクレイアウト・インライン埋め込みとフェッチの判定・型ごとのポリシーといった詳細は [Artifacts](artifacts.md) を参照してください。
 
@@ -251,6 +253,10 @@ UAIP は、本体をフォークしなくてもプロジェクト独自のコマ
 - **`ICommandHandler`** — 個々のコマンドの実装単位。`Execute(Params)` 内でビジネスロジックを書き、結果を `CommandResponse` として返します。ハンドラは登録したプロバイダ経由でディスパッチャから呼ばれます。
 
 この組み合わせを使えば、AI 側の呼び出し方法（`uaip_execute`・スキーマ取得・Capability 判定・Artifact 返却など）は標準コマンドとまったく同じ形式で公開できます。プロジェクト独自のアセットや社内ツールを AI から扱えるようにする際は、まずこの 2 つを実装するところから始めるのが定番です。
+
+**機微な値を記録に残さない。** ハンドラは、呼び出し元には返しつつ UAIP の記録（完了通知・監査記録・ログ）には渡さない値を指定できます。`GetSensitiveParamKeys()` はパラメータのトップレベルの名前を、`GetSensitiveResponseDataPaths()` は応答の `Data` の中の位置を、`[]` が「配列の全要素」を表すドット区切りのパスで返します（`Token`、`Items[].Secret`）。どちらも固定の一覧を返してください。書き方と規則は [機微な値と伏せる場所](commands.md#機微な値と伏せる場所) を参照してください。
+
+> ⚠️ **破壊的変更 — `GetSensitiveResponseDataKeys()` は `GetSensitiveResponseDataPaths()` に改名されました**（[変更履歴](changelog.md) を参照）。override の関数名を変え、返す値はそのままで構いません（トップレベルの項目名はそのまま正しいパスです）。**`override` を付けずに旧名 `GetSensitiveResponseDataKeys()` のまま残した関数は、エラーにならずにコンパイルされることがあり、その場合は呼ばれなくなって、宣言していたものが伏せられなくなります。** 旧名をコンパイラに報告させるため、すべての override に `override` を付けてください。
 
 その他の拡張フック：
 

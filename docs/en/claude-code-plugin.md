@@ -214,7 +214,7 @@ Every skill that runs the command script (directly, or through a sub-skill) repo
 |---|---|
 | 0 | Success, and every artifact was saved |
 | 1 | The editor reported a failure (`Success: false`, or an error such as `CapabilityNotAvailable`, `PolicyViolation`, `InvalidParams`, `NotFound`, `CommandNotFound`, `TooManyRequests`) |
-| 2 | Bad arguments or input (wrong argument combination, not a UE project folder, a request file outside `Saved/UAIP/Requests/`, invalid JSON, input over 64 KiB). Nothing was sent |
+| 2 | Bad arguments or input (wrong argument combination, not a UE project folder, a request file outside `Saved/UAIP/Requests/`, invalid JSON, a command over 64 KiB or a scenario over 1 MiB). Nothing was sent |
 | 3 | The program on the target port could not be reached, verified as this project's UAIP editor, or authenticated with. Nothing was carried out |
 | 4 | Timed out. **The result is unknown** — the editor may still be working on it. Do not resend |
 | 5 | The command (or every scenario step) succeeded, but one or more artifacts could not be fetched or saved |
@@ -260,6 +260,7 @@ requires are also recorded here.
 
 | Version | Requires | SHA-256 (`UAIP-ClaudeCodePlugin-<version>.zip`) |
 |---|---|---|
+| 1.1.0 | UAIP 1.2.0 or later | `01c02a9024c52fde6b2e6cbf94757de91728753c340b33576eec6f1b3beb6e69` |
 | 1.0.0 | UAIP 1.2.0 or later | `aa65f0eff24633f984ba49844ece0a194e60ef145117b69fca2c19a38f77aee0` |
 
 ---

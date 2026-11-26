@@ -34,18 +34,20 @@
 
 `.uproject` を UE で開き、**Edit > Plugins** から **UnrealAIIntegrationPlatform** が有効になっていることを確認してください。フォルダを置いただけの場合は、エディタを一度再起動する必要があります。
 
-デモ版を使う場合は、リリース zip 内の `Config/DefaultUAIP.ini` をプロジェクトの `Config/` フォルダにコピーしてください。これにはデモ用の Capability（`PIEControl`・`SlateUIAutomation`・`ObservationCapture`）が有効化済みの状態で入っています。
+デモ版を使う場合は、リリース zip 内の `Config/DefaultUAIP.ini` をプロジェクトの `Config/` フォルダにコピーしてください。このファイルは、デモが使う SafetyPolicy のスイッチ（ログのダンプ・キーボード入力・コンテキストメニューの操作・PIE の開始を許可する）を設定し、コンソール変数のコマンド用に `RuntimeCVarRead` を付与します。観測・UI 自動化・PIE 制御（`EditorObservation`・`EditorUIAutomation`・`PIEControl`）は DefaultAllow なので、記述は要りません。
 
 ---
 
 ## 3. MCP Bridge をインストールする（1 分）
 
-Bridge は AI クライアントと UE Editor をつなぐ薄い Python プロキシです。エディタが起動していなければ自動で立ち上げる役割も担います。**Bridge はプラグイン本体とは別配布** — このリポジトリの [Releases](../../../releases) から `UAIP-MCPBridge-<version>.zip`（UE バージョン非依存の単一 zip）をダウンロードして任意の場所に展開し、インストーラを実行してください：
+Bridge は AI クライアントと UE Editor をつなぐ薄い Python プロキシです。エディタが起動していなければ自動で立ち上げる役割も担います。**Bridge はプラグイン本体とは別配布** — このリポジトリの [Releases](../../../releases) から `UAIP-MCPBridge-<version>.zip`（UE バージョン非依存の単一 zip）をダウンロードしてプロジェクトやエンジンの `Plugins` フォルダの**外**（例：`Downloads`）に展開し、インストーラを実行してください：
 
 ```powershell
 cd <展開先>/UAIPMCPBridge
 ./install/install.ps1
 ```
+
+> **zip を `Plugins` に展開しないでください。** zip のトップフォルダは `UAIPMCPBridge/` なので、そこに展開するとデプロイ先そのものに置くことになります。後で更新するときも、新しい zip を `Plugins` の外に展開してそのインストーラを実行します。`Plugins` にデプロイ済みのインストーラを実行しても、修復（1.3.0 以降）として venv と `config.json` を作り直すだけです。
 
 > **対応プラットフォーム**：v1.0 は **Windows (Win64) のみ** が対象です。macOS / Linux 対応は将来検討項目です。
 
@@ -89,9 +91,9 @@ AI クライアントで次のように依頼してみてください：
 ```json
 {
   "Success": true,
-  "Data": {
-    "Status": "Healthy",
-    "UAIPVersion": "1.2.0",
+  "Result": {
+    "Status": "OK",
+    "UAIPVersion": "1.3.0",
     "EngineVersion": "5.8.0",
     "BuildConfig": "Development"
   }

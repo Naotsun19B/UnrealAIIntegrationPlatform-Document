@@ -41,6 +41,8 @@ Every HTTP transport mode binds to loopback, not just WebSocket. UAIP never pass
 
 An operator who genuinely wants FullHTTP reachable from another machine has to override `BindAddress` for the relevant port under `[HTTPServer.Listeners]` at the engine-config layer themselves — UAIP does not expose a setting for this. Doing so puts the Bearer token and your firewall between the open port and the network; treat that as an explicit, separate decision from just launching with `-uaip-http-enable`.
 
+**WebSocket in a packaged game has one layer fewer.** In a packaged game that is not Shipping, the WebSocket server starts with `-uaip-ws-enable` alone; it used to need that flag and the WebSocketNetworking plugin enabled in the project's `.uproject`. The flag is still explicit, so nothing listens without it, and the bind to loopback, the client address check and the Bearer token are unchanged. A Shipping game is unchanged: it includes the WebSocket transport only when the project enables WebSocketNetworking.
+
 ---
 
 ## Authentication

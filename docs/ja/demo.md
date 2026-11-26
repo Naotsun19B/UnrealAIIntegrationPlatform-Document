@@ -2,7 +2,7 @@
 
 # デモ版ガイド
 
-UAIP のデモ版は GitHub Releases で無償配布している、機能を絞ったバイナリです。観測・PIE 制御・アサーション・シナリオ実行・UI 自動化に加えて、アセット・レベル上のアクター・プロパティ・プラグイン・設定・ログ・コンソール変数・Unreal Insights トレースの読み取り専用コマンドを利用できるので、AI エージェントをレビューやテストのワークフローに組み込むには十分な機能がそろっています。
+UAIP のデモ版は GitHub Releases で無償配布している、機能を絞ったバイナリです。観測・PIE 制御・アサーション・シナリオ実行・UI 自動化に加えて、アセット・レベル上のアクター・プロパティ・プラグイン・設定・ログ・コンソール変数・Unreal Insights トレースの読み取り専用コマンドと、実行中のゲームの AI 知覚・Chaos 破壊・ナビゲーション・入力状態の読み取り専用の観測コマンドを利用できるので、AI エージェントをレビューやテストのワークフローに組み込むには十分な機能がそろっています。
 
 > **ライセンス**：デモ版は **個人利用・評価目的のみ** での利用を許諾しています。商用利用は対象外で、リリースアーカイブ同梱の `EULA.txt` に従ってください。商用利用の場合は、製品版（[Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)）をご利用ください。
 
@@ -21,9 +21,16 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | **コマンド** | | |
 | Core（HealthCheck、ListCommands など） | ✅ | ✅ |
 | Editor 観測（スクリーンショット・ダンプ） | ✅ | ✅ |
-| Editor ワークスペース操作（タブのフォーカス・グラフの表示調整・エディタ再起動など） | ✅ | ✅ |
+| Editor ワークスペース操作（タブのフォーカス・グラフの表示調整・エディタ再起動・メインウィンドウの最小化と復元など） | ✅ | ✅ |
 | PIE 制御（StartPIE、StopPIE、LoadMap など） | ✅ | ✅ |
-| Runtime 観測（ビューポートキャプチャ・ワールドダンプ） | ✅ | ✅ |
+| Runtime 観測（ビューポートキャプチャ・ワールドダンプ・HUD とウィジェットの状態） | ✅ | ✅ |
+| Runtime の AI 知覚・Chaos 破壊・ナビゲーションの観測（読み取り専用の一部） | ✅ | ✅ |
+| Runtime のアニメーション状態の観測（AnimInstance の状態・ステートマシン・ブレンドのウェイト・モンタージュ・カーブ。読み取り専用の一部） | ✅ | ✅ |
+| Runtime のネットワークの観測（NetDriver・コネクション・アクターのレプリケーション設定。読み取り専用の一部。`ListNetConnections` が生のアドレスを書くのは、利用者が許可する `RuntimeNetConnectionAddressRead` があるときだけ） | ✅ | ✅ |
+| Runtime のレプリケートされるプロパティの値と比較、パケットエミュレーション（`DumpReplicatedPropertyValues`、`CompareReplicatedProperties`、`SetNetworkEmulation`、`ResetNetworkEmulation`） | — | ✅ |
+| Runtime の Subsystem の観測（`ListSubsystems`。`DumpSubsystemState` は利用者が許可する `SubsystemStateDump` も必要） | ✅ | ✅ |
+| Runtime の入力状態の観測（`DumpInputState`、`GetEnhancedInputActionValue`） | ✅ | ✅ |
+| Runtime の入力注入（`InjectInputKey`、`InjectEnhancedInputAction`、`ClickGameViewportWidget` など） | — | ✅ |
 | シナリオ実行（`uaip_run_scenario`） | ✅ | ✅ |
 | UI 自動化（ClickWidget、PressKey、FillForm など） | ✅ | ✅ |
 | Runtime アサーション（WaitSeconds、AssertActorProperty など） | ✅ | ✅ |
@@ -111,6 +118,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.Workspace.OpenTabById` | Slate のレイアウト ID でエディタータブを開く | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.CloseTabById` | Slate のレイアウト ID でエディタータブを閉じる | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.NormalizeEditorLayout` | メイングラフのタブにフォーカスし、一時的なパネルを隠す | |
+| `UAIP.Editor.Workspace.SetEditorWindowState` | エディタのメインウィンドウを最小化する、または最小化から復元する | `EditorWindowStateControl`。ユーザーが別のアプリで作業しているときは、復元してもエディタはそのアプリの後ろに残り、キーボードフォーカスを奪わない |
 | `UAIP.Editor.Workspace.SetGraphZoom` | グラフビューのズーム倍率を設定する | |
 | `UAIP.Editor.Workspace.FrameGraphAll` | グラフ全体をビューに収める | |
 | `UAIP.Editor.Workspace.FrameGraphSelection` | 選択ノードをビューに収める | |
@@ -121,6 +129,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.Workspace.SaveAllPackages` | 変更のあるパッケージをすべて保存する | |
 | `UAIP.Editor.Workspace.ShutdownEditor` | エディタを終了する | |
 | `UAIP.Editor.Workspace.RestartEditor` | エディタを再起動する | |
+| `UAIP.Editor.Workspace.GetRestartStatus` | 再起動の試行の状態を読む | |
 | `UAIP.Editor.Workspace.GetLastCrashReport` | 最新のクラッシュレポートを取得する | |
 
 ### `UAIP.Runtime.PIE.*`
@@ -146,6 +155,82 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Runtime.Observation.CapturePerformanceSnapshot` | FPS・メモリ等のパフォーマンス統計を取得する | |
 | `UAIP.Runtime.Observation.CheckpointCapture` | スクリーンショット＋状態ダンプの複合観測（シナリオ primitive） | 透かしあり |
 | `UAIP.Runtime.Observation.SearchLoadedClasses` | ロード済みクラスを検索する | |
+| `UAIP.Runtime.Observation.DumpGameViewportWidgets` | ゲームビューポートのウィジェットツリーを JSON で返す | |
+| `UAIP.Runtime.Observation.FindGameViewportWidgets` | ゲームビューポートのウィジェットツリーを、クラス・名前・所有プレイヤーで検索する | |
+| `UAIP.Runtime.Observation.DumpGameViewportWidgetTexts` | ゲームビューポートの全テキストウィジェットの文字列を JSON で返す | `RuntimeWidgetTextRead`（パスワード欄の平文は加えて `RuntimeWidgetPasswordTextRead` が必要） |
+| `UAIP.Runtime.Observation.DumpHUDState` | ローカルプレイヤーごとの HUD の状態を JSON で返す | |
+| `UAIP.Runtime.Observation.ListSubsystems` | エンジン・GameInstance・プレイワールド・ローカルプレイヤーの下で生きている Subsystem を、実体ごとに 1 行で返す | |
+| `UAIP.Runtime.Observation.DumpSubsystemState` | 1 つの Subsystem の実体のプロパティの値を JSON で返す | `SubsystemStateDump`（`RuntimeInspect` に加えて必要。デモ版でも DefaultDenied で、利用者が `+AllowedCapabilities=SubsystemStateDump` を追加して許可する） |
+
+### `UAIP.Runtime.Input.*`（読み取り専用の一部）
+
+| コマンド | 説明 |
+|---|---|
+| `UAIP.Runtime.Input.DumpInputState` | プレイヤーコントローラーの入力状態（押下中のキー・軸の値・有効な Enhanced Input のマッピングコンテキスト）を JSON で返す |
+| `UAIP.Runtime.Input.GetEnhancedInputActionValue` | Enhanced Input アクションの現在値を返す |
+
+入力を注入するコマンドは製品版のみです（[除外コマンド](#除外コマンド) を参照）。
+
+### `UAIP.Runtime.AI.*`
+
+| コマンド | 説明 | 備考 |
+|---|---|---|
+| `UAIP.Runtime.AI.DumpAIPerceptionState` | 1 体の AI の知覚コンポーネントが持つ状態をすべて返す | |
+| `UAIP.Runtime.AI.GetPerceivedActors` | 1 体の AI が現在知覚している（または記憶している）アクターを返す | |
+| `UAIP.Runtime.AI.GetActorPerceivers` | 指定したアクターを知覚している AI を返す | |
+| `UAIP.Runtime.AI.DumpAIPerceptionSystemState` | ワールドの知覚システム全体の状態を返す | |
+| `UAIP.Runtime.AI.ExplainSightPerception` | 視覚が対象を捉える（捉えない）理由を、順序のある 14 段階で説明する | |
+| `UAIP.Runtime.AI.DumpAIPerceptionSenseConfigs` | 1 体の AI の知覚コンポーネントにある全 Sense 設定の、全プロパティの値を返す | `AIPerceptionConfigDump`（`RuntimeInspect` に加えて必要） |
+| `UAIP.Runtime.AI.DumpBehaviorTreeState` | 1 つのアクターの BehaviorTree の全体像を返す | |
+| `UAIP.Runtime.AI.GetActiveBehaviorTreeNode` | 1 つのアクターの BehaviorTree のアクティブなノードとルートまでの経路を返す | |
+| `UAIP.Runtime.AI.ListBehaviorTreeAgents` | プレイワールドで BehaviorTree を実行しているアクターを列挙する | |
+| `UAIP.Runtime.AI.GetBlackboardValues` | 1 つのアクターの Blackboard の全キーの値を返す | `BlackboardValueRead`（`RuntimeInspect` に加えて必要。デモ版でも DefaultDenied） |
+| `UAIP.Runtime.AI.StartBehaviorTreeCapture` | 1 つのアクターの BehaviorTree の時間変化の記録を開始する | |
+| `UAIP.Runtime.AI.StopBehaviorTreeCapture` | BehaviorTree の記録を止めて最終状態を返す | |
+| `UAIP.Runtime.AI.GetBehaviorTreeEventLog` | BehaviorTree の記録のエントリを古いものから読む | |
+
+### `UAIP.Runtime.ChaosDestruction.*`（読み取り専用の一部）
+
+| コマンド | 説明 |
+|---|---|
+| `UAIP.Runtime.ChaosDestruction.ListGeometryCollections` | プレイワールドの Geometry Collection コンポーネントと、それぞれの壊れ具合を返す |
+| `UAIP.Runtime.ChaosDestruction.DumpGeometryCollectionState` | 1 つの Geometry Collection の破片ごとの状態・位置・速度を返す |
+| `UAIP.Runtime.ChaosDestruction.DumpChaosFieldState` | ワールドに作用する物理フィールドを返す |
+| `UAIP.Runtime.ChaosDestruction.StartDestructionCapture` | 破壊イベントを、呼び出したセッションが所有するキャプチャへ記録し始める |
+| `UAIP.Runtime.ChaosDestruction.GetDestructionEventLog` | キャプチャのイベントを古い順に読む（プレイ終了後もしばらく読める） |
+| `UAIP.Runtime.ChaosDestruction.StopDestructionCapture` | キャプチャを止めて最終状態を返す |
+| `UAIP.Runtime.ChaosDestruction.CaptureGeometryCollectionStrain` | 各破片が次の物理ステップで負うひずみを返す |
+
+### `UAIP.Runtime.Navigation.*`（読み取り専用の一部）
+
+| コマンド | 説明 | 備考 |
+|---|---|---|
+| `UAIP.Runtime.Navigation.DumpNavigationSystemState` | ナビゲーションシステムの設定と状態を返す | |
+| `UAIP.Runtime.Navigation.FindPath` | 2 点間の経路と、終点に到達できるかどうかを返す | `MaxSearchNodes` が 8192 を超える場合のみ `RuntimeNavigationExtendedSearch` |
+| `UAIP.Runtime.Navigation.IsLocationReachable` | `FindPath` と同じ問いに、経路を付けずに答える | 同上 |
+| `UAIP.Runtime.Navigation.DumpNavMeshTiles` | 1 つのナビメッシュのタイルを返す | |
+| `UAIP.Runtime.Navigation.QueryNavModifiers` | 指定した範囲に触れるナビゲーションモディファイアと、そこのポリゴンのエリア別の内訳を返す | |
+| `UAIP.Runtime.Navigation.GetPathFollowingState` | 1 体の AI の経路追従コンポーネントの状態を返す（プレイワールドのみ） | |
+| `UAIP.Runtime.Navigation.WaitForNavigationBuild` | ナビゲーションの生成が終わるまで待つ | |
+
+### `UAIP.Runtime.Animation.*`
+
+| コマンド | 説明 | 備考 |
+|---|---|---|
+| `UAIP.Runtime.Animation.DumpAnimInstanceState` | 1 つのスケルタルメッシュコンポーネントの更新状態・ステートマシン・ブレンドのウェイト・モンタージュ・カーブを、1 回の読み取りでまとめて返す | |
+| `UAIP.Runtime.Animation.GetAnimStateMachineStates` | ステートマシンごとのアクティブな State・その State にいる経過時間・進行中の遷移を返す | |
+| `UAIP.Runtime.Animation.GetAnimBlendWeights` | 再生中のアセット・ブレンドスペース・レイヤードブレンドの最終ブレンドウェイトを返す | |
+| `UAIP.Runtime.Animation.GetActiveMontages` | 有効なモンタージュ（ブレンドアウト中を含む）を返す | |
+| `UAIP.Runtime.Animation.GetAnimCurveValues` | アニメーションカーブの値と種別を返す | |
+| `UAIP.Runtime.Animation.DumpAnimInstanceVariables` | プロジェクト自身の AnimInstance クラスが宣言した変数の値を返す | `AnimInstanceVariableDump`（`RuntimeInspect` に加えて必要。デモ版でも DefaultDenied） |
+
+### `UAIP.Runtime.Network.*`（読み取り専用の一部）
+
+| コマンド | 説明 | 備考 |
+|---|---|---|
+| `UAIP.Runtime.Network.GetNetDriverState` | ワールドの NetDriver とその設定・通信量の合計を返す | |
+| `UAIP.Runtime.Network.ListNetConnections` | 1 つの NetDriver のコネクションと、それぞれの往復時間・損失・通信量を返す | `IncludeRemoteAddress` が `true` の場合のみ `RuntimeNetConnectionAddressRead`（デモ版でも DefaultDenied） |
+| `UAIP.Runtime.Network.DumpActorReplication` | 1 つのアクターのレプリケーション設定と、その送信についてサーバーが把握している状態を返す | |
 
 ### `UAIP.Runtime.Assertion.*`
 
@@ -170,12 +255,14 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.UIAutomation.ConnectGraphPins` | グラフピンを接続する | |
 | `UAIP.Editor.UIAutomation.AcceptDialog` | ダイアログを OK で閉じる | |
 | `UAIP.Editor.UIAutomation.CancelDialog` | ダイアログをキャンセルで閉じる | |
+| `UAIP.Editor.UIAutomation.GetActiveDialog` | 今開いているモーダルダイアログ（タイトル・本文・ボタン）を読む | 読み取り専用 |
 | `UAIP.Editor.UIAutomation.InvokeContextMenuAction` | コンテキストメニューアクションを呼び出す | |
 | `UAIP.Editor.UIAutomation.HoverWidget` | ウィジェットをホバーする | |
 | `UAIP.Editor.UIAutomation.PressKey` | キー入力を送る | `EditorKeyboardInput` |
 | `UAIP.Editor.UIAutomation.WaitForWidget` | ウィジェットの出現を待機する | |
 | `UAIP.Editor.UIAutomation.FillForm` | フォームを自動入力する | |
-| `UAIP.Editor.UIAutomation.OpenPasswordTestWindow` | パスワード欄を持つテスト用ウィンドウを開く（パスワード欄のポリシー検証用） | |
+| `UAIP.Editor.UIAutomation.DismissMenus` | 開いているメニューやポップアップを閉じる | |
+| `UAIP.Editor.UIAutomation.OpenPasswordTestWindow` | パスワード欄を持つ小さなテスト用ウィンドウを開く（パスワード欄のポリシー検証用） | 窓を開くだけで何も変更しない。デモ版にも製品版にも含まれる（[デモ版が制限するもの・しないもの](#デモ版が制限するものしないもの)） |
 
 ### `UAIP.Editor.Assets.*`（読み取り専用の一部）
 
@@ -224,6 +311,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.Level.ProjectScreenToWorld` | スクリーン座標からワールドへレイを飛ばす |
 | `UAIP.Editor.Level.ListActorComponents` | レベルに配置したアクターの全コンポーネントを返す |
 | `UAIP.Editor.Level.GetActorComponentProperty` | 配置したアクターのコンポーネントのプロパティを読み取る |
+| `UAIP.Editor.Level.GetTransformGizmoSize` | トランスフォームギズモの大きさの設定と、使用中のギズモがどれを読むかを返す |
 
 ### `UAIP.Editor.Property.*`（読み取り専用の一部）
 
@@ -236,7 +324,7 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | `UAIP.Editor.Property.GetProjectSetting` | プロジェクト設定オブジェクトのプロパティを取得する |
 | `UAIP.Editor.Property.GetDataTableRow` | DataTable の行のプロパティを取得する |
 
-秘密情報と思われるプロパティの値はマスクして返します。
+秘密情報と思われるプロパティの値はマスクして返します。デモ版でも、製品版と同じ 3 層で平文を読めます。呼び出しが `IncludeSecretValues: true` を渡すこと、`[UAIP.SafetyPolicy]` に `AllowSecretValueRead=True` があること、セッションが `SecretValueRead` を持つこと（デモ版でも DefaultDenied。`+AllowedCapabilities=SecretValueRead` で自分で許可します）の 3 つです。既定ではどれも与えられていないので、値は `***` のままです。`GetAssetTags` と、ランタイムのダンプ `DumpSubsystemState`・`DumpAnimInstanceVariables`・`GetBlackboardValues`・`DumpAIPerceptionSenseConfigs` の秘密も同じです。ダンプには、それぞれの Capability も要ります（[秘密値の平文での読み取り](safety.md#秘密値の平文での読み取り)）。
 
 ### `UAIP.Editor.Engine.*`（読み取り専用の一部）
 
@@ -305,6 +393,17 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 
 レビューやテストの証跡として共有された画像が、デモ版で取得されたものだと分かるようにするための表示です。製品版では入りません。
 
+### デモ版が制限するもの・しないもの
+
+デモ版が制限するのは、存在する**コマンド**です。コマンドがエディタに作用した後で、エディタが何をするかまでは止めません。ここから次の 4 点になります。
+
+1. **意味的な編集コマンドは提供しません。** アセット・アクター・プロパティ・設定を意味の単位で書き換えるコマンド（アセットの作成・リネーム・削除、アクターの配置、`Set*Property` など）はデモ版にありません。[除外コマンド](#除外コマンド) を参照してください。
+2. **保存・終了・再起動は、観測の前提として残しています。** `SaveAllPackages`・`ShutdownEditor`・`RestartEditor` は、UI 操作の結果をエディタの再起動で確かめる流れを成り立たせるためのものです。`SaveAll` を指定しなければ（`DisableSave` が既定の `false` なら）、`ShutdownEditor` と `RestartEditor` は終了・再起動の前に、変更のあるパッケージをすべて保存します。
+3. **UI 自動化はアセットを変更・保存しうる。** `ConnectGraphPins` と `DragGraphNode` は、開いているエディタのアセットを実際に変更します。`ClickWidget` は実際のクリックを送るため、保存ボタンも押せます。要求するのは DefaultAllow の `EditorUIAutomation` だけで、`DisableSave` は見ません。止まるのは `ReadOnly=True` のときだけです。「編集コマンドが無い」を「デモ版ではプロジェクトに書き込めない」と読まないでください。
+4. **`SaveAsset` は除外し、`SaveAllPackages` は残します。** `SaveAsset` は、アセットを 1 件開き・直し・保存する編集の流れの一部で、作成・リネーム・削除のコマンドと同じ系統です。`SaveAllPackages` は `ShutdownEditor` / `RestartEditor` と同じ `EditorLifecycle` に属し、終了・再起動がすでに行っている「全て保存」を単独で呼べるようにしただけなので、書き込みの手段は増えません。
+
+`OpenPasswordTestWindow` は、別の理由でデモ版にも製品版にも含まれます。パスワード欄を持つ小さなウィンドウを開くだけのコマンドで、`InputText` やパスワード欄のポリシーがパスワード欄をどう扱うかを確かめるためのターゲットです。アセット・設定・保存済みの状態は何も変更しません。すでに公開されているコマンドであり、公開済みのコマンドを外すと破壊的変更になるためです。
+
 ### 除外コマンド
 
 製品版には存在するが、デモ版では利用できないコマンド：
@@ -317,6 +416,19 @@ UAIP のデモ版は GitHub Releases で無償配布している、機能を絞�
 | デモ版に含まれる Assets・Level・Property・Engine・Insights の名前空間のうち、エディタを変更するコマンド（`CreateAsset`、`SaveAsset`、`PlaceActorInLevel`、`AddActorComponent`、`Set*Property`、`SetPluginEnabled`、`SetSettingsValues`、`SetConsoleVariable`、`StartTrace` など） | デモ版は上に挙げた読み取り専用の一部だけを提供する。`CommandNotFound` を返す |
 | `UAIP.Editor.Workspace` の `WaitForShaderCompilation`・`RecompileGlobalShaders` と Live Coding 系コマンド | シェーダー・Live Coding の開発操作は製品版のみ。`CommandNotFound` を返す |
 | トレース解析（`UAIP.Runtime.Insights.Analysis.*`） | デモ版ではコンパイル対象外。`CommandNotFound` を返す |
+| `UAIP.Runtime.Input` の入力注入（`InjectInputKey`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`FlushInput`、`SetInputMode`、`InjectEnhancedInputAction`、`AddMappingContext`、`RemoveMappingContext`、`ClickGameViewportWidget`、`PressGameViewportUIKey`、`TypeGameViewportText`） | 実行中のゲームへ入力を送るため製品版のみ。`CommandNotFound` を返す |
+| `UAIP.Runtime.Input.EvaluateInputGateWithProjectCode` | プロジェクト自身のコード（ゲームビューポートクライアントの override）を走らせるため製品版のみ。`CommandNotFound` を返す |
+| `UAIP.Runtime.ChaosDestruction.EnableForcedDestructionNotify` と `UAIP.Runtime.Navigation.RebuildNavigation` | 実行中のゲーム（破壊通知・ナビメッシュの再生成）を変更するため製品版のみ。`CommandNotFound` を返す |
+| `UAIP.Runtime.Animation.GetMotionMatchingState` | PoseSearch プラグインが必要で、デモ版には含まれないため製品版のみ。`CommandNotFound` を返す |
+| `UAIP.Runtime.Network.DumpReplicatedPropertyValues`・`UAIP.Runtime.Network.CompareReplicatedProperties`・`UAIP.Runtime.Network.SetNetworkEmulation`・`UAIP.Runtime.Network.ResetNetworkEmulation` | プレイヤーのアカウント識別子や名前が入りうるレプリケートされるプロパティの値を読む、または実行中のゲームのパケットエミュレーションを変更するため製品版のみ。`CommandNotFound` を返す |
+
+デモ版で Toolset ブリッジのコマンドを呼ぶと、エラー文は対処を述べる前に、連携の名前とその状態を示すので、何が足りないのかが分かります: `This command runs through the Toolset integration 'UAIPCoreToolsetRegistry', which is not loaded (state: NotInThisEdition). The integration is not included in the free demo edition of UAIP. Its commands are available in the Pro edition on Fab.`
+
+### デモ版が「使えない」と示す Capability
+
+デモ版は、含まれないコマンドの Capability も登録するため、Capability の一覧は製品版と同じ形に見えます。デモ版のどのコマンドも要求しない Capability には、**この版では使えない**の印が付きます。`UAIP.Core.QueryCapabilities`（`IncludeUnavailable: true`）は、それを `UnavailableReason: "NotInThisEdition"` と `IsGranted: false` で列挙し、`+AllowedCapabilities` に書いても付与されず、書くと起動時にエディタが警告を出します。これは何かを解禁する手段ではありません。そのコマンドを持つのは製品版だけです。デモ版の利用者が使えない Capability のすべてに印が付くわけではなく、デモ版がそもそも登録しないもの（たとえば `CommonUIProjectCodeExecution`）は、一覧に現れません。詳しくは [Safety & Capabilities](safety.md#デモ版が提供しない-capability) を参照してください。
+
+`EditorWindowStateControl` は、`SetEditorWindowState` がデモ版に含まれるので、印が付きません。デモ版の `DefaultUAIP.ini` は付与しないため、AI にエディタのメインウィンドウを最小化・復元させるには、`+AllowedCapabilities=EditorWindowStateControl` を追加してください。
 
 ### ロード対象
 

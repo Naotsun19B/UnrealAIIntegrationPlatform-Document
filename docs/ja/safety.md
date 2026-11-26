@@ -18,6 +18,8 @@ UAIP はコマンドごとの認可を 4 つの層で管理します。層を理
 
 Layer 1 は「セッション単位」**ではありません** — 起動時に確定し（または `ReloadCapabilities` でプロセス全体として再読込され）、すべてのセッションが共有する単一の Capability セットです。セッションごとに変わるのは Layer 1.5 だけです。役割（後述の [役割](#役割layer-15)）が設定されており、あるセッションがその役割に束縛されている場合、そのセッションに限って役割の deny リストが Layer 1 のセットと積を取られます。役割が束縛されていないセッションは、Layer 1 単独と全く同じ挙動をします。
 
+「必要な Capability が無いと `CapabilityNotAvailable`」には例外が 1 つあります。`CreateAsset` による MetaHuman キャラクター（`MetaHumanAssetCreate`）と Control Rig Blueprint（`ControlRigBlueprintCreate`）の作成です。この 2 つは作成を止めるインターセプターが判定するため、Capability が単に許可されていない場合も、`DeniedCapabilities` で拒否されている場合も `PolicyViolation` を返します（後者は、許可を足しても拒否は解けないため、許可を勧める文言は付きません）。`ControlRigBlueprintCreate` を拒否する役割に束縛されたセッションも、後述のとおり `PolicyViolation` で拒否されます。
+
 Layer 4 は Layer 1〜3 とは性質の異なるチェックであり、この区別ははっきりさせておく価値があります。Layer 1〜3 はどれも「このセッション・このプロセスに何が許可されているか」を判定するもので、そこでの拒否はすべて運用者がどこかのスイッチ（Capability、SafetyPolicy フラグ、起動フラグ）を切り替えれば直ります。Layer 4 は権限とは別に「ハンドラが今この場で実際に仕事をこなせるか」を判定するもので、失敗理由の大半（対応していないエンジンバージョン、対象を除外するビルド構成、必要なインフラが無い、エンジンや Toolset の転送先がその API をそもそも公開していない）には**それを直す ini フラグも Capability 付与も存在しません**。内訳の全体は [API リファレンス → `UnavailableDetail`](api.md#65-コマンド可用性フィールド) を参照してください。唯一の例外は、既定で無効な SafetyPolicy フラグでゲートされているハンドラ（`UnavailableDetail: SafetyPolicyDisabled`）です。これは Layer 2 の拒否と同じ形で、`Config/DefaultUAIP.ini` でフラグを設定して再起動すれば直ります。この 1 件だけが `AbilityUnavailable` ではなく `PolicyViolation` に写像される理由もここにあります。
 
 ```mermaid
@@ -140,7 +142,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 
 各コマンドは必要な Capability を宣言しています。プロセスが必要な Capability をすべて持っており（Layer 1）、かつセッションが役割に束縛されている場合はその役割がいずれも拒否していないとき（Layer 1.5）だけコマンドを実行できます。Capability には **DefaultAllow**（自動付与）と **DefaultDenied**（`Config/DefaultUAIP.ini` で明示的に有効化が必要）の 2 種類があります。
 
-🧩 付きの Capability はオプションプラグインへの依存があります。エディタビルド（ソースビルドでも Fab 配布の製品版バイナリでも同じ）では、**利用しているエンジンにそのプラグインが存在する限り** Capability は登録されます — プロジェクトの `.uproject` での明示宣言もリビルドも不要です。問題になるのはそのプラグインが**有効かどうか**だけです。無効なら Capability は登録されず、必要とするコマンドは `CommandNotFound` を返します — プラグインを有効にしてエディタを再起動すれば読み込まれます。プラグイン自体がこのエンジン版に存在しない場合は有効化のしようがなく、`CommandNotFound` はその旨を案内します。いずれの場合も `UAIP.Core.ListIntegrations` を呼べば、すべてのオプション統合の状態と対処が一度に分かり、該当コマンドの `CommandNotFound` 応答にも統合名と対処が直接付きます。
+🧩 付きの Capability はオプションプラグインへの依存があります。エディタビルド（ソースビルドでも Fab 配布の製品版バイナリでも同じ）では、**利用しているエンジンにそのプラグインが存在する限り** Capability は登録されます — プロジェクトの `.uproject` での明示宣言もリビルドも不要です。問題になるのはそのプラグインが**有効かどうか**だけです。無効なら Capability は登録されず、必要とするコマンドは `CommandNotFound` を返します — プラグインを有効にしてエディタを再起動すれば読み込まれます。プラグイン自体がこのエンジン版に存在しない場合は有効化のしようがなく、`CommandNotFound` はその旨を案内します。`CompiledOut` の統合は、コードがバイナリに組み込まれていない統合です。ビルド時に統合先のプラグインが有効と判定されなかったか、エンジン版が統合の対応版より古い場合で、後者では `MissingPlugins` が空になり、`Remedy` に必要な最小エンジン版が書かれます。パッケージしたゲームでは、組み込まれる統合はビルド構成で変わります。Shipping のゲームは従来どおりで、プロジェクトの `.uproject` で有効にしたプラグインの統合だけが組み込まれます。Shipping 以外（Development・DebugGame・Test）のゲームは、プラグインが存在する統合をすべて組み込むので、UAIP をエンジンにインストールしている場合（Fab 配布版など）でも、プロジェクトで有効にしたプラグインとの統合が使えます。パッケージで使えるのはそれらのプラグインとの統合だけです。プロジェクトで有効にしていないプラグインはパッケージに入らないためです。ビルド済みのバイナリとして UAIP をエンジンにインストールしている場合、`.uproject` にそのプラグインの `"Enabled": false` があっても、Shipping 以外のビルドからその統合は外れず、ビルドが Warning を出します。その記述を効かせるには、UAIP をプロジェクトの `Plugins` フォルダーに置き、プロジェクトと一緒にコンパイルしてください。例外は GameplayAbilities と CommonUI の統合で、Shipping 以外のゲームでも Shipping と同じく、UAIP をプロジェクトの `Plugins` フォルダーに置き、`.uproject` でプラグインを有効にしたときだけ組み込まれます。これらのプラグインは無効でも起動時にネイティブの Gameplay Tag を登録し（CommonUI はさらに自身のコンテンツを探し）、有効にしていないゲームで ensure を起こすためです。ビルド済みのバイナリは、ビルドしたエンジンと同じ版のエンジンの標準のプラグインの組を前提にしています。いずれの場合も `UAIP.Core.ListIntegrations` を呼べば、すべてのオプション統合の状態と対処が一度に分かり、該当コマンドの `CommandNotFound` 応答にも統合名と対処が直接付きます。
 
 ### どんな Capability が存在するかを調べる
 
@@ -150,15 +152,26 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 |---|---|
 | `Capabilities` | **このセッションが今使えるものは何か。** 実効セット — プロセスの Capability セットから `DeniedCapabilities` の分を引き、さらにセッションが束縛されている役割が拒否する分を引いたもの |
 | `RegisteredCapabilityCount` / `UngrantedCapabilityCount` | **どれだけ存在し、そのうちこのセッションが使えないものは何件か。** 常に返します（0 件のときも返します）。フィールドが無いことから「未付与は無い」を推測する必要がありません |
-| `RegisteredCapabilities` | **そもそも何が存在するか。** ロード済みモジュールが宣言したすべての Capability を、このセッションが保有しているかどうかに関わらず列挙します。各要素は `Name`・`DefaultPolicy`（`Allowed` / `Denied`）・`IsGranted` を持ちます。ここに `IsGranted: false` で現れる名前が、運用者へ有効化を依頼すべきものです。**`IncludeUnavailable: true` を渡したときだけ返ります** |
+| `RegisteredCapabilities` | **そもそも何が存在するか。** ロード済みモジュールが宣言したすべての Capability を、このセッションが保有しているかどうかに関わらず列挙します。各要素は `Name`・`DefaultPolicy`（`Allowed` / `Denied`）・`IsGranted` を持ち、実行中の版が提供しない Capability にはさらに `UnavailableReason: "NotInThisEdition"` が付きます（[デモ版が提供しない Capability](#デモ版が提供しない-capability)）。ここに `IsGranted: false` で現れる名前が、運用者へ有効化を依頼すべきものです。ただし `UnavailableReason` が付いているものは、付与しても変わりません。**`IncludeUnavailable: true` を渡したときだけ返ります** |
 
 カタログは**オプトイン**です。`uaip_list_commands` が既定で利用不可のコマンドを隠すのと同じ理由で、通常のエディタでは 100 件を優に超えるうえ、このコマンドは「最初に呼べ」と案内しているものだからです。受け取るには `IncludeUnavailable: true` を渡します。一方で、**カタログの存在自体は隠しません** — 2 つの件数は毎回返るため、一度もオプトインしていないセッションでも「保有していない Capability が何件あるか」を知り、そのうえで一覧を要求できます。
 
-**「運用者が有効化しなければならないものは何か」は `RegisteredCapabilities` だけで分かります** — `DefaultPolicy` が `Denied` の要素がそれにあたります。この一覧を別フィールドとして返すことは意図的にしていません。カタログに既にある名前を繰り返すだけで、新しい情報を持たないからです。
+**「運用者が有効化しなければならないものは何か」は `RegisteredCapabilities` だけで分かります** — `DefaultPolicy` が `Denied` の要素がそれにあたります（`UnavailableReason` が付いた要素は、付与しても有効にならないので除きます）。この一覧を別フィールドとして返すことは意図的にしていません。カタログに既にある名前を繰り返すだけで、新しい情報を持たないからです。
 
 このカタログが必要なのは、DefaultDenied な Capability が定義上そもそも実効セットに現れないためです。多くの場合これは問題になりません — いずれかのコマンドの `RequiredCapabilities` に現れるので `uaip_describe_command` で名前が分かります。例外が `PropertyReferenceEdit` と `PropertyStructuredEdit` で、この 2 つは書き込み対象プロパティの型から dispatch のはるか後に判定されるため、どのコマンドも宣言しません。付与される前にこの 2 つを見つけられる場所は、このカタログだけです。
 
 開示されるのは Capability の名前と既定方針だけです。プロジェクトの内容も値も含まれません。
+
+### デモ版が提供しない Capability
+
+無償のデモ版は含まれるコマンドが一部だけですが、含まれないコマンドの Capability も、通常の既定ポリシーのまま**登録**します。そのため、Capability のカタログの形はどちらの版でも同じです。デモ版のどのコマンドも要求しない Capability には、**「この版では使えない」の印**が付きます。印の付いた Capability は次のように振る舞います。
+
+- `QueryCapabilities` は、`RegisteredCapabilities` に `UnavailableReason: "NotInThisEdition"` と `IsGranted: false` を付けて列挙し、`UngrantedCapabilityCount` にも数えます。
+- 付与される経路が何であっても付与されません。`+AllowedCapabilities` への記載、コマンド Provider の宣言、DefaultAllow のいずれでも同じです（DefaultAllow の `LiveCoding` も、デモ版では付与されません）。`UAIP.Core.ReloadCapabilities` を呼んでも変わりません。
+- `[UAIP.SafetyPolicy]` の `AllowedCapabilities` に書くと、起動時にエディタが警告を出します: `Capability '<Name>' is granted in [UAIP.SafetyPolicy] but is not available in this edition of UAIP. The grant has no effect.` `DeniedCapabilities` に書いた場合は実際の状態と一致するので、この警告は出ません。
+- 製品版は何にも印を付けません。カタログも実効セットも従来と同じです。
+
+印は Capability の既定ポリシーを変えません。また、**デモ版の利用者が使えない Capability のすべてに印が付くわけではありません**。デモ版がそもそも登録しない Capability（`CommonUIProjectCodeExecution` が例）はカタログに現れず、印もありません。ini に書いても効果がない点は同じです。デモ版のコマンドが要求しうる Capability（`RuntimeCVarRead`、`BlackboardValueRead` など）には印が付きません。`EditorWindowStateControl` は、`SetEditorWindowState` がデモ版に含まれるので、デモ版にも登録され、印は付きません。
 
 ---
 
@@ -170,7 +183,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 |---|---|
 | `EditorObservation` | スクリーンショット（`CaptureActiveWindowImage`、`CaptureEditorTabImage`、`CaptureGraphViewportImage`）および JSON 状態ダンプ（`DumpEditorState`、`DumpSlateTree`、`DumpSelectionState`、`DumpOutputLog`、`DumpMessageLog` など） |
 | `EditorInspect` | Editor 状態の読み取り専用検査 — アセット・詳細パネル・ビューポート・グラフ情報。共有インフラコマンドが使用 |
-| `EditorUIAutomation` | UI 駆動コマンド — `ClickWidget`、`SelectMenuItem`、`InputText`、`SetCheckboxState`、`DragGraphNode`、`AcceptDialog`、`CancelDialog`、`InvokeContextMenuAction`、`WaitForWidget`、`FillForm`、`SnapshotUI` など、およびその `Toolset.Editor.SlateInspector.*` ブリッジ版。ブリッジ版も同じ Capability を要求するようになった（旧リリースでは Capability チェックなしにディスパッチされていた） |
+| `EditorUIAutomation` | UI 駆動コマンド — `ClickWidget`、`SelectMenuItem`、`InputText`、`SetCheckboxState`、`DragGraphNode`、`AcceptDialog`、`CancelDialog`、`InvokeContextMenuAction`、`WaitForWidget`、`FillForm`、`SnapshotUI`、`DismissMenus` など、およびその `Toolset.Editor.SlateInspector.*` ブリッジ版。ブリッジ版も同じ Capability を要求するようになった（旧リリースでは Capability チェックなしにディスパッチされていた） |
 | `EditorWorkspaceControl` | タブ・パネル管理 — タブの開閉、グラフエディタのフォーカス、エディタレイアウトの制御 |
 | `EditorLifecycle` | エディタライフサイクル操作 — `SaveAll`、`ShutdownEditor`、`RestartEditor` |
 | `EditorExecution` | エディタからの Automation Test 実行・Editor Utility Blueprint の実行 |
@@ -180,13 +193,14 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `AssetMutate` | 既存アセットのプロパティ変更 |
 | `AssetWindowControl` | アセットエディタの開閉 |
 | `PIEControl` | PIE セッション制御 — `StartPIE`、`StopPIE`、`PausePIE`、`ResumePIE`、`LoadMap` |
-| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot` |
-| `RuntimeCapture` | ランタイムキャプチャ — `CaptureViewportImage`、`CheckpointCapture` |
+| `RuntimeInspect` | ランタイムワールド状態の読み取り専用検査 — `DumpWorldState`、`DumpActorState`、`DumpComponentState`、`DumpRuntimeLog`、`CapturePerformanceSnapshot`、`SearchLoadedClasses`、および AI の感知を観測する 6 コマンド `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`（最後の 1 つは `AIPerceptionConfigDump` も必要。[Runtime AI の感知](#runtime-ai-の感知) を参照）、BehaviorTree・Blackboard・StateTree の 15 コマンド `ListBehaviorTreeAgents`・`GetActiveBehaviorTreeNode`・`DumpBehaviorTreeState`・`GetBlackboardValues`・`DescribeBehaviorTreeWithProjectCode`・`StartBehaviorTreeCapture`・`GetBehaviorTreeEventLog`・`StopBehaviorTreeCapture`・`ListStateTreeComponents`・`GetActiveStateTreeState`・`DumpStateTreeState`・`DumpStateTreeInstanceData`・`StartStateTreeCapture`・`GetStateTreeEventLog`・`StopStateTreeCapture`（`GetBlackboardValues` は `BlackboardValueRead` も、`DescribeBehaviorTreeWithProjectCode` は `BlackboardValueRead` と `AIBehaviorProjectCodeExecution` も、`DumpStateTreeInstanceData` は `StateTreeInstanceDataDump` も必要。[Runtime AI のビヘイビアツリーと Blackboard](#runtime-ai-のビヘイビアツリーと-blackboard) と [Runtime StateTree の観測](#runtime-statetree-の観測) を参照）、および Chaos 破壊の 8 コマンド `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`GetDestructionEventLog`、`StopDestructionCapture`、`CaptureGeometryCollectionStrain`、`EnableForcedDestructionNotify`（最後の 1 つは `ChaosDestructionForceNotify` も必要で、これはデモ版では提供されない。[Runtime Chaos 破壊](#runtime-chaos-破壊) を参照）、および読み取り専用のナビゲーション 7 コマンド `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`（`FindPath` と `IsLocationReachable` は、8192 を超える探索ノードでは `RuntimeNavigationExtendedSearch` も必要。[Runtime ナビゲーション](#runtime-ナビゲーション) を参照）、およびアニメーションの 7 コマンド `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState`（`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` も必要。[Runtime アニメーション](#runtime-アニメーション) を参照）、およびネットワークの 5 コマンド `GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`、`DumpReplicatedPropertyValues`、`CompareReplicatedProperties`（後ろの 2 つは `RuntimeReplicatedPropertyValueRead` も、`IncludeRemoteAddress` を指定した `ListNetConnections` は `RuntimeNetConnectionAddressRead` も必要。[Runtime ネットワークとレプリケーション](#runtime-ネットワークとレプリケーション) を参照）、および Subsystem の 2 コマンド `ListSubsystems`、`DumpSubsystemState`（後者は `SubsystemStateDump` も必要。[Runtime Subsystem](#runtime-subsystem) を参照）、およびゲームビューポートの UI の 3 コマンド `DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpHUDState`（[Runtime ゲームビューポートの UI](#runtime-ゲームビューポートの-ui) を参照）、CommonUI の 4 コマンド `DumpActivatableStacks`、`GetInputState`、`GetActionDisplayNames`、`DescribeActivatableWidgetsWithProjectCode`（`GetActionDisplayNames` は `RuntimeWidgetTextRead` も、`DescribeActivatableWidgetsWithProjectCode` は `CommonUIProjectCodeExecution` も必要。[Runtime CommonUI の観測](#runtime-commonui-の観測) を参照）、および `EvaluateInputGateWithProjectCode`（`InputProjectCodeExecution` も必要。[Runtime ゲーム入力のゲート](#runtime-ゲーム入力のゲート) を参照） |
+| `RuntimeCapture` | ランタイムキャプチャ — `CaptureViewportImage`、`CheckpointCapture`（後者は `RuntimeInspect` も必要） |
 | `RuntimeExecution` | PIE または Standalone での機能テスト・Automation Test の実行 |
 | `RuntimeGASInspect` 🧩 | PIE 中の GAS 状態読み取り — `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`（`GameplayAbilities` プラグイン必須） |
 | `RuntimeNiagaraInspect` 🧩 | PIE 中の Niagara コンポーネント状態読み取り — `GetUserVariables`、`GetVariable`（`Niagara` プラグイン必須） |
 | `SandboxObserve` 🧩 | アクティブな Sandbox の観測 — `GetSandboxStatus`、`GetSandboxChanges`（`FileSandbox` プラグイン必須） |
 | `RuntimeInsightsInspect` | Unreal Insights トレースの読み取り専用検査 — `ListTraceChannels`、`GetTraceStatus`、`ListTraceFiles`。トレースの開始・停止・変更は一切できません |
+| `RuntimeSaveGameInspect` | セーブスロットとスナップショットの読み取り専用の確認 — `ListSaveGameSlots`、`GetSaveGameInfo`、`ListSaveGameSnapshots`。名前・サイズ・日時・ヘッダのメタ情報・内容のハッシュを返します。スロットに保存された値は返さず、クラスも読み込みません。[Runtime SaveGame スロット](#runtime-savegame-スロット) を参照 |
 | `ArtifactContentRead` | セッションが生成した成果物の保存内容を読み出す — `UAIP.Core.Artifacts.GetArtifact`。他のセッションの成果物には届かない |
 | `PendingInteractionInspect` | 保留中の対話の状態照会・キャンセル — `GetPendingInteractionStatus`、`WaitForPendingInteraction`、`CancelPendingInteraction`。読み取り専用の照会のみで、対話の開始（`DrawPCGSpline` など）は対話型コマンド自身の Capability と `SafetyPolicy.AllowUserInteractionPrompt` によって別途ゲートされます |
 
@@ -202,12 +216,34 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 |---|---|
 | `BlueprintEdit` | Blueprint アセットのコンパイルと構造検査 |
 | `BlueprintVariableEdit` | Blueprint 変数の追加・削除・変更 |
-| `BlueprintGraphEdit` | Blueprint イベントグラフへのノード追加・削除・接続 |
+| `BlueprintGraphEdit` | Blueprint グラフへのノード追加・削除・接続、親クラスまたはインターフェースの関数をオーバーライドする関数グラフの追加、`ApplyBlueprintGraphEdit` によるグラフの宣言的な編集（Experimental）。⚠️ **エディタで開いているすべてのマップのレベル Blueprint** にも届くようになった — 下の注記を参照 |
+| `BlueprintUnrestrictedNodePlace` | 次の場合に `BlueprintGraphEdit` に**加えて**必要: コードを実行しうる関数（コンソールコマンドの実行、URL やほかのアプリケーションの起動、エディタの終了、呼び出し側が選んだパスへのファイルの書き込み、エディタ専用・開発用・クック対象外のモジュールの関数すべて（Python を含む）、モジュールを判別できない関数）の呼び出しを置くとき、Editor Utility の Blueprint にあらゆる関数の呼び出しを置くとき、そうした呼び出しのピンを書き換える・接続するとき（`SetPinDefaultValue`、`ConnectBlueprintPins`）。`AddGraphNodeByAction` は、何を置くかに関わらず常に要求し、`ApplyBlueprintGraphEdit` も `ActionId` でアクションを置くノード定義には要求する。コマンドの実行中に解決した関数から決まるので、`AddGraphNode`・`ApplyBlueprintGraphEdit`・`SetPinDefaultValue`・`ConnectBlueprintPins` の宣言する `RequiredCapabilities` には現れない。拒否のメッセージが名前を示す。[コマンド — コードを実行しうる関数の呼び出し](commands.md#コードを実行しうる関数の呼び出し) を参照 |
+| `BlueprintReferencedGuidRegenerate` | `RegenerateGraphNodeGuid` と `RegenerateGraphGuid` が、ほかのアセットから参照されうるノードやグラフに新しい ID を振るときに必要: コンポーネントノード、Anim Blueprint のすべてのノードとグラフ、クラスがエンジンの `BlueprintGraph` モジュールで定義されていないノード（プロジェクトやプラグインのモジュールのクラス。エンジンの Event ノードの派生を含む）、折りたたみノードが持つグラフ以外のすべてのグラフ。イベントとカスタムイベントのノードは Capability なしで振り直せ、呼び出し側の Blueprint を保存するまで名前は変わらないという警告が付く。コマンドの実行中に対象から決まるので、どちらのコマンドの宣言する `RequiredCapabilities` にも現れない。無ければ `CapabilityNotAvailable` で断られる（明示的に拒否していれば `PolicyViolation`）。持っているときは、新しい ID で壊れうる参照が `Warnings` に載る。[コマンド — グラフの読み取りと GUID の修復](commands.md#グラフの読み取りと-guid-の修復4) を参照 |
+| `BlueprintUnrestrictedVariableType` | `AddBlueprintVariable` が、エンジンの変数型の規則が断る型の変数を追加するときに必要: `BlueprintType`（または `BlueprintSpawnableComponent`）が自身にも祖先にも無いクラス、`NotBlueprintType` のクラス、`BlueprintType` の無い構造体、`BlueprintInternalUseOnly` の構造体。既定で拒否。無ければ `CapabilityNotAvailable` と `Result.Reason: DisallowedBlueprintVariableType` で拒否し（運用者が明示的に拒否していれば `PolicyViolation` と `Result.Reason: DisallowedBlueprintVariableTypeDenied`）、Blueprint は変わりません。以前は `InvalidParams` で拒否していました。付与すると、エディタの変数型メニューが出さない型の変数を追加できます。そうした変数はグラフで使えない、または Blueprint がコンパイルできなくなることがあります |
+| `BlueprintUnverifiedPinValueRead` | `GetPinDefaultValue` が、定義を解決できなかったピン（`UnverifiedMaskedFields` に載るピン）の平文を返すために、秘密値の設定の 3 層（[秘密値の平文での読み取り](#秘密値の平文での読み取り) を参照）に**加えて**必要。そうしたピンに限り、かつ 3 層がすでに平文を許しているときにだけ問われます。無い、または運用者が拒否しているときは、ピンは伏せられたままで、`Result.SecretValuesWithheldReason` は `SecretValuesWithheldUnverified` になり、`SecretFieldValues` は返りません。ほかの読み取りコマンドには影響しません。付与すると、秘密かどうか UAIP が判別できなかったピンの値が漏れうります |
 | `BlueprintComponentEdit` | Blueprint SCS コンポーネントの追加・削除・リネーム・親変更・複製・プロパティ編集 |
 | `AnimBlueprintGraphEdit` | AnimGraph へのノード追加・削除・接続、Anim Blueprint のコンパイル |
 | `AnimBlueprintCustomTypeEdit` | `AddAnimGraphNode` の `NodeClass` が、このドメインが信頼する 3 モジュール（`AnimGraph` / `AnimGraphRuntime` / `Engine`）以外 — プロジェクトやプラグインが定義した `UAnimGraphNode_Base` 派生クラス — のとき必要。このドメインには対になる「危険なノード」用の Capability はない。8 種のノードは、どの Capability を持っていても無条件で拒否される。[コマンド — UAIP.Editor.AnimBlueprint](commands.md#uaipeditoranimblueprint) を参照 |
 | `AnimStateMachineEdit` | Anim ステートマシンへの State・Transition の追加・削除 |
 | `AnimBlueprintReferenceEdit` | Anim Blueprint 上でオブジェクト参照を含む（または参照そのものである）プロパティ・実装済みインターフェース参照・埋め込み UAF グラフ参照を書き込むときに必要。`SetAnimGraphNodeProperty` は書き込みが実際に参照へ触れるときだけ動的に確認する。`ImplementAnimLayerInterface` と `AddUAFGraphNodeToAnimBlueprint` は毎回参照を書き込むため静的に宣言する。`AddLinkedAnimLayerNode` は `InterfacePath` 指定時だけ動的に確認する（自己完結型レイヤーノードは参照を書き込まない） |
+
+> ⚠️ **`BlueprintGraphEdit`・`BlueprintVariableEdit`・`BlueprintEdit` がマップのレベル Blueprint にも届くようになりました。** グラフ・変数・コンパイルのコマンドは、エディタで開いているマップ（またはその読み込み済みのサブレベル）のパスを受け付け、そのレベル Blueprint を対象にします — [コマンド — レベル Blueprint](commands.md#レベル-blueprint) を参照。これらの Capability を付与したセッションは、Blueprint アセットだけでなく、開いているマップのロジックも変えられます。レベル Blueprint の編集には、通常の Blueprint には無い副作用があります。
+>
+> - **コンパイルでレベルスクリプトアクターが作り直されます。** 配置のたびに、`SkipCompile` が `true` でなければコンパイルします。
+> - **`AddGraphNode`・`AddBlueprintVariable`・`AddFunctionOverride` は、レベル Blueprint の無いマップにレベル Blueprint を作ります。** マップに未保存の変更ができ、応答がそれを警告します。
+> - **保存はマップ全体に及びます。** マップに対する `SaveAsset` は、マップのパッケージ全体を保存します。UAIP の Blueprint 編集によらない未保存の変更がマップにあったかもしれないときは、応答の `Result.Warnings` に警告を載せたうえで保存します。
+> - **その警告が区別できないもの。** 警告は UAIP の Blueprint 編集とそれ以外を区別するので、ほかの UAIP のコマンドによる変更（`SetActorTransform` でアクターを動かしたなど）も「Blueprint 編集によらない変更」として警告の対象になります。UAIP の Blueprint 編集の後、保存の前に人が同じマップに加えた変更は区別できないので、警告は出ません。World Partition のマップでは、外部アクタのパッケージにだけある変更は、警告がマップのパッケージを見るため拾えないことがあります。
+> - **マップを切り替える前に保存してください。** レベル Blueprint はマップの中にあるので、その未保存の変更はマップと一緒に扱われます。
+>
+> ⚠️ **`BlueprintUnrestrictedNodePlace` が塞がないもの。** この Capability が制御するのは、コードを実行しうる関数の呼び出しの配置と、そのピンの書き換え・接続です。次の経路は、通常の Blueprint の Capability だけを持つセッションにも開いたままです。コードを実行させたくないセッションに `BlueprintGraphEdit` / `BlueprintVariableEdit` を付与する前に考慮してください。
+>
+> - この Capability が判定に使う一覧に無い、コードを実行しうる関数。
+> - コードを実行するノードの引数にすでにつながっている変数の既定値を、`SetBlueprintVariableDefault` で変える。
+> - 既存の Editor Utility の Blueprint を、ピンを書き換えも接続もせずに実行する。
+> - 人が作った、コードを実行する処理を包んでその引数をパラメータとして受け取る Blueprint の関数・マクロを呼び、引数を入れる — Blueprint 自身の関数の普通の `FunctionCall` には追加の Capability は要りません。
+> - コードを実行するノードの引数の上流にある Pure なノード（文字列の結合など）のピンを書き換える。判定するのは関数の呼び出しのノードそのものだけです。
+> - 非同期タスクのノードのように、関数を参照せずにコードを実行しうるノード。置くには常にこの Capability を要求する `AddGraphNodeByAction` が要りますが、すでにあるノードのピンの書き換え・接続は判定しません。
+> - Widget Blueprint の PreConstruct イベント（Designer のプレビューのために実行される）と Construction Script。どちらもエディタが `EditorExecution` 無しに実行します。
 
 #### Level / アクター / プロパティ編集
 
@@ -218,22 +254,22 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `EditorViewportControl` | Level Editor ビューポートカメラの操作 — `FocusOnActors`、`GetCameraTransform`、`SetCameraTransform` |
 | `ActorComponentEdit` | **レベルに配置済みのアクター**に対するコンポーネントの追加・削除・付け替えと、そのプロパティの書き込み — `AddActorComponent`、`DeleteActorComponent`、`ReparentActorComponent`、`SetActorComponentProperty`。`EditorActorEdit` と分けてあるのは、変えるものが違うため — あちらはアクターそのものを動かし・消すもので、こちらはアクターが何でできていて、どう設定されているかを変えるもの。コンポーネントのプロパティの読み取り（`GetActorComponentProperty`）と一覧取得（`ListActorComponents`）には `EditorInspect` だけで足りる。値が参照や複合型である書き込みには、加えて `PropertyReferenceEdit` / `PropertyStructuredEdit` が必要 — どちらが要るかは先に `GetActorComponentProperty` を呼べば分かる |
 | `ComponentCustomTypeEdit` | そのクラスのコンポーネントの**インスタンス数が増える**操作で、かつそのクラスが `/Script/Engine` と `/Script/LiveLinkComponents` のいずれでも宣言されていない場合に、コマンド自身の Capability に**加えて**必要になる（プロジェクトの C++ が定義したコンポーネント、他プラグイン（Niagara などエンジン同梱プラグインを含む）が定義したもの、Blueprint 由来のコンポーネントクラスが該当）。該当する 3 コマンドが共有する — `AddActorComponent`（インスタンス側。`ActorComponentEdit` と併用）と `AddBlueprintComponent` / `DuplicateBlueprintComponent`（Blueprint / SCS 側。`BlueprintComponentEdit` と併用）。1 つの名前に統一しているのは、片方の経路にだけ付与しても、もう一方から同じクラスへ到達できてしまわないようにするため。⚠️ **Blueprint 側の 2 コマンドにとっては挙動の変更です** — 下の Note を参照。コンポーネントの削除・リネーム・付け替え・プロパティ書き込みは対象**外**（いずれもインスタンス数を増やさないため） |
-| `PropertyEdit` | 詳細パネル経由でのアクター / アセットプロパティの読み書き（`GetActorProperty`、`SetActorProperty`、`GetAssetProperty`、`SetAssetProperty` など） |
+| `PropertyEdit` | 詳細パネル経由でのアクター / アセットプロパティの読み書き（`GetActorProperty`、`SetActorProperty`、`GetAssetProperty`、`SetAssetProperty` など）。⚠️ `SetAssetProperty` は、専用のコマンドが扱う Blueprint の中のオブジェクト — ウィジェット、ウィジェットのスロットやアニメーション、Blueprint で追加したコンポーネント、コンポーネントの構成、グラフやノード、クラスの既定値 — を書かなくなった。このため `PropertyEdit` で `WidgetPropertyEdit`・`BlueprintComponentEdit`・`BlueprintGraphEdit` など、それらのコマンドの Capability を迂回することはできない。拒否のメッセージが使うべきコマンドを示す。[コマンド — UAIP.Editor.Property](commands.md#uaipeditorproperty) を参照 |
 | `PropertyReferenceEdit` | 値がオブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパスであるか、それらを（どの深さであれ）内包するプロパティの書き込み。参照を空にする操作にも必要 — 依存関係を付けることと外すことは同じ種類の変更であるため |
 | `PropertyStructuredEdit` | 組み込みの値カタログ外の構造体・配列・セット・マップ・オプショナル・固定長配列の書き込みと、値全体を置き換える代わりにコンテナの要素 1 つを操作すること |
-| `PropertyDefaultsOnlyEdit` | エディタがその種類の対象では「既定値の側でだけ」見せるプロパティの書き込み（インスタンスへ書く `EditDefaultsOnly`、テンプレートへ書く `EditInstanceOnly`）。エディタ本体の詳細パネルはこれらを実際に編集できる。この指定はパネルのどこに行が出るかを決めるものであって編集できるかを決めるものではなく、ノードを保持するグラフエディタは明示的にその行を出している。一律に拒否すると自動化しようとしているエディタより厳しくなるため、拒否は「壁」ではなく「権限で開く」形にしてある。編集フラグを持たないプロパティ・`EditConst`・非推奨は、どの権限を持っていても拒否される |
+| `PropertyDefaultsOnlyEdit` | エディタがその種類の対象では「既定値の側でだけ」見せるプロパティの書き込み（インスタンスへ書く `EditDefaultsOnly`、テンプレートへ書く `EditInstanceOnly`）。エディタ本体の詳細パネルはこれらを実際に編集できる。この指定はパネルのどこに行が出るかを決めるものであって編集できるかを決めるものではなく、ノードを保持するグラフエディタは明示的にその行を出している。一律に拒否すると自動化しようとしているエディタより厳しくなるため、拒否は「壁」ではなく「権限で開く」形にしてある。編集フラグを持たないプロパティ・`EditConst`・非推奨は、どの権限を持っていても拒否される。**残らない書き込みも、どの権限でも開きません。** レベル上のアクターのインスタンスでは、Blueprint から書ける `EditDefaultsOnly` 宣言のプロパティ、Instance Editable でない Blueprint 変数、Blueprint で足した Instanced の配列は、この権限の有無にかかわらず `NotAllowed` で拒否されます。Blueprint で足した子アクターのコンポーネントが作り直す子アクターのプロパティも同じです（コンストラクションスクリプトや親が値を戻すため）。拒否文は代わりの手段を示します。`SetBlueprintDefault` でクラスの既定値を変える、または変数を Instance Editable にします（子アクターではコンソール変数 `cac.ExperimentalAllowPerInstanceChildActorProperties`）。この拒否が先に判定されるので、この権限が無いセッションにも `CapabilityNotAvailable` ではなく `NotAllowed` が返ります。返すのは `SetActorProperty` と `SetWorldSetting` だけです。**この権限はパスの全ての部分で求められます。** 構造体のメンバー（`MyStruct.X`）、配列の要素（`Arr[0]`）、途中の構造体や配列も、最後のセグメントだけでなく数えます。**テンプレート**（クラスの既定値オブジェクト、Blueprint のコンポーネントのテンプレート、子アクターのコンポーネントの archetype）**とその中の構造体**は逆の規則です。`EditInstanceOnly` にこの権限が要り、`EditDefaultsOnly` には要りません。ドメイン固有の権限（例: Mass の `MassAssetEdit`）は、パスが名指すメンバーと、丸ごと書く値の中のメンバーにも求められます。足りないものは 1 回の `CapabilityNotAvailable` で全て挙がり、運用者が明示的に拒否したものがあれば `PolicyViolation` が返ります。`GetActorProperty` などの書き込み要件の報告は、値全体については上限です（型の内側のメンバーを数えます）。JSON で一部のキーだけを書くときに求められるのはそのキーの分だけです |
 | `StateTreeNodeReferenceEdit` | 参照へ到達しうる型を持つ StateTree ノードプロパティの書き込み。汎用の `PropertyReferenceEdit` ではなくこちらを要求するのは、StateTree の参照を開くことが他のすべての参照を開くことにならないようにするため |
 | `EQSNodePropertyReferenceEdit` | 参照へ到達しうる型を持つ EQS の生成器・テストのプロパティの書き込み。`FAIDataProvider` のプロパティにも必要で、これは値が定数を表すかバインディングを表すかに関わらず `UAIDataProvider` のポインタを保持するため |
 | `BehaviorTreeNodeReferenceEdit` | 参照へ到達しうる型を持つビヘイビアツリーのノードプロパティの書き込み。ブラックボードのキー選択は専用の経路で書かれるため対象外 |
 | `WorldConditionPropertyReferenceEdit` | 参照へ到達しうる型を持つ World Condition のプロパティの書き込み |
 | `ProjectConfigEdit` | プロジェクト設定の読み書き（`GetProjectSetting`、`SetProjectSetting`） |
-| `EditorUndoRedo` | エディタ操作の Undo / Redo |
+| `EditorUndoRedo` | エディタ操作の Undo / Redo。⚠️ Widget Blueprint のコマンドと組み合わせると、パスワード欄の門が弱まる: `SetWidgetProperties` でパスワード欄を普通の欄に変えるには秘密値を読む許可が要るが、同じエディタのセッションで先に行われた `IsPassword` の変更（人によるものなど）を Undo で戻すのには要らない |
 
 > ⚠️ **破壊的変更 — `ComponentCustomTypeEdit` が `AddBlueprintComponent` と `DuplicateBlueprintComponent` にも適用されるようになりました。** これまでこの種の判定は他ドメインのクラス許可リストだけのもので、Blueprint 上でのコンポーネントクラスの追加・複製はクラスに関わらず `BlueprintComponentEdit` だけで通っていました。これまで `BlueprintComponentEdit` だけでプロジェクト定義のコンポーネントを追加・複製できていたセッションは、`ComponentCustomTypeEdit` を名指しした `CapabilityNotAvailable` で拒否されるようになります。`+AllowedCapabilities=ComponentCustomTypeEdit` を追加すると従来どおりに戻ります。両方の経路を同時に対象にしたのは、新設のインスタンス側コマンドだけをゲートしても Blueprint 側が迂回路として残ってしまうためです。この要件はコマンド実行中にクラスから決まるため、3 コマンドいずれの `RequiredCapabilities` にも現れません。`ListActorComponents` がクラスごとに「追加に何が要るか」を返し（`Admission` / `RequiredCapabilities` / `MissingCapabilities`）、`QueryCapabilities` を `IncludeUnavailable: true` で呼べばカタログにこの名前が載ります。[コマンドリファレンス — コンポーネント — SCS](commands.md#コンポーネント--scs8) を参照。
 
-> **Note**: `PropertyReferenceEdit` と `PropertyStructuredEdit` は `UAIP.Editor.Property` 限定ではありません。Blueprint SCS コンポーネント、Sequencer セクション、Sound / SoundCue アセット、PCG / 会話ノード、DataTable 行、World / プロジェクト設定など、**プロパティを書き込むすべてのドメイン**で参照・構造体・コンテナの書き込みを制御します。参照を内包する構造体の書き込みには両方が必要なので、構造側だけで参照のゲートを迂回することはできません。
+> **Note**: `PropertyReferenceEdit` と `PropertyStructuredEdit` は `UAIP.Editor.Property` 限定ではありません。Blueprint SCS コンポーネント、Widget Blueprint のウィジェット（`SetWidgetProperties`）、Sequencer セクション、Sound / SoundCue アセット、PCG / 会話ノード、DataTable 行、World / プロジェクト設定など、**プロパティを書き込むすべてのドメイン**で参照・構造体・コンテナの書き込みを制御します。参照を内包する構造体の書き込みには両方が必要なので、構造側だけで参照のゲートを迂回することはできません。
 >
-> すでに独自の Capability で参照の書き込みを管理しているモジュールは、参照側についてはその名前を使い続けます — `SetAnimNotifyProperty` は `AnimNotifyReferenceEdit`、`SetDataflowNodeProperty` は `DataflowReferenceEdit`、Subsonic のプロパティ setter 群は `SubsonicEventEdit`、`SetSlotProperties` は `WidgetSlotReferenceEdit`、Enhanced Input のマッピング mutator 群は `EnhancedInputReferenceEdit`、`SetStateTreeParameter` は `StateTreeParameterReferenceEdit`、`AddSetParameterEntry` / `AddSetParametersModule` で参照型パラメータの既定値を書く場合は `NiagaraReferenceEdit` です。構造・コンテナ側は常に `PropertyStructuredEdit` です。例外は `SetPoseSearchSchemaChannelProperty` で、参照については付与できる Capability がありません — 参照を内包する型を一律拒否します。チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうためです。
+> すでに独自の Capability で参照の書き込みを管理しているモジュールは、参照側についてはその名前を使い続けます — `SetAnimNotifyProperty` は `AnimNotifyReferenceEdit`、`SetDataflowNodeProperty` は `DataflowReferenceEdit`、Subsonic のプロパティ setter 群は `SubsonicEventEdit`、`SetSlotProperties` は `WidgetSlotReferenceEdit`（`SetWidgetProperties` が書くウィジェットのプロパティは、代わりに共通の `PropertyReferenceEdit` を使います）、Enhanced Input のマッピング mutator 群は `EnhancedInputReferenceEdit`、`SetStateTreeParameter` は `StateTreeParameterReferenceEdit`、`AddSetParameterEntry` / `AddSetParametersModule` で参照型パラメータの既定値を書く場合は `NiagaraReferenceEdit` です。構造・コンテナ側は常に `PropertyStructuredEdit` です。例外は `SetPoseSearchSchemaChannelProperty` で、参照については付与できる Capability がありません — 参照を内包する型を一律拒否します。チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうためです。
 >
 > どちらも書き込み実行時にプロパティの型から決まるため、**いずれのコマンドの `RequiredCapabilities` にも現れず**、`uaip_describe_command` にも表示されません。ただし書き込みを試さずに見つけることはできます — `QueryCapabilities` を `IncludeUnavailable: true` で呼ぶと `RegisteredCapabilities` カタログがこの 2 つを列挙し、運用者が有効化するまで `DefaultPolicy: "Denied"` / `IsGranted: false` を返します（[どんな Capability が存在するかを調べる](#どんな-capability-が存在するかを調べる) 参照）。**個別のプロパティ**に何が必要かを知るには、先にそのプロパティを読む（`WriteRequirements` オブジェクトが、書き込みに必要なものと、そのうちセッションが既に保有しているものを返します）か、拒否の返答から名前を読み取ってください。[コマンドリファレンス — 参照・構造体・コンテナの書き込み](commands.md#参照構造体コンテナの書き込み) を参照。
 
@@ -261,6 +297,7 @@ Layer 1.5（役割）も、役割を識別するトークン認証も、**事故
 | `MaterialParameterEdit` | Material パラメータ値とデフォルト値の変更 |
 | `MaterialCustomNodeEdit` | `AddMaterialNode` の `ExpressionClass` が `UMaterialExpressionCustom` / `UMaterialExpressionCustomOutput`、またはそのいずれかの派生クラス（任意の HLSL を含められる）のとき、どのモジュール由来かに関わらず必要。この変更以前から登録されていたが、これまでどのコマンドも要求していなかった |
 | `MaterialCustomTypeEdit` | `AddMaterialNode` の `ExpressionClass` がエンジン組み込みモジュール（`Engine` / `RenderCore` / `MaterialEditor` / `Landscape`）以外 — プロジェクトやプラグインが定義した `UMaterialExpression` 派生クラス — のとき必要。プロジェクト定義かつカスタム HLSL のクラスは `MaterialCustomNodeEdit` とあわせて両方が必要 |
+| `MaterialUnappliedEditorChangesApply` | Material の書き込みのコマンドのうち Apply するもの（`AddMaterialNode`・`DeleteMaterialNode`・`ConnectMaterialPins`・`DisconnectMaterialPins`・`SetMaterialParameterValue`）と `CompileMaterial` が、開いた Material エディタにまだ適用していない変更があっても、作業コピーをアセットへ適用できるようにする。適用は作業コピーを丸ごと写すので、その変更（人の編集、または先の書き込みが作業コピーに残したもの）もコマンドの結果と一緒に確定する。既定で拒否。付与が無くてもコマンドは成功し、結果を作業コピーに残す（`EditorSync.ApplyDeferredReason: UnappliedEditorChanges`、`WorkingCopyOnly: true`）。そのとき `EditorSync.ApplyRequiredCapability` にこの Capability の名前が入る。コンパイルエラーがあれば、付与があっても `CompileErrors` で Apply を止める。`ArrangeMaterialGraph` と `RefreshMaterial` は Apply しないので、効かない。[コマンド — Material](commands.md#uaipeditormaterial) を参照 |
 
 > **Note**: `MaterialCustomNodeEdit` / `MaterialCustomTypeEdit`、（上の [Blueprint・AnimBlueprint 編集](#blueprintanimblueprint-編集) にある）`AnimBlueprintCustomTypeEdit`、（下の [Motion Matching / Pose Search 編集](#motion-matching--pose-search-編集) にある）`MotionMatchingCustomTypeEdit`、（下の [Sequencer 編集](#sequencer-編集) にある）`SequencerCustomTypeEdit`、（下の [ControlRig 編集](#controlrig-編集) にある）`ControlRigCustomTypeEdit`、（下の [AI システム](#ai-システム) にある）`BehaviorTreeCustomTypeEdit` / `BehaviorTreeExternalBehaviorNodeEdit` / `BlackboardReferenceKeyTypeEdit`、（下の [StateTree 編集](#statetree-編集) にある）`StateTreeCustomTypeEdit`、（下の [SoundCue 編集](#soundcue-編集) にある）`SoundCueCustomTypeEdit`、（下の [ゲームプレイシステム](#ゲームプレイシステム) にある）`EnhancedInputCustomTypeEdit`、および（下の [オプショングラフエディタ](#オプショングラフエディタ) にある）`MetaSoundCustomTypeEdit` / `EQSCustomTypeEdit` / `EQSDelegatedGeneratorEdit` / `WorldConditionsCustomTypeEdit` / `ConversationCustomTypeEdit` は、ゲートされた型のノードを追加するときだけでなく、その既存ノードに触るあらゆる操作 — 編集・接続・切断・コンパイル・Reparent・削除 — でも同じ Capability があらためて確認されます。⚠️ この変更以前は、こうしたノードの削除・切断は無条件でゲートされていませんでした。もう追加できない型であることは、それ自体では既存ノードを削除・切断できない理由にはなりません。詳細は [コマンドリファレンス — Capability でゲートされたカスタム型](commands.md#capability-でゲートされたカスタム型) を参照してください。
 
@@ -292,7 +329,7 @@ Engine 本体の `UAF` プラグインが必要で、無効な場合は以下の
 
 | Capability | 有効になる操作 |
 |---|---|
-| `UAFGraphEdit` | UAF アセットのグラフ・変数・コンパイル編集（`AddUAFGraphNode` / `RemoveUAFGraphNode` / `ConnectUAFPins` / `DisconnectUAFPins` / `SetUAFPinValue` / `AddUAFVariable` / `RemoveUAFVariable` / `AddUAFEventGraph` / `CompileUAFAsset`） |
+| `UAFGraphEdit` | UAF アセットのグラフ・変数・コンパイル編集（`AddUAFGraphNode` / `RemoveUAFGraphNode` / `ConnectUAFPins` / `DisconnectUAFPins` / `SetUAFPinValue` / `AddUAFVariable` / `RemoveUAFVariable` / `AddUAFEventGraph` / `ArrangeUAFGraph` / `CompileUAFAsset`） |
 | `UAFCustomTypeEdit` | 追加・接続・切断・削除操作が対象とする RigVM Unit 構造体またはアニメーション Trait が、フレームワーク自身のパッケージ由来でないとき必要 — オプションの UAF サブプラグイン・プロジェクトモジュール・その他このセット外から提供された型。`GetAvailableUAFUnitStructs` と `GetAvailableUAFTraits` は各エントリに必要な Capability を報告する |
 | `UAFReferenceEdit` | `SetUAFPinValue` がピンへオブジェクト参照・クラス参照を書き込むとき必要 — ピン自身の宣言型、またはその型グラフのどこかで参照を宣言する構造体のいずれか |
 
@@ -354,6 +391,7 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `WidgetVariableEdit` | ウィジェット変数の追加・削除 |
 | `WidgetAnimationEdit` | Widget Animation の作成・アニメーショントラックの追加 |
 | `WidgetBindingEdit` | プロパティバインディングの追加・削除 |
+| `WidgetPropertyEdit` | `SetWidgetProperties` で Widget Blueprint のウィジェットのプロパティ（TextBlock の Text、SpinBox の範囲など）を書き込む。参照である値・参照を含む値にはさらに `PropertyReferenceEdit`、単純な値の集合に入らない構造体とコンテナには `PropertyStructuredEdit` が必要 — 書き込みの最中に各プロパティの型から決まる。[Level / アクター / プロパティ編集](#level--アクター--プロパティ編集) の Note を参照。パスワード欄を普通の欄に変える（`IsPassword` を true から false にする）には `AllowSecretValueRead` と `SecretValueRead` も必要 — [秘密値の平文での読み取り](#秘密値の平文での読み取り) を参照。プロパティの読み取り（`GetWidgetProperties`）は `EditorInspect` だけでよい |
 | `WidgetSlotReferenceEdit` | `SetSlotProperties` が、あらゆる種類の参照（オブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパス）であるか、それを（どの深さであれ）内包するスロットプロパティへ書き込む場合に必要。書き込み実行時にプロパティの型から決まるため `SetSlotProperties` の宣言する `RequiredCapabilities` には現れない — [Level / アクター / プロパティ編集](#level--アクター--プロパティ編集) の Note を参照。構造体・コンテナの書き込みにはさらに `PropertyStructuredEdit` が必要 |
 
 #### Sequencer 編集
@@ -363,7 +401,8 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `SequencerStructureEdit` | トラック・セクションの追加・削除、再生範囲の設定 |
 | `SequencerKeyframeEdit` | Sequencer チャンネルへのキーフレーム追加・削除・値編集 |
 | `SequencerBindingEdit` | Level Sequence へのアクター Possessable バインドの追加・削除 |
-| `SequencerPlaybackControl` | Sequencer 再生状態の制御（Play、Pause、SetPlayheadFrame、SetPlaybackSpeed、SetLoopMode） |
+| `SequencerPlaybackControl` | Sequencer 再生状態の制御（Play、Pause、SetPlayheadFrame、SetPlaybackSpeed、SetLoopMode）。ControlRig の選択・視点のコマンド `SelectControl`・`SelectMirroredControls`・`ClearControlSelection`・`FrameControlSelection`（`Toolset.Editor.ControlRig.*` ブリッジ）にも必要。⚠️ この 4 本は以前は `EditorInspect` だけで動いていました。今は ReadOnly モードで断られますが、Play / Simulate セッション中も動きます |
+| `SequencerFBXExport` | `ExportFBXFromRig`（ブリッジ `Toolset.Editor.ControlRig.ExportFBXFromRig`）で ControlRig のアニメーションを FBX ファイルに書き出す。⚠️ 許可すると、呼び出し側が指定した任意のパスへの書き込みを許可することになります。ReadOnly モードと Play / Simulate セッション中は断られます。以前は `EditorInspect` だけで動いていました |
 | `SequencerPropertyEdit` | `UMovieSceneSection` プロパティの読み書き |
 | `SequencerCustomTypeEdit` | トラックのクラスが、このドメインが常にトラックを供給してきた 4 モジュール（`/Script/MovieScene`、`/Script/MovieSceneTracks`、`/Script/LevelSequence`、`/Script/MovieSceneAnimMixer`）の外から来た場合に、`SequencerStructureEdit` または `SequencerKeyframeEdit` に**追加で**必要になります。プロジェクトのモジュール、プラグインのモジュール、Blueprint 生成クラスが該当します。そのようなクラスが名指しされたときの `AddTrack`、対象トラックがそのようなクラスであるときの `RemoveTrack` / `AddSection` / `RemoveSection` / `AddKeyframe` / `RemoveKeyframe` / `SetKeyframeValue` をゲートします。`UMovieSceneSubTrack` と `UMovieSceneCinematicShotTrack`（それぞれ専用コマンドからのみ到達可能）、および `UMovieSceneEventTrack`（このドメインには追加するコマンドが一切ない）は、どの Capability を保有していても `AddTrack` から追加できませんが、既にシーケンスに置かれているものを削除するときは、信頼済みモジュール由来である限り Capability を一切要求しません — 削除は内容を持ち込まないため、汎用の追加経路を塞ぐ制限が撤去には引き継がれないためです。同じ Capability はもう一つの独立した面もゲートします — MovieScene の decoration コンテナに取り付ける decoration のクラスで、decoration を出荷している 5 モジュール（`/Script/MovieScene`、`/Script/MovieSceneTracks`、`/Script/MovieSceneAnimMixer`、`/Script/MovieScenePoseSearchTracks`、`/Script/MovieSceneMixedControlRig`）の外から来た場合です。そのようなクラスが名指しされたときの `AddDecoration`、対象がそのようなクラスであるときの `RemoveDecoration` をゲートします — native コマンドと `Toolset.Editor.SequencerAnimMixer.*` ブリッジ版の両方が対象です。⚠️ decoration 面はこの Capability の新設であり、移行ではありません — この Capability が存在する前は、decoration コマンドはクラスパスを `StaticLoadClass` で基底型の制約なしに解決していたため、解決できたクラスはプロジェクト製のものも含めて強制ロードされ無条件で受理されていました。コマンドではなくリクエストで名指しされた型（または対象が持つ型）から判定されるため、どのハンドラーの宣言 `RequiredCapabilities` にも現れません。どちらの面にも対になる「危険な型」用の Capability はありません — トラックのクラスが実行するのはリクエストが供給したデータに対するエンジン自身のコンパイル済みロジックのみであり、decoration のクラスはリクエストが唯一持ち込む要素がクラス名だけの単なるデータオブジェクトであるためです。[コマンドリファレンス — UAIP.Editor.Sequencer](commands.md#uaipeditorsequencer) を参照 |
 
@@ -373,8 +412,11 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 |---|---|
 | `ControlRigHierarchyEdit` | ControlRig ヒエラルキーの Control 要素・ボーン・Null の追加・削除・トランスフォーム設定 |
 | `ControlRigGraphEdit` | RigVM グラフへのノード追加・削除・ピン接続、ControlRig のコンパイル |
-| `ControlRigBlueprintCreate` | `CreateAsset` 経由での ControlRigBlueprint アセット作成。この確認はプロセス全体ではなく呼び出し元セッションに対して行われるようになったため、この Capability を拒む role に紐づいたセッションは、従来通っていたところで拒否されます（`PolicyViolation`）。リクエストが `FactoryParams.ParentClass` で名指しする親クラスは別の問題です — 下の `ControlRigCustomTypeEdit` を参照 |
+| `ControlRigBlueprintCreate` | `CreateAsset` 経由での Control Rig アセット作成（どちらの形式も。[Control Rig アセットの形式](commands.md#control-rig-アセットの形式) を参照）。この判定は、形式とプロジェクト設定の一致の確認や既存アセットの確認より先に行われるため、権限が無い場合はそちらが先に報告されます。この確認はプロセス全体ではなく呼び出し元セッションに対して行われるようになったため、この Capability を拒む role に紐づいたセッションは、従来通っていたところで拒否されます（`PolicyViolation`）。リクエストが `FactoryParams.ParentClass` で名指しする親クラスは別の問題です — 下の `ControlRigCustomTypeEdit` を参照 |
 | `ControlRigComponentEdit` | ヒエラルキー要素に付くコンポーネント（`FRigBaseComponent` 派生構造体）の追加・削除・改名・付け替え・内容の書き換え — `UAIP.Editor.ControlRig` の汎用コンポーネントコマンドと、`UAIP.Editor.ControlRig.Dynamics` / `UAIP.Editor.ControlRig.Physics` のすべての書き込みが対象。1 つの capability でまとめているのは意図的で、初期内容付きでコンポーネントを作る経路は既存コンポーネントの内容を置き換える経路と同じインポート処理に到達するため、個別に付与できると一方が他方の検査を迂回する手段になる |
+| `ControlRigOffMenuVariableType` | Control Rig エディタの変数型メニューには無いが、変数としては動く型（BlueprintType でない構造体・列挙型・クラス、Control Rig のグラフのスキーマが受けない型）を、ネイティブの `AddVariable` と `ChangeVariableType` で使えるようにします。既定で拒否。無いときは `CapabilityNotAvailable`（明示的に禁止していれば `PolicyViolation`）で拒否します。動く変数にならない型（テキスト、64 ビット整数、インターフェース、実行ピン・実行コンテキストの構造体、スケルトンや置き換えられた型、レベルスクリプトのクラス、更新されていないユーザー定義構造体。非推奨のクラスは下の `ControlRigDeprecatedClassVariableType` を参照）の拒否は解除しません。Toolset ブリッジはこれを判定せず、拒否を解除しません。UE 5.7 では、クラス型はセッションの Capability に関わらず `UnsupportedOperation` です。この種の型には Get / Set ノードを置けないものもあります — [コマンド — 変数の型](commands.md#変数の型名前とエディタに届く前の検証) を参照 |
+| `ControlRigDeprecatedClassVariableType` | UE 5.8 以降で、ネイティブの `AddVariable` と `ChangeVariableType` が非推奨のクラスを変数の型に使えるようにします。既定で拒否。無いときは `CapabilityNotAvailable` と `Result.Reason: DeprecatedControlRigVariableClass` で拒否します（運用者が明示的に拒否していれば `PolicyViolation` と `Result.Reason: DeprecatedControlRigVariableClassDenied`）。以前は `InvalidParams` で拒否していました。片方を許してももう片方を許すことにならないよう、`ControlRigOffMenuVariableType` とは分けてあります。Toolset ブリッジはこれを判定せず、拒否を解除しません。Control Rig の変数型メニューが出さない基本型（テキスト、64 ビットなどのサイズ付き整数、素のバイト）は、どの Capability でも解除しません。エンジンが動く変数を作れないため、ネイティブのコマンドは `InvalidParams` と `Result.Reason: UnsupportedControlRigVariableBasicType` で拒否します。更新されていない、または新しい版に置き換わったユーザー定義構造体は、セッションの権限にかかわらず `InvalidParams` と `Result.Reason: StaleControlRigVariableStruct` で拒否します。構造体を保存・コンパイルして最新にしてから呼び直してください。UE 5.7 ではこの Capability は効かず、非推奨のクラスは `InvalidParams`（`Result.Reason` なし）のままです — [コマンド — 変数の型](commands.md#変数の型名前とエディタに届く前の検証) を参照 |
+| `ControlRigUnverifiedPinValueRead` | `GetPinValue` が、秘密かどうかを判定できなかったピン（`UnverifiedMaskedFields` に載るもの。例: 関数グラフのローカル変数や入力引数を読む変数ノードの値ピン）の平文を `SecretFieldValues` で返せるようにする。秘密の値の設定の 3 層（[秘密値の平文での読み取り](#秘密値の平文での読み取り) を参照）に加えて要る。既定で拒否。無いときは値を伏せたまま、`SecretValuesWithheldReason` に `SecretValuesWithheldUnverified` を付ける。問うのはそのようなピンのときだけで、3 層が平文を許しているときに限る。Toolset ブリッジ `Toolset.Editor.ControlRig.GetPinValue` も同じように判定する |
 | `ControlRigCustomTypeEdit` | RigVM unit 構造体または rig ヒエラルキー component 構造体が、このドメインの受け入れる 7 モジュール（`/Script/ControlRig` / `/Script/ControlRigDynamics` / `/Script/ControlRigPhysics` / `/Script/ControlRigSpline` / `/Script/ControlRigModules` / `/Script/AnimationCore` / `/Script/Engine`）の外に由来する場合に必要 — プロジェクトやプラグインが宣言した構造体が該当します。`AddGraphNode` / `AddComponent` だけでなく、そうした構造体の既存ノード・既存コンポーネントに対するその後の操作すべてをゲートします。このドメインには「危険な型」用の別 Capability は存在せず、control type はゲートされません。`Deprecated` / `Hidden` が付いた構造体はどの Capability を持っていても拒否されます。[コマンドリファレンス — UAIP.Editor.ControlRig](commands.md#uaipeditorcontrolrig) を参照。`CreateAsset` の `FactoryParams.ParentClass` で名指しする親クラスもこの Capability の対象です。エンジン同梱の親クラスはすべて上記 7 モジュール内にあるため従来どおり権限不要で、Capability が要るのは、プロジェクトやサードパーティプラグインが宣言するネイティブの `UControlRig` 派生クラスと、プロジェクト内の Control Rig ブループリントの生成クラス（`/Game/….CR_Foo_C`）です。⚠️ この経路だけは、拒否が `CapabilityNotAvailable` ではなく `InvalidParams` で返り、不足している Capability 名はメッセージ本文に入ります — [コマンド — Capability でゲートされたカスタム型](commands.md#capability-でゲートされたカスタム型) を参照 |
 
 #### AI システム
@@ -415,8 +457,8 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 
 | Capability | 有効になる操作 |
 |---|---|
-| `ViewModelBindingEdit` | WidgetBlueprint への View Binding / View Event の追加・削除・更新、ViewModel プロパティの追加・削除（`AddViewBinding`、`RemoveViewBinding`、`UpdateViewBinding`、`SetViewBindingEnabled`、`SetViewBindingConversionFunction`、`SetViewBindingExecutionMode`、`AddViewEvent`、`RemoveViewEvent`、`AddViewModelProperty`、`RemoveViewModelProperty`） |
-| `ViewModelSourceEdit` | WidgetBlueprint への ViewModel 接続管理（`AddViewModelToWidget`、`RemoveViewModelFromWidget`、`RenameViewModelInWidget`、`ReparentViewModelInWidget`、`SetViewModelSource`） |
+| `ViewModelBindingEdit` | WidgetBlueprint への View Binding / View Event の追加・削除・更新、ViewModel プロパティの追加・削除（`AddViewBinding`、`RemoveViewBinding`、`UpdateViewBinding`、`SetViewBindingEnabled`、`SetViewBindingConversionFunction`、`SetViewBindingExecutionMode`、`AddViewEvent`、`RemoveViewEvent`、`AddViewModelProperty`、`RemoveViewModelProperty`）。`SetAssetProperty` で WidgetBlueprint の MVVM のビューを書くときにも、`ViewModelSourceEdit` とあわせて要る |
+| `ViewModelSourceEdit` | WidgetBlueprint への ViewModel 接続管理（`AddViewModelToWidget`、`RemoveViewModelFromWidget`、`RenameViewModelInWidget`、`ReparentViewModelInWidget`、`SetViewModelSource`）。`SetAssetProperty` で WidgetBlueprint の MVVM のビューを書くときにも、`ViewModelBindingEdit` とあわせて要る |
 
 #### Curve 編集
 
@@ -431,11 +473,16 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `GameplayTagEdit` | プロジェクトタグテーブルへのタグ追加・削除・リネーム |
 | `GameplayTagRestrictedEdit` | Restricted タグの追加・削除・リネーム（`AddRestrictedGameplayTag`、および `RemoveGameplayTag` / `RenameGameplayTag`（ネイティブと Toolset ブリッジの両方）で、対象タグ、または強制削除・子を含むリネームではその子孫のいずれかが Restricted の場合） |
 | `GameplayTagExternalSourceEdit` | タグの追加・削除・リネームが、プロジェクト自身の `Config/` の外にある INI 置き場（エンジンのプラグイン、Fab やサードパーティのプラグイン、プロジェクト自身のゲームプラグインや Game Feature プラグイン）へ書き込む場合に、`GameplayTagEdit` / `GameplayTagRestrictedEdit` に加えて必要。`AddGameplayTag`・`AddRestrictedGameplayTag`・`RemoveGameplayTag`・`RenameGameplayTag`、および Toolset の `AddTag` / `RemoveTag` / `RenameTag` をゲートする。プラグインの検索パス経由で見つかる Restricted な置き場で、書き込み先が実際の読み込み元と一致しないものは、この Capability の有無に関係なく `NotAllowed` で拒否される — 書き込み先が読み込み元と異なる場所になってしまうため、付与しても解消しない。[コマンド — UAIP.Editor.GameplayTags](commands.md#uaipeditorgameplaytags) を参照 |
-| `GameFeatureCreate` 🧩 | GameFeature Plugin 定義の作成・スキャフォールディング（`GameFeatures` + `GameFeaturesEditor` プラグイン必須） |
+| `GameFeatureCreate` 🧩 | GameFeature Plugin 定義の作成・スキャフォールディング（`GameFeatures` + `GameFeaturesEditor` プラグイン必須）。`DisableSave` が有効なときは拒否 |
+| `GameFeatureDelete` 🧩 | プロジェクトの `Plugins/GameFeatures/` にあるコンテンツのみの GameFeature Plugin を削除 — `DeleteGameFeaturePlugin`（`GameFeatures` + `GameFeaturesEditor` プラグイン必須）。`DisableSave` が有効なときは拒否。基本の許可で、別のプラグインやリンクも含むプラグインは、下の Capability も要ります |
+| `GameFeatureDeleteNestedPlugin` | `DeleteGameFeaturePlugin` が、プラグインのフォルダに別のプラグインがある、または別のプラグインの中にあるときに、加えて要る Capability。既定で拒否。⚠️ エンジンに登録されていない内側のプラグインは、**コードのモジュールを持っていても**ふつうのファイルとして消えます（登録が無ければ、コマンドにはそれがプラグインだと分かる手掛かりが無いため）。登録済みで無効な内側のプラグインは外側と一緒にプラグイン一覧から外れ、有効なままのものは削除を止めます（`PreconditionFailed`）。付与すると、別のプラグインの中にあるプラグインを単独で消せるようになります |
+| `GameFeatureDeleteLinks` | `DeleteGameFeaturePlugin` が、プラグインのフォルダにリンク（ジャンクション、シンボリックリンク、そのほか reparse point）がある、またはその上のリンクによって実体の場所が `Plugins` フォルダか `Plugins/GameFeatures` フォルダの実パスの外に出る（たとえば `Plugins/GameFeatures` 自身が別の場所を指す）、または `Plugins` フォルダ自身がプロジェクトの外へのリンクで実体の場所がプロジェクトの外にある（リンク先がプロジェクトの中なら何も要りません）ときに、加えて要る Capability。既定で拒否。⚠️ プラグインの**中**のリンクはリンクだけが消え、リンク先の中身は残ります。プラグインの**上**のリンクは違い、リンクが導く先の実体のプラグインが消え、それはプロジェクトの外にあることもあります。この Capability があっても、プラグイン自身のフォルダがリンクのとき、実体の場所が `GameFeatures` フォルダ・`Plugins` フォルダ・プロジェクトのフォルダ・エンジンのフォルダ・それらの親フォルダ・ドライブのルートと同じか、その上にあるとき、`Plugins` フォルダか `GameFeatures` フォルダの外、またはプロジェクトの外にあるのにそこへ導いたリンク（`Plugins` フォルダ自身を含む）を見つけられないときは `NotAllowed` で拒否します |
+| `GameFeatureDeleteOutsideGameFeatures` | `DeleteGameFeaturePlugin` が、プロジェクトの `Plugins/` の下にあるが `Plugins/GameFeatures/` の外にあるコンテンツのみのプラグイン（エンジンが GameFeature と扱わない一般のプラグイン。古い版が `Plugins/` 直下に作ったものを含む）を削除するときに、加えて要る Capability。既定で拒否。付与が無いときは `CapabilityNotAvailable`（明示的に拒否していれば `PolicyViolation`）で拒否します。何を付与しても `NotAllowed` で断るもの: `Plugins/` の外のプラグイン、`Plugins` フォルダ自身、`Plugins/GameFeatures` フォルダ自身とその上のフォルダ。コードのモジュールを持つプラグインも拒否のままで、この Capability が開くプラグインには GameFeature かどうかの確認は行いません。⚠️ 削除はプラグインを一覧から外してフォルダを消しますが、エンジンのマウントポイントはエディタを再起動するまで残ります。また、有効なプラグインはプラグインマネージャーが一覧から外さないことがあり、そのときは `Warnings` に載ります |
+| `GameFeatureDeleteUnscanned` | `DeleteGameFeaturePlugin` が、削除の前のプラグインのフォルダの走査を、中のフォルダを一覧にできないために最後までできなかったときに、加えて要る Capability。このときコマンドは、中にあるかもしれないリンクや別のプラグインを見られないので、この Capability に加えて `GameFeatureDeleteLinks` と `GameFeatureDeleteNestedPlugin` も要求します。既定で拒否。付与が無いときは `CapabilityNotAvailable`（明示的に拒否していれば `PolicyViolation`）で拒否します。プラグイン自身のフォルダを調べられないときは、何を付与しても `NotAllowed` で断ります。⚠️ 一覧にできないフォルダのところで削除が途中で止まり、プラグインを一覧から外した後にファイルの一部がディスクに残ることがあります |
 | `GameplayCueMutation` 🧩 | GameplayCue タグの追加・削除、GameplayCueNotify アセットの作成、アクターへの Cue 実行（`GameplayAbilities` プラグイン必須） |
 | `EnhancedInputEdit` | Input Action / Input Mapping Context アセットの編集 — マッピング・Modifier・Trigger の追加・削除・変更 |
 | `EnhancedInputReferenceEdit` | Trigger または Modifier のプロパティが、あらゆる種類の参照（オブジェクト / クラス / ソフト / ウィーク / レイジー / インターフェース参照、デリゲート、フィールドパス）であるか、それを内包する値へ書き込む場合に `EnhancedInputEdit` に加えて必要。書き込み実行時にプロパティの型から決まるため、マッピング mutator 群の宣言する `RequiredCapabilities` には現れない — [Level / アクター / プロパティ編集](#level--アクター--プロパティ編集) の Note を参照。構造体・コンテナの書き込みにはさらに `PropertyStructuredEdit` が必要 |
-| `EnhancedInputCustomTypeEdit` | Trigger / Modifier のクラスが `/Script/EnhancedInput` モジュールの外に由来する場合に `EnhancedInputEdit` に加えて必要 — プロジェクトモジュール、プラグインモジュール、`UInputTrigger` / `UInputModifier` の Blueprint 派生クラスが該当する。そうしたクラスを名指しする `SetInputMappingTrigger` / `SetInputMappingModifier` / `SetInputActionTrigger` / `SetInputActionModifier` に加えて、そのインスタンスを保持する対象に対する `RemoveInputMapping` / `DeleteInputAction` / `DeleteMappingContext` もゲートする。コマンドではなくリクエストが名指しした（あるいは対象が保持していた）クラスから決まるため、どのハンドラの宣言する `RequiredCapabilities` にも現れない。このドメインに「危険な型」用の別 Capability は存在せず、2 種の Trigger — `UInputTriggerChordAction` / `UInputTriggerChordBlocker` およびその派生 — はどの Capability を持っていても拒否される。[コマンドリファレンス — UAIP.Editor.EnhancedInput](commands.md#uaipeditorenhancedinput) を参照 |
+| `EnhancedInputCustomTypeEdit` | Trigger / Modifier のクラスが `/Script/EnhancedInput` モジュールの外に由来する場合に `EnhancedInputEdit` に加えて必要 — プロジェクトモジュール、プラグインモジュール、`UInputTrigger` / `UInputModifier` の Blueprint 派生クラスが該当する。そうしたクラスを名指しする `SetInputMappingTrigger` / `SetInputMappingModifier` / `SetInputActionTrigger` / `SetInputActionModifier` に加えて、そのインスタンスを保持する対象に対する `RemoveInputMapping` / `DeleteInputAction` / `DeleteMappingContext` もゲートする。コマンドではなくリクエストが名指しした（あるいは対象が保持していた）クラスから決まるため、どのハンドラの宣言する `RequiredCapabilities` にも現れない。このドメインに「危険な型」用の別 Capability は存在せず、`UInputTriggerChordBlocker`（Chorded Action が内部で生成する Trigger）はどの Capability を持っていても拒否される。`UInputTriggerChordAction` は他の Enhanced Input の Trigger と同じく受け付けられ、その `ChordAction`（Input Action への参照）の書き込みには `EnhancedInputReferenceEdit` が要る。[コマンドリファレンス — UAIP.Editor.EnhancedInput](commands.md#uaipeditorenhancedinput) を参照 |
 
 #### エディタ操作
 
@@ -446,6 +493,59 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `LogVerbosityEdit` | ログ詳細レベルの変更 — `SetLogVerbosity` native および `Toolset.Editor.Toolset.Logs.SetVerbosity` bridge |
 | `ViewportAnnotationCapture` | ワールド座標ラベル付きビューポート画像のキャプチャ — `CaptureViewportImageAnnotated` |
 | `EditorTabSpawn` | Slate の `FTabId` でエディタタブを開く・閉じる・列挙する — `OpenTabById`、`CloseTabById`、`ListSpawnableTabs`。DefaultAllow の `EditorWorkspaceControl`（`AssetPath` でアセットエディタタブのみに到達する）とは別物です。任意の `TabId` を指定できるということは第三者プラグインが登録したデリゲートを実行しうるということであり、該当するのは開く側の `CanSpawnTab` / `OnSpawnTab`、閉じる側の `OnCanCloseTab` / `OnTabClosed`、読み取り専用の列挙側の表示名・ツールチップ取得（`TAttribute` の bound デリゲート）です。これはメニューに一切表示されない内部タブも対象に含みます。`ListSpawnableTabs` を DefaultAllow にせず同じ Capability を要求するのは、列挙自体が同じデリゲート実行リスクを持つことと、一覧の唯一の用途が開閉の判断であることによります。閉じる操作は**このセッションが開いたタブに限定されません** — 人間が作業のために開いているものを含め、いま開いている任意のタブを閉じられます。また閉じる操作はタブ許可リストを一切通さないため、許可設定を変更した後でも後始末が失敗することはありません |
+| `EditorWindowStateControl` | エディタのメインウィンドウの最小化と、最小化からの復元 — `SetEditorWindowState`。ユーザーが見ているウィンドウを動かすため、DefaultAllow にしない。ユーザーが別のアプリで作業しているときは、Windows がエディタをそのアプリの後ろに置くので、復元してもキーボードフォーカスは奪わない。デモ版にも登録され、コマンドがデモ版に含まれるので「使えない」の印は付かない。デモ版の `DefaultUAIP.ini` は付与しないため、使うには `+AllowedCapabilities=EditorWindowStateControl` を足す |
+| `EditorWidgetPasswordTextRead` | `IncludeFieldValues: true` で呼んだ `SnapshotUI` の応答に、パスワード欄（とパスワード欄かどうか判定できない欄）の平文を含めます。安全設定 `AllowPasswordFieldRead` もオンでなければ効きません（下記参照）。値は応答の中だけに入り（最大 16 件・各 256 文字）、保存されるスナップショット・ログ・完了通知には出ません |
+
+**エディタでパスワード欄を読む — `AllowPasswordFieldRead` と `EditorWidgetPasswordTextRead`。** `IncludeFieldValues: true` で呼んだ `SnapshotUI` が、パスワード欄と、パスワード欄かどうか判定できない欄（複数行の入力欄はこれに当たります）の平文を返すのは、次の**両方**が成り立つときだけです。安全設定 `AllowPasswordFieldRead` がオンであること、セッションが Capability `EditorWidgetPasswordTextRead` を持つこと。どちらかが欠けていると値は伏せられ、応答が理由を示します（`Result.SecretValuesWithheldReason`）。設定がオフなら Capability の有無によらず `PasswordTextWithheldBySafetyPolicy`、設定がオンで Capability が無ければ `PasswordTextWithheld` です。`SnapshotUI` 自体は `EditorWidgetPasswordTextRead` を要求しないので、コマンドは失敗しません。
+
+- `[UAIP.SafetyPolicy]` の `AllowPasswordFieldRead=True` にするか、エディタを `-uaip-policy-allow-password-field-read=True` で起動します。起動時に読まれ、`ReloadCapabilities` では再読み込みされないので、エディタを再起動してください。Capability は `+AllowedCapabilities=EditorWidgetPasswordTextRead` で付与します。
+- `AllowRuntimePasswordFieldRead`（ゲームビューポート用。後述）や、書き込みの `AllowPasswordFieldWrite` とは独立しています。`QueryCapabilities` は状態を `OperationalConstraints.IsPasswordFieldReadAllowed` と `OperationalConstraints.IsRuntimePasswordFieldReadAllowed` として報告します。
+- 値は応答（`Result.PasswordFieldValues`）にだけ入り、保存されるスナップショット・ログ・完了通知には出ません。応答を受け取った AI クライアントがそれをどうするかは、UAIP の外の話です。
+- ブリッジの `Toolset.Editor.SlateInspector.SnapshotUI` は、何を許可しても入力欄の値の読み取りを解禁しません。代わりにその行を伏せます。この伏せ方は最善の努力なので、パスワード欄にはネイティブの `SnapshotUI` を使ってください（[コマンド](commands.md#uaipeditoruiautomation) を参照）。
+- UAIP が守るのは、AI クライアントとエディタの間の境界です。エディタのプロセスの中で動くコード（他のプラグインを含む）は、パスワード欄を含むすべての Slate のウィジェットを読めるので、信頼する側として扱います。そのようなコードが、UAIP がラベルを読む場所に置いた値（秘密を束縛したアクセシビリティ文字列・ヒント文・`Tag`、Slate Inspector の Toolset に登録したラベルの抽出器やウィジェットのロール）は、UAIP の保護の対象外です。
+
+#### 別のセッションのモーダルダイアログへの回答
+
+| Capability | 解禁されるもの |
+|---|---|
+| `EditorDialogCrossSessionAnswer` | モーダルダイアログが開いている間に、そのダイアログで書き込みを止められたセッション以外から、答えるために必要な書き込みコマンドを実行する |
+
+既定では、ダイアログが開いている間に書き込みコマンドを実行できるのは、書き込みを止められたセッション（`ClickWidget` が開いたダイアログなら、そのクリックを送ったセッション）だけです。`ClickWidget` などを `StarvedTickAllowList` に載せていても同じです。この Capability を持ち、ロールの適用後も持っているセッションは、**止められたコマンドも実行できるときに限り**（`ClickWidget` が開いたダイアログでは `ClickWidget` も）実行できます。持っているだけで、そのセッションが本来できる以上のことができるようにはなりません。両方を満たさなければ `NotAllowed` で断られ、ボタンは押されません。
+
+- `SessionId` を付けない要求は使えません。`SessionId` の無い REST の要求は呼び出し元を特定できない別のセッションとして扱われ、この Capability を設定しても別のセッションのダイアログには答えられません。
+- 結果は移りません。`BlockedCommand` と止まった書き込みの最終結果は、答えたセッションへは返りません。
+- `[UAIP.SafetyPolicy]` に `+AllowedCapabilities=EditorDialogCrossSessionAnswer` を設定して付与します。DefaultDenied です。誰も答えられないダイアログは、代わりに `[UAIP.ModalDialog] UnansweredTimeoutSeconds` で閉じられます（[設定](config.md#uaipmodaldialog--応答のないダイアログの打ち切り既定で無効)を参照）。
+- そもそも答えられるコマンドは、先に `StarvedTickAllowList` で決まります。[書き込みが開いたモーダルダイアログ](commands.md#書き込みが開いたモーダルダイアログ)を参照してください。
+
+#### 別ウィンドウを閉じる
+
+| Capability | 解禁されるもの |
+|---|---|
+| `EditorForceCloseFloatingWindows` | `OpenAsset`・`CloseAsset`・`CloseEditorTab`・`OpenTabById`・`CloseTabById`・`SelectAssets`・`SetContentBrowserPath`・`FocusEditorTab`（`GraphName` 付き） が、安全のために既定で断っている場面で、持ち主の後始末を飛ばす方法で別ウィンドウを閉じる |
+
+UE 5.8 未満の、描画しないエディタ（`-RenderOffScreen` を付けていないもの）では、別ウィンドウが残ったままだと次のレイアウトの保存でエディタが終了するため、これらのコマンドは次の 2 つの場面で `NotAllowed`（`Reason: Headless`）で断ります（[別ウィンドウが理由で断られるとき](commands.md#別ウィンドウが理由で断られるとき)を参照）。
+
+- コマンドと関係のない別ウィンドウが開いている。
+- `CloseTabById` で、対象のタブの別ウィンドウに、他のタブ・子ウィンドウ・中にタブを抱えるタブ（たとえばアセットエディタ）もある。
+
+この Capability を持つセッションでは、断る代わりにコマンドを実行します。先に別ウィンドウを安全な方法で閉じ（`CloseTabById` ではウィンドウごと）、そのままコマンドを続けます。応答の `Result.ClosedFloatingWindows` に閉じたものが載る（各要素は `WindowTitle` と `TabIds`）ので、呼び出し側は持ち主の後始末が走っていないことが分かります。閉じられないウィンドウがあったときは、`InternalError` と `Result.RemainingFloatingWindows` を返すので、すぐに `ShutdownEditor` で終了してください。
+
+- `[UAIP.SafetyPolicy]` に `+AllowedCapabilities=EditorForceCloseFloatingWindows` を設定して付与します。DefaultDenied です。デモ版にも登録され、「使えない」の印は付きません。UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きでは何も断らないので、付与しても効果はありません。
+- どのコマンドも必須の Capability には載せていません。コマンドはこの Capability が無くても呼べ、呼び出したセッションについて確認します。`SessionId` を付けない要求は使えません。
+- 解禁するのは、安全のために断っている場面だけです。何かを閉じても避けられない拒否は解禁しません。メインウィンドウに置き場所が無く別ウィンドウに出てしまうタブ（`OpenTabById`、または別ウィンドウに開くコンテンツブラウザ）、エディタを入れるレベルエディタのタブが無い `OpenAsset`、新しい別ウィンドウが残る操作です。これらは付与していても `Reason: Headless` で断られます。
+
+付与しても残る危険が 2 つあるので、必要なセッションにだけ付与してください。
+
+1. **壊したアセットエディタの登録が残ることがあります。** アセットエディタ（中にタブを抱えるタブ）をこの方法で閉じると、そのエディタ自身の閉じる処理が走りません。エディタのアセットエディタ管理に壊れたツールキットが登録されたまま残ることがあり、そのエディタに触れる後続の操作が影響を受けることがあります。
+2. **他の持ち主のモーダルウィンドウを壊すことがあります。** 別ウィンドウを破棄すると、そこから開いたモーダルウィンドウも一緒に破棄されます。別の持ち主がその中でモーダルループを回していると、その持ち主の処理が想定外の終わり方をすることがあります。
+
+#### Play セッション中の Toolset ブリッジ
+
+| Capability | 有効になる操作 |
+|---|---|
+| `ToolsetEditDuringPlaySession` | Play / Simulate セッションの最中に、エディタを変更する Toolset ブリッジのコマンドを実行する。デモ版には含まれません（`NotInThisEdition`） |
+
+書き込みを行う Toolset ブリッジのコマンドは、Play / Simulate セッションの最中は、引数の検査より前に `NotAllowed` で断られます。メッセージは理由を示し、この Capability の名前を挙げます。読み取りだけのブリッジと、セッション中に動くことを意図したもの（Play の開始と停止、Slate Inspector の UI 操作、アセットの選択と開く操作、ログ詳細度の設定、Animation Assistant の再生・表示のコマンド、Niagara の `SetSystem` / `SetVariable`、ControlRig のアニメーションモード設定と選択のコマンド）は対象外です。`ToolsetEditDuringPlaySession` は DefaultDenied です。`+AllowedCapabilities=ToolsetEditDuringPlaySession` で付与します（`ReloadCapabilities` で再起動なしに反映できます）。セッションを伴わない呼び出し（`SessionId` なしの直接の HTTP リクエスト）は、これでは解禁されません。`DeniedCapabilities` にこの名前を書いたセッションは、許可を求める案内なしで断られます。
 
 #### スクリプト実行
 
@@ -455,18 +555,38 @@ chooser テーブルの読み取りは DefaultAllow（`EditorInspect`）であ�
 | `PythonCommandExecution` 🧩 | `@uaip_command` で動的登録された Python コマンドの実行（`PythonScriptPlugin` 必須） |
 | `PythonExtensionReload` 🧩 | 登録済み Python コマンドの再スキャン・リロード（`ReloadPythonCommands`；`PythonScriptPlugin` 必須）。エディタ起動時にプロジェクトの `Scripts/UAIPCommands/**/*.py` を自動スキャンするのにもこの Capability が必要です — 許可されていなければ起動時に Python コマンドは 1 つも登録されません。許可してから `ReloadPythonCommands` を呼ぶ（または、既に許可した状態で再起動する）と読み込まれます |
 
+#### シナリオ実行
+
+| Capability | 有効になる操作 |
+|---|---|
+| `ScenarioSensitiveValueToUndeclaredParam` | シナリオが機微な値（前のステップの応答のうち、コマンドが機微と宣言した部分。`SnapshotUI` の `PasswordFieldValues` など）を、受け取るコマンドが機微な値の行き先として宣言して**いない**引数へ渡せるようにします。無ければ、そのステップは実行される前に拒否されます（`PolicyViolation`、`Result.Reason: SensitiveValueToUndeclaredParam`）。キーは大文字小文字も含めて完全一致で比べます。宣言されている行き先は [機微な値と伏せる場所](commands.md#機微な値と伏せる場所) を参照してください |
+
+> ⚠️ **この Capability を付与すると、付与されたセッションのシナリオについて、機微な値の保護が完全に解除されます。** 受け取ったコマンドは、値を応答の `Result` や `Data`、artifact、自身のログに書くことができ、後のステップがその応答を読んで値を運び直すこともできます（この連鎖を UAIP は検査しません）。UAIP が引き続き保証するのは、そのステップの `ErrorMessage` が固定の文に置き換わることと、記録された要求が伏せられたままであることだけです。パスワードの平文が通る経路は 1 つだけ、という説明は、そのセッションでは成り立ちません。AI クライアントがその値を見てよい場合に限り、必要なセッションにだけ付与してください。
+
+`[UAIP.SafetyPolicy]` で有効にします。`AllowCapabilityReload=True` の環境では `UAIP.Core.ReloadCapabilities` で反映できます。
+
+```ini
+[UAIP.SafetyPolicy]
+; +AllowedCapabilities=ScenarioSensitiveValueToUndeclaredParam
+```
+
+
 #### Runtime — 制限付き操作
 
 | Capability | 有効になる操作 |
 |---|---|
 | `RuntimeCVarRead` | エンジン全体の CVar 値の読み取り — `UAIP.Runtime.Engine.CVar.GetConsoleVariable`、`SearchConsoleVariables`（`UAIPRuntimeEngineManagement` 所有） |
 | `RuntimeCVarWrite` | CVar 値の設定・リセット — `UAIP.Runtime.Engine.CVar.SetConsoleVariable`、`ResetConsoleVariable`（機密名・`ECVF_ReadOnly` は拒否、`ECVF_Cheat` 付きはさらに `AllowCheatCVarWrite` SafetyPolicy スイッチが必要、`UAIPRuntimeEngineManagement` 所有） |
-| `CVarInspect` | センシティブパターンフィルタリング付き CVar 検索 — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` bridge（`UAIPEditorEngineManagement` 所有） |
+| `CVarInspect` | センシティブパターンフィルタリング付き CVar 検索 — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` bridge と、その非推奨の別名 `Toolset.Editor.Toolset.World.SearchCVars`（どちらも同じ Capability で動作。`UAIPEditorEngineManagement` 所有） |
 | `RuntimeActorManipulation` | PIE 中のアクタースポーン・破棄・テレポート・Possess |
 | `RuntimeExecCommand` | `UWorld` 経由のランタイムコンソールコマンド実行 |
-| `RuntimeInputInjection` | PIE へのキーボード / Enhanced Input / レガシー入力イベントの注入（`InjectInputKey`、`InjectEnhancedInputAction`、`AddMappingContext`、`SetInputMode`、`FlushInput` など） |
+| `RuntimeDataLayerControl` | 実行中のプレイワールドにおける World Partition Data Layer のランタイム状態変更 — `UAIP.Runtime.World.SetDataLayerRuntimeState` のみが要求します。状態の観測（`ListDataLayerRuntimeStates`、`GetDataLayerRuntimeState`）、ストリーミング完了の待機（`WaitForDataLayerStreaming`）、プレイワールドの列挙（`ListPlayWorlds`）には Capability は一切不要です。レベルアセット側の Data Layer を編集する `WorldPartitionEdit` / `DataLayerEdit` とは別に切り出しています — こちらは実行中セッションのロード状態だけを変更し、ディスクには何も保存しません |
+| `RuntimeInputInjection` | PIE へのキーボード / Enhanced Input / レガシー入力イベントの注入（`InjectInputKey`、`InjectEnhancedInputAction`、`AddMappingContext`、`SetInputMode`、`FlushInput` など）実行中のゲームの UI を操作するのは別の Capability `RuntimeUIInputInjection` です（[Runtime ゲームビューポートの UI](#runtime-ゲームビューポートの-ui) を参照） |
 | `RuntimeNiagaraMutation` 🧩 | Runtime での Niagara ユーザー変数設定・Niagara システム差し替え（`SetVariable`、`SetSystem`；`Niagara` プラグイン必須） |
+| `RuntimeGASManipulation` 🧩 | PIE 中の GAS 状態の変更 — `GrantAbility`、`RemoveAbility`、`ClearGrantedAbilities`、`ApplyEffect`、`RemoveEffect`、`ClearActiveEffects`、`SetAttributeValue`、`ResetAttributesToBase`、`SendGameplayEvent`（`GameplayAbilities` プラグイン必須）。GAS 状態の読み取りは DefaultAllow の `RuntimeGASInspect` |
 | `GauntletExecution` | Gauntlet 自動テストセッションの起動 |
+| `GauntletUnrestrictedArguments` | `RunGauntletTest` で、テストの対象や子プロセスの動作を変える引数を許可します。テスト名に付ける括弧のテストごとのパラメータの構文、危険なキー、テスト名で始まるキー、絶対パス / UNC / URL などの値（`-` と英字で始まる値を含む）が対象です。引用がそのまま運べるものも許可します。空白や `, ; = ( )` などの記号・非 ASCII の文字を含む値、広げた形のテスト名（前後に空白がある名前、`; = +` などの記号や非 ASCII の文字を含む名前、空白や入れ子の括弧を含むテストごとのパラメータ: `Test1, Test2`、`A(p2=foo bar)`、`Ns.Outer+Inner`）、`. - : / +` も使うキーと、数字や `_` で始まるキーです。テスト名の `,` はテストの区切り、`( )` はテストごとのパラメータの括弧なので、`A.Test,B.Test` は Capability なしで通ります。`& \| < > % ^`、`"`、`\`、`..`、制御文字と双方向の制御文字、孤立サロゲート、長さの上限は、この Capability があっても拒否されたままです。**この Capability の届く範囲は広がりました。すでに持っているセッションも上のすべてを渡せ、`profile` キーを通すと Gauntlet のプロファイルファイルが別の AutomationTool コマンドを実行し、環境変数を設定できます。** UAIP はファイルのパスを検査せず（存在するかも、絶対パスかどうかも）、存在しないパスは Gauntlet が黙って無視します。信頼できるセッションにだけ付与してください。広げた文字で書いたキーは成果物の `TestParamKeys` に記録されるので、キーに秘密を入れないでください |
+| `GauntletUnsafeProjectPath` | `RunGauntletTest` で、`&` を含むプロジェクトのパス（またはレポートのディレクトリの元になるプロジェクトの `Saved` ディレクトリ）を許可します。持っていないと `CapabilityNotAvailable` で失敗します（`DeniedCapabilities` に入っていれば `PolicyViolation`）。**付与すると、テストに加えて、`&` より後ろの文字列を `cmd.exe` が独立したコマンドとして実行します**。信頼できるプロジェクトの場所にだけ付与してください。レポートのディレクトリに `&` があるときは、呼び出し側がそのコマンドに語句を足せないよう、セッション ID を ASCII の英数字と `-` `_` `/` に限り、それ以外の文字は `PolicyViolation` で拒否します。ほかのパスの規則は解きません（プロジェクトのパスの `"` `\|` `<` `>`、`&` `%` `^` を含むエンジンのパスは拒否されたまま）。`GauntletUnrestrictedArguments` でも付与されません |
 
 #### Runtime Insights トレース採取
 
@@ -515,6 +635,329 @@ ExternalTraceDirectory=D:/TraceDrop
 > ⚠️ **シンボリックリンクとジャンクションは解決されません。** `ExternalTraceDirectory` の中に置かれた、外を指すリンクはそのまま辿られます。`ExternalTraceDirectory` には **UAIP 専用の隔離ディレクトリ**を指定してください（共有のドロップ先・ユーザープロファイル配下・プロジェクトディレクトリを指定しないこと）。
 
 > **これはスコープの限定であり、構造的な保証ではありません。** `RunEditorPythonScript` からはエンジンのトレースシステムへ依然として到達できます。Python 実行は capability 層を迂回する既知の経路であり、本モジュールではなく当該コマンドが要求する Capability（`EditorExecution` と、DefaultDenied の `ScriptExecution`）の付与判断で管理されます。`GetTraceStatus` は `TracingToServer` のようなネットワーク宛先を報告しえますが、これは他者のトレースに対する可観測性であって、UAIP 自身が作り出せる状態ではありません。
+
+#### Runtime SaveGame スロット
+
+セーブスロットのコマンド（[`UAIP.Runtime.SaveGame`](commands.md#uaipruntimesavegame)）の Capability は、何を見せるか・何を変えるかで分かれています。スロットとスナップショットの一覧、スロットのメタ情報の取得は DefaultAllow（上記の `RuntimeSaveGameInspect`）です。以下の 3 つは既定で無効です。このモジュールはプラグインに依存しないため、どれにも 🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `RuntimeSaveGameContentRead` | スロットに保存されたプロパティの値の読み出し — `DumpSaveGame` と、`BaseSlotName` を指定した `WriteSaveGame`（一部書き換えは、先に元のスロットを読んで復元するため）。セーブファイルには個人情報が入りうるうえ、ランタイムでの秘密の伏せは判定であって保証ではないため（[秘密値の平文での読み取り](#秘密値の平文での読み取り) の **ランタイムのダンプ**）、既定で無効です。`WriteSaveGame` では `BaseSlotName` の有無で判定するため、そのコマンドの `RequiredCapabilities` には現れません |
+| `RuntimeSaveGameWrite` | スロットの削除・複製・書き込み・退避・復元と、スナップショットの削除 — `DeleteSaveGame`、`CopySaveGameSlot`、`WriteSaveGame`、`SnapshotSaveGame`、`RestoreSaveGame`、`DeleteSaveGameSnapshot`。どれもユーザーのデータを置き換える・消す、またはその生のバイト列を UAIP の作業ディレクトリへ複製するため、既定で無効です。削除したスロットは元に戻せません |
+| `RuntimeSaveGameUnvalidatedWrite` | 複製・復元で保存しようとするバイト列の、ヘッダの確認を省く — `CopySaveGameSlot` と `RestoreSaveGame` の `SkipValidation: true`。`RuntimeSaveGameWrite` に**加えて**必要です。引数の値で判定するため、どちらのコマンドの `RequiredCapabilities` にも現れません。スナップショットの変わっていないバイト列を退避元のスロットへ戻す場合は、確認が自動的に省かれるため不要です |
+
+> ⚠️ **`RuntimeSaveGameWrite` だけで、セーブの中身を取り出せます。** `SnapshotSaveGame` はスロットの生のバイト列を UAIP 作業ディレクトリの `SaveGameSnapshots` フォルダへ複製し、そのディレクトリを読める人なら誰でも読めます。エンジンの形式のセーブでは、そのバイト列の中にプロパティ名や文字列の値が読める形で入っています。`RuntimeSaveGameContentRead` を与えなければ `DumpSaveGame` でスロットを JSON にすることはできませんが、`RuntimeSaveGameWrite` を持つセッションがスナップショットのファイル経由で同じ中身に届くことは防げません。`RuntimeSaveGameWrite` は、セーブを読まれても構わない環境でだけ与えてください。
+
+> ⚠️ **ランタイムでの秘密の伏せは、判定であって保証ではありません。** `DumpSaveGame` は、秘密と判定した欄（メタデータ・秘密らしい名前・型による）を `***` にして `Result.MaskedFields` に並べますが、そうした手がかりの無い欄は保存されたとおりに返します。対処は、セーブを読まれてよい場合を除いて `RuntimeSaveGameContentRead` を無効のままにしておくことです。`DumpSaveGame` の artifact は Artifact の自動 GC が消すまで artifact ストアに残る（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）ため、呼び出しが終わった後も残ります。
+
+> **スナップショットは削除するまで残ります。** スナップショットはスロットの生のバイト列をそのまま持ち、`DeleteSaveGameSnapshot` で削除するまで UAIP の作業ディレクトリに残ります。件数や合計サイズの上限は無く、自動では削除されません。
+
+> ⚠️ **`SkipValidation` を使うと、ゲームを止めるスロットができることがあります。** 確認を省くと、ゲーム独自形式・壊れている・対応していない版・クラスが読み込まれていないスロットでも任意のスロットへ複製・復元でき、それを後で読み込んだゲームが止まることがあります。省けないのはサイズの上限だけです。
+
+**確かめる範囲と、残るリスク。** UAIP が書くスロットは、SaveGame のヘッダ（形式・バージョン・クラス）まで確かめるため、ゲームが読み込んだときにヘッダが原因で止まることはありません。本体の値は確かめません。ヘッダの確認も省くのは 2 つの場合です。スナップショットの変わっていないバイト列を退避元のスロットへ戻す場合（以前そこにあった中身を戻すだけ）と、`SkipValidation` の場合です。UAIP 自身がスロットの本体を読むとき（`DumpSaveGame` と、`BaseSlotName` を指定した `WriteSaveGame`）は、クラス側で型が変わったプロパティによってエンジンが止まる既知の経路を、読む前に拒否します — [コマンドリファレンス — 本体を読む前に拒否するもの](commands.md#本体を読む前に拒否するもの) を参照してください。ただし、独自の方法で直列化する構造体（`InstancedStruct` など）の内側までは**確かめません**。また、壊れた本体による読み込みの停止をすべて防ぐわけではありません。本体の中の範囲外の値（極端な要素数など）は、ゲーム自身が同じファイルを読む場合と同じリスクとして受け入れ、ファイルサイズの上限で緩和します。複製・復元で持ち込んだスロットも、本体が壊れていれば、それを読んだゲームが止まることがあります。
+
+**設定 — `[UAIP.SaveGame]`。** `Config/DefaultUAIP.ini` の 2 つの設定で、セーブスロットのコマンドを調整できます。
+
+```ini
+[UAIP.SaveGame]
+bAllowWritesDuringPIE=False
+MaxSaveFileBytes=67108864
+```
+
+| キー | 既定値 | 意味 |
+|---|---|---|
+| `bAllowWritesDuringPIE` | `False` | エディタでプレイ中（PIE）に `DeleteSaveGame`・`CopySaveGameSlot`・`WriteSaveGame`・`RestoreSaveGame` を実行してよいか。`False` では、実行中のゲームが同じスロットを読んだり上書きしたりしうるため、`NotAllowed` で拒否します。ゲームとこれらのコマンドがスロットを共有することを受け入れる場合に `True` にします。`-game` 起動やパッケージ版には影響しません（この理由で拒否されることはありません） |
+| `MaxSaveFileBytes` | `67108864`（64 MiB） | コマンドが読むセーブファイルの最大バイト数。範囲は `1048576`（1 MiB）〜`1073741824`（1 GiB）。超えるファイルは、`ListSaveGameSlots` と `GetSaveGameInfo` では `TooLarge` として報告し、それ以外のコマンドでは `NotAllowed` で拒否します（`SkipValidation` でも省けません）。`ExpectedHash` を渡さずにスロットを置き換える・削除する場合は、スロットを読まないためこの上限はかかりません |
+
+範囲外の値や数値として読めない値は、警告を出して無視し、既定値のままになります。どちらのキーにも専用のコマンドラインフラグはありません。Shipping 以外のビルドではエンジン標準の `-ini:` 引数でどちらも上書きできますが、MCP Bridge はエージェントが渡す起動引数のこれを拒否します。どちらもコマンドを実行するたびに読み込み済みの設定から読むため、設定を読み直した後（`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` が `DefaultUAIP.ini` を読み直します）またはエディタを再起動した後の次のコマンドから反映されます。
+
+#### Runtime AI の感知
+
+AI の感知を観測するコマンド（[`UAIP.Runtime.AI`](commands.md#uaipruntimeai)）は読み取るだけで、AI が何を感知するかも、その設定も変えません。6 つのうち 5 つは DefaultAllow の `RuntimeInspect` だけで使えます。センス設定のダンプには、さらに以下の Capability が必要で、これは既定で無効です。このモジュールはプラグインに依存しないため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `AIPerceptionConfigDump` | AI のセンス設定の全プロパティを、**プロジェクトが定義したセンス設定クラスが宣言したプロパティも含めて**値までダンプする（C++ の派生クラスや、Blueprint 用のセンス設定を元にした Blueprint） — `DumpAIPerceptionSenseConfigs`。`RuntimeInspect` に**加えて**必要です。プロジェクトが定義したセンス設定には任意のプロジェクトのデータを持たせられ、その値が AI クライアントへ渡り artifact にも書かれるため、既定で無効です。この Capability が無くても、`DumpAIPerceptionState` はそれらのプロパティを名前と型で示し、エンジンが宣言したプロパティの値（たとえばプロジェクトが派生させた視覚の設定の視認距離）は返します |
+
+> ⚠️ **何が出るか。** `DumpAIPerceptionSenseConfigs` は、呼び出した時点の値を返します。秘密と判定した値（メタデータ・秘密らしい名前・型による）は `***` で、それを含む構造体は丸ごと `***` です。判定が見分けられないものはそのまま返ります。上限があるのは量であって種類ではありません。構造体は 1 段だけ展開し、コンテナは先頭 32 要素まで、文字列は 1024 文字で切り、参照は参照先のパスだけを書きます（たどることも読み込むこともしません）。1 つのセンス設定が 64 KiB、全体が 256 KiB を超えると、残りを省いてそのことを示します。エディタ専用のプロパティは出しません。プロジェクトがセンス設定に持たせているものを AI クライアントに読まれてよい環境でだけ与えてください。
+
+> ⚠️ **一度作られた artifact は、Capability を外しても残ります。** 成功した呼び出しはどれも、結果の全体を JSON の artifact として保存します。`AIPerceptionConfigDump` を外すと新しいダンプは作れなくなりますが、作られたものは消えません。Artifact の自動 GC が消すまで artifact ストアに残り（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）、作ったセッションは `UAIP.Core.Artifacts.GetArtifact` で読み直せ、UAIP の作業ディレクトリを読める人なら誰でもファイルを読めます。値を残してはならない場合は、それらのファイルを自分で削除してください。
+
+**有効にする。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=AIPerceptionConfigDump
+```
+
+そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます（再起動なしで反映されます）。行を消してもう一度読み直せば外れます。与えられていない間、`DumpAIPerceptionSenseConfigs` は `AIPerceptionConfigDump` の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
+
+**明示的に拒否する。** `+DeniedCapabilities=AIPerceptionConfigDump` は、同じ Capability が許可されていても、`DumpAIPerceptionSenseConfigs` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、AI の感知を観測する **6 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。どちらの拒否でも artifact は作られません。
+
+#### Runtime AI のビヘイビアツリーと Blackboard
+
+BehaviorTree と Blackboard のコマンド（[`UAIP.Runtime.AI`](commands.md#behaviortree-と-blackboard-の観測)）は、AI が実行している BehaviorTree を観測します。8 つのうち 7 つは読むだけで、🧩 のプラグイン要件はありません。6 つは DefaultAllow の `RuntimeInspect` だけで使えます — `ListBehaviorTreeAgents`・`GetActiveBehaviorTreeNode`・`DumpBehaviorTreeState`・`StartBehaviorTreeCapture`・`GetBehaviorTreeEventLog`・`StopBehaviorTreeCapture`。`GetBlackboardValues` はさらに `BlackboardValueRead` が必要で、プロジェクトのコードを実行する `DescribeBehaviorTreeWithProjectCode` は `BlackboardValueRead` と `AIBehaviorProjectCodeExecution` が必要です。この 2 つの Capability はどちらも既定で無効です。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `BlackboardValueRead` | Blackboard の値を読む — `GetBlackboardValues` と `DescribeBehaviorTreeWithProjectCode`。`RuntimeInspect` に**加えて**必要です。Blackboard の値を表示するエンジンのノードの説明文や、Blackboard キーに結び付けたパラメータを持つノードの説明文もこの Capability の対象です。Blackboard の値はプロジェクトのデータで、AI クライアントに渡され、artifact に書き込まれるため、既定で無効です。これが無くても `DumpBehaviorTreeState` は、Blackboard のキー定義（名前・型・設定済みかどうか — 下記）と、既定の観測が出してよい説明を返し、省いたものとその理由を示します |
+| `AIBehaviorProjectCodeExecution` | プロジェクトのコードを実行して BehaviorTree を説明する — `DescribeBehaviorTreeWithProjectCode`。`RuntimeInspect` と `BlackboardValueRead` に**加えて**必要です。このコマンドは、プロジェクトや Blueprint が定義したノードの説明関数、プロジェクトのコードに届くエンジンの Decorator の判定関数、プロジェクトが派生させた BehaviorTree コンポーネントクラスの説明・判定関数、プロジェクトが定義した Blackboard キー型の値の関数を呼びます。そのコードは UAIP のものではなく、実行中にツリーを変えることを含め、ゲームのコードにできることは何でもできるため、既定で無効です。このドメインの他のコマンドと違い、このコマンドは読み取り専用ではありません |
+
+> ⚠️ **`GetBlackboardValues` で出てくるもの。** 値は呼び出した時点のものが返ります。秘密と判定したキーは `***`（Struct のキーは丸ごと）で、判定が見分けられない値はそのまま返ります。上限があるのは量であって種類ではありません。構造体はフィールドごとに書き出して入れ子の構造体をさらに 1 段だけ展開し、その中のコンテナは先頭 32 要素まで、文字列は 1024 文字で切り、参照は参照先のパスだけを書きます（たどることも読み込むこともしません）。1 つのキーが 64 KiB を超えるか、全体が 256 KiB を超えると、残りは省かれてその旨の印が付きます。AI クライアントがプロジェクトの Blackboard に入れているものを読んでよい場合にだけ、この Capability を付与してください。
+
+> ⚠️ **秘密のキーと、それを参照するノード。** `GetBlackboardValues` と `DescribeBehaviorTreeWithProjectCode` は、Blackboard のキーを名前で判定し（Struct のキーは中身でも判定します）、秘密と判定したキーの値を伏せます。そのようなキーを参照するノード、またはキーの参照を最後まで走査できなかったノードの実行時の説明は、キーの値を表示してしまうため、丸ごと伏せられます。平文は [秘密値の平文での読み取り](#秘密値の平文での読み取り) の 3 つの層（`IncludeSecretValues`、Capability `SecretValueRead`、`AllowSecretValueRead`）が許すときだけ、`Result.SecretFieldValues` に返り、artifact には入りません。`DescribeBehaviorTreeWithProjectCode` は、名前が秘密と判定されるプロジェクト定義のキーの値を、3 つの層が許すまで求めないので、そのためのプロジェクトのコードも走りません。判定が見分けられないもの：パラメータを介さずにキーを名前で読んで表示するプロジェクトのノードと、無害なキー名の下に秘密を持つプロジェクト定義の型です。
+
+> ⚠️ **`DescribeBehaviorTreeWithProjectCode` はプロジェクトのコードを実行します。** UAIP は呼び出しの前にそのつどツリーを確かめ直し、ツリーや Blackboard が変わったら `TreeChangedDuringProjectCode` で打ち切り、確かめていないエンジンのノードは呼びません。しかし、任意のプロジェクトのコードを安全にすることはできません。そのコードはゲーム自身のコードにできることをできます。読み取り専用ではないので、安全ポリシーの読み取り専用モードでは `PolicyViolation` で拒否され、読み取り専用でないコマンドと同様に、モーダルダイアログや長い処理がゲームループを止めている間は `NotAllowed` で拒否されます。運用者の starved tick 許可リストでその間も実行できるようにしていても、何も読まず `NotAtSafePoint` を返します。
+
+> ⚠️ **一度作られた artifact は、Capability を外しても残ります。** 成功した呼び出しはどれも、結果の全体を JSON の artifact として保存します。`BlackboardValueRead` や `AIBehaviorProjectCodeExecution` を外すと新しい読み取りはできなくなりますが、作られたものは消えません。Artifact の自動 GC が消すまで artifact ストアに残り（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）、作ったセッションは `UAIP.Core.Artifacts.GetArtifact` で読み戻せ、UAIP の作業ディレクトリを読める人ならそのファイルを読めます。値を残したくない場合は、そのファイルを自分で削除してください。
+
+**既定で許可されたコマンドが、それでも明かすもの。** これらの Capability を与えないことは、Blackboard の値そのものを読ませないことであって、`RuntimeInspect` だけで使えるコマンドがそれを一切知り得ないようにするものではありません。AI の判断を診断するのに必要な最小限の情報として、次を許容します。
+
+1. **Blackboard キーが設定済みかどうか。** `Vector`・`Rotator`・`Object`・`Class` のキーに限り、`IsSet` が `true`・`false`・`null`（不明）で出ます。`Object` / `Class` では、空の参照も、破棄済みのオブジェクトを指す参照も `false` で、その違いは出ません。
+2. **Decorator の判定結果**（`Passed` / `Failed`）。プラグインが既定の経路で評価してよいと分類した Decorator のうち、アクティブノードからルートまでの経路上のものと、有効な補助ノードのものだけです。判定結果と、アセットに書かれた比較条件（Editor のコマンドで読める）を組み合わせると、Blackboard の値について 1 ビットずつ推測できます。
+3. **実行経路そのもの** — アクティブなノード、有効な補助ノード、記録の遷移。条件の評価結果を反映しているので、ツリーの構造と合わせれば Blackboard の値を推測できます。これらの観測こそがコマンドの目的であり、塞げません。
+
+**有効にする。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に、必要な Capability を追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=BlackboardValueRead
++AllowedCapabilities=AIBehaviorProjectCodeExecution
+```
+
+そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます（再起動なしで反映されます）。行を消してもう一度読み直せば外れます。与えられていない間、それを要するコマンドは、足りない Capability の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
+
+**デモ版には含まれません。** `DescribeBehaviorTreeWithProjectCode` はデモバイナリに含まれず、コマンドは存在しません（`CommandNotFound`）。`AIBehaviorProjectCodeExecution` はデモ版にも DefaultDenied で登録され、「この版では使えない」の印が付きます（[デモ版が提供しない Capability](#デモ版が提供しない-capability)）。デモ版のどのコマンドも要求しないので、ini に書いても効果はなく、起動時に警告が出ます。`QueryCapabilities` は `UnavailableReason: "NotInThisEdition"` を付けて列挙します。残りの 7 コマンドは含まれます。`BlackboardValueRead` はデモにも登録されていますが、デモの ini が付与するのは `RuntimeCVarRead` だけなので、デモ版でも `GetBlackboardValues` には上の `+AllowedCapabilities=BlackboardValueRead` の行が要ります。
+
+**明示的に拒否する。** `+DeniedCapabilities=BlackboardValueRead` は、同じ Capability が許可されていても、`GetBlackboardValues` と `DescribeBehaviorTreeWithProjectCode` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=AIBehaviorProjectCodeExecution` は `DescribeBehaviorTreeWithProjectCode` だけを拒否します。`+DeniedCapabilities=RuntimeInspect` は、BehaviorTree の **8 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。どの拒否でも artifact は作られません。
+
+#### Runtime StateTree の観測
+
+StateTree のコマンド（[`UAIP.Runtime.StateTree`](commands.md#uaipruntimestatetree-)）🧩 は、AI が実行している StateTree を観測します。`StateTree` と `GameplayStateTree` の両プラグインが必要で、どちらかが無効だとコマンドは登録されず、呼ぶとプラグイン名を添えた `CommandNotFound` を返します（状態は `UAIP.Core.ListIntegrations` で分かります）。デモバイナリには含まれません。7 つすべてが読むだけです。6 つは DefaultAllow の `RuntimeInspect` だけで使えます。`DumpStateTreeInstanceData` には、さらに以下の Capability が必要で、これは既定で無効です。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `StateTreeInstanceDataDump` 🧩 | StateTree が持つ値 — ツリーのパラメータ、各アクティブな状態のパラメータ、各アクティブなノードのインスタンスデータ — を読む — `DumpStateTreeInstanceData`。`RuntimeInspect` に**加えて**必要です。これらの値はプロジェクトのデータで、AI クライアントに渡され、artifact に書き込まれるため、既定で無効です。ツリーの構造（状態・タスク・遷移・実行状態）は対象外です。この Capability は、StateTree のコマンドを含むビルドでだけ登録されます |
+
+> ⚠️ **何が出るか。** `DumpStateTreeInstanceData` は、呼び出した時点の値を返します。秘密と判定した値は `***`（それを含む構造体は丸ごと）で、判定が見分けられないものはそのまま返ります。値はリフレクションで読み、ノードやその他のプロジェクトの型の関数は実行しません。上限があるのは量であって種類ではありません。構造体は 1 段展開し、コンテナは先頭の要素を残し、文字列は切り、参照はパスで書き、バイト予算に収まらないものは切るか省いてその旨の印を付けます。ツリーに送られたイベントの中身は記録にも Dump にも出さず、型名だけを出します。AI クライアントがプロジェクトの StateTree に入れているものを読んでよい場合にだけ、この Capability を付与してください。
+
+> ⚠️ **一度作られた artifact は、Capability を外しても残ります** — [Runtime AI のビヘイビアツリーと Blackboard](#runtime-ai-のビヘイビアツリーと-blackboard) の注意書きを参照してください。
+
+そこに挙げた「既定で許可されたコマンドが、それでも明かすもの」の 3 つは StateTree にも当てはまります。アクティブな状態と記録の遷移は実行経路であり、条件の評価結果を反映しているので、ツリーの構造と合わせれば Capability が守る値を推測できます。同じ理由で許容します。
+
+**有効にする。**
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=StateTreeInstanceDataDump
+```
+
+そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます。行を消してもう一度読み直せば外れます。与えられていない間、`DumpStateTreeInstanceData` は `StateTreeInstanceDataDump` の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
+
+**明示的に拒否する。** `+DeniedCapabilities=StateTreeInstanceDataDump` は、同じ Capability が許可されていても、`DumpStateTreeInstanceData` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、StateTree の **7 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。
+
+#### Runtime Chaos 破壊
+
+Chaos 破壊のコマンド（[`UAIP.Runtime.ChaosDestruction`](commands.md#uaipruntimechaosdestruction)）は、実行中のゲームを観測します。8 つのうち 7 つ（`ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`GetDestructionEventLog`、`StopDestructionCapture`、`CaptureGeometryCollectionStrain`）は読むだけで、DefaultAllow の `RuntimeInspect` 以外は要りません。残りの `EnableForcedDestructionNotify` はゲーム自身の設定を変えるので、既定で拒否される次の Capability も必要です。モジュールにプラグインの依存はないため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `ChaosDestructionForceNotify` | capture が追跡している Geometry Collection コンポーネントの破壊の通知を有効にする — `EnableForcedDestructionNotify`。`RuntimeInspect` に加えて必要です。実行中のゲームを変え、その変更の一部は以下のとおり元に戻せないため、既定で拒否されます |
+
+> ⚠️ **ゲームへの副作用。** 通知を強制している間は、ゲーム自身の破壊・衝突のリスナーにも、capture だけでなくそのイベントが届きます。また、エンジンは通知を有効にするたび、および元に戻すときに、コンポーネントの Chaos イベントをすべて登録解除して登録し直すので、別の経路で登録したリスナーに影響が出ることがあります。ゲームがそれを許容できる環境にだけ付与してください。
+
+> ⚠️ **一部は元に戻せません。** 通知を有効にすると、ソルバーのイベントフィルターが上がります。エンジンにはこれを下げる手段がありません。capture が止まり、通知そのものが元に戻った後も、プレイセッションが終わるまで、ソルバーはそのイベントデータを作り続けます。
+
+**何が元に戻るか。** 通知を強制した capture が止まる（`StopDestructionCapture`、時間切れ、置き換え、セッション終了）と、どの capture も強制しなくなった通知は、強制した値のままなら元に戻します。その間にゲームが切った通知はゲームが設定したままにします。ゲームが有効に書き戻した通知はこちらの設定と区別できないため、同じく元に戻します。プレイワールドが片付けられるときは、コンポーネントごと無くなるので何も戻しません。
+
+**デモ版では提供されません。** `EnableForcedDestructionNotify` はデモ版に含まれず、コマンドは存在しません（`CommandNotFound`）。`ChaosDestructionForceNotify` はデモ版にも DefaultDenied で登録され、「この版では使えない」の印が付きます（[デモ版が提供しない Capability](#デモ版が提供しない-capability)）。ini に書いても効果はなく、起動時に警告が出ます。読み取り専用の 7 コマンドは提供されます。
+
+**有効にする。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に Capability を追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=ChaosDestructionForceNotify
+```
+
+その後、エディタを再起動します。`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できます。行を削除して再度リロードすれば、また外れます。付与していない間、`EnableForcedDestructionNotify` は `ChaosDestructionForceNotify` を示して `CapabilityNotAvailable` で失敗し、通知は何も変わりません。Capability を外しても、すでに強制した通知は元に戻りません。その capture が止まるときに戻ります。
+
+**明示的に拒否する。** `+DeniedCapabilities=ChaosDestructionForceNotify` は、同じ Capability が許可されていても `EnableForcedDestructionNotify` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、`RuntimeInspect` を必要とする他のすべてのコマンドとともに、Chaos 破壊の **8 つすべて** を `PolicyViolation` で拒否します。
+
+#### Runtime ナビゲーション
+
+ナビゲーションのコマンド（[`UAIP.Runtime.Navigation`](commands.md#uaipruntimenavigation)）は、ワールドのナビゲーションメッシュと経路探索を観測します。8 つのうち 7 つ（`DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`）は読むだけで、DefaultAllow の `RuntimeInspect` 以外は要りません。残りの `RebuildNavigation` は、実行中のゲームのメッシュの再生成を予約するので、次の 1 つ目の Capability が必要です。既定より多い探索ノード数を求める経路クエリには、2 つ目も必要です。どちらも既定で拒否されます。モジュールにプラグインの依存はないため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `RuntimeNavigationRebuild` | プレイワールドのナビゲーションメッシュの再生成を、ワールド全体または 1 つの領域について予約する — `RebuildNavigation`。このコマンドでは `RuntimeInspect` の代わりに必要です。ワールド内のすべての AI が移動に使うナビゲーションデータを変え、予約した再生成は対象の範囲を作り終えるまでワーカースレッドで動き続けるため、既定で拒否されます |
+| `RuntimeNavigationExtendedSearch` | 8192 を超え 65534 までの探索ノードで経路クエリを実行する — `FindPath` と `IsLocationReachable` の `MaxSearchNodes`。`RuntimeInspect` に加えて必要です。ナビゲーションメッシュ上のすべてのクエリが共有するノードプールは、要求された最大の大きさまで広がり、縮まないこと、また大きな探索はゲームスレッドを長く占有することから、既定で拒否されます。付与されていなくても、8192 ノード以下の要求は通常どおり動きます |
+
+`RuntimeNavigationExtendedSearch` は、この 2 つのコマンドが宣言する `RequiredCapabilities` には含まれません。要求に必要な Capability が、指定された `MaxSearchNodes` で決まるためです。そのため要求の実行時に、パラメータの検証の後、プレイワールドを探す前に判定します。付与なしで 8192 を超える要求は、`RuntimeNavigationExtendedSearch` の名前を示した `CapabilityNotAvailable` で失敗します。65534 を超える要求は、何が付与されていても `InvalidParams` です。`MaxSearchNodes` を省いた場合は拒否されません。フィルタ自身の値が 8192 を超えるときは 8192 に下げ、応答がそのことを示します（`Limitations: SearchNodesClamped`）。`DumpNavigationSystemState` は `SearchLimits` に上限・Capability の名前・呼び出したセッションが持っているかを返すので、クライアントは事前に知ることができます。
+
+**提供しないものと、代わりに使うもの。** ナビゲーションメッシュの同期的な全体ビルドは、終わるまでゲームスレッドを止め、上限がなく、エディタブリッジは 30 秒応答しないエディタを停止と判定します。領域のタイルをいったん削除して入れ直す再生成は、先にタイルを捨てます。どちらも提供しません。代わりに `RebuildNavigation`（ワールド全体、または `Box`）を実行し、続けて `WaitForNavigationBuild` を使ってください。前者は再生成を予約してすぐ応答し、後者はナビゲーションシステムが静止するまで待ちます。
+
+**デモ版では提供されません。** `RebuildNavigation` はデモ版に含まれず、コマンドは存在しません（`CommandNotFound`）。`RuntimeNavigationRebuild` はデモ版にも DefaultDenied で登録され、「この版では使えない」の印が付きます（[デモ版が提供しない Capability](#デモ版が提供しない-capability)）。ini に書いても効果はなく、起動時に警告が出ます。読み取り専用の 7 コマンドは提供され、探索ノードの拡張の Capability も提供されます。
+
+**有効にする。** 必要な Capability を `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=RuntimeNavigationRebuild
++AllowedCapabilities=RuntimeNavigationExtendedSearch
+```
+
+その後、エディタを再起動します。`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できます。行を削除して再度リロードすれば、また外れます。付与していない間、`RebuildNavigation` は `RuntimeNavigationRebuild` を示して `CapabilityNotAvailable` で失敗し、何も予約されません。すでに予約した再生成は取り消されません。
+
+**明示的に拒否する。** `+DeniedCapabilities=RuntimeNavigationRebuild` は、同じ Capability が許可されていても `RebuildNavigation` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeNavigationExtendedSearch` は、8192 を超える探索ノードの要求を `PolicyViolation` で拒否し、`FindPath` と `IsLocationReachable` のそれ以外の使い方は動いたままです。`+DeniedCapabilities=RuntimeInspect` は、`RuntimeInspect` を必要とする他のすべてのコマンドとともに、読み取り専用のナビゲーション **7 コマンドすべて** を `PolicyViolation` で拒否します。
+
+#### Runtime アニメーション
+
+アニメーションを観測するコマンド（[`UAIP.Runtime.Animation`](commands.md#uaipruntimeanimation)）は読み取るだけで、アニメーションの挙動を変えません。7 つのうち 6 つは DefaultAllow の `RuntimeInspect` だけで使えます: `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`GetMotionMatchingState`（最後の 1 つは PoseSearch プラグインが有効なときだけ存在する 🧩 で、デモ版には含まれません）。変数のダンプには、さらに以下の Capability が必要で、これは既定で無効です。このモジュールはプラグインに依存しないため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `AnimInstanceVariableDump` | プロジェクトが持つ AnimInstance クラスが宣言した変数を値までダンプする — `DumpAnimInstanceVariables`。`RuntimeInspect` に**加えて**必要です。プロジェクトが持つクラスの変数には任意のプロジェクトのデータを持たせられ、その値が AI クライアントへ渡り artifact にも書かれるため、既定で無効です。ほかのコマンドが読むのはアニメーションシステム自身が定義する状態（ステートマシン・ウェイト・モンタージュ・カーブ）だけで、プロジェクトが宣言した変数は読みません |
+
+> ⚠️ **何が出るか。** `DumpAnimInstanceVariables` は、呼び出した時点の値を返します。秘密と判定した変数（メタデータ・秘密らしい名前・型による）は `***` ですが、**名前も型も手がかりにならない文字列やパスは、そのまま artifact に書かれます。** そのため、一部の値を伏せて既定で出す形ではなく、許可制にしています。上限があるのは量であって種類ではありません。コンテナは先頭 32 要素まで、文字列は 1024 文字で切り、構造体は 1 段だけ展開し、参照は参照先のパスだけを書きます（たどることも読み込むこともしません）。サイズの予算を使い切ると、変数や AnimInstance ごと省いてそのことを示します。ダンプされるのは、プロジェクトの Anim Blueprint と C++ クラス、およびプロジェクトの `Plugins/` に入れたプラグインが宣言した変数だけです。エンジン本体・エンジンに同梱されたプラグイン・エンジン側にある親クラスが宣言した変数や、ノードの内部構造は出しません。プロジェクトが AnimInstance の変数に持たせているものを AI クライアントに読まれてよい環境でだけ与えてください。
+
+> ⚠️ **一度作られた artifact は、Capability を外しても残ります。** 成功した呼び出しはどれも、結果の全体を JSON の artifact として保存します。`AnimInstanceVariableDump` を外すと新しいダンプは作れなくなりますが、作られたものは消えません。Artifact の自動 GC が消すまで artifact ストアに残り（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）、作ったセッションは `UAIP.Core.Artifacts.GetArtifact` で読み直せ、UAIP の作業ディレクトリを読める人なら誰でもファイルを読めます。値を残してはならない場合は、それらのファイルを自分で削除してください。
+
+**有効にする。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に追加します。
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=AnimInstanceVariableDump
+```
+
+そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます（再起動なしで反映されます）。行を消してもう一度読み直せば外れます。与えられていない間、`DumpAnimInstanceVariables` は `AnimInstanceVariableDump` の名前を示した `CapabilityNotAvailable` で失敗します。この判定はパラメータやプレイセッションを見るより前に行われ、artifact は作られません。
+
+**明示的に拒否する。** `+DeniedCapabilities=AnimInstanceVariableDump` は、同じ Capability が許可されていても、`DumpAnimInstanceVariables` を `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、アニメーションを観測する **7 コマンドすべて**を `PolicyViolation` で拒否します — `RuntimeInspect` を要求するほかのコマンドも同様です。どちらの拒否でも artifact は作られません。
+
+#### Runtime ネットワークとレプリケーション
+
+ネットワークのコマンド（[`UAIP.Runtime.Network`](commands.md#uaipruntimenetwork)）は、実行中のゲームの NetDriver・コネクション・レプリケーションを観測し、パケットエミュレーションを変更できます。7 つのうち 3 つ（`GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`）は読むだけで、DefaultAllow の `RuntimeInspect` 以外は要りません。コネクションの生のアドレスを読む、レプリケートされるプロパティの値を読む・比べる、パケットエミュレーションを変更する、にはそれぞれ次の Capability のどれかが必要です。3 つとも既定で拒否されます。モジュールにプラグインの依存はないため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `RuntimeNetConnectionAddressRead` | 各コネクションの生のリモートアドレス（IP アドレスとポート）を書く — `IncludeRemoteAddress: true` を指定した `ListNetConnections`。`RuntimeInspect` に**加えて**必要です。IP アドレスは多くの法域で個人データに当たるため、既定で拒否されます。付与されていなくても `ListNetConnections` は通常どおり動き、アドレスの種類（`AddressKind`: `Loopback`・`Private`・`Public`・`Unknown`）だけを返します |
+| `RuntimeReplicatedPropertyValueRead` | アクターとそのコンポーネントのレプリケートされるプロパティの値を読み、サーバーとクライアントの間で比べる — `DumpReplicatedPropertyValues` と `CompareReplicatedProperties`。`RuntimeInspect` に**加えて**必要です。値は AI クライアントへ渡り artifact にも書かれ、下に書くとおり個人データが入りうるうえ、ランタイムでの秘密の伏せは判定であって保証ではないため（[秘密値の平文での読み取り](#秘密値の平文での読み取り) の **ランタイムのダンプ**）、既定で拒否されます。秘密の値は `***` になり、平文が artifact に書かれることはありません。この Capability を付与しても秘密は平文になりません。比較が返す一致・不一致もその値から導かれるので、この Capability で保護します |
+| `RuntimeNetworkEmulationControl` | 実行中のゲームの NetDriver とそのコネクションのパケットエミュレーション設定（遅延・損失・ジッター・重複・順序入れ替え）を変更し、元に戻す — `SetNetworkEmulation` と `ResetNetworkEmulation`。これらのコマンドでは `RuntimeInspect` の代わりに必要です。変更すると、戻すまでコネクションの品質が落ちるため、既定で拒否されます |
+
+`RuntimeNetConnectionAddressRead` は、`ListNetConnections` が宣言する `RequiredCapabilities` には含まれません。要求に必要かどうかが `IncludeRemoteAddress` で決まるためです。そのため要求の実行時に、プレイワールドを探す前に判定します。付与なしで `IncludeRemoteAddress: true` を指定した要求は、`RuntimeNetConnectionAddressRead` の名前を示した `CapabilityNotAvailable` で失敗します。この Capability はデモ版を含むすべてのビルドで登録されます。
+
+> ⚠️ **値に何が入りうるか。** `DumpReplicatedPropertyValues` が返すレプリケートされる値には、プロジェクトがレプリケートするほかのものと並んで、**`PlayerState` のレプリケートされる `UniqueId`（プレイヤーのプラットフォームアカウント識別子）やプレイヤー名**が入りえます。それを AI クライアントに読まれてよい環境でだけ `RuntimeReplicatedPropertyValueRead` を与えてください。
+
+> ⚠️ **一度作られた artifact は、Capability を外しても残ります。** これは `RuntimeNetConnectionAddressRead` と `RuntimeReplicatedPropertyValueRead` のどちらにも当てはまります。成功した呼び出しはどれも、結果の全体を JSON の artifact として保存します。Capability を外すと新しい読み取りはできなくなりますが、作られた artifact は消えません。Artifact の自動 GC が消すまで artifact ストアに残り（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）、作ったセッションは `UAIP.Core.Artifacts.GetArtifact` で読み直せ、UAIP の作業ディレクトリを読める人なら誰でもファイルを読めます。アドレスや値を残してはならない場合は、それらのファイルを自分で削除してください。
+
+> **完了通知ではアドレスと値を伏せますが、応答と artifact では伏せません。** エディタの完了通知に流す応答の写し（エディタ自身の通知と、コマンドを記録するコード — 監査記録・ログ — が読むもの）では、`ListNetConnections` の各 `RemoteAddress` と `DumpReplicatedPropertyValues` の各プロパティの `Value` が `"<redacted>"` になります。AI クライアントが受け取る応答と artifact には元の値が残るので、誰が読めるかを決めるのは引き続き上の Capability です。[コマンド — 完了通知と監査記録で伏せるもの](commands.md#完了通知と監査記録で伏せるもの) を参照してください。
+
+> ⚠️ **`RuntimeNetworkEmulationControl` を外す前に、パケットエミュレーションを元に戻してください。** 変更は、戻すか NetDriver が破棄される — PIE セッションの終了時、またはクライアントが別のマップへ移動して再接続したとき — まで残ります。`ResetNetworkEmulation` にも同じ Capability が必要なので、外す前に呼んでください。外した後は UAIP から設定を戻せず、NetDriver が破棄されるまで変更が残ります。また、NetDriver 全体を変更すると、エンジンはその NetDriver が破棄されるまで、戻した後も、プロジェクト設定から設定を読み直さなくなります。
+
+**デモ版と Shipping ビルドでは提供されません。** `DumpReplicatedPropertyValues`・`CompareReplicatedProperties`・`SetNetworkEmulation`・`ResetNetworkEmulation` はデモ版に含まれず、デモ版では `CommandNotFound` を返します。`RuntimeReplicatedPropertyValueRead` と `RuntimeNetworkEmulationControl` はデモ版にも DefaultDenied で登録され、この版では使えない印が付きます（[デモ版が提供しない Capability](#デモ版が提供しない-capability) を参照）。ini に書いても効果はなく、起動時に警告が出ます。`SetNetworkEmulation`・`ResetNetworkEmulation`・`RuntimeNetworkEmulationControl` は、エンジンのパケットエミュレーションを使えるビルドでだけ登録されるため、Shipping ビルドにはどれもありません。コマンドは `CommandNotFound` を返し、Capability はカタログに現れないので、ini に書いてもやはり効果はありません。読み取り専用の 3 コマンドと `RuntimeNetConnectionAddressRead` はデモ版でも提供されます。
+
+**有効にする。** 必要な Capability を `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=RuntimeNetConnectionAddressRead
++AllowedCapabilities=RuntimeReplicatedPropertyValueRead
++AllowedCapabilities=RuntimeNetworkEmulationControl
+```
+
+その後、エディタを再起動します。`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できます。行を削除して再度リロードすれば、また外れます。付与していない間、それを必要とするコマンドは、その名前を示した `CapabilityNotAvailable` で失敗し、artifact は作られません。`SetNetworkEmulation` と `ResetNetworkEmulation` は読み取り専用ではないため、安全ポリシーが読み取り専用モードのときも `PolicyViolation` で拒否されます。
+
+**明示的に拒否する。** 3 つのどれかに `+DeniedCapabilities=` を指定すると、同じ Capability が許可されていても、それを必要とするコマンドを `PolicyViolation` で拒否します（拒否が優先）。`RuntimeNetConnectionAddressRead` の場合に拒否されるのは `IncludeRemoteAddress: true` の要求だけで、`ListNetConnections` のそれ以外の使い方は動いたままです。`+DeniedCapabilities=RuntimeInspect` は、`RuntimeInspect` を必要とする他のすべてのコマンドとともに、それを必要とする 5 コマンド — `GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`、`DumpReplicatedPropertyValues`、`CompareReplicatedProperties` — を `PolicyViolation` で拒否します。どの拒否でも artifact は作られません。
+
+#### Runtime Subsystem
+
+Subsystem のコマンド（[`UAIP.Runtime.Observation`](commands.md#subsystem2)）は読み取るだけで、Subsystem を変更することも、その関数を呼ぶこともありません。`ListSubsystems` は DefaultAllow の `RuntimeInspect` だけで使え、プロパティの値は読みません。`DumpSubsystemState` は、既定で拒否されている下の Capability も必要とします。このモジュールにはプラグインの要件が無いため、🧩 は付きません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `SubsystemStateDump` | 1 つの Subsystem の実体（Engine・GameInstance・World・LocalPlayer）のすべてのプロパティの値を出力します。**プロジェクトが独自に定義した Subsystem が宣言するプロパティも含みます** — `DumpSubsystemState`。`RuntimeInspect` に加えて必要です。値はプロジェクトが保持しているもので、AI クライアントへ渡され artifact に書き出されるうえ、ランタイムでの秘密の伏せは判定であって保証ではないため（[秘密値の平文での読み取り](#秘密値の平文での読み取り) の **ランタイムのダンプ**）、既定では拒否されています。秘密の値は `***` になり、平文が artifact に書かれることはありません。この Capability を付与しても秘密は平文になりません |
+
+> ⚠️ **何が出力されるか。** `DumpSubsystemState` は、呼び出した時点の値を返します。秘密と判定した値（メタデータ・秘密らしい名前・型による）は `***` になりますが、判定が見分けられないトークン・キー・アカウント情報などは、Subsystem が持っていればそのまま出ます。制限されるのは量であって種類ではありません: 構造体は 1 段だけ展開され、コンテナは先頭 32 要素、文字列は 1024 文字で切られ、参照は参照先のパスで書かれ（辿ることもロードすることもしません）、デリゲートは生きている束縛の数で書かれ、1 回の要求のプロパティが合計 256 KiB を超えると残りは省かれて印が付きます。エディタ専用のプロパティと、Subsystem の共通の基底クラスが持つプロパティは出力されません。プロジェクトが Subsystem に保持しているものを AI クライアントが読んでよい環境でだけ、この Capability を許可してください。
+
+> ⚠️ **ワーカースレッドが書き換え中の値は、安全に読めません。** Subsystem のプロパティを、読み取る瞬間にワーカースレッドが書き換えているかどうかを、UAIP は判別できません。書き換えられている場合、読み取りは安全ではなく、中途半端な値を返すことがあり、最悪の場合はエディタやゲームがクラッシュします。UAIP にはそれを事前に検出する手段がありません。`SubsystemStateDump` を許可するかどうかは、プロジェクトの Subsystem を踏まえて判断してください。ワーカースレッドから書き込まれていると分かっている Subsystem は、それが動いているあいだにダンプしないでください。
+
+> ⚠️ **すでに作られた artifact は、Capability を外しても残ります。** 成功した呼び出しは、結果の全体を JSON artifact として保存します。`SubsystemStateDump` を外すと新しいダンプは止まりますが、すでに作られたものは消えません。artifact のガベージコレクション（[設定](config.md) の `[UAIP.ArtifactGC]`）が消すまで artifact ストアに残り、作ったセッションは `UAIP.Core.Artifacts.GetArtifact` で読み戻せ、UAIP の作業ディレクトリを読める人ならファイルを読めます。値を残したくないときは、そのファイルを自分で削除してください。
+
+**許可する。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に Capability を追加します。
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=SubsystemStateDump
+```
+
+その後、エディタを再起動するか、`AllowCapabilityReload=True` の環境では `UAIP.Core.ReloadCapabilities` を呼べば、再起動せずに反映されます。行を削除してもう一度リロードすれば外せます。デモ版の既定の設定もこれを許可していないので、デモ版でも同じ行が必要です。許可されていないあいだ、`DumpSubsystemState` は `SubsystemStateDump` の名前を示した `CapabilityNotAvailable` で失敗します。この確認はパラメータやプレイセッションを調べるより前に行われ、artifact は作られません。
+
+**明示的に拒否する。** `+DeniedCapabilities=SubsystemStateDump` は、同じ Capability が許可されていても、`DumpSubsystemState` を `PolicyViolation` で拒否します（拒否が優先されます）。`+DeniedCapabilities=RuntimeInspect` は、`RuntimeInspect` を必要とする他のすべてのコマンドと一緒に、Subsystem の**両方の**コマンドを `PolicyViolation` で拒否します。どちらの拒否でも artifact は作られません。
+
+#### Runtime ゲームビューポートの UI
+
+ゲームビューポートの UI のコマンドは、AI が実行中のゲームの UI を読み取り、操作できるようにします（[`UAIP.Runtime.Observation`](commands.md#ゲームビューポートの-ui-と-hud4)・[`UAIP.Runtime.Input`](commands.md#ゲームビューポートの-ui-入力3)）。UI の構造を読むだけなら DefaultAllow で、`DumpGameViewportWidgets`・`FindGameViewportWidgets`・`DumpHUDState` は `RuntimeInspect` だけで使えます。以下はすべて既定で無効です。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `RuntimeUIInputInjection` | 実行中のゲームの UI を、その入力経路で操作する — `ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText`。**`RuntimeInputInjection` とは別**です。後者は入力をゲームへ直接注入するもので UI は操作できず、この Capability は `InjectInputKey` などを許可しません。要求を受け付けたときと、実際に送る直前に確かめます |
+| `RuntimeUIEditorReservedKeyInput` | エディタ内の PIE で、エディタが自身の PIE 用コマンドに割り当てている UI キー（既定では PIE を停止する Escape）を送る。`RuntimeUIInputInjection` に**加えて**必要です。ショートカットの割り当ては、その時点のものを読みます（割り当てを変えていればそれに従い、物理キーボードの修飾キーを押している間は、その修飾キー付きの割り当ても見ます）。割り当てを読めないときは、UI 用のキーをすべて拒否します。Standalone とパッケージ版では制限されません |
+| `RuntimeWidgetTextRead` | **すべての**テキスト Widget のテキストと、入力欄の値を、画面に出ているかを問わず読む — `DumpGameViewportWidgetTexts`。切り取られた・透明な・折りたたまれたテキストは画面キャプチャでは読めず、値は AI クライアントへ渡り artifact にも保存されるため、既定で無効です。通常のダンプ（`IncludeText` 付きの `DumpGameViewportWidgets`）が平文にするのは画面に出ているテキストだけで、入力欄は長さの区分しか返しません。CommonUI のアクションの表示テキストを読む `GetActionDisplayNames` もこれを必要とします（[Runtime CommonUI の観測](#runtime-commonui-の観測) を参照） |
+| `RuntimeWidgetPasswordTextRead` | `DumpGameViewportWidgetTexts` の応答に、パスワード欄（またはパスワード欄かどうか判定できない欄）の平文を含める。`RuntimeWidgetTextRead` に**加えて**必要です。値は応答にだけ入り（最大 16 件・各 256 文字）、artifact にも完了通知にも監査記録にも書かれません。安全設定 `AllowRuntimePasswordFieldRead` も必要です（下記参照）。運用者が `DeniedCapabilities` で明示的に拒否した Capability では、返りません |
+
+> ⚠️ **UI が処理しなかった入力はゲームに届きえます。** 人の入力と同じく、UI が消費しなかったクリックやキーはゲーム側の入力（移動・攻撃など）になることがあります。応答は入力がゲームまで届いたかを示し、各操作の応答にはこの注意書きが付きます。`Success` は人の入力と同じ経路で送り終えたという意味で、ボタンの処理が動いたことは保証しません。
+
+> ⚠️ **`DumpGameViewportWidgetTexts` の artifact に入るもの。** 表示されていないものを含め、ゲームの UI のすべてのテキストが artifact に書かれます。artifact は既定で 24 時間残り、既定の HTTP 設定では ID を知っていれば誰でも取得できます。Capability を外すと新しいダンプは止まりますが、すでに作られたものは消えません。AI クライアントが UI の持つすべての内容を読んでよい環境でだけ許可してください。パスワード欄（とパスワード欄かどうか判定できない欄）は例外です。そのエントリは `Value: "***"` と `IsMasked: true` になり、artifact のトップレベルの `MaskedFields` と `UnverifiedMaskedFields` に `TypePath` で一覧されます。
+
+**有効にする。** `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に Capability を追加します:
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=RuntimeUIInputInjection
+; +AllowedCapabilities=RuntimeUIEditorReservedKeyInput
+; +AllowedCapabilities=RuntimeWidgetTextRead
+; +AllowedCapabilities=RuntimeWidgetPasswordTextRead
+```
+
+その後エディタを再起動します。`AllowCapabilityReload=True` の環境では `UAIP.Core.ReloadCapabilities` を呼べば再起動なしで反映できます。許可されていない間、それを必要とするコマンドは、その名前を示した `CapabilityNotAvailable` で失敗します。これらに `+DeniedCapabilities=` を指定すると、同じ Capability が許可されていても `PolicyViolation` で拒否されます（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は、上の DefaultAllow の 3 コマンドも拒否します。
+
+**パスワード欄への入力 — `AllowRuntimePasswordFieldWrite`。** `RuntimeUIInputInjection` が許可されていても、この安全設定がオンでない限り、`TypeGameViewportText` はパスワード欄と、パスワード欄かどうか判定できない欄への入力を `PolicyViolation` で拒否します。エディタ自身の UI（`FillForm`）を対象にする `AllowPasswordFieldWrite` とは独立です。`[UAIP.SafetyPolicy]` か、起動引数 `-uaip-policy-allow-runtime-password-field-write=True` で設定でき、`QueryCapabilities` は現在の状態を `OperationalConstraints.IsRuntimePasswordFieldWriteAllowed` で返します。打った文字列はログにも応答にも記録にも残りませんが、CLI（`-uaip-request=`、`-uaip-request-file=`）で渡した場合は、そのコマンドラインやファイルに残ります。
+
+**ゲームのパスワード欄を読む — `AllowRuntimePasswordFieldRead`。** `DumpGameViewportWidgetTexts` がパスワード欄の平文を返すのは、セッションが `RuntimeWidgetPasswordTextRead` を持ち、**かつ**この安全設定がオンのときだけです。エディタ自身の UI（`SnapshotUI`）を対象にする `AllowPasswordFieldRead` とは独立しています。`[UAIP.SafetyPolicy]` で設定するか、起動フラグ `-uaip-policy-allow-runtime-password-field-read=True` で指定し、エディタを再起動してください（起動時に読まれます）。`QueryCapabilities` は `OperationalConstraints.IsRuntimePasswordFieldReadAllowed` として報告します。Capability だけの場合、呼び出しは成功し、値は伏せられます。伏せたエントリは `***` のままで、`Result.SecretValuesWithheldReason` は `PasswordTextWithheldBySafetyPolicy`（設定がオフ。Capability の有無によらず）になります。設定がオンで Capability が無い、または拒否されているときは `PasswordTextWithheld` です。`Result.MaskedFieldCount` と `Result.UnverifiedMaskedFieldCount` が、伏せた欄の数を示します。
+
+**HUD の描画統計 — `EnableHUDCanvasStats`。** `DumpHUDState` がゲームビューポートの Canvas の描画統計を添えるのは、`DefaultUAIP.ini` の `[UAIP.RuntimeObservation]` で `EnableHUDCanvasStats=True` にしたときだけです。既定は `False` で、起動引数はなく、起動時に読むので、エディタまたはゲームの再起動後に効きます。何かを許可するものではなく、どのコマンドの権限も変えません。オフの間は、結果が有効にする方法を示します。
+
+#### Runtime ゲーム入力のゲート
+
+入力の注入コマンド（[`UAIP.Runtime.Input`](commands.md#注入ゲート)）は、ゲームがゲーム入力を受け付けていない間は注入を断ります。その判定のために、実際の入力と同じ読み方でゲームビューポートクライアントを読むので、そのプロジェクトの override が実行されます。`DumpInputState` は、それらを実行せずにゲートの判定を報告します。プロジェクトのコードを含めて注入そのものが受ける判定を、何も注入せずに見るには、次の Capability が必要です。
+
+| Capability | 解禁する操作 |
+|---|---|
+| `InputProjectCodeExecution` | ゲームビューポートクライアントのプロジェクトの override を実行して注入ゲートを評価する — `EvaluateInputGateWithProjectCode`。`RuntimeInspect` に加えて必要です。そのコードは UAIP のものではなく、ゲームにできることは何でもできるため、既定で無効です。このコマンドは読み取り専用ではないので、安全設定の読み取り専用モードでは `PolicyViolation`、モーダルダイアログや長い処理がゲームループを止めている間は `NotAllowed` で拒否されます。付与しても注入は許可されません。注入コマンドには引き続き `RuntimeInputInjection` が必要です |
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=InputProjectCodeExecution
+```
+
+その後エディタを再起動します。`AllowCapabilityReload=True` の環境では `UAIP.Core.ReloadCapabilities` を呼べば再起動なしで反映できます。`+DeniedCapabilities=InputProjectCodeExecution` を指定すると、このコマンドは `PolicyViolation` で拒否されます。
+
+**デモ版では提供しません。** `EvaluateInputGateWithProjectCode` はデモ版のバイナリに含まれません（`CommandNotFound`）。`InputProjectCodeExecution` はデモ版にも登録され、DefaultDenied で「この版には無い」印が付きます（[デモ版が提供しない Capability](#デモ版が提供しない-capability) を参照）。デモ版の `DumpInputState` は、Capability の代わりに `NotInThisEdition` を示し、コマンドへの案内は付けません。`RuntimeInputInjection`・`RuntimeUIInputInjection`・`RuntimeUIEditorReservedKeyInput` もデモ版に同じ形で登録され、DefaultDenied で「この版には無い」印が付きます。デモ版のどのコマンドもこれらを要求しないので、ini に書いても効かず、起動時に警告が出ます。
+
+#### Runtime CommonUI の観測
+
+CommonUI のコマンド（[`UAIP.Runtime.CommonUI`](commands.md#uaipruntimecommonui-)）🧩 は、CommonUI の活性化ウィジェットと入力の状態を観測します。`CommonUI` プラグインが必要で、無効ならコマンドは登録されず、呼ぶとプラグイン名を示した `CommandNotFound` になります。デモ版のバイナリには含まれません。`DumpActivatableStacks` と `GetInputState` は DefaultAllow の `RuntimeInspect` だけで動きます。`GetActionDisplayNames` は、テキストがゲームの表示するものなので、さらに `RuntimeWidgetTextRead` が必要です（[Runtime ゲームビューポートの UI](#runtime-ゲームビューポートの-ui) を参照）。次の Capability は既定で無効です。
+
+| Capability | 解禁する操作 |
+|---|---|
+| `CommonUIProjectCodeExecution` 🧩 | プロジェクトのコードを実行して、活性化ウィジェットが求めるものを読む — `DescribeActivatableWidgetsWithProjectCode`。`RuntimeInspect` に加えて必要です。プロジェクトの活性化ウィジェットが override しうる getter（求める入力設定とフォーカス先）を呼びます。ほかの CommonUI のコマンドはそれらを省き、`ProjectCodeFields` で示します。そのコードは UAIP のものではなく、実行中に画面を変えることも含めてゲームにできることは何でもできるため、既定で無効です。UAIP は呼び出しの前後ごとにワールドとウィジェットを確かめ直し、変わっていれば `ScreenChangedDuringProjectCode` で止めますが、任意のプロジェクトのコードを安全にすることはできません。このコマンドは読み取り専用ではないので、安全設定の読み取り専用モードでは `PolicyViolation`、モーダルダイアログや長い処理がゲームループを止めている間は `NotAllowed` で拒否されます |
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=CommonUIProjectCodeExecution
+```
+
+その後エディタを再起動します。`AllowCapabilityReload=True` の環境では `UAIP.Core.ReloadCapabilities` を呼べば再起動なしで反映できます。許可されていない間、このコマンドはその名前を示した `CapabilityNotAvailable` で失敗します。`+DeniedCapabilities=CommonUIProjectCodeExecution` を指定するとこのコマンドは `PolicyViolation` で拒否され、`+DeniedCapabilities=RuntimeInspect` は CommonUI の 4 コマンドすべてを拒否します。
+
+デモ版には CommonUI の連携そのものが含まれないので、`CommonUIProjectCodeExecution` は登録されません。カタログに現れず、ini に書いても効果はありません（[デモ版が提供しない Capability](#デモ版が提供しない-capability) を参照）。
 
 #### オプショングラフエディタ
 
@@ -588,6 +1031,140 @@ ExternalTraceDirectory=D:/TraceDrop
 | `ConfigSettingsSave` | `ISettingsSection::Save()` 経由でのディスク書き出し — `SaveSettings`（`bDisableSave` が設定されている場合は実行不可） |
 | `ConfigSettingsReset` | 設定をクラスデフォルトに戻す — `ResetSettingsToDefaults` |
 
+#### 秘密値の平文での読み取り
+
+| Capability | 有効になる操作 |
+|---|---|
+| `SecretValueRead` | 呼び出しが `IncludeSecretValues: true` を渡したとき、秘密の設定値の平文を `Result.SecretFieldValues` に返す。デモ版にも DefaultDenied で登録され、「この版に無い」の印は付かないので、同じように付与できます |
+
+設定を返すコマンドは、秘密の値を `"***"` で伏せ、横に `IsMasked: true` を付けます。平文が返るのは、次の **3 つがすべて**そろったときだけです。
+
+1. 呼び出しが `IncludeSecretValues: true` を渡している。引数は boolean だけで、文字列や数値は `InvalidParams` で断られます。
+2. `[UAIP.SafetyPolicy]` の `AllowSecretValueRead=True`（または起動引数 `-uaip-policy-allow-secret-value-read=True`）。起動時に読まれ、`ReloadCapabilities` では再読み込みされないので、エディタを再起動してください。`QueryCapabilities` は `OperationalConstraints.IsSecretValueReadAllowed` として報告します。
+3. セッションが `SecretValueRead` を持っている（`+AllowedCapabilities=SecretValueRead`。`ReloadCapabilities` で再起動なしに反映できます）。ロールに結び付いたセッションでは、そのロールがこの Capability を含む必要があります。
+
+`SecretValueRead` はこれらのコマンドの必須 Capability ではないので、持っていない呼び出しも成功し、値は伏せたまま返ります。先に判定されるのは `AllowSecretValueRead` です。
+
+**デモ版**でも、同じ 3 層で同じように平文を読めます。既定では、製品版と同じく `AllowSecretValueRead` も `SecretValueRead` も与えられていないので、両方を設定し、呼び出しが引数を渡すまで値は伏せたままです。
+
+- **平文の行き先。** 平文は `Result.SecretFieldValues` にだけ入り、artifact・監査ログ・完了通知には出ません（そこは `"***"` のままです）。各要素は `Key`（`MaskedFields` と同じパス）と、伏せた欄と同じ名前の欄（`Value`、`OldValue` / `NewValue`、`CurrentValue` / `DefaultValue`、`DefaultValueText` など）を持ちます。返すのは最大 64 要素で、4096 文字を超える値は文字列 `"<truncated>"` に置き換わります。切り捨てた数は `SecretFieldValuesTruncatedCount` と `SecretFieldValuesOmittedCount` で分かり、0 のときは応答に現れません。省いた分は `SecretValuesOffset` で読みます（下の **64 件を超える平文を読む**）。
+- **平文を返さないとき。** 理由は `Result.SecretValuesWithheldReason` に入ります。設定が無効なら `SecretValuesWithheldBySafetyPolicy`、設定は有効でセッションに Capability が無ければ `SecretValuesWithheld` です。3 層がそろっていても `AcquireItems` が部分結果でタイムアウトしたときは `SecretValuesWithheldOnTimeout` です（許可が足りないときは、そちらの理由が優先します）。3 層がそろっていても、`GetPinDefaultValue` が定義を解決できなかった Blueprint のピンを読み、セッションに `BlueprintUnverifiedPinValueRead` が無い（または運用者が拒否している）ときは `SecretValuesWithheldUnverified` です。平文を求めて許可が無かったときは、応答に秘密が無くても必ず返ります。許可があって秘密が無いときは `SecretFieldValues` が空の一覧で返るので、「求めて許可された」と「求めていない」を区別できます。
+- **解禁されないもの。** `UnverifiedMaskedFields` に載った値（定義がまだ解決できない、または結果の形が想定と違う値）は、この方法でも平文になりません（例外は、`GetPinDefaultValue` が読む Blueprint のピンで、3 層に加えて `BlueprintUnverifiedPinValueRead` があれば平文になること、と、`GetPinValue` が読む Control Rig のピンで、同じく `ControlRigUnverifiedPinValueRead` があれば平文になることです。下の **確かめられなかったものは解禁されません** を参照）。Control Rig の Capability が無いときも、`SecretValuesWithheldReason` は `SecretValuesWithheldUnverified` です。
+
+**`IncludeSecretValues` を受け付けるコマンド**
+
+| コマンド | 解禁される値 |
+|---|---|
+| `Toolset.ConfigSettings.GetSectionPropertyValues` | 要求したプロパティの値 |
+| `UAIP.Editor.Engine.ConfigSettings.GetSettingsValues` | 値 |
+| `UAIP.Editor.Engine.ConfigSettings.SetSettingsValues` | `DryRun` の `OldValue` / `NewValue`。`DryRun` なしの呼び出しは秘密の値を返さないので、引数は何もしません |
+| `UAIP.Editor.Engine.ConfigSettings.ResetSettingsToDefaults` | `DryRun` の `CurrentValue` / `DefaultValue` と、実行時の元の値の控え（`OldValue`） |
+| `UAIP.Editor.Engine.ConfigSettings.GetSettingsSchema` | `DefaultValue` |
+| `UAIP.Runtime.Engine.Config.GetConfigValue` | ini の値（`Value`） |
+| `UAIP.Runtime.Engine.Config.SetConfigValue` | 応答の変更前の値（`OldValue`） |
+| `UAIP.Editor.Property.GetProjectSetting`、`GetAssetProperty`、`GetActorProperty`、`GetBlueprintDefault`、`GetWorldSetting`、`GetDataTableRow` | `Value` |
+| `UAIP.Editor.Level.GetActorComponentProperty`、`UAIP.Editor.Blueprint.GetBlueprintComponentProperty` | `Value` |
+| `UAIP.Editor.UMG.GetWidgetProperties` | プロパティの値（パスワード欄のテキストを含む） |
+| `UAIP.Editor.Blueprint.GetPinDefaultValue` | ピンの既定値（秘密と推定されただけで確定していない値を含む。下の **Blueprint のピンの既定値** を参照） |
+| `UAIP.Editor.Mass.DumpMassEntityConfig` | 応答に出したトレイトのプロパティ（応答の件数の上限で切られたトレイトは解禁されません） |
+| `UAIP.Editor.ControlRig.GetComponent`、`GetPinValue`、`Toolset.Editor.ControlRig.GetPinValue`、`ListVariables`、`GetVariable` | コンポーネントの平文の `ContentText` と `Content`、ピンと変数の値 |
+| `Toolset.Editor.ControlRig.SetPinValue` | 値を返すためではなく、実行を許すためだけに受け付けます。秘密の配列ピン（秘密かどうか確かめられない配列を含む）の要素を指す `Pin` は、3 つの許可がそろわなければ、Toolset を呼ぶ前に native の `SetPinValue` と同じ文言の `PolicyViolation` で断られます。応答と artifact は変わりません（もともと値を返しません）。Toolset の中でエンジンが作る失敗の文言はこの保護の外で、呼び出し元が送った値を引用することがあります |
+| `UAIP.Editor.Sequencer.GetSectionProperty`、`UAIP.Editor.Dataflow.GetDataflowNodeProperty`、`UAIP.Editor.AnimBlueprint.GetAnimGraphNodeDetails` | プロパティの値 |
+| `UAIP.Editor.Subsonic.GetSubsonicEventCollectionInfo` | パラメータ、アクション・モディファイアのプロパティの値 |
+| `UAIP.Editor.SoundSettings.GetSoundMixInfo`、`GetSoundClassInfo`、`GetSoundAttenuationInfo` | プロパティの値 |
+| `UAIP.Editor.BehaviorTree.GetBehaviorTreeNodeProperties`、`UAIP.Editor.EnhancedInput.GetInputActionInfo`、`GetMappingContextInfo`、`UAIP.Editor.StateTree.GetStateTreeParameters`、`UAIP.Editor.Niagara.GetStackInputData`（と Toolset 版）、`UAIP.Editor.UMG.GetSlotProperties`、`UAIP.Editor.EQS.GetEQSQueryInfo` | 値 |
+| `GetStateNodeProperty`・`GetDataflowGraphInfo`・`ListDataflowVariables`・`GetPCGGraphInfo`・`GetPCGGraphInstanceParams`・`GetPCGGraphSchema`・`GetUAFPinValue`・`GetUAFVariable`・`ListUAFVariables`・`ListViewModelProperties`・`GetWorldConditionInfo`・`GetChooserTableInfo`・`GetChooserTableRow`・`ListChooserTableRows`・`ListChooserColumns`・`GetMetaSoundInfo`（StateTree・Dataflow・PCG・UAF・MVVM・WorldConditions・Chooser・MetaSound の読み取り） | 変数・パラメーター・プロパティの値。Dataflow と PCG の読み取りでは、値の要約を持たない型（struct など）の値は、解禁しても空文字で返ります。Dataflow の値は Toolset 版の `ListVariables` で読んでください |
+| `GetAssetTags` | 伏せたタグの値（下の **アセットのタグと `FiBData`**） |
+| `UAIP.Editor.MotionMatching.GetPoseSearchChannelClassSchema` | チャンネルクラスの秘密のプロパティの、平文の既定値。`SecretFieldValues` にプロパティ名のキーで入ります。アーティファクトは伏せたままです |
+| `UAIP.Editor.DataTable.GetDataTableRowStruct` | 行構造体の秘密のフィールドの、平文の既定値。`SecretFieldValues` にフィールド名のキーで入ります。アーティファクトは伏せたままで、伏せたフィールド名は `MaskedFields` に入り、応答には常に `Result`（`FieldCount` と `MaskedFieldCount`）が付きます |
+| `UAIP.Editor.AnimSequence.GetAnimNotifyProperty`・`GetAnimNotifyClassSchema` | 通知インスタンスの秘密のプロパティの平文、または通知クラスの平文の既定値。`SecretFieldValues` にプロパティ名のキーで入ります。アーティファクトは伏せたままです |
+| `UAIP.Editor.DataRegistry.GetItems`・`GetAllCachedItems`・`AcquireItems` | 各アイテムの秘密の欄の平文。`SecretFieldValues` にキー `<ItemName>.<フィールドパス>` で入ります（最大 64 件、1 値 4096 文字まで。続きは `NextSecretValuesOffset`）。アーティファクトは伏せたままです。`AcquireItems` は 3 層の判定を、非同期ロードの完了時ではなく呼び出し時に 1 回だけ行います。`AcquireItems` がタイムアウトしたとき（部分結果）は、3 層がそろっていても平文を返さず、理由に `SecretValuesWithheldOnTimeout` を入れます |
+| Toolset 版の読み取り（UE 5.8 以降）: StateTree の `GetTasks`・`GetEvaluators`・`GetGlobalTasks`・`GetEnterConditions`・`GetTransitions`、PCG の `GetGraphInstanceParams`・`GetNodeDataView`、Dataflow の `ListVariables`、Niagara の `GetSystemData`・`GetEmitterData`・`GetRendererData`・`GetUserVariables`、Runtime Niagara の `GetUserVariables`・`GetVariable`、DataRegistry の `GetItems` | 値（下の **Toolset 版の読み取り**） |
+| ランタイムのダンプ: `DumpSubsystemState`・`DumpAnimInstanceVariables`・`DumpReplicatedPropertyValues`・`DumpStateTreeInstanceData`・`GetMassEntityFragments`・`GetBlackboardValues`・`DescribeBehaviorTreeWithProjectCode`・`DumpAIPerceptionSenseConfigs`・`DumpSaveGame` | 値（下の **ランタイムのダンプ**）。それぞれの DefaultDenied の Capability も要ります |
+| `FindGameplayTagReferencers`・`CompareReplicatedProperties`・Toolset 版 PCG の `GetNodeInfo` / `GetGraphStructure` | 値ではなく制限の解除（下の **一致だけが分かる読み取り**） |
+
+`Toolset.ConfigSettings.GetSectionSchema` は対象外です。プロパティの型・説明・範囲・enum の名前を返すだけで、値は返さないためです。下の「伏せるだけで解禁の無いもの」に挙げた読み取りは、秘密の値を伏せたままにし、解禁はできません。
+
+**実行を許すためだけに `IncludeSecretValues` を受け付けるコマンド。** プロパティを書くコマンド（`SetActorProperty`・`SetAssetProperty`・`SetBlueprintDefault`・`SetWorldSetting`・`SetProjectSetting`・`SetDataTableRow`・`SetActorComponentProperty`・`SetBlueprintComponentProperty`・`SetAnimNotifyProperty`・`SetPoseSearchSchemaChannelProperty`・`SetEQSGeneratorProperty`・`SetEQSTestProperty`・`SetSectionProperty`・`SetDataflowNodeProperty`・`SetAnimGraphNodeProperty`・Subsonic の 3 本・`SetSoundCueNodeProperty`・`SetSoundMixSettings`・`SetSoundClassSettings`・`SetSoundAttenuationSettings`）、ControlRig の `SetPinValue`、`AssertActorProperty` / `AssertWorldState` / `WaitForCondition`、`ExportDataTableToCSV` / `DeleteDataTableRow` / `ImportDataTableFromCSV` は `IncludeSecretValues` を受け付けますが、**平文を返すためではありません**。秘密の形や値を明かしうる操作を、実行してよいとするための引数です。
+
+- 秘密の配列・Set・Map の要素を指す操作（`Insert` / `Remove`、添字・キーを指定した `Replace`）と、プロパティのパスに秘密の配列への添字を書くこと（`SecretList[5]`）。読み取りも書き込みも対象です
+- アサートで秘密のプロパティを比べること
+- 行の構造体が秘密を含む（ファイルパスの列も含む）、または**行の値に、中身が秘密を含むか中身を読めない、動的な型の構造体（`FInstancedStruct` など）の欄がある**データテーブルの書き出し・行の削除・取り込み。`ExportDataTableToCSV` と `ImportDataTableFromCSV` は全行を、`DeleteDataTableRow` は削除する行だけを見ます。そうした値が無い表は影響を受けず、3 つの許可が無ければ、何も書き出さず・削除せず・取り込まず、スナップショットも作らずに断ります（行の値は判定のためだけに読みます）
+
+3 つの許可（引数、Capability `SecretValueRead`、`AllowSecretValueRead=True`）がすべて要ります。欠けていれば、対象を調べる前に `PolicyViolation` で断ります。何も書かず、Undo の記録も作らず、文言は 3 つの許可を案内し、パス・列名・値は含めません（アサートは、読めないプロパティと同じ形で失敗します）。そろっていれば今までどおり実行しますが、書き込みが平文を返すことはありません。
+
+**書き込みは応答で秘密を伏せます。** 書き込みのコマンドの応答と artifact は、秘密の対象の書く前の値・書いた値・値の反響・要素のキーを `***` と `IsMasked: true` で返し、`Changed` は出しません（秘密が変わったかどうかを示してしまうため）。値を返す書き込みは、書く前の値**と**書いた後の値で判定します。どちらかが秘密を含む、または中身を読めない型の値なら応答を伏せるので、秘密の無い値を秘密のある値で上書きした場合も伏せます（`SetBlueprintVariableDefault` も含みます）。書き込み自体は今までどおり成功します。UAIP が組み立てる失敗の文言には値・要素数・範囲を入れず、中身が実行時にしか決まらない型の欄では、秘密が無くても値を引用しません。`SetUAFPinValue`・`AddBlueprintVariable`・`AddViewModelProperty`・`AddUAFVariable` は、送った値（`AddUAFVariable` は追加直後に読み戻した既定値）をそのまま返していましたが、秘密のピンや変数では `***` と `IsMasked: true` を返します。平文は、対応する読み取りのコマンドを 3 つの許可付きで呼んで読みます。Set 系に解禁の口はありません（`SetConfigValue` の既存の `OldValue` の解禁は変わりません）。
+
+**マスクされた値の書き戻しは拒否されます。** 読み取りは秘密を `***` で返します。その `***` をそのまま書き戻すと、本物の値の代わりに 3 文字が保存され、応答は再び値を伏せるので、壊れたことに気づけません。そこで、秘密の書き込み先（または秘密でないと判定できない書き込み先）に、値がちょうど `***` である、または区切られた 1 つの値として `***` を含む書き込みは、何かを保存する前に拒否されます。`InvalidParams` と `Result.Reason: MaskPlaceholderValue`、何も引用しない固定の文が返り、値・Undo の履歴・保存が必要な印は変わりません。これまで「値の形が違う」で失敗していた秘密の数値・真偽値・列挙・構造体も、同じ理由で失敗します。この確認は、値に依らない確認（Capability・対象の解決・編集できるか・秘密の入れ物の要素操作の 3 層）の後に行われ、それらは今までの `ErrorCode` のままです。
+
+- **解禁。** 呼び出しに `AllowMaskPlaceholderValue: true` を付けると、その 1 回だけリテラルの `***` を保存します。外れるのはこの確認だけで、専用の Capability は要りません。コマンドが元から要る Capability・秘密のほかの確認・型の確認は今までどおりです。読み取りの `IncludeSecretValues` や 3 層とは無関係です。開くのは「保存済みの値が本当に `***`」という 1 つの場合だけで、これは読み戻した値と区別できないため、この手段にしています。
+- **失敗した書き込みは何も残しません。** 書き込みが何で失敗しても（この拒否でも、値の取り込みの失敗でも）、値・Undo の履歴・保存が必要な印は呼び出しの前に戻ります。例外は 2 つ文書化しています。`AddBlueprintVariable` が同じ要求で作ったレベル Blueprint は残ります（エンジンに取り除く手段が無いため）。Toolset 経由の書き込み（Niagara・PCG・Control Rig の変数・MVVM・設定のセクション）が Toolset に渡した後で失敗した場合は、2 回の Undo で相殺される 2 件の Undo の記録が残り、ini ファイルに無かった設定のキーは元の値のままファイルに残り、Niagara ではインスタンス化したオブジェクトを持つ欄とタイムアウトの後に遅れて書かれた分は戻りません。対象のコマンドと詳細は[マスクされた値の書き戻し](commands.md#マスクされた値の書き戻し)にあります。
+- **理由の語彙。** `Reason: MaskPlaceholderValue`（`InvalidParams` と一緒）が、呼び出し側がこの拒否をほかの `InvalidParams` と見分けるための値です。
+- **コンストラクションスクリプトが戻す秘密。** 秘密のプロパティのうち、コンストラクションスクリプトが戻すもの（レベルに置いたアクターで、構築時にリセットされるプロパティ）への書き込みは、値にかかわらず `NotAllowed` と `Reason: SecretTargetResetOnConstruction` で断ります。`SetActorProperty`・`SetWorldSetting`・`SetAssetProperty`（レベルのアクターを指したとき）が対象です。今の値と同じ値でも応答を変えません。変えると値を推測できてしまうためです。コンストラクションスクリプトが戻すほかのプロパティは、今の値と同じ値の書き込みを、何も変えない書き込みとして受け付けますが、秘密のプロパティは受け付けません。書き込みに要る Capability がセッションに無いときは、ほかのプロパティと同じくそちらを先に返し、文はプロパティも値も名指しません。今の値は、上の 3 層の解禁で読めます。[コンストラクションスクリプトで戻る書き込みと子アクターの拒否](commands.md#コンストラクションスクリプトで戻る書き込みと子アクターの拒否)も参照してください。
+- **対象外のもの。** MetaSound の文字列・オブジェクトの入力、値を伏せて返す読み取りが無い書き込み（Conversation のノード、PCG のノードのプロパティ）、UI の入力の注入、コンソール変数と ini の `[ConsoleVariables]` は対象外です。
+
+**伏せるだけで解禁の無いもの。** 秘密を伏せるだけで、平文を読む方法が無いコマンドがあります。`SetPoseSearchSchemaChannelProperty` が書いた値、`SetSoundCueNodeProperty` と `SetAnimNotifyProperty` の値・キーの反響、`SetUAFPinValue`・`AddBlueprintVariable`・`AddViewModelProperty`・`AddUAFVariable` の反響です。SoundCue のノードと PoseSearch のチャンネルのインスタンスには読み取りのコマンドが無いので、その応答で伏せた値は、どの許可でも読み戻せません。`GetPoseSearchChannelClassSchema`・`GetDataTableRowStruct`・`GetAnimNotifyProperty` は以前この一覧にありましたが、今は `IncludeSecretValues` を受け付けます（上の表を参照）。`ListBlueprintPins` と `GetBlueprintGraphInfo` も、秘密のピンの既定値を伏せるだけで、平文を読む方法はありません。平文は `GetPinDefaultValue` で読みます。
+
+**確かめられなかったものは解禁されません。** 定義がまだ解決できない値（ControlRig を引き当てられない、定義するプロパティを引けない、Blueprint のピンを定義する関数や変数が見つからない〔コンパイル前など〕）と、結果の形が想定と違う値（要求していない名前が結果に混ざる、Toolset の結果の要素が想定外の形）は伏せられ、`UnverifiedMaskedFields` に載り、3 つの許可がそろっていても返りません。Blueprint のピンでは一覧に各ピンの `PinId` が入り、`GetPinDefaultValue` はセッションに `BlueprintUnverifiedPinValueRead` もあるときだけ、そのピンを平文で返します。下の **Blueprint のピンの既定値** を参照してください。Control Rig では、`GetPinValue`（と `Toolset.Editor.ControlRig.GetPinValue`）は判定できなかったピン（例: 関数グラフのローカル変数や入力引数を読む変数ノードの値ピン）を、セッションに `ControlRigUnverifiedPinValueRead` もあるときだけ、平文で `SecretFieldValues` に入れて返します。無いときは `SecretFieldValues` を返さず、`SecretValuesWithheldReason` に `SecretValuesWithheldUnverified` を付けます。Control Rig が判定できなかったそのほかの読み取りは、伏せたままです。
+
+**Blueprint のピンの既定値。** ピンでは、秘密でないと示せる値だけを表示します。示せるのは、定義に秘密の印が無い関数・変数のピン、数値・真偽値・列挙（とそれだけで成る構造体）、エンジンの一部のノード（書式テキスト、配列・マップ・セットの生成、Select、整数・名前・文字列・列挙の Switch、リルート〔Knot〕）のピンです。それ以外の文字列・名前・テキスト・オブジェクト / クラス / ソフト参照と、それらを含む構造体は、秘密と推定されます。エンジンのほかのノードや、プロジェクト・プラグインが定義したノードのピンも同じです。秘密と推定された値は `***` と `IsMasked: true` で伏せられ、3 つの許可がそろえば `GetPinDefaultValue` が返します。定義がその時点で解決できないピン（関数や変数が見つからない、コンパイル前の引数など）だけが未確認で、artifact の `UnverifiedMaskedFields` に `PinId` で載り（`ListBlueprintPins` と `GetBlueprintGraphInfo` は `Result.UnverifiedMaskedFieldCount` も返します）、3 つの許可がそろっても返りません。返せるのは `GetPinDefaultValue` だけで、セッションに DefaultDenied の Capability `BlueprintUnverifiedPinValueRead` もあるときに限ります。無い（または拒否している）ときは、応答に `Result.SecretValuesWithheldReason: SecretValuesWithheldUnverified` が付き、`SecretFieldValues` は返りません。`ListBlueprintPins` と `GetBlueprintGraphInfo` には平文を返す経路がありません。`SetPinDefaultValue` は応答の変更前の値と `NewValue` を伏せ、値が拒否されたときの失敗は値を含まない固定の文言で示します。この保護の対象外: 別のノードのリテラルを `Password` ピンへつないだときの元の値、ノードの `Comment` と表示名、ピン名（文字列 Switch のケース）、パス、書式ノードに直接書いた文字列、ControlRig のピン（別の判定）。
+
+**何を秘密とみなすか。** 次のどれか 1 つに当たるプロパティが秘密です。メタデータ `Password` / `Secret` / `PasswordField=true`。名前のパターン（パスワード、API キー、トークンなど）。ファイルパス・ディレクトリパスの型（`FFilePath` / `FDirectoryPath`）。固定の一覧の項目（今は CryptoKeys の設定 `EncryptionKey`、`SigningPrivateExponent`、`SecondaryEncryptionKeys`）。判定は、プロパティが**実行時に持っている値**も見ます。値を入れたときに型が決まる型（`FInstancedStruct`、プロパティバッグ）の欄は、中身に秘密がある、または中身を読めないときに秘密です。値を見る読み取りは、そのときだけ伏せ、秘密の無い欄は今までどおり返します。値を見ない経路（`SetSettingsValues` の `DryRun` の変更一覧、設定のブリッジ、ControlRig と UAF のピンと変数、Blueprint のピンの値の読み書き、`GetStackInputData`、ControlRig の `GetComponent`、Subsonic のイベントと StateTree のパラメータ）は、その種類の欄を中身に関わらず伏せます。Blueprint の変数の既定値（`SetBlueprintVariableDefault`・`AddBlueprintVariable`）は値で判定します。値を返す書き込みは、書く前の値と書いた後の値のどちらかが秘密なら伏せます。`GetSettingsSchema` は、既定値の中に秘密があるプロパティも `IsSecret` として返し、中身が実行時にしか決まらない欄は `HoldsDynamicValue` で示します（`UAIP.Editor.DataRegistry.GetSchema` も返します）。`MyPath.FilePath` のようなパスは、途中のどれか 1 段でも秘密なら値全体が伏せられます。Widget Blueprint のウィジェットでは、`IsPassword` が立っている文字入力ウィジェットの `Text` も秘密です。呼び出した時点のウィジェットの状態で判定します。`SetWidgetProperties` は、書き込みの前か後のどちらかでテキストが秘密なら、前の値を伏せます。伏せる判定と解禁の判定は同じなので、伏せられるものは必ず解禁できます。`SetSettingsValues` と `Toolset.ConfigSettings.SetSectionProperties` で書く `Properties` は、秘密かどうかによらず、監査ログと完了通知で伏せられます。
+
+**パッケージしたゲームでは** プロパティのメタデータ（`Password`、`Secret`、`PasswordField`）が存在しないので、名前のパターン・パスの型・固定の一覧だけで判定します。メタデータだけを頼りにした秘密の設定は、そこでは伏せられません。ランタイムのダンプ・`DumpSaveGame`・Toolset 版の読み取りも同じで、メタデータだけで秘密にしたプロパティは、パッケージ版ではそのまま返るため、専用の Capability を無効のままにしておいてください。
+
+**印。** 伏せた値は `***` です。何を伏せたかは応答の `MaskedFields` が示します。プロパティ名の一覧で、同じ名前が複数ありうる場合は `Events.<Tag>.Actions.0.Properties.ApiToken`、`Triggers[0].Params.ApiToken` のような修飾したキー、または対象を前に付けた名前（Actor とコンポーネント、Mass のエンティティ、StateTree のブロック）です。応答の形が値に印を付けられるときは値に `IsMasked: true` も付きます。`DumpSaveGame`・`GetAssetTags`・Toolset 版の読み取りは値に印を付けられないので、`MaskedFields` だけが印です。定義がまだ解決できない、または結果の形が想定と違う値は `UnverifiedMaskedFields` に載り、解禁されません。キー `MaskedProperties`（Subsonic）・`MaskedPropertyNames`（UMG）・`MaskedGeneratorProperties`（EQS）は、すべての応答で `MaskedFields` になりました。
+
+**64 件を超える平文を読む。** 1 回の呼び出しが返す平文は最大 64 件です。平文を複数返しうるコマンドは、省略可能の整数引数 `SecretValuesOffset`（0 以上、既定 0）を受け付けます。以前から `IncludeSecretValues` を受け付けていたコマンド（`GetSettingsValues`・`DumpMassEntityConfig`・`GetEQSQueryInfo`・`GetAnimGraphNodeDetails` など）も同じです。省いた平文があるとき、応答に `SecretFieldValuesOmittedCount` と `NextSecretValuesOffset` が現れます。次の呼び出しの `SecretValuesOffset` には、省いた件数ではなく `NextSecretValuesOffset` の値を渡してください。応答から `SecretFieldValuesOmittedCount` が無くなれば、その応答に現れた秘密は読み切っています。offset は一意なキーを初めて現れた順に数えます。負の値・整数でない値・`int32` を超える値は `InvalidParams`、総数を超えた offset は空の `SecretFieldValues` で成功し、平文が許可されていないときは offset を無視します。読み取りの対象が呼び出しの間に変わらなければ、ページは値を重複も欠落もさせません。キーはそれを返した応答の中でだけ有効です。4096 文字を超える値は読めず、マーカーのままです。値を 1 つだけ読むコマンド（`GetStateNodeProperty`・`GetUAFPinValue`・`GetUAFVariable`）は offset を受け付けません。
+
+**平文の値の形。** `SecretFieldValues` の値は文字列とは限りません。欄の型のままで、数値は数値、真偽値は真偽値で返ります。`DumpSaveGame` では、伏せなかったときのダンプと同じ JSON なので、そのまま `WriteSaveGame` へ書き戻せます。`Key` は対象で修飾されるので、別の対象の値は混ざりません。パスを持たない `DumpSaveGame` と Toolset 版の読み取りでは、キーは `<名前>#<番号>` です。プロパティ名と、応答の中で同じ名前の `***` が現れる順を示し（固定長配列は同じ名前を繰り返します）、その応答の中でだけ有効です。固定長配列の要素になっている struct は、テキストの形で返り、`WriteSaveGame` では書き戻せません。
+
+**Toolset 版の読み取り（UE 5.8 以降）。** 値を返す Toolset のコマンドは、結果の中の秘密を伏せます。秘密の欄だけが `***` になり（struct の深い位置の欄も同じ）、他の欄と他の要素は読めるので、秘密のノードが 1 つあっても他のノードは読めます。応答には `MaskedFields` が付き、値の隣に `IsMasked` は付きません。結果を文字列で返すコマンドや、名前がデータであるコマンド（Dataflow の `ListVariables`、PCG の `GetNodeDataView`、Niagara の変数）は UAIP が結果を組み直し、属性や変数の名前で判定します。結果全体の形が想定と違うと、`Toolset.<ツール名> failed.` で失敗して何も返しません。一部の要素の形だけが違えば、その要素を伏せて `UnverifiedMaskedFields` に載せます。UE 5.7 には Toolset が無いので、ここでの説明は当てはまりません。native のコマンドは 5.7 と 5.8 で同じ振る舞いです。
+
+**値を返す・書く Toolset コマンドの失敗は固定の文言です。** Toolset 自身の失敗文は、送った値や読んだ値を引用しうるうえ、失敗した時点では UAIP が対象を秘密かどうか判定できません。そのため、値を返す・書くすべての Toolset コマンド（上の読み取りと、**書き込みは応答で秘密を伏せる** の Toolset 版の書き込み）は、Toolset を呼んだ後の失敗を、Toolset が返した `ErrorCode` のまま `Toolset.<ツール名> failed.` で返します。原因は応答にもログにも出ません。値を持たないコマンドは今までどおりの文です。原因を調べるときは、対応する native の `UAIP.*` コマンドで呼び直してください。
+
+**Toolset の伏せが届かないもの。** 次は、名前が秘密らしくても Toolset が返すままで返ります。
+
+- 色・Transform・GUID・オブジェクトの参照（参照はパスだけ）、および Niagara・PCG・WorldConditions が自分で変換する値の型
+- Sequencer のコントロールの数値と姿勢、GAS の Attribute の数値（型が秘密を持てない）
+- struct をキーに持つ Map: キーはテキストで書かれ、伏せられません
+
+独自のテキスト形式を持つ struct は、内側に秘密を宣言しているときだけ丸ごと伏せます。`FInstancedStructContainer` と `FJsonObjectWrapper` は丸ごと伏せます。Toolset 版の `FindReferencersByTag` は絞りません。秘密らしい名前のプロパティにタグを入れたアセットでも、結果に出ます。
+
+**一致だけが分かる読み取り。** この 4 つのコマンドは秘密の値を返しませんが、答えから「秘密が何かと等しい」ことが分かりえます。3 つの許可がそろわないときは秘密の部分を比べず、答えが秘密に依存しないようにします。
+
+| コマンド | 3 つの許可がそろわないとき | そろうとき |
+|---|---|---|
+| `CompareReplicatedProperties` | 秘密のプロパティは `NotComparable`（`Reason: SecretValue`）。`Equal` でも `Different` でもなく、値も返さない | 今までどおり |
+| `FindGameplayTagReferencers` | 秘密らしい名前のタグ、秘密を含みうるタグ（Blueprint の `FiBData` を含む）、クラスがメモリに無いタグを検索から外す。外した回は一致の有無によらず `Result.SecretTagsExcluded: true` が付くので、見つからなかった場合は外した可能性がある。タグの改名には影響しない | 今までどおり |
+| Toolset 版 PCG の `GetNodeInfo`・`GetGraphStructure` | `ParamOverrides` から秘密のキーを取り除く。判定は値ではなくノードの定義で行うので、変換器が伏せられない型も消える。秘密の上書きの有無によらず `SecretOverridesOmitted: true` が毎回付く | キーが `***` で現れ、平文は `SecretFieldValues` で返る |
+
+**アセットのタグと `FiBData`。** `GetAssetTags` はアセットをロードしません。Blueprint の検索用タグ `FiBData`（変数の既定値などを含み、タグの名前からはどの変数の値か分からない）、秘密らしい名前のタグ、クラスがメモリに無いタグを伏せます。タグの一覧は名前と文字列の対なので `IsMasked` は付かず、伏せたタグは `MaskedFields` に並びます。同じアセットでも、クラスが読み込まれているかで読めるかが変わります。`FiBData` はほぼ空の Blueprint でも 4096 文字を超えるので、**3 つの許可がそろっても読めません**。同じ値は、次のコマンドで（それぞれ 3 つの許可で）読んでください。
+
+| `FiBData` が持つ値 | 読むコマンド |
+|---|---|
+| 変数の既定値 | `GetBlueprintDefault`（`PropertyPath` に変数名） |
+| ピンの既定値 | `GetPinDefaultValue` |
+| コンポーネントのプロパティ | `GetBlueprintComponentProperty` |
+
+**ランタイムのダンプ。** `DumpSubsystemState`・`DumpAnimInstanceVariables`・`DumpReplicatedPropertyValues`・`DumpStateTreeInstanceData`・`GetMassEntityFragments`・`GetBlackboardValues`・`DescribeBehaviorTreeWithProjectCode`・`DumpAIPerceptionSenseConfigs`・`DumpSaveGame` は、描画の前に値ごとに判定します。秘密と判定した値は `***` と `IsMasked: true`（`DumpSaveGame` は値に印が無い）になり、応答に `MaskedFields` が付きます。**専用の Capability を与えただけでは秘密は読めません**。平文には 3 つの許可が要ります。判定は保証ではなく、次の限界があります。
+
+- 秘密を含む struct は丸ごと `***` です。`DumpSaveGame` だけは例外で、秘密の欄だけを伏せます。`DumpSaveGame` では、`FInstancedStruct` やプロパティバッグの固定長配列は、実体を読めないので秘密でなくても丸ごと `***` で、struct をキーに持つ Map も丸ごと `***` です。
+- `GetBlackboardValues` はキーの種別によらずキー単位で判定します。秘密の Struct キーは丸ごと `***` です。`DescribeBehaviorTreeWithProjectCode` も同じです。どちらも、秘密のキーを参照するノードの実行時の説明は、3 つの層がすべて許すまで返さず、`MaskedFields` では `<Actor>/Nodes/<InstanceIndex>.<ExecutionIndex>.RuntimeDescription` という名前になります。
+- **Mass:** エンティティごとの Fragment のうち、実行時に型が決まる値（`FInstancedStruct` とそれを含むコンテナ）は、3 つの許可がそろっても常に `***` です。読むのが安全でないためです。共有の Fragment は、実体が秘密のときだけ `***` になります。
+- `DumpSaveGame` の `UnresolvedReferenceCount`・`UnresolvedReferences`・`ClearedSoftReferenceCount`・`ClearedSoftReferences` は、秘密の欄の参照を含めません。参照が値の断片を引用しうるためです。
+- 平文は `SecretFieldValues` にだけ入り、artifact には入りません。
+- 名前の判定は部分一致なので、`TokenCount` や `bSecretRoomFound` のような名前も伏せます。数値や真偽値も文字列の `"***"` になります。`Value` の型に依存する呼び出し側は影響を受け、これまでランタイムのダンプで読めていた値の一部が読めなくなります。
+- デモ版でも、`GetAssetTags`・`DumpSubsystemState`・`DumpAnimInstanceVariables`・`GetBlackboardValues`・`DumpAIPerceptionSenseConfigs` の秘密は、製品版と同じ 3 層で解禁できます（`FiBData` は上のとおり読めません）。[秘密値の平文での読み取り](#秘密値の平文での読み取り)を参照してください。
+
+
+**この仕組みが対象にしない経路。**
+
+- 任意のコードを実行するコマンド（`RunEditorPythonScript`、`UAIP.Editor.Python.*`、`RunNamedEditorCommand`、`ExecuteConsoleCommand`）は、伏せ字では防げません。どれも DefaultDenied の Capability が要り、それを付与した時点で、秘密値の読み取りより強い権限を与えています。
+- UI 系の経路（`SnapshotUI` の入力欄の値、`DumpSlateTree` の文字列、画面キャプチャ）は、入力欄がどのプロパティかを特定できません。自作の秘密の設定を守るには、そのプロパティに `meta=(PasswordField=true)` を付けてください。エンジンがパスワード欄として描くので、既存のパスワード欄の扱いで伏せられます（**エディタ操作** の `AllowPasswordFieldRead` と `EditorWidgetPasswordTextRead` を参照）。
+- メタデータも、秘密らしい名前も、パスの型も、固定の一覧への登録も無い秘密は、秘密と判定されません。自作の設定には `PasswordField=true` を付けてください。
+- `SetConfigValue` で書き込む値は、監査ログでは伏せられません。伏せるのは応答の `OldValue` だけです。
+
 #### プラグイン管理
 
 プラグインの有効状態やディスクリプタに対する書き込みコマンドです。エンジンおよびマーケットプレイスのプラグインは Capability に関わらず常に読み取り専用です。書き込みコマンドの変更はエディタ再起動後に反映されます。
@@ -660,6 +1237,44 @@ LiveLink の状態を読むことは DefaultAllow です — `UAIP.Runtime.LiveL
 
 > **停止と中止が作用するのは UAIP が始めた録画だけです。** Take Recorder パネルや他プラグインが始めた録画は `GetLiveLinkRecordingStatus` で観測できますが、どの Capability を持っていてもこれらのコマンドで停止・中止されることはありません。
 
+#### Mass の観測と編集
+
+Mass のコマンドは、実行中の Mass シミュレーションの観測（[`UAIP.Runtime.Mass`](commands.md#uaipruntimemass)）と、その元になるアセットの読み取り・編集（[`UAIP.Editor.Mass`](commands.md#uaipeditormass-)）を行います。シミュレーションの構造の読み取りは DefaultAllow です。実行時の 6 コマンドは `RuntimeInspect`（アーキタイプ、エンティティ数、プロセッサグラフ、エンティティが持つ要素の型）、エディタ側の読み取り 3 コマンドは `EditorInspect` を必要とします。以下はすべて既定で無効で、Mass のコマンドはデモ版に含まれません。
+
+| Capability | 有効になる操作 |
+|---|---|
+| `RuntimeMassFragmentValueRead` | プレイワールドの 1 体のエンティティの Fragment・Shared Fragment・Const Shared Fragment の値を読む — `GetMassEntityFragments`。`RuntimeInspect` に**加えて**必要です。これらの値はプロジェクトのデータで、AI クライアントに渡され、成果物に書き込まれるため、既定で無効です。シミュレーションの構造は対象外です |
+| `MassAssetEdit` | このドメインが編集するアセット（Mass のエンティティ構成とスポナー）への書き込み — `AddMassEntityConfigTrait`・`RemoveMassEntityConfigTrait`・`SetMassEntityConfigTraitProperty`・`ConfigureMassSpawner`。Mass のアセットへの**汎用のプロパティ書き込み**も対象です（最後の注意を参照）。どれもシミュレーションの元になるアセットを書き換えるため、既定で無効です。プレイセッション中の書き込みは断られます |
+| `MassCustomTypeEdit` | `MassAssetEdit` に**加えて**、このドメインが同梱しない Trait・スポナー生成器のクラス（プロジェクトのモジュール、ほかのプラグイン、Blueprint 生成クラス）を持ち込むときに必要です。これが無ければ、セッションが置けるクラスは、エンジン自身の Mass モジュールが宣言するものだけです。コマンドの実行中に判定され、どのコマンドの `RequiredCapabilities` にも現れません。追加に要るかどうかは、`ListMassEntityTraits` が `Admission` でクラスごとに示します |
+| `MassProjectCodeExecution` | 呼び出しがプロジェクトのコードを走らせることを許す。プロジェクトが宣言する Trait の組み立ての評価（要素の読み取り。`DumpMassEntityConfig`・`ValidateMassEntityConfig`・`ListMassEntityTraits`）、`AddMassEntityConfigTrait` への `InitialProperties` の指定、Trait のプロパティの書き込み（`SetMassEntityConfigTraitProperty`。Trait のクラスを問わない）、そして、エンティティの種類の置き換えでエディタのワールドがそのような Trait に行き着くテンプレートを登録する場合の `ConfigureMassSpawner`。プロジェクトの生成器クラスを足すだけなら要りません。生成器が走るのはプレイ中の生成時だけだからです。エディタの操作を、このプラグインが同梱していないコードの実行に変えるため、既定で無効です。これを持っていても、安全ポリシーが `ReadOnly` の間と、モーダルダイアログや長い処理がゲームループを止めている間は、読み取りはプロジェクトの Trait のコードを走らせません（理由 `ReadOnlyPolicy` と `NotAtSafePoint`。[`UAIP.Editor.Mass`](commands.md#uaipeditormass-) を参照） |
+
+エディタ側の 3 つの Capability は、`MassGameplay` プラグインがコンパイルされているかどうかにかかわらず登録されるので、どちらのビルドでも運用者が許可でき、🧩 は付きません。エディタのコマンド自体は `MassGameplay` プラグインを必要とします（[`UAIP.Editor.Mass`](commands.md#uaipeditormass-) を参照）。`RuntimeMassFragmentValueRead` は実行時のコマンドのもので、プラグインは要りません。
+
+> ⚠️ **`MassProjectCodeExecution` が何にさらすか。** 許可すると、プロジェクト独自の Trait のコードが 2 つの場所で走ります。構成が何を組み立てるかを求めるために 1 回の呼び出しの間だけ作る専用の空のワールドと、スポナーのエンティティの種類を置き換えたときにエンジンがテンプレートを登録するエディタのワールドです。想定外の状態で止まる作りの Trait は、**エディタ全体を落とす**ことがあります。AI クライアントがそうしてよい場所でだけ許可してください。次の点にも注意してください。
+>
+> - **「プロジェクト独自」は Trait のクラスの単位で判定します。** エンジン同梱の Trait はエンジンの Trait として扱います。調べるコマンドがその Trait を呼んでも、その Trait の処理からプロジェクトのコードには届きません。調査用の呼び出しでは、Trait が参照するクラスやアセットに触る処理をエンジン自身が飛ばすためです。信頼する出自はエンジンの Mass モジュールだけで、ほかのエンジンプラグイン（`UAFMass` など）の Trait はプロジェクトの型と同じ扱いになり、`MassCustomTypeEdit` と `MassProjectCodeExecution` が要ります。
+> - **アセットの読み込みはプロジェクトのコードを走らせることがあり、この Capability では止まりません。** まだ読み込まれていない構成アセットをコマンドが読み込むと、そこから参照される StateTree も一緒に読み込まれます。そのとき、エンジンの通常の読み込み処理（読み込み後処理・リンク、エディタではコンパイル）が、プロジェクトが C++ で書いた StateTree のノードに対して走りうるのです。これはアセットの読み込み一般に伴う挙動です。
+> - **汎用のコマンドは、それでも Trait のコードを走らせます。** プレイの開始、アクターの削除、保存、Undo / Redo に対してエンジン自身が独自の Trait の処理を走らせることは、この Capability では止められません。Mass ではなく、それらのコマンドが元から持つ性質です。
+> - **Trait に入れ子になったプロジェクト独自の構造体は、汎用の書き込みの判定に捕まりません。** 判定は書き込む宣言型の単位で行います。プロジェクトが宣言する構造体（プロジェクトの Trait やエンジン同梱の Trait の中に入れ子になったもの）に届く書き込みは、通常の `PropertyEdit` だけで通り、その構造体の import のフックが走りうります。
+
+> ⚠️ **`GetMassEntityFragments` が返すもの。** 値は、呼び出した時点のものが成果物に書き込まれます。秘密と判定した値は `***` で、実行時に型が決まる Fragment の値は常に `***` です。上限があるのは量であって種類ではありません。1 つの Fragment の値は 16 KiB、1 回の応答は 256 KiB までです。強参照のオブジェクトは読まず、実行時に型が決まる構造体は展開せず、リフレクションされないメンバーは出力しません。AI クライアントが Fragment に入っているものを読んでよい場所でだけ許可してください。引き続き使える構造だけを返すコマンドからも、どのエンティティがありどう構成されているかは推測できます。
+
+> ⚠️ **Mass のアセットへの汎用のプロパティ書き込みに、2 つの Capability が加わりました（動作の変更）。** Mass のエンティティ構成・スポナー・Trait・スポーンデータ生成器、およびそれらの設定を運ぶ構造体のプロパティを汎用のプロパティコマンドで書くには、汎用コマンドがもともと求めるものに加えて、常に `MassAssetEdit` と `MassProjectCodeExecution` が要ります。対象の構造体は、構成・スポナー・Trait・生成器のプロパティからたどれる、Mass 系プラグイン（MassGameplay / MassAI / MassCrowd）の構造体に限ります。Mass のプロジェクト設定（移動のスタイル、群衆のレーンの密度、注視の優先度など）や StateTree のノードにだけ使われる構造体は対象になりません。Trait と別のアセット（データテーブルの行など）の両方で使われる構造体は、どちらで書いても対象になります。`PropertyEdit` だけでそのようなプロパティを書いていた手順は、2 つの Capability を足してください。参照や入れ子のオブジェクトを含む値には、従来どおり `PropertyReferenceEdit` または `PropertyStructuredEdit` が要ることがあります。
+
+**有効にする。**
+
+```ini
+[UAIP.SafetyPolicy]
++AllowedCapabilities=RuntimeMassFragmentValueRead
++AllowedCapabilities=MassAssetEdit
++AllowedCapabilities=MassCustomTypeEdit
++AllowedCapabilities=MassProjectCodeExecution
+```
+
+必要なものだけを許可してください。そのあとエディタを再起動するか、`AllowCapabilityReload=True` なら `UAIP.Core.ReloadCapabilities` を呼びます。与えられていない間、それを必要とするコマンドは Capability の名前を示した `CapabilityNotAvailable` で失敗し（書き込みは `RequiredCapabilities` と `MissingCapabilities` も返します）、何も変更しません。
+
+**明示的に拒否する。** 4 つのどれでも、`+DeniedCapabilities=<Name>` は、同じ Capability が許可されていても、それを必要とするコマンドを `PolicyViolation` で拒否します（拒否が優先）。`+DeniedCapabilities=RuntimeInspect` は実行時の Mass の 6 コマンドすべてを、`+DeniedCapabilities=EditorInspect` はエディタ側の読み取り 3 コマンドを、それらを要求するほかのコマンドとともに拒否します。
+
 ---
 
 ## DefaultDenied Capability を有効にする
@@ -685,6 +1300,8 @@ uaip_execute(CommandName="UAIP.Core.ReloadCapabilities")
 `PropertyStructuredEdit` の 2 つが該当）。行を削除すれば次の再読み込みで Capability は外れるため、
 「追加して・使って・削除する」という流れはどの名前でも同じように機能します。
 
+`DeniedCapabilities` に書かれた Capability は、それを要求するすべてのコマンドが `CapabilityNotAvailable` ではなく `PolicyViolation` で拒否します。ディスパッチの後にハンドラーが自分で行う判定（例: `CancelPendingInteraction`、プロパティ書き込み系コマンド、`AddLiveLinkPresetToClient`、`RunGauntletTest`、SaveGame 系コマンド）も同じです。同じ Capability が `AllowedCapabilities` にも書かれていても拒否が勝ちます。`ReloadCapabilities` で追加した拒否は即座に効きます。一方、エディタ起動時にすでに有効だった拒否は、その行を削除して再読み込みしても有効なままで、解除には再起動が必要です。
+
 `ReloadCapabilities` は 3 つの配列を返します。実際に変化した分の `AddedCapabilities` と
 `RemovedCapabilities`、そして ini に書かれていて **Capability として登録されていない**名前を返す
 **`UnknownCapabilities`** です。綴りを間違えた名前は 3 番目に現れるため、黙って無視されることはなく、
@@ -705,12 +1322,19 @@ AllowContextMenuMutation=False
 AllowKeyboardInput=False
 AllowKeyboardModifierInput=False
 AllowPasswordFieldWrite=False
+AllowRuntimePasswordFieldWrite=False
+AllowPasswordFieldRead=False
+AllowRuntimePasswordFieldRead=False
+AllowSecretValueRead=False
+AllowToolsetErrorText=False
+AllowSecretValuesInFingerprints=False
 AllowInputModeBypass=False
 DisablePIEStart=False
 AllowCheatCVarWrite=False
 AllowExternalTraceAnalysis=False
 AllowDisclosingTraceAttachment=False
 AllowUserInteractionPrompt=False
+AllowProjectNetDriverNetModeQuery=False
 
 ; UAIP 以外が採取した .utrace を解析してよいディレクトリ。
 ; 既定値はなく、AllowExternalTraceAnalysis だけでは何も開きません。
@@ -732,23 +1356,72 @@ AllowUserInteractionPrompt=False
 | キー | デフォルト | 効果 |
 |---|---|---|
 | `ReadOnly` | `False` | 書き込みコマンドを拒否。エディタライフサイクルの 2 コマンドのみ例外 — 下記参照 |
-| `DisableSave` | `False` | ディスク書き込みコマンドを拒否 |
-| `AllowLogDump` | `False` | `DumpOutputLog` / `DumpMessageLog` を許可 |
+| `DisableSave` | `False` | ディスク書き込みコマンド（ファイルの削除・移動・リネームを含む）を拒否 — 下記参照 ディスクに書く Toolset 版のコマンド（`Toolset.ConfigSettings.SaveSection`、`Toolset.Plugin.*` の書き込み 4 本、Toolset 版 `CreateGameFeaturePlugin`）と、保存を伴う ChaosCloth・MetaHuman のコマンド（native と Toolset 版）にも効きます |
+| `AllowLogDump` | `False` | `DumpOutputLog` / `DumpMessageLog` と `GetLogEntries`（`UAIP.Editor.Engine.Log.GetLogEntries` と `Toolset.Editor.Toolset.Logs.GetLogEntries`）を許可。`QueryCapabilities` は `OperationalConstraints.IsLogDumpAllowed` として報告します WebSocket のログを購読してよいか（`SubscribeOutputLog`。断られた要求には `PolicyViolation` の応答が返り、ログは 1 行も届きません）と、`GetLastCrashReport` がログの末尾を返すかも決めます。`+DeniedCommands=...DumpOutputLog` では WebSocket のストリームは**止まりません**。止めるのはこのフラグだけです |
 | `AllowContextMenuMutation` | `False` | `InvokeContextMenuAction` を許可 |
 | `AllowKeyboardInput` | `False` | `PressKey` を許可（`EditorKeyboardInput` Capability も別途必要） |
 | `AllowKeyboardModifierInput` | `False` | `PressKey` 内の Ctrl/Alt/Shift 修飾キーを許可 |
-| `AllowPasswordFieldWrite` | `False` | `FillForm` でパスワードフィールドへの書き込みを許可 |
+| `AllowPasswordFieldWrite` | `False` | `FillForm` でパスワードフィールドへの書き込みを許可 Toolset 版の `InputText` / `FillForm` にも効きます。`False` の間は、パスワード欄かどうか判定できない対象（古い Ref・テキスト欄でない Ref・型の誤った引数）も断ります。Toolset 版の `PressKey` はウィジェットの参照を受け取らないので、このフラグでは判定できません |
+| `AllowRuntimePasswordFieldWrite` | `False` | `TypeGameViewportText` による、実行中のゲームの UI のパスワード欄と、パスワード欄かどうか判定できない欄への入力を許可（`RuntimeUIInputInjection` も必要）。`AllowPasswordFieldWrite` とは独立。起動引数: `-uaip-policy-allow-runtime-password-field-write=True` |
+| `AllowPasswordFieldRead` | `False` | `SnapshotUI` が、エディタの UI のパスワード欄と、パスワード欄かどうか判定できない欄の平文を返せるようにします（`EditorWidgetPasswordTextRead` も必要）。`AllowRuntimePasswordFieldRead` とは独立。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-password-field-read=True` |
+| `AllowRuntimePasswordFieldRead` | `False` | `DumpGameViewportWidgetTexts` が、実行中のゲームの UI のパスワード欄と、パスワード欄かどうか判定できない欄の平文を返せるようにします（`RuntimeWidgetTextRead` と `RuntimeWidgetPasswordTextRead` も必要）。`AllowPasswordFieldRead` とは独立。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-runtime-password-field-read=True` |
+| `AllowSecretValueRead` | `False` | `IncludeSecretValues` を受け付けるコマンドが、秘密の設定値の平文を返せるようにします（`SecretValueRead` も必要）。起動時に読まれ、再読み込みはできません。CLI フラグ：`-uaip-policy-allow-secret-value-read=True`。[秘密値の平文での読み取り](#秘密値の平文での読み取り) を参照 |
+| `AllowToolsetErrorText` | `False` | 解除できる Toolset の書き込みブリッジが、固定文の代わりにエンジン自身の失敗文を返せるようにします。起動時に読まれ、再読み込みはできません。**ini で設定**（専用の CLI フラグもコンソール変数もありません。表の下の注を参照）。オンにすると、失敗の応答に秘密の新しい値が出ることがあります — [Toolset の失敗文](#toolset-の失敗文) を参照 |
+| `AllowSecretValuesInFingerprints` | `False` | Subsonic のアクションの指紋（`ActionFingerprint` / `ActionsFingerprint`）に、秘密のプロパティの値を含めます。ただし `SecretValueRead` も持つセッションでだけです。起動時に読まれ、再読み込みはできません。**ini で設定**（専用の CLI フラグもコンソール変数もありません。表の下の注を参照）。`AllowSecretValueRead` とは独立です。オンにすると、`SecretValueRead` を持つセッションが指紋から秘密の値を割り出せるようになります — [Subsonic の指紋と秘密の値](#subsonic-の指紋と秘密の値) を参照 |
 | `AllowInputModeBypass` | `False` | Inject 系コマンドの `BypassInputMode=true` を許可 |
-| `DisablePIEStart` | `False` | PIE 起動を拒否 |
+| `DisablePIEStart` | `False` | PIE 起動を拒否 Toolset 版の `Toolset.Editor.Toolset.PIE.StartPIE` にも `StartPIE` と同じ文言で効きます。PIE を始められない状態でも、先にこの拒否が返ります |
 | `AllowCheatCVarWrite` | `False` | `SetConsoleVariable` / `ResetConsoleVariable` による `ECVF_Cheat` フラグ付き CVar への書き込みを許可（`RuntimeCVarWrite` も別途必要） |
 | `AllowExternalTraceAnalysis` | `False` | UAIP 以外が採取した `.utrace` の `AnalyzeTrace` による読み取りを許可。**単体では何も許可しません** — `ExternalTraceDirectory` の設定も必須 |
-| `ExternalTraceDirectory` | 未設定 | UAIP 以外が採取した `.utrace` が置かれていなければならないルートディレクトリ。ini のみ（CLI での上書き不可）で、意図的に既定値を持ちません |
+| `ExternalTraceDirectory` | 未設定 | UAIP 以外が採取した `.utrace` が置かれていなければならないルートディレクトリ。ini で設定（専用の CLI フラグなし。表の下の注を参照）で、意図的に既定値を持ちません |
 | `AllowDisclosingTraceAttachment` | `False` | 採取した `.utrace` のチャネルが**ホスト側パス・画面内容・ネットワークアドレス**を記録しえた場合に、`StopTrace` がそのファイルを artifact として引き渡すことを許可。解析セクションはこれらをサニタイズ / マスク / メタデータ化して返しますが生ファイルは加工しないため、引き渡しは別の判断になります。**ログテキスト**の開示は本キーではなく `AllowLogDump` が担い、未分類チャネルは両方の設定に関わらず拒否されます。`RuntimeInsightsAttachTraceFile` Capability も別途必要。エディタではエンジンが log / screenshot チャネルを自分で有効化するため、通常は `AllowLogDump` との併用が必要です |
 | `AllowUserInteractionPrompt` | `False` | 保留中の対話（自力では完了せずエディタ内の人間へ処理を委ねるコマンド。例：`DrawPCGSpline`）の開始自体を許可する。無効時はリソースの予約やエディタへの変更が一切行われる前に `PolicyViolation` で拒否されます。対話型コマンド自身の DefaultDenied Capability（例：`PCGSplineDraw`）とは別の軸で、Capability が「何に触れてよいか」を表すのに対し、本フラグは「人間のビューポートと入力フォーカスを奪うこと自体を許可するか」を表します。本フラグとは独立に、人間へプロンプトを提示できるものが現在何も登録されていない場合も開始は拒否されます — [コマンドリファレンス](commands.md) の `UAIP.Editor.PCG` セクション参照 |
+| `AllowProjectNetDriverNetModeQuery` | `False` | 実行時コマンドが、プレイワールドの NetMode（と一時停止中かどうか）を通常の方法でエンジンに問い合わせることを許可する。この方法はネットドライバーの override できるサーバー判定に届きます。既定では、UAIP はエンジン自身の override できない状態から NetMode を求めるので、読み取り専用のコマンドの中でプロジェクトのネットドライバーのコードが実行されることはありません。プロジェクトのネットドライバーが「サーバーであること」の意味を変えていない限り、答えは同じです。そのようなドライバーのときだけオンにしてください。オンの間は、読み取り専用の実行時コマンドが、`ReadOnly` の下でもゲームループが止まっている間でもそのプロジェクトのコードを実行し、エディタまたはゲームは読み込み時に警告を 1 回出します。起動引数: `-uaip-policy-allow-project-net-driver-net-mode-query=True`。再起動後に効きます。`QueryCapabilities` の `OperationalConstraints` には出ません |
 | `AllowedCapabilities` | 空 | DefaultDenied の Capability を解除（`+` 付きで 1 行に 1 つ） |
 | `DeniedCapabilities` | 空 | DefaultAllow の Capability を全セッションから取り除く |
-| `DeniedCommands` | 空 | 完全修飾名で指定したコマンドをブロック。ブロックされたコマンドは `ListCommands` の既定応答からは隠れ、`HiddenReasons.DeniedCommand` に計上される。`IncludeUnavailable=true` を指定すると `Available: false`・`UnavailableReason: "DeniedCommand"` として明示的に列挙できる。`DescribeCommand` では常に表示される |
+| `DeniedCommands` | 空 | 完全修飾名で指定したコマンドをブロック。ブロックされたコマンドは `ListCommands` の既定応答からは隠れ、`HiddenReasons.DeniedCommand` に計上される。`IncludeUnavailable=true` を指定すると `Available: false`・`UnavailableReason: "DeniedCommand"` として明示的に列挙できる。`DescribeCommand` では常に表示される ここに `DumpOutputLog` を入れても WebSocket のログのストリームは止まりません。`AllowLogDump` を使ってください |
 | `AllowCapabilityReload` | `False` | `UAIP.Core.ReloadCapabilities` を有効化（再起動不要で設定反映） |
+
+**CLI フラグのないキー。** `AllowToolsetErrorText`・`AllowSecretValuesInFingerprints`・`AllowedCapabilities`・`DeniedCapabilities`・`DeniedCommands`・`AllowCapabilityReload`・`AllowedArtifactDirectory`・`ExternalTraceDirectory` には `-uaip-policy-*` フラグがないので、クライアントが実行中に送る値では変えられません。エディタを起動する人は、Shipping 以外のビルドでエンジン標準の `-ini:` 引数（例: `-ini:UAIP:[UAIP.SafetyPolicy]:+AllowedCapabilities=GameFeatureCreate`）を使えば、どれも設定できます。MCP Bridge は、エージェントが渡す起動引数（`EditorExtraArgs`）の `-ini:UAIP:` を拒否するので、エージェントがこれで自分の権限を広げることはできません（`allow_reload_uaip_ini_override` を `true` にして Bridge を起動した場合を除く。[設定リファレンス](config.md#ブリッジの起動時にだけ読まれる設定)を参照）。
+
+### Toolset の失敗文
+
+Toolset の書き込みブリッジが失敗すると、エンジン自身の失敗文には、送った値（秘密の設定の新しい値を含む）が引用されていることがあります。そのため UAIP は既定ではその文を渡さず、失敗メッセージは固定文 `Toolset.<Tool> failed.` になります。
+
+`[UAIP.SafetyPolicy]` の `AllowToolsetErrorText=True` でこれを解除できますが、代償は利用者が負います。**失敗の応答に、秘密の新しい値が含まれることがあります。** 引き換えに、書き込みが失敗したことだけでなく、エンジンが断った理由（どのプロパティのどの制約か）が見えます。それが必要でなければオフのままにしてください。
+
+- **対象。** 解除できる Toolset 版の書き込みコマンド — PCG、Niagara、ControlRig の `SetPinValue`、ConfigSettings の `SetSectionProperties` のブリッジ — と `SnapshotUI` だけです。エディタから値を読むブリッジは、キーをオンにしても固定文のままです。その失敗文は、送った値ではなく読んだ値を引用しうるためです。
+- **それでも取り除かれるもの。** 呼び出しが送った値は、文中から伏せられます（`***`）。呼び出しが数値を送っていた場合は、数値を文の中から確実に伏せられないため、文は引き続き返りません。
+- **設定方法。** `Config/DefaultUAIP.ini` だけです。失敗の応答が明かしてよい範囲を広げるため、`-uaip-policy-*` フラグもコンソール変数もありません。起動時に読まれ、`ReloadCapabilities` では再読み込みされないので、エディタを再起動してください。
+- **確認方法。** `QueryCapabilities` が `OperationalConstraints.IsToolsetErrorTextAllowed` として報告します。
+
+### Subsonic の指紋と秘密の値
+
+Subsonic のコマンドの指紋（`ActionFingerprint` / `ActionsFingerprint`。楽観的排他に使います）は、**秘密のプロパティの値を含めずに**計算されます。読み取りの権限しかない人が、値の候補を当てはめて指紋と比べても、秘密の値は当てられません。代償として、秘密の値だけの変更では指紋が変わりません。ほかに影響を受ける点はコマンドリファレンスに載せています。指紋の版は 2 で、これより前に取った指紋は `Conflict` で拒否されます（読み直してください）。
+
+`[UAIP.SafetyPolicy]` の `AllowSecretValuesInFingerprints=True` で、秘密の値を指紋へ戻せます（以前の計算の仕方です）。代償は利用者が負います。**読み取りができるセッションが、指紋から秘密の値を割り出せるようになります。**
+
+- **二重の鍵。** 秘密の値が指紋に入るのは、次の**両方**がそろったセッションだけです。運用者が `AllowSecretValuesInFingerprints=True` を書いてエディタを再起動した、**かつ**セッションが `SecretValueRead` を持っている。どちらかが欠けると、指紋は既定のものです。したがって、秘密を持つアクションの指紋は、両方がそろったセッションで取ったものと、片方しかないセッションで取ったものとで違います。一方で取った指紋を他方のセッションで送ると `Conflict` で拒否されます（読み直してください）。
+- **`AllowSecretValueRead` とは独立です。** この設定は、読み取りが平文を返せるようにするものではありません。`AllowSecretValueRead=False` のままこの設定をオンにしても、`SecretValueRead` を持つセッションの指紋には秘密の値が入り、`IncludeSecretValues` 引数も要りません。これをオンにしても平文を返すコマンドは増えませんが、指紋から平文を導けるようになるので、`AllowSecretValueRead` と同じ重さで扱ってください。
+- **保存されたものに残るリスク。** 両方がそろったセッションが読み取りの結果を artifact として保存すると、そこには秘密の値に依存する指紋が入ります。artifact は値を `***` のままにしますが、その依存までは消えません。ファイルを読めるセッションは、指紋を使って値の候補を照合できます。
+- **起動時の警告。** この設定がオンのとき、ログにその旨と、`SecretValueRead` を持つセッションには指紋から秘密の値を当てられる経路が戻ることが警告として出ます。
+- **設定方法。** `Config/DefaultUAIP.ini` だけです。`-uaip-policy-*` フラグもコンソール変数もありません。起動時に読まれ、`ReloadCapabilities` では再読み込みされないので、エディタを再起動してください。
+- **確認方法。** `QueryCapabilities` が `OperationalConstraints.IsSecretValueInFingerprintAllowed` として報告します（キーは単数形で、設定の名前は `AllowSecretValuesInFingerprints` です）。
+- **影響する場所。** `RemoveSubsonicParameter` が、秘密の値だけが変わったイベントを `AffectedEvents` に載せるかも、これで決まります（両方の鍵がそろえば載ります）。また、`Modifiers` の配列が秘密と宣言されたアクションで、古い Modifier の `Index` を検出する働きも戻ります。
+
+### DisableSave と、削除・移動・リネームのコマンド
+
+`DisableSave` は、UAIP がディスク上のファイルを変更することを止めます。保存するコマンドに加えて、アセットの削除・移動・リネームはディスク上のファイルを消したり書き換えたりする（その間にエンジンが保存も行う）ため、`True` のとき次のコマンドを `PolicyViolation` で拒否します。
+
+- `DeleteAsset`・`DeleteFolder`・`ForceDeleteFolder`
+- `RenameAsset`・`MoveAsset`・`MoveFolder`
+- `FixAssetRedirectors`・`FixUpRedirectorsInFolder`
+- `DeleteInputAction`・`DeleteMappingContext`
+- `DeleteDataLayerAsset`・`DeleteHLODs`
+- `DeleteGameFeaturePlugin`と、`CreateGameFeaturePlugin`（新しいプラグインをディスクに書き出すため）
+- `SetProjectSetting`（設定オブジェクトを ini ファイルへ保存するため。以前は `ExecutionFailed` と独自の文言で断っていましたが、下の共通の文言になりました）
+- ディスクに書く Toolset 版のコマンドは、Toolset を呼ぶ前に断られます。`Toolset.ConfigSettings.SaveSection`、`Toolset.Plugin.SetPluginEnabled`・`UpdatePluginDescriptor`・`AddPluginDependency`・`RemovePluginDependency`、Toolset 版 `CreateGameFeaturePlugin` です。保存を伴う ChaosCloth・MetaHuman のコマンド（native と Toolset 版）も断られます。`DisableSave` を判定するコマンドは、どれも同じ判定と同じ文言なので、native のコマンドと対応する Toolset 版で食い違うことはありません。⚠️ 保存を伴う native の MetaHuman のコマンド 5 本は、以前は `Persisting operations ...` の文言で断っていましたが、下の文言に変わりました。
+
+拒否の文言は "Disk write operations are disabled by SafetyPolicy. Remove DisableSave=True under [UAIP.SafetyPolicy], or start the editor without -uaip-policy-disable-save; it is read at startup." で、何も削除・移動・リネームされません。これらのコマンドでは、この判定を PIE 中かどうかの判定やエディタの状態の確認より先に行うので、PIE 中に依頼しても `NotAllowed` ではなく `PolicyViolation` が返ります。`RestartEditor` と `ShutdownEditor` は、`SaveAll: true` を明示したときだけ拒否されます。以前から `DisableSave` で拒否していたコマンドは、それぞれの文言のままです。それ以外の方法でディスクに書くコマンド（GameplayTag や PrimaryAssetType の設定ファイルへの書き込み、サンドボックスの変更の確定、Niagara の Blueprint ラッパーや Groom の作成など）は `DisableSave` を確認しません。
 
 ### ReadOnly とエディタライフサイクルコマンド
 
@@ -776,7 +1449,7 @@ AllowUserInteractionPrompt=False
 | `EngineVersion` | 現在動作しているものとは異なるエンジンバージョンを必要とする（特定のリリースで導入された、または特定のリリースまでしか存在しない API など） | エンジンバージョンを上げる、または下げる |
 | `BuildConfiguration` | このプロセスがビルドされていないビルド構成を必要とする（Developer Tools・Editor ターゲットなど） | 必要な構成でリビルドする |
 | `ExecutionEnvironment` | この実行環境が提供していないインフラを必要とする（レンダーハードウェアインターフェース、対話セッション、オプションの Runtime プラグインが登録するモジュラー機能クライアントなど） | 別の実行環境で動かす |
-| `OptionalPluginDisabled` | このバイナリには、依存先のオプションプラグインへの対応が一切コンパイルされていない — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します。プラグインが単に無効なだけで存在はしている場合、この値にはなりません — その場合は代わりに（ヒント付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。上記の [Capability リファレンス](#capability-リファレンス) と `UAIP.Core.ListIntegrations` を参照 |
+| `OptionalPluginDisabled` | このバイナリには、依存先のオプションプラグインへの対応が一切コンパイルされていない — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します。Shipping のゲームには `.uproject` で有効にした統合だけが入ります。テストには Development のパッケージを使うか、UAIP をプロジェクトの `Plugins` フォルダーに置いてそこでプラグインを有効にしてください。UAIP をエンジンにインストールしていて（Fab 配布版など）Shipping 以外のゲームでこの値が出るのは、UAIP をビルドしたエンジンにそのプラグインが無かったためです。UAIP をプロジェクトの `Plugins` フォルダーへ移し、プロジェクトと一緒にコンパイルしてください。プラグインが単に無効なだけで存在はしている場合、この値にはなりません — その場合は代わりに（ヒント付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。上記の [Capability リファレンス](#capability-リファレンス) と `UAIP.Core.ListIntegrations` を参照 |
 | `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | エンジンバージョンの変更やプラグインの切り替えでは解決しない — 別の経路（例: エディタスクリプティング経由で同じ効果に到達する Toolset ブリッジコマンド）を探す |
 | `DelegationTargetMissing` | 委譲先の外部サーフェス（Toolset ブリッジのターゲット）に、サポート対象のどのエンジンバージョンも実際には宣言していない関数を呼び出しており、実装へ到達する手段がそもそも存在しない | これも解決しない — そのサーフェスを持つプラグイン自体はすでに有効になっている場合がある。同じ操作を行うネイティブコマンドがあれば、それを使う |
 | `SafetyPolicyDisabled` | 環境にもビルドにも欠けているものは無い — 既定で無効な SafetyPolicy フラグでゲートされており、そのフラグがこのプロセスでオフになっている | `Config/DefaultUAIP.ini` でそのフラグを設定して再起動する（`ErrorMessage` がフラグ名を名指しする）。`AllowCapabilityReload=True` の環境なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できる |
@@ -796,13 +1469,14 @@ AllowUserInteractionPrompt=False
 | `CapabilityNotAvailable` | プロセスに Capability がない | `ErrorMessage` の Capability 名を `AllowedCapabilities` に追加して再起動（または `ReloadCapabilities`） |
 | `CapabilityNotAvailable`（`ErrorMessage` に役割名が入る） | セッションの役割がこの Capability を拒否している（Layer 1.5） | 有効化すべき設定はない — 別の役割のセッションから操作するか、運用者にその役割の `DeniedCapabilities` を変更して再起動してもらう |
 | `PolicyViolation: ... denied by SafetyPolicy` | SafetyPolicy の ini フラグで拒否されている | `[UAIP.SafetyPolicy]` の対応するフラグを `True` にして再起動 |
+| `PolicyViolation: Capability '<name>' is denied by SafetyPolicy`（または `Capability is denied by SafetyPolicy: <name>`） | その Capability が `DeniedCapabilities` に書かれている（拒否はあらゆる付与とロールに優先する） | `[UAIP.SafetyPolicy]` の `DeniedCapabilities` から該当行を削除して再起動。ロールの変更や `AllowedCapabilities` の追記では解除されない |
 | `PolicyViolation: Scenario execution is not enabled` | シナリオルートのオプトイン不足 | `config.json` に `"enable_scenario": true` を追加 |
 | `PolicyViolation: Command is denied` | コマンドが `DeniedCommands` に入っている | ini から該当エントリを削除して再起動 |
 | `PolicyViolation: ... is not available (<UnavailableDetail>): ...` | `UnavailableDetail` で絞り込まれた `HandlerUnavailable` 拒否（上記参照） | 詳細による：`EngineVersion` / `BuildConfiguration` / `ExecutionEnvironment` / `OptionalPluginDisabled` は変更できるものを指す。`EngineApiNotExported` / `DelegationTargetMissing` はそうではなく、別の経路を探す |
-| 🧩 コマンドで `CommandNotFound` | オプションプラグインが無効、または（エディタビルドでは）このエンジン版に存在しない | `ErrorMessage` を読む — 統合名・状態・具体的な対処が書かれている。多くの場合はプラグインを有効化してエディタを再起動するだけでよい。このエンジン版にそもそもプラグインが無い場合は、どの設定でも解決しない。`UAIP.Core.ListIntegrations` ですべての統合の状態を一度に確認できる |
+| 🧩 コマンドで `CommandNotFound` | オプションプラグインが無効、このエンジン版に存在しない、または（状態が `CompiledOut` の場合）ビルド時に有効と判定されなかった・エンジン版が古いためこのバイナリに組み込まれていない | `ErrorMessage` を読む — 統合名・状態・具体的な対処が書かれている。多くの場合はプラグインを有効化してエディタを再起動するだけでよい。このエンジン版にそもそもプラグインが無い場合は、どの設定でも解決しない。`UAIP.Core.ListIntegrations` ですべての統合の状態を一度に確認できる |
 
 ---
 
 ## その他の ini 設定
 
-このページが扱うのは `[UAIP.SafetyPolicy]` のみです。それ以外の ini セクション（`[UAIP.Session]`、`[UAIP.ArtifactGC]`、`[UAIP.CommandNotification]`、`[UAIP.PythonExtension]`）、`-uaip-*` 系の CLI 起動フラグ、MCP Bridge `config.json` は [設定リファレンス](config.md) を参照してください。
+このページが全体を扱うのは `[UAIP.SafetyPolicy]` だけです。`[UAIP.SaveGame]` は、関係する Capability とあわせて [Runtime SaveGame スロット](#runtime-savegame-スロット) で説明しています。それ以外の ini セクション（`[UAIP.Session]`、`[UAIP.ArtifactGC]`、`[UAIP.CommandNotification]`、`[UAIP.PythonExtension]`）、`-uaip-*` 系の CLI 起動フラグ、MCP Bridge `config.json` は [設定リファレンス](config.md) を参照してください。

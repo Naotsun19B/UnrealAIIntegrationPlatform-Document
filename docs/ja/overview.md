@@ -39,9 +39,10 @@
 Claude Code・Codex CLI・Cursor・Windsurf・GitHub Copilot といった AI ツールが **Model Context Protocol (MCP)** 経由で接続し、意味レベルのコマンドを発行できます。座標クリックや壊れやすい UI スクリプトに頼る必要はありません。
 
 主な機能：
-- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御まで、1,200 以上の UAIP コマンド（公式 UE 5.8 [Toolset](glossary.md#toolset--toolset-bridge) への 420+ ブリッジコマンドを含め合計 1,600+）で Editor のほとんどの機能をカバー
+- **Editor 操作** — アセットの開閉・保存、Blueprint 編集、アクター操作、Automation Test の実行、Sequencer の制御まで、1,300 以上の UAIP コマンド（公式 UE 5.8 [Toolset](glossary.md#toolset--toolset-bridge) への 420+ ブリッジコマンドを含め合計 1,700+）で Editor のほとんどの機能をカバー
 - **視覚的・構造的な観測** — 任意の Editor タブやビューポートのスクリーンショット取得、ワールド状態 / Slate ウィジェットツリー / エディタ状態の JSON ダンプを [Artifact](glossary.md#artifactアーティファクト) として返却
 - **Runtime / [PIE](glossary.md#pieplay-in-editor) 制御** — PIE の開始と停止、アクターのスポーン、入力の注入、Gauntlet テストの実行、アクタープロパティのアサート
+- **Runtime の観測と診断** — 実行中のゲームで、AI キャラクターが何を知覚しているか、Behavior Tree・StateTree のどのノードを実行しているか、ナビゲーションの経路、アニメーションの状態、ネットワークのレプリケーション、Mass エンティティ、Chaos の破壊、稼働中のサブシステム、ゲームビューポートの UI を観測できる。SaveGame のスロットを用意・復元して、決まったセーブからテストを始めることもできる
 - **[シナリオ](glossary.md#scenarioシナリオ)実行** — 複数のコマンドを順序付きリストとして一括送信。失敗時の中断・リトライ・ステップごとのタイムアウトに対応
 - **マルチ Transport** — [MCP](glossary.md#mcpmodel-context-protocol)・HTTP・WebSocket・CLI のいずれからでも操作可能
 - **Safety & Capability Policy** — [セッション](glossary.md#sessionセッション)単位の [Capability](glossary.md#capability) ゲートと、プロセス単位の [SafetyPolicy](glossary.md#safetypolicy) スイッチで権限を細かく制御
@@ -91,7 +92,7 @@ UAIP には **デモ版** と **製品版** の 2 つの配布形式がありま
 
 MCP Bridge は UE Editor と AI クライアントをつなぐ Python プロキシです。**プラグイン本体とは別配布** で、このリポジトリの [Releases](../../../releases) から `UAIP-MCPBridge-<version>.zip`（UE バージョン非依存）をダウンロードします。
 
-1. `UAIP-MCPBridge-<version>.zip` をダウンロードして任意の場所に展開
+1. `UAIP-MCPBridge-<version>.zip` をダウンロードして、プロジェクトやエンジンの `Plugins` フォルダの**外**（例：`Downloads`）に展開。後で更新するときも、新しい zip を外に展開してそのインストーラを実行する（`Plugins` にデプロイ済みのインストーラの実行は修復にとどまる。1.3.0 以降）
 2. 展開したフォルダから `install/install.ps1`（Windows / PowerShell の実行ポリシー制限がある場合は `install/install.cmd` ラッパー）を実行し、対話プロンプトに `.uproject` パスまたはエンジンパスを入力。インストーラは Bridge を `<UAIP-parent>/UAIPMCPBridge/`（UAIP プラグインと同階層）に展開し、Python venv を作成し、MCP クライアント登録用スニペットを表示します
 3. 表示されたスニペットを AI クライアントの MCP 設定ファイルに貼り付け
 4. AI に「UAIP の HealthCheck を実行して」と聞いて動作確認
@@ -109,7 +110,7 @@ MCP Bridge は UE Editor と AI クライアントをつなぐ Python プロキ�
 | [Result View](uaip-result-view.md) | UAIP の MCP ツール呼び出しをトランスクリプトに要約で描く Claude Code の Mod |
 | [ユースケース](use-cases.md) | 誰が UAIP を何のために使うか — テスト・レビュー・監査・ペアプロ |
 | [使用例集 / レシピ集](cookbook.md) | レシピ集 — PIE スモーク・AI レビュー・アセット監査・BP 編集・UI 自動化 |
-| [コマンドリファレンス](commands.md) | ドメイン別 730 以上のコマンド一覧 |
+| [コマンドリファレンス](commands.md) | ドメイン別 1,700 以上のコマンド一覧 |
 | [API リファレンス](api.md) | コマンド完全スキーマ（JSON）— ツール作成・コード生成・バリデーション用 |
 | [シナリオ実行](scenario.md) | 複数ステップのコマンド一括実行 |
 | [Artifacts（成果物）](artifacts.md) | スクリーンショット・JSON ダンプ・ログの読み方 |
@@ -137,4 +138,4 @@ Fab で配布される製品版は [Fab Standard License (Fab EULA)](https://www
 
 ## 更新履歴
 
-**現在のバージョン**: 1.2.0（2026-09-29 リリース）― 製品版は [Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff) です。詳細な更新履歴とバージョニング方針は [更新履歴](changelog.md) を参照してください。
+**現在のバージョン**: 1.3.0（2026-11-26 リリース）― 製品版は [Fab で公開中](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff) です。詳細な更新履歴とバージョニング方針は [更新履歴](changelog.md) を参照してください。

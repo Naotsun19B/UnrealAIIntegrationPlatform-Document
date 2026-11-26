@@ -101,7 +101,7 @@ def build_session(token: str | None) -> requests.Session:
 
 
 def execute(s: requests.Session, host: str, command: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-    payload = {"CommandName": command, "Params": params or {}}
+    payload = {"Command": command, "Params": params or {}}
     r = s.post(f"{host}/uaip/commands", json=payload, timeout=120)
     r.raise_for_status()
     body = r.json()
@@ -135,7 +135,7 @@ def main() -> int:
         if not name:
             continue
         try:
-            data = execute(session, args.host, "UAIP.Core.DescribeCommand", {"CommandName": name})
+            data = execute(session, args.host, "UAIP.Core.DescribeCommand", {"Name": name})
         except RuntimeError as ex:
             print(f"      [skip] {name}: {ex}", file=sys.stderr)
             continue

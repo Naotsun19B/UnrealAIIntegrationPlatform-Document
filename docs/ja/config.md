@@ -18,7 +18,9 @@ UAIP は以下 4 つの場所から設定を読み込み、優先度順にマー
 | 3 | `<Project>/Saved/UAIP/UAIPOverride.ini` | **パッケージビルド専用** — 初回起動時に自動生成されるユーザー編集可能オーバーライド | エディタ再起動 |
 | 4 | CLI 起動フラグ（`-uaip-*`） | プロセス単位の一時設定 | エディタ再起動 |
 
-`AllowedCapabilities` / `DeniedCapabilities` は `UAIP.Core.ReloadCapabilities` コマンドで再起動なしに反映できます（[Safety & Capabilities](safety.md#enabling-defaultdenied-capabilities) を参照）。それ以外のキーはエディタ再起動が必要です。
+Shipping 以外のビルドでは、エンジン標準の `-ini:UAIP:[<節>]:<キー>=<値>` 起動引数で、上記の ini のどのキーも、そのプロセスに限って上書きできます。専用の CLI フラグが無いキーも同じです。これはエディタを起動する人が選ぶ手段です。MCP Bridge は、エージェントが渡す起動引数（`EditorExtraArgs`）の `-ini:UAIP:` を拒否するので、エージェントがこれで設定を変えることはできません（`allow_reload_uaip_ini_override` を `true` にして Bridge を起動した場合を除く）。
+
+`AllowedCapabilities` / `DeniedCapabilities` は `UAIP.Core.ReloadCapabilities` コマンドで再起動なしに反映できます（[Safety & Capabilities](safety.md#enabling-defaultdenied-capabilities) を参照）。それ以外のキーはエディタ再起動が必要です。ただし `[UAIP.SaveGame]` はコマンドの実行のたびに読まれ（[`[UAIP.SaveGame]`](#uaipsavegame--セーブスロットのコマンド) を参照）、`[UAIP.Build]` はビルド設定で、反映には再ビルドが要り、読まれるのはプロジェクトの `Config/DefaultUAIP.ini` だけです（[`[UAIP.Build]`](#uaipbuild--テスト専用の型をビルドに含めるか) を参照）。`[UAIP.TestSupport]` は UAIP の自動テストの開始のたびに読まれ、ini を読み直すと次のテストから変更が効きます（[`[UAIP.TestSupport]`](#uaiptestsupport--テストが残した一時-blueprint-を片付ける) を参照）。
 
 > MCP Bridge（インストール後は `Plugins/UAIPMCPBridge/`）には独自の設定レイヤー（`config.json` + 環境変数）があります。Bridge はプラグイン本体とは別配布です — 下の [MCP Bridge `config.json`](#mcp-bridge-configjson) を参照。
 
@@ -39,7 +41,7 @@ UAIP は以下 4 つの場所から設定を読み込み、優先度順にマー
 | `MaxConcurrentNotifications` | int32 | `5` | `[1, 20]` | 同時表示数の上限 |
 | `ThrottleWindowSeconds` | float | `2.0` | `[0.1, 60.0]` | 同一コマンドの集約ウィンドウ |
 
-CLI フラグ：なし。
+専用の CLI フラグはありません。Shipping 以外のビルドでは、エンジン標準の `-ini:` 引数で上書きできます（[設定の読み込み元](#設定の読み込み元) 参照）。
 
 ### `[UAIP.CommandPump]` — モーダル表示中のコマンド実行（既定で無効）
 
@@ -51,11 +53,19 @@ CLI フラグ：なし。
 
 | キー | 型 | デフォルト | 説明 |
 |---|---|---|---|
-| `StarvedTickAllowList` | string | `UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities` | モーダル表示中に実行してよいコマンドの完全修飾名（カンマ区切り）。ここに無いコマンドは**拒否されず、モーダルが閉じるまで順番待ちのまま**になります |
+| `StarvedTickAllowList` | string | `UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities` | モーダル表示中に実行してよいコマンドの完全修飾名（カンマ区切り）。コマンドポンプの有効・無効によらず読まれます。ポンプが無効（既定）のとき、ここに無い状態を変えるコマンドは**その場で `NotAllowed` で断られ**、モーダルが閉じてから送り直す必要があります（`HandleDialogsOpenedByWrites` が既定の `false` のとき、書き込みが開いたダイアログにはこの扱いは当たりません。他のセッションの要求は、そのダイアログが閉じるまで待ちます）。読み取り専用のコマンドは、ここに無くても実行されます。ポンプが有効のときは、ここに無いコマンドは**拒否されず、モーダルが閉じるまで順番待ちのまま**になります |
 
-`StarvedTickAllowList` を既定の 2 件に絞っているのは、モーダルが開いている最中は「他の処理の途中」だからです。`ListCommands` / `DescribeCommand` は読み取り専用ですが、登録済みの全ハンドラへ問い合わせるため、あらゆるドメインのコードをこの状況で動かすことになります。そのため既定には含めていません。
+`StarvedTickAllowList` を既定の 2 件に絞っているのは、モーダルが開いている最中は「他の処理の途中」だからです。`ListCommands` / `DescribeCommand` は読み取り専用ですが、登録済みの全ハンドラへ問い合わせるため、あらゆるドメインのコードをこの状況で動かすことになります。そのため既定には含めていません。これはコマンドポンプが有効なときの話です。ポンプが無効なとき、このリストが止めるのは状態を変えるコマンドだけなので、この 2 つのような読み取り専用のコマンドはモーダル表示中でも実行されます。
 
 対応する CLI フラグ：`-uaip-command-pump-starved-tick-allow-list=...`
+
+書き込みが開いたダイアログに AI が答えられるようにするには（[書き込みが開いたモーダルダイアログ](commands.md#書き込みが開いたモーダルダイアログ)を参照）、`UAIP.Editor.UIAutomation.AcceptDialog`、`UAIP.Editor.UIAutomation.CancelDialog`、またはその両方をこの一覧に足します（例：`StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.AcceptDialog,UAIP.Editor.UIAutomation.CancelDialog`）。既定の項目は残し、エディタを再起動し、起動ログの 1 行で確かめてください。これは `[UAIP.ModalDialog] HandleDialogsOpenedByWrites` を `true` にしたときのための設定です。既定の `false` では、ダイアログを開いた書き込みに早期の応答が返らないので、その呼び出し側はダイアログのことを知らされません。答えるのは人か、`EditorDialogCrossSessionAnswer` を持つ別のセッションです（[Safety & Capabilities](safety.md#別のセッションのモーダルダイアログへの回答)を参照）。このとき他のセッションの要求は、上の説明のように断られるのではなく、ダイアログが閉じるまで待ちます。注意が 3 つあります。
+
+- **`ShutdownEditor` と `RestartEditor` は一覧に載せないでください。** エディタは要求を受け付けますが、ダイアログが閉じるまで終了せず、ブリッジも回復できなくなります。
+- **`CancelDialog` だけでは、中止のみを許せません。** 一覧はコマンド単位で、`ButtonLabel` を指定すれば `Continue` を含む任意のボタンを押せます。
+- `GetActiveDialog` と `HealthCheck` は、ダイアログが開いている間は常に通り、一覧への記載は要りません。[`[UAIP.ModalDialog]`](#uaipmodaldialog--応答のないダイアログの打ち切り既定で無効) の `HandleDialogsOpenedByWrites` が `true` のとき、`AcceptDialog` も `CancelDialog` も一覧に無いと、Material の Apply と `Undo` / `Redo` の確認は、表示されず中止を選んだ扱いになります。既定の `false` では、一覧はこれに影響しません。Material の Apply の確認は常に表示せずに中止され、`Undo` / `Redo` の確認は常に表示されます。
+
+モーダルダイアログの中から開いたメニューを閉じるには、このリストに `UAIP.Editor.UIAutomation.DismissMenus` を足し（例：`StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.DismissMenus`。このキーは既定値を置き換えるので、既定のエントリも値に残してください）、エディタを再起動します。コマンドポンプの有効化は不要です。足さないと、`DismissMenus` はダイアログが開いている間は断られます（ポンプが有効なら、ダイアログが閉じるまでキューで待ちます）。足すことを想定しているのはこの UI コマンドだけです。変えるのは Slate のメニュースタックの状態だけだからです。
 
 実効値は起動時に解決され、Output Log に 1 行だけ記録されます（`Starved tick allowlist: ...`）。ini に書いたのに効いていない場合や、書式を誤って無視されたエントリがある場合は、**起動直後のログで確認できます**。CVar `uaip.Command.StarvedTickAllowList` を読んでも既定値しか返らない点に注意してください — ini とコマンドラインは CVar を書き換えず、その上に重ねます。
 
@@ -70,19 +80,66 @@ CLI フラグ：なし。
 
 `StarvedTickAllowList` を読み取り専用にしているのは、コンソールがまさにこの制限で守ろうとしている経路から到達できるためです。実行中に広げられる防御は防御になりません。
 
+### `[UAIP.EditorLayout]` — 描画しないエディタで保存済みのレイアウトを守る（既定で無効）
+
+UE 5.8 未満の描画しないエディタ（`-NullRHI` などで起動し、`-RenderOffScreen` を付けていないもの）では、`OpenAsset` と `FocusEditorTab` は、アセットエディタの保存済みのレイアウトが別ウィンドウに置いたパネルを閉じて、エディタを開きます（[別ウィンドウが理由で断られるとき](commands.md#別ウィンドウが理由で断られるとき)を参照）。閉じたパネルは、その種類のアセットエディタの保存済みのレイアウトから消えます。保存済みのレイアウトは、全プロジェクト・全エンジンの版で共有する利用者のファイルなので、CI で動かすエディタが、人が描画するエディタで使うレイアウトを変えることがあります。この設定はそれを守ります。
+
+| キー | 型 | デフォルト | 説明 |
+|---|---|---|---|
+| `SuppressLayoutSaveWhenHeadless` | bool | `False` | `True` にすると、UE 5.8 未満で描画せずに動いている間、エディタはレイアウトを保存しません。`OpenAsset` と `FocusEditorTab` は、パネルを閉じる代わりに `NotAllowed`（`Reason: Headless`）で断るので、保存済みのレイアウトがパネルを別ウィンドウに置いているアセットは開けなくなります。UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きでは効果がありません |
+
+- 値は起動時に 1 回だけ読まれるので、変更にはエディタの再起動が必要です。値を変えるコマンドはありません。`True` / `False` として読めない値（綴りの誤りなど）は `False` として扱い、起動時のログに警告を出します。
+- 該当するエディタで `True` のときは、起動時のログに、レイアウトを保存しない旨が 1 行出ます。設定が効いていることはこれで確かめられます。
+- エンジンは、レイアウトの保存を自分で有効に戻すことがあります（終了を取り消したときなど）。UAIP は、別ウィンドウを確かめるコマンドの始めと、`RestartEditor` が取り消されたときに、止め直します。それ以外の経路で戻った直後は、次にそのようなコマンドを呼ぶまでの間に保存されることがあります。
+- 専用の起動フラグはありませんが、Shipping 以外のビルドではエンジン標準の `-ini:` 引数で上書きできます（例: `-ini:UAIP:[UAIP.EditorLayout]:SuppressLayoutSaveWhenHeadless=True`）。
+
+```ini
+[UAIP.EditorLayout]
+SuppressLayoutSaveWhenHeadless=True
+```
+
+### `[UAIP.ModalDialog]` — 応答のないダイアログの打ち切り（既定で無効）
+
+モーダルダイアログが開いたまま誰も答えないと、それを開いたコマンドは止まったままになります。この設定は、そのようなダイアログの窓を、一定時間後にエディタ自身が閉じるようにします。無人の環境向けです。書き込みが開いたダイアログが開いている間に呼び出し側へどう答えるかは、同じ節の `HandleDialogsOpenedByWrites` で決まります。
+
+| キー | 型 | デフォルト | 説明 |
+|---|---|---|---|
+| `HandleDialogsOpenedByWrites` | boolean | `false` | 書き込みコマンドが、自分で開いたモーダルダイアログ（確認や保存の問い合わせなど）で待っているときの扱い。**`false` は 1.2.0 の扱いのままです。** どの経路（HTTP・MCP・WebSocket・CLI・シナリオ）でも、ダイアログは表示されたままになり、呼び出し側は最終結果を待ちます。他のセッションの要求は、ダイアログが閉じるまで待ってから実行されます。ただし `HealthCheck`、`GetActiveDialog`、`ShutdownEditor`、ダイアログに答えるコマンドは、開いている間も応答します。Material の書き込みの中で Material エディタの Apply が出す確認は、1.2.0 では出なかったもので、どの経路でも表示せずに中止されます。書き込みは成功し、`Result.EditorSync` は `Applied: false` と `ApplyDeferredReason: ApplyCanceled` を返します。`Undo` / `Redo` の後に出る確認は、1.2.0 と同じく表示され、答えが来るまで開いたままです。**`true` は 1.3.0 で加わった扱いを有効にします。** HTTP と MCP は最終結果を待たずに `ModalDialogPending` を即座に返し、最終結果は後で `GetActiveDialog` で読みます。ダイアログに答えられない経路では、ダイアログは中止されます。開いている間、他のセッションの要求は断られます（[書き込みが開いたモーダルダイアログ](commands.md#書き込みが開いたモーダルダイアログ)を参照）。**`true` は、AI がこれらのダイアログにコマンド（`AcceptDialog` / `CancelDialog`）で答えることを前提にした設定です。** どちらも下の一覧に無いと `CanAnswer` は `false` のままなので、Material の Apply と `Undo` / `Redo` の確認は表示せずに中止され、それ以外のダイアログは人の答えを待ちます。エディタの外から答えるには、どちらの値でも、答えるコマンドを [`[UAIP.CommandPump]`](#uaipcommandpump--モーダル表示中のコマンド実行既定で無効) の `StarvedTickAllowList` に載せる必要があります。起動時に 1 回だけ読まれるので、変更後はエディタを再起動してください |
+| `UnansweredTimeoutSeconds` | number | 未設定（無効） | モーダルダイアログが入力無しのまま過ごせる秒数。過ぎるとエディタが窓を閉じます。指定できるのは **5〜3600** です。範囲外の値は警告をログに出し、無効のままになります。**無効にするならキーを書かないでください。** `UnansweredTimeoutSeconds=0` も範囲外なので、警告が出るだけです。起動時に 1 回だけ読まれるので、変更後はエディタを再起動してください |
+
+- `UnansweredTimeoutSeconds` は `HandleDialogsOpenedByWrites` とは独立しています。同じ節から読まれ、どちらの値でも効きます。
+- **書き込みが待っている間のエディタの応答の時間切れ（`HandleDialogsOpenedByWrites` が `false` のとき）。** HTTP と MCP では、書き込みが自分のダイアログで待っている間、その要求に対するエディタ自身の時間切れ（120 秒、または呼び出しの `TimeoutSeconds`）は止まります。そのダイアログの後ろで待っている他のセッションの要求の時間切れも止まります。ダイアログが閉じると、時間切れは残りの時間ではなく、元の長さで数え直されます。進捗バーの表示中に開いたダイアログは、こうして追われません。時間切れは進み続け、ダイアログが開いたまま書き込みも続いているのに、要求が `Timeout` で終わることがあります。
+- **ダイアログに誰も答えない環境では。** `HandleDialogsOpenedByWrites` が `false` のとき、呼び出し側にはダイアログが閉じるまで何も返らず、エディタの外での待ち時間は止まりません。エディタの中で書き込みが待ち続けていても、MCP ブリッジは `command_timeout_seconds`（既定 180 秒、または呼び出しの `TimeoutSeconds`。[MCP Bridge `config.json`](#mcp-bridge-configjson) を参照）で待つのをやめます。誰もダイアログに答えない環境では、`HandleDialogsOpenedByWrites` を有効にして AI にコマンドで答えさせるか、`UnansweredTimeoutSeconds` をその待ち時間より短く設定して、書き込みの最終結果が呼び出し側に届くようにしてください。
+- 時間は、ダイアログが開いた時刻と最後の入力の遅い方から数えます。マウスやキーの入力、UAIP が注入する入力（クリックなど）で数え直されます。AI の読み取りコマンドでは数え直されません。そのため、人が操作せずに読んでいるだけでも打ち切られます。
+- コマンドの実行中に開いたダイアログと、`ClickWidget` が開いたダイアログが対象です。経路と `CanAnswer` は問いません。
+- エディタは窓を自分で閉じ、ボタンは押しません。**閉じた後の結果はダイアログの種類で決まるので、書き込みが中止になることも続行することもあります。** ボタンに結び付いた処理は走りません。書き込みの結果に `DialogAutoClosed` が加わり、`GetActiveDialog` の `PendingCommand.Response.Result` で読めます。`ClickWidget` が開いた窓には結果を載せる応答が無いので、ログに残るだけで、`DialogOpen` が偽になります。
+- 閉じるボタンの無い窓は閉じずに残り、`GetActiveDialog` の `Dialog.AutoCloseFailed` とログに出ます。試すのは 1 つの窓につき 1 回だけです。
+- コマンドに結び付かないダイアログ（コマンドの実行の外や、非同期の処理の途中で開いたもの）は対象外です。
+
+### `[UAIP.UIAutomation]` — 書き込み系コマンドのガード（既定で無効）
+
+`UAIP.Editor.UIAutomation` のクリック・ホバー・キー入力のコマンドは、ドラッグ中や、対象が開いているモーダルウィンドウ・メニューの外にあるときに拒否されます。`InputText`・`FillForm`・`SetCheckboxState`・`SetComboSelection` は、ここで有効にしない限り、その判定を通りません。
+
+| キー | 型 | デフォルト | 説明 |
+|---|---|---|---|
+| `GuardWriteCommands` | bool | `False` | `True` にすると、この 4 つのコマンドも、要求を受け付けるときに 1 回、クリックと同じ判定を受けます。ドラッグ中や、対象が開いているモーダルウィンドウ・メニューの外にあるときは、`PolicyViolation`（と `Result.GuardDiagnostics`）で拒否されます。`FillForm` は全か無かで、どれか 1 つの欄の対象が拒否されたら何も書き込まず、`Result.RejectedFieldName` に最初に拒否された欄の `WidgetRef` が入ります。`SetComboSelection` は 1 回だけ判定し、項目のクリックでは判定し直しません |
+
+値は起動時に一度だけ読まれるため、変更にはエディタの再起動が必要です。読まれるのは `DefaultUAIP.ini` だけで、真偽値として読めない値は無視されて既定のままになります。専用の起動フラグはありませんが、Shipping 以外のビルドではエンジン標準の `-ini:` 引数で上書きできます（例: `-ini:UAIP:[UAIP.UIAutomation]:GuardWriteCommands=True`）。[UAIP.Editor.UIAutomation](commands.md#uaipeditoruiautomation) を参照してください。
+
+
 ### `[UAIP.Jobs]` — ジョブ型コマンドの 1 フレームあたりの予算
 
 `UAIP.Editor.Assets.StartAssetAudit` はジョブを登録した時点で応答を返し、実際の走査は監査が終わるまでゲームスレッドを占有せず、エディタのフレームの合間で進みます。このキーは、その走査が 1 フレームあたりに使ってよい時間を決めます。
 
 | キー | 型 | デフォルト | 範囲 | 説明 |
 |---|---|---|---|---|
-| `AuditStepBudgetMs` | float | `10.0` | `[1.0, 100.0]` | 監査ジョブが 1 フレームあたり走査に使ってよいミリ秒数。大きくすると監査は早く終わりますが実行中のエディタは重くなり、小さくするとその逆になります。範囲外の値はエラーにはならず、範囲内へ収められます |
+| `AuditStepBudgetMs` | float | `10.0` | `[1.0, 100.0]` | 監査ジョブが 1 フレームあたり走査に使ってよいミリ秒数。大きくすると監査は早く終わりますが実行中のエディタは重くなり、小さくするとその逆になります。範囲外の値や数値として読めない値は、起動時に Warning を出したうえで無視され、既定値のまま動作します |
 
 値はモジュール起動時に一度だけ読まれるため、変更はエディタの次回起動時から反映されます。
 
 これは努力目標であり保証ではありません。分割できない処理は予算を超過します — `Preparing` が発行するアセット一覧の取得と、アセット 1 件あたりのディスクサイズ取得がこれに当たります。
 
-CLI フラグ：なし。
+専用の CLI フラグはありません。Shipping 以外のビルドでは、エンジン標準の `-ini:` 引数で上書きできます（[設定の読み込み元](#設定の読み込み元) 参照）。
 
 ### `[UAIP.Session]` — セッション永続化
 
@@ -101,7 +158,7 @@ CLI フラグ：`-uaip-session-enabled` / `-uaip-session-sub-directory=...` / `-
 
 ### `[UAIP.Roles]` — 役割による Capability の降格
 
-意図的にここでは詳細を扱いません — 役割は Capability をゲートする仕組み（Layer 1.5）であり安全性に関わる事項のため、完全なリファレンス（ini 書式・セッションが役割へ束縛される仕組み・役割を運べない Transport 向けの opt-in フラグ）は、他の認可レイヤーと合わせて [Safety & Capabilities → 役割](safety.md#役割layer-15) にまとめています。概要だけ述べると、`+Role=(Name="...", DeniedCapabilities=(...))` の行で役割を定義し、`AllowRoleBlindTransports`（ini 専用、既定 `False`）で、役割が 1 つでも定義された後に WS・CLI・FullHTTP を明示的に併用できるようにします。
+意図的にここでは詳細を扱いません — 役割は Capability をゲートする仕組み（Layer 1.5）であり安全性に関わる事項のため、完全なリファレンス（ini 書式・セッションが役割へ束縛される仕組み・役割を運べない Transport 向けの opt-in フラグ）は、他の認可レイヤーと合わせて [Safety & Capabilities → 役割](safety.md#役割layer-15) にまとめています。概要だけ述べると、`+Role=(Name="...", DeniedCapabilities=(...))` の行で役割を定義し、`AllowRoleBlindTransports`（ini で設定、専用の CLI フラグなし、既定 `False`）で、役割が 1 つでも定義された後に WS・CLI・FullHTTP を明示的に併用できるようにします。
 
 ### `[UAIP.ArtifactGC]` — Artifact 自動 GC
 
@@ -124,7 +181,147 @@ CLI フラグ：`-uaip-gc-enabled` / `-uaip-gc-max-age-hours=N` / `-uaip-gc-max-
 |---|---|---|---|
 | `CommandsDir` | string | `<Project>/Scripts/UAIPCommands` | Python コマンド定義ファイルを探すディレクトリ。相対パスはプロジェクトルートを基点に解決 |
 
-CLI フラグ：なし。
+このキーはまず `Config/DefaultUAIP.ini` から読まれます。そこに無い場合にだけ、移行用のフォールバックとして `Config/DefaultGame.ini` が読まれ、そちらだけにある値は使われますが、`DefaultUAIP.ini` へ移すよう促す Warning が出ます。両方のファイルに値があって食い違う場合は `DefaultUAIP.ini` が優先され、Warning が出ます。実効のディレクトリと読み込み元のファイルは起動時に Output Log へ出力されるので、スキャナが期待した場所を見ていないときはログを確認してください。
+
+専用の CLI フラグはありません。Shipping 以外のビルドでは、エンジン標準の `-ini:` 引数で上書きできます（[設定の読み込み元](#設定の読み込み元) 参照）。
+
+### `[UAIP.Python]` — `RunEditorPythonScript` の既定の打ち切り期限
+
+`RunEditorPythonScript` は、実行が長引いたスクリプトの内部で例外を発生させて中断できます（`AbortAfterSeconds`。[コマンドリファレンス](commands.md) を参照）。このセクションは、呼び出しがこの引数を**省略した**（または `null` を渡した）ときに使われる値を決めます。
+
+| キー | 型 | 既定 | 範囲 | 説明 |
+|---|---|---|---|---|
+| `DefaultAbortAfterSeconds` | int32 | `0` | `[0, 1800]` | `AbortAfterSeconds` を省略した呼び出しのスクリプトを中断するまでの秒数。`0` で打ち切りなし（このキーが無かったころと同じ挙動）。呼び出し側が呼び出しごとに上書きでき、打ち切りなしで走らせたいときは明示的に `0` を渡します |
+
+値は**モジュール起動時に 1 回だけ**読まれるため、ini を編集したら次回のエディタ起動から反映されます。実効値は起動時に Output Log へ出力されます。範囲外の値や整数として読めない値は、起動時に Warning を出したうえで無視され、キーは既定の `0` のままになります。
+
+**専用の CLI フラグはありません。** 呼び出しごとに引数で上書きできる既定値です。Shipping 以外のビルドでは、エンジン標準の `-ini:` 引数でこの既定値を上書きできます（例: `-ini:UAIP:[UAIP.Python]:DefaultAbortAfterSeconds=60`）。
+
+**打ち切りを付けられないビルド。** 打ち切りはプラグインが対応する Python のバージョン（3.11）でのみ動作します。組み込まれている Python が別のバージョンでこのキーに `1` 以上を設定すると、起動時に Warning が出て、**`AbortAfterSeconds` を省略した呼び出しはすべて `AbilityUnavailable` で断られ**、スクリプトは実行されません。キーを消すか、`AbortAfterSeconds: 0` を明示的に渡せば、打ち切りなしで実行できます。Python 自体が使えない場合は、従来どおり先に `CapabilityNotAvailable` が返り、この Warning は出ません。
+
+### `[UAIP.EditorRestart]` — `RestartEditor` の閉じる期限
+
+`RestartEditor` が要求を受け付けた後（[Commands](commands.md) を参照）、エディタが閉じ始めるまでに使える時間を決めます。
+
+| キー | 型 | デフォルト | 範囲 | 説明 |
+|---|---|---|---|---|
+| `CloseDeadlineSeconds` | float | `60.0` | `[10.0, 600.0]` | 要求を受け付けてから、エディタが閉じるまでに許す秒数。この時間内に閉じられないと、試行は見送り（`Declined`、理由は `CloseTimedOut`）になり、エディタはそのまま動き続けます |
+
+- 範囲外の値や、数値として読めない値は、Output Log に Warning を出して無視し、既定の `60.0` を使います。
+- 人が操作する通常起動では、モーダルダイアログが開いている間は見送らず、閉じた後に期限を判定し直します。再起動そのものは保存確認を出さないので、これが効くのは、エディタが閉じるのを待っている間に他の処理がダイアログを開いた場合だけです。
+- 重い保存やシェーダーのコンパイルの直後に再起動することが多く、エディタが閉じ終わる前に見送られる場合は延ばしてください。
+- 値はエディタの起動時に読まれるので、変更は次の起動から効きます。
+
+```ini
+[UAIP.EditorRestart]
+CloseDeadlineSeconds=120.0
+```
+
+**専用の CLI フラグはありません。** Shipping 以外のビルドでは、エンジン標準の `-ini:` 引数で上書きできます（例: `-ini:UAIP:[UAIP.EditorRestart]:CloseDeadlineSeconds=120.0`）。
+
+### `[UAIP.SaveGame]` — セーブスロットのコマンド
+
+セーブスロットのコマンド（[`UAIP.Runtime.SaveGame`](commands.md#uaipruntimesavegame)）に関する 2 つの設定です。これらのコマンドに必要な Capability と、それぞれが守るものは [Safety & Capabilities](safety.md#runtime-savegame-スロット) にあります。
+
+| キー | 型 | デフォルト | 範囲 | 説明 |
+|---|---|---|---|---|
+| `bAllowWritesDuringPIE` | bool | `False` | — | エディタの PIE 中に、スロットを書き換えるコマンドの実行を許すか。PIE 外と、`-game`・パッケージ版では、この設定は影響しません |
+| `MaxSaveFileBytes` | int | `67108864`（64 MiB） | `[1048576, 1073741824]`（1 MiB〜1 GiB） | コマンドが読み込む・保存するセーブファイルの最大サイズ（バイト） |
+
+- 範囲外の `MaxSaveFileBytes` や、数値として読めない値は無視され、既定の 64 MiB が使われます。
+- **コマンドのたびに反映されます。** どちらのキーも、コマンドを実行するたびに、読み込み済みの設定から読み直すので、エディタの再起動は要りません。ini を編集したら `UAIP.Core.ReloadCapabilities` を呼ぶと読み直されます（ini ファイルをディスクから読み込み直します）。再起動でも反映されます。
+- どちらのキーにも専用の CLI フラグはありません。Shipping 以外のビルドでは、エンジン標準の `-ini:` 引数でどちらも上書きできます（例: `-ini:UAIP:[UAIP.SaveGame]:bAllowWritesDuringPIE=True`）。
+
+```ini
+[UAIP.SaveGame]
+bAllowWritesDuringPIE=False
+MaxSaveFileBytes=67108864
+```
+
+### `[UAIP.RuntimeObservation]` — ウィンドウサイズメッセージの記録と HUD 描画統計
+
+`RecordWindowMessages` は、OS が送るウィンドウサイズのメッセージ（`WM_SIZE` / `WM_WINDOWPOSCHANGED` / `WM_NCCALCSIZE`）の短い記録を取るかどうかを決めます。記録するだけでメッセージは消費せず、Slate の通常のウィンドウ（メインウィンドウ、別ウィンドウになったフローティングタブやアセットエディタ、モーダルダイアログ。最大 8 ウィンドウ）はウィンドウごとに直近 64 件、通知トーストやメニューなどそれ以外のウィンドウは全体で直近 64 件を保持し、`DumpEditorState` の `WindowMessageRecording` に出ます（[キャプチャが断られるとき](commands.md#キャプチャが断られるとき) も参照）。最小化から復元したあとにウィンドウが古い大きさで描かれ続ける原因を調べるためのものです。何かを許可するものではなく、どのコマンドの権限も変えません。`False` にするとハンドラーは登録されず、`RecordingStatus` は `Disabled` になります。
+
+`DumpHUDState`（[`UAIP.Runtime.Observation`](commands.md#uaipruntimeobservation)）がゲームビューポートの Canvas の描画バッチ統計を添えるのは、`EnableHUDCanvasStats` をオンにしたときだけです。何かを許可するものではなく、どのコマンドの権限も変えません。オフの間は、結果が有効にする方法を示します。[安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) も参照してください。
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `RecordWindowMessages` | bool | `True` | ウィンドウサイズメッセージの記録を取るかどうか |
+| `EnableHUDCanvasStats` | bool | `False` | HUD の Canvas 統計を記録し、`DumpHUDState` の結果へ添えるかどうか |
+
+- どちらの値も起動時に 1 回だけ読まれるので、変更はエディタまたはゲームの再起動後に効きます。
+- 起動引数はありません。
+
+```ini
+[UAIP.RuntimeObservation]
+RecordWindowMessages=False
+EnableHUDCanvasStats=True
+```
+
+**専用の CLI フラグはありません。** Shipping 以外のビルドではエンジン標準の `-ini:` 引数で上書きできます（例: `-ini:UAIP:[UAIP.RuntimeObservation]:RecordWindowMessages=False`）。
+
+### `[UAIP.Sequencer]` — 再コンパイルの後も Sequencer の Control Rig のバインドを保つ
+
+旧形式（Blueprint 形式）の Control Rig Blueprint を再コンパイルすると、エンジンは rig のインスタンスをすべて新しいものに置き換えます。Sequencer の Control Rig トラックが使っている rig の新しいインスタンスには、動かすメッシュへのバインドが引き継がれないので、その後にシーケンスを閉じるとエディタが落ちます。再コンパイルが UAIP のコマンド（`AddVariable` や `CompileControlRig` など rig を編集するもの）から始まっても、エディタの Compile ボタンから始まっても同じです。`CarryControlRigBindingOnRecompile` がオンのとき、UAIP は置き換えられた rig のバインドを新しい rig へ渡します。対象は Control Rig トラックが持つ rig のうち、自分のバインドを持たないものだけです。ランタイムアセット形式の rig は再コンパイルで置き換わらないので、影響を受けません。何かを許可するものではなく、どのコマンドの権限も変えません。
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `CarryControlRigBindingOnRecompile` | bool | `True` | 再コンパイルで置き換わった Sequencer トラックの Control Rig のバインドを、新しいインスタンスへ渡すかどうか |
+
+- 値は起動時に 1 回だけ読まれるので、変更はエディタの再起動後に効きます。
+- `False` にするのは、エンジンの振る舞いのままにしたいとき（たとえば、エンジンの版がこの問題を自分で直したとき）だけにしてください。
+
+```ini
+[UAIP.Sequencer]
+CarryControlRigBindingOnRecompile=False
+```
+
+**専用の CLI フラグはありません。** Shipping 以外のビルドではエンジン標準の `-ini:` 引数で上書きできます（例: `-ini:UAIP:[UAIP.Sequencer]:CarryControlRigBindingOnRecompile=False`）。
+
+### `[UAIP.Build]` — テスト専用の型をビルドに含めるか
+
+UAIP の自動テストは、テストのためだけに存在するリフレクション型を使います。この型は既定でプラグインに組み込まれるため、それらに依存するテストはお使いの環境でも登録されて走ります。それらを使うテストの実行中を除いて、エディタの型選択メニューやクラス一覧、UAIP の型一覧コマンドの結果には出ません。このセクションで、それらをビルドから除けます。
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `bCompileTestFixtures` | bool | `True` | テスト専用の型をビルドに含めるか。`False` で除きます。これらに依存するテストは登録されなくなり、ほかのテストは従来どおり走ります |
+
+これは**ビルド設定**です。変更の反映にはエディタの再起動ではなく**再ビルド**が要ります。ビルドログには、型を含めるかどうかと、その値をどこから読んだか（組み込みの既定値かプロジェクトのファイルか）が 1 行出ます。
+
+- **読まれるのは `<Project>/Config/DefaultUAIP.ini` だけです。** プラグイン側の `DefaultUAIP.ini` や `DefaultEngine.ini` は読まれません。行が無ければ `[UAIP.Build]` の下に書き足し、セクションも無ければセクションごと書き足します。以前の版から更新したファイルには、セクションもコメント行もありません。
+- **効くのは、プラグインをプロジェクトの `Plugins/` に置き、ソースからビルドする場合だけです。** ビルド済みのプラグイン（たとえばエンジンに入れたもの）では型を除けず、この設定は無視されます。
+- `True` / `False` として読めない値（たとえば `Flase`）は、ファイル・セクション・キー・値を示すエラーでビルドを止めます。ビルドが走らない場合（ビルド済みのプラグイン）は、エディタの起動時に警告を出し、ビルドの中身はそのまま使います。
+
+エディタの起動時に、設定とビルドの中身が食い違っていれば警告がログに出ます。警告には、ファイルの値、バイナリのビルド内容、対処が示されます。ビルド済みのプラグインでは、設定は効かないので、プロジェクトの `Plugins/` に置いてソースからビルドするよう案内します。それ以外では再ビルドを案内します。ファイルをエディタの外でたった今作った場合は、ビルドがそのファイルに気付いていないことがあるため、ビルドが設定を読み直すように、更新日時を変えるビルドのスタンプファイル（または削除する `Intermediate/Build` 配下のターゲットの makefile）も示します。
+
+```ini
+[UAIP.Build]
+bCompileTestFixtures=False
+```
+
+CLI での上書きはできません。
+
+### `[UAIP.TestSupport]` — テストが残した一時 Blueprint を片付ける
+
+UAIP の自動テストは、一時的な Blueprint（transient パッケージか `/Temp` の下）を作ります。それがメモリに残ると、Play In Editor を始めるたびに再コンパイルされ、壊れたものが残っていると後のテストが失敗します。このセクションで、UAIP 自身のテストが残したものを UAIP がどう扱うかを決めます。
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `BlueprintLeftoverCleanup` | `Off` / `Observe` / `Collect` | `Collect` | `Collect`: UAIP のテストが終わるたびに、残った一時 Blueprint を手放してガベージコレクションを走らせます。`Observe`: 数えて名前をログに出すだけで、何も変えません。`Off`: 何もしません |
+| `TraceLeftoverReferenceChains` | bool | `False` | `True` にすると、回収できなかった一時 Blueprint を今も参照しているものをログに出します（1 テストにつき 5 件まで）。遅いので診断専用です。Undo 履歴が一時 Blueprint をまだ参照しているかの判定も、`True` のときだけ行います。既定では、回収できなかったそのような Blueprint は「未判定」に数えます |
+
+- **`Collect` が働くのは、テストを走らせるためだけに起動したエディタだけです。** `-unattended` で起動し、テストを起動引数で指定し（`-ExecCmds="Automation RunTests ..."`、`RunTest` / `RunFilter` / `RunAll`、または `-TestExit=`）、`-uaip-` で始まる引数が無い場合です。それ以外のエディタ（人や MCP ブリッジが起動したものなど）は、値が `Collect` でも `Observe` として動きます。
+- **読まれる時機:** UAIP のテストの開始のたびに読まれます。ini を読み直す（たとえば `UAIP.Core.ReloadCapabilities`。`[UAIP.SafetyPolicy] AllowCapabilityReload=True` のときだけ使えます）と、その次のテストから変更が効きます。ファイルを編集しただけでは、起動中のエディタは変わりません。専用の起動フラグはありませんが、Shipping 以外のビルドでは、どちらのキーもエンジン標準の `-ini:` 引数で上書きできます（この節の末尾を参照）。
+- **要約が出る時機:** 残ったものの要約は、すべてのテストが終わったときに出ます。UAIP のテスト実行コマンド（たとえば `UAIP.Editor.Execution.RunAutomationTest`）で流した場合は、オートメーションフレームワークの「全テスト終了」の通知を通らないため、要約は全テストの終わりではなく、エディタの終了時にまとめて 1 回出ます。
+- **不正な値:** 空の値は未設定として扱い、既定の `Collect` にします。`Off` / `Observe` / `Collect` 以外の値も `Collect` にし、同じ値につき 1 回だけ警告をログに出します。
+
+```ini
+[UAIP.TestSupport]
+BlueprintLeftoverCleanup=Observe
+TraceLeftoverReferenceChains=False
+```
+
+専用の起動フラグはありませんが、Shipping 以外のビルドではエンジン標準の `-ini:` 引数で上書きできます（例: `-ini:UAIP:[UAIP.TestSupport]:BlueprintLeftoverCleanup=Observe`）。
 
 ### `[UAIP.Transport]` — 通常起動のエディタで MCP transport を自動起動する
 
@@ -194,7 +391,7 @@ AllowedArtifactDirectory=Saved/MyCustomUAIPStorage
 ```
 
 - デフォルト：`<Project>/Saved/UAIP/`
-- ini 専用（CLI フラグはなし — サンドボックスルートはプロセス起動時に確定）
+- ini で設定（専用の CLI フラグはなし。Shipping 以外のビルドではエンジン標準の `-ini:` 引数で上書きできる。サンドボックスルートはプロセス起動時に確定）
 - 絶対パスでなければプロジェクトルートからの相対パスとして解決
 
 ---
@@ -243,47 +440,54 @@ CLI フラグはエディタプロセスのコマンドライン（`UnrealEditor
 
 | フラグ | 説明 |
 |---|---|
-| `-uaip-request=<json>` | インライン `uaip_execute` リクエスト JSON（シェルに応じてクォートをエスケープ） |
-| `-uaip-request-file=<path>` | ファイルからリクエスト JSON を読み込み |
+| `-uaip-request=<json>` | インラインのリクエスト JSON。`{"Command": "...", "Params": {...}}` の形（シェルに応じてクォートをエスケープ）。キーは `Command` で、MCP の引数名 `CommandName` ではない |
+| `-uaip-request-file=<path>` | `Saved/UAIP/Requests/` の下のファイルからリクエスト JSON を読み込み（相対パスでも絶対パスでもよい） |
 | `-uaip-scenario=<json>` | インライン `uaip_run_scenario` ペイロード |
-| `-uaip-scenario-file=<path>` | ファイルから scenario JSON を読み込み |
-| `-uaip-response-file=<path>` | レスポンス書き出し先。省略時は stdout |
+| `-uaip-scenario-file=<path>` | `Saved/UAIP/Requests/` の下のファイルから scenario JSON を読み込み（相対パスでも絶対パスでもよい） |
+| `-uaip-response-file=<path>` | レスポンス書き出し先。`Saved/UAIP/Responses/` の下（相対パスでも絶対パスでもよい）。省略時は stdout |
 | `-uaip-stdin` | リクエスト JSON を標準入力から読み込み |
 
 例：
 
 ```bash
-# HealthCheck を 1 回実行し、JSON レスポンスを ./result.json に書き出し
+# HealthCheck を 1 回実行し、JSON レスポンスを Saved/UAIP/Responses/result.json に書き出し
 UnrealEditor-Cmd.exe MyProject.uproject \
-  -uaip-request='{"CommandName":"UAIP.Core.HealthCheck","Params":{}}' \
-  -uaip-response-file=./result.json
+  -uaip-request='{"Command":"UAIP.Core.HealthCheck","Params":{}}' \
+  -uaip-response-file=Saved/UAIP/Responses/result.json
 
 # 保存済み scenario を実行
 UnrealEditor-Cmd.exe MyProject.uproject \
-  -uaip-scenario-file=./scenarios/pie-smoke.json \
-  -uaip-response-file=./scenarios/pie-smoke.result.json
+  -uaip-scenario-file=Saved/UAIP/Requests/pie-smoke.json \
+  -uaip-response-file=Saved/UAIP/Responses/pie-smoke.result.json
 ```
 
 ### SafetyPolicy 系 CLI フラグ
 
-`[UAIP.SafetyPolicy]` の各 bool フラグには対応する `-uaip-policy-*` CLI フラグがあります（ini キー側の説明は [Safety & Capabilities](safety.md#safetypolicy-settings) を参照）：
+`[UAIP.SafetyPolicy]` の各 bool フラグには対応する `-uaip-policy-*` CLI フラグがあり、ini の値より優先されます（ini キー側の説明は [Safety & Capabilities](safety.md#safetypolicy-settings) を参照）：
 
 | ini キー | CLI フラグ |
 |---|---|
-| `ReadOnly` | `-uaip-policy-read-only` |
-| `DisableSave` | `-uaip-policy-disable-save` |
-| `AllowLogDump` | `-uaip-policy-allow-log-dump` |
-| `AllowContextMenuMutation` | `-uaip-policy-allow-context-menu-mutation` |
-| `AllowKeyboardInput` | `-uaip-policy-allow-keyboard-input` |
-| `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input` |
-| `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write` |
-| `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass` |
-| `DisablePIEStart` | `-uaip-policy-disable-pie-start` |
-| `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write` |
-| `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis` |
-| `AllowDisclosingTraceAttachment` | `-uaip-policy-allow-disclosing-trace-attachment` |
+| `ReadOnly` | `-uaip-policy-read-only=True` |
+| `DisableSave` | `-uaip-policy-disable-save=True` |
+| `AllowLogDump` | `-uaip-policy-allow-log-dump=True` |
+| `AllowContextMenuMutation` | `-uaip-policy-allow-context-menu-mutation=True` |
+| `AllowKeyboardInput` | `-uaip-policy-allow-keyboard-input=True` |
+| `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input=True` |
+| `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write=True` |
+| `AllowRuntimePasswordFieldWrite` | `-uaip-policy-allow-runtime-password-field-write=True` |
+| `AllowPasswordFieldRead` | `-uaip-policy-allow-password-field-read=True` |
+| `AllowRuntimePasswordFieldRead` | `-uaip-policy-allow-runtime-password-field-read=True` |
+| `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass=True` |
+| `AllowProjectNetDriverNetModeQuery` | `-uaip-policy-allow-project-net-driver-net-mode-query=True` |
+| `DisablePIEStart` | `-uaip-policy-disable-pie-start=True` |
+| `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write=True` |
+| `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis=True` |
+| `AllowDisclosingTraceAttachment` | `-uaip-policy-allow-disclosing-trace-attachment=True` |
+| `AllowUserInteractionPrompt` | `-uaip-policy-allow-user-interaction-prompt=True` |
 
-`AllowCapabilityReload` / `AllowedCapabilities` / `DeniedCapabilities` / `DeniedCommands` / `AllowedArtifactDirectory` / `ExternalTraceDirectory` は **ini 専用**（CLI フラグなし — Capability の昇格やサンドボックス境界に関わるため、プロセスコマンドラインからの変更を許可しない設計）。
+**どのフラグも値が必要です。** 設定をオンにするには `-uaip-policy-read-only=True`、ini でオンにした設定をオフにするには `=False` と書きます。値は `True` / `False`、`Yes` / `No`、`On` / `Off`、`1` / `0` のいずれかで、大文字小文字は区別しません。`-uaip-policy-read-only` のように値を付けずに書いたフラグは**警告なしに無視され**、ini の値のままになります。これら以外の値は、ログに警告を出して無視されます。
+
+`AllowCapabilityReload` / `AllowToolsetErrorText` / `AllowedCapabilities` / `DeniedCapabilities` / `DeniedCommands` / `AllowedArtifactDirectory` / `ExternalTraceDirectory` は **ini で設定し、専用の CLI フラグはありません**。Capability の昇格やサンドボックス境界に関わるため、クライアントが実行中に送る値では変えられない設計です。エディタを起動する人は、Shipping 以外のビルドでエンジン標準の `-ini:UAIP:[UAIP.SafetyPolicy]:<キー>=<値>` 引数（例: `-ini:UAIP:[UAIP.SafetyPolicy]:+AllowedCapabilities=GameFeatureCreate`）で上書きできます。MCP Bridge は、エージェントが渡す起動引数（`EditorExtraArgs`）の `-ini:UAIP:` を拒否するので、エージェントがこれで自分の権限を広げることはできません（`allow_reload_uaip_ini_override` を `true` にして Bridge を起動した場合を除く。[ブリッジの起動時にだけ読まれる設定](#ブリッジの起動時にだけ読まれる設定) を参照）。
 
 ---
 
@@ -319,7 +523,7 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 | `editor_path` | string | `""` | `UnrealEditor.exe` の絶対パス。環境変数 `UAIP_UE_EDITOR_PATH` が設定されている場合はそちらが優先。**`attach_only` が `true` のときは不要** — ゲストモードの Bridge はエディタを一切起動しないため、指す先が無い |
 | `uproject_path` | string | `""` | `.uproject` ファイルの絶対パス。環境変数 `UAIP_UPROJECT_PATH` が設定されている場合はそちらが優先。**どのモードでも常に必須** — プロジェクト同一性検証・認証トークンの解決・crash marker のパス・接続情報記述子の解決に加え、[instance proof](security.md#instance-proof) の照合がこのパス配下の `Saved/UAIP/InstanceSecrets/` を読むのにも使われる |
 | `attach_only` | bool | `false` | ゲストモード。`true` のとき、Bridge は自分ではエディタを一切起動せず、既に待ち受けているエディタへアタッチするだけになる。ポートは[接続情報の記述子ファイル](config.md#接続情報の記述子ファイル)から解決し、見つからなければ `http_port` へフォールバックする。アタッチ中のエディタとの接続が切れても（ヘルスチェック失敗・config リロードのいずれでも）代わりのエディタを起動しない。詳細は [接続方法 → ゲストモード接続](connections.md#ゲストモード接続) を参照。環境変数オーバーライド：`UAIP_ATTACH_ONLY`（`1` / `true` / `yes`） |
-| `http_port` | int | `8765` | エディタ側 MCP エンドポイントの HTTP ポート。`-uaip-http-port` と一致させること |
+| `http_port` | int | `8765` | エディタ側 MCP エンドポイントの HTTP ポート。`-uaip-http-port` と一致させること。プロジェクトごとに別のポートにする — [プロジェクトごとに `http_port` を分ける](#プロジェクトごとに-http_port-を分ける) を参照 |
 | `http_startup_timeout_seconds` | int | `120` | Bridge が起動後のエディタ準備完了を待つ最大秒数 |
 | `command_timeout_seconds` | int | `180` | 転送されるコマンドのリクエストごとの HTTP タイムアウト。**HTTP トランスポート自身の非同期コマンドタイムアウト（120 秒）より小さい値には設定できない** — 詳細は下記「タイムアウトの不変条件」を参照 |
 | `unresponsive_timeout_seconds` | int | `30` | ポートは LISTEN しているがヘルス ping に応答しない状態を何秒許容してから `UNRESPONSIVE` と判定するか。この状態では自動起動も自動再起動も行わない — [接続方法 → エディタ状態の確認](connections.md#エディタ状態の確認uaip_get_editor_status) を参照 |
@@ -330,7 +534,7 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 | `probe_tcp_timeout_seconds` | float | `1.0` | エディタのポートが LISTEN しているかどうかだけを確認する TCP connect タイムアウト |
 | `probe_ping_timeout_seconds` | float | `5.0` | LISTEN 中のエディタが実際に応答するかを確認する HTTP ping タイムアウト |
 | `process_exit_wait_seconds` | int | `10` | Bridge が起動したエディタプロセスの終了を待つ最大秒数 |
-| `allow_unverified_attach` | bool | `false` | `HealthCheck` 応答に `ProjectFilePath` を持たない旧バージョンのプラグインへアタッチすることを許可するオプトイン。**既定では拒否**される — 同一性を検証できないピアは黙ってアタッチせず拒否するのが既定の挙動 |
+| `allow_unverified_attach` | bool | `false` | `HealthCheck` 応答に `ProjectFilePath` を持たない旧バージョンのプラグインへアタッチすることを許可するオプトイン。**既定では拒否**される — 同一性を検証できないピアは黙ってアタッチせず拒否するのが既定の挙動。Bridge の起動時にだけ読まれる |
 | `log_level` | string | `"INFO"` | Python logger の冗長度 — `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `enable_scenario` | bool | `false` | `true` のとき Bridge がエディタを `-uaip-enable-scenario` 付きで起動する。環境変数オーバーライド：`UAIP_ENABLE_SCENARIO=1` |
 | `role_name` | string | `""` | エディタの `[UAIP.Roles]` が役割を 1 つ以上定義している場合のみ必要。この Bridge が認証する役割名を指定する。対応するトークンは `Saved/UAIP/Roles/<role_name>.token` から**遅延読み込み**される — 一定周期ではなく、リクエストが `401` で返ってきたときにだけ読み直す。環境変数オーバーライド：`UAIP_ROLE_NAME` |
@@ -340,6 +544,52 @@ MCP Bridge（`<UAIP-parent>/UAIPMCPBridge/` — 通常は `<Project>/Plugins/UAI
 | `inline_artifacts.text` | bool | `false` | テキスト Artifact を MCP レスポンスに base64 インライン化する。**デフォルト OFF**（理由は `inline_artifacts.json` と同様） |
 
 環境変数（`UAIP_UE_EDITOR_PATH`・`UAIP_UPROJECT_PATH`・`UAIP_ENABLE_SCENARIO`・`UAIP_ROLE_NAME`・`UAIP_ROLE_TOKEN`）が設定されている場合は対応する JSON 値を上書きします。フルコメント付きテンプレートは `config.json.example`（Bridge zip 同梱、インストール後は `<bridge-root>/config.json.example`）を参照してください。
+
+### 真偽値のキーは `true` と `false` だけを受け付ける
+
+`config.json` の bool 型のキー（上の表と [ブリッジの起動時にだけ読まれる設定](#ブリッジの起動時にだけ読まれる設定) のもの全て）は、JSON の `true` と `false` だけを受け付けます。それ以外の値（引用符で囲んだ `"false"` や `"true"`、`0`、`1`、`""`、`null`、配列、オブジェクト）が書かれていると、Bridge は起動を拒否します（終了コード 2。理由は MCP クライアントのログに出ます）。`uaip_reload_config` も `InvalidParams` で断り、今の設定のまま動き続けます。メッセージにはキーの名前（`inline_artifacts.json` のような点区切りのパス）と値の型が入り、値そのものは入りません。直すには、引用符を付けずに `true` か `false` を書くか、キーを消して既定値に戻します。
+
+- 環境変数がそのキーを上書きしているときも、ファイルの値は検査されます。後で環境変数を外したとたんに起動しなくなる、ということは起きません。
+- 環境変数の書き方（`1`・`true`・`yes` など）は変わりません。この決まりは `config.json` だけのものです。
+- `"inline_artifacts": true`（オブジェクトでない）は bool 型のキーではありません。これまでどおり警告だけで、3 つのキーは既定値になります。
+- インストーラーは、実行時にこうしたキーを名指しし、Bridge が起動しないことを伝えます。
+
+### ブリッジの起動時にだけ読まれる設定
+
+次のキーは、Bridge が起動したときに 1 回だけ読まれます。`config.json` を書き換えて `uaip_reload_config` を呼んでも変わりません（reload の応答に「Bridge の再起動で効く」と載ります）。変えるときは `config.json`（または環境変数）を直し、MCP クライアントを再接続してください。後ろの 4 つは、`true` にすると Bridge の安全性が下がります。必要なとき以外は `false` のままにしてください。
+
+| キー | 型 | デフォルト | 説明 |
+|---|---|---|---|
+| `log_to_file` | bool | `false` | Bridge の診断ログを、`<project>/Saved/UAIP/BridgeLogs/` に Bridge のプロセスごとに別のファイルとしても書き出す。ログには、エディタの身元確認の開始と結果が毎回残るので、どの確認が走ってどう決まったかを後から確かめられる。使っているファイルは `uaip_get_editor_status` の `Data.Config.LogFile` に出る（ファイルに書いていないときは `null`）。ファイルを作れないときは、標準エラーに警告を 1 行出し、標準エラーだけで動き続ける。ロールトークン・秘密・セッション ID・URL のクエリはファイルに書かれない。新しい順に 20 個程度まで残り、1 プロセスあたり最大 10 MB。`log_level` はファイルにも効く。環境変数オーバーライド：`UAIP_LOG_TO_FILE`（`1`） |
+| `allow_reload_launch_command` | bool | `false` | `uaip_reload_config` で `editor_path`・追加の起動引数・`enable_scenario`・`launch_attended` を変えられるようにする。[reload が既定では変えないもの](#reload-が既定では変えないもの) を参照。環境変数オーバーライド：`UAIP_ALLOW_RELOAD_LAUNCH_COMMAND`（`1`） |
+| `allow_reload_uaip_ini_override` | bool | `false` | `uaip_reload_config` の `EditorExtraArgs` に、エンジン標準の `-ini:UAIP:` 上書きを含められるようにする（既定では reload が拒否する）。`allow_reload_launch_command` とは独立で、reload で追加の起動引数を変えること自体には、引き続き `allow_reload_launch_command` が要る。`true` にすると、次に Bridge が起動するエディタは、この UAIP の ini 上書きの値（`[UAIP.SafetyPolicy]` のキーを含む）を読むので、安全性が下がる。`-uaip-policy-*` などほかの拒否は変わらない。この経路で通った reload は、応答メッセージの末尾に注記が付く。[reload が既定では変えないもの](#reload-が既定では変えないもの) を参照。環境変数オーバーライド：`UAIP_ALLOW_RELOAD_UAIP_INI_OVERRIDE`（`1`） |
+| `allow_reload_bridge_code` | bool | `false` | `uaip_reload_config` で Bridge 自身のソースファイルを読み直せるようにする。[reload が既定では変えないもの](#reload-が既定では変えないもの) を参照。環境変数オーバーライド：`UAIP_ALLOW_RELOAD_BRIDGE_CODE`（`1`） |
+| `allow_unverified_port_owner` | bool | `false` | Windows では、Bridge がエディタのポートを持っているプロセスを確かめる。確かめられないとき（OS への問い合わせが毎回失敗する、持ち主が見えない）は、既定では止まってコマンドを送らない。自分が起動したエディタが対象なら、そのエディタは閉じずに残す。`true` にすると、そのときに限り、Windows 以外と同じくプロジェクトの確認だけで進む（同じプロジェクトを開いた別のエディタとは見分けられなくなる）。別のプロセスがポートを持つと確かめられた場合には効かない。環境変数オーバーライド：`UAIP_ALLOW_UNVERIFIED_PORT_OWNER`（`1`） |
+
+`allow_unverified_attach` も、Bridge の起動時にだけ読まれます。Bridge が自分で起動して今も手元に持っているエディタの確認には使われず、既に起動しているエディタへのアタッチと、自己再起動した後継エディタの採用に効きます。
+
+### `editor_path` に `.bat` を指定するとき
+
+`editor_path` には `UnrealEditor.exe` の代わりに `.bat` / `.cmd` のラッパーを指定できます。バッチファイルは引数を `cmd.exe` 経由で渡すため、拡張子が `.exe` 以外（拡張子なしを含む）のときは、Bridge が次の保護を加えます。
+
+- **引数を検査する。** 引数（追加の起動引数・プロジェクトのパス）に、`cmd.exe` が解釈し直す文字 — `%` `!` `^` `&` `|` `<` `>` `"` `(` `)` や改行 — が含まれていれば、エディタを起動しません。エラーは `Failed to start editor:` で始まり、何番目の引数が問題かを示し（値そのものは表示しません）、その文字を取り除くか `editor_path` をエディタの実行ファイルに向けるよう案内します。`uaip_get_editor_status` は `STOPPED` になり、設定を直して Bridge を起動し直すまで、同じ拒否が続きます。
+- **全ての引数を二重引用符で囲んで渡す。** `.bat` は `,` `;` `=` でも引数を区切るためです。プロジェクトのパスに `=` が含まれていれば拒否します（`uproject_path` を直してください。reload で直せます）。`.exe` のときも、プロジェクトのパスは常に引用符で囲みます。
+- **中身の指紋を取る。** Bridge は起動したときに `.bat` の中身を控え、動いている間はそのファイルを開いたままにして、書き換え・改名・削除ができないようにし、起動のたびに直前にもう一度中身を比べます。変わっていればエディタを起動しません。エラーは `Failed to start editor:` で始まり、ファイルが Bridge の起動の後に変わったので、ファイルを確かめてから Bridge を起動し直すよう案内します。ファイルを開いたままにできない（他のプログラムが書き込みで開いている）とき、または Bridge の起動時に読めなかったときも、エディタを起動しません。
+
+制約：括弧を含むパスのプロジェクトは `.bat` 経由では起動できません。`=` を含むパスのプロジェクトも起動できません。**Bridge が動いている間は、`.bat` を自分で編集することもできません** — 先に MCP クライアントを切ってください。`.bat` がさらに呼ぶファイルの書き換えは検知しません。
+
+### プロジェクトごとに `http_port` を分ける
+
+同じ `http_port`（既定は `8765`）を使う 2 つのプロジェクトが、ほぼ同時にエディタを起動すると、ポートを取り合うことがあります。取れなかった側の Bridge はそれに気づき、ポートを持っているエディタにはコマンドを送らず、起動したばかりの自分のエディタを閉じ（既に使い始めていたエディタは閉じません）、理由を添えて拒否します。`uaip_get_editor_status` は `PORT_OCCUPIED`（理由 `LAUNCHED_EDITOR_LOST_PORT`）を表示します。取り合いそのものを避けるには、プロジェクトごとの `config.json` に別々の `http_port` を設定し（エディタも対応する `-uaip-http-port` で起動します）、またはもう一方のエディタを閉じてください。
+
+### ポートを手放した後も動き続けるエディタ
+
+Bridge が起動したエディタがポートで応答しなくなっても、プロセスが動き続けている場合（固まった、`.bat` ラッパーだけが残った、など）、Bridge はそれを「まだ動いている」と覚え、**終了するまで同じプロジェクトの 2 本目を起動しません**。新しいエディタが要るのはポートに誰も応答していないときだけで、その呼び出しは拒否され、`uaip_get_editor_status` は「エディタがまだ動いている。ポートで応答すれば次の呼び出しがつなぐ。応答しなければ手で閉じる。閉じた後の呼び出しが新しく起動する」と案内します。同じプロジェクトのエディタがポートで応答していれば、今までどおりそれにつなぎます。
+
+- **記録は Bridge をまたいで残ります。** 覚えたエディタは、プロジェクトのロックファイルと同じフォルダの記録ファイル `<プロジェクト>/Saved/UAIP/mcp_proxy.lock.survivors.json` に書かれます。MCP の再接続（`editor_path` を変えての再接続を含む）、Bridge の強制終了、別セッションの Bridge、エディタが残ったまま `.bat` ラッパーだけが終了した場合でも残ります。記録ファイルを書けないときはエディタを起動しません。ロックファイルを使えない環境では、警告を出して今までどおり起動し、記録も使いません（Bridge をまたいだ 2 本目の防止は効きません）。
+- **エディタを閉じれば足ります。** 覚えたエディタが終了すれば、次の呼び出しが新しく起動します。ファイルを消す必要はありません。記録したエディタが全て終了したことを Bridge が確かめると、記録ファイルは Bridge が消します。
+- **OS に動いているかを確かめられないとき**は、動いているとみなして起動しないままになり、記録ファイルも消しません。拒否と `uaip_get_editor_status` に記録ファイルの場所が載るので、そのエディタが既に無いことを確かめたら、**人がそのファイルを削除してください**。動いている Bridge も次の呼び出しから起動できます。
+- エディタが起動する常駐プロセス（`zenserver.exe` など）は記録しません。記録ファイルを書き換えられる人は、偽の記録で起動を止められます（止められるのは起動だけです）。
 
 ### タイムアウトの不変条件
 
@@ -366,12 +616,52 @@ uaip_reload_config()
 |---|---|
 | `EditorPath` | `config.json` を編集せずに実行時でエンジンバージョンを切り替える |
 | `UProjectPath` | このセッション限り別の `.uproject` を使用する |
+| `EditorExtraArgs` | エディタに追加するコマンドライン引数を文字列配列で指定する — 例: メモリ破壊の調査に `["-stomp2malloc", "-MallocStomp2MinSize=65", "-MallocStomp2MaxSize=80"]` |
+
+**既定では、このうち `EditorPath` と `EditorExtraArgs` は拒否され**、reload 全体が何も変えません。`allow_reload_launch_command` を `true` にして Bridge を起動したときだけ使えます。[reload が既定では変えないもの](#reload-が既定では変えないもの) を参照してください（`UProjectPath` は対象外です）。
+
+`EditorExtraArgs` は他の 2 つと振る舞いが異なります：
+
+- 追加引数を**丸ごと置き換え**、`[]` で消します。省略すると現在の値を**保ちます**。初期値は環境変数 `UAIP_EDITOR_EXTRA_ARGS`（空白区切り。空白を含む値はダブルクォートでまとめる）から読み、`config.json` に対応するキーはありません。
+- 効くのは **Bridge が次にエディタを起動するとき**で、起動中のエディタには効きません。これだけを変えてもエディタは終了しません（`EditorRestartScheduled` は `false` のまま）。すぐ反映するには `UAIP.Editor.Workspace.ShutdownEditor` を実行してください。次のツール呼び出しで新しい引数のエディタが起動します。ゲストモード（`attach_only`）の Bridge はエディタを起動しないため、引数が使われることはありません。
+- 置き換えるまで有効なまま残り、クラッシュ後の再起動にも引き継がれます。不要になったら `EditorExtraArgs=[]` で消してください。現在の値は、応答の `Data.EditorExtraArgs` と `uaip_get_editor_status` の `Data.Config.EditorExtraArgs` のどちらでも確認できます。
+- 1 要素に 1 引数を、外側のクォート無しで書きます：`"-abslog=C:\\My Logs\\Editor.log"`。
+- 次の値は `InvalidParams` で拒否され、設定は変わりません：`-uaip-` で始まるフラグ（ポート・MCP モード・シナリオルートは Bridge 自身が管理する。SafetyPolicy のフラグ `-uaip-policy-*` とエンジン標準の `-ini:UAIP:` 上書きも、クライアントが自分の制限を外せないように拒否する。これらはプロジェクトの `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` で設定する。`-ini:UAIP:` だけは、`allow_reload_uaip_ini_override` を `true` にして Bridge を起動したときは受け付ける）、`-unattended`（代わりに `launch_attended` を使う）、`-nopause`（常に渡している）、空の要素、制御文字を含む要素。`UAIP_EDITOR_EXTRA_ARGS` に同じ値があると Bridge は起動を拒否します。ただし `-ini:UAIP:` は、この環境変数ではそのまま受け付けます（エージェントではなく人が書く値のため）。
 
 `config.json` 編集後の典型的な手順：
 
 1. `config.json` を編集（例：`enable_scenario: true`）
 2. `uaip_reload_config()` を呼び出す — Bridge が変更を検出してエディタ再起動をスケジュール
 3. 次の `uaip_execute` 呼び出し時に新しいパラメータでエディタが起動する
+
+#### リロードがエディタを止めることになる場合
+
+エディタのパス・uproject のパス・HTTP ポート・シナリオのフラグ（`enable_scenario`）・`launch_attended` の 5 つは、起動し直したエディタでしか効きません。これらのどれかが変わると、次のツール呼び出しで新しい設定のエディタを起動できるよう、リロードは実行中のエディタを止める必要があります。止めてよいかどうかは、そのエディタを誰が起動したかで決まります。
+
+- **この Bridge が起動したエディタ**には終了（`ShutdownEditor`）を依頼し、リロードは成功します。エディタが断った場合（例：読み取り専用の安全設定）は、その応答をそのまま返し、何も変えません。次のツール呼び出しで、新しい設定のエディタが起動します。
+- **この Bridge が起動していないエディタ**は、リロードでは止めません。`RestartEditor` の後のエディタ（エディタ自身が起動するので、Bridge はつないだだけ）、MCP 再接続でつないだエディタ、Bridge が接続していないのに設定のポートで応答しているエディタが該当します。リロードは何も変えずに拒否され、応答に手順が書かれます。AI 側の操作でエディタを起動・再起動したと**分かっている場合だけ**、`uaip_execute` で `UAIP.Editor.Workspace.ShutdownEditor` を送ってから、もう一度 `uaip_reload_config` を呼びます。そうでなければ、持ち主にエディタを閉じてもらうか、変更を見送ってください。この手順を踏まずにリロードを繰り返しても、同じ結果になります。その間も Bridge は使える状態のままで、ほかのコマンドはエディタに届きます（`uaip_get_editor_status` の `Ownership` は、`OWNED` が Bridge の起動したエディタ、`ATTACHED` がつないだだけのエディタです）。
+- **ポートで何も応答していない**場合：リロードは何も止めずに成功し、次のツール呼び出しで新しい設定のエディタが起動します。
+- **エディタが再起動または入れ替わりの確認の途中**の場合（例：`RestartEditor` の直後で、新しいエディタをまだどのコマンドも確認していない）：リロードは拒否されます。何かコマンドを 1 つ送ってエディタに届いてから、もう一度リロードしてください。
+
+HTTP ポートを変える場合も同じ規則です。以前は、古いエディタを残したまま新しいポートに 2 つ目のエディタを起動することがありましたが、今はその場合にリロードが拒否されます。
+
+ほかのツール呼び出しが実行中のときや、エディタの起動・切り替えが裏で続いているときも、リロードは何も変えずに拒否されます。終わってから再試行してください。リロードの実行中は、ほかのツール呼び出し（`uaip_get_editor_status` と 2 つ目の `uaip_reload_config` を含む）は何もせずにすぐ断られます。リロードが終わってから送り直してください。通常は長くても数十秒で終わります。それを大きく過ぎても断られ続けるとき（1 分半ほど）は、メッセージが「リロードが終わっていない」に変わるので、MCP を再接続してください。AI 側で取り消したリロードも、Bridge の中では最後まで進んで設定が反映されることがあります。反映されたかどうかは `uaip_get_editor_status` の `Data.Config` で確認できます。
+
+**ゲストモード（`attach_only`）** ゲストの Bridge はエディタを起動も停止もしないので、上の拒否は当てはまらず、応答は `EditorRestartScheduled: false` になります。接続していた場合は、リロードが接続を切ります（エディタは止めません）。次のコマンドは 1 回だけ断られ（断りには「エディタは止めていない。そのまま再試行する」と書かれます）、その次からそのエディタのポートで応答しているエディタにつながります。接続を切っている間、ポートで応答しているものがあれば `uaip_get_editor_status` の `RecommendedAction` は `PROCEED:` で始まり（次のコマンドが確かめてつなぎます。起動はしません）、応答がなければ従来の `CHECK CONFIGURATION:` です。接続していなかった場合は、新しい設定が次につなぐエディタに使われます。前のリロードで接続を切ったまま、まだコマンドを送っていなければ、その次のコマンドは 1 回だけ断られます。ゲストモードで `EditorExtraArgs` だけを変えた場合は、引数が使われないことが応答に書かれます。以前は「次のツール呼び出しでエディタが起動し直される」（`EditorRestartScheduled: true`）と誤って答えていました。当てはまるのは「再起動・入れ替わりの確認の途中」と「ほかの呼び出しの実行中」の拒否だけです。
+
+**同じリロードで `attach_only` を切り替えた場合** `attach_only` だけを切り替えたリロード（新しいエディタが要る設定は変えていない）は、エディタを止めず、次のツール呼び出しも断られません。応答は、Bridge がこれからエディタを起動するのか、もう起動しないのかを答えます（`EditorRestartScheduled: false`）。同じリロードで新しいエディタが要る設定も変えた場合は、拒否されるかどうかはリロード前のモードで決まり、通ったときの応答は、切り替えた後のモードで次のツール呼び出しがどう動くかを答えます。ゲストモードをやめた場合は、次のツール呼び出しで新しい設定のエディタが起動します（`EditorRestartScheduled: true`）。このリロード自体は何も止めていないので、ポートでまだ応答しているエディタがあれば先に閉じてください。閉じないと、次のツール呼び出しはポートが空くのを待ったうえで「The config reload did not ask any editor to exit ... Close the editor holding the port, then retry.」と断られ、新しいエディタは起動しません。ゲストモードにした場合は、Bridge はエディタを起動しなくなります（`EditorRestartScheduled: false`）。次のツール呼び出しは 1 回だけ断られ（エディタは止めていない。そのまま再試行する）、その次からポートで応答しているエディタにつながります。
+
+#### reload が既定では変えないもの
+
+reload が変えるのは、AI が新しい何かを実行させるのに使えない設定だけです。
+
+- **起動コマンドは Bridge の起動時に固定される。** `editor_path`・追加の起動引数（`EditorExtraArgs`）・`enable_scenario`・`launch_attended` は、Bridge を起動したときの値から変わりません。これらを `uaip_reload_config` の引数で渡しても、`config.json` を書き換えてから reload しても、reload 全体が `PolicyViolation` で拒否され、何も変わらず、エディタの再起動も停止も起きません。同じ値の再指定は拒否されません。`config.json` が書き換わっていた場合、応答は変わった項目と新しい値を挙げ、MCP クライアントを再接続するとその値でエディタが起動されるので、先に確かめるよう案内します。reload が通った場合でも、`config.json` が書き換わったままなら、同じ案内が警告として返ります。このため、`uaip_reload_config(EditorPath=...)` でエンジンのバージョンを切り替える運用は、`allow_reload_launch_command` を `true` にしたときだけ使えます。
+- **Bridge 自身のコードは読み直さない。** Bridge は起動時に読み込んだコードで動き続けます。読み込んだファイルのどれかが起動したときから変わっていれば（起動時に読めなかったファイルを含む）、reload は `PolicyViolation` で拒否され、変わったファイルの名前が示されます。新しいコードを使うには MCP クライアントを再接続してください。また Bridge は、起動を終えた後に自分のフォルダを Python の読み込み先から外すので、後からそこに置かれたファイルは読み込まれません。
+- **従来どおり reload で変えられるもの：** `uproject_path` と `http_port`、そのほか起動コマンドに関わらない設定。Bridge が起動したエディタがまだ動いている間は、`uproject_path` を変える reload は何も変えずに拒否されます。そのエディタを閉じて（`ShutdownEditor`、または手で）から、もう一度 reload してください。
+
+- **`EditorExtraArgs` の `-ini:UAIP:` 上書きは拒否される。** `allow_reload_launch_command` で reload が追加の起動引数を変えられる場合でも、`-ini:` で UAIP の ini を対象にする要素は拒否されます。次のエディタ起動で `[UAIP.SafetyPolicy]` を置き換えられてしまうためです。受け付けるには、Bridge を起動する前に `allow_reload_uaip_ini_override` を `true` にします。引数を変えること自体には、引き続き `allow_reload_launch_command` が要ります。環境変数 `UAIP_EDITOR_EXTRA_ARGS` は人が書く値なので対象外です。
+
+従来の挙動に戻すには、Bridge を起動する**前**に、`config.json` の `allow_reload_launch_command` や `allow_reload_bridge_code` を `true` にします（または環境変数を設定します）。どちらも Bridge の安全性を下げる設定で、reload では切り替えられません。
 
 ---
 

@@ -2,13 +2,14 @@
 
 # コマンドリファレンス
 
-UAIP は 1218 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1639 をドメイン別に提供しています。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
+UAIP は 1343 個の **UAIP コマンド**（プラグイン本体が直接提供する独自実装）と、それを補強する 421 個の **Toolset ブリッジコマンド**（UE 5.8 公式 Toolset への委譲レイヤー）の合計 1764 をドメイン別に提供しています。この数は、UE 5.8 の Win64 エディタで本プラグインが定義するすべてのコマンドの数で、必要なプラグインが無効なため `Available: false` として一覧に出るコマンドも含みます。コマンド名はすべて完全修飾名（例：`UAIP.Editor.Observation.CaptureActiveWindowImage`）です。本ページの表ではプロバイダプレフィックスを省略しているため、セクションヘッダーのプレフィックスを付けて使用してください。
 
 ## このリファレンスの使い方
 
-- 各コマンドの完全なパラメータスキーマは `uaip_describe_command(CommandName="...")` で取得できます
+- 各コマンドの完全なパラメータスキーマは `{"Command": "UAIP.Core.DescribeCommand", "Params": {"Name": "<コマンド名>"}}`（HTTP / WebSocket / CLI）または `uaip_describe_command(CommandName="<コマンド名>")`（MCP）（引数名は前者が `Name`、後者が `CommandName` で異なります） で取得できます
 - 実行時にドメインでフィルタするには `uaip_list_commands(ProviderPrefix="UAIP.Editor")` を使用します
 - 各コマンドに必要な Capability については [Safety & Capabilities](safety.md) を参照してください
+- 次のコマンドはディスク上のファイルを削除・移動・リネームするため、安全ポリシーで `DisableSave` が有効なときは、他の何よりも先に（PIE 中かどうかの判定よりも先に）`PolicyViolation` で拒否します（"Disk write operations are disabled by SafetyPolicy. Remove DisableSave=True under [UAIP.SafetyPolicy], or start the editor without -uaip-policy-disable-save; it is read at startup."）: `DeleteAsset`・`DeleteFolder`・`ForceDeleteFolder`・`RenameAsset`・`MoveAsset`・`MoveFolder`・`FixAssetRedirectors`・`FixUpRedirectorsInFolder`・`DeleteInputAction`・`DeleteMappingContext`・`DeleteDataLayerAsset`・`DeleteHLODs`・`DeleteGameFeaturePlugin`。以前から `DisableSave` で拒否していたコマンドは変わりません。詳細は [Safety & Capabilities](safety.md#disablesave-と削除移動リネームのコマンド) を参照してください
 
 ## 凡例
 
@@ -28,6 +29,8 @@ UAIP では 2 種類のコマンドを公開しています：
 
 本ページのドメインサマリでは件数のみを並べています。Toolset ブリッジコマンドの全名前を実行時に列挙したい場合は `uaip_list_commands(ProviderPrefix="Toolset")` を使ってください。
 
+Toolset ブリッジコマンドが、経由する Toolset 連携の準備ができていないために実行できないとき、エラー文はまずその連携とその状態を示し、続けて状態に応じた対処を述べます。たとえば Toolset 連携を含まない無償のデモ版では、`This command runs through the Toolset integration 'UAIPCoreToolsetRegistry', which is not loaded (state: NotInThisEdition). The integration is not included in the free demo edition of UAIP. Its commands are available in the Pro edition on Fab.` となります。連携がまだ読み込み中（状態が `Pending` または `Loading`）のときは、最初の文が `is not loaded` ではなく `has not finished loading yet` になります。同じ状態は `UAIP.Core.ListIntegrations` でも確認できます。
+
 ### Toolset ブリッジコマンドへの引数宣言・厳格検証の導入が進行中
 
 これまで、Toolset ブリッジコマンドの大半は**引数を一切宣言していませんでした**。`uaip_describe_command` を呼んでも空の `Properties` が返り、実際にどんな引数を受け付けるかは分かりませんでした。送った JSON はそのまま検証なしで Toolset 側の呼び出しへ渡され、誤った引数を送ってもたいていエンジン側で汎用的な `ExecutionFailed` として失敗するだけで、どのキーが問題だったかは分かりませんでした。
@@ -36,7 +39,15 @@ UAIP では 2 種類のコマンドを公開しています：
 
 **これは「たまたま動いていた」呼び出しにとっての破壊的変更です**。余計なキーや綴り間違いのキーを送っても従来は黙って受理される（無視される、またはエンジン内部まで転送されて拒否される）だけでしたが、移行済みのコマンドでは、その場で問題のキー名を名指しした `InvalidParams` として拒否されるようになります。
 
-`Toolset.Editor.Niagara.*` の 5 コマンド（`DuplicateEmitter` / `GetScriptAssets` / `MoveModule` / `SetEmitterEnabled` / `SetEmitterName`）は、本更新時点でもまだ引数を宣言していませんが、**これはもう未確定ではありません**。5 件とも、このプラグインが対応するどの Niagara toolset にも一致する関数が無いため、スキーマへ移行する代わりに、5 件すべてが `Available: false`（`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "DelegationTargetMissing"`）を返すようになりました——スキーマが説明すべき対象がそもそも無いということです。それぞれが何を理由に拒否するか、どれに動くネイティブ代替があるかは [UAIP.Editor.Niagara → Toolset ブリッジ](#uaipeditorniagara-) の注記を参照してください。「委譲先の toolset に一致する関数が無い」という同じ形は `Toolset.Editor.GameFeatures.ListGameFeatures` と `Toolset.Editor.Niagara.GetNiagaraParameterCollections` にも当てはまりますが、この 2 件はもともと正しい空のスキーマを宣言済みだったため、上記の 5 件には数えられていません——[UAIP.Editor.GameFeatures → Toolset ブリッジ](#uaipeditorgamefeatures-) を参照してください。**本更新で、この状態にあるコマンドの全件が分かりました。** ブリッジコマンド 413 件すべてについて、委譲先の (toolset 名, tool 名) の組がエンジン側に実在するかを静的に突き合わせた結果、**398 件が到達し、15 件が到達しません**。15 件はすべて `Available: false` と `UnavailableDetail: "DelegationTargetMissing"` を返します（内訳: Niagara 7 件 / GameFeatures 4 件 / SlateInspector 2 件 / UMG 2 件）。あわせて、**委譲先の綴りが誤っていた 16 件が実際に到達するようになりました**（Dataflow 7 件 / SlateInspector 8 件 / Niagara 1 件）——それまでは、このリファレンスが動作すると書いていながら実行時に失敗していました。個別のコマンドの現在の状態は、引き続き `uaip_describe_command` で確認できます。
+`Toolset.Editor.Niagara.*` の 5 コマンド（`DuplicateEmitter` / `GetScriptAssets` / `MoveModule` / `SetEmitterEnabled` / `SetEmitterName`）は、本更新時点でもまだ引数を宣言していませんが、**これはもう未確定ではありません**。5 件とも、このプラグインが対応するどの Niagara toolset にも一致する関数が無いため、スキーマへ移行する代わりに、5 件すべてが `Available: false`（`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "DelegationTargetMissing"`）を返すようになりました——スキーマが説明すべき対象がそもそも無いということです。それぞれが何を理由に拒否するか、どれに動くネイティブ代替があるかは [UAIP.Editor.Niagara → Toolset ブリッジ](#uaipeditorniagara-) の注記を参照してください。「委譲先の toolset に一致する関数が無い」という同じ形は `Toolset.Editor.GameFeatures.ListGameFeatures` と `Toolset.Editor.Niagara.GetNiagaraParameterCollections` にも当てはまりますが、この 2 件はもともと正しい空のスキーマを宣言済みだったため、上記の 5 件には数えられていません——[UAIP.Editor.GameFeatures → Toolset ブリッジ](#uaipeditorgamefeatures-) を参照してください。**本更新で、この状態にあるコマンドの全件が分かりました。** ブリッジコマンド 421 件のうち、共通のブリッジハンドラで作られた 419 件について、委譲先の (toolset 名, tool 名) の組がエンジン側に実在するかを静的に突き合わせた結果、**404 件が到達し、15 件が到達しません**。残る 2 件（`CompileLiveCoding` と `DrawPCGSpline`）はこのハンドラで作られておらず、この突き合わせの対象外です。15 件はすべて `Available: false` と `UnavailableDetail: "DelegationTargetMissing"` を返します（内訳: Niagara 7 件 / GameFeatures 4 件 / SlateInspector 2 件 / UMG 2 件）。あわせて、**委譲先の綴りが誤っていた 16 件が実際に到達するようになりました**（Dataflow 7 件 / SlateInspector 8 件 / Niagara 1 件）——それまでは、このリファレンスが動作すると書いていながら実行時に失敗していました。個別のコマンドの現在の状態は、引き続き `uaip_describe_command` で確認できます。
+
+### エディタを変える Toolset ブリッジコマンドは Play セッション中は断られる
+
+Play-in-Editor または Simulate のセッション中は、エディタを変える Toolset ブリッジコマンドを `NotAllowed` で断ります。アセットを編集するネイティブコマンドと同じ扱いです。この拒否は引数の検査より前に行うので、引数が誤っている呼び出しも `NotAllowed` になります。文言は `This command cannot be used while a Play or Simulate session is in progress.` に理由が続く形で、すでに個別の検査を持っていた 60 本のブリッジコマンドでは、その検査の名前が角括弧付き（`[CheckName]`）で先頭に付きます。
+
+- **セッション中も動くコマンド。** PIE の開始と停止（`StartPIE`・`StopPIE`）、Niagara の `SetSystem` と `SetVariable`、SlateInspector の UI 操作 8 本、`OpenEditorForAsset`・`SelectAssets`・`SetContentBrowserPath`、Logs の `SetVerbosity`、AnimationAssistant の再生・表示 13 本、Control Rig の `SetAnimMode*` 6 本と `SelectControl`・`SelectMirroredControls`・`ClearControlSelection`・`FrameControlSelection` です。`ExportFBXFromRig` は含まれません。
+- **それ以外を許す。** DefaultDenied の Capability `ToolsetEditDuringPlaySession` を持つセッションは通ります。セッションを持たない呼び出し（`SessionId` を付けない直接の HTTP 呼び出し）は許可されません。安全ポリシーがこの Capability を明示的に拒否しているときは、拒否の文言は許可を求める案内をしません。[Safety & Capabilities](safety.md) を参照。
+- **デモ版。** デモ版には Toolset ブリッジコマンドがなく、`ToolsetEditDuringPlaySession` もこのエディションに含まれない印（`NotInThisEdition`）で登録されます。
 
 ---
 
@@ -52,7 +63,7 @@ UAIP では 2 種類のコマンドを公開しています：
 | `EngineVersion` | 現在動作しているものとは異なるエンジンバージョンを必要とする（特定のリリースで導入された、または特定のリリースまでしか存在しない API など） | エンジンバージョンを上げる、または下げる |
 | `BuildConfiguration` | このプロセスがビルドされていないビルド構成を必要とする（Developer Tools・Editor ターゲットなど） | 必要な構成でリビルドする |
 | `ExecutionEnvironment` | この実行環境が提供していないインフラを必要とする（レンダーハードウェアインターフェース、対話セッション、オプションの Runtime プラグインが登録するモジュラー機能クライアントなど） | 別の実行環境で動かす |
-| `OptionalPluginDisabled` | 依存先のオプションプラグインへの対応が、このバイナリには一切コンパイルされていない — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します。プラグインが単に無効なだけで存在はしている場合、この値にはなりません — その場合は代わりに（対処付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。[`UAIP.Core.ListIntegrations`](#uaipcore) を参照 |
+| `OptionalPluginDisabled` | 依存先のオプションプラグインへの対応が、このバイナリには一切コンパイルされていない — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します（Shipping のゲームには `.uproject` で有効にした統合だけが入り、Development のパッケージにはプラグインが存在する統合がすべて組み込まれます）。プラグインが単に無効なだけで存在はしている場合、この値にはなりません — その場合は代わりに（対処付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。[`UAIP.Core.ListIntegrations`](#uaipcore) を参照 |
 | `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | エンジンバージョンの変更やプラグインの切り替えでは解決しない — 別の経路（例: エディタスクリプティング経由で同じ効果に到達する Toolset ブリッジコマンド）を探す |
 | `DelegationTargetMissing` | 委譲先の外部サーフェス（Toolset ブリッジのターゲット）に、サポート対象のどのエンジンバージョンも実際には宣言していない関数を呼び出しており、実装へ到達する手段がそもそも存在しない | これも解決しない — そのサーフェスを持つプラグイン自体はすでに有効になっている場合がある。同じ操作を行うネイティブコマンドがあれば、それを使う |
 | `SafetyPolicyDisabled` | 環境にもビルドにも欠けているものは無い — 既定で無効な SafetyPolicy フラグでゲートされており、そのフラグがこのプロセスでオフになっている | `Config/DefaultUAIP.ini` でそのフラグを設定して再起動する（`ErrorMessage` がフラグ名を名指しする）。`AllowCapabilityReload=True` の環境なら `UAIP.Core.ReloadCapabilities` で再起動なしに反映できる |
@@ -73,50 +84,50 @@ UAIP では 2 種類のコマンドを公開しています：
 
 | ドメイン | プロバイダプレフィックス | UAIP コマンド | Toolset ブリッジ | デモ |
 |---|---|---:|---:|---:|
-| Core | `UAIP.Core` | 11 | — | ✅ |
+| Core | `UAIP.Core` | 12 | — | ✅ |
 | Core Artifacts | `UAIP.Core.Artifacts` | 1 | — | ✅ |
-| Editor Workspace | `UAIP.Editor.Workspace` | 22 | 1 | 一部（17/22） |
+| Editor Workspace | `UAIP.Editor.Workspace` | 24 | 1 | 一部（19/24） |
 | Editor Engine Log | `UAIP.Editor.Engine.Log` | 1 | 4 | ✅ |
 | Editor Engine Plugin 🧩 | `UAIP.Editor.Engine.Plugin` | 9 | 15 | 一部（5/9） |
-| Editor Engine CVar 🧩 | `Toolset.Editor.EngineManagement` | — | 1 | — |
+| Editor Engine CVar 🧩 | `Toolset.Editor.Toolset.EngineManagement` | — | 1 | — |
 | Editor Engine ConfigSettings | `UAIP.Editor.Engine.ConfigSettings` | 8 | 8 | 一部（5/8） |
 | Editor Engine Toolset 🧩 | `UAIP.Editor.Engine.Toolset` | 1 | — | — |
 | Editor Observation | `UAIP.Editor.Observation` | 15 | — | ✅ |
 | Editor Execution | `UAIP.Editor.Execution` | 9 | — | — |
-| Editor UI Automation | `UAIP.Editor.UIAutomation` | 16 | 10 | ✅ |
+| Editor UI Automation | `UAIP.Editor.UIAutomation` | 18 | 10 | ✅ |
 | Editor Assets | `UAIP.Editor.Assets` | 51 | 6 | 一部（29/51） |
 | Editor SemanticSearch 🧩 | `UAIP.Editor.SemanticSearch` | 5 | 2 | — |
-| Editor Level | `UAIP.Editor.Level` | 22 | 8 | 一部（8/22） |
+| Editor Level | `UAIP.Editor.Level` | 24 | 8 | 一部（10/24） |
 | Editor Property | `UAIP.Editor.Property` | 12 | — | 一部（6/12） |
-| Editor Blueprint | `UAIP.Editor.Blueprint` | 20 | — | — |
-| Editor UMG | `UAIP.Editor.UMG` | 22 | 13 | — |
-| Editor Material | `UAIP.Editor.Material` | 11 | — | — |
+| Editor Blueprint | `UAIP.Editor.Blueprint` | 29 | — | — |
+| Editor UMG | `UAIP.Editor.UMG` | 24 | 13 | — |
+| Editor Material | `UAIP.Editor.Material` | 12 | — | — |
 | Editor GameplayTags | `UAIP.Editor.GameplayTags` | 7 | 6 | — |
 | Editor GameFeatures 🧩 | `UAIP.Editor.GameFeatures` | 5 | 4 | — |
 | Editor Niagara 🧩 | `UAIP.Editor.Niagara` | 52 | 45 | — |
 | Editor Physics | `UAIP.Editor.Physics` | 31 | 17 | — |
-| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 9 | 7 | — |
+| Editor Dataflow 🧩 | `UAIP.Editor.Dataflow` | 10 | 7 | — |
 | Editor ChaosClothAsset 🧩 | `UAIP.Editor.ChaosClothAsset` | 10 | 6 | — |
 | Editor Skeleton | `UAIP.Editor.Skeleton` | 11 | — | — |
 | Editor MetaHuman 🧩 | `UAIP.Editor.MetaHuman` | 56 | 9 | — |
 | Editor DataTable | `UAIP.Editor.DataTable` | 8 | — | — |
-| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 19 | — | — |
+| Editor AnimBlueprint | `UAIP.Editor.AnimBlueprint` | 21 | — | — |
 | Editor AnimBlueprint UAF 🧩 | `UAIP.Editor.AnimBlueprint.UAF` | 1 | — | — |
-| Editor UAF 🧩 | `UAIP.Editor.UAF` | 19 | — | — |
+| Editor UAF 🧩 | `UAIP.Editor.UAF` | 20 | — | — |
 | Editor UAF AnimGraph 🧩 | `UAIP.Editor.UAF.AnimGraph` | 1 | — | — |
-| Editor SoundCue | `UAIP.Editor.SoundCue` | 8 | — | — |
+| Editor SoundCue | `UAIP.Editor.SoundCue` | 9 | — | — |
 | Editor SoundSettings | `UAIP.Editor.SoundSettings` | 13 | — | — |
 | Editor MVVM 🧩 | `UAIP.Editor.MVVM` | 26 | 9 | — |
-| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 18 | 7 | — |
-| Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 10 | — | — |
-| Editor EQS 🧩 | `UAIP.Editor.EQS` | 9 | — | — |
-| Editor Sequencer | `UAIP.Editor.Sequencer` | 129 | 61 | — |
+| Editor BehaviorTree | `UAIP.Editor.BehaviorTree` | 19 | 7 | — |
+| Editor MetaSound 🧩 | `UAIP.Editor.MetaSound` | 11 | — | — |
+| Editor EQS 🧩 | `UAIP.Editor.EQS` | 10 | — | — |
+| Editor Sequencer | `UAIP.Editor.Sequencer` | 131 | 61 | — |
 | Editor StateTree | `UAIP.Editor.StateTree` | 39 | 8 | — |
 | Editor Curve | `UAIP.Editor.Curve` | 6 | — | — |
-| Editor PCG 🧩 | `UAIP.Editor.PCG` | 34 | 31 | — |
+| Editor PCG 🧩 | `UAIP.Editor.PCG` | 35 | 31 | — |
 | Editor WorldConditions 🧩 | `UAIP.Editor.WorldConditions` | 13 | 2 | — |
-| Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 7 | 5 | — |
-| Editor ControlRig | `UAIP.Editor.ControlRig` | 68 | 107 | — |
+| Editor Conversation 🧩 | `UAIP.Editor.Conversation` | 8 | 5 | — |
+| Editor ControlRig | `UAIP.Editor.ControlRig` | 69 | 107 | — |
 | Editor ControlRig Dynamics 🧩 | `UAIP.Editor.ControlRig.Dynamics` | 17 | — | — |
 | Editor ControlRig Physics 🧩 | `UAIP.Editor.ControlRig.Physics` | 8 | — | — |
 | Editor EnhancedInput | `UAIP.Editor.EnhancedInput` | 15 | — | — |
@@ -134,12 +145,13 @@ UAIP では 2 種類のコマンドを公開しています：
 | Editor GroomAsset 🧩 | `UAIP.Editor.GroomAsset` | 35 | — | — |
 | Editor Validation 🧩 | `UAIP.Editor.Validation` | 7 | — | — |
 | Editor LiveLink 🧩 | `UAIP.Editor.LiveLink` | 11 | — | — |
+| Editor Mass 🧩 | `UAIP.Editor.Mass` | 7 | — | — |
 | Runtime PIE | `UAIP.Runtime.PIE` | 6 | 3 | ✅ |
-| Runtime World | `UAIP.Runtime.World` | 9 | 1 | — |
-| Runtime Observation | `UAIP.Runtime.Observation` | 8 | — | ✅ |
+| Runtime World | `UAIP.Runtime.World` | 14 | 1 | — |
+| Runtime Observation | `UAIP.Runtime.Observation` | 14 | — | ✅ |
 | Runtime Execution | `UAIP.Runtime.Execution` | 3 | — | — |
 | Runtime Assertion | `UAIP.Runtime.Assertion` | 4 | — | ✅ |
-| Runtime Input | `UAIP.Runtime.Input` | 11 | — | — |
+| Runtime Input | `UAIP.Runtime.Input` | 15 | — | 一部（2/15） |
 | Runtime GAS 🧩 | `UAIP.Runtime.GAS` | 17 | — | — |
 | Runtime Niagara 🧩 | `UAIP.Runtime.Niagara` | 4 | 4 | — |
 | Runtime LiveLink | `UAIP.Runtime.LiveLink` | 14 | — | — |
@@ -149,6 +161,15 @@ UAIP では 2 種類のコマンドを公開しています：
 | Runtime Engine Config | `UAIP.Runtime.Engine.Config` | 2 | — | 一部（1/2） |
 | Runtime Insights Trace | `UAIP.Runtime.Insights.Trace` | 11 | — | 一部（3/11） |
 | Runtime Insights Analysis | `UAIP.Runtime.Insights.Analysis` | 3 | — | — |
+| Runtime SaveGame | `UAIP.Runtime.SaveGame` | 10 | — | — |
+| Runtime AI | `UAIP.Runtime.AI` | 14 | — | 一部（13/14） |
+| Runtime StateTree 🧩 | `UAIP.Runtime.StateTree` | 7 | — | — |
+| Runtime CommonUI 🧩 | `UAIP.Runtime.CommonUI` | 4 | — | — |
+| Runtime Chaos Destruction | `UAIP.Runtime.ChaosDestruction` | 8 | — | 一部（7/8） |
+| Runtime Navigation | `UAIP.Runtime.Navigation` | 8 | — | 一部（7/8） |
+| Runtime Animation | `UAIP.Runtime.Animation` | 7 | — | 一部（6/7） |
+| Runtime Network | `UAIP.Runtime.Network` | 7 | — | 一部（3/7） |
+| Runtime Mass | `UAIP.Runtime.Mass` | 6 | — | — |
 
 ---
 
@@ -208,12 +229,16 @@ UAIP では 2 種類のコマンドを公開しています：
 
 要素操作について知っておくとよいこと：
 
-- コンテナの性質上そうなる範囲で冪等です。セットに既にある要素を足す、セットやマップに無い要素を消す、といった操作は成功します。したがって `Success` だけでは何かが動いたかどうかは分かりません — そのために成果物には `Operation` と並んで `Changed` フィールドが載ります（`Replace` でも載ります）
+- コンテナの性質上そうなる範囲で冪等です。セットに既にある要素を足す、セットやマップに無い要素を消す、といった操作は成功します。したがって `Success` だけでは何かが動いたかどうかは分かりません — そのために成果物には `Operation` と並んで `Changed` フィールドが載ります（`Replace` でも載ります） 秘密の対象では、秘密が変わったかどうかを示してしまうので、応答にも artifact にも `Changed` は出ません。
 - 既に 4096 要素を超えるコンテナは、`Remove` / `Clear` を含めどの操作でも拒否されます。コミット前にコンテナ全体をコピーして検証するため、この上限は「その操作がコンテナに何をするか」ではなく「コンテナを読むコスト」に対するものです
 - キーの型が参照であるエントリは、キーだけを書き換えることはできません — 削除してから挿入し直してください
 - マップを丸ごと置き換えるドキュメントに同じキーが複数含まれる場合は、後から現れたものが残ります（`Insert` と同じ扱い）
 - オプショナルな値は「値なし」「値ありだが中身が空」「値あり」の 3 状態を区別します。受け付ける操作は `Replace` のみです — `Insert` / `Remove` / `Clear` が言おうとすることは、この 3 状態で既に表現できるためです
 - 固定長配列（`int32 Values[3]` のような形）も `Replace` のみを受け付け、渡す JSON 配列の要素数はプロパティが宣言する個数と一致している必要があります
+- **固定長配列は、1 要素ずつ指すか、全体として扱うかのどちらかです。** 下の表のうち共有のプロパティ経路で読み書きするすべてのコマンド（`GetDataflowNodeProperty` / `SetDataflowNodeProperty` を含む）に当てはまります
+  - `Values[1]` は 1 要素を指します。その要素だけを読み書きでき、宣言された個数以上の添字は `InvalidParams` で断られます
+  - 添字なしの `Values` は配列全体を指します。読み取りは全要素を 1 つの JSON 配列で返し、その値はそのまま全体の書き込みに渡せます。全体の書き込みは全要素を検証し、1 つでも断られれば何も書きません。全体の読み取りは JSON だけで、エンジンのテキスト形式はありません（固定長配列の書き戻しは `ValueJson` でしか行えないため）
+  - 構造体の固定長配列は、添字なしで経路の途中に置けません。`Arr.Member` は `InvalidParams` で断られ、メッセージに添字付きの形（`Arr[0]` 〜 `Arr[N-1]`）が示されます。以前は黙って要素 0 を読み書きしていました。エンジンのセクションのチャンネル（`GetSectionProperty` の `Translation.Times` など）もこれに含まれます
 - **配列要素をその場で置き換える操作は `Operation` ではなく `PropertyPath` で表します。** `Arr[3]` を既定の `Replace` で書いてください。`Insert` は「新しい要素を差し込む」操作であり、「その位置の要素を上書きする」操作ではありません
 
 ### これらのパラメータを受け付けるコマンド
@@ -258,6 +283,8 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 一部のコマンドは独自の判定で書き込み可否を決めており、この報告を添えません。その場合は書き込みを試してください — 拒否の返答に不足している Capability 名が載ります。無いのは事前の案内だけで、進めなくなるわけではありません。
 
+**報告は、値を丸ごと書くときの上限です。** struct・配列など、メンバーを持つ値では、`RequiredCapabilities` に値全体を書くときに要るものを、型の全メンバーについて数えて挙げます。既定値でだけ編集できるメンバー（テンプレートではインスタンスでだけ編集できるメンバー）があれば `PropertyDefaultsOnlyEdit` が加わり、ドメイン固有の Capability が管理するメンバーがあればその Capability が加わります。`ValueJson` で一部のキーだけを書くときは、実際に書くメンバーの分だけが判定されるので、断りに挙がる Capability は報告より少ないことがあります。`MyStruct.X` や `Arr[0]` のようなパスを読んだときは、そのパスへ書くときと同じく、パスのすべての部分が要るものを挙げます。報告が不足として挙げたものを全て許可すれば書き込みは通ります。`IsWritable: false` と報告されたプロパティは、[コンストラクションスクリプトと子アクターの拒否](#writes-reverted-by-construction)と同じく、どの Capability でも開きません。
+
 さらに 10 個の取得系コマンドがこの報告を返すようになりました。既存の値の返し方に合わせて 2 つの形のいずれかを取ります。
 
 | コマンド | 報告の位置 |
@@ -282,7 +309,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 - **参照と複合値はテキスト形式では書けません。** これらの `WriteInputForm` は `JsonOnly` で、Capability を付与してもオブジェクトパスを `Value` に渡すと拒否されます。テキストインポート経路は Capability のゲートの内側で参照を解決・ロードしてしまうためです。`ValueJson`（Subsonic の各コマンドでは元から JSON である `Value`）を使ってください。逆にテキスト形式でしか書けない値型もわずかに存在します。どちらかは `WriteInputForm` が示します。
 - **一部のコマンドは、Capability の有無に関わらず参照そのものを拒否します。** `SetPoseSearchSchemaChannelProperty` は参照を内包する型を一切書き込みません — チャンネルのサブチャンネル配列はチャンネルを作成する経路そのものであり、そこへ直接書けると `AddPoseSearchSchemaChannel` が持つクラス許可リストを迂回できてしまうためです。専用のチャンネルコマンドを使ってください。これは権限で解除できるものではなく `PolicyViolation` として返ります。
 - **ユーザー製 PCG ノードでは、Capability を持たないセッションに見える型が絞られます。** `GetCustomPCGNodeSchema` / `GetCustomBlueprintPCGNodeSchema` / `GetPCGNativeNodeSchema` はそうしたセッションに対して curated な型だけを列挙し、対応する setter の拒否文も意図的に型名を明かしません。ただし応答は「何かが除かれたこと」自体は伝えます — `HiddenCount`、`HiddenCapabilities`（どの権限があれば見えるか）、そして `MissingCapability` / `Unwritable` の 2 キーを常に持ち合計が `HiddenCount` と一致する `HiddenReasons` オブジェクトが返ります。案内された Capability を付与すれば隠れていた項目が現れ、`HiddenCount` は 0 に戻ります。なお**プロパティ名**は元から隠していません — 綴りを間違えれば「そのプロパティは無い」と返るため、打ち間違いと権限不足は引き続き区別できます。
-- **パスの途中のセグメントも検査されます。** `Struct` 自体が読み取り専用・非推奨・Details パネルに現れない場合、`Struct.Inner` は拒否されます — 内側のメンバーを名指しして読み取り専用の階層を通り抜けることはできません。コンテナのインデックスを挟む場合（`Array[0].Inner`）にも同じ検査が働き、判定対象はコンテナ本体になります。
+- **パスの途中のセグメントも検査されます。** `Struct` 自体が読み取り専用・非推奨・Details パネルに現れない場合、`Struct.Inner` は拒否されます — 内側のメンバーを名指しして読み取り専用の階層を通り抜けることはできません。コンテナのインデックスを挟む場合（`Array[0].Inner`）にも同じ検査が働き、判定対象はコンテナ本体になります。既定値でだけ編集できる部分は、インスタンスでは `PropertyDefaultsOnlyEdit` が要ります（テンプレートでは、インスタンスでだけ編集できる部分に要ります）。これは末端だけでなくパスのすべての部分に当てはまり、ドメイン固有のゲートの Capability も同じように効きます。Capability が足りないパスは `CapabilityNotAvailable`（運用者が明示的に拒否した Capability があれば `PolicyViolation`）で断り、足りない Capability の名前を 1 回の拒否で全て挙げます。
 - **アセットパスを保持する値は 1 つのまとまりとして書き込みます。** `FSoftObjectPath` / `FSoftClassPath` / `FTopLevelAssetPath` はメンバー単位では指定できません — 内側を書き換えられると参照のゲートを素通りできてしまうためです。
 - **参照へ書き込むクラス自体が、`PropertyReferenceEdit` に加えてドメイン自身の Capability を要求することがあります。** 従来は `PropertyEdit` + `PropertyReferenceEdit` を持っていれば、`SetAssetProperty` など同型のコマンドで、既にロード済みのどのクラスでもハード参照や instanced subobject プロパティへ書き込めました — そのクラスが何であるかは一切問われませんでした。呼び出し側が名指ししたクラスから instanced subobject を構築する経路も同じ確認を通ります。この 2 つの Capability しか持たないセッションはどちらにしても影響を受けません — そもそも参照書き込みへ到達できたことが一度もないためです。現時点では `UAIP.Editor.Material` にこの確認が配線されています。`UMaterialExpression` 派生クラスを参照または instanced subobject プロパティへ書き込むには、`AddMaterialNode` が要求するのと同じく `MaterialCustomTypeEdit` / `MaterialCustomNodeEdit` が追加で必要になります — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。他のドメインはまだこの確認を登録していないため、汎用プロパティコマンド経由でそのドメイン自身がゲートしている型を書き込んでも、現時点では捕捉されません。
 
@@ -302,24 +329,248 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 ---
 
+## グラフの自動整列
+
+13 個の `Arrange…Graph` コマンドが、1 つのグラフのノードを読みやすい配置へ並べ直します。AI が座標を省いてノードを追加し、全部が (0,0) に重なったときなどに使います。どのコマンドも次のとおりです。
+
+- 変えるのは**位置だけ**（とコメントボックスの枠）。接続・ノードの種類・プロパティは変えず、コンパイル・再構築・再生成もしません
+- **Undo 1 回**で全ノードが整列前の位置に戻り、Redo で整列後に戻ります
+- アセットをエディタで開いていてもいなくても動きます。開いていれば画面のノードがその場で動きます
+- 動くノードが無いときは何も書きません。トランザクションも Undo の履歴も残らず、パッケージも dirty になりません（`MovedNodeCount` は `0`、artifact も付きません）
+- PIE 中は `NotAllowed` で断ります。各ドメインの編集 Capability で守られます（Capability は増やしていません。整列は型の受け入れ判定の対象外なので、どんな種類のノードがあっても整列できます）
+
+Niagara と StateTree には整列コマンドがありません。
+
+| ドメイン | コマンド | グラフの指定 | `NodeIds` の ID | 並び方 | Capability |
+|---|---|---|---|---|---|
+| Blueprint | `ArrangeBlueprintGraph` | `BlueprintPath` + `GraphName` / `GraphGuid` | `NodeGuid`（大文字 16 進 32 桁） | 左→右に実行順。計算だけのノードは使う側の左 | `BlueprintGraphEdit` |
+| AnimBlueprint の AnimGraph | `ArrangeAnimGraph` | `AssetPath` + `TargetGraph` / `GraphGuid`（既定は最初の AnimGraph） | `GetAnimBlueprintInfo` の `NodeId`（ハイフン付き GUID） | 出力が右端、入力が左へ伸びる | `AnimBlueprintGraphEdit` |
+| AnimBlueprint のステートマシン | `ArrangeAnimStateMachine` | `AssetPath` + `StateMachineNodeId` | 状態・コンジットの `NodeId`（ハイフン付き GUID） | 入口が左端、状態が遷移の向きに並ぶ | `AnimStateMachineEdit` |
+| Material / MaterialFunction | `ArrangeMaterialGraph` | `AssetPath` | `MaterialExpressionGuid`、または出力ノードの固定 ID | 出力が右端、入力が左へ伸びる | `MaterialGraphEdit` |
+| SoundCue | `ArrangeSoundCueGraph` | `AssetPath` | `GetSoundCueInfo` の `NodeId` | 出力が右端、音源が左 | `SoundCueGraphEdit` |
+| BehaviorTree | `ArrangeBehaviorTreeGraph` | `AssetPath` | `GetBehaviorTreeNodeList` の `NodeGuid` | 木。ルートが上 | `BehaviorTreeGraphEdit` |
+| Dataflow | `ArrangeDataflowGraph` | `AssetPath`（`/Game/` のみ） | `GetDataflowGraphInfo` の `NodeGuid`（小文字・ハイフン付き） | 左→右にデータの流れ | `DataflowGraphEdit` |
+| PCG | `ArrangePCGGraph` | `AssetPath`（`/Game/` のみ） | `GetPCGGraphInfo` の `NodePath` | 左→右にデータの流れ | `PCGGraphEdit` |
+| MetaSound | `ArrangeMetaSoundGraph` | `AssetPath` | `GetMetaSoundInfo` の `NodeId`（返された表記のまま） | 入力が左、出力が右 | `MetaSoundGraphEdit` |
+| ControlRig | `ArrangeControlRigGraph` | `AssetPath` + `GraphName`（`SetNodePosition` と同じ解決） | `ListNodes` が返すノード名 | 左→右に実行順 | `ControlRigGraphEdit` |
+| UAF ⚠️ | `ArrangeUAFGraph` | `AssetPath` + `EntryName`（必須） | `ListUAFNodes` が返すノード名 | 左→右に実行順 | `UAFGraphEdit` |
+| EQS | `ArrangeEQSGraph` | `AssetPath` | `GetEQSQueryInfo` の `OptionId` | 木。ROOT が上 | `EQSAssetEdit` |
+| Conversation | `ArrangeConversationGraph` | `AssetPath` + `GraphIndex`（既定 `0`） | `AddConversationNode` が返す `NodeGuid`（大文字・ハイフンなし） | 木。入口が上 | `ConversationGraphEdit` |
+
+各コマンドの行は、それぞれのドメインの節にあります。AnimGraph の中の Unified Animation Framework のノードは `ArrangeAnimGraph` が並べます（専用のコマンドはありません）。
+
+### 共通の引数
+
+| 引数 | 型 | 説明 |
+|---|---|---|
+| `Method` | 文字列 | `Auto`（既定）/ `Engine` / `Builtin`。大文字小文字は区別しません。下の「方法の選び方」を参照 |
+| `NodeIds` | 文字列の配列 | 動かしてよいノード。指定外のノードはその場に残り、障害物として扱われます。省略するとグラフ全体を並べます。空配列・重複は不可で、`Method=Engine` とは併用できません |
+| `HorizontalSpacing` / `VerticalSpacing` | 整数（`0`〜`2000`） | 自前の整列でのノード間の横・縦の間隔（既定は左→右・右→左の並びで 80 / 40、木で 40 / 80）。`Method=Engine` とは併用できません |
+
+`NodeIds` は、**そのドメインの一覧コマンドが返す表記と完全に一致**させて渡します（上の表）。同じ ID でも別の表記（GUID の大文字小文字や区切りの違いなど。ドメインの単一ノードのコマンドは受け付けることがあります）は `InvalidParams` で断られ、期待する表記が示されます。コメントボックスは、コメントを指定すると中身ごと動き、中身だけを指定すると枠は動きません。中身の無いコメントは動かず、ほかのノードの障害物になります。BehaviorTree のデコレーターとサービスは位置を持たず（親に追従）指定できません。EQS のテストと ROOT、AnimBlueprint のステートマシンの遷移ノード（エディタが 2 つの状態の間に描くので並べず、`TotalNodeCount` にも数えません）、Conversation のサブノード、PCG と MetaSound のコメントボックスも指定できません。Conversation は一覧のコマンドがノード ID を返さないため、`AddConversationNode` が返した ID を使います（エディタで人が足したノードは指定できませんが、グラフ全体の整列はできます）。
+
+### 方法の選び方
+
+- **`Builtin`** — UAIP 自前の整列。決定的で、冪等（ノードの大きさの決め方が同じなら、整列済みのグラフをもう一度整列しても動きません）。すべてのグラフで使えます
+- **`Engine`** — エンジン自身の整列。持っているのは **BehaviorTree**、**Material / MaterialFunction**、**PCG（UE 5.8 のみ）** の 3 種類だけです。それ以外のグラフ（UE 5.7 の PCG を含む）で指定したとき、また `NodeIds` や間隔と併用したときは `InvalidParams` です。エンジンの整列の前提を満たさないときは `PreconditionFailed` で、足りないものを示して断ります。黙って `Builtin` に切り替えることはありません
+- **`Auto`** — 基本は `Builtin`。**BehaviorTree** だけ、次をすべて満たすときにエンジンの整列を使います。アセットを BehaviorTree エディタで開いていてグラフのタブを表示済みで全ノードが描画済み／`NodeIds`・間隔・中身のあるコメントが無い／全ノードがルートからつながっている／同じ親の下に X が同じ兄弟がいない（エンジンが実行順を入れ替えうるため）。Material と PCG は、エンジンの整列があっても `Auto` では常に `Builtin` です（Material のエンジンの整列は結果が安定せず取り残しがあり、PCG のものはエディタの選択状態で範囲が変わるため）。エンジンの整列を使ったときは、エディタの表示がグラフ全体に合わせてズームし直されます
+
+`Engine` の前提: BehaviorTree — アセットが開いていて全ノードが描画済みであること（`Engine` 明示では `Auto` の残り 2 条件は見ません。ルートにつながっていないノードは動かず、X が同じ兄弟は実行順が入れ替わることがあります）。Material — 前提なし。ただしコメントと出力につながっていないノードは動かず、MaterialFunction は入力側しか並ばないことがあります。PCG — UE 5.8 で、そのグラフ**自身の** PCG エディタで開いていて（別のグラフのエディタの中でサブグラフとして表示しているだけでは不可）、タブが表示されていて、別のグラフのタブにフォーカスが無いこと。エディタでそのグラフのノードを選んでいると選んだノードだけが並ぶので、`MovedNodeCount` が `TotalNodeCount` より小さくなることがあります。
+
+### Result
+
+| キー | 説明 |
+|---|---|
+| `Method` | 実際に使った方法（`Engine` / `Builtin`） |
+| `MethodReason` | `Auto` が `Builtin` を選んだ理由。当てはまるものが複数あるときは、この並びで先のものを 1 つだけ返します: `NoEngineLayout`（エンジンの整列が無い。UE 5.7 の PCG を含む）、`DefaultForThisGraph`（Material・PCG）、`NodeIdsSpecified`、`SpacingSpecified`、`CommentWithContents`、`EditorNotOpen`（BehaviorTree）、`NodeWidgetsMissing`（BehaviorTree：エディタは開いているが描画されていないノードがある）、`UnreachableNodes`（BehaviorTree：ルートから辿れないノードがある）、`AmbiguousSiblingOrder`（BehaviorTree：X が同じ兄弟がいる）。`Method` を明示したとき、またはエンジンの整列を選んだときは空 |
+| `MovedNodeCount` / `TotalNodeCount` | 動いたノードの数（コメントボックスを含む）/ グラフのノードの数 |
+| `UnmovedByEngineCount` | `Engine` のときだけ。エンジンの整列が動かさなかったノードの数 |
+| `Bounds` | 整列後の全ノードの外接矩形。`X` / `Y` / `Width` / `Height`（グラフ座標） |
+| `SizeSource` | `Builtin` のときだけ。`MeasuredCount`（実際のウィジェットで測った数）と `EstimatedCount`（タイトルとピンの数から推定した数）、全体を推定にした理由 `AllEstimatedReason` — `NodeLimitExceeded`（500 ノードを超えたので、時間がかからないよう全ノードを推定にした）/ `MeasurementUnavailable`（この環境ではウィジェットを作れない）/ 空。MetaSound は常に推定、ControlRig と UAF はグラフが持つ大きさか推定を使います |
+| `EditorSync` | `EditorOpen`（bool）。`ArrangeMaterialGraph` はエディタが開いているとき `WorkingCopyOnlyNodeCount` も返します |
+
+応答には、並べたグラフを特定するキー（たとえば `BlueprintPath` / `GraphName` / `GraphGuid`）もドメインごとに付きます。動いたノードがあるときは、JSON の artifact が `MovedNodes`（`NodeId`、`Before`、`After`。`X` / `Y`）を ID の順に並べて返します。個々の位置はこの artifact でだけ返し、`Result` は小さく保ちます。
+
+### 配置の保証
+
+- 並べたノードは、元あった範囲の左上を起点に置かれます（グラフの別の場所へ飛びません）。`NodeIds` を指定していて、結果が動かさないノードと重なるときは、配置全体を 1 つの塊として、動かす量が少ない方（右か下）へずらします
+- 中身のあるコメントは、中身と一緒に動き、後から枠を中身に合わせます（ノードの上にタイトルの分の余白を取ります）。木のレイアウト（BehaviorTree・EQS・Conversation）では木の形と兄弟の順を優先し、枠は後から囲み直すだけなので、枠が別の枝のノードに重なることがあります。動かさないノードを含むコメントや、中身がすべてほかのコメントに含まれるコメントは枠を動かしません。一部だけ重なる 2 つのコメントでは、小さい方が共通のノードを持ちます
+- **実行順は変わりません。** BehaviorTree・EQS・Conversation は、兄弟の左右の順が実行順を決めます。兄弟を今の実行順のまま左から並べ、X を厳密に増加させます。X が同じ兄弟は、アセットが今実行する順（前回アセットを更新した後に足した子は最後）を使います。`NodeIds` を指定したときは、指定したノードを、動かさない兄弟の間に実行順どおりに置きます。動かさない 2 つの兄弟の間に置けるグリッド上の位置が、入れるノードの数より少ないときは、`Conflict` で何も書かずに断ります（`NodeIds` を外してグラフ全体を整列してください）。順は守れるがノードの幅が足りないときは、順を優先してノードが重なることがあります
+- 根が複数あるグラフ（Conversation の複数の入口）は、木ごとに左から ID の順に並べます。主のルートにつながっていない部分木（親のまだ無い Composite とその子など）は、別の木として主の木の下に並べ、どこにもつながっていないノードは一番下の段に置きます
+- 冪等: 自前の整列の結果にもう一度自前の整列をかけても動きません（ノードの大きさの決め方が同じ場合。実測と推定の違いや、500 ノードの上限をまたぐと結果が変わることがあります）
+
+### 断られるとき
+
+| 状況 | ErrorCode |
+|---|---|
+| 引数の誤り: 間隔が `0`〜`2000` の外、未知の `Method`、空・重複・表記違いの `NodeIds`、指定できないノード（上記）、エンジンの整列を持たないグラフでの `Method=Engine`、`NodeIds` / 間隔との併用、`GraphName` と `GraphGuid` の同時指定 | `InvalidParams` |
+| アセット・グラフが無い、`NodeIds` の ID がそのグラフのノードに無い | `NotFound`（ノード ID は、そのドメインの既存のノードのコマンドと同じ ErrorCode。Dataflow は `RemoveDataflowNode` と同じ `ExecutionFailed`） |
+| 同名のグラフが複数ある | そのドメインの既存のコマンドと同じ（`MatchedGraphGuids`、ControlRig は `MatchedFullGraphNames`） |
+| PIE / シミュレート中 | `NotAllowed` |
+| `Method=Engine` で上の前提を満たさない | `PreconditionFailed` |
+| BehaviorTree / EQS / Conversation の `NodeIds` で、実行順を保てる置き場所が無い | `Conflict` |
+| PCG の自前の整列が ±100000 を超える座標になる、書き戻しの途中で失敗した（それまでに書いた分は取り消し、Undo の履歴にも残らない）、PCG の `Engine` のコマンドをエディタが実行しなかった | `ExecutionFailed` |
+| ドメインの Capability が許可されていない | `CapabilityNotAvailable` |
+| 任意プラグイン（PCG・MetaSound・EQS・Conversation・UAF など）が使えない構成 | ドメインの他のコマンドと同じく、理由付きで断る |
+
+---
+
+## 実行時コマンドの対象プレイワールドを指定する
+
+ネットワークプレイの PIE セッションでは、**同じエディタプロセスの中で複数のワールドが同時に動きます** — サーバー 1 つと、1 つ以上のクライアントです。そのため 112 個の実行時コマンドが、どのワールドに作用するかを指定する 2 つの任意パラメータを受け付けます。どちらも任意で、両方とも省略した場合の挙動はこれらのパラメータが存在しなかった頃とまったく同じです。つまり**既存の呼び出しの意味は変わりません**。
+
+| パラメータ | 型 | 意味 |
+|---|---|---|
+| `TargetNetRole` | string | `"Standalone"` / `"Server"` / `"Client"`。大文字小文字は区別しません。`"Server"` は Dedicated Server と Listen Server の**両方**にマッチします — 呼び出し側が考えるのは権限の所在であって、PIE がどちらの形式のサーバーを起動したかではないためです |
+| `TargetPIEInstance` | integer | `ListPlayWorlds` が返すインスタンス番号。役割だけでは対象が 1 つに定まらないときに使います |
+
+まずは [`ListPlayWorlds`](#uaipruntimeworld) から始めてください。エンジンがいま保持しているプレイワールドをすべて、それぞれの `PIEInstance` / `NetMode` / `MapName` / `bIsPrimaryPIEInstance` 付きで返します。この `PIEInstance` がそのまま `TargetPIEInstance` に渡せる値です。
+
+### 対象の決まり方
+
+| 送った内容 | 結果 |
+|---|---|
+| どちらも省略 | これらのパラメータが存在しなかった頃にこのコマンドが使っていたワールド — 主となるプレイセッション |
+| `TargetNetRole` のみ、該当ワールドが 1 つ | そのワールド |
+| `TargetNetRole` のみ、該当ワールドが複数 | `InvalidParams`。メッセージに候補が `TargetPIEInstance <n> (TargetNetRole "...", NetMode ..., map ...)` の形ですべて列挙されるため、そのうちの番号を足して同じ呼び出しを再実行できます |
+| `TargetPIEInstance` のみ | そのインスタンス |
+| 両方指定し、内容が一致 | そのインスタンス |
+| 両方指定し、内容が食い違う | `InvalidParams`。そのインスタンスが実際には何の役割で動いているかを示します |
+| どれにも当てはまらない役割・番号 | `NotAllowed` — プレイワールドは存在するが、指定したものが無い場合です。メッセージに実在するものが列挙されます |
+| そもそも何も動いていない | `NotAllowed`。メッセージは `PIE is not running.`（パッケージ実行時は `No active game world.`） |
+
+`InvalidParams` は「要求が実現できない対象を名指しした」こと、`NotAllowed` は「エディタがそのコマンドを実行できる状態にない」ことを意味します。どちらが返るかが、「呼び出しを直す」のか「プレイを開始する」のかの区別になります。
+
+押さえておくべき制限が 2 つあります。
+
+- **選べるのはこのエディタプロセス内のプレイセッションだけです。** 別プロセスとして起動した Dedicated Server は候補にならず、`ListPlayWorlds` にも現れません。
+- **Toolset ブリッジコマンド（`Toolset.*`）はこれらのパラメータを受け付けません。** ブリッジはエンジン側 Toolset の入力をそのまま転送する層であり、スキーマも Toolset の宣言から生成されるため、UAIP 独自のパラメータを足す場所がありません。セッションを指定したい場合は、同じ操作を行うネイティブコマンドの方を使ってください。
+
+### これらのパラメータを受け付けるコマンド
+
+| ドメイン | コマンド |
+|---|---|
+| `UAIP.Runtime.World` | `SpawnActor`、`DestroyActor`、`TeleportActor`、`PossessActor`、`SetTimeScale`、`ExecuteConsoleCommand`、`SetDataLayerRuntimeState`、`GetDataLayerRuntimeState`、`ListDataLayerRuntimeStates`、`WaitForDataLayerStreaming` |
+| `UAIP.Runtime.Observation` | `CaptureViewportImage`、`DumpWorldState`、`DumpActorState`、`DumpComponentState`、`CheckpointCapture`、`DumpGameViewportWidgets`、`FindGameViewportWidgets`、`DumpGameViewportWidgetTexts`、`DumpHUDState`、`ListSubsystems`、`DumpSubsystemState` |
+| `UAIP.Runtime.Execution` | `RunFunctionalTest`、`RunRuntimeAutomationTest` |
+| `UAIP.Runtime.Assertion` | `WaitForCondition`、`AssertActorProperty`、`AssertWorldState` |
+| `UAIP.Runtime.Input` | `InjectInputKey`、`InjectEnhancedInputAction`、`InjectLegacyAction`、`InjectLegacyAxisInput`、`InjectLegacySpeechInput`、`AddMappingContext`、`RemoveMappingContext`、`SetInputMode`、`FlushInput`、`DumpInputState`、`GetEnhancedInputActionValue`、`EvaluateInputGateWithProjectCode`、`ClickGameViewportWidget`、`PressGameViewportUIKey`、`TypeGameViewportText` |
+| `UAIP.Runtime.GAS` 🧩 | `GetAttributeValues`、`GetActiveEffects`、`GetGrantedAbilities`、`GetActiveTags`、`FindAttributeSetClasses`、`GrantAbility`、`RemoveAbility`、`ClearGrantedAbilities`、`ApplyEffect`、`RemoveEffect`、`ClearActiveEffects`、`SetAttributeValue`、`ResetAttributesToBase`、`SendGameplayEvent` |
+| `UAIP.Runtime.Niagara` 🧩 | `GetUserVariables`、`GetVariable`、`SetVariable`、`SetSystem` |
+| `UAIP.Runtime.AI` | `DumpAIPerceptionState`、`GetPerceivedActors`、`GetActorPerceivers`、`DumpAIPerceptionSystemState`、`ExplainSightPerception`、`DumpAIPerceptionSenseConfigs`、`DumpBehaviorTreeState`、`GetActiveBehaviorTreeNode`、`ListBehaviorTreeAgents`、`GetBlackboardValues`、`DescribeBehaviorTreeWithProjectCode`、`StartBehaviorTreeCapture` |
+| `UAIP.Runtime.StateTree` 🧩 | `DumpStateTreeState`、`GetActiveStateTreeState`、`ListStateTreeComponents`、`DumpStateTreeInstanceData`、`StartStateTreeCapture` |
+| `UAIP.Runtime.CommonUI` 🧩 | `DumpActivatableStacks`、`GetInputState`、`GetActionDisplayNames`、`DescribeActivatableWidgetsWithProjectCode` |
+| `UAIP.Runtime.ChaosDestruction` | `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`CaptureGeometryCollectionStrain` |
+| `UAIP.Runtime.Navigation` | `DumpNavigationSystemState`、`FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers`、`GetPathFollowingState`、`WaitForNavigationBuild`、`RebuildNavigation` |
+| `UAIP.Runtime.Animation` | `DumpAnimInstanceState`、`GetAnimStateMachineStates`、`GetAnimBlendWeights`、`GetActiveMontages`、`GetAnimCurveValues`、`DumpAnimInstanceVariables`、`GetMotionMatchingState` |
+| `UAIP.Runtime.Network` | `GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`、`DumpReplicatedPropertyValues`、`CompareReplicatedProperties`、`SetNetworkEmulation`、`ResetNetworkEmulation` |
+| `UAIP.Runtime.Mass` | `GetMassEntityCount`、`DumpMassEntityArchetypes`、`DumpMassProcessorGraph`、`DescribeMassEntity`、`GetMassEntityFragments` |
+
+上の一覧のうち `CheckpointCapture` だけは、自分でワールドを解決しません。`CaptureViewportImage` と `DumpWorldState` を組み合わせたコマンドであり、指定された対象をそのまま両方へ引き渡します。これにより、1 つのチェックポイントに含まれるスクリーンショットと状態ダンプが、エンジンが別々に選んだ 2 つのワールドではなく、常に同じワールドを指すようになります。
+
+`QuitGame` と `ListPlayWorlds`、および CVar 系コマンドはどちらのパラメータも受け付けません。前 2 つは単一のワールドに宛てた操作ではなく、CVar はワールド単位ではなくエンジン全体のものだからです。
+
+### 互換性: すでにあったコマンドで変わったこと
+
+ゲームビューポートの UI のコマンド（[`UAIP.Runtime.Observation`](#uaipruntimeobservation)・[`UAIP.Runtime.Input`](#uaipruntimeinput)）の追加にあわせて、既存の実行時コマンドがプレイワールドが無いことを報告する方法を揃えました。プレイワールドがあるあいだは何も変わりません。以下の違いが現れるのは、プレイワールドが無いとき、または Capability を拒否しているときだけです。
+
+**プレイワールドが無いとき: エラーコードは `NotAllowed` になります。ただし Niagara のネイティブ 4 コマンドは除きます。** プレイワールドを必要とする実行時コマンドは、共通の 1 つの対応表を通して、同じ `NotAllowed` で拒否するようになりました。例外は `UAIP.Runtime.Niagara` の `GetUserVariables`・`GetVariable`・`SetVariable`・`SetSystem`（ネイティブのコマンド）で、これらは従来どおり `PreconditionFailed` を返します。シナリオがステップを自動で再試行するのは `ExecutionFailed` と `PreconditionFailed` の後だけなので、**ほかのコマンドは、プレイワールドが無いときに再試行されなくなります**。Niagara のネイティブ 4 コマンドは引き続き再試行されます。PIE の起動を再試行で待っていたシナリオは、この 4 コマンドを除いて、明示的に待つ形へ書き換えてください。
+
+| モジュール | コマンド | 変更前 | 変更後 |
+|---|---|---|---|
+| Observation | `DumpWorldState`・`DumpActorState`・`DumpComponentState`・`CaptureViewportImage`・`CheckpointCapture` | `ExecutionFailed` | `NotAllowed` |
+| Input | 既存の 11 コマンド | `ExecutionFailed` | `NotAllowed` |
+| World | `SpawnActor`・`DestroyActor`（ほかの 8 コマンドは以前から `NotAllowed`） | `ExecutionFailed` | `NotAllowed` |
+| GAS 🧩 | 14 コマンドすべて | `ExecutionFailed` | `NotAllowed` |
+| Assertion | `AssertActorProperty`・`AssertWorldState`・`WaitForCondition` | `ExecutionFailed` | `NotAllowed` |
+| Execution | `RunFunctionalTest`・`RunRuntimeAutomationTest` | `ExecutionFailed` | `NotAllowed` |
+| Niagara 🧩 — **例外** | `GetUserVariables`・`GetVariable`・`SetSystem`・`SetVariable`（ネイティブのコマンド） | `PreconditionFailed` | `PreconditionFailed`（変更なし。`RetryCount` で引き続き再試行される） |
+| Niagara 🧩 Toolset ブリッジ | `Toolset.Runtime.Niagara.GetUserVariables`・`GetVariable`・`SetSystem`・`SetVariable` | `PreconditionFailed` | `NotAllowed`（`Experimental`） |
+
+- GAS の読み取り系 5 コマンド（`GetActiveEffects`・`GetActiveTags`・`GetAttributeValues`・`GetGrantedAbilities`・`FindAttributeSetClasses`）は、**ワールドを指定しなければ**（`TargetNetRole` / `TargetPIEInstance` を渡さなければ）、プレイワールドが無いとき、これまでどおり編集中のレベルを読みます。`NotAllowed` になるのは、ワールドを指定したのにそれが動いていない場合だけです。
+- Niagara のネイティブ 4 コマンドが `PreconditionFailed` を返すのは、プレイワールドが全く無いときだけです。プレイワールドはあるが、指定した `TargetNetRole` / `TargetPIEInstance` に合うものが無いときは `NotAllowed`、選択子が曖昧なとき、または指定した PIE インスタンスの役割が `TargetNetRole` と食い違うときは `InvalidParams` です。どちらの選択子もこのリリースで新設されたため、1.2.0 向けに書かれた呼び出しがこれに当たることはありません。
+- `WaitForCondition` は、待機の最初の判定でプレイワールドが無ければ `NotAllowed` になります。一度ワールドが見つかった後、待機の途中で消えた場合は、これまでどおり `ExecutionFailed` で終わり、シナリオは再試行します。
+- `RunFunctionalTest` / `RunRuntimeAutomationTest` の実行の**途中で**プレイワールドが消えた場合は、これまでどおり `NotAllowed` ではなく、タイムアウトまたはテストの失敗として返ります。
+
+**Capability。** `DumpWorldState`・`DumpActorState`・`DumpComponentState`・`DumpRuntimeLog`・`CapturePerformanceSnapshot`・`SearchLoadedClasses` は `RuntimeInspect` を、`CaptureViewportImage` は `RuntimeCapture` を必要とするようになりました。`CheckpointCapture` は内部でワールドの状態を書き出すため、これまでの Capability に加えて `RuntimeInspect` も必要です。どれも DefaultAllow なので、影響があるのは `DeniedCapabilities` でそれらを拒否している構成だけです。その場合、要求の受け付け時に `PolicyViolation` で拒否され、artifact は作られません。許可されていないだけの場合は `CapabilityNotAvailable` です。
+
+**読み取り専用。** 上のコマンドと `CaptureViewportImage` は読み取り専用として扱われるようになり、安全ポリシーが `ReadOnly` のときもモーダルが開いている間も動きます。
+
+**`CaptureViewportImage` は選んだワールドを撮ります。** `TargetNetRole` / `TargetPIEInstance` で選んだワールドのゲームビューポートを撮るようになり、複数の PIE があるときに別のインスタンスの画面を撮ることはなくなりました。
+
+**`PlayerIndex` の意味はコマンドによって違います。** 既存の入力コマンド（`InjectInputKey` など）は**プレイヤーコントローラー**の番号を取ります。`PressGameViewportUIKey`・`TypeGameViewportText`・`DumpHUDState` は、ゲームインスタンスの**ローカルプレイヤー**の一覧の番号を取ります。どちらかはパラメータの説明に書かれています。
+
+**`SnapshotUI` と `DumpSlateTree` のラベル。** ラベルが `None` だったノードは型名になり、リッチテキストは表示内容の近似になり、パスワード欄のラベルはヒント文か型名になります。`DumpSlateTree` の `AccessibleText` も同じ規則に従います。リッチテキストは `SnapshotUI` の既定の対象に入るので、ノード数や Ref の番号の振られ方が変わることがあります。[UAIP.Editor.UIAutomation](#uaipeditoruiautomation) を参照してください。
+
+**`DumpSlateTree` の `MaxDepth` は 29 まで。** それより大きい値は、ほかの範囲外の値と同じく 29 に切り詰められます。30 ではウィンドウのダンプの入れ子が深すぎて書き出せず、それでもコマンドは `Success` と空の成果物を返していました。ツリーを書き出せなかった場合は、空のファイルを保存せずに `ExecutionFailed` で失敗するようになりました。
+
+**`SetComboSelection` と `FillForm` がゲームビューポート内のコンボボックスを選べるようになりました。** プレイセッション中（またはウィジェットコンポーネント内）のコンボボックスは、リストを新しいウィンドウではなく自分が属するウィンドウの中に開くため、どちらのコマンドも「Dropdown did not appear within timeout」で失敗していました。そのリストも見つけるようになりました。エディタ自身の UI のコンボボックスの扱いは変わりません。
+
+**`Toolset.Editor.SlateInspector.SnapshotUI` は入力欄の行を、パスワード欄かどうかによらず伏せます。** [UAIP.Editor.UIAutomation](#uaipeditoruiautomation) を参照してください。
+
+**シナリオは、宣言されていない引数へ渡される機微な値を拒否します**（`PolicyViolation`、`Reason: SensitiveValueToUndeclaredParam`）。[機微な値と伏せる場所](#機微な値と伏せる場所) を参照してください。
+
+---
+
+## 応答の共通キー — `Truncated`・`DataEntriesTruncated`・`ArtifactsNotSaved`
+
+一覧を返すコマンドの応答には、返した要素が全部かどうかを示す 2 つの真偽値が付きます。コマンドが artifact を保存できなかったときは、成功応答の `Result` にその理由が付きます。以下の定義は、v1.3.0 で追加された一覧コマンドのすべてに共通です。各コマンドの節は、この定義に従って、そのコマンドのキー名だけを説明します。
+
+- **`Truncated`** — 返した結果（`Data` と artifact を合わせたもの）の**外に**、まだ要素があるかを示します。続きのページがある場合と、取得時の上限で切った場合の、どちらでも `true` になります。ページ付きの一覧では、全ページの総数ではなく、そのページの外（続きのページ）を指します。`Data` と artifact に同じ値で書きます。一覧が複数あるコマンドでは、`<一覧名>Truncated` のように一覧ごとに付きます。
+- **`DataEntriesTruncated`** — `Data` に載せた要素が、artifact より少ないかを示します。`Data` にだけ上限を持つ一覧の `Data` にだけ付く bool で、artifact には付きません。`true` のときは、全件を artifact で読めます。一覧が複数あるコマンドでは、`<一覧名>DataEntriesTruncated` のように一覧ごとに付きます。`Data` と artifact で同じ上限の一覧（入れ子の内側の一覧など）には付きません。
+- **2 つの違い。** `Data` の上限だけで切った応答は、`DataEntriesTruncated: true`、`Truncated: false` です。全件が artifact に入っていて、応答の外には何も残っていないためです。`Truncated: true` は、artifact を読んでも要素が残っているときです。続きのページがあるか、取得時の上限で切っています。
+- **artifact の範囲。** artifact が持つのは、そのページ（ページ付きでなければスナップショット）の要素を、artifact 側の上限まで入れたものです。コマンド全体の全件とは限りません。全件かどうかは `Truncated` で判断してください。
+- **`ArtifactsNotSaved`** — 成功応答の `Result` に載る、artifact を保存できなかった理由の配列です。要素は `{ "Reason": "<理由>" }` で、理由は artifact の保存失敗の種類を表す文字列です（たとえば `WriteFailed`、artifact の本体を文字列にできなかったときは `SerializationFailed`）。`Result` と並べて artifact を保存する Runtime のコマンド（ビヘイビアツリー・StateTree・Chaos の破壊・ナビゲーション・ネットワークエミュレーションのコマンド）も、保存の失敗と文字列化の失敗をここに同じように記録し、`ErrorCode` は変えません。その artifact がコマンドの唯一の結果だったときも、失われたことが分かります。artifact が主な出力のコマンドは、従来どおり `ExecutionFailed` で失敗し、何も記録しません。コマンドが保存を必須にしていない artifact（コマンドによっては唯一の結果）を保存できなかったときだけ付き、コマンドの成否は変えません。結果の代わりではないので、その artifact が唯一の結果だったコマンドでは、成功でも読める結果が無いことがあります。この名前は予約されており、コマンドが自分で `Result` に書くことはありません。[シナリオ](scenario.md) の `${Step.Data...}` からは参照できません。
+- **`Warnings`** — 成功応答の `Result` に載る、呼び出し側への注意書きです（コンパイルを行わなかった、など）。通常は文字列の配列です。例外は Runtime Insights のコマンドで、要素が `{ "Code": "<コード>", "Message": "<本文>" }` のオブジェクトです（[トレース制御](#トレース制御8) を参照）。キー名は同じなので、読む前に要素の型を確かめてください。
+- **成功応答の中身。** 成功した応答は、結果を `Result` か `Artifacts` の少なくとも一方に載せます。本体が大きい結果は artifact で返します。失敗応答にも、理由や証拠の artifact が付くことがあります。成否はまず `ErrorCode` で判断してください。
+
+---
+
 ## UAIP.Core
 
 検索・ヘルスチェック・セッション管理などのシステムレベルコマンド。
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` に加え、`ProjectFilePath`（開いている `.uproject` の絶対パス。MCP Bridge が正しいエディタインスタンスへアタッチしているか検証するために使う）・`TransportTimeouts`（トランスポートごとの非同期コマンドタイムアウト秒数。例 `{"HTTP": 120, "WS": 12}`）・`QueueCongestion`（遅延実行キューの混雑度。`None` / `Low` / `High` の 3 段階。正確な待ち件数は他セッションの活動量を推測させるため返しません）を返す |
+| 🆓 `HealthCheck` | プラグイン接続確認 — `Status`・`UAIPVersion`・`EngineVersion`・`BuildConfig` に加え、`ProjectFilePath`（開いている `.uproject` の絶対パス。MCP Bridge が正しいエディタインスタンスへアタッチしているか検証するために使う）・`TransportTimeouts`（トランスポートごとの非同期コマンドタイムアウト秒数。例 `{"HTTP": 120, "WS": 12}`）・`QueueCongestion`（遅延実行キューの混雑度。`None` / `Low` / `High` の 3 段階。正確な待ち件数は他セッションの活動量を推測させるため返しません）・`MinBridgeVersion`（この UAIP が受け入れる MCP Bridge の最低バージョン。Bridge はこの応答から読み取り、これ未満では動作を拒否します。UAIP 1.3.0 は `1.1.0` を返すので、Bridge 1.2.0 のままでも使えます。ダイアログで止まったエディタを Bridge が止めるのは Bridge 1.3.0 からなので（[書き込みが開いたモーダルダイアログ](#書き込みが開いたモーダルダイアログ)を参照）、Bridge の更新を勧めます。新しい Bridge の zip をデプロイ先の外に展開し、そのインストーラを実行してください — [デプロイ先の中でインストーラを実行したとき](connections.md#デプロイ先の中でインストーラを実行したとき)を参照）を返す |
 | 🆓 `GetSystemInfo` | UE バージョン（Major/Minor/Patch/Changelist）・プロジェクト名・プラットフォーム・ビルド設定・UAIP バージョンを返す |
-| 🆓 `QueryCapabilities` | `Capabilities`（セッションの実効セット）・`RegisteredCapabilityCount` / `UngrantedCapabilityCount`（常に返る）・`OperationalConstraints`（9 つのポリシーフラグ）を返す。`IncludeUnavailable: true` を渡すと `RegisteredCapabilities`（ロード済みモジュールが宣言したすべての Capability。各要素が `Name` / `DefaultPolicy` / `IsGranted` を持つため、このセッションが保有していないものも名前で見つけられる。既定で拒否されるものは `DefaultPolicy` が `Denied` の要素）も返る |
+| 🆓 `QueryCapabilities` | `Capabilities`（セッションの実効セット）・`RegisteredCapabilityCount` / `UngrantedCapabilityCount`（常に返る）・`OperationalConstraints`（ポリシーフラグ。全てのキーは [API リファレンス → Capability 発見](api.md#64-capability-発見) に並べてある）を返す。`IncludeUnavailable: true` を渡すと `RegisteredCapabilities`（ロード済みモジュールが宣言したすべての Capability。各要素が `Name` / `DefaultPolicy` / `IsGranted` を持つため、このセッションが保有していないものも名前で見つけられる。既定で拒否されるものは `DefaultPolicy` が `Denied` の要素）も返る。無償のデモ版では、製品版でだけ使う Capability の要素に `UnavailableReason: "NotInThisEdition"` も付く。その `IsGranted` は常に `false` で、`AllowedCapabilities` に書いても変わらない（[Safety & Capabilities](safety.md#デモ版が提供しない-capability)）。`UnavailableReason` が無い要素は、その理由では塞がれていない。製品版では付かない |
 | 🆓 `ListCommands` | フィルタ付きコマンドカタログ（`ProviderPrefix`・`KeywordFilter`・`IncludeUnavailable`・`Stability`。`ResultMode` — `Commands`（既定）または `Providers` を指定するとコマンドではなく Provider の一覧を返す。`Limit` — 返却件数の上限（1〜1000）。`IncludeDescription` — 一覧に各コマンドの説明文を含める） |
 | 🆓 `DescribeCommand` | 単一コマンドの完全メタデータ（スキーマ・必要 Capability・可用性） |
 | 🆓 `ListPlugins` | インストール済みプラグインと有効/無効状態の一覧（JSON）— ⚠️ **非推奨**：代わりに `UAIP.Runtime.Engine.Plugin.ListPlugins` を使用 |
 | 🆓 `EndSession` | セッションを明示的に終了しサーバー側リソースを解放する（成果物は GC 対象になる） |
 | 🆓 `ReloadCapabilities` | エディタを再起動せずに `Config/DefaultUAIP.ini` から Capability セットを再読み込みする。`AllowCapabilityReload=True` になるまでは `ListCommands` の既定応答から隠れ、`Available: false`（設定すべき ini キー名を含む `UnavailableDetail: "SafetyPolicyDisabled"`）を返す — [UnavailableDetail](#unavailabledetail--handlerunavailable-の8つの詳細理由) 参照 |
-| 🆓 `ListIntegrations` | UAIP が把握しているすべてのオプション統合（実行時に無効・不在になりうるプラグインを必要とする UAIP モジュール、またはその一部）の状態を返す。各エントリは `Name`・`State`（`Pending` / `Loading` / `Loaded` / `CompiledOut` / `PluginDisabled` / `PluginNotInstalled` / `DependencyNotLoaded` / `NotApplicable` / `LoadFailed`。無償のデモ版では、製品版にだけ含まれる統合を示す `NotInThisEdition` も加わる）・`RequiredPlugins`・`MissingPlugins`・`DependsOn`・`CommandMatchers`・平易な文の `Remedy`（そのコマンドの `CommandNotFound` ヒントと同じ文言）を持ち、`State` が `LoadFailed` のときだけ `FailureKind` / `FailureReason` も持つ。任意の `State` パラメータで返す `Integrations` 配列をその状態だけに絞り込めるが、`IntegrationCount` / `LoadedCount` / `NotLoadedCount` は絞り込みに関係なく常に全体の数を返す。未知の `State` 値は `InvalidParams` で拒否される。Capability は不要 |
+| 🆓 `ListIntegrations` | UAIP が把握しているすべてのオプション統合（実行時に無効・不在になりうるプラグインを必要とする UAIP モジュール、またはその一部）の状態を返す。各エントリは `Name`・`State`（`Pending` / `Loading` / `Loaded` / `CompiledOut` / `PluginDisabled` / `PluginNotInstalled` / `DependencyNotLoaded` / `NotApplicable` / `LoadFailed`。無償のデモ版では、製品版にだけ含まれる統合を示す `NotInThisEdition` も加わる）・`RequiredPlugins`・`MissingPlugins`・`DependsOn`・`CommandMatchers`・平易な文の `Remedy`（そのコマンドの `CommandNotFound` ヒントと同じ文言）を持ち、`State` が `LoadFailed` のときだけ `FailureKind` / `FailureReason` も持つ。`CompiledOut` は、その統合のコードがこのバイナリに組み込まれていないことを示す。ビルド時に統合先のプラグインが有効と判定されなかった、またはエンジン版が統合の対応版より古い場合である。`MissingPlugins` は「有効にすれば直るプラグイン」、つまりビルド時に有効と判定されなかったプラグインの一覧で、理由がエンジン版の場合（`Remedy` に必要な最小エンジン版が書かれる）と `NotInThisEdition` の場合は空になる。統合が必要とするプラグインは常に `RequiredPlugins` で確認できる。パッケージしたゲームでは、Shipping のビルドにはプロジェクトの `.uproject` で有効にしたプラグインの統合だけが入る。Shipping 以外（Development・DebugGame・Test）のビルドは、UAIP をエンジンにインストールしている場合（Fab 配布版など）でも、プラグインが存在する統合をすべて組み込み、プロジェクトで有効にしたプラグインとの統合が使える。ビルド済みのバイナリとして UAIP をエンジンにインストールしている場合、`.uproject` の `"Enabled": false` では Shipping 以外のビルドから統合を外せないので、その記述を効かせたいときは UAIP をプロジェクトの `Plugins` フォルダーに置く。例外は GameplayAbilities と CommonUI の統合で、Shipping 以外のビルドでも Shipping と同じく、UAIP をプロジェクトの `Plugins` フォルダーに置き、`.uproject` でプラグインを有効にしたときだけ組み込まれる。これらのプラグインは無効でも起動時にネイティブの Gameplay Tag を登録し（CommonUI はさらに自身のコンテンツを探し）、有効にしていないゲームで ensure を起こすためである。任意の `State` パラメータで返す `Integrations` 配列をその状態だけに絞り込めるが、`IntegrationCount` / `LoadedCount` / `NotLoadedCount` は絞り込みに関係なく常に全体の数を返す。未知の `State` 値は `InvalidParams` で拒否される。Capability は不要 |
 | 🆓 `GetPendingInteractionStatus` | 保留中の対話 1 件の状態 — `State`・`Cause`・`ElapsedSeconds`・`Prompt`・`Reason`・`Result` — を、変化を待たずに報告する。対話（`DrawPCGSpline` などの対話型コマンド）を開始したときと同じ `SessionId` を明示的に指定する必要があり、未知・期限切れ・他セッション所有はすべて同じ `NotFound` として扱われる |
 | 🆓 `WaitForPendingInteraction` | 対話が `AwaitingUser` を離れるか、この呼び出し自身の `TimeoutSeconds` 上限（デフォルト 30、範囲 [1, 600]）に達するまでブロックする。タイムアウトしても対話自体には影響せず、人間の応答を待ち続ける。同じ対話を同時に監視できる呼び出しは最大 4 件までだが、2 件目以降には `[UAIP.Transport] AllowConcurrentPassiveWaits` が必要（[設定](config.md) 参照） |
-| 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックする |
+| 🆓 `CancelPendingInteraction` | 呼び出したセッションが開始した対話をキャンセルする（人間の応答は待たない）。既に `Completed` になっている対話はエラーではなく `Success` として扱われる。開始コマンドが宣言した Capability をセッションの現在の Capability セットに対して再チェックし、もう保有していないものは `CapabilityNotAvailable` で、運用者が `DeniedCapabilities` で明示的に拒否しているものは `PolicyViolation` で拒否する |
+
+> **`EndSession` — 成功時の `Result`。** 終了したセッションの `SessionId`（文字列）を返します。終了済みのセッションに呼んでも成功し、同じ形の `Result` を返します。
+
+### 機微な値と伏せる場所
+
+`DescribeCommand` は、UAIP が自身の記録に残さない値を、コマンドごとに示します。
+
+- `SensitiveParams` — パラメータのトップレベルの名前。例: `TypeGameViewportText` の `Text`
+- `SensitiveResponseData` — 応答の `Data` の中の位置。`[]` が「配列の全要素」を表すドット区切りのパスで書きます: `PasswordFieldValues`（`DumpGameViewportWidgetTexts` のトップレベルの項目）、`Connections[].RemoteAddress`（`ListNetConnections`）、`Properties[].Value` と `Components[].Properties[].Value`（`DumpReplicatedPropertyValues`）。名前だけのパスはトップレベルの項目なので、入れ子のパスが入る前に書かれた一覧もそのまま同じ意味で読めます
+
+**パスの書き方。** `.` で区切り、各セグメントは空でない項目名と、その後ろの 0 個以上の `[]` です。項目名に `.`・`[`・`]` は使えず、添字の指定（`[0]`）はありません。項目名は大文字小文字を区別せずに照合します。応答に無い項目・`null`・空の配列に至るパスは、そこでは何も伏せず、何も足しません。
+
+**伏せる場所。** コマンドのたびにエディタが出す完了通知です。エディタ自身の通知と、コマンドを記録するコード（監査記録・ログ）がこれを受け取ります。宣言した位置の値は、型にかかわらず（`null`・オブジェクト・配列も）長さも載らない文字列 `"<redacted>"` になります。応答の形がパスの示す形と違うときは、飛ばさずに伏せます。`[]` の位置にある値が配列でも `null` でもないとき、また項目を読む位置にある値がオブジェクトでも `null` でもないとき（例: `A.B` の `A` が文字列や配列）は、その値ごと伏せます。宣言を頼れないときは、トップレベルの項目名を残して `Data` 全体を伏せます。宣言したパスが不正なとき（コマンドの登録時にエディタがエラーをログに出します）と、コマンドを引けないとき（未知の名前、または実行中に登録が解除されたコマンド）です。[シナリオ](scenario.md) で、前のステップの応答から伏せる値（またはそれを含む配列やオブジェクト）を `${...}` のテンプレートで取ったステップは、パラメータと応答の `Data` の全体を伏せて記録されます。その値を受け取った後続のステップも同じです。ステップ自身には元の値が届きます。
+
+**伏せない場所。** 呼び出し元に返す応答（MCP・HTTP・WebSocket・CLI、およびシナリオの結果の各ステップ）と、コマンドが保存する成果物は元の値のままです。その値は、コマンドが求める Capability のもとで呼び出し元自身が求めたものだからです。成果物は、Artifact の自動 GC が消すまでディスクに残ります。
+
+**シナリオで機微な値を渡してよい場所。** `${...}` テンプレートは、前のステップの応答の機微な部分（`SensitiveResponseData` の位置。`SnapshotUI` の `PasswordFieldValues` など）を、後のステップのパラメータへ写せます。ただし、受け取るコマンドが機微な値の行き先として宣言した位置にだけです。宣言されている行き先は次のとおりです。
+
+| コマンド | 行き先 |
+|---|---|
+| `InputText` | `Text` |
+| `FillForm` | `Fields` の各エントリの `Value`（エントリの `WidgetRef` は含みません） |
+| `TypeGameViewportText` | `Text` |
+
+これらのコマンドは、行き先で受け取った値を、エラー文・応答・artifact・ログに書きません。`DescribeCommand` は行き先を一覧しないので、この表が一覧です。機微な値をそれ以外の場所へ渡すステップは**実行されず**、`PolicyViolation` と `Result.Reason: SensitiveValueToUndeclaredParam` で失敗します。エラー文は値もテンプレートの式も含まない固定の文で、再試行されません。コマンドを引けないときも同じです。位置は**キーの大文字小文字も含めて**完全一致で比べます。`Text` が宣言されているとき、`text` に入れた機微な値は拒否されます。検査するのは直接の参照だけです。機微な値を持ったステップの応答を参照しただけのステップ（たとえば `InputText` の応答から `WidgetRef` を取る `ClickWidget`）は拒否されません。この検査ができる前に、宣言されていない引数へ機微な値を渡していたシナリオは、これから失敗します。そうする必要があるセッションには、DefaultDenied の Capability `ScenarioSensitiveValueToUndeclaredParam` が要ります（[Safety & Capabilities](safety.md#シナリオ実行) 参照）。
+
+**そのようなステップのエラー文。** 機微な値を受け取ったステップ（全パラメータを伏せて記録されるステップ）は、シナリオの結果の `ErrorMessage` が固定の文に置き換わります。`ErrorCode` は残ります。シナリオ実行のログにも出しません。完了通知でも、全パラメータが伏せられる要求の `ErrorMessage` は同じように置き換えられます。
 
 ---
 
@@ -339,32 +590,53 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `FocusEditorTab` | 指定アセットのエディタタブを前面に出す。対象は `AssetPath` で指定し、Slate レイアウトのタブ識別子では**ない** — `DumpEditorState` が返す `ActiveTabId`（`"Viewport"` / `"Inspector"` など）はここでは拒否される。レイアウト識別子でタブを指定したい場合は `CaptureEditorTabImage` の `TabId` を使う。任意の `GraphName` を指定すると、そのサブグラフのタブも前面に出す。対象は「アセットの種類が Blueprint かどうか」ではなく「**現在開いているエディタが Blueprint グラフのナビゲーションに対応しているか**」で決まり、素の Blueprint に限らず AnimBlueprint・WidgetBlueprint（UMG）・GameplayAbility Blueprint・ControlRig なども含まれる。空文字列は指定しなかった場合と同じ扱い。`Result` の契約と、エラーコード 2 件の破壊的変更は表の下の注記を参照 |
-| 🆓 `CloseEditorTab` | 指定アセットのエディタタブを閉じる。`FocusEditorTab` と同じく `AssetPath` で指定する |
+| 🆓 `FocusEditorTab` | 指定アセットのエディタタブを前面に出す。対象は `AssetPath` で指定し、Slate レイアウトのタブ識別子では**ない** — `DumpEditorState` が返す `ActiveTabId`（`"Viewport"` / `"Inspector"` など）はここでは拒否される。レイアウト識別子でタブを指定したい場合は `CaptureEditorTabImage` の `TabId` を使う。任意の `GraphName` を指定すると、そのサブグラフのタブも前面に出す。対象は「アセットの種類が Blueprint かどうか」ではなく「**現在開いているエディタが Blueprint グラフのナビゲーションに対応しているか**」で決まり、素の Blueprint に限らず AnimBlueprint・WidgetBlueprint（UMG）・GameplayAbility Blueprint・ControlRig なども含まれる。空文字列は指定しなかった場合と同じ扱い。`Result` の契約と、エラーコード 2 件の破壊的変更は表の下の注記を参照。UE 5.8 未満の、描画しないエディタでは、`GraphName` を付けた呼び出しが `NotAllowed`（`Reason: Headless`。アセットエディタを閉じ、`Result.ClosedAssetEditor: true` を付ける）か `InternalError` で終わること、または `Result.Skipped` を付けて成功することがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照 |
+| 🆓 `CloseEditorTab` | 指定アセットのエディタタブを閉じる。`FocusEditorTab` と同じく `AssetPath` で指定する。UE 5.8 未満の、描画しないエディタでは、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
 | 🆓 `ListSpawnableTabs` | 開けるエディタタブの候補を一覧で返す。各行の `TabId` / `OwnerMajorTabId` / `OwnerInstanceId` はそのまま `OpenTabById` / `CloseTabById` の `TabId` / `OwnerTabId` / `OwnerInstanceId` として渡せる。表示名・ツールチップ・そのタブが既に開いているかどうかも含む。開いているかどうかはその行が示す所属先を基準に判定され、`MajorTabLocal` の行はそのウィンドウ内だけを、`Global` の行はエディタ全体を対象とする（エディタ全体に登録されたタブはレイアウト次第でどのタブウェルにも置かれるが、`"Global"` からは常に到達できるため）。網羅的な一覧ではなく、応答は常に `EnumerationScope: "MenuVisible"` を返す — 一覧に無い `TabId` でも開ける場合があり（生成メニューから外れているだけの場合がある）、逆に設定で恒久的に拒否されている場合もあるため、「一覧に無い」は「未列挙」であって「存在しない」ではない。読み取り専用だが、表示名・ツールチップの取得が第三者のデリゲートを評価しうるため `EditorTabSpawn` を要求する |
-| 🆓 `OpenTabById` | Slate レイアウトのタブ識別子（`TabId`。`FocusEditorTab` の `AssetPath` とは別の識別子空間）を指定してエディタタブを開く。`FocusEditorTab` やメニュー操作代行では届かないタブ — ToolMenus に一度も登録されていないレガシーメニュー経由のタブや、所属ウィンドウが前面にないタブ — にも到達できる。`OwnerTabId` に `"Global"` を指定するとエディタ全体に登録されたタブ（Output Log 等）を、major tab 自身の `TabId`（複数該当する場合は `OwnerInstanceId` で絞り込み）を指定するとその内部のパネルを対象にできる。所属先のウィンドウがまだ開いていなければ先に開く。既に開いている所属先はそのまま使うため、`ListSpawnableTabs` が返した行はそのまま渡せる（所属先に対するスポナー登録と許可の判定は、この呼び出しが所属先を開く必要がある場合にだけ適用される）。応答には実際に開いたタブの `InstanceId`（この応答からしか得られない値）、`WasAlreadyOpen`、`OwnerOpenedByThisCall` が含まれ、後始末で何を閉じるべきかを判断できる（閉じる順序は対象タブ→所属先）。失敗時はこの呼び出しが開いたものを取り除く。候補の発見には `ListSpawnableTabs` を使う（`EditorTabSpawn` 必要） |
-| 🆓 `CloseTabById` | `OpenTabById` と同じ指定（`TabId` / `OwnerTabId` / `InstanceId` / `OwnerInstanceId`）でタブを閉じる。アセットパスでは指定できない。`OpenTabById` と異なり `OwnerTabId` が開いていなくても新たに開くことはせず、その場合は `NotFound` になる。許可判定も行わない — 実行時にポリシーが変わったせいで後始末そのものが失敗する方が悪いという判断による。そのため対象は「このセッションが開いたタブ」に限らず、人間が手動で開いたものも含め、いま生きている任意のタブになる（`EditorTabSpawn` 必要） |
+| 🆓 `OpenTabById` | Slate レイアウトのタブ識別子（`TabId`。`FocusEditorTab` の `AssetPath` とは別の識別子空間）を指定してエディタタブを開く。`FocusEditorTab` やメニュー操作代行では届かないタブ — ToolMenus に一度も登録されていないレガシーメニュー経由のタブや、所属ウィンドウが前面にないタブ — にも到達できる。`OwnerTabId` に `"Global"` を指定するとエディタ全体に登録されたタブ（Output Log 等）を、major tab 自身の `TabId`（複数該当する場合は `OwnerInstanceId` で絞り込み）を指定するとその内部のパネルを対象にできる。所属先のウィンドウがまだ開いていなければ先に開く。既に開いている所属先はそのまま使うため、`ListSpawnableTabs` が返した行はそのまま渡せる（所属先に対するスポナー登録と許可の判定は、この呼び出しが所属先を開く必要がある場合にだけ適用される）。応答には実際に開いたタブの `InstanceId`（この応答からしか得られない値）、`WasAlreadyOpen`、`OwnerOpenedByThisCall` が含まれ、後始末で何を閉じるべきかを判断できる（閉じる順序は対象タブ→所属先）。失敗時はこの呼び出しが開いたものを取り除く。候補の発見には `ListSpawnableTabs` を使う（`EditorTabSpawn` 必要）。UE 5.8 未満の、描画しないエディタでは、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがあり、別ウィンドウに出てしまうタブは開かない。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
+| 🆓 `CloseTabById` | `OpenTabById` と同じ指定（`TabId` / `OwnerTabId` / `InstanceId` / `OwnerInstanceId`）でタブを閉じる。アセットパスでは指定できない。`OpenTabById` と異なり `OwnerTabId` が開いていなくても新たに開くことはせず、その場合は `NotFound` になる。許可判定も行わない — 実行時にポリシーが変わったせいで後始末そのものが失敗する方が悪いという判断による。そのため対象は「このセッションが開いたタブ」に限らず、人間が手動で開いたものも含め、いま生きている任意のタブになる（`EditorTabSpawn` 必要）。`Result` に `CloseMethod`（`RequestedClose` または `DestroyedFloatingWindow`）が付く。UE 5.8 未満の、描画しないエディタでは、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
 | 🆓 `NormalizeEditorLayout` | メイングラフタブをフォーカスし、一時パネルを非表示にする。`OpenAsset` と同じエディタ状態の成果物を保存し、非推奨の `ActiveTabId` フィールドも含む — 代わりに `ActiveAssetPath` を読むこと（[`OpenAsset`](#uaipeditorassets) を参照） |
+| 🆓 `SetEditorWindowState` | エディタのメインウィンドウを最小化する、または最小化から復元し、ウィンドウが指定の状態に落ち着いてから返る。必須パラメータは `State`（`Restored` または `Minimized`。それ以外は `InvalidParams`）。`Restored` は最小化を解く。Windows は前面のアプリにしかウィンドウを前に出させないため、ユーザーが別のアプリで作業しているときは、エディタは**そのアプリの後ろで**元に戻る。キーボードフォーカスはそのアプリに残り、エディタのタスクバーのボタンが点滅することがある。後ろにあってもキャプチャは撮れる。最小化の前に最大化されていたウィンドウは、`Restored` が最大化を解かないので、最大化の状態に戻る。対象はメインウィンドウだけ。`EditorWindowStateControl`（DefaultDenied。表の下の注を参照）が必要 |
 | 🆓 `SetGraphZoom` | グラフビューポートのズーム倍率を設定 |
 | 🆓 `FrameGraphAll` | グラフビューポートを全ノードが収まるようにズーム |
 | 🆓 `FrameGraphSelection` | グラフビューポートを選択ノードが収まるようにズーム |
 | 🆓 `SetGraphSelection` | ID リストでグラフノードを選択状態にする |
-| 🆓 `ShutdownEditor` | UE Editor をシャットダウンする（任意でパッケージ保存） |
-| 🆓 `RestartEditor` | UE Editor を再起動する（任意でパッケージ保存） |
+| 🆓 `ShutdownEditor` | UE Editor をシャットダウンする（任意でパッケージ保存）。進行中の `RestartEditor` の試行があれば取り消すので、終了が再起動に化けることはない。UE 5.8 未満で描画しないエディタでは、先に別ウィンドウを閉じる（[別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照） |
+| 🆓 `RestartEditor` | UE Editor を再起動する（任意でパッケージ保存）。`Success` は要求を**受け付けた**ことを表し、再起動が済んだことではない。結果は `GetRestartStatus` で確認でき、MCP Bridge 経由なら Bridge が自動で待つ。表の下の注記を参照。UE 5.8 未満の、描画しないエディタでは、再起動でレイアウトを保存せず、終了の途中で別ウィンドウを閉じる。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
+| 🆓 `GetRestartStatus` | `RestartEditor` の試行の状態（`Scheduled` / `CloseRetrying` / `Declined` / `ExitStarted`）を返す。読み取り専用で `EditorLifecycle` が必要 |
 | 🆓 `SaveAllPackages` | 変更済みパッケージをすべて保存（任意でマップを含む） |
-| 🆓 `Undo` | 直前の Editor 操作を取り消す |
-| 🆓 `Redo` | 取り消した操作をやり直す |
+| 🆓 `Undo` | 直前の Editor 操作を取り消す。Material エディタが開いていて、元に戻すと閉じられないダイアログが出うるとき（Material エディタは Undo のたびに Apply を行う）は、**`NotAllowed` で断り、何も元に戻さない。** `Result.BlockingAssets` に該当する Material と MaterialFunction、`Result.Refusals` に理由ごとの `Reason` と `AssetPaths` を返す（理由の順は `CurrentCompileErrors`、`DestinationCompileErrors`、`EditorClosed`）。**`CurrentCompileErrors` と `DestinationCompileErrors` を返すのは、`[UAIP.ModalDialog] HandleDialogsOpenedByWrites` が `true` のときだけ**（既定は `false`）。無効のときは前もって調べず、取り消しは実行され、エディタが確認を出した場合は人が答えるまで待つ。`EditorClosed` は設定に関わらず返す。アセットはパッケージ名（例 `/Game/M_Test`）で、重複なしにソートして返す。`CurrentCompileErrors` — 開いている Material エディタの作業中の内容にコンパイルエラーがある（Material と無関係な Undo も断る）。エラーを直すかエディタを閉じる。`DestinationCompileErrors` — 戻す先の状態が、UAIP の書き込みを記録した時点でコンパイルエラーのある状態だった（`StepCount` が 2 以上のときは途中の段も含む）。UAIP の `Undo` ではその書き込みより前へ戻れないので、元に戻す書き込みで直す。`EditorClosed` — UAIP の書き込みを行った Material エディタがその後閉じられ、戻してもアセットが変わらない。元に戻す書き込みで直す。このコマンドを通らない Undo（スクリプト、コンソール）と、人がエディタで行った編集を戻す場合は対象外で、ダイアログが出ることがある。`HandleDialogsOpenedByWrites` が `false`（既定）のときは、取り消しの後に出る確認は表示され、人が答えるまで待つ。`true` で、ダイアログに答えるコマンドを使えない環境（[書き込みが開いたモーダルダイアログ](#書き込みが開いたモーダルダイアログ)を参照）では、その確認は表示されず、中止を選んだ扱いになる。取り消しの操作そのものは実行され、`Result.DialogGuardActive: true` がこの扱いで実行したことを示す。実際に確認が中止されたかは示さないので、対象を読み直して確かめる |
+| 🆓 `Redo` | 取り消した操作をやり直す。`Undo` と同じ場合に、同じ `BlockingAssets` / `Refusals` を付けて `NotAllowed` で断る（`CurrentCompileErrors` / `DestinationCompileErrors` は `Undo` と同じく `HandleDialogsOpenedByWrites` が `true` のときだけ）。Redo では `DestinationCompileErrors` は、やり直した先の状態を指す。`Result.DialogGuardActive` は `Undo` と同じ形で報告される |
 | 🆓 `GetUndoHistory` | 取り消し履歴を読む（何も実行しない）。戻せる件数・やり直せる件数と操作名を返す |
-| 🆓 `GetLastCrashReport` | 最新のクラッシュレポートを取得 |
+| 🆓 `GetLastCrashReport` | 最新のクラッシュレポートを取得 クラッシュの本体（例外の文言・コールスタック）は設定に関係なく返ります。`CrashTime` はコマンドを実行した時刻ではなくクラッシュの時刻です（UTC。書式は今までと同じ。クラッシュの記録に時刻が無ければ記録のファイルの更新時刻）。`DiagnosticLogTail` はクラッシュフォルダの最新の `.log` の末尾 50 行で、ファイルパスはほかの欄と同じく伏せます。`AllowLogDump=False`（既定）の間は外されます。空のときは `DiagnosticLogTailReason` が理由を示します: `LogDumpNotAllowed`（設定で外した）、`LogFileNotFound`（ログのファイルが無い）、`LogFileUnreadable`（ログのファイルが読めなかった）。⚠️ 以前はログの末尾が常に空で（存在しないファイルを読んでいた）、`CrashTime` はコマンドを実行した時刻でした。 |
 | `WaitForShaderCompilation` | シェーダーコンパイル完了まで待機 |
 | `RecompileGlobalShaders` | 全グローバルシェーダーを強制再コンパイルし完了を待つ |
 | `CompileLiveCoding` | Live Coding 再コンパイルをトリガー |
 | `GetLiveCodingStatus` | 現在の Live Coding ステータスを取得 |
 | `EnableLiveCodingForSession` | セッションに対して Live Coding を有効化 |
 
+> **`SetEditorWindowState` — 結果と拒否。** `Result` は `PreviousState`・`State`（どちらも `Normal` / `Minimized` / `Maximized`。待機中にウィンドウが破棄された場合は `NoWindow`）・`Changed`（bool）・`Size`（画面ピクセルの `Width` / `Height`）を返し、同じ内容を JSON アーティファクトにも保存する。すでに指定の状態にあるときは、待たずに `Changed: false` ですぐ返る。そうでなければ最大 2 秒、ウィンドウが落ち着くのを待つ。落ち着かない、または待つ間にウィンドウが破棄された場合は、観測した状態を添えて `ExecutionFailed` を返す。待つ間にウィンドウを変更するため、このコマンドは実行中のコマンドとして数えられ、最大 2 秒のあいだ transport のスロットを占有する。
+>
+> 操作の対象が無いときは、[キャプチャのコマンド](#キャプチャが断られるとき)と同じ語彙の `Reason` を付けて拒否される。`Headless`・`BlockedByModal`・`Hidden` は `NotAllowed`、`NoWindow`（メインウィンドウがまだ無い）は `PreconditionFailed`。`Minimized` のウィンドウや、Slate が今は描けないウィンドウ（`DebuggerPaused`・`NotInVisibleTree`・`NotRenderable`）は、ウィンドウを変更することがこのコマンドの目的なので、**拒否されない**。
+>
+> **`Restored` の後の大きさの同期。** 復元の後（すでに `Restored` の状態で `Restored` を求められたときも。その場合は `Changed: false` のまま）、Slate が持つウィンドウの大きさを OS が報告する大きさに同期する。直らないときは `NotAllowed` と `Reason: WindowSizeMismatch` を返す。結果には `PreviousState`・`State`・`Changed`・`Size`（同期の後の値）に加えて `OsClientSize` と `SlateSize`（どちらも `Width` / `Height`）が入り、同じ内容が JSON アーティファクトにも保存される。ウィンドウを最小化して復元し直すか、ユーザーに大きさを手で変えてもらう。`Minimized` を求めたときは大きさを比べない。
+>
+> `EditorWindowStateControl` は **DefaultDenied** で、デモ版でも登録される（デモ版での「使えない」の印は付かない）。無いと `CapabilityNotAvailable`、`ReadOnly` のときは `PolicyViolation` で、他の書き込みコマンドと同様に拒否される。許可するには `Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy]` に `+AllowedCapabilities=EditorWindowStateControl` を足す（デモ版の `DefaultUAIP.ini` には、この行がコメントとして入っている）。
+
+> **`RestartEditor` と `GetRestartStatus` — `Success` の意味と、結果の確かめ方。** どちらも `EditorLifecycle` が必要です。`RestartEditor` の引数は省略可能な `SaveAll` だけです。省略すると、`DisableSave` が有効でない限り未保存の変更を先に保存し、有効なときは保存しません。`DisableSave` のときに `SaveAll: true` を明示すると `PolicyViolation` で拒否します。`Success` は要求を**受け付けた**ことを表します。`Data` には `AttemptId`・`State`（`Scheduled`）・`RestartScheduled: true`・`CloseDeadlineSeconds`・`ProcessId`（要求を受け付けたエディタのプロセス ID）が入ります。
+>
+> - **MCP Bridge 経由**では、受け付けた時点では応答を返しません。Bridge が結果が出るまで待ち、その間も AI クライアントへ進捗を送り続け、新しいエディタにつながったとき・再起動が見送られたとき（エディタが返した理由と対処をそのままエラーとして返す。この拒否応答の `Result` には受付時のエディタの応答が `AcceptedResponse` として入り、その `Artifacts` が拒否応答の `Artifacts` にもなります。受付時に添付された artifact の参照は、応答の最上位の `_inlined_artifacts` にも載ります）・上限時間内に結果を確認できなかったときに応答します。待ちの上限は 2 段あります。エディタが閉じるまでは、エディタが示した期限に約 30 秒を足した時間（終了処理が始まったら、そこからさらに最大 60 秒）。閉じてから先は、Bridge のエディタ起動待ち（既定 120 秒）です。Bridge が「結果を確認できなかった」と返したときは、`GetRestartStatus` と `uaip_get_editor_status` で今の状態を確かめてください。
+> - **それ以外の経路**（HTTP など）では、`Success` は受付だけを意味します。`AttemptId` を指定して `GetRestartStatus` を呼びます。省略すると最新の試行になります。答えるのは、要求を受け付けたエディタがまだ動いている間だけです。再起動した後のエディタは以前の試行を持たず、存在しない `AttemptId`、または保持の範囲（直近 8 件）から外れた `AttemptId` は `NotFound` になります。`NotFound` を含むすべての `GetRestartStatus` の応答に `ProcessId` が入るので、呼び出し側は、照会したエディタと後継のエディタを見分けられます。
+> - **`GetRestartStatus` の `Data`**: `AttemptId`・`State`・`RequestedAt`・`ElapsedSeconds`・`CloseDeadlineSeconds`・`ProcessId`。`State` は `Scheduled`、`CloseRetrying`（保存や読み込みで忙しく、閉じるのを再試行中）、`Declined`、`ExitStarted` のいずれかです。`Declined` の試行には、さらに `DeclineReason`・`DeclineDetail`・`Remedy`・`OutcomeErrorCode`（`ExecutionFailed`）・`OutcomeErrorMessage`・`RestoredDirtyPackageCount`・`LostDirtyPackageCount` が入ります。
+> - **受付前に断られる場合（保存も破棄もせず、何も変えない）**: ライティングビルド（`LightingBuildRunning`）・Interchange のインポート（`InterchangeActive`）・メインウィンドウの作り直し（`MainFrameRecreating`）の最中、またはモーダルダイアログが開いている間（`ModalWindowOpen`。人が操作する通常起動のときだけで、Bridge が起動する無人のエディタは対象外）は `PreconditionFailed` です。`Data` に `DeclineReason` と `Remedy` が入り、メッセージの末尾にも対処が付きます。エディタが既に終了処理に入っていれば `NotAllowed`。別の試行が進行中なら `Conflict`（`Data.AttemptId` が進行中の試行を示します。上の条件より先に判定します）。保存を指定して一部のパッケージが保存できなかったときは `ExecutionFailed`（`Data.FailedPackages` に一覧）で、再起動しません。
+> - **受付後に見送られる場合**: エディタはログに警告を出し、再起動のために変えた設定を元に戻し、破棄しかけた未保存の変更を未保存の状態に戻します（件数は `RestoredDirtyPackageCount` / `LostDirtyPackageCount`）。`DeclineReason` は `LightingBuildRunning`・`InterchangeActive`・`CloseRequestDeclined`・`CloseTimedOut`・`SupersededByShutdown` のいずれかです。エディタはそのまま動き続けます。
+> - **閉じる期限**: 受付から `CloseDeadlineSeconds`（既定 60 秒）以内に閉じられないと、試行は `CloseTimedOut` で見送られます。人が操作する通常起動では、モーダルダイアログが開いている間は見送りません（再起動そのものは保存確認を出さないので、そのダイアログは他の処理が開いたものです）。`DefaultUAIP.ini` の `[UAIP.EditorRestart]` の `CloseDeadlineSeconds`（10〜600。[Configuration](config.md#uaipeditorrestart--restarteditor-の閉じる期限) を参照）で変更できます。重い保存やシェーダーのコンパイルの直後に再起動することが多い場合は延ばしてください。
+> - **試行の途中での終了**: `ShutdownEditor`、または `QuitGame` が結果としてエディタ自体の終了を要求した場合は、試行を取り消し、新しいエディタを起動せずに終了します。安全ポリシーに拒否された（`PolicyViolation`）`ShutdownEditor` は何も取り消しません。エディタが終了する前に照会すると、その試行は `SupersededByShutdown` の `Declined` になっています。人がウィンドウを閉じた場合や、UAIP 以外の経路での終了は、試行の期間中なら再起動になります。
+> - **古い組み合わせ**: 古い MCP Bridge は今までどおり受付の時点で応答を返し、古いエディタは `AttemptId` を返しません。新しい Bridge は今までどおりに振る舞います。どちらの場合も、受付後に見送られた再起動は、新しいエディタの `GetRestartStatus` でしか分かりません。
+
 > **`FocusEditorTab` の `GraphName` — 応答の契約。** `GraphName` を非空の文字列で指定した呼び出しに限り、`Result` に 4 つのフィールドが載る: `WindowFocusRequested`（bool — エディタウィンドウを前面化する**要求を行った**ことの記録。OS が実際に最前面へ持って行ったことまでは保証しない）、`GraphNameRequested`（bool）、`GraphNameApplied`（bool）、`Reason`（`Applied` / `BlueprintEditorInterfaceUnavailable` / `OpenFailed` の 3 値だけを取る閉じた列挙）。成否判定には `Success` だけでなく `GraphNameApplied` と `Reason` を読むこと — `BlueprintEditorInterfaceUnavailable` の場合も `Success: true` が返る。これは開いているエディタに Blueprint グラフのナビゲーション手段がそもそも存在しない（例: `RigVM.UseNewEditor` を有効にした ControlRig エディタ）という構造的な状態であり、同じ指定で呼び直しても変わらないため。`GraphName` を省略または空文字列にした呼び出しでは、この 4 フィールドはいずれも設定されない — 呼び出し側は「`Result` が無い」場合と「`Result.GraphNameRequested` が `false`」の場合の両方を扱う必要がある。グラフ移動が適用されると、エディタの現在の UI 選択状態がクリアされ、Widget Blueprint を Designer モードで開いている場合は先に Graph モードへ切り替わる（グラフを表示するために必要）。この 2 つはいずれもグラフを開く処理より前に起きるため、その後グラフを開く処理自体が `OpenFailed` で失敗した場合でも、既に起きていることがある。
 >
-> ⚠️ **破壊的変更** — `GraphName` のエラーコードのうち 2 件が、`ExecutionFailed` から再試行対象外のコードへ変わった。シナリオの `RetryCount` は `ExecutionFailed` だけを再試行対象にしており、この 2 件はいずれも同じ指定で再試行しても成功しようがないため: アセットに存在しないグラフ名を指定した場合は `NotFound`（従来は `ExecutionFailed`）、Blueprint 系ではないアセットに `GraphName` を指定した場合は `InvalidParams`（従来は `ExecutionFailed`）を返す。`OpenFailed`（ナビゲーション手段は取得できたが実際にグラフを開く処理自体が失敗した場合）は変更なく `ExecutionFailed` のままで、こちらは再試行に意味がある。
+> ⚠️ **破壊的変更** — `GraphName` のエラーコードのうち 2 件が、`ExecutionFailed` から再試行対象外のコードへ変わった。シナリオの `RetryCount` は `ExecutionFailed` と `PreconditionFailed` だけを再試行対象にしており、この 2 件はいずれも同じ指定で再試行しても成功しようがないため: アセットに存在しないグラフ名を指定した場合は `NotFound`（従来は `ExecutionFailed`）、Blueprint 系ではないアセットに `GraphName` を指定した場合は `InvalidParams`（従来は `ExecutionFailed`）を返す。`OpenFailed`（ナビゲーション手段は取得できたが実際にグラフを開く処理自体が失敗した場合）は変更なく `ExecutionFailed` のままで、こちらは再試行に意味がある。
 >
 > **`GraphName` が同一アセット内の複数のグラフに一致する場合、いずれか 1 つが開かれるが、どれが選ばれるかはこの契約の対象外**であり、特定の 1 つが選ばれ続けることを前提にした使い方はしないこと。呼び出し側がどちらを意図していたかを読み取る仕組みではなく、返り値も変わらない — `GraphNameApplied` と `Reason` はグラフを開けたかどうかを表すだけで、どのグラフを開いたかは表さない。実際に名前が重なる状況はまれ: 同じ階層に並ぶグラフ（関数・マクロ・イベントグラフ・インターフェース実装のグラフ）同士は、そもそも同じ名前で共存させる手段がエディタに無い。名前が重なりうるのは**折りたたんだグラフ**が絡む場合だけで、折りたたんだグラフの中にあるグラフが外側のグラフと名前が重なることがある。
 
@@ -384,7 +656,7 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `GetLogEntries` | エディタ Output Log から最近のログエントリを取得（パターンフィルタ対応、Capability 不要） |
+| 🆓 `GetLogEntries` | エディタ Output Log から最近のログエントリを取得（パターンフィルタ対応）。Capability は不要ですが、安全設定 `AllowLogDump`（`bAllowLogDump`）が有効なときだけ動きます（`DumpOutputLog` と同じ設定）。既定では無効なので、既定の構成では `PolicyViolation` で断られ、設定を有効にするよう案内されます。今の状態は `uaip_query_capabilities` の `IsLogDumpAllowed` で確かめられます。以前は設定によらず読めました |
 
 ### Toolset ブリッジ — Logs（4 件）🧩
 
@@ -392,14 +664,16 @@ Subsonic の 3 コマンドは `ValueJson` を**取りません**。既存の `V
 
 | コマンド | 説明 |
 |---|---|
-| `Toolset.Editor.Toolset.Logs.GetLogEntries` | エディタ Output Log から最近のログエントリを取得 |
+| `Toolset.Editor.Toolset.Logs.GetLogEntries` | エディタ Output Log から最近のログエントリを取得。ネイティブ版と同じ安全設定 `AllowLogDump`（`bAllowLogDump`）が必要で、無効の間は `PolicyViolation` で断られる |
 | `Toolset.Editor.Toolset.Logs.GetLogCategories` | 登録済みログカテゴリ名の一覧 |
 | `Toolset.Editor.Toolset.Logs.GetVerbosity` | ログカテゴリの詳細レベルを取得 |
 | `Toolset.Editor.Toolset.Logs.SetVerbosity` | ログカテゴリの詳細レベルを設定（`LogVerbosityEdit` 必要） |
 
 ### Toolset ブリッジ — CVar（1 件）🧩
 
-EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.EngineManagement.*`。
+EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.EngineManagement.*`。
+
+> `SearchCVars`（と `World` の別名）は `Name` を任意のままにし、既定値 `""`（全 CVar）をスキーマに出します。Toolset が必須とする `name` は、ブリッジが常に送ります。
 
 | コマンド | 説明 |
 |---|---|
@@ -418,7 +692,7 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `GetPluginTemplateDescriptions` | 利用可能なプラグインテンプレートの一覧を返す |
 | 🆓 `IsPluginCreationAllowed` | 現在の環境でプラグイン作成が許可されているか確認 |
 | 🆓 `IsPluginModificationAllowed` | 指定プラグインの変更が許可されているか確認 |
-| `SetPluginEnabled` | プラグインを有効化または無効化する（`PluginEnableToggle` 必要；`RestartRequired: true` を返す） |
+| `SetPluginEnabled` | プラグインを有効化または無効化する（`PluginEnableToggle` 必要；`RestartRequired: true` と `RestartReason: PluginModuleReloadRequired` を返す。`DryRun` でも同じ） |
 | `UpdatePluginDescriptor` | プラグインの `.uplugin` 内の選択フィールドを上書き（`PluginDescriptorEdit` 必要） |
 | `AddPluginDependency` | プラグインの `.uplugin` に依存エントリを追加（`PluginDependencyEdit` 必要） |
 | `RemovePluginDependency` | プラグインの `.uplugin` から依存エントリを削除（`PluginDependencyEdit` 必要） |
@@ -426,6 +700,11 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 ### Toolset ブリッジ — Plugin（15 件）🧩
 
 `PluginToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Plugin.*`。
+
+> **引数は Plugin Toolset が宣言する形に揃えています。**
+>
+> - ⚠️ **`UpdatePluginDescriptor` はデスクリプターの全体を取ります。** `Descriptor` は次の 14 メンバーだけを持つオブジェクトで、すべて必須、ほかのメンバーは取りません: `FriendlyName`・`Description`・`Category`・`VersionName`・`CreatedBy`・`CreatedByURL`・`DocsURL`・`MarketplaceURL`・`SupportURL`（文字列）、`Version`（整数）、`bCanContainContent`・`bIsBetaVersion`・`bIsExperimentalVersion`・`bIsSealed`（真偽値）。Toolset は 14 メンバーすべてを書き込んで `.uplugin` を保存するため、省いたメンバーは空で保存されてしまいます。そのため一部だけの `Descriptor` は `InvalidParams` で断ります。以前の呼び出しは、Toolset 側で必ず失敗していました。
+> - **`AddPluginDependency`: `bOptional` の既定値は `false`、`bEnabled` の既定値は `true`** で、ネイティブコマンドと同じです。どちらも常に送ります。
 
 | コマンド | 説明 |
 |---|---|
@@ -440,10 +719,10 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | `Toolset.Plugin.GetPluginTemplateDescriptions` | 利用可能なプラグインテンプレートの一覧 |
 | `Toolset.Plugin.IsPluginCreationAllowed` | プラグイン作成が許可されているか確認 |
 | `Toolset.Plugin.IsPluginModificationAllowed` | 指定プラグインの変更が許可されているか確認 |
-| `Toolset.Plugin.SetPluginEnabled` | プラグインを有効化または無効化（`PluginEnableToggle` 必要） |
-| `Toolset.Plugin.UpdatePluginDescriptor` | `.uplugin` の選択フィールドを上書き（`PluginDescriptorEdit` 必要） |
-| `Toolset.Plugin.AddPluginDependency` | `.uplugin` に依存エントリを追加（`PluginDependencyEdit` 必要） |
-| `Toolset.Plugin.RemovePluginDependency` | `.uplugin` から依存エントリを削除（`PluginDependencyEdit` 必要） |
+| `Toolset.Plugin.SetPluginEnabled` | プラグインを有効化または無効化（`PluginEnableToggle` 必要） `DisableSave` の間は、Toolset を呼ぶ前に `PolicyViolation` で断ります。 |
+| `Toolset.Plugin.UpdatePluginDescriptor` | `.uplugin` の選択フィールドを上書き（`PluginDescriptorEdit` 必要） `DisableSave` の間は、Toolset を呼ぶ前に `PolicyViolation` で断ります。 |
+| `Toolset.Plugin.AddPluginDependency` | `.uplugin` に依存エントリを追加（`PluginDependencyEdit` 必要） `DisableSave` の間は、Toolset を呼ぶ前に `PolicyViolation` で断ります。 |
+| `Toolset.Plugin.RemovePluginDependency` | `.uplugin` から依存エントリを削除（`PluginDependencyEdit` 必要） `DisableSave` の間は、Toolset を呼ぶ前に `PolicyViolation` で断ります。 |
 
 ---
 
@@ -456,11 +735,11 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | 🆓 `ListSettingsContainers` | 登録済みの設定コンテナ（`Project`、`Editor` など）を一覧表示。Capability 不要 |
 | 🆓 `ListSettingsCategories` | コンテナ内の設定カテゴリを一覧表示。Capability 不要 |
 | 🆓 `ListSettingsSections` | カテゴリ内の設定セクションを一覧表示。Capability 不要 |
-| 🆓 `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） |
-| 🆓 `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） |
-| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可。値はエンジンのテキスト形式のみを受け取るため、参照・コンテナ・組み込みカタログ外の構造体は **どの Capability を付与しても拒否されます** — これらは同じ設定オブジェクトへ届き `ValueJson` を受け取る `SetProjectSetting` で書いてください。途中までしか解釈できない値は、断片が適用されるのではなく `InvalidParams` で拒否されるようになりました |
+| 🆓 `GetSettingsSchema` | セクションの編集可能プロパティ（名前・型・説明・デフォルト値・編集条件）を JSON アーティファクトで返す（`EditorInspect` 必要） シークレットプロパティの既定値は `***` と `IsMasked: true` になる（以前は平文）。`IsSecret` は、既定値の中にシークレットがあるプロパティでも真になる（宣言だけでなく、設定クラスの既定値が持つ値で判定する）。新しい `HoldsDynamicValue` は、中身が実行時にしか決まらない型（`FInstancedStruct` など）のプロパティで真になり、そうした値は中身によってシークレットになりうる。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
+| 🆓 `GetSettingsValues` | セクションの現在のプロパティ値を JSON アーティファクトで返す。シークレットフィールド（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）は `***` でマスク（`EditorInspect` 必要） 名前だけでシークレットと分かるプロパティもマスクされる。値の中にシークレットがある、または中身を読めない型の値を持つフィールドもマスクされる（`FInstancedStruct` のような動的な型の構造体は中身まで見る）ので、1.2.0 で読めた値が `***` になる場合がある。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
+| `SetSettingsValues` | `Properties` マップを `ImportText` 経由で設定オブジェクトにマージ。`DryRun`（検証のみ・適用なし）に対応。`ConfigSettingsEdit` 必要。PIE 中は実行不可。値はエンジンのテキスト形式のみを受け取るため、参照・コンテナ・組み込みカタログ外の構造体は **どの Capability を付与しても拒否されます** — これらは同じ設定オブジェクトへ届き `ValueJson` を受け取る `SetProjectSetting` で書いてください。途中までしか解釈できない値は、断片が適用されるのではなく `InvalidParams` で拒否されるようになりました 渡した `Properties` は、シークレットかどうかに関わらず監査ログ・完了通知・コマンドの記録で伏せられ、失敗理由の文も伏せられる。呼び出し側への応答は変わらない。拒否の文は送った値を引用せず、プロパティ・型やフラグ・足りない Capability の名前だけを示す。プロパティが受け付けなかった値は、シークレットかどうかに関わらずプロパティ名だけを示す固定の 1 文（`Property 'X' cannot be written: the value was not accepted for this property.`）で断るため、エンジンの取り込み処理が何に不満だったかは出ない。`DryRun` では、シークレットプロパティの変更前・変更後の値が `***` と `IsMasked: true` になる（以前は `null`）。変更の一覧は値を読まないので、中身が実行時にしか決まらない型（`FInstancedStruct` など）のプロパティは、中身に関わらず伏せられ、そのプロパティの拒否の文も値を引用しない。`IncludeSecretValues` は `DryRun` の平文を返す。`DryRun` なしの応答には値が含まれないので何もしない。`DryRun` のシークレットの欄が 64 件を超えるときは、同じ `Properties` に、応答の `NextSecretValuesOffset` を値にした `SecretValuesOffset` を付けて送り直すと残りを読める（不正な offset は `InvalidParams`） — [シークレット値の読み取り](#reading-secret-values)を参照。プロパティが宣言する `ClampMin` / `ClampMax` の外の数値は、詳細パネルと同じく `DryRun` の有無にかかわらず `InvalidParams` で拒否される。文はプロパティ名と範囲を示し、値は含まない `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `SaveSettings` | `ISettingsSection::Save()` 経由で設定を ini ファイルに書き出す。`ConfigSettingsSave` 必要。PIE 中および `bDisableSave` 設定時は実行不可 |
-| `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 |
+| `ResetSettingsToDefaults` | 設定オブジェクトをクラスデフォルトに戻して保存。`ConfigSettingsReset` 必要。PIE 中は実行不可 シークレット値は `DryRun` のプレビューでも、実行時の元の値のバックアップ（アーティファクト）でも `***` になる。`DryRun` のプレビューでは、中身にシークレットがある、または中身を読めない型の値は、現在値と既定値の両方を判定し、どちらかが秘密なら両方を伏せる。実行時のバックアップは現在値だけを持ち、現在値だけで判定する。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照。既定値へ戻せないセクション（`ListSettingsSections` で `CanResetDefaults: false`）は `DryRun` の有無にかかわらず `NotAllowed` で拒否されるので、実行で拒否されるリセットをプレビューが表示することはない |
 
 ### Toolset ブリッジ — ConfigSettings（8 コマンド）🧩
 
@@ -472,10 +751,162 @@ EditorToolset プラグイン（UE 5.8+）経由のブリッジコマンド。�
 | `Toolset.ConfigSettings.ListCategories` | コンテナ内の設定カテゴリを一覧表示 |
 | `Toolset.ConfigSettings.ListSections` | カテゴリ内の設定セクションを一覧表示 |
 | `Toolset.ConfigSettings.GetSectionSchema` | セクションのプロパティスキーマを取得 |
-| `Toolset.ConfigSettings.GetSectionPropertyValues` | セクションの現在のプロパティ値を取得 |
-| `Toolset.ConfigSettings.SetSectionProperties` | セクションのプロパティ値を設定して永続化（`ConfigSettingsEdit` 必要） |
-| `Toolset.ConfigSettings.SaveSection` | 現在のメモリ上の設定をセクションの ini ファイルに書き出す（`ConfigSettingsSave` 必要） |
+| `Toolset.ConfigSettings.GetSectionPropertyValues` | 指定したプロパティの現在値を取得。`PropertyNames`（1 つ以上のプロパティ名の配列）が必須。`Result` は JSON 文字列で、シークレットプロパティは `***`。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)と[型どおりの値とマスクされた結果](#toolset-bridges--configsettings-typed-values-and-masked-results)を参照 |
+| `Toolset.ConfigSettings.SetSectionProperties` | セクションのプロパティ値を設定して永続化（`ConfigSettingsEdit` 必要）。`Properties` は「プロパティ名 → プロパティの型どおりの JSON 値」のマップで、プロパティがそのまま受け入れられない値は書き込む前に拒否される。書き込んだ値は監査ログとコマンドの記録で伏せられる — [型どおりの値とマスクされた結果](#toolset-bridges--configsettings-typed-values-and-masked-results)を参照 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `Toolset.ConfigSettings.SaveSection` | 現在のメモリ上の設定をセクションの ini ファイルに書き出す（`ConfigSettingsSave` 必要） `DisableSave` の間は、Toolset を呼ぶ前に `PolicyViolation` で断ります。 |
 | `Toolset.ConfigSettings.ResetSectionToDefaults` | セクションの全プロパティ値をコンパイル済みデフォルトにリセット（`ConfigSettingsReset` 必要） |
+
+<a id="toolset-bridges--configsettings-typed-values-and-masked-results"></a>
+### Toolset ブリッジ — ConfigSettings：型どおりの値とマスクされた結果
+
+**`SetSectionProperties`** は、各値をプロパティの JSON 型どおりに受け取ります（数値は数値、真偽値は `true` / `false`、文字列は文字列、配列は配列、構造体はオブジェクト）。UAIP は Toolset を呼ぶ前に、すべてのプロパティ名と値を設定クラスと突き合わせます。Toolset が別の値として保存してしまう値は `InvalidParams` で拒否され、何も書かれません。拒否の文にはプロパティ名と求める形が入り、送った値は入りません。構造体・配列・Map・参照を含むプロパティに書くには `SetSettingsValues` と同じ Capability が必要で、この経路だけが緩い入口にはなりません（不足時は同じエラーになります）。
+
+| プロパティの型 | 受け入れる値 |
+|---|---|
+| 真偽値 | `true` / `false` |
+| 列挙 | 列挙子の名前の文字列、または整数値の数値 |
+| 小数 | 有限の数値（`float` は `float` の範囲内） |
+| 整数 | 小数部の無い有限の数値（絶対値 2^53 以下）。`"42"` のような文字列は拒否 |
+| `FString` | 文字列 |
+| `FName` | 空白と `"` `'` `(` `)` `,` `=` を含まない文字列 |
+| `FText` | 文字列。ただし `NSLOCTEXT(` / `LOCTEXT(` / `INVTEXT(` / `LOCTABLE(` / `LOCGEN_` で始まるものは拒否 |
+| `FLinearColor` | `R` / `G` / `B` / `A` を全部持ち、それ以外を持たないオブジェクト |
+| `FGuid` | ハイフン区切りの GUID 文字列 |
+| オブジェクト・クラス参照、ソフト参照、ソフトオブジェクトパス | `/` で始まる `/Package/Path.ObjectName` 形式の文字列。空・`None`・`null` は拒否 |
+| その他の構造体 | 1 つ以上のメンバーを持つオブジェクト。各メンバーは同じ規則 |
+| `TArray` / `TSet` | `null` の要素を含まない配列。各要素は同じ規則 |
+
+次の型のプロパティは、値によらず拒否されます（このコマンドでは書けません）: `TMap`・`FColor`・固定長配列・`FTransform`・`FTopLevelAssetPath`・独自の文字列表現を持つ構造体（GameplayTag など）・Instanced な参照・弱い参照／遅延参照／インターフェース参照・optional・delegate・field path。これらは `UAIP.Editor.Engine.ConfigSettings.SetSettingsValues` で書いてください。`Properties` は 1 つ以上のプロパティ名を指定する必要があり、コンテナ・カテゴリ・セクション・プロパティの名前が 1024 文字以上のときも拒否されます。Toolset が書き込みの途中で失敗した場合、または「書けなかった」と答えた場合は、呼び出しが失敗し、一部のプロパティが既に書かれている可能性があるので値を読み直して確かめるよう案内されます。
+
+**`GetSectionPropertyValues`** は `PropertyNames` に挙げた名前だけを読みます。要求していない名前や、セクションに存在しない名前が結果に混ざっていた場合も、安全のため隠されます。応答には `MaskedFields`（隠した名前）が付きます。セクションに定義が無い名前と、要求していないのに結果に混ざった名前（結果の形が想定と違う）は `UnverifiedMaskedFields` にも載り、`IncludeSecretValues` でも平文になりません。マスクされた数値や真偽値は文字列の `"***"` になります。読んでいる途中で設定が変わった（設定やコードの再読み込みと重なった）場合は失敗し、呼び直すよう案内されます。Toolset の戻りが UAIP の読めない形のときは、隠せない値を返さないよう失敗にするので、代わりに `UAIP.Editor.Engine.ConfigSettings.GetSettingsValues` で読んでください。存在しないコンテナ・カテゴリ・セクションは、ネイティブの設定コマンドと同じ文の `NotFound` になります。
+
+**Toolset ブリッジコマンドの失敗**は `Toolset.<ツール名> failed: <原因>` の形で返ります。`<ツール名>` は委譲先の Toolset の関数名で、コマンド名の最後の部分と一致しないことがあります（`Toolset.SetSectionProperties failed: ...`、`Toolset.set_anim_mode_gizmo_scale failed: ...`）。原因からは、コマンドが秘密と宣言した入力値と、URL・ID・ファイルシステムのパスの類が取り除かれ、256 文字を超えた分は切り詰められます。ログにも同じ文が出ます。秘密の入力に確実には伏せられない値（1〜3 文字の値、数値）が含まれる場合と、秘密の値を読むコマンドでは、原因を付けずに `Toolset.<ツール名> failed.` だけになります。`SetSectionProperties` は値に数値を含むことが多いため、この形になりがちです（型の誤りは、その前に原因付きで拒否されます）。秘密と宣言されていない入力値（アセットのパスなど）は、原因の文に現れることがあります。 秘密かもしれない値を返す・書く Toolset コマンド（[秘密の値を読む](#reading-secret-values) の Toolset 版の読み取り、値を設定する Control Rig・PCG・Niagara のコマンド、`Toolset.ConfigSettings.SetSectionProperties`、`SnapshotUI`）は、Toolset を呼んだ後の失敗を、対象が何であっても、Toolset が返した `ErrorCode` のまま固定の文 `Toolset.<ツール名> failed.` で返します。Toolset の文は値を引用しうるためです。原因は応答にもログにも出ません。調べるときは、対応する native の `UAIP.*` コマンドで呼び直してください。
+
+
+<a id="reading-secret-values"></a>
+### シークレット値の読み取り
+
+設定値を返すコマンドは、シークレットの値を `***` に置き換え、同じ場所に `IsMasked: true` を付けます。`IncludeSecretValues` を取るコマンドは平文を返せますが、解禁されるのは次の **3 層すべて** が許したときだけです。
+
+1. **引数** — 呼び出しに `IncludeSecretValues: true` を付ける（真偽値）。
+2. **Capability** — セッションに `SecretValueRead`（DefaultDenied）が付いている。付与は再起動なしで反映される。
+3. **SafetyPolicy** — `[UAIP.SafetyPolicy]` の `AllowSecretValueRead=True`、または起動引数 `-uaip-policy-allow-secret-value-read`。変更にはエディタの再起動が必要で、今の状態は `uaip_query_capabilities` の `IsSecretValueReadAllowed` で確かめられる。
+
+平文は `Result.SecretFieldValues` に**だけ**入ります。いつもの場所、すべてのアーティファクト、監査ログ、完了通知には `***` が残ります。どれかの層が許さなくてもコマンドは成功し、値は隠れたままで、`Result.SecretValuesWithheldReason` が理由を示します。デモ版でも、同じ 3 層で同じように解禁できます。何をシークレットとみなすか（プロパティのパス全体、エンジンのパスワード欄の印、CryptoKeys の固定の一覧）、件数と長さの上限、マスクが及ばない経路は [Safety & Capabilities](safety.md#秘密値の平文での読み取り) にあります。
+
+`IncludeSecretValues` を取るコマンドは、`Toolset.ConfigSettings.GetSectionPropertyValues`、上の ConfigSettings のネイティブ 4 本（`GetSettingsSchema`・`GetSettingsValues`・`DryRun` の `SetSettingsValues`・`ResetSettingsToDefaults`）、`UAIP.Runtime.Engine.Config.GetConfigValue` / `SetConfigValue`、[UAIP.Editor.Property](#uaipeditorproperty) の `Get*` 6 本、`UAIP.Editor.Level.GetActorComponentProperty`、`UAIP.Editor.Blueprint.GetBlueprintComponentProperty` です。`Toolset.ConfigSettings.GetSectionSchema` は値を返さず（型・説明・範囲・enum の名前だけ）、対象に含まれません。
+
+**伏せた値の見え方。** ほとんどのコマンドは、値のあった場所に `***` を置き、隣に `IsMasked: true` を付けます。値に印を付けられない形のコマンドは、兄弟の欄で伏せたものを示します。Subsonic・UMG・EQS のコマンドは伏せた名前を `MaskedFields` に並べ（`GetEQSQueryInfo` は option に `IsMasked: true` も付けます）、Enhanced Input の読み取りはトリガー・モディファイアのエントリごとの `IsMasked: true` と `MaskedFields` を使います。`GetAnimGraphNodeDetails` は従来の形（値を省いて `IsSecret: true`）のままです。秘密は、値が空でも伏せます。
+
+**伏せた欄の平文を読む。** 3 つの許可がそろえば、平文は `Result.SecretFieldValues` に入ります。Enhanced Input の読み取りのキーは `Triggers[0].Params.CredentialList[1].ApiToken` のようなパスです（Mapping Context は先頭に `Mappings[m].` が付きます）。定義がまだ解決できない値（ControlRig を引き当てられない、値を定義するプロパティを引けない）と、結果の形が想定と違う値は伏せられ、3 つの許可がそろっていても**解禁されず**、名前が `UnverifiedMaskedFields` に載ります。定義を解決できないときは、アセットを保存し直して定義を引ける状態にしてから、読み直してください。この一覧はすべての読み取りが返すわけではなく、説明に `UnverifiedMaskedFields` を挙げているコマンドが返します（ControlRig・Sequencer・Dataflow・Subsonic・StateTree の読み取りなど）。`GetPinDefaultValue` は Blueprint のピンを別に判定します。秘密と推定されただけの値（`Secret`）は伏せられ、3 つの許可がそろえば平文で読めます。伏せたままで解禁されないのは、定義が今は解決できないピン（見つからない関数や変数、Blueprint のコンパイル前の引数）だけで、`UnverifiedMaskedFields` に載ります。
+
+**中身が実行時にしか決まらない欄。** `FInstancedStruct` やプロパティバッグのような型の欄は、値を入れたときに型が決まるので、宣言だけでは秘密を持つか分かりません。値を見る読み取り（上の設定系の読み取り、`GetActorProperty`・`GetAssetProperty`・`GetBlueprintDefault`・`GetProjectSetting`・`GetWorldSetting`・`GetDataTableRow` のようなパスで読むコマンド、BehaviorTree・EQS・Subsonic のアクションとモディファイア・UMG・Sound・Enhanced Input・AnimBlueprint・Mass・AnimNotify・DataRegistry の読み取り）は、そうした欄の中身に秘密がある、または中身を読めない型のときに伏せ、そうでなければ今までどおり返します。1.2.0 で読めた値が `***` になる場合があります。`GetAnimGraphNodeDetails` は、そうした欄では応答から `Value` のキー自体を省きます（`IsSecret: true` は残ります）。値を見ない経路 — `SetSettingsValues` の `DryRun` の変更一覧、設定のブリッジ、ControlRig と UAF のピンと変数の値の読み書き、Blueprint のピンの値の読み書き（Blueprint の変数の既定値は値で判定します）、`GetStackInputData`、ControlRig の `GetComponent`、Subsonic のイベントと StateTree（`GetStateTreeParameters`）のパラメータ — は、そうした欄を**中身に関わらず**（秘密の無い値でも）伏せます。`IncludeSecretValues` を取るコマンドでは、3 つの許可で読めます。DataRegistry の項目の `Map` / `Set` は、伏せると JSON のオブジェクトや配列から文字列 `***` へ形が変わります。`UAIP.Editor.DataRegistry.GetSchema` も、`GetSettingsSchema` と同じく `HoldsDynamicValue` をプロパティごとに返します。
+
+**値を返す書き込み。** 変更前の値や変更後の値（`PreviousValue`・`NewValue`・`Value`・`AppliedValue`・`PinValue`・`DefaultValue`）を返す書き込みは、今までどおり成功しますが、書く前の値**または**書いた後の値のどちらかが、秘密を含む、または中身を読めない型の値だったときは、それらを `***` と `IsMasked: true` にし、`Changed` を出しません。秘密の無い値を秘密のある値で上書きした場合も伏せます。`SetBlueprintVariableDefault` も含みます。そうした欄での失敗の文は値を引用しません。値は対応する `Get*` を 3 つの許可で呼んで読みます。
+
+**新しく `IncludeSecretValues` を受け付け、平文を返せるようになったコマンド:** `GetPinDefaultValue`、`DumpMassEntityConfig`、ControlRig の `GetComponent` と `GetPinValue`（native と `Toolset.Editor.ControlRig.GetPinValue`）、`Toolset.Editor.ControlRig.ListVariables` / `GetVariable`、`GetSectionProperty`、`GetDataflowNodeProperty`、`GetAnimGraphNodeDetails`、`GetSubsonicEventCollectionInfo`、`GetSoundMixInfo` / `GetSoundClassInfo` / `GetSoundAttenuationInfo`、`GetBehaviorTreeNodeProperties`、`GetInputActionInfo` / `GetMappingContextInfo`、`GetStateTreeParameters`、`GetStackInputData`（native と Toolset 版）、`GetSlotProperties`、`GetEQSQueryInfo`、`GetPoseSearchChannelClassSchema`、`GetDataTableRowStruct`、`GetAnimNotifyProperty` / `GetAnimNotifyClassSchema`。
+
+**さらに `IncludeSecretValues` を受け付ける読み取り。** 秘密は `***` で返り、平文は同じ 3 つの許可で返ります。Toolset 版は UE 5.8 以降です。
+
+| グループ | コマンド |
+|---|---|
+| Editor の読み取り | `GetStateNodeProperty`・`GetDataflowGraphInfo`・`ListDataflowVariables`・`GetPCGGraphInfo`・`GetPCGGraphInstanceParams`・`GetPCGGraphSchema`・`GetUAFPinValue`・`GetUAFVariable`・`ListUAFVariables`・`ListViewModelProperties`・`GetWorldConditionInfo`・`GetChooserTableInfo`・`GetChooserTableRow`・`ListChooserTableRows`・`ListChooserColumns`・`GetMetaSoundInfo`・`GetAssetTags`・`UAIP.Editor.DataRegistry.GetItems` / `GetAllCachedItems` / `AcquireItems` |
+| Toolset 版の読み取り | `Toolset.Editor.StateTree.GetTasks` / `GetEvaluators` / `GetGlobalTasks` / `GetEnterConditions` / `GetTransitions`、`Toolset.Editor.PCG.GetGraphInstanceParams` / `GetNodeDataView`、`Toolset.Editor.DataflowAgent.ListDataflowVariables`、`Toolset.Editor.Niagara.GetSystemData` / `GetEmitterData` / `GetRendererData` / `GetUserVariables`、`Toolset.Runtime.Niagara.GetUserVariables` / `GetVariable`、`Toolset.Editor.DataRegistry.GetItems` |
+| ランタイムのダンプ（それぞれの DefaultDenied の Capability も要る） | `DumpSubsystemState`・`DumpAnimInstanceVariables`・`DumpReplicatedPropertyValues`・`DumpStateTreeInstanceData`・`GetMassEntityFragments`・`GetBlackboardValues`・`DescribeBehaviorTreeWithProjectCode`・`DumpAIPerceptionSenseConfigs`・`DumpSaveGame` |
+| 値ではなく制限の解除 | `FindGameplayTagReferencers`・`CompareReplicatedProperties`・`Toolset.Editor.PCG.GetNodeInfo` / `GetGraphStructure`: 引数で、[安全と Capability](safety.md#秘密値の平文での読み取り) の **一致だけが分かる読み取り** にある除外や拒否を解く |
+
+**64 件を超える平文。** 平文を複数返しうるコマンド（上の表と、これまでに挙げたコマンドの全部。値を 1 つだけ読む `GetStateNodeProperty`・`GetUAFPinValue`・`GetUAFVariable` を除く）は、省略可能の整数引数 `SecretValuesOffset`（0 以上、既定 0）を受け付けます。応答に `SecretFieldValuesOmittedCount` があるときは、`SecretValuesOffset` に応答の `NextSecretValuesOffset` を渡して呼び直します。無くなれば、その応答の秘密は読み切っています。引数を付けない呼び出しの応答は今までと変わりません。印（`MaskedFields`・`IsMasked`・`SecretValuesWithheldReason`）、`SecretFieldValues` のキー（値は文字列とは限らず、`DumpSaveGame` と Toolset 版の読み取りのキーは `<名前>#<番号>`）、上限は [安全と Capability](safety.md#秘密値の平文での読み取り) にあります。
+
+**実行を許すためだけに `IncludeSecretValues` を受け付けるコマンド。** プロパティを書く `Set*` のすべて（`UAIP.Editor.Property` の 6 本、`SetActorComponentProperty`、`SetBlueprintComponentProperty`、`SetAnimNotifyProperty`、`SetPoseSearchSchemaChannelProperty`、`SetEQSGeneratorProperty`、`SetEQSTestProperty`、`SetSectionProperty`、`SetDataflowNodeProperty`、`SetAnimGraphNodeProperty`、Subsonic の 3 本、`SetSoundCueNodeProperty`、`SetSoundMixSettings` / `SetSoundClassSettings` / `SetSoundAttenuationSettings`）、ControlRig の `SetPinValue`、アサート・待機の 3 本、下の DataTable の 3 本です。これらの応答が平文を返すことは決してなく、平文は対応する `Get*` で読みます。
+
+- **秘密のコンテナの要素を指す操作。** 秘密の配列・Set・Map に対する `Insert` / `Remove`、`ElementIndex` / `ElementKeyJson` を指定した `Replace` は、3 つの許可がそろわなければ `PolicyViolation` で断られます。プロパティのパスに秘密の配列への添字を書いた読み書き（`SecretList[5]`、`SecretList[5].Field`）も、読み取りを含めて同じです。ControlRig の `GetPinValue` / `SetPinValue` で配列のピンの要素を指すときも同じです。判定は対象を調べる前に行うので、何も書かず、Undo の記録も作らず、添字が範囲内でも範囲外でも同じ拒否になります。文言は 3 つの許可を案内し、パスや値は含めません。宣言の型でたどれず、添字の先が秘密の配列かどうか分からないパスも、許可がそろっていなければ、以前の「見つからない」ではなく同じ拒否になります。コンテナ全体の置き換えと `Clear` は今までどおり受け付け、どのコンテナが秘密かは、値を見られるコマンドでは値で判定します。中身に秘密がある、または中身を読めない型のときだけ 3 つの許可を要し、秘密の無いコンテナは許可なしで操作できます。`GetPinValue`（native も Toolset も）の要素のパスは値を読むので、動的な型のコンテナでは許可を要します。`SetPinValue`（native も Toolset も）の要素のパスは宣言された秘密だけで判定するので、許可を要しません。固定長の配列を添字で読み書きすること（`Values[3]`）も同じです。
+- **アサートのコマンド。** `AssertActorProperty`・`AssertWorldState`・`WaitForCondition` は、秘密のプロパティを、3 つの許可（各コマンドの `IncludeSecretValues` を含む）がそろわなければ比べません。そろわないときは、読めないプロパティと同じ形で失敗し、文言は許可を案内しません。比べたときも、ログには期待値・実際の値を書きません。
+- **DataTable のコマンド。** `ExportDataTableToCSV`・`DeleteDataTableRow`・`ImportDataTableFromCSV` は、行の構造体が秘密を含む（⚠️ ほかと同じく、ファイルパスの列も含みます）、または行の**値**が秘密や中身を読めない型の値を含む（`FInstancedStruct` のような動的な型の構造体は中身まで見ます）とき、3 つの許可がそろわなければ `PolicyViolation` で断られます。`ExportDataTableToCSV` と `ImportDataTableFromCSV` は全行を、`DeleteDataTableRow` は削除する行だけを見ます。書き出し・削除・取り込み・スナップショットのどれも行わず、文言は表のパスも列名も含みません。そろっていれば、書き出しの CSV と、削除・取り込みの前のスナップショットには平文が入ります。削除・取り込みには常に戻せるスナップショットが付きます。秘密を含まない表は影響を受けません。
+
+**伏せるだけで解禁の無いもの。** `ListBlueprintPins` と `GetBlueprintGraphInfo`（ピンの値を伏せ、平文を読む経路はありません）、`SetPoseSearchSchemaChannelProperty` が書いた値（`AppliedValue`）、`SetSoundCueNodeProperty` の `ElementKeyJson`、`SetAnimNotifyProperty` の書いた値とキーは、伏せるだけで平文を読む方法はありません。`GetPoseSearchChannelClassSchema`・`GetDataTableRowStruct`・`GetAnimNotifyProperty` はこの一覧から外れました。`IncludeSecretValues` を取り、`GetAnimNotifyClassSchema` や DataRegistry の `GetItems` / `GetAllCachedItems` / `AcquireItems` と同じく、3 つの許可がそろえば平文を `Result.SecretFieldValues` に返します。SoundCue のノードと PoseSearch のチャンネルのインスタンスには読み取りのコマンドが無いので、その書き込みの応答で伏せた値は、どの許可でも読み戻せません。通知のクラスを引けないときは、`GetAnimNotifyProperty` は名前に関係なく全プロパティの値を伏せます。
+
+**伏せる echo。** `SetUAFPinValue`・`AddBlueprintVariable`・`AddViewModelProperty`・`AddUAFVariable` は、送った値（`AddUAFVariable` は変数の追加直後に読み戻した既定値）をそのまま返していました。秘密のピンや変数では、応答は `***` と `IsMasked: true` を返します。書き込み自体は今までどおり成功します。`AddBlueprintVariable` は、既定値を書く前と書いた後の中身で判定し、`DefaultValue` を送らなくても秘密なら伏せます。
+
+**Toolset 版の読み取り。** `Toolset.Editor.ControlRig.GetPinValue` / `ListVariables` / `GetVariable` と、Toolset 版の `GetStackInputData` は、native と同じく秘密を伏せます（まだ読み込まれていない ControlRig は、先に読み込みます）。成功・失敗を問わず Toolset の成果物を返さず、保存も残しません。Toolset を呼んだ**後**の失敗は、理由が値を引用しうるので、エンジンの失敗理由ではなく固定の文言 `Toolset.<Tool> failed.`（例: `Toolset.GetStackInputData failed.`）を返します。秘密でないピンの失敗でも同じです。原因は、同じ操作を native のコマンドで試して確かめてください。呼ぶ**前**の拒否（引数の不足、名前が長すぎる、ランタイムのアセット）は、要求だけから作った文言なので、今までのままです。Toolset 版 `GetStackInputData` で秘密の入力は、値の欄の全メンバーが `"***"` になって `IsMasked: true` が付き、値の指定の仕方を示す欄だけが残ります。引き当てられない入力は伏せて `UnverifiedMaskedFields` に載せます。Toolset 版 `GetPinValue` は、`UnverifiedMaskedFields` に載るピンを native のコマンドと同じに扱います。3 つの許可がそろったうえで、さらにセッションが `ControlRigUnverifiedPinValueRead`（既定で拒否）を持つときだけ、平文を `SecretFieldValues` で返します。持たないときは `SecretFieldValues` を返さず、`Result.SecretValuesWithheldReason` に `SecretValuesWithheldUnverified` を付けます。`Result` の値は `***` のままです。
+
+**ControlRig のコンポーネント。** `GetComponent`・`AddComponent`・`SetComponentContent` では、`Content` は秘密のキーだけを伏せ（`MaskedFields` に並びます）、`ContentText` は構造体が秘密を 1 つでも含めば全体が `***` になります（一部だけ伏せたテキストは `SetComponentContent` に戻せる形か保証できないため）。そのようなコンポーネントを往復させるには、`GetComponent` を 3 つの許可付きで呼び、平文の `ContentText` を使います。秘密を含むコンポーネントの追加・内容の設定が失敗したときは、値を引用しうるエンジンの取り込みの詳細を文言から省きます。
+
+**対象外のもの。** 書き込みで送った値は、今までどおり監査ログと完了通知に残ります（別の判断です。`SetBlueprintVariableDefault` は値を返さなくなったので例外です）。Subsonic のアクションの `ActionFingerprint` は今までどおり返しますが、秘密のプロパティの値を含めずに計算するようになりました（指紋の版 2）。秘密の値だけを書き込んでも指紋は変わりません。運用者は `AllowSecretValuesInFingerprints` で、`SecretValueRead` も持つセッションに限り秘密の値を指紋へ戻せます — [Subsonic の指紋と秘密の値](safety.md#subsonic-の指紋と秘密の値) を参照。形の誤った引数（たとえば不正な `ValueJson`）を知らせる失敗の文言は、対象を調べる前に作るので、今のままです。ControlRig の Toolset 版 `SetPinValue` の失敗文はエンジンが作り、呼び出し元が送った値を引用することがあります。
+
+### マスクされた値の書き戻し
+
+読み取りは秘密の値を `***` で返します（[シークレット値の読み取り](#シークレット値の読み取り)）。AI がその `***` をそのまま書き込みへ渡すと、本物の値が 3 文字に置き換わり、書き込みは成功し、応答は値を再び伏せるため、秘密が壊れたことが分かりません。そこで、書き込みは何かを保存する前にこれを拒否するようになりました。
+
+**拒否される場合。** 書き込み先が秘密、または秘密でないと判定できず、値が `***` とちょうど一致する場合です。構造体・配列・セット・マップの中の 1 つの文字列として `***` が含まれる場合や、`(User="bob",Password="***")`・`(Password=***)`・`(Password= *** )` のようにテキスト形式で組んだ値の中に区切られた 1 つの値として現れる場合も同じです。`a***b`・`"x***"`・`" ***"`・`"*** "`・`"****"` は拒否されません。秘密でない書き込み先は、値が何であっても今までどおり書き込まれます。
+
+**呼び出し側が受け取るもの。** 拒否では何も保存されません。値・Undo の履歴・保存が必要な印は呼び出しの前のままです。応答は `InvalidParams` と `Result.Reason: MaskPlaceholderValue` で、送った値を引用しない固定の文が付きます。文は取れる手段だけを案内し、取れない手段は外します。
+
+- 欄を送らない（保存済みの値が残ります）
+- `IncludeSecretValues` で平文を読み、それを送る（SoundCue のノードと PoseSearch のチャンネルは平文を読み戻せないので外れます）
+- 本当に `***` を書きたいときだけ、`AllowMaskPlaceholderValue` を `true` にする
+
+コマンドが要求から値を作り直すため、欄を送らないと保存済みの値が消える場合（Control Rig のコンポーネントの中身、`ImportDataTableFromCSV`、`AddBlueprintVariable` など）は、「作り直されるので省くと消える」と案内します。既存の変数の既定値を書き換える場合は作り直しではないので、通常の案内です。
+
+| Reason | ErrorCode | 条件 |
+|---|---|---|
+| `MaskPlaceholderValue` | `InvalidParams` | `***` を含む値が、秘密の書き込み先（または秘密でないと判定できない書き込み先）へ、`AllowMaskPlaceholderValue: true` なしで送られた |
+| `SecretTargetResetOnConstruction` | `NotAllowed` | 秘密のプロパティのうち、コンストラクションスクリプトが戻すもの（レベルに置いたアクターで、構築時にリセットされるプロパティ）への書き込み。`SetActorProperty`・`SetWorldSetting`・`SetAssetProperty`（レベルのアクターを指したとき）が、値にかかわらず断ります。同じ値かどうかで応答を変えると、値を推測できてしまうためです |
+
+**`AllowMaskPlaceholderValue`。** 下の一覧のすべてのコマンドが取る省略可能な真偽値で、既定は `false` です。`true` を渡すと、その 1 回の呼び出しの全ての値について `***` の検出を外します。Capability・秘密のほかの確認・型の確認は今までどおり行われます。真偽値以外（文字列 `"true"` など）は、ほかの引数の形の誤りと同じく `InvalidParams` です。読み取りの `IncludeSecretValues` とは無関係です。
+
+**ほかに変わること。**
+
+- 秘密の数値・真偽値・列挙・構造体の欄に `***` を渡すと、これまでは「値の形が違う」で失敗していました。今は同じ `MaskPlaceholderValue` の理由と `InvalidParams` で失敗します。これまで別の種類のエラーを返していたコマンドは `InvalidParams` に変わります（変更履歴を参照）。コマンドの引数の定義が数値・真偽値と決めている引数は、今までどおり受け付けの段階で「型が違う」として断られ、理由は付きません（値は保存されません）。
+- `DryRun` も実際の書き込みと同じく拒否します。
+- 値に依らない確認が先に行われます。Capability の不足・対象の解決の失敗・編集できない欄・3 層が揃わない秘密の入れ物の要素操作は、それぞれ今までの `ErrorCode` のままです。1 回の呼び出しに `***` とほかの誤りが混ざったときは、そのコマンドが先に見つけた誤りが返ります。
+- まとめて適用するコマンド（`ApplyBlueprintGraphEdit` など）は、1 か所でも拒否されれば全体が失敗し、作りかけのノードや接続は残りません（`AllowNonTransactional` でも同じです）。値ごとに成否を返すコマンドは、応答全体は成功のまま、拒否された値だけを理由付きで失敗の一覧に載せ、ほかの値は書きます。
+- **失敗した書き込みは何も残しません。** この拒否でも、値の取り込みの失敗（値の形が違うなど）でも、値・Undo の履歴・保存が必要な印は呼び出しの前に戻ります。これまで一部のコマンドは、空の Undo の記録、保存が必要な印、先に書けた一部の値（グラフ編集の先の削除や接続、CSV の取り込みの作り直した行、Toolset に渡した後の一部のキー）を残していましたが、残さなくなりました。例外が 2 つあります。`AddBlueprintVariable` が同じ要求でマップのレベル Blueprint を新しく作った場合は、そのレベル Blueprint とマップの保存が必要な印が残ります（エンジンに取り除く手段が無いため）。`Warnings` で知らせます。Undo の履歴と追加しかけた変数は戻ります。Toolset 経由の書き込み（Niagara・PCG・Control Rig の変数・MVVM・設定のセクション）が Toolset に渡した後で失敗した場合は、値・保存が必要な印・先に書けた変更は戻りますが、Undo の履歴に「書き込み」と「その取り消し」の 2 件が残ります（2 回 Undo すれば相殺されます）。UAIP からは Toolset が作る記録に触れないためです。設定のセクションでは、呼び出しの前に ini ファイルに無かったキーが、元の値のままファイルに残ります。Niagara では、インスタンス化したオブジェクトを持つ欄に書かれた分と、Toolset が時間切れを返した後に遅れて書かれた分は戻りません。失敗の応答のメッセージには、値を元に戻したことが書かれます。
+- **`WriteSaveGame`** は、これまでも文字列の欄の `***` を断っていました。今回、読み取りが伏せる全ての欄（数値の欄と、秘密の入れ物の下の欄を含む）に広がり、`AllowMaskPlaceholderValue` で書けるようになりました。`Reason: MaskPlaceholderValue` は、断った値が全部 `***` によるときだけ付きます。ほかの誤り（null や深すぎる値）と混ざったときは付きません。値ごとの案内（欄を省けば保存済みの値が残る、スロットを作り直す場合は平文を送る）は今までどおりで、引数の案内が加わります。
+
+**対象外のもの。** MetaSound の文字列・オブジェクトの入力（読み取りは `"<redacted>"` を返し、`***` として往復しません）、値を伏せて返す読み取りが無い書き込み（Conversation のノード、PCG のノードのプロパティ）、UI の入力の注入、コンソール変数と ini の `[ConsoleVariables]`（読み取りがまだ伏せません）です。
+
+**`AllowMaskPlaceholderValue` を取るコマンド（81）。**
+
+*native のコマンド（63）*
+
+- `UAIP.Editor.Property`: `SetActorProperty`, `SetAssetProperty`, `SetBlueprintDefault`, `SetDataTableRow`, `SetProjectSetting`, `SetWorldSetting`
+- `UAIP.Editor.Blueprint`: `SetBlueprintVariableDefault`, `AddBlueprintVariable`, `SetBlueprintComponentProperty`, `SetPinDefaultValue`, `ApplyBlueprintGraphEdit`
+- `UAIP.Editor.AnimBlueprint`: `SetAnimGraphNodeProperty`
+- `UAIP.Editor.AnimSequence`: `SetAnimNotifyProperty`
+- `UAIP.Editor.BehaviorTree`: `SetBehaviorTreeNodeProperty`
+- `UAIP.Editor.Dataflow`: `SetDataflowNodeProperty`
+- `UAIP.Editor.EQS`: `SetEQSGeneratorProperty`, `SetEQSTestProperty`
+- `UAIP.Editor.Level`: `SetActorComponentProperty`
+- `UAIP.Editor.Mass`: `AddMassEntityConfigTrait`, `SetMassEntityConfigTraitProperty`
+- `UAIP.Editor.MotionMatching`: `SetPoseSearchSchemaChannelProperty`
+- `UAIP.Editor.Sequencer`: `SetSectionProperty`
+- `UAIP.Editor.SoundSettings`: `SetSoundAttenuationSettings`, `SetSoundClassSettings`, `SetSoundMixSettings`
+- `UAIP.Editor.SoundCue`: `SetSoundCueNodeProperty`
+- `UAIP.Editor.StateTree`: `SetEnterConditionProperty`, `SetEvaluatorProperty`, `SetGlobalTaskProperty`, `SetStateNodeProperty`, `SetStateTreeParameter`
+- `UAIP.Editor.WorldConditions`: `SetWorldConditionProperty`, `SetMultipleWorldConditionProperties`
+- `UAIP.Editor.Subsonic`: `SetSubsonicActionModifierProperty`, `SetSubsonicEventActionProperty`, `SetSubsonicParameterValue`
+- `UAIP.Editor.UMG`: `SetWidgetProperties`, `SetSlotProperties`
+- `UAIP.Editor.EnhancedInput`: `SetInputActionModifier`, `SetInputActionTrigger`, `SetInputMappingModifier`, `SetInputMappingTrigger`
+- `UAIP.Editor.Engine.ConfigSettings`: `SetSettingsValues`
+- `UAIP.Editor.PCG`: `SetPCGGraphParams`, `SetPCGGraphInstanceParams`
+- `UAIP.Editor.Chooser`: `AddChooserTableRow`, `SetChooserColumnInput`, `SetChooserFallbackResult`, `SetChooserTableCell`, `SetChooserTableResult`
+- `UAIP.Editor.MetaSound`: `SetMetaSoundNodeProperty`
+- `UAIP.Editor.ControlRig`: `SetComponentContent`, `AddComponent`, `AddVariable`, `SetPinValue`
+- `UAIP.Editor.DataTable`: `ImportDataTableFromCSV`
+- `UAIP.Runtime.Engine.Config`: `SetConfigValue`
+- `UAIP.Runtime.SaveGame`: `WriteSaveGame`
+- `UAIP.Editor.Niagara`: `AddSetParameterEntry`, `AddSetParametersModule`
+- `UAIP.Editor.UAF`: `AddUAFVariable`, `SetUAFPinValue`
+- `UAIP.Editor.MVVM`: `AddViewModelProperty`
+
+*Toolset ブリッジのコマンド（18）*
+
+- `Toolset.Editor.PCG`: `SetGraphParams`, `SetGraphInstanceParams`, `AddNode`, `UpdateNode`, `AddSubgraphNode`, `SpawnGraphInstance`
+- `Toolset.Editor.Niagara`: `SetStackInputData`, `SetSystemData`, `SetEmitterData`, `SetRendererData`, `AddUserVariables`, `AddSetParameterEntry`, `AddSetParametersModule`
+- `Toolset.Editor.ControlRig`: `AddVariable`, `SetPinValue`
+- `Toolset.MVVM`: `AddViewModelProperty`
+- `Toolset.Runtime.Niagara`: `SetVariable`
+- `Toolset.ConfigSettings`: `SetSectionProperties`
 
 ---
 
@@ -495,21 +926,95 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `CaptureActiveWindowImage` | アクティブな最上位ウィンドウのスクリーンショット（PNG Artifact）。エディタがフォアグラウンドである必要はない — アクティブなウィンドウがない場合はメインウィンドウを撮影し、どちらを撮ったかを `Result.CapturedWindow`（`"ActiveWindow"` / `"MainWindow"`）で返す。フォールバックはメインウィンドウにしか届かないため、フローティングのアセットエディタやモーダルダイアログは `CaptureEditorTabImage` を使う |
-| 🆓 `CaptureEditorTabImage` | 指定エディタタブのウィジェット領域のスクリーンショット。Slate レイアウト識別子で指定するため、`DumpEditorState` が返す `ActiveTabId` をそのまま渡せる。エディタが背面でも動作する。⚠️ 撮影前に対象タブをスタックの前面へ出すため（背面のタブは描画されておらず空の画像になる）、**ユーザーに見えているタブが切り替わる** |
-| 🆓 `CaptureGraphViewportImage` | SGraphEditor ビューポートのスクリーンショット |
-| 🆓 `DumpEditorState` | アクティブタブ・開いているアセット・ウィンドウサイズ等（JSON）。あわせてプレイセッションの状態を `IsPIERunning` / `IsPIEPaused` / `IsSimulatingInEditor` の 3 つの真偽値で返す。編集系コマンドの多くはセッション実行中に拒否され、その間に取ったワールドのダンプはエディタワールドではなくプレイワールドを表すため、変更を加える前にここを読む。3 つとも常に存在するので「何も再生されていない」と「報告されていない」を区別できる |
-| 🆓 `DumpSelectionState` | 現在の選択状態（JSON）。`SelectedActors` / `SelectedObjects` は常に返る。`TabId` が開いているグラフエディタタブを指す場合に限り `SelectedNodes`（ノードごとに `NodeId` / `NodeClass` / `NodeTitle` / `Position`）も返る — 解決方法は `CaptureGraphViewportImage` の `TabId` と同じ（Slate タブへの完全一致、続いて開いているアセットの名前への大小文字を区別しない部分一致。`/` を含むコンテンツブラウザ形式のパスは `InvalidParams` で拒否される）。`TabId` がどのタブにも一致しない場合は `SelectedNodes` を空にして成功させるのではなく `NotFound` を返す。`TabId` を省略した場合の挙動は変更なし — `SelectedNodes` は空のままで、アクター/オブジェクトの選択は従来どおり返る |
+| 🆓 `CaptureActiveWindowImage` | アクティブな最上位ウィンドウのスクリーンショット（PNG Artifact）。エディタがフォアグラウンドである必要はない — アクティブなウィンドウがない場合はメインウィンドウを撮影し、どちらを撮ったかを `Result.CapturedWindow`（`"ActiveWindow"` / `"MainWindow"`）で返す。フォールバックはメインウィンドウにしか届かないため、フローティングのアセットエディタやモーダルダイアログは `CaptureEditorTabImage` を使う。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
+| 🆓 `CaptureEditorTabImage` | 指定エディタタブのウィジェット領域のスクリーンショット。Slate レイアウト識別子で指定するため、`DumpEditorState` が返す `ActiveTabId` をそのまま渡せる。エディタが背面でも動作する。⚠️ 撮影前に対象タブを前面へ出すため（背面のタブは描画されておらず空の画像になる）、それを収めた外側のエディタのタブ（たとえばブループリントエディタが手前にあるときのレベルエディタのタブ）ごと前に出る。**ユーザーに見えているタブが切り替わり**、タブが点滅する。エディタの OS ウィンドウは他のアプリの前には出さない。タブを前に出したときは、描かれるのを最長 2 秒待ってから撮る。すでに前にあるタブはすぐ撮る。それでも描かれないときは、文がユーザーにタブを前に出してもらうよう案内する。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
+| 🆓 `CaptureGraphViewportImage` | SGraphEditor ビューポートのスクリーンショット。対象が描かれない状態（ウィンドウが最小化・非表示、モーダルが開いている、など）のときは、空の画像を返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） （`TabId` は、開いているアセットの `/` で始まる完全なアセットパス〔レベル Blueprint のパスを含む〕も受け付け、完全一致で照合する。`/` で始まる値が開いているどのグラフエディタにも解決できない場合〔アセットが開いていない、またはグラフのタブが無い〕は従来どおり `InvalidParams`、`/` を含まない値が見つからない場合は `NotFound`） |
+| 🆓 `DumpEditorState` | アクティブタブ・開いているアセット・ウィンドウサイズ等（JSON）。あわせてプレイセッションの状態を `IsPIERunning` / `IsPIEPaused` / `IsSimulatingInEditor` の 3 つの真偽値で返す。編集系コマンドの多くはセッション実行中に拒否され、その間に取ったワールドのダンプはエディタワールドではなくプレイワールドを表すため、変更を加える前にここを読む。3 つとも常に存在するので「何も再生されていない」と「報告されていない」を区別できる。`MainWindowSize` は最初の最上位ウィンドウの大きさで、メインフレームとは限らない。メインフレームそのものは `MainWindowState` で読む。`MainWindowState` は `State`（`Normal` / `Minimized` / `Maximized` / `Hidden` / `NoWindow`。一度も表示されていないウィンドウは `Hidden`）・`Size` と `RestoredSize`（どちらも `Width` と `Height` を持つオブジェクト。ウィンドウが無いときは 0）・`CaptureBlocker`（キャプチャが撮れるときは `None`、そうでなければキャプチャが拒否される[`Reason`](#キャプチャが断られるとき)）を持つ。このコマンドは読み取りだけで同期はしないので、キャプチャや `SetEditorWindowState` なら自動で直る食い違いでも、`CaptureBlocker` が `WindowSizeMismatch` になりうる。`MainWindowState` には `SizeCheck`（`NotQueryable` / `Minimized` / `Matched` / `Mismatched`）・`SizeMismatched`（bool または null）・`OsClientSize` と `SlateSize`（どちらも `Width` / `Height`。`SizeCheck` が `Matched` / `Mismatched` 以外のときは null）もある。ルートには `WindowMessageRecording` がある: `RecordingEnabled`・`RecordingActive`・`RecordingStatus`（`Disabled` / `NotRegistered` / `WaitingForMessages` / `Recording`）・`TotalRecordedCount`・`Capacity`（64。優先でないウィンドウが共有するリングの容量）・`PriorityWindowCapacity`（64。優先ウィンドウ 1 つあたり）・`MaxPriorityWindowCount`（8）・`PriorityMessageCount`・`SharedMessageCount`（この 2 つの合計が `RecentMessages` の件数）・`RecentMessages`（古い順。1 件は `Kind`・`WindowHandle`・`IsPriorityWindow`・`SizeType`・`MessageSize`・`MessageSizeMeaning`・`WindowPosFlags`・`ClientStateAtArrival`・`TimeSeconds`・`SequenceNumber`）。Slate の通常のウィンドウ（メインウィンドウ、別ウィンドウになったフローティングタブやアセットエディタ、モーダルダイアログ）のメッセージは優先として扱われ、ウィンドウごとに専用のリングで直近 64 件を保持する（最大 8 ウィンドウ。9 つ目が送ってきたら、最後のメッセージが最も古いウィンドウが記録ごと外れる）。数百件のメッセージを送る通知トーストやメニューは優先ウィンドウではないため、これらを押し出さない。それ以外のウィンドウのメッセージも、共有の 1 つのリング（直近 64 件）に記録される。一覧は合計で最大 576 件になりうる。どちらの記録かは `IsPriorityWindow` で分かる。`MessageSizeMeaning` は `MessageSize` が何の大きさかを示す: `ClientArea`（`WM_SIZE`）・`WholeWindow`（`WM_WINDOWPOSCHANGED`。クライアント領域ではなくウィンドウ全体なので、`ClientArea` とそのまま比べない）・`ProposedWholeWindow`（`WM_NCCALCSIZE`）。メッセージが大きさを持たなかったときは `MessageSize` が null、`WM_SIZE` 以外では `SizeType` が null、OS にウィンドウの状態を問い合わせられなかったときは `ClientStateAtArrival` が null になる。記録の有無は [`RecordWindowMessages`](config.md#uaipruntimeobservation--ウィンドウサイズメッセージの記録と-hud-描画統計) で切り替える |
+| 🆓 `DumpSelectionState` | 現在の選択状態（JSON）。`SelectedActors` / `SelectedObjects` は常に返る。`TabId` が開いているグラフエディタタブを指す場合に限り `SelectedNodes`（ノードごとに `NodeId` / `NodeClass` / `NodeTitle` / `Position`）も返る — 解決方法は `CaptureGraphViewportImage` の `TabId` と同じ（Slate タブへの完全一致、続いて開いているアセットの名前への大小文字を区別しない部分一致。`/` で始まる値は開いているアセットの完全なアセットパス〔レベル Blueprint のパスを含む〕で、完全一致で照合される。それ以外の値は `/` を含められない）。`TabId` がどのタブにも一致しない場合は `SelectedNodes` を空にして成功させるのではなく `NotFound` を返す。ただし `/` で始まる値が開いているどのグラフエディタにも解決できない場合（アセットが開いていない、またはグラフのタブが無い）は、アセットパスを受け付ける前と同じく `InvalidParams` を返す。`TabId` を省略した場合の挙動は変更なし — `SelectedNodes` は空のままで、アクター/オブジェクトの選択は従来どおり返る |
 | 🆓 `DumpOpenTabs` | 開いているアセットエディタタブ一覧（JSON） |
 | 🆓 `DumpOutputLog` | バッファリングされた Output Log（テキスト Artifact、行数・フィルタ対応） |
 | 🆓 `DumpMessageLog` | Message Log エントリ（カテゴリフィルタ付き JSON Artifact） |
-| 🆓 `DumpSlateTree` | Slate ウィジェットツリー（JSON、ルートパスフィルタ対応） |
+| 🆓 `DumpSlateTree` | Slate ウィジェットツリー（JSON、ルートパスフィルタ対応）。`IncludeTextContent: true` のときの `AccessibleText` には `SnapshotUI` と同じラベルが入る（型名またはリッチテキストの近似。パスワード欄と判定できない欄では、アクセシビリティ文字列ではなくヒント文か型名） |
 | 🆓 `InspectMenu` | 指定パス配下のトップバーメニュー構造（ラベル・enabled・checked） |
 | 🆓 `InspectContextMenu` | 指定対象のコンテキストメニュー項目（実行はしない） |
 | 🆓 `ObserveWidget` | ウィジェットの Visibility / Enabled / Hovered / Focused 状態を時系列サンプリング |
 | 🆓 `GetLogCategories` | 登録済みエンジンログカテゴリ名の一覧（任意でサブストリングフィルタ対応） |
-| 🆓 `ListGraphNodes` | 指定タブのグラフエディタ内の全ノードを列挙 — `NodeId`（GUID）・`NodeClass`・`NodeTitle`・`Position`。`UEdGraph` ベースのエディタ全般で動作 |
-| 🆓 `CaptureViewportImageAnnotated` | ワールド座標ラベル付きビューポート画像のキャプチャ（`ViewportAnnotationCapture` 必要） |
+| 🆓 `ListGraphNodes` | 指定タブのグラフエディタ内の全ノードを列挙 — `NodeId`（GUID）・`NodeClass`・`NodeTitle`・`Position`。`UEdGraph` ベースのエディタ全般で動作。`TabId` にはアセット名か、`/` で始まるアセットのフルパス（完全一致）を指定できる |
+| 🆓 `CaptureViewportImageAnnotated` | ワールド座標ラベル付きビューポート画像のキャプチャ（`ViewportAnnotationCapture` 必要）。ビューポートを持つウィンドウが描かれない状態（たとえば最小化）のときは、古いフレームを返さずに、`Reason` を付けて `NotAllowed` または `PreconditionFailed` で拒否する（[キャプチャが断られるとき](#キャプチャが断られるとき)） |
+
+### キャプチャが断られるとき
+
+`CaptureActiveWindowImage`・`CaptureEditorTabImage`・`CaptureGraphViewportImage`・`CaptureViewportImageAnnotated` は、何かを撮る前に、対象が描かれる状態かを確かめる。描かれない状態なら、撮らずに拒否する（空の画像は返さず、`CaptureViewportImageAnnotated` も古いフレームを返さなくなった）。応答には `Reason` と、直し方を示すエラー文が付く。確認は表の順に行い、最初に満たさなかった条件が `Reason` になる。`DumpEditorState` はメインウィンドウについて同じ語彙を `MainWindowState.CaptureBlocker` で報告し、`SetEditorWindowState` も拒否にこの語彙を使う。
+
+| `Reason` | ErrorCode | 意味 | 対処 |
+|---|---|---|---|
+| `NoWindow` | `PreconditionFailed` | Slate が未初期化、対象がウィンドウを持たない、またはウィンドウのネイティブウィンドウがまだ無い | ウィンドウが現れるのを待ってから呼び直す。対象が別のタブの後ろに回ったタブの中にある場合（判定が拾えないことがある）は、待っても直らない。`OpenTabById`（`EditorTabSpawn` が必要）でタブを前に出すか、ユーザーに頼む |
+| `Headless` | `NotAllowed` | このプロセスでは Slate がウィジェットを描かない（描画デバイスが無い、コマンドレット、専用サーバー）。描画デバイスが無い場合は、文でもそう伝える | 描画デバイスのある環境でエディタを起動し直す。別の原因で、アセット・タブ・コンテンツブラウザの 7 つのコマンドも `NotAllowed`（`Reason: Headless`）を返す — [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照 |
+| `DebuggerPaused` | `NotAllowed` | ブループリントのデバッガのブレークポイントが、フレームの途中でゲームスレッドを止めている | 実行を再開してから撮り直す |
+| `NotInVisibleTree` | `NotAllowed` | ウィンドウからウィジェットまでの経路が無い（ウィジェットまたは祖先が折りたたまれている、隠されている） | その部分を表示させてから撮り直す |
+| `BlockedByModal` | `NotAllowed` | モーダルウィンドウが開いていて、描かれるのはモーダル・その子・ツールチップ・通知だけ | モーダルを閉じてから撮り直す |
+| `Minimized` | `NotAllowed` | ウィンドウ、または先に描かれるはずの祖先のウィンドウが最小化されている | 復元する。エディタのメインウィンドウなら、`SetEditorWindowState` を `State: Restored` で呼ぶ（`EditorWindowStateControl` が必要）か、ユーザーに戻してもらう |
+| `Hidden` | `NotAllowed` | ウィンドウ、または祖先のウィンドウのネイティブウィンドウが見えない状態。作られたがまだ一度も表示されていないウィンドウも、エンジンが両者を区別できないので同じ扱い | ウィンドウを表示させる。起動直後なら、表示し終わってから呼び直す |
+| `NotRenderable` | `PreconditionFailed` | レンダラーがそのウィンドウのビューポートを持たない、またはビューポートの大きさが 0 | ウィンドウの表示が終わるのを待ってから呼び直す |
+| `InBackgroundTab` | `NotAllowed` | 対象が、別のタブの後ろに回ったドッキングタブの中、または別のエディタのタブの後ろに回ったエディタのタブの中（たとえばブループリントエディタを開いたあとのレベルエディタのビューポート）にあり、描かれない。確認は、Slate 未初期化の `NoWindow` の直後に行う | タブを前に出す。`OpenTabById`（`EditorTabSpawn` が必要。開いているタブも、それを収めたエディタのタブごと前に出る）を使うか、ユーザーに頼む。`OpenTabById` は `TabId` と `OwnerTabId` の両方を取る。`OwnerTabId` は対象を収めたエディタのタブ（レベルエディタなら `LevelEditor`）で、有効な組み合わせは `ListSpawnableTabs` が一覧する。待っても変わらない。`CaptureEditorTabImage` は自分で前に出す |
+| `WindowSizeMismatch` | `NotAllowed` | Slate が持つウィンドウの大きさが OS の報告する大きさと食い違い、撮る前に試みる同期でも直らなかったため、撮ると壊れた画像になる。全てのキャプチャのコマンドが、撮る前に両者を比べる。最小化されたウィンドウは比べない。確認は `Minimized` / `Hidden` の後、`NotRenderable` の前に行う | エディタのメインウィンドウなら、`SetEditorWindowState` で `Minimized` にしてから `Restored` に戻し（`EditorWindowStateControl` が必要）、もう一度キャプチャする。それでも直らなければ、ユーザーにウィンドウの大きさを手で変えてもらう。メインウィンドウ以外は、ユーザーに大きさを変えてもらう |
+
+- **`InBackgroundTab` だけは表の順と違う**: `Headless` と Slate 未初期化の `NoWindow` の後、ほかのウィンドウの確認より前に確認する。表の末尾近くにあるのは、後から足したため。`WindowSizeMismatch` は `Minimized` / `Hidden` の後、`NotRenderable` の前に確認する。
+- **`NoWindow` と `NotRenderable` は `PreconditionFailed`**: 土台がまだ無く、待てば直る。シナリオのステップに `RetryCount` があれば再試行される。
+- **それ以外の `Reason` は `NotAllowed`**: 既にあるウィンドウの状態がキャプチャを許さない。シナリオの `RetryCount` は `NotAllowed` を**再試行しない**。以前は最小化されたウィンドウに `ExecutionFailed` が返っていたため再試行の対象だったステップも、今は 1 回で失敗する。表のとおり、先に状態を変える。
+- **親のウィンドウが最小化または非表示の子ウィンドウは、対象にエディタの 3D ビューポートが含まれない限り撮れる。** スクリーンショットはグラフ・Slate ウィジェット・通常のタブやウィンドウを自力で描き直すため、親が描かれていなくても画像は現在の内容を映す。そのため、親の状態を理由には拒否しない。エディタの 3D ビューポートは例外で、フレームループでしか更新されず、親が最小化または非表示のあいだはそのループが回らない。3D ビューポートを含むタブやウィンドウ（レベルエディタのビューポート、Blueprint やメッシュのプレビューのビューポートなど）を撮ると古い画像が返るため、子自身が最小化されていなくても、親の状態（`Minimized` または `Hidden`）で拒否される。親のウィンドウを戻してから撮り直す。`CaptureViewportImageAnnotated` はレベルエディタのビューポートを撮るので、常にこちらの組に入る。対象のウィンドウ自身が最小化または非表示なら、どちらの組でも拒否される。
+- モーダルが開いている間は、モーダル・その子・ツールチップ・通知だけが撮れる。3D ビューポートを含むかどうかにかかわらずこれは変わらず、親が描かれていても、モーダルの外の対象は通常は拒否される。
+- 撮れる状態のはずが撮影に失敗した場合（エンジンが画像を返さない、画像が空、PNG への変換に失敗）は、`Reason` なしの `ExecutionFailed` で、文がどの段階の失敗かを言う。
+
+### 別ウィンドウが理由で断られるとき
+
+`OpenAsset`・`CloseAsset`・`CloseEditorTab`・`OpenTabById`・`CloseTabById`・`SelectAssets`・`SetContentBrowserPath` と、`GraphName` を付けた `FocusEditorTab` は、キャプチャとは関係のない理由で、`NotAllowed`（`Result.Reason: Headless`）を返すことがある。原因はウィンドウが無いことではなく、エンジンのクラッシュである。
+
+**いつ起きるか。** UE 5.8 未満で、**かつ**描画しないエディタ（`-NullRHI` などで起動し、`-RenderOffScreen` を付けていない）でだけ起きる。そこでは、タブやアセットエディタを開閉するたびにレイアウトの保存が予約され、*別ウィンドウ*が残っていると、その保存でエディタごと終了する。別ウィンドウとは、メインウィンドウとは別の、タブを入れる枠を持つウィンドウ（切り離したツールのタブや、専用のウィンドウに開いたアセットエディタ）である。確認ダイアログや通知は別ウィンドウに含まない。UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きのエディタでは今までどおりで、断らず、別ウィンドウがあっても止まらない。`-NullRHI -RenderOffScreen` で起動した UE 5.7 は、別ウィンドウが残ったままレイアウトを保存しても落ちないことを確かめた。描画しない UE 5.7 をこの断りなしに使うには、`-RenderOffScreen` を付けて起動する。
+
+該当するエディタでは、次の表のとおり断る。どの断りの `ErrorMessage` にも、原因と通す手段が書かれる。
+
+| 状況 | ErrorCode | 起きたこと | 対処 |
+|---|---|---|---|
+| コマンドと関係のない別ウィンドウが開いている（`CloseTabById` では、閉じる対象のタブを入れた別ウィンドウ以外のすべて）。誰が開いたかは問わない | `NotAllowed` + `Reason: Headless` | 何もしていない。`Result.RemainingFloatingWindows` に、断る原因になった別ウィンドウとそれが持つタブが載るので、何を閉じればよいか分かる | その別ウィンドウを開いた側の手段で閉じる。`ShutdownEditor` で再起動する。`EditorForceCloseFloatingWindows` を付与する（[安全](safety.md#別ウィンドウを閉じる)を参照）。または UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きのエディタのいずれかで実行する |
+| コマンドが別ウィンドウを出した（保存済みのレイアウトに切り離したパネルが残っていた、開く場所の設定に従わないエディタだった、メインウィンドウに置き場所のないコンテンツブラウザや `OpenTabById` のタブだった、など）。下の *断らずに済ませる場面* に当たらないもの | `NotAllowed` + `Reason: Headless` | 出た別ウィンドウを安全な方法で閉じ、この呼び出しで開いたものも閉じて元に戻した。すでに開いていたタブは閉じない。`Result.RevertedFloatingWindows` に戻したものが載る。`CloseTabById` では指定したタブがすでに閉じ終わっているので、`Result.CloseMethod` も付く。`FocusEditorTab` は、前面に出したアセットエディタ（呼ぶ前から開いていたもの）も閉じ、`Result.ClosedAssetEditor: true` を付ける。アセットへの変更はメモリに残り、保存はしない | UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きのエディタのいずれかで実行する。`OpenTabById` で開けるのは、メインウィンドウに置き場所のあるタブだけ。`SuppressLayoutSaveWhenHeadless=True` が理由で断ったときは、`False` に戻すと、パネルを閉じて続けるようになる（下を参照） |
+| `OpenAsset`: メインウィンドウに、アセットエディタを入れるレベルエディタのタブが無い（メインウィンドウの作り直しの最中など） | `NotAllowed` + `Reason: Headless` | アセットエディタを開いていない | メインウィンドウの準備ができてから再試行する |
+| `SelectAssets` / `SetContentBrowserPath`: 移した後のコンテンツブラウザが、指定したフォルダ（`SelectAssets` では、アセットのどれかのフォルダ）に無い。たとえば、鍵をかけたコンテンツブラウザが優先され、別のブラウザが移った | `ExecutionFailed` | コンテンツブラウザが指定の場所へ移ったと確かめられなかったことを、メッセージで伝える。別のブラウザは実際には移っていることがある。この呼び出しがレベルエディタの中に開いたコンテンツブラウザは残る | 鍵をかけたコンテンツブラウザの鍵を外して呼び直す |
+| `CloseTabById`: 対象のタブの別ウィンドウに、他のタブ・子ウィンドウ・中にタブを抱えるタブ（アセットエディタなど）もある（対象自身がそうである場合を含む） | `NotAllowed` + `Reason: Headless` | 何も閉じていない。そのタブだけを閉じるとエディタが落ち、ウィンドウごと閉じると他のタブの持ち主の後始末が走らない。`Result.RemainingFloatingWindows` に、先頭として対象のタブの別ウィンドウ（タイトルと、そのウィンドウに直接置かれたタブの ID すべて）、続いて子のウィンドウを 1 つずつ（子のウィンドウから開いたウィンドウも含む）、同じ形で載る。`Result.ClosedFloatingWindows` は、事前の確認で許可により片付けたものがあるときだけ載る | `EditorForceCloseFloatingWindows` を付与してウィンドウごと閉じる。または UE 5.8 以降、描画するエディタ、`-RenderOffScreen` 付きのエディタのいずれかで実行する |
+| 別ウィンドウを安全に閉じきれず、まだ開いている | `InternalError` | `Result.RemainingFloatingWindows` に残ったものが載る。その前に閉じられたものは `Result.RevertedFloatingWindows` / `Result.ClosedFloatingWindows` に載る | **すぐに `ShutdownEditor` を呼ぶ。** 次のレイアウトの保存でエディタが落ちうる。終了するまでの間、上のコマンドは再び断られる |
+
+`ClosedFloatingWindows`・`RevertedFloatingWindows`・`RemainingFloatingWindows` の各要素は、`WindowTitle` と `TabIds`（タブの種類の名前。同じ種類のタブが複数あっても区別しない）を持つ。1 行目の断りの `RemainingFloatingWindows` も同じ形（`WindowTitle` と `TabIds`。`CloseFailure` は付かない）である。4 行目の断りでは、先頭の要素が対象のタブの別ウィンドウで、残りはその子のウィンドウである。最終行の `RemainingFloatingWindows` の要素には、さらに `CloseFailure`（例: `ForeignTabsPresent`、`WindowSurvived`）が付き、前から開いていたタブを閉じずに残したときは `HeldPreexistingTab: true` も付く。`FocusEditorTab` が断るときにアセットエディタを閉じきれず最終行になった場合は、`Result.ClosedAssetEditor` が `false` になり、パネルを失ったアセットエディタが残ったことをメッセージで伝える。
+
+**断らずに済ませる場面。** 該当するエディタでも、別ウィンドウを残さずに済む次の場面は、断らずに成功する。
+
+- **コンテンツブラウザ（`SelectAssets` / `SetContentBrowserPath`）。** コンテンツブラウザのタブか、ステータスバーのコンテンツドロワーで受けられるときは、今までどおりそれを使い、タブは増えない。どちらも無いときは、先にレベルエディタの中にコンテンツブラウザを開き、そこへ移す。開いたタブはその後も残るので、レベルエディタのレイアウトにタブが 1 つ増える。そのタブが別ウィンドウに出る（レベルエディタの保存済みのレイアウトに置き場所が無い）ときは、表の 2 行目のとおり断る。移した後に、コンテンツブラウザのフォルダを内部の書き方（`/Game/...`）か表示の書き方（`/All/Game/...`）で読み戻し、違えば `ExecutionFailed` を返す（表の 4 行目）。`SelectAssets` でアセットが 1 つも見つからなかったときは読み戻さない。この確かめは該当するエディタでだけ行うので、同じ呼び出しが、描画するエディタでは成功し、該当するエディタでは `ExecutionFailed` になることがある。描画しないエディタでは、アセットの選択そのものはコンテンツブラウザに反映されない（どのエンジンの版でも同じ）。確かめるのはフォルダだけである。
+- **保存済みのレイアウトが、アセットエディタの一部のパネルを別ウィンドウに置いている（`OpenAsset` と、`GraphName` を付けた `FocusEditorTab`）。** 新しい別ウィンドウに、開いたアセットエディタの補助のパネル（Details・Palette など。エディタの種類ごとに決めたもの）しか入っていないときは、そのウィンドウだけを閉じ、アセットエディタは開いたまま残す。呼び出しは成功し、閉じたパネルが 1 つずつ、`TabId`・`Label`・`Reason: "Headless"` を持って `Result.Skipped` に載る（閉じたものが無ければ `Skipped` のキーは無い）。対象は、普通の Blueprint・Widget Blueprint・Niagara（システム・エミッター・スクリプト）・2D テクスチャ・DataTable・Sound Cue・Behavior Tree・Static Mesh のアセットエディタだけである。ほかの種類は今までどおり断る。閉じたパネルを後から自分で開き直すものがあるため（Material・Material Instance・Animation Blueprint を含むスケルトンやアニメーションのエディタ・レベルスクリプトや Editor Utility Blueprint などほかの種類の Blueprint・2D 以外のテクスチャ・上の種類の派生クラス・調べていない種類）。エディタの主な画面（グラフ・ビューポート・表）、ドキュメントのタブ、決めていないパネルが入った別ウィンドウも断る。中身の無いエディタを成功として返さないためである。
+  - 閉じたパネルは、次にレイアウトが保存されたとき、その種類のアセットエディタの保存済みのレイアウトから消える（`OpenAsset` が断ったときと同じ）。`OpenTabById` で開き直すと別ウィンドウに出るので、断られる。
+  - 保存済みのレイアウトを守りたいときは、[`SuppressLayoutSaveWhenHeadless=True`](config.md#uaipeditorlayout--描画しないエディタで保存済みのレイアウトを守る既定で無効) にする。この場面は今までどおり断るようになり、パネルの置き場所は残る。
+  - `FocusEditorTab` を確認で挟むのは、`GraphName` を付け、Blueprint 系のエディタで、そのグラフが見つかったときだけである。グラフへ移るとエディタのモードが切り替わることがあり（Widget Blueprint の Designer から Graph へ、など）、切り替えた先のモードの保存済みのレイアウトが、パネルを別ウィンドウに置いていることがあるため。`GraphName` を付けない呼び出しは変わらない。`FocusEditorTab` が断ることは、この変更から新しく起きる。
+  - **注意。** この方法でパネルを閉じた後に、そのパネルを開き直すスクリプトやコマンド（Python、Editor Utility、コンソールコマンド）を実行すると、パネルが別ウィンドウに出て、次のレイアウトの保存でエディタが落ちうる。UAIP はこれらの実行を守らない。
+- **`RestartEditor`。** 下の一覧を参照。
+
+次の場面は避けられないので、今までどおり断る。開く場所の設定に従わず、自分で開く先を決めるアセットエディタ（ConsoleVariables・RemoteControlPreset・PipelineQueue・TakePreset が見つかっている）と、メインウィンドウに置き場所の無いコンテンツブラウザや `OpenTabById` のタブである。そのようなタブの行き先を選ぶ公開のエンジン API が無いためである。
+
+**断る以外に、該当するエディタで変わること**
+
+- `OpenAsset` は、エディタの「アセットエディタを開く場所」の設定が何でも、アセットエディタをメインウィンドウの中に開く。設定はこの呼び出しの間だけ切り替え、設定ファイルには書かない。
+- 保存済みのレイアウトがパネルの 1 つを別ウィンドウに置いていたために `OpenAsset` が元に戻されたとき（表の 2 行目）、またはエディタを開くためにそのパネルを閉じたとき（上を参照）、その種類のアセットエディタの保存済みレイアウトからそのパネルが消える。再起動した後も含め、次にその種類のアセットエディタを開いたとき、そのパネルは無い。ほかのアセットエディタやメインウィンドウの保存済みレイアウトは変わらない。
+- すでに開いているタブ（所有者を指定したときは、その所有者も開いているもの）を `OpenTabById` で指定すると、今までどおり前面に出すだけで、他の別ウィンドウがあっても断らない。
+- `CloseTabById` は、メインウィンドウの中のタブを通常の方法で閉じる。対象が専用の別ウィンドウにあるときは、タブに閉じるよう頼む代わりにそのウィンドウごと破棄する。このときタブ自身の閉じる処理（確認や閉じた後の通知）は走らず、別の理由で予約されていたレイアウトの保存も取り消される。
+- `RestartEditor` は、その再起動ではレイアウトの一括保存をしないで再起動する（再起動が取り消されたときは、元の設定に戻す）。そのためその回のレイアウトは保存されない。また、終了を後戻りできない地点まで進んだところで、UAIP が開いていないものも含めて、別ウィンドウをすべて安全な方法で閉じる。別ウィンドウに残ったアセットエディタが、終了の途中でエディタを落としうるため。閉じきれないウィンドウは警告としてログに残し、終了は続ける。
+- `ShutdownEditor` は、アセットエディタを閉じる前に、別ウィンドウをすべて安全な方法で閉じる。別ウィンドウにあるアセットエディタを普通に閉じるとエディタが落ちるため。エディタは終了するところなので Capability は要らない。閉じたウィンドウは `Result.ClosedFloatingWindows` に載る（その中のタブ自身の閉じる処理は走らない）。安全に閉じられないウィンドウがあると、`Reason` なしの `InternalError` と、そのウィンドウを載せた `Result.RemainingFloatingWindows` を返し、エディタは動いたままになる（保存も終了の予約もしない）。その場合は利用者にエディタを閉じてもらう。
+- 何も開閉しないコマンド（`GraphName` を付けない `FocusEditorTab` を含む前面化・タブ画像の取得・グラフの操作・レイアウトの整え直しなど）は変わらず、この理由では断られない。
+
+**`CloseTabById` — `Result.CloseMethod`。** 成功の応答に `CloseMethod` が付く。タブに通常の方法で閉じるよう頼んだときは `RequestedClose`（該当するエディタの外では常にこちら）、タブを持つ別ウィンドウを代わりに破棄したときは `DestroyedFloatingWindow`。タブを閉じた後に断る応答（上の表の 2 行目）にも付く。閉じる前に断る応答には付かない。
+
+**描画しないエディタでの `PlaceActorInLevel`。** エディタが描画しない、またはレベルのビューポートがまだ一度も描画されていないときは、UE 5.7 でも 5.8 でも、ビューポートを使わずにアクタを置く。位置・向き・ラベルと応答の形は同じで、Undo で取り消せる。ただし、ビューポートを通る経路がアセットから置くときに行う、アクタの種類ごとの配置の処理は通らず、Undo の履歴の名前は違うことがある。ワールドやレベルが無い、アクタを作れないときは、今までどおり失敗する。
+
+**ゲームビューポートのコマンドも同じように断る。** `CaptureViewportImage`（`UAIP.Runtime.Observation`）は、撮る前にゲームビューポートが描かれる状態かを確かめる。描かれない状態（ビューポートを持つウィンドウが最小化・非表示、モーダルが開いている、など）なら、撮らずに拒否する。`Reason`・エラーコード・`Result.Reason` は上の表と同じで、エラー文が直し方を言う。最小化されたウィンドウがエディタのメインウィンドウ（そこに収まった Play In Editor のウィンドウ）なら `SetEditorWindowState` の案内、別ウィンドウの PIE やスタンドアロンのゲームなら、そのウィンドウを戻してもらう案内になる。撮れる状態のはずが撮影に失敗した場合は、従来どおり `Reason` なしの `ExecutionFailed`。別ウィンドウのゲームビューポートは、その親のウィンドウが最小化または非表示でも撮れる（ゲームが描き続けるため）。ただし、ビューポートを持つウィンドウ自身は描かれている必要がある。
+
+- **`CheckpointCapture` は拒否をそのまま引き継ぐ。** 最初に `CaptureViewportImage` で撮るため、それが拒否されると、チェックポイントも同じ `NotAllowed` または `PreconditionFailed` で拒否し、`Reason` を自分の `Result.Reason` にコピーする。エラー文は `CheckpointCapture: CaptureViewportImage failed: ` に `CaptureViewportImage` の文が続く形。組み合わせている 2 つのコマンドのそれ以外の失敗は `ExecutionFailed` のまま。
+- **ゲームビューポートの UI 操作は、ホストウィンドウの状態で拒否される。** `ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText` は、何かを送る前にゲームを載せているウィンドウを確かめ、`Reason: HostWindowUnavailable` で拒否する。`NoWindow`（ゲームビューポートのウィンドウがまだ無い）は `PreconditionFailed`（`The game viewport has no window yet. Retry after the game window has been created.`）、`Hidden` と `Minimized` は `NotAllowed`（`The window that hosts the game is not visible, so nothing in it is laid out.` / `The window that hosts the game is minimized, so nothing in it is laid out.`）。最小化は `PreconditionFailed` ではなく `NotAllowed` なので、シナリオの `RetryCount` は再試行しない。先にウィンドウを戻す。
 
 ---
 
@@ -521,13 +1026,23 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 |---|---|
 | `DiscoverAutomationTests` | Automation Test モジュールを読み込み、検出されたテスト数のサマリを返す |
 | `ListAutomationTests` | 検出済み Automation Test をフィルタして JSON Artifact で返す |
-| `RunAutomationTest` | UE Automation Test を名前で実行し Pass/Fail/Error レポートを返す |
-| `RunAutomationSpec` | UE Automation Spec を名前で実行し Pass/Fail/Error レポートを返す |
+| `RunAutomationTest` | UE Automation Test を名前で実行し、テストごとのレポート（Pass / Fail / Skipped / Error / Cancelled。[レポートの共通契約](#automation-test-のレポートの共通契約) を参照）を返す |
+| `RunAutomationSpec` | UE Automation Spec を名前で実行し、テストごとのレポート（`RunAutomationTest` と同じ契約）を返す |
 | `GetAutomationTestStatus` | Automation Test マネージャの現在状態を返す（既定はインライン） |
 | `StopAutomationTests` | 実行中の Automation Test バッチのキャンセルを要求 |
 | `RunEditorPythonScript` 🧩 | インライン Python スクリプトまたは `.py` ファイルを実行（`PythonScriptPlugin` 必須） |
 | `RunEditorUtilityBlueprint` | 指定 Editor Utility Blueprint を実行 |
 | `RunNamedEditorCommand` | `GUnrealEd->Exec` 経由で名前付き Editor コンソールコマンドを実行 |
+
+> **`RunEditorPythonScript` は、長引いたスクリプトを打ち切れます。** 省略可能な `AbortAfterSeconds` は `0`〜`1800` の整数です。`0` は打ち切らない意味で、省略するか `null` を渡すと ini の既定（`[UAIP.Python] DefaultAbortAfterSeconds`、これ自体の既定は `0`。[設定](config.md#uaippython--runeditorpythonscript-の既定の打ち切り期限) を参照）が使われます。期限が過ぎると、ゲームスレッド上でスクリプトの中に例外が送られ、スクリプトが止まるまで 1 秒ごとに送り直されます。
+>
+> **これは best effort です。** 例外が届くのは Python のバイトコードの合間だけなので、ネイティブ呼び出し（`time.sleep` や長いエンジン呼び出しなど）の途中にいるスクリプトは、その呼び出しが戻った時点で初めて止まります。打ち切り前に行われた編集は**残ります**。例外を握りつぶすスクリプトは止まらず（1 秒ごとに送り直されます）、繰り返し送られる例外がスクリプト自身の後始末を中断することもあります。期限後は、同じスレッドで動く他の Python に例外が届くこともあります。スクリプトが起動したスレッドは止まりません。打ち切りは Python 3.11 のビルドでだけ使え、他の版では打ち切りを求めた呼び出しが `AbilityUnavailable` で拒否されます。
+>
+> **打ち切られた呼び出し**は `Timeout` を返し、`Data.Aborted: true`・`Data.NotExecuted: false`（スクリプトは部分的に実行済み。再実行の前にエディタの状態を確認してください）が付きます。`Data` には `AbortAfterSeconds`、`AbortSource`（`Argument` または `Config`）、`DeadlineExceeded`、`Aborted`、`AbortSignalsSent`、`ElapsedSeconds` が載り、該当する場合に限り `NotExecuted`、`AbortDrainFailed`、`AbortInjectionFailed` も載ります。引数で `0` を明示した場合は `AbortAfterSeconds` と `AbortSource` の 2 キーだけ、ini 由来の `0` では `Data` は付きません。
+>
+> **拒否:** ゲームスレッド上の別の Python 実行の中から呼ぶと `NotAllowed`、Python の初期化前または終了処理中は `PreconditionFailed` になります。
+>
+> **推奨:** 呼び出しの `TimeoutSeconds`（MCP / HTTP のリクエストの待ち時間）は `AbortAfterSeconds` より長くしてください。短いと、スクリプトの応答が届く前にリクエストが諦めます。Python をデバッグ中は `0` を明示してください。`TimeoutSec` は受け付けますが効きません。打ち切りたいときは `AbortAfterSeconds` を使ってください。
 
 > **Note**: `RunAutomationTest`（および Runtime 側の `RunRuntimeAutomationTest`）は、`RunAllMatching=true`（既定）のとき**マッチした全件を実行します**。件数を絞るには `MaxMatchingTests`（1 以上。省略すると上限なし）を指定してください。`0` は「上限なし」ではなく無効値として拒否されます — 両者は正反対の要求であり、読み替えると絞った実行が全件カバーを名乗ることになるためです。
 >
@@ -539,6 +1054,30 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 > **v1.2.0 での変更**: `RunAutomationSpec` がパラメータスキーマを宣言し、それ以外を拒否するようになりました — 受け付けるのは `TestName`（必須）・`TimeoutSec`・`RunAllMatching`・`MaxMatchingTests`（`RunAutomationTest` と同じパーサーを共有するため同じ4キー）で、`AdditionalProperties: false` です。**`SpecName` などこの集合の外のキーを指定すると、これまでの黙って無視される挙動から `InvalidParams` に変わりました** — 以前はスキーマを一切宣言していなかったため、未知のキーはチェックされずに通過し、単に何も起こしませんでした。`RunAllMatching` と `MaxMatchingTests` は `RunAutomationTest` とのスキーマ上の対称性のために受理されますが、**Spec の実行には影響しません** — `Execute()` は常に単一の完全一致に強制されるため、どちらのパラメータの値も無視されます。
 
+#### Automation Test のレポートの共通契約
+
+`RunAutomationTest`・`RunAutomationSpec`・`RunRuntimeAutomationTest` は同じ形のレポートを返します。
+
+**`Tests[]` の各要素**は `Name`・`Result`・`TimeSec` を持ち、さらに 3 つのメッセージ配列を、**空でないときだけ**この順で持ちます: `FailMessages`、`SkipMessages`、`WarningMessages`。
+
+**`Result` は次の 5 値のいずれかです。**
+
+| 値 | 意味 |
+|---|---|
+| `Pass` | テストが成功し、スキップ行も出さなかった |
+| `Fail` | テストがエラーを 1 つ以上記録した。エラーは `FailMessages` に入る |
+| `Skipped` | テストが成功し、スキップ行（`TEST-SKIP[<Reason>]: <Detail>`）を 1 つ以上出した。その行は `SkipMessages` に入る |
+| `Error` | テストがエラーを記録せずに失敗した（または実行側がテストを走らせられなかった。例: タイムアウト）。テストがエラーを記録していないときは、`FailMessages` に合成メッセージ `The test reported failure without recording an error.` が入り、失敗した結果には必ず理由が付く |
+| `Cancelled` | テストが完了する前にキャンセルされた |
+
+エラーを記録したテストは、メッセージの 1 つがスキップ行に見えても `Fail` です。警告は `Result` を変えません。警告は `WarningMessages` に入り、テストを失敗させません。
+
+**`Summary`** は `Pass`、`Fail`（`Fail` と `Error` の両方）、`Skip`（`Skipped` の結果）、`Cancelled` を数え、`Matched`・`Selected`・`TotalTimeSec` も持ちます。スキップしたテストは `Summary.Pass` ではなく **`Summary.Skip`** に数えられます。
+
+**ログの成果物**は、各テストのエントリを `FAIL:`（`FailMessages`）→ `SKIP:`（`SkipMessages`）→ `WARN:`（`WarningMessages`）→ `LOG:`（その他の出力）の順に並べます。
+
+**`ReportErrors`**（レポートのルート）は、特定の 1 テストに属さない実行全体の問題を持ちます。1 件以上あるときだけ出力され、`Summary` の件数には数えません。
+
 ---
 
 ## UAIP.Editor.UIAutomation
@@ -547,22 +1086,91 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `ClickWidget` | パスで識別したウィジェットへの左クリックをシミュレート |
+| 🆓 `ClickWidget` | `SnapshotUI` が返す `WidgetRef` で識別したウィジェットへの左クリックをシミュレート |
 | 🆓 `SelectMenuItem` | スラッシュ区切りのラベルパスでメニュー項目を選択 |
-| 🆓 `InputText` | パスで識別したウィジェットにテキストを入力 |
+| 🆓 `InputText` | `SnapshotUI` が返す `WidgetRef` で識別したウィジェットにテキストを入力 |
 | 🆓 `SetCheckboxState` | チェックボックスの状態を設定 |
 | 🆓 `SetComboSelection` | コンボボックスでラベル指定の項目を選択 |
 | 🆓 `DragGraphNode` | 指定グラフエディタタブでグラフノードをピクセル単位でドラッグ |
 | 🆓 `ConnectGraphPins` | 指定グラフエディタタブで 2 つのピンを接続 |
-| 🆓 `AcceptDialog` | アクティブなモーダルダイアログを承諾（OK/Yes/Accept をクリック） |
-| 🆓 `CancelDialog` | アクティブなモーダルダイアログをキャンセル（Cancel/No をクリック） |
+| 🆓 `AcceptDialog` | アクティブなモーダルダイアログを承諾する。OK、Yes、Accept、Continue をこの順に探して押すか、`ButtonLabel` で指定したボタンを押す（その名前のボタンが無いときは、この順で探す）。窓が閉じたことを確かめてから成功を返す。`ExpectedDialogId` を受け取り、`BlockedCommand` を返す。[書き込みが開いたモーダルダイアログ](#書き込みが開いたモーダルダイアログ)を参照 |
+| 🆓 `CancelDialog` | アクティブなモーダルダイアログをキャンセルする。Cancel、No、Close、Abort をこの順に探して押すか、`ButtonLabel` で指定したボタンを押す（その名前のボタンが無いときは、この順で探す）。窓が閉じたことを確かめてから成功を返す。`ExpectedDialogId` を受け取り、`BlockedCommand` を返す。[書き込みが開いたモーダルダイアログ](#書き込みが開いたモーダルダイアログ)を参照 |
+| 🆓 `GetActiveDialog` | いま開いているモーダルダイアログの内容（`Title`・`Body`・`Buttons`）と、呼び出したセッションが答えられるか、そのセッション自身の書き込みがダイアログで止まった状態と最終結果を読む。読み取り専用（`EditorUIAutomation` が必要）で、ダイアログが開いている間も実行できる数少ないコマンドの 1 つ。[書き込みが開いたモーダルダイアログ](#書き込みが開いたモーダルダイアログ)を参照 |
 | 🆓 `InvokeContextMenuAction` | 指定対象を右クリックしてコンテキストメニューから項目を実行 |
 | 🆓 `HoverWidget` | ウィジェットに OnMouseEnter をシミュレート |
-| 🆓 `PressKey` | 修飾キー対応のキー入力をシミュレート（危険ショートカットブラックリスト付き） |
-| 🆓 `WaitForWidget` | ウィジェットが期待状態になるまでポーリング |
-| 🆓 `FillForm` | フォームウィジェットへの一括入力を逐次 state machine で実行 |
-| 🆓 `SnapshotUI` | 範囲を絞り込め、除外分も報告する UI の構造スナップショットを取得 |
-| 🆓 `OpenPasswordTestWindow` | パスワード用 `SEditableTextBox` を持つフローティングテストウィンドウを開く（パスワードフィールドのポリシーテスト用ターゲット） |
+| 🆓 `PressKey` | 修飾キー対応のキー入力をシミュレート（危険ショートカットブラックリスト付き）。メニューを閉じるには `DismissMenus` を使う（Escape は受け取ったウィジェットが消費しうる） |
+| 🆓 `WaitForWidget` | `SnapshotUI` の `WidgetRef` で識別したウィジェットが期待状態になるまでポーリング |
+| 🆓 `FillForm` | フォームウィジェットへの一括入力を逐次 state machine で実行 欄の種類は `textbox` / `checkbox` / `combobox` です。パスワード欄は `AllowPasswordFieldWrite=True` でなければ断られます。パスワード欄かを調べるのは、種類が `checkbox` と `combobox` 以外のすべての欄（種類の指定が無い欄・知らない種類の欄を含む）です。書く直前の確認で断るときも、受け付けのときと同じ文言（`Target widget is a password field; write not allowed by SafetyPolicy.`）です。 |
+| 🆓 `SnapshotUI` | 範囲を絞り込め、除外分も報告する UI の構造スナップショットを取得。`IncludeFieldValues: true` を指定すると入力欄の値とヒント文も返す。パスワード欄の平文には `AllowPasswordFieldRead` と `EditorWidgetPasswordTextRead` が必要 |
+| 🆓 `DismissMenus` | 開いているメニューやポップアップ（すべて、または指定したウィジェットを含むメニューとそのサブメニュー）を閉じ、消えるまで待つ |
+| 🆓 `OpenPasswordTestWindow` | パスワード用 `SEditableTextBox` を持つ小さな単独のテストウィンドウを開く（`InputText` やパスワードフィールドのポリシーが、パスワード欄をどう扱うかを確かめるためのターゲット）。アセット・設定・保存済みの状態は何も変更しない。窓を開くだけなので、製品版だけでなくデモ版にも含まれる |
+
+> **Note**: ウィジェットを対象にするコマンドは、ウィジェットパスではなく `SnapshotUI` が返す `WidgetRef` を受け取ります。先に `SnapshotUI` を呼び、対象ウィジェットの `WidgetRef` を渡してください。
+>
+> **`OpenPasswordTestWindow` — 成功時の `Result`。** 開いたウィンドウのタイトル `WindowTitle`（`Password Test Window`）を返します。`SnapshotUI` の `WindowTitle` 引数と同じ綴りなので、後続のコマンドでそのウィンドウを指定できます。
+>
+> **`SelectMenuItem`** の必須パラメータは `MenuPath` の 1 つです。スラッシュ区切りのメニューラベルの並びで、例は `Edit/Project Settings...` です。
+>
+> - 先頭の要素はメニュー名です。2 番目以降の要素は、メニュー名か表示ラベルに、大文字小文字を無視して完全一致する必要があります。
+> - `/` を含むラベルは指定できません。
+> - `...` を含むラベル（`Project Settings...` など）は使えます。
+> - 次のものは `InvalidParams` で拒否されます: `..` だけのセグメント、空のセグメント、制御文字、長さが 256 を超えるもの、階層が 10 を超えるもの。
+>
+> **`WaitForWidget`** は `WidgetRef`（必須）と `ExpectedState`（必須。`Exists` / `Absent` / `Visible` / `Hidden` / `Enabled` / `Disabled` / `Focused` のいずれか）を受け取ります。`WaitTimeoutSeconds` は任意です（既定 5.0、30 以下）。`PollIntervalSeconds`（既定 0.1、0.05 以上）と `ConfirmTickCount`（既定 3、10 以下）も任意です。
+
+> **Note — 入力経路と `PartialDelivery`**: `ClickWidget`・`HoverWidget`・`PressKey`・`AcceptDialog`・`CancelDialog`・`SetComboSelection`・`FillForm` は、実行時の UI コマンド（[`ClickGameViewportWidget`](#ゲームビューポートの-ui-入力3) など）と同じ作り方で入力を作るようになりました。パラメータ・エラー・拒否される条件（メニュー・モーダル）は変わらず、`HoverWidget` も従来どおり成功を返します（送った後にホバーが立ったかを確かめ、結果はログに残すだけです）。ホバー・コンボ操作・キー押下が本物のマウス・キーボードと同じユーザー番号で届くようになるため、ユーザー番号で入力を振り分ける UI では、以前は効かなかった操作が効くようになることがあります。`SetComboSelection` / `FillForm` のコンボ操作は、カーソルを動かしてから押し、対象（またはその中身）にカーソルが乗ったことを確かめるようになりました。他の UI に覆われているなど乗らなかった場合は、押す前にその欄の失敗として返ります。
+>
+> 挙動が変わるのは 1 点です。`ClickWidget`・`AcceptDialog`・`CancelDialog` で、押した操作そのものでモーダルが開いた場合、以前は離す操作がモーダルを閉じた後（応答を返した後）に届いていました。これからは離す操作を送らず、応答は押下を送ったこととして `ModalOpened` と `PartialDelivery: DownOnly` を添えて返ります（ゲームビューポートの UI のクリックと同じです）。
+
+### 書き込みが開いたモーダルダイアログ
+
+この節は `[UAIP.ModalDialog] HandleDialogsOpenedByWrites` が `true` のときの扱いです（[設定](config.md#uaipmodaldialog--応答のないダイアログの打ち切り既定で無効)を参照）。**既定は `false` で、1.2.0 の扱いのままです。** どの経路でも、ダイアログは表示されたままになり、呼び出し側は書き込みの最終結果を待ちます。`ModalDialogPending` は返らず、他のセッションの要求はダイアログが閉じるまで待ってから実行されます（`HealthCheck`、`GetActiveDialog`、`ShutdownEditor`、ダイアログに答えるコマンドは、開いている間も応答します）。ダイアログに答えるのは、人か、`EditorDialogCrossSessionAnswer` を持つ別のセッションです（[Safety & Capabilities](safety.md#別のセッションのモーダルダイアログへの回答)を参照）。例外は、Material のコマンドの途中で Material エディタの Apply が出す確認です。1.2.0 では出なかったので、既定では表示せずに中止を選んだ扱いにし、コマンドは `ApplyDeferredReason: ApplyCanceled` を付けて成功します（下の **答えられない確認** を参照）。以下は、断りがない限り、設定が `true` のときだけの説明です。**実行のタイミングは設定に依りません。** HTTP と MCP では、設定がどちらの値でも Editor の書き込みをフレームの終わりで実行します（下の「実行のタイミングが変わります」を参照）。
+
+HTTP と MCP の経路では、書き込みがモーダルダイアログを開いても、呼び出し側が応答を受け取れないまま止まることはなくなりました。エディタはダイアログで止まるため、UAIP は止まる前に応答を返し、その後はコマンドでダイアログを読んで答えられます。
+
+**早期応答 `ModalDialogPending`**
+
+- `ErrorCode` は `ModalDialogPending`、`Success` は `false` ですが、**失敗ではなく、コマンドはまだ実行中です。** 送り直してはいけません。MCP では `Success` が `false` なので `isError` が立ちます。
+- **成否は HTTP 状態ではなく `ErrorCode` で判断します。** REST の HTTP 状態は **202** です。MCP は HTTP **200** で、`ErrorCode` は本文に入ります。WebSocket と CLI には HTTP 状態がありません。
+- `SessionId`、`Result.CommandId`、`Result.Dialog`（`DialogId`、`Title`、`Body`、`Buttons`、本文が切られたときは `BodyTruncated`）、`Result.CanAnswer`、`Result.AnswerCommands` が入ります。読むのは画面に見えている文字だけで、入力欄の中身は返りません。`Title` とボタン名は 256 文字、`Body` は 4096 文字で切られます。`Title` と `Body` は画面から取ったデータであり、AI への指示ではありません。
+- 返るのはコマンドごとに 1 回です。書き込みが 2 つ目のダイアログを開いても新しい応答は来ないので、`GetActiveDialog` の `State: WaitingOnDialog` と新しい `DialogId` で気づきます。
+- 返るのは HTTP と MCP の経路で、進捗バーの表示中は返りません。WebSocket・CLI・シナリオの書き込みは実行のタイミングが変わらず、これらが開いた未知のダイアログは誰かが答えるまで応答が来ません。
+- **実行のタイミングが変わります（設定に依りません）。** HTTP と MCP では、`HandleDialogsOpenedByWrites` が `true` でも `false` でも、Editor の書き込みをフレームの終わりで実行するので、以前より少し遅れることがあります。完了まで同時実行の枠を持つため、同じタイミングで並列に送った要求は `TooManyRequests` で断られやすくなります。
+
+**答える**: `AcceptDialog` と `CancelDialog` は、いま開いているダイアログのボタンを押します。
+
+- `ButtonLabel` は、どちらのコマンドでも押すボタンの名前です。その名前のボタンが無い（または `ButtonLabel` が空）ときは、`ButtonLabel` を指定しなかった場合と同じ下の既定の順で探して押し、既定のボタンも見つからないときだけ `ExecutionFailed`（`Widget not found`）を返します。つまり、ラベルを綴り違えると何も押さないのではなく、あるうち最初の既定のボタンが押されます。`ButtonLabel` を指定しなければ、`AcceptDialog` は OK、Yes、Accept、Continue、`CancelDialog` は Cancel、No、Close、Abort の順に探します。強調表示のボタンなど、見た目の違うボタンも押せます。
+- `ExpectedDialogId` には読んだ `DialogId` を指定します。いま開いているダイアログと違えば、何も押さずに `ExecutionFailed` を返すので、読んだ後に替わったダイアログを誤って押すことはありません。
+- 答えるときは、応答の `SessionId` を付けます。MCP のブリッジは、再起動するまで同じセッションを使い続けます。
+- 成功を返すのは窓が閉じた後だけです。窓が閉じず、別のダイアログも開かないまま 5 秒が過ぎると `ExecutionFailed` になります。`GetActiveDialog` で確かめて、別のボタンを選ぶか人に伝えます。押した処理がさらに別のダイアログを開いたときは、押下は効いたものとして成功を返し、`ModalOpened` を報告します。
+- 成功時は、`Result.BlockedCommand` に止まっていた書き込みの名前と状態が入ります。この応答は、その書き込みの続きが終わった後に届くことが多いです。続きが答えるコマンドの制限時間より長くかかると、書き込みは続いているのに `Timeout`（REST は HTTP 408、MCP は `execution timeout`）が返ることがあります。送り直さず、`GetActiveDialog` で確かめます。
+
+**状態を読む: `GetActiveDialog`**
+
+- `Result.DialogOpen` はダイアログが開いているかを示します。偽のときは `CanAnswer` も偽です。真のときは、`Result.Dialog` に早期応答と同じ形で内容が入ります。
+- `Result.CanAnswer` と `Result.AnswerCommands` は、呼び出したセッションについての値です。`GetActiveDialog` 自体を実行できないセッションには、`Dialog` は返らず、`State`・`CommandId`・`CommandName`・`CanAnswer` だけが返ります。
+- `Result.PendingCommand` は、ダイアログで止まった呼び出しセッション自身の書き込みです。`CommandId`、`CommandName`、`State`（`WaitingOnDialog`・`Running`・`Completed`）が入り、`Completed` では `CompletedAt` と、書き込みの最終応答を応答そのものの形で持つ `Response` も入ります。`Running` はダイアログが閉じて書き込みが続いている状態なので、読み直します。他のセッションの書き込みは見えません。
+- 読んでも結果は消えません。保持は 1 時間、セッションの間、エディタ全体で最大 64 件（古いものから捨てる）で、同じセッションで次に止まった書き込みがあれば置き換わります。1 MiB を超える結果は `ErrorCode` と成果物だけになり、`ResultOmitted: true` が付きます。書き込みの完了後、早めに読んでください。
+- 自動で閉じたダイアログ（下記）は、`PendingCommand.Response.Result` に `DialogAutoClosed` を残します。閉じられなかった窓には `Dialog.AutoCloseFailed` が付きます。
+
+**`CanAnswer` が真になる条件**: 次のすべてを満たすときです。経路が HTTP か MCP、進捗バーの表示中ではない、`AcceptDialog` か `CancelDialog` が `StarvedTickAllowList` にある（[`[UAIP.CommandPump]`](config.md#uaipcommandpump--モーダル表示中のコマンド実行既定で無効)を参照）、そのセッションがそのコマンドを実行できる、ダイアログを読める。止まった書き込みが別のセッションのものなら、下の条件も満たす必要があります。
+
+- **許可リスト**: 既定の一覧（`HealthCheck`、`QueryCapabilities`）にはどちらのコマンドも無いので、既定では `CanAnswer` は偽になり、人が答える必要があります。`StarvedTickAllowList` を設定すると既定の一覧を置き換えるので、既定の項目も残してください。一覧は起動時に 1 回だけ読まれ、`ReloadCapabilities` では変わりません。
+- **`CancelDialog` だけでは、中止のみを許せません。** 一覧はコマンド単位で、`ButtonLabel` を指定すればどちらのコマンドでも `Continue` を含む任意のボタンを押せます。中止の答えだけを許す設定はできません。
+- **`ShutdownEditor` と `RestartEditor` は一覧に載せないでください。** 載せると、ダイアログの持ち主のセッションの要求は受け付けられますが、ダイアログが閉じるまで終了せず、後述の回復も働かなくなります。
+- **別のセッション**: 既定では、ダイアログが開いている間に書き込みを実行できるのは、書き込みを止められたセッションだけです。許可リストの内容は関係しません。別のセッションが実行できるのは、運用者が DefaultDenied の Capability `EditorDialogCrossSessionAnswer` を設定し（[Safety & Capabilities](safety.md#別のセッションのモーダルダイアログへの回答)を参照）、かつそのセッションが止まった書き込みのコマンドを実行できるときです。`SessionId` の無い要求は別のセッションとして扱われ、**この Capability を設定しても別のセッションのダイアログには答えられません。** 止まった書き込みの結果は、設定しても持ち主のセッションにしか返りません。
+
+**ダイアログが開いている間に届くコマンド**: 書き込みを止めたダイアログでは、通るのは `StarvedTickAllowList` にあるコマンド、`GetActiveDialog`、`HealthCheck` だけです。読み取りコマンドも対象で、`SnapshotUI`・`ListCommands`・`DescribeCommand` も一覧に無ければ通りません。通らないコマンドは `NotAllowed` と `Result.ModalDialogBlocking: true` ですぐ断られます。書き込みが止まっていないダイアログ（人が開いたものなど）では、HTTP と MCP の読み取りコマンドは通り、書き込みは一覧にあるものだけが通ります。ダイアログが閉じた後で書き込みがまだ続いている間は、`GetActiveDialog` と `HealthCheck` だけが通り、他は同時実行の上限で断られます（REST は HTTP 429、MCP は `rate limit exceeded`）。この上限は、ダイアログが閉じた時点から測り直した制限時間を書き込みが超えると解除されます（警告がログに出ます。書き込みは動き続けるので、同じ対象への次の書き込みは完了を確かめてから送ってください）。
+
+**誰も答えないダイアログを閉じる**: `[UAIP.ModalDialog] UnansweredTimeoutSeconds` を設定すると、指定の秒数のあいだ入力が無いダイアログの窓をエディタが閉じます（[設定](config.md#uaipmodaldialog--応答のないダイアログの打ち切り既定で無効)を参照）。ボタンは押さないので、**閉じた後の結果はダイアログの種類で決まり、中止になるとは限りません。** その後に送った答えは `ExecutionFailed`（`No active modal dialog found`）になります。
+
+**答えられない確認**: `HandleDialogsOpenedByWrites` が `false`（既定）のときは、`Undo` / `Redo` が出す確認は表示され、人か、`EditorDialogCrossSessionAnswer` を持つ別のセッション（[Safety & Capabilities](safety.md#別のセッションのモーダルダイアログへの回答)を参照）が答えるまで開いたままで、`DialogGuardActive` は返りません。Material の Apply が出す確認は、1.2.0 では出なかったので、どの経路でも表示されず中止を選んだ扱いになります。Apply は `Applied: false` と `ApplyDeferredReason: ApplyCanceled` を返し、コマンドは成功します。`true` のときは、Material の Apply と UAIP の `Undo` / `Redo` が出す確認は、HTTP・MCP 以外の経路、進捗バーの表示中、`CanAnswer` が偽になる環境でだけ、表示されず中止を選んだ扱いになります。Apply は `Applied: false` と `ApplyDeferredReason: ApplyCanceled` を返します。`Undo` / `Redo` は取り消しの操作そのものを実行し、`DialogGuardActive: true` を返します。確認がこの扱いで中止されたときは、ログに Error とスタックが出て、エディタが短い間（1 環境の実測で約 1 秒）止まります。デバッガーを接続しているとブレークすることがあります。書き込みの失敗ではありません。
+
+**エディタが背面にあるときのクリック**: `ClickWidget`、`AcceptDialog`、`CancelDialog`、`FillForm` のコンボの選択は、別のアプリが前面にあっても効きます。エディタはそのクリックの間だけ入力を受け付けます。ビューポートの中へのクリックは対象外です。`ClickWidget` と `FillForm` の `Success` は、クリックを送ったことを示すだけです。`ClickWidget` 自身がダイアログを開いたときは、応答に `ModalOpened` が入ります。`ModalDialogPending` は返りませんが、同じようにダイアログを読んで答えられ、ダイアログはクリックを送ったセッションのものになり、`UnansweredTimeoutSeconds` でも閉じられます。
+
+**このダイアログが開いている間の `ShutdownEditor` / `RestartEditor`**: どちらも `NotAllowed` と `Result.ModalDialogBlocking: true` で断られます。ダイアログが閉じるまでエディタは終了できないためです。その MCP ブリッジ自身がエディタを起動していれば、ブリッジがプロセスを止め（`RestartEditor` なら起動し直し）、`uaip_reload_config` がエディタを止めるときも同じです。答えられるなら先に答えてください。回復すると、止まっていた書き込みの結果と未保存の作業は失われ、`SaveAll` も効きません。ブリッジはプロセスが止まったことを確かめるまで成功と報告しません。動いているエディタへ接続しただけのブリッジ、再起動したブリッジ、`RestartEditor` で起動し直した後のエディタ、REST の呼び出しでは `NotAllowed` のままです。開いた本人が分からないダイアログ（`DismissMenus`、`FillForm` のコンボの項目のクリックとそれより後のフィールド、別のダイアログの上や非同期の処理の途中で開いたもの）では、ブリッジは回復せず、`ShutdownEditor` は `ModalDialogBlocking` の無い `NotAllowed` になるので、人が閉じる必要があります。
+
+**制限**: OS 標準のメッセージボックス、ファイル選択、コマンドの実行の外（非同期の処理の途中を含む）で開いたダイアログは検知できず、`ModalDialogPending` も打ち切りも働きません。`SnapshotUI` は `SPrimaryButton` などの派生のボタンにも `b-` の参照を出すようになり、同じ画面でも参照の番号が変わることがあります。古い参照を使い回さないでください。派生の型によっては UE 5.7 と 5.8 で参照の有無が違います。
 
 > **Note**: `SnapshotUI` は任意の走査範囲を指定できます。起点には `RootWidgetRef` または `RootWidgetPath`（互いに排他。どちらも `WindowTitle` とは併用不可）、走査量には `MaxDepth`（既定 30）と `MaxNodes`（既定 50000。1 回の呼び出しで訪れる全ルートで共有される単一予算）、絞り込みには `WidgetTypes` + `WidgetTypeMode`（`"Add"` は既定の対象に追加、`"Only"` は指定した型だけに限定）と `LabelContains`、既定で外れるウィジェットを拾うには `bIncludeInvisible` / `bIncludeUnclassified` を使います。応答には常に `EmittedCount`・`FilteredCount`・`FilteredReasons`（0 件でも常に存在する 6 つの理由キー — `InvisibleSubtreeRoot` / `StructuralContainer` / `TypeFilterMismatch` / `LabelFilterMismatch` / `Unclassified` / `RegistrationFailed`）・`UnclassifiedTypes`（`Type` + `Count` を件数降順・同数なら型名昇順で最大 200 件。各 `Type` はそのまま `WidgetTypes` に渡せる）・`Traversal`（`Complete` / `NodeLimitReached` / `DepthLimitReached` / `VisitedNodeCount`）・`MatchedRootCount`・`EffectiveParams`（クランプ・正規化後に実際に適用された値）が含まれます。
 >
@@ -574,9 +1182,61 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 >
 > `RootWidgetRef` は使い捨てです。呼び出しが完了すると、指定した Ref だけでなく**そのセッションの `WidgetRef` がすべて**無効化されます — `SnapshotUI` の呼び出しごとに新しい世代が始まるためです。以前の Ref を残したまま段階的に絞り込みたい場合は `RootWidgetPath` を使ってください。`SnapshotUI` は引き続き `IsReadOnly() == true` を宣言し `bReadOnly` 下でも実行できます — リセットされるのは UAIP 側の Ref キャッシュのみで、永続的なエディタの状態は変わりません。UI Automation の全コマンドを通じて、`WidgetRef` はそれを発行したスナップショットから 60 秒で失効します。
 
+> **ラベル。** `SnapshotUI` のノードの `Label` は、次の順で決まります。ウィジェットのアクセシビリティ文字列、リッチテキスト（`SRichTextBlock`）なら表示内容の近似、ウィジェットの Tag、型名。名前もアクセシビリティ文字列も無いウィジェットは、`None` ではなく型名がラベルになりました。リッチテキストの近似は、`<...>` のタグをすべて取り除くので、タグ名や属性（リンク先など）はラベルに出ません。複数行は空白 1 つでつなぎます。実際の表示と少し食い違うことがあります。スタイルに無いタグを使った文字列は近似になり、文字どおりの `<b>` も除かれます。リッチテキストは既定の対象（ロール `tb`）に入るので、ノード数・Ref の番号の振られ方・`MaxNodes` に達する位置が変わることがあります。
+>
+> - ボタンのラベルは子のアクセシビリティの要約をつなげて作られるため、子がリッチテキストでも改善しません。
+> - `Label` は、パス属性 `[Label=...]` が照合する文字列（加工していないアクセシビリティ文字列）とは別物です。`Label` をそのまま `[Label=...]` に書いても一致しないことがあります。
+> - `DumpSlateTree` では、`AccessibleText`（`IncludeTextContent: true` のとき）にも同じラベルが入ります。互換のためキー名は変えていないので、名前と中身は正確には一致しません。`PressKey` の `FocusedWidgetTypeName` も、名前に反して中身は対象のウィジェットの型です。こちらもそのままです。
+> - パスワード欄と、パスワード欄かどうか判定できない欄のラベルは、アクセシビリティ文字列ではなく、ヒント文（無ければ型名）になります。`SnapshotUI` では `IncludeFieldValues` によらず常にそうで、`DumpSlateTree` の `AccessibleText` も同じです。アプリがパスワード欄のアクセシビリティ文字列を値に結び付けていても、ラベルから漏れません。通常の欄のラベルは変わりません。ボタンのように子から組み立てる親のラベルは対象外です。アプリがパスワード欄のアクセシビリティ文字列を値に結び付けていると、その値が親のラベルに現れることがあります。
+>
+> **`IncludeFieldValues`。** `SnapshotUI` は bool の `IncludeFieldValues`（既定 `false`）を受け取ります。`true` にすると、入力テキスト（`SEditableTextBox` の内側の `SEditableText` と `SMultiLineEditableText`）のノードに次の欄が付きます。
+>
+> | 欄 | 付く条件 | 内容 |
+> |---|---|---|
+> | `HintText` | 常に | ヒント文。制御文字を除き、256 文字で切ります |
+> | `Value` | パスワード欄でないとき | 入力されている文字列。256 文字で切り、切ったときは `ValueTruncated: true`。改行とタブは残し、それ以外の制御文字は除きます |
+> | `Value`、`IsMasked` | パスワード欄、またはパスワード欄かどうか判定できないとき | `Value` は `"***"`、`IsMasked` は `true`。`ValueTruncated` は付きません |
+>
+> 保存されるスナップショット（artifact の JSON）のトップレベルに、`MaskedFields`（パスワード欄の `Ref`）と `UnverifiedMaskedFields`（パスワード欄かどうか判定できない欄の `Ref`）も入ります。1 つのノードは 2 つの一覧のどちらか一方にだけ載り、どちらも常に書かれます（伏せた欄が無ければ空配列）。応答の `Result` には、2 つの一覧の要素数として `MaskedFieldCount` と `UnverifiedMaskedFieldCount` が入ります。`IncludeFieldValues` が `false` のときは、これらは何も足されません。`IncludeFieldValues` はスキーマのパラメーターで、`EffectiveParams` にも出ます。`LabelContains` が見るのは `Label` だけで、値は検索しません。複数行の入力欄は既定の対象に入りません。`WidgetTypes` で名指しする（または `bIncludeUnclassified` を指定する）と含まれますが、内側のテキストは判定できない欄として扱うので、値は伏せられます。
+>
+> パスワード欄（と、判定できない欄）の平文が返るのは、安全設定 `AllowPasswordFieldRead` がオンで、**かつ**セッションが Capability `EditorWidgetPasswordTextRead` を持つときだけです（[Safety & Capabilities](safety.md#エディタ操作) 参照）。返るときは、応答の `Result` にだけ、スナップショットの保存と添付が成功し、値が 1 件以上あるときに限って（それ以外は `PasswordFieldValues` が付きません）、`PasswordFieldValues`（`{Ref, Value, ValueTruncated?}` の配列。最大 16 件・各 256 文字）に入ります。入りきらない分は `PasswordFieldValuesTruncated: true` と `PasswordFieldValuesOmittedCount` で知らせます。保存されるスナップショットとログには出ず、完了通知では伏せられます。失敗した応答（スナップショットを保存できなかったときなど）にも入りません。`SnapshotUI` 自体は `EditorWidgetPasswordTextRead` を要求しないので、持たないセッションでもスナップショットは返り、値だけが伏せられます。伏せた欄があるとき、理由は `Result.SecretValuesWithheldReason` が示します。安全設定がオフなら Capability の有無によらず `PasswordTextWithheldBySafetyPolicy`（設定は起動時に読まれるため、最初に直すべきものとして先に知らせます）。設定がオンで Capability が無ければ `PasswordTextWithheld` です。名前と優先順は `DumpGameViewportWidgetTexts` と同じです。
+>
+> **とても深いツリー。** 保存する JSON には、入れ子の深さの上限があります。出力するウィジェットの入れ子が 30 段を超えるウィジェットは、その下も含めて出力しません。`Traversal.OutputNestingLimitReached` が `true` になり、出力しなかった数が `Traversal.OutputNestingSkippedCount` に入り、見ていない枝があるので `Traversal.Complete` も `false` になります。出力しなかったウィジェットには `WidgetRef` が付きません。以前は、こういうツリーで何も知らせずに空の artifact が返ることがありました。それでも JSON を作れないときは、深さの上限を示す `ExecutionFailed` で失敗し、直前のスナップショットの `WidgetRef` は有効のまま残ります。
+>
+> **`DismissMenus`** は、開いているメニューやポップアップを閉じ、消えるまで待ちます。
+>
+> - `WidgetRef`（任意）。省略するか `null` なら、開いているメニューをすべて閉じます。`WidgetRef` を指定すると、そのウィジェットを含むメニューと、そこから開いたサブメニューだけを閉じます。親のメニューは開いたまま残り、応答には `MenuStackOpenAfter: true` が付きます。空文字列・文字列以外の値・形式の正しくない Ref は `InvalidParams` で拒否します。Ref を取り損ねたときに「すべて閉じる」にすり替わらないようにするためです。
+> - Capability は `EditorUIAutomation` です。読み取り専用ではなく、デモ版に含まれ、Toolset ブリッジはありません。キーボードフォーカスは動かさず、Escape も送りません。
+> - `Result`（と artifact）には `MenusOpenBefore`・`MenuWindowCountBefore`・`MenuWindowCountAfter`・`MenuStackOpenAfter`・`FramesWaited` が入ります。閉じた後にフォーカスを持つウィジェットがあれば `KeyboardFocusWidgetType` も入ります。
+> - 閉じたメニューのウィンドウが消えるまで、最大で 10 フレーム**かつ** 1 秒（遅いほう）待ちます。それでも残っていれば `ExecutionFailed` で、残ったウィンドウの数とメニュースタックの状態を `Result` に入れます。
+> - 拒否されるのはドラッグ中だけです（`PolicyViolation`、`Reason: DragInProgress`、`GuardDiagnostics` 付き）。メニューやモーダルの外にあることは理由になりません。
+> - 何も開いておらず `WidgetRef` も無いときは、`MenusOpenBefore: false`・`FramesWaited: 0` の成功です。何度呼んでも構いません。`WidgetRef` を指定した呼び出しは、メニューが閉じた後では冪等になりません。`NotFound` を返し、ウィジェットが破棄されていれば `Result.Reason: WidgetDestroyed`（閉じたメニューの中のウィジェットは通常破棄されます。要求の受付前でも後でも同じです）、ウィジェットは残っているがどのメニューにも属さなければ `Result.Reason: WidgetNotInApplicationMenu` です。どのメニューにも属さないウィジェットを指定したときも `WidgetNotInApplicationMenu` です。これらのときは何も閉じません。形式の不正や期限切れの Ref は、他の UI コマンドと同じく `InvalidParams` / `NotFound` です。
+> - 待っている間に UAIP が停止したときは、`ExecutionFailed` と `Reason: DeliveryCancelledByShutdown` を 1 回だけ返します。
+> - **制限。** 閉じる対象にも数える対象にもなるのは、アプリのメニュースタックに載ったメニューだけです。スタックに載らずに開くメニュー（一部のエンジンのプラグインにあります）には触れません。`WidgetRef` なしで、そういうメニューだけが開いているときは、`MenusOpenBefore: false` の成功を返してウィンドウは残ります（`MenuWindowCountAfter` で分かります）。その中のウィジェットを `WidgetRef` に指定したときは、`NotFound` と `WidgetNotInApplicationMenu` です。そのメニュー自身の操作で閉じてください。
+> - **モーダルダイアログの中から。** モーダルダイアログが開いている間、`StarvedTickAllowList` に無いコマンドはその場で `NotAllowed`（メッセージは `[StarvedTick]` で始まります）で断られ、何も閉じません。ダイアログが閉じてから送り直してください。コマンドポンプを有効にしている場合（`uaip.Command.PumpedExecution=1`）だけは、断られずにキューで待ち、ダイアログが閉じてから実行されます。その間に呼び出し側の Transport がタイムアウトすることがあります。モーダルの中から開いたピッカーを閉じるには、`StarvedTickAllowList` に `UAIP.Editor.UIAutomation.DismissMenus` を足して、エディタを再起動します（このリストは起動時に 1 回だけ読まれます。コマンドポンプの有効化は不要です）。閉じるのはピッカーだけで、モーダルダイアログは開いたまま残ります。[`[UAIP.CommandPump]`](config.md#uaipcommandpump--モーダル表示中のコマンド実行既定で無効) を参照してください。
+> - `PressKey` で Escape を送ることはできますが、キーを受け取ったウィジェット（メニューの検索欄など）が消費すると、メニューは閉じません。メニューを閉じるには `DismissMenus` を使ってください。
+>
+> **操作が拒否された理由の確認。** `ClickWidget`・`HoverWidget`・`PressKey` は、ドラッグ中（`DragInProgress`）、モーダルが開いていて対象がその外にあるとき（`ModalActive`）、メニューが開いていて対象がその外にあるとき（`ForeignMenuActive`）に、`PolicyViolation` で拒否されます。`ErrorMessage` はその理由です。応答の `Result` と保存される報告の両方に `GuardDiagnostics` オブジェクトが付くので、artifact を開かなくても原因が分かります。
+>
+> | 欄 | 内容 |
+> |---|---|
+> | `RejectReason` | 上の理由 |
+> | `TargetWidgetType`, `TargetWindowType` | 対象の型と、それが属するウィンドウの種類（`Normal` / `Menu` / `ToolTip` / `Notification` / `CursorDecorator` / `Unknown`） |
+> | `TargetInMenuStack` | 対象がアプリのメニュースタックのメニューに属するか |
+> | `KeyboardFocusWidgetType`, `KeyboardFocusWindowType` | キーボードフォーカスの位置（誰も持っていなければ出ません） |
+> | `OpenMenuWindowCount`, `MenuStackOpen` | 見えているメニューのウィンドウの数と、メニュースタックが開いているか |
+> | `ActiveModalWindowTitle` | 開いているモーダルウィンドウのタイトル（あれば） |
+>
+> 出るのは型名・ウィンドウの種類・モーダルのタイトルだけで、ウィジェットのテキストは入りません。どの理由でも同じキーを同じ規則で出します。対象が「開いているメニューの中」かどうかは、アプリのメニュースタックのメニューに属するか（補助的に、Menu 型ウィンドウの中か）で判定するようになり、親を最大 50 段たどる方式ではなくなりました。そのため、メニューの深い位置にあるウィジェットや、独自のウィンドウを持たずに開くメニュー（PIE のゲーム画面のコンボなど）が、「メニューの外」として拒否されることはなくなります。
+>
+> **書き込み系コマンドのガード（`GuardWriteCommands`）。** `InputText`・`FillForm`・`SetCheckboxState`・`SetComboSelection` は、既定ではこのガードを通りません。`DefaultUAIP.ini` の `[UAIP.UIAutomation]` で `GuardWriteCommands=True` にする（起動時に 1 回だけ読むのでエディタの再起動が必要。ini で設定し、専用の起動フラグはありません。[設定リファレンス](config.md#uaipuiautomation--書き込み系コマンドのガード既定で無効) 参照）と、要求を受け付けるときに 1 回、クリックと同じ判定を受けます。ドラッグ中、または対象が開いているモーダルウィンドウやメニューの外にあるときは、`PolicyViolation` と同じ `GuardDiagnostics` で拒否されます。`FillForm` は全か無かです。どれか 1 つの欄の対象が拒否されたら、どの欄にも書き込まず、最初に拒否された欄の拒否を返します。このとき `Result.RejectedFieldName` にその欄の `WidgetRef` が入ります。解決できない欄が混じる `FillForm` は、ガードを判定する前に、これまでどおりの検証エラーを返します。`SetComboSelection` は要求を受け付けるときに 1 回だけ判定し、コンボを開いた後の項目のクリックでは判定し直しません。判定はその時点のもので、値を書き込む前に状態が変わる可能性は残ります。
+>
+> **記録。** `InputText` に渡した文字列（`Text`）と `FillForm` に渡した値（`Fields`）は、`TypeGameViewportText` の文字列と同じく、完了通知と監査記録で伏せられるようになりました。以前は入力したとおりに記録されていました。
+
+
 ### Toolset ブリッジ — SlateInspector（10 件）🧩
 
-`SlateInspectorToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SlateInspector.*`。ネイティブ側のウィジェットパス記法ではなく refPath でウィジェットを指定します。このセクションの全ブリッジコマンドは、対応するネイティブコマンドと同じ Capability を要求するようになりました（[Safety & Capabilities](safety.md) 参照）— それまでのリリースでは Capability チェックなしにディスパッチされていました。
+`SlateInspectorToolset`（UE 5.8+）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.SlateInspector.*`。refPath でウィジェットを指定します。ネイティブ側のコマンドは、`SnapshotUI` が返す `WidgetRef` でウィジェットを指定します。このセクションの全ブリッジコマンドは、対応するネイティブコマンドと同じ Capability を要求するようになりました（[Safety & Capabilities](safety.md) 参照）— それまでのリリースでは Capability チェックなしにディスパッチされていました。
 
 | コマンド | 説明 |
 |---|---|
@@ -586,12 +1246,14 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | `Toolset.Editor.SlateInspector.ListObservers` | 現在有効なウィジェット observer を列挙 |
 | `Toolset.Editor.SlateInspector.ClickWidget` | 指定 ref のウィジェットへのマウスクリックをシミュレート |
 | `Toolset.Editor.SlateInspector.HoverWidget` | 指定 ref のウィジェット上へカーソルを移動 |
-| `Toolset.Editor.SlateInspector.InputText` | 指定 ref のウィジェットにテキストを入力 |
-| `Toolset.Editor.SlateInspector.PressKey` | キー入力を送信（`Ctrl+S` のような修飾キープレフィックス対応） |
+| `Toolset.Editor.SlateInspector.InputText` | 指定 ref のウィジェットにテキストを入力 `AllowPasswordFieldWrite=False`（既定）の間、対象がパスワード欄か、**パスワード欄かどうか判定できない**とき（古い Ref・テキスト欄でない Ref・型の誤った引数）は、Toolset を呼ぶ前に `PolicyViolation` で断ります。文言は native のコマンドと同じで、どの欄かは含めません。 |
+| `Toolset.Editor.SlateInspector.PressKey` | キー入力を送信（`Ctrl+S` のような修飾キープレフィックス対応）。メニューを閉じるには `DismissMenus` を使う（Escape は受け取ったウィジェットが消費しうる） |
 | `Toolset.Editor.SlateInspector.SetComboSelection` | コンボボックスウィジェットの項目を選択 |
-| `Toolset.Editor.SlateInspector.FillForm` | 複数のフォームフィールドを 1 回の呼び出しで入力 |
+| `Toolset.Editor.SlateInspector.FillForm` | 複数のフォームフィールドを 1 回の呼び出しで入力 `AllowPasswordFieldWrite=False`（既定）の間、対象がパスワード欄か、**パスワード欄かどうか判定できない**とき（古い Ref・テキスト欄でない Ref・型の誤った引数）は、Toolset を呼ぶ前に `PolicyViolation` で断ります。文言は native のコマンドと同じで、どの欄かは含めません。 1 欄でも断られればフォーム全体を断ります。チェックされるのは、種類が `checkbox` と `combobox` 以外のすべての欄（種類の指定が無い欄・知らない種類の欄を含む）です。受け付ける種類は `textbox` / `checkbox` / `combobox` です。⚠️ 以前のスキーマの説明は `text` / `combo` でしたが、`combo` で送った欄は知らない種類として扱われ、チェックされます（`AllowPasswordFieldWrite=False` の間はフォーム全体が断られます）。 |
 
 > **Note**: `Toolset.Editor.SlateInspector.PressKey` はネイティブの `PressKey` と同じ危険ショートカットのブロックリストを適用しますが、現在どのウィジェットにフォーカスがあるかを解決する手段が無いため、**Backspace を常時ブロック**します — ネイティブコマンドが持つ「テキスト入力ウィジェットにフォーカスがある場合の例外」はブリッジには引き継がれません。
+
+> **`Toolset.Editor.SlateInspector.SnapshotUI` は入力欄の行を伏せます。** エンジンが描画する行には各ウィジェットのラベルが入り、入力欄ではそれが入力中の文字列そのものです。UAIP は、入力欄（`SEditableText`・`SEditableTextBox`・`SMultiLineEditableText`・`SMultiLineEditableTextBox`）に属する行は、パスワード欄かどうかによらず、また Ref の接頭辞が `tb` の行も、ラベルを `"(withheld)"` に置き換えます。ウィジェットと結び付けられない行（Ref を引き当てられない、Ref が無い、ラベルを解析できない）も伏せます。ラベルの範囲すら分からない行は、行全体が `(withheld)` だけになります。それ以外の行と応答の形は変わりません。`Ref` が解決できなかったときの 1 行の応答 `Error: Could not resolve ref` は、そのまま返ります。エンジンの結果が UAIP の想定と違う形のときは、結果の一部も含まない固定の文で `InternalError` を返します。Ref を引き当てる部分が読み込まれていないときは、Ref のある行をすべて伏せます。入力欄に入っている値を読むには、ネイティブの `SnapshotUI` を `IncludeFieldValues` 付きで使ってください。パスワード欄を扱えるのはネイティブのコマンドだけです。**このマスクは最善の努力です。パスワード欄を扱うときは、ネイティブの `SnapshotUI` を使ってください。** エンジンが行を描画してから UAIP が伏せるので、伏せるかどうかは、その行の Ref が今引き当たるウィジェットで判断するしかありません。エディタの中で動くコードがもたらす行は覆えません。たとえば、他のプラグインが入力欄に `textbox` 以外のロールを与え（`RegisterWidgetRole`）、さらに Toolset の Ref のキャッシュをリセットして、その行の Ref が入力欄でない別のウィジェットを指すようになった場合や、他のプラグインが上の 4 つの入力欄の型以外の型にラベルの抽出器（`RegisterLabelExtractor`）を登録して欄の値を返す場合です。UAIP は、エディタのプロセスの中で動くコードを信頼する側として扱います（[安全性と Capability](safety.md#エディタ操作) を参照）。
 
 > **⚠️ Breaking change — このセクションの 10 件は、これまで 1 件も動いていませんでした。** 委譲先の toolset 名を**モジュール修飾なしの `SlateInspectorToolset`** として渡しており、ToolsetRegistry は 1 回の完全一致検索でしか解決しないため（前方一致もサフィックス一致もありません）、正しい `SlateInspectorToolset.SlateInspectorToolset` に一致せず、どのコマンドも実行時に「そのような toolset は無い」で失敗していました。**本更新で 8 件が実際に動くようになりました**（`SnapshotUI` / `ListObservers` / `ClickWidget` / `HoverWidget` / `InputText` / `PressKey` / `SetComboSelection` / `FillForm`）。
 >
@@ -605,31 +1267,31 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 
 | コマンド | 説明 |
 |---|---|
-| `OpenAsset` | 指定アセットをエディタで開く。エディタ状態の成果物は、フォーカス中のエディタのアセットを `ActiveAssetPath` として返す。⚠️ **非推奨のフィールド:** 同じ成果物の `ActiveTabId` もそのアセットのパスを持つ（`DumpEditorState` が同じ名前で返す Slate レイアウト識別子ではない）。次の MAJOR でレイアウト識別子に切り替わるため、`ActiveAssetPath` を読むこと。成果物の `DeprecatedFields` 配列が同じことを機械可読な形で示す。エディタを `-uaip-active-tab-id-as-layout-id` 付きで起動すると、切り替え後の意味を先行して試せる（1.x の間だけ提供） |
-| `CloseAsset` | 指定アセットの全エディタを閉じる |
-| `SaveAsset` | 名指ししたアセットだけをディスクへ書き込む（`AssetMutate` 必要）。確認ダイアログを出さないため非対話でも完結する |
+| `OpenAsset` | 指定アセットをエディタで開く。エディタ状態の成果物は、フォーカス中のエディタのアセットを `ActiveAssetPath` として返す。⚠️ **非推奨のフィールド:** 同じ成果物の `ActiveTabId` もそのアセットのパスを持つ（`DumpEditorState` が同じ名前で返す Slate レイアウト識別子ではない）。2.0.0 でレイアウト識別子に切り替わるため、`ActiveAssetPath` を読むこと。成果物の `DeprecatedFields` 配列が同じことを機械可読な形で示す。エディタを `-uaip-active-tab-id-as-layout-id` 付きで起動すると、切り替え後の意味を先行して試せる（1.x の間だけ提供し、2.0.0 で削除）。UE 5.8 未満の、描画しないエディタでは、アセットエディタをメインウィンドウの中に開き、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがある。保存済みのレイアウトが別ウィンドウに置いたパネルを閉じて、`Result.Skipped` を付けて成功することもある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
+| `CloseAsset` | 指定アセットの全エディタを閉じる。UE 5.8 未満の、描画しないエディタでは、`NotAllowed`（`Reason: Headless`）か `InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
+| `SaveAsset` | 名指ししたアセットだけをディスクへ書き込む（`AssetMutate` 必要）。確認ダイアログを出さないため非対話でも完結する。World Partition のマップでは、そのマップの未保存の外部アクターのパッケージも一緒に書き込み、それらが未保存だったことを `Result.Warnings` で伝える |
 | 🆓 `ListDirtyPackages` | 未保存の変更を持つパッケージを列挙する（保存前の事前確認用） |
 | 🆓 `SearchAssets` | パス・クラス・タグでアセットを検索 |
-| `CreateAsset` | 指定クラスの新規アセットを作成 |
+| `CreateAsset` | 指定クラスの新規アセットを作成。`AssetPath` に既にアセットがある場合（保存済みかどうか・クラスを問わない）は `InvalidParams` で断り、何も作らず既存のアセットにも触れず、上書き確認ダイアログも出ません。先に削除するか別のパスを指定してください。レジストリが既存アセットを把握している場合は、応答の `Result` にそのクラスが `ExistingClassName` として入ります。Factory が `ClassName` と違うクラスのアセットを作った場合、またはアセット種別ごとの後処理に失敗した場合は、作成したアセットを破棄してからエラーを返します。破棄できなかったときはエラーにその旨が書かれ、`Result.RemainingAssetPath` が残っている場所を示します。要求した種類を無視して常に普通の Blueprint を作る汎用の Blueprint Factory は、特定の種類の Blueprint では候補から外れます（`/Script/Engine.Blueprint` 自体では今までどおり使えます）。`/Script/Engine.Blueprint` を指定した次の 2 つの要求は、何も作る前に `InvalidParams` で断ります。汎用の Factory は、そのままだと別の種類のアセットを、その種類に必要な検査を通さずに作ってしまうためです。エンジンが専用の Blueprint の種類を対応付けている `FactoryParams.ParentClass`（Animation Instance の派生は Animation Blueprint、User Widget の派生は Widget Blueprint など）には、代わりに使うクラスをメッセージと `Result.RequiredClassName` で返します（例: `/Script/Engine.AnimBlueprint`。そのクラスの Factory と受け取る `FactoryParams` は `ListFactoriesForClass` で調べられます）。`UControlRig` の派生を `ParentClass` に渡した場合は、使うべき Control Rig のクラスを挙げるメッセージで断ります（`Result.RequiredClassName` は付きません）。Actor など専用の種類が要らない親と、`ParentClass` の省略は、今までどおり作れます。Control Rig については [Control Rig アセットの形式](#control-rig-アセットの形式) を参照 |
 | 🆓 `ListCreatableAssetClasses` | `CreateAsset` が作成可能な全 UClass をFactory数・デフォルトFactory付きで返す（重い呼び出し） |
-| 🆓 `ListFactoriesForClass` | 指定 `ClassName` に対応する Factory 候補と各 `FactoryParams` スキーマを返す |
+| 🆓 `ListFactoriesForClass` | 指定 `ClassName` に対応する Factory 候補と各 `FactoryParams` スキーマを返す。汎用の Blueprint Factory は、特定の種類の Blueprint では一覧に出なくなりました（`CreateAsset` を参照） |
 | `DuplicateAsset` | 既存アセットを複製 |
 | `CopyAsset` | アセットを新しい完全パッケージパスへコピー（コピー先が存在する場合は失敗・`AssetCreate` 必要） |
-| `RenameAsset` | アセットをリネーム / 別パスへ移動 |
-| `MoveAsset` | 名前を維持したままアセットを別フォルダへ移動し、リダイレクタが残ったかを報告（`AssetMutate` 必要） |
-| `DeleteAsset` | アセットを削除 |
+| `RenameAsset` | アセットをリネーム / 別パスへ移動。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `MoveAsset` | 名前を維持したままアセットを別フォルダへ移動し、リダイレクタが残ったかを報告（`AssetMutate` 必要）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `DeleteAsset` | アセットを削除。`DisableSave` が有効なときは `PolicyViolation` で拒否。削除の後もパッケージのファイルがディスクに残ったときは `Deleted: true` ではなく `ExecutionFailed`（artifact なし）を返す: エディタからは消えたがファイルは削除できず、次のエディタ起動で戻る |
 | `CreateFolder` | Content Browser に新規フォルダを作成 |
-| `DeleteFolder` | 空フォルダを削除（空でない場合 `NotEmpty`） |
-| `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし） |
-| `MoveFolder` | フォルダ内の全アセットをサブフォルダ構造を保ったまま移動。部分失敗は `FailedAssets` に列挙（`AssetFolderRefactor` 必要） |
+| `DeleteFolder` | 空フォルダを削除（空でない場合 `NotEmpty`）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `ForceDeleteFolder` | フォルダと配下アセットを一括削除（50 件上限・外部参照チェックなし）。削除した・一部だけ削除した・フォルダが無い・上限を超えた、のどれでも成功を返し、どれだったかは `Result.Status`（`Deleted` / `PartiallyDeleted` / `NotFound` / `TooManyAssets`）に入る。削除まで進んだときは `DeletedAssetCount` / `FailedAssetCount` も入る。`DisableSave` が有効なときは `PolicyViolation` で拒否。エディタからは消えたがパッケージのファイルをディスクから削除できなかった（次のエディタ起動で戻る）アセットは、`DeletedAssetCount` / `DeletedAssetPaths` ではなく `FailedAssetCount` に数え、`Status` は `PartiallyDeleted` になる（応答は `Success` のまま）。フォルダを消す前にディスク上の `.uasset` / `.umap` を走査し（アセットレジストリに載っていないものも含む）、1 つでも残っていればそのフォルダはディスクにも Content Browser にも残る。レジストリに載っていない残存パッケージは 1 パッケージにつき `FailedAssetCount` に 1 足す（そのため `FailedAssetCount` と `DeletedAssetCount` の合計が削除前の件数になるとは限らない）。もう一度呼んでもフォルダは消えない。残ったファイルは手で（ソース管理を通して）消すか、`DeleteAsset` で個別に消す |
+| `MoveFolder` | フォルダ内の全アセットをサブフォルダ構造を保ったまま移動。部分失敗は `FailedAssets` に列挙（`AssetFolderRefactor` 必要）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | 🆓 `GetSelectedAssets` | Content Browser で現在選択中のアセットを返す |
-| `SelectAssets` | Content Browser で指定アセットを選択（`ContentBrowserNavigate` 必要） |
+| `SelectAssets` | Content Browser で指定アセットを選択（`ContentBrowserNavigate` 必要）。UE 5.8 未満の、描画しないエディタでは、先にレベルエディタの中に Content Browser を開くことがあり、`NotAllowed`（`Reason: Headless`）・`ExecutionFailed`・`InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
 | 🆓 `GetContentBrowserPath` | Content Browser に現在表示されているフォルダパスを返す |
-| `SetContentBrowserPath` | Content Browser を指定フォルダに移動（`ContentBrowserNavigate` 必要） |
+| `SetContentBrowserPath` | Content Browser を指定フォルダに移動（`ContentBrowserNavigate` 必要）。UE 5.8 未満の、描画しないエディタでは、先にレベルエディタの中に Content Browser を開くことがあり、`NotAllowed`（`Reason: Headless`）・`ExecutionFailed`・`InternalError` で終わることがある。 [別ウィンドウが理由で断られるとき](#別ウィンドウが理由で断られるとき)を参照。 |
 | 🆓 `GetOpenAssets` | アセットエディタで現在開いているアセット一覧を返す |
 | 🆓 `ListAssetRedirectors` | フォルダ配下（既定はプロジェクト全体の `/Game`）のアセットリダイレクタを、アセットをロードせずに元パス・先パス付きで一覧取得する |
-| `FixAssetRedirectors`（`RedirectorFixup` 必要） | `/Game` 全体（常に再帰的）を対象に、解決可能なアセットリダイレクタを一括修正・削除する |
-| `FixUpRedirectorsInFolder`（`RedirectorFixup` 必要） | 同じ修正処理を 1 フォルダに限定して実行。解決できなかったものは `FailedRedirectors` に返る |
+| `FixAssetRedirectors`（`RedirectorFixup` 必要） | `/Game` 全体（常に再帰的）を対象に、解決可能なアセットリダイレクタを一括修正・削除する。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `FixUpRedirectorsInFolder`（`RedirectorFixup` 必要） | 同じ修正処理を 1 フォルダに限定して実行。解決できなかったものは `FailedRedirectors` に返る。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | 🆓 `GetAssetReferences` | 指定アセットを起点に参照グラフ（参照元・参照先・両方）を指定深さまで探索する |
 | 🆓 `GetAssetSizeMap` | フォルダ配下のディスクサイズ（任意で常駐メモリサイズ）をアセット単位で集計し降順ソートする |
 | 🆓 `GetAssetSizeMapByClass` | フォルダ配下のディスクサイズをアセットクラス単位で集計し降順ソートする |
@@ -645,7 +1307,7 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | 🆓 `GetPrimaryAssetTypeInfo` | 単一の `PrimaryAssetType` の詳細（ディレクトリ・個別アセット・既定Rule）を取得する |
 | 🆓 `ListPrimaryAssets` | 指定 `PrimaryAssetType` に属する `PrimaryAssetId` とアセット一覧を取得する |
 | 🆓 `GetAssetBundle` | 指定 `PrimaryAssetId` の `AssetBundle` エントリを取得する（未定義なら空配列） |
-| 🆓 `GetAssetTags` | アセットの Asset Registry タグマップを取得する |
+| 🆓 `GetAssetTags` | アセットの Asset Registry タグマップを取得する | 秘密のタグは `***` になって `MaskedFields` に載ります（タグに `IsMasked` は付きません）: Blueprint の検索用タグ `FiBData`、秘密らしい名前のタグ、クラスがメモリに無いタグ。`IncludeSecretValues` / `SecretValuesOffset` を受け付けますが、`FiBData` はそれでも読めません — [安全と Capability](safety.md#秘密値の平文での読み取り) を参照
 | 🆓 `GetPrimaryAssetIdForPath` | アセットパスから `PrimaryAssetId` を逆引きする（未登録時は `Found:false` でエラーにしない） |
 | 🆓 `GetPrimaryAssetRules` | 指定 `PrimaryAssetId` のマージ済み（Type既定 + 個別上書き）`PrimaryAssetRules` を取得する |
 | 🆓 `GetManagedPackageList` | 指定 `PrimaryAssetId` が管理するパッケージ一覧を取得する |
@@ -657,6 +1319,10 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 | `LoadPrimaryAsset`（要 `PrimaryAssetLoad`） | `PrimaryAsset` を明示的にメモリへロードする（ノンブロッキング、PIE中も許可） |
 | `UnloadPrimaryAsset`（要 `PrimaryAssetUnload`） | `PrimaryAsset` を明示的にメモリからアンロードする（PIE中は拒否） |
 
+> **フォルダを受け取るパラメータは、コンテンツのルートそのものを受け付ける。** `SearchAssets`・`ListAssetRedirectors`・`GetAssetSizeMap`・`GetAssetSizeMapByClass`・`StartAssetAudit`・`RunAssetAudit`・`FindUnreferencedAssets`・`FindCircularReferences`・`FindBrokenReferences` は、`PackagePath` / `FolderPath` に `/Game`（またはプラグインのコンテンツのルート。たとえば `/MyPlugin`）を、`/Game/` やその下のフォルダと同じように渡せる。末尾の `/` は外され、フォルダは末尾の `/` が無い形で扱われる（`ListAssetRedirectors` は応答の `FolderPath` にもその形を返す）。マウントされたルートでもその下でもないパスや空の文字列は `InvalidParams` で、エラー文に引数名と渡された値が入る（`'PackagePath' value '…': <理由>`）。`StartValidationJob` も `PackagePath` にコンテンツのルートを同じように受け付ける。アセット 1 件のパスを求めるコマンドは変わらず、ルートそのものはそこでは拒否される。
+>
+> **Content Browser のコマンドは、Content Browser があるかどうかを示す。** `GetSelectedAssets`・`SelectAssets`・`GetContentBrowserPath`・`SetContentBrowserPath` は、Content Browser のモジュールが読み込まれていない環境では、コマンド一覧で使えないもの（`Available: false`、`UnavailableReason: HandlerUnavailable`、`UnavailableDetail: ExecutionEnvironment`）として示され、呼ぶ前に分かる。以前は使えるものとして示され、呼ぶと断られていた。Toolset ブリッジ側（`Toolset.Editor.Toolset.Assets.GetContentBrowserPath` など）は対象外で、可否は Toolset 連携に従う。
+
 > **Note**: `StartAssetAudit` は**ジョブ型コマンド**の一例で、呼び出しをブロックせずに即座に応答を返し、実際の処理はエディタのフレームをまたいで進む。`uaip_execute` の呼び出しに MCP の `_meta.progressToken` を添えると、応答待ちの間ブリッジがおよそ 5 秒おきに `notifications/progress` を送出する。内容は経過秒数とエディタ自身の状態（`STARTING` / `RUNNING` / `UNRESPONSIVE`）のみで、**ジョブ内部の進捗は含まれない**（それを知りたい場合は `GetAssetAuditStatus` をポーリングする）。この仕組みは `uaip_execute` にのみ適用され（`uaip_run_scenario` は対象外）、クライアントが進捗トークンを送った場合にのみ働く。また、届いた通知を実際に表示するかどうかは MCP クライアント側の実装による。監査ジョブが 1 フレームあたり走査に使う時間の上限は `Config/DefaultUAIP.ini` の `[UAIP.Jobs] AuditStepBudgetMs` で変更できる（既定 `10.0`、`[1.0, 100.0]` の範囲にクランプされる。範囲外を指定してもエラーにはならず自動的に範囲内へ収められる）。
 
 
@@ -665,6 +1331,8 @@ Toolset ブリッジコマンドを実装する際の調査用コマンド。通
 > `SaveAsset` が対象にするのは**ロード済みかつ未保存の変更を持つパッケージだけ**。未ロードのアセットは未保存の変更を持ちようがないため、ロードして書き戻すことはせず `Skipped`（`Reason: "NotLoaded"`）として返る。すでに保存済みのものも `Skipped`（`NotDirty`）になる。どちらもエラーではない。`/Engine/` と `/Script/` 配下はプロジェクト外へ影響するため `Failed`（`WriteForbidden`）として拒否されるが、呼び出し全体は失敗せず、他のアセットの保存はそのまま行われる。SafetyPolicy が `DisableSave=True` の場合のみ呼び出し全体が `PolicyViolation` になる。
 >
 > **`ApplyValidationFix` との関係**: バリデータが提供する修正が `FAutoSavingFixer` で包まれていても、UAIP 経由の適用では**ディスクへ書き込まれない**。エンジンの自動保存が人間の確認を求めるモーダルダイアログ経由であり、応答する人がいない非対話実行では成立しないため。この場合 `ApplyValidationFix` は `Applied: true` と `AssetSaved: false` を返すので、**`AssetSaved` が `false` なら `SaveAsset` で明示的に保存する**こと。
+>
+> **`CloseAsset` — 成功時の `Result`。** `AssetPath`（要求の `AssetPath`）と `ClosedEditorCount`（整数）を返します。`ClosedEditorCount` は、閉じる前に開いていたそのアセットのエディタの数です。`0` は、そのアセットのエディタが開いていなかった（何も閉じていない）ことを表し、このときも成功です。
 
 > **Note — `FactoryParams` で名指しするクラス自体が Capability を要求することがあります。** 一部のドメインは、ここで名指しされたクラスを、そのドメインの編集コマンドと同じポリシーで審査します — 現時点では StateTree の `FactoryParams.SchemaClass` と ControlRig の `FactoryParams.ParentClass` が該当します。Blueprint 自身の `FactoryParams.ParentClass`（省略可能、既定は `AActor`）と Anim Blueprint の `FactoryParams.TargetSkeleton`（必須）は**この対象ではなく**、`AssetCreate` 以外の Capability を要求しません。どちらもオンデマンドには読み込まれなくなりました。すでにメモリ上にないクラスは、呼び出し側がその名前を指定できるかを判定するためだけに読み込まれることなく、未解決として拒否されます。名指しされたクラスが要求する Capability をセッションが持っていない場合、`CreateAsset` は **`CapabilityNotAvailable`** を返し、不足している Capability 名はメッセージ本文に入ります — 他の経路と同じ扱いです。詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
 
@@ -717,7 +1385,7 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 | `DeleteActorFromLevel` | Editor レベルからアクターを削除 |
 | 🆓 `GetActorTransform` | Editor 上のアクターのトランスフォーム取得 |
 | `SetActorTransform` | Editor 上のアクターのトランスフォーム設定 |
-| `OpenLevel` | エディタビューポートでレベルを開く（File > Open Level） |
+| `OpenLevel` | エディタビューポートでレベルを開く（File > Open Level）。ディスク上にパッケージがまだ無い（一度も保存していない）ワールドは `PreconditionFailed` で拒否する。先に `UAIP.Editor.Assets.SaveAsset` で保存する |
 | `NewLevel` | テンプレートから新規レベルを作成（EmptyLevel / EmptyOpenWorld / Basic / OpenWorld） |
 | `SelectActors` | 指定アクターを Editor レベルで選択（既存選択を置換または追加） |
 | 🆓 `ListSelectedActors` | 現在 Editor で選択中のアクター一覧を返す |
@@ -728,18 +1396,24 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 | 🆓 `GetVisibleActors` | アクティブなエディタビューポートに現在表示されているアクターを返す（視錐体カリング） |
 | 🆓 `ProjectWorldToScreen` | ワールド空間の位置をスクリーン座標に投影 |
 | 🆓 `ProjectScreenToWorld` | スクリーン座標からワールドにレイをキャスト（ECC_Visibility ライントレース） |
-| 🆓 `ListActorComponents` | レベルに配置済みのアクターが持つコンポーネントを列挙。各エントリは以下の 3 コマンドが受け取る `ComponentId` に加え、`ComponentClassPath`・`Origin`（`Instance` / `SimpleConstructionScript` / `UserConstructionScript` / `Native`）・`IsEditableInstance`・`IsSceneComponent`・`IsRootComponent`・`AttachParentComponentName`・`AttachSocketName` を返す。さらに各エントリは、そのクラスのコンポーネントを**追加**するのに何が要るかを `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）・`RequiredCapabilities`・`MissingCapabilities` として返す — `ComponentCustomTypeEdit` が要るかどうかを書き込みを試す前に確認できるのはこれによる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要 |
+| 🆓 `GetTransformGizmoSize` | トランスフォームギズモの大きさの設定と、使用中のギズモがどれを読むかを返す。`AxisSizeMultiplier`（TRS ギズモの倍率。UE 5.8 の既定）、`LegacySizeOffset`（旧ギズモのオフセット）、`GizmoVersion` / `UsesNewTRSGizmos`（使用中のギズモの種類）、`EffectiveSetting`（`AxisSizeMultiplier` / `LegacySizeOffset`、判断できない場合は `Unknown`）。UE 5.7 には倍率が無く、`GizmoVersion` と `AxisSizeMultiplier` は返らず、代わりに `AxisSizeMultiplierUnavailableReason` が理由を示す。新しいギズモを使っている場合の `EffectiveSetting` は `Unknown`。`EditorInspect` 必要 |
+| `SetTransformGizmoSize` | ギズモの大きさを設定し、エディタ設定に保存してビューポートを描き直す。`AxisSizeMultiplier`（0.1〜10）は TRS ギズモの倍率、`LegacySizeOffset`（-10〜150）は旧ギズモの大きさに足すオフセット。どちらか一方または両方を指定する。両方を検証してから書くので、範囲外・数値でない値・無限大・どちらも未指定は、何も書かずに `InvalidParams` で断られる。応答には書いた欄（`Applied`）と `EffectiveSetting` が入る。描画が変わるのは今のギズモが読む方だけで、効いていない方だけを書いた場合は値を保存し、`Note` で「今のギズモは別の値を読んでいる」と知らせる（`EffectiveSetting` が `Unknown` のときは `Note` なし）。UE 5.7 では `AxisSizeMultiplier` を含む呼び出しは、エンジンの版が理由と分かる文の `InvalidParams` で呼び出し全体を断り、`LegacySizeOffset` だけなら書ける。同じ設定は `UAIP.Editor.Sequencer.SetAnimModeGizmoScale` でも書ける。`EditorViewportControl` 必要 |
+| 🆓 `ListActorComponents` | レベルに配置済みのアクターが持つコンポーネントを列挙。各エントリは以下の 3 コマンドが受け取る `ComponentId` に加え、`ComponentClassPath`・`Origin`（`Instance` / `SimpleConstructionScript` / `UserConstructionScript` / `Native`）・`IsEditableInstance`・`IsSceneComponent`・`IsRootComponent`・`AttachParentComponentName`・`AttachSocketName` を返す。さらに各エントリは、そのクラスのコンポーネントを**追加**するのに何が要るかを `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）・`RequiredCapabilities`・`MissingCapabilities` として返す — `ComponentCustomTypeEdit` が要るかどうかを書き込みを試す前に確認できるのはこれによる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要。`ComponentId` は不透明で、すでにエスケープ済みの識別子。他のコンポーネント系コマンドにそのまま渡し、手で組み立てたり編集したりしない |
 | `AddActorComponent` | レベルに配置済みのアクターにコンポーネントを追加（Details パネルの *Add Component* ボタン相当）。1 つの Undo ステップとして記録され、新しい `ComponentId` を返す。`ComponentName` は省略するとエンジンが命名する。`AttachParentComponentName` / `AttachSocketName` は `USceneComponent` 派生にのみ適用され、アクターにルートが無い場合は新しいコンポーネントがルートになる。クラスは既にロード済みのものからのみ解決し、要求に応じたロードは行わない（未ロードのクラスは `NotFound`）。`ActorComponentEdit` が必要で、`/Script/Engine` と `/Script/LiveLinkComponents` 以外のクラスにはさらに `ComponentCustomTypeEdit` が必要 — [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照。PIE 中は拒否 |
 | `DeleteActorComponent` | レベルに配置済みのアクターからインスタンスコンポーネントを削除。1 つの Undo ステップとして記録される。削除できるのは `Origin: Instance` のみ — SCS のものは Blueprint コンポーネントコマンドの担当、コンストラクションスクリプト由来のものはスクリプトが作り直し、Native のものはそのクラスの全インスタンスに存在するため、いずれも「どの経路が担当か」を示して拒否する。アクターの `DefaultSceneRoot` も拒否対象。削除したシーンコンポーネントの子は、ワールドトランスフォームを保ったままその親へ付け替えられる。`ExpectedComponentClass` は必須（一覧が返した `ComponentClassPath` をそのまま渡す）で、古くなった識別子は追従せず `NotFound` で拒否する。`ActorComponentEdit` が必要。PIE 中は拒否 |
 | `ReparentActorComponent` | レベルに配置済みのアクターのシーンコンポーネントを、同じアクターの別のコンポーネントの下へ、ワールドトランスフォームを保ったまま付け替える。1 つの Undo ステップとして記録される。両方が同一アクター上の `USceneComponent` 派生で、動かす側は `Origin: Instance` である必要がある。「どこにも付いていない」状態は表現できず、切り離しはアクターのルートを `NewParentComponentName` に指定して表す。ルート自身は動かせない。循環になる付け替えと、新しい親に存在しないソケットは、書き込み前に拒否される。`ExpectedComponentClass` は上と同様に必須。`ActorComponentEdit` が必要。PIE 中は拒否 |
-| 🆓 `GetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントのプロパティ値を、`ListActorComponents` / `AddActorComponent` が返す `ComponentId` で指定して読み取る — `GetActorProperty` は、アクターがコンポーネントを保持するオブジェクト参照を辿るパスを拒否するため、これが唯一の到達手段になる。`Value`・`PropertyType`・`Origin`、および `WriteRequirements`（そのプロパティへの書き込みが `ActorComponentEdit` に加えて何を要求するか、このセッションが既に持っているものと不足しているものに分けたもの、書き込みがそもそも可能かどうか、`SetActorComponentProperty` の 2 つの値パラメータのどちらで渡す必要があるか）を返す。`ExpectedComponentClass` は必須で、古くなった `ComponentId` は追従せず拒否する。どの `Origin` のコンポーネントも読み取れる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要 |
-| `SetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントへプロパティ値を書き込む。指定方法は `GetActorComponentProperty` と同じで、1 つの Undo ステップとして記録される。値は UE インポートテキストとして `Value`、または JSON として `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` で値全体の置換ではなくコンテナの要素 1 つだけを操作できる — これらのパラメータと、参照・複合値の書き込みに追加で必要な Capability（先に `GetActorComponentProperty` を呼べば分かる）については [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。`ExpectedComponentClass` は上と同様に必須。コンポーネントの `Origin` が `UserConstructionScript` の場合は拒否される — そのスクリプトが次回実行されると書き込みが失われるため。`ActorComponentEdit` が必要。PIE 中は拒否 |
+| 🆓 `GetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントのプロパティ値を、`ListActorComponents` / `AddActorComponent` が返す `ComponentId` で指定して読み取る — `GetActorProperty` は、アクターがコンポーネントを保持するオブジェクト参照を辿るパスを拒否するため、これが唯一の到達手段になる。`Value`・`PropertyType`・`Origin`、および `WriteRequirements`（そのプロパティへの書き込みが `ActorComponentEdit` に加えて何を要求するか、このセッションが既に持っているものと不足しているものに分けたもの、書き込みがそもそも可能かどうか、`SetActorComponentProperty` の 2 つの値パラメータのどちらで渡す必要があるか）を返す。`ExpectedComponentClass` は必須で、古くなった `ComponentId` は追従せず拒否する。どの `Origin` のコンポーネントも読み取れる。エディタワールドを読むため PIE 中も応答する。`EditorInspect` が必要。`ComponentId` は不透明で、すでにエスケープ済み。`ListActorComponents` が返した形のまま渡す シークレットのプロパティ、またはパスの途中に秘密の親があるものは `***` で返る（以前、コンポーネントの読み取りはマスクされなかった）。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 `PropertyPath` は `Instanced` プロパティが持つオブジェクトの中まで続けられます（例: `SensesConfig[0].SightRadius`）。[Instanced サブオブジェクトへのプロパティパス](#instanced-subobject-paths)を参照してください。 |
+| `SetActorComponentProperty` | レベルに配置済みのアクターが持つコンポーネントへプロパティ値を書き込む。指定方法は `GetActorComponentProperty` と同じで、1 つの Undo ステップとして記録される。値は UE インポートテキストとして `Value`、または JSON として `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` で値全体の置換ではなくコンテナの要素 1 つだけを操作できる — これらのパラメータと、参照・複合値の書き込みに追加で必要な Capability（先に `GetActorComponentProperty` を呼べば分かる）については [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。`ExpectedComponentClass` は上と同様に必須。コンポーネントの `Origin` が `UserConstructionScript` の場合は拒否される — そのスクリプトが次回実行されると書き込みが失われるため。`ActorComponentEdit` が必要。PIE 中は拒否 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 `PropertyPath` は `Instanced` プロパティが持つオブジェクトの中まで続けられます（例: `SensesConfig[0].SightRadius`）。[Instanced サブオブジェクトへのプロパティパス](#instanced-subobject-paths)を参照してください。 |
 
 > **Note — インスタンス側専用です。** この 6 コマンドが対象とするのは、**レベルに配置済みのアクター**が持つコンポーネントです（`GetActorComponentProperty` は、コンストラクションスクリプトが所有するものを含め、どの `Origin` のコンポーネントも読み取れる — 書き込みだけが拒否される）。アクターの Blueprint 側に宣言されたコンポーネントは [UAIP.Editor.Blueprint — コンポーネント — SCS](#コンポーネント--scs8) を使ってください。インスタンス側にリネームと複製に相当する操作はありません（望む名前を指定して追加し直してください）。
+
+> **Note — GeometryCollection コンポーネントの `RestCollection` の書き込み。** `SetActorComponentProperty` が GeometryCollection コンポーネントの `RestCollection` を書き、値が実際に変わった場合、書き込みは単純なプロパティ代入ではなくエンジンの `SetRestCollection` を通して確定されます。そのため、アセットの既定値（ダメージ設定など）がコンポーネントに取り込まれます。順序が重要です。`RestCollection` を先に書いてからダメージ設定を書く順なら、書いた設定が残ります。逆の順だと、ダメージ設定はアセットの値で上書きされます。値が変わらない書き込み（同じアセットの書き直し）では、既定値の取り込みは起きません。
 
 ### Toolset ブリッジ — Level（8 件）🧩
 
 `EditorAppToolset`（UE 5.8+、EditorToolset プラグイン）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.Level.*`。
+
+> ⚠️ **`SelectActors` と `FocusOnActors` は `Actors` を、アクターのパス文字列または `{"refPath": ...}` を要素とする配列で受け、ブリッジが各要素を `{"refPath": ...}` にして送ります。** 空文字列・`null`・`{"refPath": ""}`・数値・`refPath` の無いオブジェクトの要素は除いて、残りを送ります。除いた結果が空の配列は空配列として送られます（`SelectActors` では、空配列は選択の全解除です）。⚠️ `Actors` が `null`・省略・配列でないときは、Toolset を呼ぶ前に `InvalidParams` で断ります。以前の `SelectActors` は `null` を「選択の全解除」として扱いましたが、配列の渡し忘れで選択が黙って消えてはならないので断ります。全解除したいときは `[]` を渡してください。
 
 | コマンド | 説明 |
 |---|---|
@@ -756,48 +1430,179 @@ Editor 上でのアクター配置・トランスフォーム・レベルロー�
 
 ## UAIP.Editor.Property
 
-アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。`Get*` 系コマンドは、シークレットらしきプロパティ値（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）をネストした struct メンバーも含めて `***` でマスクする — シークレットなメンバーを内包する複合値（struct 等）は、その部分だけでなく値全体がマスク対象になる。`Set*` 系コマンドは、テキスト値 `Value` で 17 種の struct 型（ベクトル・回転・Transform・カラー・`FGuid`・区間型・`FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`・`FBoneReference` など）と `int8` から `uint64` までの全整数幅を書き込める。配列・マップ・セット・オプショナル・その他の構造体・オブジェクト参照は `ValueJson` で渡し、コンテナの要素 1 つだけを `Operation` / `ElementIndex` / `ElementKeyJson` で操作できる — パラメータと、これらを制御する 2 つの Capability（`PropertyReferenceEdit` / `PropertyStructuredEdit`）については [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。
+アクター・アセット・Blueprint デフォルト・DataTable 行・World / Project 設定のプロパティ読み書き。`Get*` 系コマンドは、シークレットらしきプロパティ値（名前がシークレットパターンに一致・シークレットメタデータあり・ファイルパス型）をネストした struct メンバーも含めて `***` でマスクする — シークレットなメンバーを内包する複合値（struct 等）は、その部分だけでなく値全体がマスク対象になる。`Set*` 系コマンドは、テキスト値 `Value` で 17 種の struct 型（ベクトル・回転・Transform・カラー・`FGuid`・区間型・`FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`・`FBoneReference` など）と `int8` から `uint64` までの全整数幅を書き込める。配列・マップ・セット・オプショナル・その他の構造体・オブジェクト参照は `ValueJson` で渡し、コンテナの要素 1 つだけを `Operation` / `ElementIndex` / `ElementKeyJson` で操作できる — パラメータと、これらを制御する 2 つの Capability（`PropertyReferenceEdit` / `PropertyStructuredEdit`）については [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。 シークレットかどうかはパス全体で判定する。パスの途中のどれか 1 つでも秘密なら（`MyPath.FilePath` など）値はマスクされる（以前は末端だけを見ていた）。エンジンのパスワード欄の印 `meta=(PasswordField=true)` と、CryptoKeys の `EncryptionKey`・`SigningPrivateExponent`・`SecondaryEncryptionKeys` も秘密として扱う。以下の `Get*` 6 本は `IncludeSecretValues` で平文を `Result.SecretFieldValues` に返せる — [シークレット値の読み取り](#reading-secret-values)を参照。 `Set*` の 6 本も `IncludeSecretValues` を受け付けますが、秘密のコンテナへの要素操作（またはパスで秘密の配列に添字を付けること）を実行してよいとするための指定にすぎません。書き込みは平文を返さず、平文は対応する `Get*` で読みます。秘密の対象への書き込みの応答と artifact は、`PreviousValue`・`NewValue`・`ElementKeyJson` を `***` と `IsMasked: true` で返し、`Changed` は出さず、UAIP が組み立てる失敗の文言には値・要素数・範囲を入れません。書く前の値は読みません。空の秘密も伏せます。構造体や配列の中に秘密があれば、値全体を伏せます。⚠️ 以前は `Set*` の応答が秘密のプロパティの書く前の値と書いた後の値を平文で返し、秘密の対象でも `Changed` を返していました。
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `GetActorProperty` | Editor アクターのプロパティ値を取得 |
-| `SetActorProperty` | Editor アクターのプロパティを設定 |
-| 🆓 `GetWorldSetting` | WorldSettings のプロパティ値を取得 |
-| `SetWorldSetting` | WorldSettings のプロパティを設定 |
-| 🆓 `GetAssetProperty` | アセット（DataAsset 等）のプロパティ値を取得 |
-| `SetAssetProperty` | アセットのプロパティを設定し `MarkPackageDirty` を呼ぶ |
-| 🆓 `GetBlueprintDefault` | Blueprint CDO のプロパティ値を取得 |
-| `SetBlueprintDefault` | Blueprint CDO のプロパティを設定 |
-| 🆓 `GetProjectSetting` | `UDeveloperSettings` CDO のプロパティ値を取得 |
-| `SetProjectSetting` | `UDeveloperSettings` CDO のプロパティを設定し `SaveConfig()` を呼ぶ |
-| 🆓 `GetDataTableRow` | DataTable 行のプロパティ値を取得 |
-| `SetDataTableRow` | DataTable 行のプロパティを設定 |
+| 🆓 `GetActorProperty` | Editor アクターのプロパティ値を取得 `IncludeSecretValues` を取る `PropertyPath` は `Instanced` プロパティが持つオブジェクトの中まで続けられます（例: `SensesConfig[0].SightRadius`）。[Instanced サブオブジェクトへのプロパティパス](#instanced-subobject-paths)を参照してください。 |
+| `SetActorProperty` | Editor アクターのプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 アクターのコンストラクションスクリプトがそのプロパティを戻す場合と、親が作り直す子アクターへの書き込みは、何も書く前に `NotAllowed` で断ります。今の値と同じ値は、書かずに成功します（`Changed: false`） — [コンストラクションスクリプトで戻る書き込みと子アクターの拒否](#writes-reverted-by-construction) を参照。`NewValue` は書いた後に読み直した値です — [書き込みの応答](#write-read-back) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 `PropertyPath` は `Instanced` プロパティが持つオブジェクトの中まで続けられます（例: `SensesConfig[0].SightRadius`）。[Instanced サブオブジェクトへのプロパティパス](#instanced-subobject-paths)を参照してください。 |
+| 🆓 `GetWorldSetting` | WorldSettings のプロパティ値を取得 `IncludeSecretValues` を取る |
+| `SetWorldSetting` | WorldSettings のプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 コンストラクションスクリプトがそのプロパティを戻す場合は、何も書く前に `NotAllowed` で断ります。今の値と同じ値は、書かずに成功します（`Changed: false`） — [コンストラクションスクリプトで戻る書き込みと子アクターの拒否](#writes-reverted-by-construction) を参照。`NewValue` は書いた後に読み直した値です — [書き込みの応答](#write-read-back) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| 🆓 `GetAssetProperty` | アセット（DataAsset 等）のプロパティ値を取得 `IncludeSecretValues` を取る `PropertyPath` は `Instanced` プロパティが持つオブジェクトの中まで続けられます（例: `SensesConfig[0].SightRadius`）。[Instanced サブオブジェクトへのプロパティパス](#instanced-subobject-paths)を参照してください。 |
+| `SetAssetProperty` | アセットのプロパティを設定し `MarkPackageDirty` を呼ぶ `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `NewValue` は書いた後に読み直した値です — [書き込みの応答](#write-read-back) を参照。対象が Blueprint アセットのときの後処理と「コンパイルしていない」警告は、書く前に行った比較で決まるので、`Changed: false` でも出ることがあります。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 `PropertyPath` は `Instanced` プロパティが持つオブジェクトの中まで続けられます（例: `SensesConfig[0].SightRadius`）。[Instanced サブオブジェクトへのプロパティパス](#instanced-subobject-paths)を参照してください。  書き込み先が、専用のコマンドが書き込む Blueprint の中のオブジェクトのときは、`InvalidParams` と `Result.Reason: BlueprintSubobjectHasDedicatedCommands` で断ります。`Result.SuggestedCommand` に使う専用のコマンドが入り（複数あるときはカンマ区切り）、書き込みは起きません。 |
+| 🆓 `GetBlueprintDefault` | Blueprint CDO のプロパティ値を取得 `IncludeSecretValues` を取る。PIE や Simulate の間も読める |
+| `SetBlueprintDefault` | Blueprint CDO のプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 PIE や Simulate の間は、引数を検査したあとに `NotAllowed` で断る（以前は `ExecutionFailed`）。 `NewValue` は書いた後に読み直した値です — [書き込みの応答](#write-read-back) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| 🆓 `GetProjectSetting` | `UDeveloperSettings` CDO のプロパティ値を取得 `IncludeSecretValues` を取る |
+| `SetProjectSetting` | `UDeveloperSettings` CDO のプロパティを設定し `SaveConfig()` を呼ぶ。`DisableSave` が有効なときは `PolicyViolation` で拒否します（以前は `ExecutionFailed` と "Save operations are disabled by safety policy." でした）。`IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 書く前の値は常に伏せられます。印は `***` と `IsMasked: true` になりました（以前は `***REDACTED***`）。`IsMasked` が指すのは `PreviousValue` だけです。`NewValue` は書いた後に読み直した平文の値です（秘密の設定のときだけ `***`）— [書き込みの応答](#write-read-back) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| 🆓 `GetDataTableRow` | DataTable 行のプロパティ値を取得 `IncludeSecretValues` を取る |
+| `SetDataTableRow` | DataTable 行のプロパティを設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `NewValue` は書いた後に読み直した値です — [書き込みの応答](#write-read-back) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+
+**失敗の結果コード。** `Get*` コマンドは、プロパティ経路を対応する `Set*` コマンドと同じ `ErrorCode` で断ります。プロパティが無いときは `NotFound`、経路の書式の誤り・深すぎる経路・範囲外の添字・たどれないものを経由する経路（添字なしの構造体の固定長配列など）は `InvalidParams` です。⚠️ これらの読み取りは、以前は理由によらず `ExecutionFailed` を返していました。対象そのもの（アクター・アセット・Blueprint・行・設定のオブジェクト）が見つからないときは、読み取りも書き込みも従来どおり `ExecutionFailed` を返します。次の 2 つのドメインはプロパティ経路について独自の結果コードのままで、理由はメッセージで示します。`GetDataflowNodeProperty` / `SetDataflowNodeProperty` は `InvalidParams`、`GetSectionProperty`（`UAIP.Editor.Sequencer`）は `ExecutionFailed` を返します。
+
+**断られた書き込みは何も変えません。** `Set*` コマンドが理由を問わず断られたとき、対象の値は変わらず、そのパッケージの未保存の印も呼び出し前のままです（保存済みのパッケージは保存済みのまま）。`SetActorComponentProperty`（`UAIP.Editor.Level`）も同じです。
+
+**⚠️ 専用のコマンドがある、Blueprint の中のオブジェクト。** `SetAssetProperty` は、Blueprint に属するオブジェクトのうち専用のコマンドがあるものを書かなくなりました。書き込みは、前の値を読む前に `InvalidParams` で断り、メッセージで使うべきコマンドを完全名で示します。
+
+| オブジェクト | 専用のコマンド |
+|---|---|
+| Widget Blueprint のウィジェット（Widget Blueprint 側から指しても、コンパイルで作られるクラス側から指しても） | `UAIP.Editor.UMG.SetWidgetProperties`（`AssetPath` に Widget Blueprint を、`WidgetName` にウィジェットの名前を渡す） |
+| ウィジェットのスロット | `UAIP.Editor.UMG.SetSlotProperties` |
+| ウィジェットのアニメーション | `UAIP.Editor.UMG.CreateWidgetAnimation`、`UAIP.Editor.UMG.AddAnimationTrack` |
+| Blueprint で追加したコンポーネントの既定値、または子の Blueprint が親の Blueprint から継承したコンポーネントの上書き | `UAIP.Editor.Blueprint.SetBlueprintComponentProperty` |
+| Blueprint のコンポーネントの構成（Construction Script のノード） | `UAIP.Editor.Blueprint.AddBlueprintComponent`、`UAIP.Editor.Blueprint.RenameBlueprintComponent`、`UAIP.Editor.Blueprint.ReparentBlueprintComponent` |
+| グラフとグラフのノード | `UAIP.Editor.Blueprint.AddGraphNode`、`UAIP.Editor.Blueprint.SetPinDefaultValue`、`UAIP.Editor.Blueprint.ConnectBlueprintPins` |
+| Blueprint のクラスの既定値 | `UAIP.Editor.Property.SetBlueprintDefault`、`UAIP.Editor.Blueprint.SetBlueprintVariableDefault` |
+
+これらの書き込みは、以前は通っていました。Blueprint をコンパイルせずにオブジェクトを変えるので、変更は Blueprint が作るものに届かず、専用のコマンドの Capability も迂回できていました。それ以外の Blueprint の中のオブジェクト（タイムラインのテンプレートや、親の C++ クラスが定義したコンポーネントの既定値など）は今までどおり書けます。そのときは、Blueprint をコンパイルしていないことを `Result.Warnings` で示します。
+
+`GetAssetProperty` は、これらのオブジェクトを今までどおり読めます。上の 7 種類では、結果と artifact に `SuggestedCommand` が加わります。値は専用のコマンドの完全名を、カンマと空白で区切って並べたものです（例: `UAIP.Editor.Property.SetBlueprintDefault, UAIP.Editor.Blueprint.SetBlueprintVariableDefault`）。⚠️ `GetAssetProperty` は、パスワード欄（`IsPassword` が真の `EditableTextBox` / `EditableText`）の `Text` も `***` で伏せるようになりました。以前は平文で返していました。
+
+**⚠️ Widget Blueprint の MVVM のビューへの書き込みには、2 つの Capability が要ります。** MVVM のビュー（Widget Blueprint のビューと、その中のもの全部。ビューの設定・イベント・条件）を `SetAssetProperty` で書けるのは、`PropertyEdit` に加えて `ViewModelBindingEdit` と `ViewModelSourceEdit`（どちらも DefaultDenied）の両方をセッションが持つときだけです。以前は `PropertyEdit` だけで足りましたが、これからは前の値を読む前に書き込みを断り、メッセージで足りない Capability と、バインディング・イベント・ViewModel 用の `UAIP.Editor.MVVM` の専用のコマンドを示します。`ErrorCode` は Capability の不足の通常のものです。付与されていなければ `CapabilityNotAvailable`、運用者が明示的に拒否していれば `PolicyViolation` です。専用のコマンドが無い設定（ビュー自体の設定、イベントや条件の有効・無効）は、2 つの Capability を持てば今までどおり `SetAssetProperty` で書けます。ビューの中のグラフは今までどおりグラフとして断り、`InvalidParams` とグラフのコマンドを示します。
+
+`GetAssetProperty` は MVVM のビューを今までどおり読めます。結果と artifact に MVVM のコマンド名を `SuggestedCommand` として添え、`WriteRequirements` に 2 つの Capability と、セッションがどちらを持つか・どちらが足りないかを載せます。運用者が明示的に拒否した Capability は、`ExplicitlyDeniedCapabilities` に分けて示し、付与を頼む対象としては見せません。セッションの無いリクエストでは `RequiredCapabilities` だけを示します。
+
+**Blueprint の中への書き込みは、エディタの詳細パネルと同じ後処理を通ります。** `SetAssetProperty` が、専用のコマンドが無い Blueprint 本体の設定（`BlueprintDescription`・`BlueprintCategory`・`BlueprintNamespace` など）を書くと、エディタで設定を変えたときと同じく Blueprint を「変更あり・未コンパイル」にし、`Result.Warnings`（と artifact）に `The Blueprint was not compiled. Call CompileBlueprint if the change has to take effect.` を載せます。同じ値を書いたときは後処理も警告もありません。Capability が揃った MVVM のビューへの書き込みにも同じ警告が付きます。変わるのは指定した Blueprint だけで、それを使っているレベルのアクターなどは更新しません。
+
+- `BlueprintNamespace` を書くと、名前空間の一覧も更新し、新しい名前空間が登録されます。旧い名前空間が使われていた場合は一覧を作り直すので、時間がかかり、エディタに進捗が出ることがあります。その Blueprint を Blueprint エディタで開いていれば、そのエディタの名前空間のインポートも変更に合わせて付け替えます。複数の Blueprint をまとめて編集するエディタで開いているときは、インポートは変えず、`Warnings` に `A Blueprint editor that edits several Blueprints has this Blueprint open; its namespace imports are updated when the editor is reopened.` が加わります。
+- アニメーション BP の `TargetSkeleton` を書くと、警告がもう 1 つ加わります: `TargetSkeleton was changed without updating the animations this Animation Blueprint references; they can break until they are retargeted or replaced.` 別の資産への参照なので、`PropertyReferenceEdit` も要ります。`bEnableLinkedAnimLayerInstanceSharing` には `PropertyDefaultsOnlyEdit` も要ります。
+- 専用のコマンドがある設定は、今までと同じ `ErrorCode` で断ります。メッセージの末尾に使うべきコマンドが付くようになりました（例: Widget Blueprint の `Bindings` では `Use UAIP.Editor.UMG.AddPropertyBinding, UAIP.Editor.UMG.RemovePropertyBinding instead.`）。断りの文が秘密の値用の汎用の文になる場合や、範囲外の添字など先の検査で止まる場合も同じです。`ReparentWidgetBlueprint` を案内するのは Widget Blueprint だけで、通常の Blueprint には案内しません。編集できず専用のコマンドも無い設定（`ImportedNamespaces` など）は、今までと同じ文で断ります。
+- **⚠️ 親クラスが非推奨のとき、`bDeprecate` は外せません。** `true` の書き込みは、親クラスが既に強いている値なので通ります。`false` の書き込みは `NotAllowed` で断られ、何も変わりません: `The parent class is deprecated, so this Blueprint stays deprecated and bDeprecate cannot be changed. Remove the deprecation from the parent class instead.` boolean として読めない値は、ほかの boolean のプロパティと同じく `InvalidParams` で断られます。書いても次のコンパイルで書き戻され、エディタの UI でも変えられないため、この断りを解く Capability はありません。
+
+<a id="write-read-back"></a>
+### 書き込みの応答: `NewValue`・`Changed`・`NewValueObserved`・`ReadBackError`
+
+上の `Set*` のうち 6 コマンド（`SetActorProperty`・`SetAssetProperty`・`SetWorldSetting`・`SetBlueprintDefault`・`SetDataTableRow`・`SetProjectSetting`）に当てはまります。書き込みとエディタの変更通知が済んだ後で、書いた値を読み直します。`Result` と artifact には同じ観測が入ります。
+
+| フィールド | 意味 |
+|---|---|
+| `PreviousValue` | 書く前に読んだ値 |
+| `NewValue` | 書いた後に読み直した値。書式は `Get*` コマンドと同じです（float / double のプロパティの `1.5` は `1.5` で返りますが、struct の中の数値はエンジンのテキストの形で返るので、ベクトルは `(X=1.500000,Y=2.000000,Z=3.000000)` で返ります。JSON で送った値はエンジンのテキストか整形した JSON で返ります）。エディタや所有するオブジェクトが値を補正したとき（範囲への丸めなど）は、送った値ではなく補正後の値です。要素の操作（`Insert` / `Remove` / `Clear`）では `PreviousValue` も `NewValue` もコンテナ全体になります。どの要素かは今までどおり `ElementIndex` / `ElementKeyJson` で示します |
+| `Changed` | `PreviousValue` と `NewValue` が違うかどうか。値が戻された、または元の値に補正された場合は `false` です。比較は文字列で行うので、書き込みで作り直されたサブオブジェクトを含む値は、中身が同じでも `true` になることがあります |
+| `NewValueObserved` | `NewValue` を読み直せたときは `true`。読み直せなかったときは `false` で、`NewValue` は送った値です |
+| `ReadBackError` | `NewValueObserved` が `false` のときだけ載り、読み直せなかった理由を示します。`TargetInvalidated`（書いた後に対象が無くなった）、`PreviousValueUnreadable`（書く前の値を読めず、変わったかどうか判断できない）、`ReadBackFailed`（書いた後の値を読めなかった）。値や要素数は引用しません |
+
+`NewValueObserved` が `false` のとき、書き込みは済んでいて、応答は成功のままです。このとき `NewValue` と `Changed` を実際の値として扱わないでください。`NewValue` は送った値、`Changed` は書く前に行った見込みの判定です。
+
+- **秘密の対象**では、`NewValue` を `***` で返し、`Changed`・`NewValueObserved`・`ReadBackError` は出しません。
+- **`SetProjectSetting`**: `PreviousValue` は常に `***` で `IsMasked: true` が付き、`IsMasked` が指すのは `PreviousValue` だけです。`NewValue` は読み直した平文の値です（秘密の設定のときは `***` で、このとき `IsMasked` は伏せた値すべてを指します）。`Changed` は、UAIP が内部で読んだ書く前の値（報告はしません）と `NewValue` の比較です。
+- **Blueprint アセットへの `SetAssetProperty`**: Blueprint を「変更あり」にするかどうかと、`Warnings` に `The Blueprint was not compiled…` を加えるかどうかは、書く前に行った比較で決まります。そのため `Changed: false` でも出ることがあります。
+- ⚠️ `NewValue` は以前、送った値をそのまま返していました。これからは読み直した値なので、書式が変わることがあり（struct の中の数値 → `X=1.500000` のようなエンジンのテキストの形、JSON で送った値 → エンジンのテキストか整形した JSON）、要素の操作ではコンテナ全体が返り、値が戻された・補正された場合は `Changed: false` になります。`NewValue` を送った値と比べていた呼び出しは、書いた後に期待する値と比べてください。
+- 読み直すのはこの 6 コマンドだけです。同じプロパティ経路を使う他の書き込みコマンド（`SetActorComponentProperty`・`SetBlueprintComponentProperty` など）の応答は今までどおりです。
+
+<a id="instanced-subobject-paths"></a>
+### Instanced サブオブジェクトへのプロパティパス
+
+次の 8 コマンドの `PropertyPath` は、`Instanced` プロパティが持つオブジェクトの中まで続けられます。詳細パネルでオブジェクトを展開して編集する値を、Python を使わずに読み書きできます。対象は `GetBlueprintComponentProperty` / `SetBlueprintComponentProperty`（`UAIP.Editor.Blueprint`）、`GetAssetProperty` / `SetAssetProperty` / `GetActorProperty` / `SetActorProperty`（`UAIP.Editor.Property`）、`GetActorComponentProperty` / `SetActorComponentProperty`（`UAIP.Editor.Level`）です。AI Perception コンポーネントでの例は `SensesConfig[0].SightRadius` と `SensesConfig[0].DetectionByAffiliation.bDetectEnemies` です。
+
+- `Instanced` の単体の参照（`Ref.X`）と、その配列の要素（`Refs[0].X`）のどちらも辿れ、段数は問いません。パス全体の上限は変わりません（8 段、256 文字）。添字は `[N]` と書きます。`Name.N` は受け付けません。
+- `SensesConfig` そのものを読むと、各要素について、持っているオブジェクトのパス（クラスが分かります）が返り、オブジェクトのメンバーは展開されません。メンバーはパスに書いて指定します。このようなパスから読んだ値は、そのまま対応する `Set*` コマンドへ渡せます。
+- 書き込みの応答は、オブジェクトを経ない書き込みと同じ形（`Changed`・`NewValue`・`WriteRequirements`）で、`PropertyPath` は送ったパスのままです。元に戻す操作・変更の通知・`SetBlueprintComponentProperty` が行う Blueprint のコンパイルは、トップレベルのプロパティと同じです。Blueprint が親から継承したコンポーネントでは、子の Blueprint 側の上書きへ書きます（無ければ作り、書き込みが失敗したときは残しません）。
+- 辿るのは、書く対象自身が持っているオブジェクトだけです。別のアセット・親の Blueprint・同じ Blueprint の別のコンポーネントが持つオブジェクトは、読み取りでも書き込みでも断られます。そのアセットや Blueprint の側を書いてください。書けるようにするために子へ複製することはしません。
+- **アクターとコンポーネントの中は辿りません。** 参照が `Instanced` でも、宣言上の種類がオブジェクト一般の参照でも、中身がアクターやコンポーネントなら同じです。レベルのアクターのコンポーネントは `SetActorComponentProperty`、Blueprint のコンポーネントは `SetBlueprintComponentProperty` を使ってください。拒否文がこの 2 つを案内します。`SetActorProperty` で `RootComponent.RelativeLocation.X` を指定したときも、この拒否になります。
+- 辿ることに新しい Capability は要りません。専用のコマンドが求める Capability は、辿った先のオブジェクトと、途中の持ち主の全てに適用され、足りないものは 1 回の拒否でまとめて挙げます。パスの最後が参照そのもの（持っているオブジェクトの差し替え・新規作成）なら、通常の `Instanced` の参照の書き込みと同じものが要ります。辿った先の配列の要素の追加・削除は、通常の配列と同じです。
+- 秘密の値の下は秘密です。その先を辿るには、秘密の配列の要素操作と同じ明示の許可（`IncludeSecretValues`）が要ります。読み取りは `***` を返し、書き込みの応答は前の値と新しい値を伏せ、読み取りで得た `***` の書き戻しは断られます（`MaskPlaceholderValue`）。秘密の値の下の拒否文には、要素数・パッケージ名・クラスを出しません。
+- レベルに置いたアクターへの `SetActorProperty` / `SetActorComponentProperty` は、アクターの Blueprint が構築のたびに作り直す配列の中への書き込みを、他のプロパティと同じく書く前に `NotAllowed` で断ります。[コンストラクションスクリプトで戻る書き込みと子アクターの拒否](#writes-reverted-by-construction)を参照してください。今と同じ値の書き込みは「書かなかった」として扱います。変更は、トップレベルの書き込みと同じく Blueprint のコンパイルを通じて置いたアクターへ反映されます。詳細パネルのような置いたアクターごとの変更の通知は送らないので、詳細パネルでの編集でだけ走る後処理（値を範囲に収めるなど）は走らないことがあります。
+- 8 コマンド以外（AnimGraph のノード・`SetWorldSetting`・`SetBlueprintDefault`・`SetProjectSetting`・`SetDataTableRow` など）は、これまでどおりオブジェクトの参照の先を辿りません。DataTable の行のような構造体を対象にした `SetAssetProperty` も辿りません。
+
+| 状況 | `ErrorCode` |
+|---|---|
+| 途中の参照が `Instanced` ではない | `InvalidParams` |
+| 途中がアクターまたはコンポーネント（宣言上の種類でも、参照が持つ中身でも） | `InvalidParams`（`SetActorComponentProperty` / `SetBlueprintComponentProperty` を案内） |
+| 持っているオブジェクトが別の持ち主のもの | `InvalidParams` |
+| 添字が範囲外 | `InvalidParams` |
+| 要素や参照が空 | `NotFound` |
+| 持っているオブジェクトにそのメンバーが無い | `NotFound` |
+| 秘密の値の下で、`IncludeSecretValues` が無い（書き込みでは辿ること・添字・要素操作） | `PolicyViolation` |
+| Capability が足りない | `CapabilityNotAvailable`（明示的に拒否されていれば `PolicyViolation`）。足りないものを全て挙げる |
+| 書き込みで、途中の入れ物が編集できない（`EditConst` など） | `PolicyViolation` |
+| `SetAssetProperty` が、専用のコマンドがある Blueprint のオブジェクトへ辿った（上記参照） | `InvalidParams`（コマンドを案内）。`GetAssetProperty` は今までどおり読み、`SuggestedCommand` を足す |
+
+辿る途中の失敗（範囲外・空・別の持ち主・アクターやコンポーネント・メンバーが無い・秘密）は、`Get*` と対応する `Set*` で同じ `ErrorCode` です（`GetBlueprintComponentProperty` を含む）。Capability・作り直される配列・`***` の書き戻しのように書き込みでだけ問う条件は、読み取りでは断られません（書き込みに要るものは `WriteRequirements` に挙がります）。断られた書き込みは何も変えません。オブジェクトを辿らないパスは、どのコマンドでも従来の `ErrorCode` のままです（`GetBlueprintComponentProperty` の失敗の固定の `InvalidParams` も同じです）。
+
+範囲外の添字と別の拒否が同じパスで重なるときは、パスの前にある段の拒否が先に返ります。たとえば `Structs[99].Ref.X` は「`Ref` が `Instanced` ではない」（`InvalidParams` のまま）になり、書き込みの `Structs[99].EditConstInner.Ref.X` は `InvalidParams` ではなく `PolicyViolation` になります。どちらのパスも以前から成功しません。
+
+**既存の呼び出しへの影響（⚠️）**
+
+- ⚠️ `Instanced` の参照を経るパスは、以前は途中の段で、主に `InvalidParams` で断られていました。このパスの失敗は、止めた原因に応じた `ErrorCode`（上の表）になります。これらのパスで `InvalidParams` を判定に使っている呼び出し側は、新しい結果コードを読むようにしてください。`Instanced` の参照を経ないパスは変わりません。
+- ⚠️ このようなパスが成功することがあります。以前は 8 コマンドのどれも `InvalidParams` で断っていました。
+- ⚠️ `GetBlueprintComponentProperty` / `SetBlueprintComponentProperty` で、`[N]` を含むパス（構造体の配列の `Arr[0].Y` など）は、以前は書式の誤りとして断られ、今は使えます。書式の誤りの拒否文は他のプロパティのコマンドと同じ文になり、8 段の上限もパスの解析の段階で掛かります。
+- `Instanced` でない参照の拒否文は、配列の要素（`Refs[0].X`）も単体の参照も同じ文になりました（以前は配列の要素について「構造体でない」と述べていました）。途中のアクターやコンポーネントの拒否文は、使うべきコマンドを案内する文になりました。`ErrorCode` は `InvalidParams` のままです。
+- `GetBlueprintComponentProperty` の `PropertyType` は共通の解決で求めます。これまで成功したパスでは同じ値です。
+
+<a id="writes-reverted-by-construction"></a>
+### コンストラクションスクリプトで戻る書き込みと子アクターの拒否
+
+レベル上のアクターへの書き込みは、値がすぐ消えるときにも成功と返していました。編集の後にアクターのコンストラクションスクリプトが再実行されてプロパティがクラスの既定値に戻る場合と、子アクターが親の作り直しのたびに破棄されて作り直される場合です。これらの書き込みは、何も書く前に `NotAllowed` で断り、理由と、値が残る手段を示します。今の値と同じ値の書き込みは、書かずに受け付けます（下を参照）。値・パッケージの未保存の印・Undo の履歴は呼び出し前のままです。
+
+**対象のコマンド。** 断りは共有のプロパティ書き込み経路から返るので、その経路でアクターのインスタンスに書くコマンドすべてに効きます。今のところ `SetActorProperty`・`SetWorldSetting`、およびレベルに置いたアクターを `AssetPath` で指したときの `SetAssetProperty` です。他の書き込みコマンドはコンポーネント・アセット・テンプレート・クラスの既定値に書くもので、コンストラクションスクリプトでは戻らないため、影響を受けません。`SetWorldSetting` が当たるのは最初の断りだけで、子アクターの断りは `SetActorProperty` が返します。
+
+**コンストラクションスクリプトが戻すプロパティ。** パスの先頭が、コンストラクションスクリプトが走るたびにクラスの既定値へ戻す変数のときに断ります。対象は次のとおりです。
+
+- Blueprint で足した、Instance Editable でない変数（struct 変数のメンバー、配列の要素、要素の追加・削除も含む）
+- C++ で「既定値でだけ編集できる」と宣言されているが、Blueprint から書けるプロパティ
+- Blueprint で足した、Instanced なオブジェクトの配列
+
+拒否文は、コンストラクションスクリプトがプロパティを戻すので値が残らないことを述べ、値が残る手段を示します。`SetBlueprintDefault` でクラスの既定値を変えるか、変数を Instance Editable にしてから書き直す方法です。
+
+- **今の値と同じ値の書き込みは受け付けます。** 送った値が今の値と同じなら、何も書かずに `Changed: false` で成功します（1.2.0 と同じ応答）。読んだスナップショットを書き戻すときも、変わっていない値の分は通ります。パッケージの未保存の印も Undo の記録も残らず、コンストラクションスクリプトも再実行されません。クラスの既定値と同じでも、今の値と違えば断ります。Instanced なオブジェクトを持つ値は、中身で比べます。ただし、Set や Map の要素が持つオブジェクト、`FInstancedStruct` の中のオブジェクト、16 段を超える入れ子は中身を比べられないので、同じ中身でも違う値として断ります。1 回の呼び出しで複数の値を書くコマンドは、変わっていない値を書き込みから外し、違う値が 1 つでもあれば呼び出し全体を断ります。拒否文の末尾には `A write of the value the property already holds is accepted as a write that changes nothing.` が付きます。書き込み要件の報告は、どの値を書くときにも当てはまる答えを返すので、今までどおり `IsWritable: false` です。
+- **秘密のプロパティ**は、今の値と同じ値も含めて値にかかわらず、`Result.Reason: SecretTargetResetOnConstruction` と、プロパティも値も名指さない固定の文で断ります。同じ値かどうかで答えを変えると、秘密の値を推測できてしまうためです。今の値は、[シークレット値の読み取り](#reading-secret-values)の 3 層の解禁で読めます。
+- どの Capability でも解けません。`PropertyDefaultsOnlyEdit` も同じです。Capability の判定は、1.2.0 と同じく先に行います。書き込みに要る Capability（既定値でだけ編集できるプロパティの `PropertyDefaultsOnlyEdit` など）がセッションに無ければ、値にかかわらず、足りない名前を挙げた `CapabilityNotAvailable` で失敗します（秘密のプロパティでは、文はプロパティも値も名指しません）。付与した後に、違う値ならこの断りになります。比較の前に別の断り（入力の形の誤り、伏せた値の書き戻しなど）に当たったときは、そちらを返します。シナリオステップの `RetryCount` も再試行しません。
+- 断らず、今までどおり書けるもの: Instance Editable の変数、Blueprint から読み取り専用または非公開の変数、レベル Blueprint の変数、イベントの割り当て、C++ で Instanced と宣言したプロパティ、クラスの既定値とテンプレート、アクターのラベル。`RandomStream` も書けますが、現在の種はコンストラクションスクリプトが走るたびに初期の種へ戻ります。
+- Play や Simulate の間は、これらのコマンドはもっと手前の Play / Simulate のガードが断ります（`NotAllowed`、Play や Simulate の間は使えない旨）。
+
+**子アクター。** ChildActor のコンポーネントが作った子アクターは、親が作り直すたびに破棄されて作り直されるので、書いた値は残りません。プロパティの種類を問わず、書き込みは `NotAllowed` で断ります。今の値と同じ値の書き込みは、上と同じく書かずに受け付けます。拒否文は、何が作り直しているかと、取れる手段を述べます。
+
+- Blueprint のコンポーネント一覧で足した ChildActor のコンポーネント: そのコンポーネントと親 Blueprint を名指しし、UAIP にはそのコンポーネントの子アクターのテンプレートを書くコマンドが無いと述べます。
+- コンストラクションスクリプトのグラフで足した ChildActor のコンポーネント: コンポーネントを足したそのグラフで値を設定するよう案内します。
+- 子アクターの中の子アクター: 上へたどった ChildActor のコンポーネントのどれかが Blueprint で足したものなら断ります。孫を直接作ったコンポーネントが Blueprint で足したものなら、それを名指しします。直接作ったのが C++ のコンポーネントで、それより上だけが Blueprint で足したものなら、孫に届くテンプレートが無く、UAIP から値を変える方法が無いと述べます。
+- C++ で作られる ChildActor のコンポーネントの子アクターは、それより上に作り直すものが無ければ断りません。書き込みは通りますが、親を編集したときとレベルを読み直したときに値が消えます。
+- 子アクターが持つコンポーネントは対象外です。`SetActorComponentProperty` で今までどおり書けます。
+
+子アクターの断りには、すべて次の選択肢が添えられます。
+
+⚠️ **`cac.ExperimentalAllowPerInstanceChildActorProperties`。** このエンジンのコンソール変数を `1` にすると書き込みが通り、親が子アクターを作り直しても値が残ります。エンジンの実験的な設定で、レベルを読み込んだときと `ChildActorClass` を変えたときには、値がテンプレートの値に戻ることがあるので、この方法で書いた値は恒久的な変更ではありません。成功の応答からは、後で戻ったかどうかは分かりません。値が後で消えてよいときにだけ使ってください。
+
+**秘密のプロパティ。** 断りは同じく `NotAllowed` ですが、拒否文は書き込みが許されない旨だけを述べる固定の文です。他の秘密のプロパティの断りと同じく、理由も代わりの手段も述べません。
+
+**書き込み要件も同じ答えを返します。** `GetActorProperty` と、書き込み要件を返す Behavior Tree・UMG・StateTree・Enhanced Input のコマンドは、こうしたプロパティを、どの Capability でも開かないものとして報告します。`IsWritable` は `false` で、`RefusalReason` に断りと同じ理由と代わりの手段が入ります。要件が Capability の不足として挙げているなら、挙がったものを全て許可すればその書き込みは通ります。
 
 ---
 
 ## UAIP.Editor.Blueprint
 
-Blueprint 変数・イベントグラフノード・SCS コンポーネントの編集。
+Blueprint 変数・イベントグラフノード・SCS コンポーネントの編集。グラフ・ピン・変数・関数の上書き・コンパイルのコマンドは、エディタで開いているマップのレベル Blueprint も編集できる — [レベル Blueprint](#レベル-blueprint) を参照。
 
-### アセット作成（1）
-
-| コマンド | 説明 |
-|---|---|
-
-### 変数とグラフ（10）
+### 変数とグラフ（13）
 
 | コマンド | 説明 |
 |---|---|
-| `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください |
+| `AddBlueprintVariable` | Blueprint にメンバー変数を追加（型・デフォルト・Tooltip）。Blueprint で変数の型として使えない型は、エディタの変数型メニューと同じ規則で、`CapabilityNotAvailable` と `Result.Reason: DisallowedBlueprintVariableType` で拒否されます（運用者が `BlueprintUnrestrictedVariableType` を明示的に拒否していれば `PolicyViolation` と `Result.Reason: DisallowedBlueprintVariableTypeDenied`）。クラスは自身または祖先に `BlueprintType`（または `BlueprintSpawnableComponent`）が必要で、`NotBlueprintType` のものは拒否されます。構造体は `BlueprintType` が必要で、`BlueprintInternalUseOnly` のものは拒否されます。DefaultDenied の Capability `BlueprintUnrestrictedVariableType` で、この拒否を解除できます（[Safety & Capabilities](safety.md#blueprintanimblueprint-編集) を参照）。拒否された呼び出しは Blueprint を変更しません（変数は追加されず、アセットも dirty になりません）。デフォルト値は変数の型が確定してから検証されるようになり、拒否された場合は **変数の追加ごと取り消されます**（空の値を持つ変数が残ることはありません）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトはどの Capability を付与しても拒否されます — その場合は追加後に `ValueJson` を受け取る `SetBlueprintDefault` で設定してください。秘密の変数（既定値を書く前と書いた後で判定）では、応答の `DefaultValue` は、送らなくても `***` と `IsMasked: true` になる。レベル Blueprint の無いマップでは、レベル Blueprint が呼び出しと一緒に作られ、その作成は Undo で戻らない `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `DeleteBlueprintVariable` | メンバー変数を削除 |
-| `SetBlueprintVariableDefault` | Blueprint 変数の CDO デフォルト値を更新 |
-| `AddGraphNode` | Blueprint アセットの**あらゆるグラフ**にノードを追加（VariableGet/Set・FunctionCall・Event 等）— イベントグラフと関数グラフに限らない。対象は `GraphName` または `GraphGuid` で選ぶ。グラフの選び方・複数一致時の扱い・2 段階の受け入れ判定は表の下の注記を参照 |
-| `DeleteGraphNode` | グラフノードを GUID 指定で削除（EntryNode・Tunnel は削除不可） |
-| `ConnectBlueprintPins` | Blueprint グラフの 2 ピンを接続 |
-| `DisconnectBlueprintPins` | ピン接続を切断 |
-| `ListBlueprintPins` | Blueprint グラフノードのピン一覧 |
-| `SetPinDefaultValue` | Blueprint グラフノードのピンにデフォルト値を設定（DefaultValue / DefaultObject / DefaultTextValue を型に応じて自動選択） |
-| `GetPinDefaultValue` | Blueprint グラフノードのピンのデフォルト値を取得 |
+| `SetBlueprintVariableDefault` | Blueprint 変数の CDO デフォルト値を更新 秘密の変数の `PreviousValue` / `NewValue` は、応答と artifact のどちらでも `***` と `IsMasked: true` になります。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `AddGraphNode` | Blueprint アセットの**あらゆるグラフ**（イベントグラフと関数グラフに限らない）、または開いているマップのレベル Blueprint にノードを追加。`NodeType` は 21 種類 — 変数の Get/Set・関数呼び出し・BeginPlay/Tick・親やインターフェースのイベント（`Event`）・カスタムイベント・キー入力と Enhanced Input のイベント・コンポーネントとアクターとイベントディスパッチャーのイベント・Create Widget・Branch・Sequence・MultiGate・標準のマクロ・Self・Cast — [`AddGraphNode` のノードの種類](#addgraphnode-のノードの種類) を参照。各種類は自分の引数しか受け付けない。`Result` と artifact が `NodeId`・`AlreadyExisted`・`AdditionalNodes` を返す。対象は `GraphName`・`GraphGuid`・`GraphPath` のいずれかで選ぶ。グラフの選び方・複数一致時の扱い・2 段階の受け入れ判定は表の下の注記を参照。レベル Blueprint の無いマップでは、レベル Blueprint が呼び出しと一緒に作られ（それまではイベントグラフだけを対象にできる）、その作成は Undo で戻らない |
+| `AddFunctionOverride` | 値を返す・出力引数を持つ・const の、親クラスかインターフェースの関数を、Override メニューと同じく関数グラフとして上書きする。グラフと、その入口・結果ノードの GUID を返す。マップにまだ無いレベル Blueprint は呼び出しと一緒に作られ、その作成は Undo で戻らない |
+| `ApplyBlueprintGraphEdit` ⚠️ | Blueprint の 1 つのグラフを宣言的に編集する。ノードの作成、実行ピンをたどる文（`If`・`Sequence`・`MultiGate`・`Loop`・`Break`・`DoOnce`・`DoN`・`Gate`・`FlipFlop`）による連結、ピンの接続、既定値の設定、接続の切断、ノードの削除を、1 つの要求から 1 回の Undo の単位で行う。DefaultDenied の `BlueprintGraphEdit` が必要。[ApplyBlueprintGraphEdit](#applyblueprintgraphedit) を参照 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `DeleteGraphNode` | グラフノードを GUID 指定で削除（EntryNode・Tunnel は削除不可）。`GraphName`・`GraphGuid`・`GraphPath` で探すグラフを 1 つに絞り、`NodeId` を共有するノードは `NodeObjectName` で選ぶ。読み取り専用のグラフでも削除は成功し、`Result.Warnings` で知らせる。[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) を参照 |
+| `ConnectBlueprintPins` | Blueprint グラフの 2 ピンを接続。⚠️ どちらかの端がコードを実行しうる関数の呼び出し、または Editor Utility の Blueprint の関数の呼び出しのときは、`BlueprintUnrestrictedNodePlace` も必要 — [コードを実行しうる関数の呼び出し](#コードを実行しうる関数の呼び出し) を参照。ピン名の代わりに `SourcePinId` / `TargetPinId`、グラフの指定（両方のノードに効く。無いと、別々のグラフのノードは `ExecutionFailed` で断る）、`SourceNodeObjectName` / `TargetNodeObjectName` を取る。孤立ピンは `ExecutionFailed`、読み取り専用のグラフでの接続は成功して `Result.Warnings` で知らせる。[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) を参照 |
+| `DisconnectBlueprintPins` | ピン接続を切断。ピン名の代わりに `SourcePinId` / `TargetPinId`、グラフの指定、`SourceNodeObjectName` / `TargetNodeObjectName` を取る。ID で指した孤立ピンは扱え、`Result.Warnings` で知らせる。読み取り専用のグラフでの変更も同じ。[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) を参照 |
+| `ListBlueprintPins` | Blueprint グラフノードのピンを一覧する。artifact のピンごとに `PinName`・`PinId`・`Direction`・`PinCategory`・`Connected`・型（`PinSubCategory`・`PinSubCategoryObject`・`ContainerType` — `None`・`Array`・`Set`・`Map` — `IsReference`・`IsConst`・`IsWeakPointer`・`IsUObjectWrapper`）・`IsHidden`・`IsOrphaned`・分割ピンの `ParentPinId`・`LinkedTo`（つながっている生きたピンを `NodeId`・`NodeObjectName`・`PinName`・`PinId` で示す）を返す。`Connected` は、ピンがリンクを持てば真で、相手のピンが無くなって `LinkedTo` から落ちたリンクがあるときも真。デフォルト値を持てるピンには `DefaultValue` と `DefaultValueKind` も付き、秘密を持ちうるピンの値は `***` と `IsMasked: true` になる。秘密かどうか判定できなかったピンも伏せられ、artifact の `UnverifiedMaskedFields` に `PinId` で載り、結果の `UnverifiedMaskedFieldCount` が件数を示す。グラフの指定と `NodeObjectName` は [グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) を参照 |
+| `SetPinDefaultValue` | Blueprint グラフノードのピンにデフォルト値を設定（DefaultValue / DefaultObject / DefaultTextValue を型に応じて自動選択）。⚠️ ノードがコードを実行しうる関数の呼び出し、または Editor Utility の Blueprint の関数の呼び出しのときは、`BlueprintUnrestrictedNodePlace` も必要 — [コードを実行しうる関数の呼び出し](#コードを実行しうる関数の呼び出し) を参照。書き込みの後のコンパイルが失敗したら `ExecutionFailed` を返し、ピンの元の値に戻す `IncludeSecretValues` を受け付けます。秘密のピンの `PreviousValue` / `NewValue` は `***` と `IsMasked: true` で返ります（書き込みは平文を返しません。平文は `GetPinDefaultValue` で読みます）。`PinName` の代わりに `PinId`、グラフの指定、`NodeObjectName` を取る。ID で指した孤立ピンは `NotFound`、読み取り専用のグラフへの書き込みは成功して `Result.Warnings` で知らせる。`PreviousValue` と `NewValue` は害がないと示せないピンでは伏せられ、秘密を持ちうるピンの値の拒否は、値を引用しない固定の文言で知らせる。[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) を参照 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `GetPinDefaultValue` | Blueprint グラフノードのピンのデフォルト値を取得 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密と推定されただけの値は伏せられ、3 つの許可がそろえば平文で読めます。伏せたままになるのは、定義が今は解決できないピンだけで、`UnverifiedMaskedFields` に載ります。そのピンを平文で読めるのは、セッションに DefaultDenied の Capability `BlueprintUnverifiedPinValueRead` もあるときだけです。無い（または拒否している）ときは、応答に `Result.SecretValuesWithheldReason: SecretValuesWithheldUnverified` が付き、`SecretFieldValues` は返りません。`PinName` の代わりに `PinId`、グラフの指定、`NodeObjectName` を取り、ID で指した孤立ピンは読めて `Warnings` で知らせます。[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) を参照 |
+| `ArrangeBlueprintGraph` | Blueprint の 1 つのグラフ（イベントグラフ・関数・マクロ・Widget Blueprint のグラフ・レベル Blueprint のグラフ）のノードを、左→右に実行順、計算だけのノードは使う側の左に並べ直す。`BlueprintPath` に加え、`GraphName`（空または `EventGraph` でイベントグラフ）・`GraphGuid`・`GraphPath`（3 つのうち 1 つだけ。複数のグラフが共有する名前は `MatchedGraphGuids` と `MatchedGraphPaths` 付きで拒否）と、`Method` / `NodeIds` / `HorizontalSpacing` / `VerticalSpacing` を取る。`NodeIds` は `NodeGuid`。位置だけを変え、Undo 1 回で戻り、再コンパイルはしない。`BlueprintGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
+
+> **新規 — `AddGraphNode` に `NodeType: "Event"` を渡すと、親クラスまたは実装しているインターフェースのイベントを `FunctionName` で指定してオーバーライドできる**（例: `ReceiveDestroyed`、`ReceiveActorBeginOverlap`）。My Blueprint パネルの Override メニューでイベントノードを追加するのと同じ動作。`EventBeginPlay` と `EventTick` はこれまでどおり使える。1 つの Blueprint で同じイベントをオーバーライドできるのは 1 回だけで、オーバーライドが Blueprint 内のどこかにすでにあるときは、2 つ目を作らずに既存のノードを返す。戻り値・出力パラメータを持つ関数や const 関数はイベントノードにできないため、`AddFunctionOverride` を案内する `InvalidParams` で拒否する。親クラスにもインターフェースにも `BlueprintImplementableEvent` / `BlueprintNativeEvent` として宣言されていない名前も `InvalidParams` で拒否する。
+>
+> **新規 — `AddFunctionOverride` は、そうした関数を関数グラフとしてオーバーライドする**（例: `ACharacter::CanJumpInternal`）。グラフには親のシグネチャどおりのエントリノードとリザルトノード、親実装の呼び出しが入り、`SkipCompile` が `true` でない限りコンパイルされる。artifact は `GraphName`・`GraphGuid`・`EntryNodeId`・`ResultNodeId`（戻り値が無い関数では省略）・`OverriddenClass`・`AlreadyExisted` を返す。グラフの中身は `AddGraphNode` と `ConnectBlueprintPins` で組む。同じ要求をもう一度送ると、既存のグラフを `AlreadyExisted: true` で返す。イベントノードにできる関数と、すでにイベントノードとしてオーバーライドされている関数は、`AddGraphNode` を案内する `InvalidParams` で拒否する。`BlueprintGraphEdit` が必要。
 
 > **`AddGraphNode` は、イベントグラフと関数グラフだけでなくアセット内のすべてのグラフを見るようになった。** マクロ・インターフェース実装のグラフ・折りたたんだグラフの中にあるグラフも `GraphName` で指せるようになった — この変更より前は、グラフが実在していても `NotFound`（この変更より前は `ExecutionFailed`）で終わっていた。
 >
@@ -813,9 +1618,181 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 >
 > **存在しないグラフ名を指定した場合、`NotFound` を返すようになった**（従来は `ExecutionFailed`）— 同じ要求を繰り返しても成功しようがないため、シナリオの `RetryCount` がこれ以上無駄な再試行に使われることがなくなった。
 
-> ⚠️ **破壊的変更 — `ConnectBlueprintPins` / `DisconnectBlueprintPins` / `DeleteGraphNode` / `GetPinDefaultValue` / `ListBlueprintPins` / `SetPinDefaultValue` は、指定したノードやピンが存在しないとき `NotFound` を返すようになった**（従来は `ExecutionFailed`）。シナリオの `RetryCount` は `ExecutionFailed` だけを再試行対象にしており、この変更より前は存在しない `NodeId` や `PinName` を指定した要求も再試行の対象になっていた（同じ要求を繰り返しても成功しようがないにもかかわらず）。
+> ⚠️ **破壊的変更 — `ConnectBlueprintPins` / `DisconnectBlueprintPins` / `DeleteGraphNode` / `GetPinDefaultValue` / `ListBlueprintPins` / `SetPinDefaultValue` は、指定したノードやピンが存在しないとき `NotFound` を返すようになった**（従来は `ExecutionFailed`）。シナリオの `RetryCount` は `ExecutionFailed` と `PreconditionFailed` だけを再試行対象にしており、この変更より前は存在しない `NodeId` や `PinName` を指定した要求も再試行の対象になっていた（同じ要求を繰り返しても成功しようがないにもかかわらず）。
 >
 > `GetPinDefaultValue` にはさらに、この変更で修正した欠陥がある。`PinName` が対象ノードのどのピンにも一致しない場合の分岐がそもそも無く、見つからなかったピンをそのまま読みに行く未検査のアクセス（未定義動作になりうる）になっていた。現在は、ノードのどのピンにも一致しない `PinName` に対して、この表の他のコマンドと同じく `NotFound` を返す。
+
+#### グラフの読み取りと ID による書き戻し
+
+`NodeId`・`GraphGuid`・`PinId` は、ハイフンの無い 32 桁の大文字 16 進数です。読み取りのコマンドが返し、ノードやピンに作用するコマンドが受け取ります。
+
+- **グラフの指定。** `ListBlueprintPins`・`GetPinDefaultValue`・`SetPinDefaultValue`・`ConnectBlueprintPins`・`DisconnectBlueprintPins`・`DeleteGraphNode` は `GraphName`・`GraphGuid`・`GraphPath` のいずれか 1 つを取ります。`FindGraphNodeActions`・`AddGraphNode`・`AddGraphNodeByAction`・`ArrangeBlueprintGraph` も `GraphPath` を取ります。`GraphPath` は `ListBlueprintGraphs` が返すとおり、必ず 1 つのグラフに定まります。3 つのどれかを指定すると、そのグラフだけを探します。折りたたみノードの中のグラフは一緒には探さないので、そのグラフを指定してください。
+- **グラフを省いたとき。** ノードやピンに作用する上の 6 コマンドは、全グラフから探します（空の `GraphName` も同じ）。`"EventGraph"` はイベントグラフです。`GetBlueprintGraphInfo` と `RegenerateGraphNodeGuid` は、`AddGraphNode` や `ArrangeBlueprintGraph` と同じく、省くとイベントグラフを使います。
+- **同じ `NodeId` を持つノード。** ⚠️ `NodeGuid` は一意とは限りません（ノードをグラフ間でコピーすると同じ値が 2 つできることがあります）。複数のノードに当たる `NodeId` は `InvalidParams` で断り、`Result.MatchedGraphGuids` と `Result.MatchedNodes` に候補を並べます。グラフの指定と `NodeObjectName` で選んでください（`ConnectBlueprintPins` と `DisconnectBlueprintPins` はノードを `SourceNodeId` / `TargetNodeId` で指すので、`SourceNodeObjectName` / `TargetNodeObjectName`）。重複は `RegenerateGraphNodeGuid` で解消できます。
+- **同じ名前・同じ `GraphGuid` を持つグラフ。** ⚠️ 複数のグラフが共有する `GraphName` は `InvalidParams` で断り、`Result.MatchedGraphGuids` と `Result.MatchedGraphPaths` に並べます。複数のグラフが共有する `GraphGuid` も同じく `InvalidParams` で断り、`Result.MatchedGraphNames` と `Result.MatchedGraphPaths` に並べます。`GraphPath` を渡すか、`RegenerateGraphGuid` で重複を解消してください。Animation Blueprint の `ArrangeAnimGraph`・`AddLinkedAnimLayerNode`・`AddUAFGraphNodeToAnimBlueprint` も、共有された `GraphGuid` を `InvalidParams` と `MatchedGraphNames` で断ります。`TargetGraph` でグラフを指し直してください。
+- **`PinId`。** 1 つのノードのピンが同じ名前を持つことがあり、`PinId` がそれを見分けます。`GetPinDefaultValue` と `SetPinDefaultValue` は `PinName` の代わりに `PinId` を、`ConnectBlueprintPins` と `DisconnectBlueprintPins` は `SourcePinName` / `TargetPinName` の代わりに `SourcePinId` / `TargetPinId` を取ります（端ごとに名前か ID のどちらか一方。`DisconnectBlueprintPins` の接続先は従来どおり省けます）。`PinId` はコンパイル・保存・Undo を越えて保たれます。ピン名が変わったときや、分割した構造体ピンを再結合したときは失効し、そのピンが孤立ピンとして残ることがあります。名前での再検索はしません。
+- **同じ名前のピン。** ⚠️ ノードの複数のピンが共有する `PinName` は `InvalidParams` で断り、`Result.MatchedPinIds` に ID を並べます。1 つを `PinId` として渡してください。拒否の文言は、名前で `Available pins` を並べなくなりました。
+- **孤立ピン。** `PinId` で指したピンが孤立（`IsOrphaned`）していても、まだ扱えます。`GetPinDefaultValue` と `DisconnectBlueprintPins` は成功し、`Warnings` で知らせます。`SetPinDefaultValue` は `NotFound`、`ConnectBlueprintPins` は `ExecutionFailed` です。
+- **読み取り専用のグラフ。** エディタが読み取り専用として表示するグラフでも、`ConnectBlueprintPins`・`DisconnectBlueprintPins`・`SetPinDefaultValue`・`DeleteGraphNode` は成功し、`Result.Warnings` で知らせます。`AddGraphNode` などの配置コマンドは従来どおり `NotAllowed` で、2 つの Regenerate コマンドも `NotAllowed` です。
+- **ID の振り直し。** `BlueprintReferencedGuidRegenerate`（DefaultDenied）が必要なのは、ノードではコンポーネントのノード、Animation Blueprint のすべてのノード、エンジンの `BlueprintGraph` モジュールが定義していないクラスのノード（別モジュールで派生したイベントを含む）、グラフでは折りたたみノードが持つグラフ以外のすべてと、Animation Blueprint のすべてのグラフです。イベントとカスタムイベントのノードは Capability なしで振り直せ、`Warnings` が、呼び出し側の Blueprint を保存するまで呼び出し側は改名されないことを知らせます。判定はコマンドの実行中に行うので、コマンドが宣言する `RequiredCapabilities` には載りません。無ければ `CapabilityNotAvailable`（安全ポリシーが明示的に拒否しているときは `PolicyViolation`）で、許可して実行した場合は失いうる参照が `Warnings` に載ります。
+- **秘密の値。** ⚠️ ピンのデフォルト値は、害がないと示せるときだけ平文で見えます。定義に秘密の印が無い関数・変数のピン、数値・真偽値・列挙（とそれだけで成る構造体）、書式・配列/マップ/セットの生成・Select・整数/名前/文字列/列挙の Switch・Knot などの一部のエンジンのノードのピンです。それ以外のノード（プロジェクトやプラグインのノードを含む）の文字列・名前・テキスト・オブジェクト/クラス/ソフト参照と、それらを含む構造体は、`***` と `IsMasked: true` になります。定義が今は解決できないピンも未確認として載り、解禁はできません。`ListBlueprintPins`・`GetPinDefaultValue`・`GetBlueprintGraphInfo` と、`SetPinDefaultValue` の応答に当てはまります。対象外は、別のノードのリテラルから Password ピンへ届く値、`Comment`、ノードの表示名、ピン名（文字列 Switch のケース）、パス、書式ノードに直接書いた文字列、Control Rig のピン（別の判定）です。[Safety & Capabilities](safety.md#秘密値の平文での読み取り) を参照。
+- **PIE。** ⚠️ PIE または Simulate の間は、通常の Blueprint を編集する 21 本のコマンドを `NotAllowed` で断ります。`AddBlueprintComponent`・`AddBlueprintVariable`・`AddFunctionOverride`・`AddGraphNode`・`AddGraphNodeByAction`・`ApplyBlueprintGraphEdit`・`ArrangeBlueprintGraph`・`CompileBlueprint`・`ConnectBlueprintPins`・`DeleteBlueprintComponent`・`DeleteBlueprintVariable`・`DeleteGraphNode`・`DisconnectBlueprintPins`・`DuplicateBlueprintComponent`・`GetPinDefaultValue`・`ListBlueprintPins`・`RenameBlueprintComponent`・`ReparentBlueprintComponent`・`SetBlueprintComponentProperty`・`SetBlueprintVariableDefault`・`SetPinDefaultValue` です。以前は `ExecutionFailed` で、シナリオの `RetryCount` が再試行しましたが、`NotAllowed` は再試行されません。このうち `AddBlueprintComponent`・`ArrangeBlueprintGraph`・`CompileBlueprint`・`DeleteBlueprintComponent` の 4 本は、以前から `NotAllowed` で、`ApplyBlueprintGraphEdit` は新しいコマンドです。`RegenerateGraphNodeGuid` と `RegenerateGraphGuid` も同じく断ります。`ListBlueprintGraphs` と `GetBlueprintGraphInfo` は、通常の Blueprint を引き続き読めます。
+
+#### `AddGraphNode` のノードの種類
+
+どの種類も、共通のキー `BlueprintPath`・`GraphName`・`GraphGuid`・`NodeType`・`NodeX`・`NodeY`・`SkipCompile` と、下の表でその種類に挙げたキーだけを受け付けます。置かれるのは、エディタの右クリックメニューで置くのと同じノードです。
+
+| NodeType | 固有のキー | 置くもの |
+|---|---|---|
+| `VariableGet` / `VariableSet` | `VarName` | メンバー変数の Get / Set |
+| `FunctionCall` | `FunctionName`、`FunctionClassName`（省略可） | 関数の呼び出し。`FunctionClassName`（`/Script/Engine.KismetSystemLibrary` のようなネイティブのクラスのパスで、読み込み済みのもの）を指定すれば、そのクラスの関数。省略すれば、対象の Blueprint、その親の Blueprint、その親のネイティブクラスの関数・カスタムイベントを名前で探す。カスタムイベントは Blueprint をコンパイルする前でも呼べる。他の Blueprint のクラスは受け付けない |
+| `EventBeginPlay` / `EventTick` | — | BeginPlay / Tick のイベント |
+| `Event` | `FunctionName` | 親クラスまたは実装しているインターフェースのイベントの上書き |
+| `CustomEvent` | `EventName`、`EventParameters`（省略可、16 個まで） | カスタムイベント。各パラメータは `Name`、`VarType`（`Boolean`・`Integer`・`Integer64`・`Float`・`String`・`Name`・`Text`・`Object`・`Struct` のいずれか）と、省略可の `SubCategoryObject`（クラスまたは構造体。読み込み済みのもの）・`IsArray` を持つオブジェクト。名前は Blueprint の関数・変数・イベントディスパッチャー・グラフと重なってはいけない |
+| `InputKey` | `Key`（例: `R`、`SpaceBar`）、`Modifiers`（省略可。`Ctrl`・`Shift`・`Alt`・`Cmd` から 4 個まで） | キー入力のイベント |
+| `EnhancedInputAction` | `InputActionPath` | Input Action アセットのイベント。アセットはオブジェクトパスで指定する（読み込み済みのもの）。Optional の統合が提供する — 下記参照 |
+| `ComponentBoundEvent` | `ComponentName`、`DelegateName` | コンポーネントまたはウィジェットの変数のイベント（ボタンの `OnClicked` など）。ウィジェットは変数になっている必要があり、なっていなければ拒否のメッセージが `SetWidgetAsVariable` を案内する。レベル Blueprint にはコンポーネントが無いので使えない。そちらでは `ActorBoundEvent` を使う |
+| `ActorBoundEvent` | `ActorIdentifier`、`DelegateName` | マップに置いたアクターのイベント。アクターはラベルかオブジェクトパスで指定する。レベル Blueprint 専用 |
+| `ActorReference` | `ActorIdentifier` | マップに置いたアクターへの参照。レベル Blueprint 専用 |
+| `BindEvent` / `AssignEvent` | `DelegateName`、`DelegateOwnerClass`（省略可。省略すると対象の Blueprint。読み込み済みのもの） | イベントディスパッチャーの Bind Event / Assign。`AssignEvent` は、エディタと同じく、シグネチャを合わせたカスタムイベントも作ってつなぐ。その `NodeId` は `AdditionalNodes` に入る。Blueprint が継承していないクラスのディスパッチャーを指定してもノードは置かれ、ディスパッチャーを持つオブジェクトを Target のピンにつなぐよう警告が付く |
+| `CreateWidget` | `WidgetClass` | ユーザーウィジェットのクラス（読み込み済みのもの）の Create Widget |
+| `Branch` | — | Branch |
+| `Sequence` | `OutputCount`（省略可。2〜32、既定 2） | その数の出力を持つ Sequence |
+| `MultiGate` | `OutputCount`（省略可。2〜32、既定 2） | その数の実行出力を持つ MultiGate |
+| `Macro` | `MacroName` | エンジンの標準マクロライブラリのマクロ（`ForEachLoop` など） |
+| `Self` | — | Self の参照 |
+| `Cast` | `TargetClass`、`Pure`（省略可） | クラス（読み込み済みのもの）へのキャスト。`Pure: true` で、実行ピンの無いピュアなキャストを置く |
+
+- **応答。** `Result` と JSON の artifact は同じ項目を持ちます。`NodeId`、`AlreadyExisted`、`AdditionalNodes`（各要素は `Role`・`NodeType`・`NodeId` を持つ。ほかに何も作らなかったときは空の配列）、`TargetKind` / `ResolvedBlueprintPath`（[レベル Blueprint](#レベル-blueprint) を参照）と、伝えることがあるときは `Warnings` です。
+- **一度しか置かない種類。** `CustomEvent`・`EnhancedInputAction`・`ComponentBoundEvent`・`ActorBoundEvent`・`EventBeginPlay`・`EventTick`・`Event` は、2 つ目を置かずに、すでにあるノードを `AlreadyExisted: true` で返します。何も変えず、コンパイルもしません。Enhanced Input のアクションは、エンジンと同じく Blueprint 全体で探すので、同じアクションのノードが別のグラフにあればそれを返します。同名でパラメータの違う `CustomEvent` は、既存のパラメータを示す `InvalidParams` で断ります。`InputKey`・`Branch` などほかの種類は、エディタと同じく毎回新しいノードを置きます。
+- **クラスとアセットは読み込み済みであること。** `FunctionClassName`・`TargetClass`・`WidgetClass`・`DelegateOwnerClass`・`SubCategoryObject`・`InputActionPath` は、読み込み済みのオブジェクトの中からだけ探します。読み込まれていなければ `NotFound` で、読み込むよう（アセットを開くなど）案内します。コマンドが読み込むことはありません。例外はエンジンの標準マクロライブラリだけです。
+- **上限。** `EventParameters` が 16 個を超える、`OutputCount` が 2〜32 の外、`Modifiers` が 4 個を超えると `InvalidParams` です。
+- **World Partition。** World Partition のマップで、レベル Blueprint からアクターを参照する（`ActorReference`・`ActorBoundEvent`）と、エンジンがそのアクターを常にロードする扱いに変えます。`Warnings` がその旨を示します。
+- **`EnhancedInputAction`** は Optional の統合 `UAIPEditorEnhancedInput` が置き、`EnhancedInput` プラグインが必要です。統合がこの種類を登録していないあいだは `AbilityUnavailable` で断り、統合の名前を示して `UAIP.Core.ListIntegrations` を案内します。統合は読み込まれたが、この種類の登録が拒否された場合は、その旨を示し、エディタのログを確かめるよう案内します。この判定は使わないキーの検査より先に行うので、`InputActionPath` を渡しても答えは `AbilityUnavailable` です。`InputActionPath` は、`NodeType` によらず 512 文字以内の文字列でなければ `InvalidParams` です。この種類とキーは、統合が読み込まれているかどうかに関わらずスキーマに載っています。
+- **ノードの種類を提供するエディタのモジュールが読み込まれていない**とき（UMG のエディタモジュールが読み込まれていないときの `CreateWidget`）は、`AbilityUnavailable` で断り、何も変えません。
+
+> ⚠️ **破壊的変更 — `AddGraphNode`:**
+> - **`NodeType` が使わないキーは `InvalidParams` で断ります。** メッセージは、使わないキー（最初の 8 個）と、その種類が受け付けるキーを示します。以前は黙って無視していたので、たとえば `EventBeginPlay` に `FunctionName` を付けて送っていた呼び出しは失敗するようになります。そのキーを外してください。
+> - **`EventBeginPlay`・`EventTick`・`Event` は、すでにあるノードを返したときに `AlreadyExisted: true` を返します。**
+> - **`FunctionCall`:** 見つからない関数は `NotFound`（以前は `ExecutionFailed`）、読み込まれていないクラスを指す `FunctionClassName` は `NotFound`（以前はクラスを読み込んでいた）、空文字の `FunctionClassName` は `InvalidParams` です。Blueprint 自身の関数を呼ぶときはキーを省いてください。`/Script/` 以外のクラスは、その旨を示すメッセージで断ります。
+> - **`FunctionCall` は、コードを実行しうる関数と、Editor Utility の Blueprint でのあらゆる関数に `BlueprintUnrestrictedNodePlace` を要求します** — 次の節を参照。
+> - **Blueprint は、UAIP が書き込んでよい場所になければなりません。** `/Engine/` の Blueprint は `NotAllowed` で断ります。同じ扱いになるほかのコマンドは [レベル Blueprint](#レベル-blueprint) を参照。
+> - **配置は 1 回の Undo の単位になりました。** 続くコンパイルはその中に含みません。
+
+#### コードを実行しうる関数の呼び出し
+
+`FunctionCall` の `AddGraphNode`、`SetPinDefaultValue`、`ConnectBlueprintPins` は、次の場合に、自身の Capability に加えて DefaultDenied の `BlueprintUnrestrictedNodePlace` を要求します。無ければ `CapabilityNotAvailable`（安全ポリシーがこの Capability を明示的に拒否しているときは `PolicyViolation`）で断り、Capability の名前と理由を示します。何も変えません。
+
+- **コードを実行しうる関数。** コンソールコマンドの実行、URL やほかのアプリケーションの起動、エディタの終了、呼び出し側が選んだパスへのファイルの書き出し（画像・レンダーターゲット・録音した音声・JSON・PFM・トレース・glTF の書き出しと、ファイル・ディレクトリの作成・削除・コピー・移動）。既定で有効なプラグインの関数（トレースと glTF の書き出し）も含みます。エディタ専用・開発用・クック対象外のモジュールの関数はすべて該当し（Python の実行もこれに当たります）、モジュールを判別できない関数（Python で定義したクラスの関数など）も該当します。Quit Game は該当しません。エディタの中では PIE を閉じるだけだからです。
+- **Editor Utility の Blueprint での、あらゆる関数の呼び出し**（Print String も含む）。Editor Utility の Blueprint・Editor Utility Widget に加えて、親のクラスがエディタ専用のクラスである Blueprint（Editor Utility Task やツールメニューの項目など）も対象です。こうした Blueprint はエディタの中で実行されるためです。
+- **`SetPinDefaultValue` と `ConnectBlueprintPins` では**、対象のノード（接続ならどちらかの端）が、上のどれかに当たる関数の呼び出しのときです。関数を解決できないノードも要求します。関数を呼ばないノード（Branch など）は要求しません。
+
+判定は関数を解決した後に行うので、親のネイティブクラスにあるそうした関数を `FunctionClassName` を省いて名前で指定しても要求します。Open Level や Print String のような普段の関数と、Blueprint で定義した関数・カスタムイベントは、Editor Utility の Blueprint 以外では追加の Capability なしで置けます。この Capability が、コードを実行するすべての経路を塞ぐわけではありません。[Safety & Capabilities](safety.md#blueprintanimblueprint-編集) を参照してください。
+
+#### `ApplyBlueprintGraphEdit`
+
+⚠️ **Experimental。** Blueprint、または開いているマップのレベル Blueprint の 1 つのグラフを宣言的に編集します。ノードの作成、接続、既定値の設定、接続の切断、ノードの削除を、1 つの要求から 1 回の Undo の単位で行います。ノードごと・接続ごとに呼び出す代わりに、結果を記述します。`Nodes` が新しいノードを定義し、`Flows` が実行ピンをたどる文を連ね、`Links`・`Defaults`・`Unlinks`・`Deletes` が残りを行います。DefaultDenied の Capability `BlueprintGraphEdit` が必要です。`ActionId` でアクションを置くノード定義は `BlueprintUnrestrictedNodePlace` も要り、`AddGraphNode` で要るノードの種類も同じです（[コードを実行しうる関数の呼び出し](#コードを実行しうる関数の呼び出し) を参照）。
+
+**パラメータ。** `Nodes`・`Flows`・`Links`・`Defaults`・`Unlinks`・`Deletes` のうち少なくとも 1 つが必要です。どれも無い要求（空の要求）は `InvalidParams` で断り、そのために何かを解決・作成・コンパイルすることはありません。スキーマに無いキーも断ります。
+
+| キー | 説明 |
+|---|---|
+| `BlueprintPath`（必須） | Blueprint、またはレベル Blueprint を編集するためにエディタで開いているマップ。マップに無いレベル Blueprint は、すべての検査を通った後にだけ作ります。作成は Undo で戻らず、`LevelScriptBlueprintCreated` と `Warnings` がそれを知らせます |
+| `GraphName` / `GraphGuid` / `GraphPath` | 対象のグラフ。1 つだけ指定する。空または `EventGraph` はイベントグラフ |
+| `Nodes` | 新しいノード（最大 256）。それぞれ、要求の残りが参照する `Id`（`NodeRef`）、`NodeType` か `ActionId`（どちらか一方）、その種類のキー（`AddGraphNode` が受け取るもの）、省略可の `NodeX` / `NodeY`、省略可の `Inputs`（ピンごとに、リテラルの `Value` を入れるか、ピンから `From` で接続する）を持つ |
+| `Flows` | 文の連なり（最大 64）。それぞれ `After` で指した実行出力から続く。下を参照 |
+| `Links` | 接続。`From`（出力ピン）、`To`（入力ピン）、省略可の `AllowBreakOthers`（対象のピンがすでに持つ接続を切る） |
+| `Defaults` | 入力ピンの既定値。`Target`（ピン）と `Value`（エンジンのテキスト） |
+| `Unlinks` | 切る接続。`From` と、省略可の `To`（省略すると `From` のすべての接続） |
+| `Deletes` | 削除する既存のノード。`NodeId` と、`NodeId` を共有するノードを区別する省略可の `NodeObjectName` |
+| `SkipCompile` | 編集後のコンパイルを省く。既定 `false` |
+| `AllowNonTransactional` | Undo で復元できないオブジェクトに触れる編集でも適用する。既定 `false` |
+
+ピンは `NodeRef`（この要求で定義したノード）か `NodeId`（既存のノード。`NodeObjectName` は省略可）と、`PinName` か `PinId`（`PinId` は既存のノードにだけ）で指します。`Unlinks` と `Deletes` は、何かを作るより前に実行されます。型の異なるピンの間に変換ノードや昇格ノードは挿入されず、そのような接続は失敗します。値は、`***` を含め、特別扱いされません。
+
+**`Flows` の文。** 1 つの文は、文の種類をちょうど 1 つ持ちます。ノードへの単なる参照 `Exec`（ノードの出力ピンが複数あるときは `Out` で選ぶ）、`If`（`Condition` と `Then`・`Else`）、`Sequence` と `MultiGate`（`Branches` が 2〜32）、`Loop`、`Break`、`DoOnce`、`DoN`、`Gate`、`FlipFlop`（`Branches` がちょうど 2）です。文は深さ 3 までネストできます。それより深くするときは、ネストを閉じ、その実行出力の 1 つから、`After` がそのピンを指す別の `Flows` の要素で続けます。実行出力を接続元に使えるのは 1 回だけで、明示した使い方（`Flows` の `After` や `Links` の `From`）が、文の暗黙の継続より優先されます。`Break` は、いちばん内側の囲むループを抜けます。そのループは、`Break` の入力を持つ 2 つのループマクロ、`ForLoopWithBreak` か `ForEachLoopWithBreak` でなければなりません。
+
+`Loop`・`DoOnce`・`DoN`・`Gate`・`FlipFlop` は、`Nodes` で定義した `Macro` ノードの `Id` を指し、そのノードの `MacroName` が文に合っていなければなりません。
+
+| 文 | 受け付ける `MacroName` |
+|---|---|
+| `Loop` | `ForLoop`、`ForLoopWithBreak`、`ForEachLoop`、`ForEachLoopWithBreak`、`ReverseForEachLoop`、`WhileLoop` |
+| `DoOnce` | `DoOnce` |
+| `DoN` | `Do N`（**空白あり**。`DoN` という名前のマクロは無い） |
+| `Gate` | `Gate` |
+| `FlipFlop` | `FlipFlop` |
+
+`Macro` でないノード、`MacroName` の無いノード、名前が合わないノードは、グラフに触れる前に `InvalidParams` で断ります。名前は大文字小文字を区別せずに比べます。
+
+**検査とコンパイル。** 事前に決められることはすべて、グラフに触れる前に検査し、断った場合は何も変えません。`SkipCompile` が `true` でなければ、編集後に Blueprint をコンパイルします。新しいエラーとは、編集前に取ったコンパイルが報告しなかったコンパイルエラーで、ノードとメッセージで比べます。もともとあったエラーは編集を失敗させず（対照的に `SetPinDefaultValue` は、どんなエラー状態でも失敗します）、`PreexistingErrorCount` に数えるだけです。新しいエラーは編集を失敗させ、変更は巻き戻されます。ピンの値を明らかにしうるメッセージは伏せられ、ノードと重要度だけを持ち、`IsMasked` が `true` になります。本文は返しません。
+
+**ErrorCode。**
+
+| ErrorCode | 場合 |
+|---|---|
+| `InvalidParams` | 形が誤っている、または矛盾する要求。空の要求、種類の合わないマクロを指す文、2 回削除されるノードを含む |
+| `NotFound` | 存在しない Blueprint・ノード・ピン。`ListBlueprintGraphs` か `GetBlueprintGraphInfo` でグラフを読み直す |
+| `NotAllowed` | 書き込めない対象。読み取り専用のグラフ、`/Engine/` の Blueprint、Play-in-Editor、削除できないノード（ここでは `DeleteGraphNode` が返す `Conflict` ではなく `NotAllowed`） |
+| `PreconditionFailed` | `AllowNonTransactional` が `true` でないときの、Undo で復元できないオブジェクト。開いていないマップ |
+| `CapabilityNotAvailable` / `PolicyViolation` | Capability が無い（安全ポリシーが明示的に拒否しているときは `PolicyViolation`） |
+| `AbilityUnavailable` | 連携やエディタモジュールが読み込まれていないノードの種類（`AddGraphNode` と同じ） |
+| `ExecutionFailed` | 適用中の失敗、新しいエラーが見つかったコンパイル、接続済みのピンやコンテナを持つピンに対して拒否された既定値 |
+
+**応答。** 成功すると、`Result` に次を返します。
+
+- `GraphIntegrityState`。成功後は `NotApplicable`。
+- `CreatedNodes`。ノードごとの要素で、`Id` で引く（要求が名前を付けなかったノードは、作った文の位置を示す `Source` を持つ）。`NodeId`・`NodeObjectName`・`NodeType`・`ActionId`（`ActionId` で置いたノードだけ）・`NodeX`・`NodeY`・`AlreadyExisted`・`AdditionalNodes`（配置が自身のノードのほかに作ったノード。それぞれ `Role`・`NodeType`・`NodeId`・`NodeClass` を持つ）。
+- `Links`、`BrokenLinks`（副作用として切れた接続。それぞれ下の表の `Reason` を持つ）、`DeletedNodeIds`、`Defaults`（ピンだけ。送った値は返さない）。
+- `CompileStatus`、`NewErrors`、`NewWarnings`、`NewErrorCount`、`NewWarningCount`、`PreexistingErrorCount`、`Truncated`（一覧は上限で打ち切られ、件数は打ち切られない）。メッセージはそれぞれ `Severity`、参照する `NodeId`、本文を持つ。伏せたメッセージは本文の代わりに `IsMasked: true` を持つ。
+- `TargetKind` / `ResolvedBlueprintPath`（[レベル Blueprint](#レベル-blueprint) を参照）、レベル Blueprint では `LevelScriptBlueprintCreated`、`Warnings`。
+
+**大きな報告は artifact で返ります。** 上の報告が 64 KiB（UTF-8 のバイト数。ちょうど 64 KiB は `Result` に残る）を超えると、報告全体を同じ形のまま JSON の artifact として保存して添付し、`Result` には要約だけを残します。
+
+- 残るもの: `GraphIntegrityState`、対象の項目（`TargetKind`・`ResolvedBlueprintPath`・`LevelScriptBlueprintCreated`）、`Warnings`、コンパイルの報告（`CompileStatus`・`NewErrors`・`NewWarnings`・`NewErrorCount`・`NewWarningCount`・`PreexistingErrorCount`・`Truncated`）。
+- 省かれるもの: `CreatedNodes`・`Links`・`BrokenLinks`・`DeletedNodeIds`・`Defaults`。
+- 加わるもの: `ResultInArtifact`（`true`）、省かれた各一覧の件数を示す `CreatedNodeCount`・`LinkCount`・`BrokenLinkCount`・`DeletedNodeCount`・`DefaultCount`、`GetArtifact` で読む artifact を示す `ArtifactId`。artifact には、要求の各 `Id` を作ったノードの `NodeId` に対応づける `CreatedNodes` を含む報告の全体が入ります。続けて編集するときにこの対応が要ります。
+
+artifact を保存できなかったときも編集は成功のままで（報告のために編集を取り消しません）、`Result` は小さな報告のときと同じく報告の全体を返し、`ArtifactsNotSaved` が理由を示します（[共通の応答キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved)を参照）。上限以内の報告は従来と同じ形で、加わるキーは載りません。失敗はこの種類の artifact を返しません。
+
+| Reason | 意味 |
+|---|---|
+| `Insertion` | 既存の連なりに流れを挿入したため、流れの始点から連なりの残りへの接続を切った |
+| `ReplacedByConnection` | 他を置き換えてよい接続（`AllowBreakOthers`）がその場所を取った |
+| `NodeDeleted` | 接続の片方のノードが削除された |
+
+失敗は、`GraphIntegrityState`、`FailedAt`（原因になった要求内の位置。1 か所に決まらないときは空）、`Warnings`、Blueprint が分かった後は対象の項目、コンパイルが失敗したときは上のコンパイルの項目を返します。**失敗は `CreatedNodes` を返しません**（`Links`・`BrokenLinks`・`DeletedNodeIds`・`Defaults` も）。巻き戻しの後や `ChangesRemain` では、もう存在しないノードを指しうるからです。失敗が `ChangesRemain` を報告したときは、`GetBlueprintGraphInfo` でグラフを読み直してください。
+
+**`GraphIntegrityState`** はグラフの編集だけを表し、レベル Blueprint の作成や編集前のコンパイルは含みません。
+
+| 値 | 意味 |
+|---|---|
+| `NotApplicable` | 編集は成功した |
+| `Intact` | グラフが変わる前に、要求が断られた、または止まった |
+| `RestoredByRollback` | この編集の変更を元に戻した。その後のコンパイルの影響は含まない |
+| `ChangesRemain` | 変更を元に戻せず、グラフに残っている |
+
+**Undo。** 1 回の Undo で編集全体が戻るのは、単独の要求のときだけです。すでに開いているトランザクションの中（ほかのエディタ操作やツールが開いたもの）や `AllowNonTransactional` では、編集を Undo できないことがあり、その場合に失敗すると `ChangesRemain` が残ります。シナリオはトランザクションを開かないので、シナリオの中の要求は単独の要求と同じに振る舞います。ユーザーが編集を Undo した後は生成クラスが古くなるので、`CompileBlueprint` を実行してください。レベル Blueprint の作成は Undo で戻りません（[レベル Blueprint](#レベル-blueprint) を参照）。
+
+### グラフの読み取りと GUID の修復（4）
+
+| コマンド | 説明 |
+|---|---|
+| `ListBlueprintGraphs` | Blueprint、または開いているマップのレベル Blueprint の全グラフを一覧する（折りたたみノードの中のグラフも含む）。引数は `BlueprintPath` だけ。`Result.Graphs` に、グラフごとの `GraphName`・`GraphGuid`・`GraphPath`・`GraphKind`（`Ubergraph`・`Function`・`Animation`・`Macro`・`DelegateSignature`・`InterfaceImplementation`・`Collapsed`・`MathExpression`・`SubGraph`・`Other`）・`IsReadOnly`・`TotalNodeCount` が入る。入れ子のグラフには `ParentGraphGuid`・`ParentGraphPath`・`OwnerNodeId`・`OwnerNodeObjectName`・`OwnerNodeClass` も付く。`GraphCount` は件数、`Warnings` は複数のグラフが共有する `GraphGuid` を知らせる。同じ一覧を artifact にも保存し、保存できなくても成功して `ArtifactsNotSaved` で示す。レベル Blueprint の無いマップは `NotFound`（作らない）。読み取り専用で、`EditorInspect` が必要。通常の Blueprint は PIE 中も一覧できるが、レベル Blueprint はできない |
+| `GetBlueprintGraphInfo` | 1 つのグラフのノードとノード間のリンクを読み取る。`BlueprintPath` と、`GraphName`・`GraphGuid`・`GraphPath` のいずれか 1 つを取る。どれも省くと全グラフではなくイベントグラフを読む（イベントグラフの無い Blueprint は `NotFound` で、`ListBlueprintGraphs` を案内する）。artifact の `Nodes` は、`NodeId`・`NodeObjectName`・`NodeClass`・`NodeTitle`・`NodeX`・`NodeY`・`Comment`・`EnabledState`（`Enabled`・`Disabled`・`DevelopmentOnly`）・`MemberReference`（`MemberName`・`MemberParentClass`・`IsSelfContext`・`MemberGuid`）・折りたたみノードの `SubGraphGuids` と `SubGraphPaths`・マクロインスタンスの `MacroGraphGuid`・`MacroGraphPath`・`MacroBlueprintPath`・`LiteralObjectPath`・`LiteralObjectLabel`・`Pins` を持ち、`Links` は `OutputNodeId`・`OutputNodeObjectName`・`OutputPinId`・`OutputPinName` と、先頭を `Input` にした同じ 4 つを持つ。リンクは `Links` に 1 度だけ載り、ピン側では繰り返さない。載せる上限は 1024 ノード・4096 リンク。`Result` は `GraphName`・`GraphGuid`・`GraphPath`・`GraphKind`・`TotalNodeCount`・`NodeCount`・`NodesTruncated`・`NodesDataEntriesTruncated`・`TotalLinkCount`・`LinkCount`・`LinksTruncated`・`LinksDataEntriesTruncated`・`UnverifiedMaskedFieldCount` を返す。秘密かどうか判定できなかったピンは伏せられ、artifact の `UnverifiedMaskedFields` に `PinId` で載る。`Warnings` は、壊れたリンク、グラフ内で共有された `NodeGuid`、ほかのグラフと共有された `GraphGuid` を知らせる。artifact が結果そのものなので、保存できなければ `ExecutionFailed`。読み取り専用で、`EditorInspect` が必要。通常の Blueprint は PIE 中も読めるが、レベル Blueprint は読めない |
+| `RegenerateGraphNodeGuid` ⚠️ | Blueprint 内で複数のノードが共有している `NodeId` を、1 つのノードについて新しい値に振り直す。`BlueprintPath`・`NodeId`・`NodeObjectName`（`GetBlueprintGraphInfo` が返す。共有するノードを見分ける）と、1 つのグラフだけを探すときは `GraphName`・`GraphGuid`・`GraphPath`（いずれか 1 つ）を取る。`Result` は `NodeObjectName`・`GraphPath`・`PreviousNodeId`・`NodeId`・`RemainingDuplicateCount`・`Warnings`。ほかのノードと共有されていない `NodeId` は `Conflict`、エディタが読み取り専用として表示するグラフは `NotAllowed`。Undo 1 回で戻り、Blueprint はコンパイルしない。`BlueprintGraphEdit` が必要で、[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) に挙げたノードには `BlueprintReferencedGuidRegenerate` も必要。PIE 中は `NotAllowed` |
+| `RegenerateGraphGuid` ⚠️ | Blueprint 内で複数のグラフが共有している `GraphGuid` を、1 つのグラフについて新しい値に振り直す。`BlueprintPath` と `GraphPath`（どちらも必須）を取る。`Result` は `GraphPath`・`PreviousGraphGuid`・`GraphGuid`・`RemainingDuplicateCount`・`Warnings`。Undo 1 回で戻り、Blueprint はコンパイルしない。`BlueprintGraphEdit` が必要で、[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) に挙げたグラフには `BlueprintReferencedGuidRegenerate` も必要。PIE 中は `NotAllowed` |
+
+### ノードの検索と配置（2）
+
+| コマンド | 説明 |
+|---|---|
+| `FindGraphNodeActions` | Blueprint またはレベル Blueprint の 1 つのグラフについて、エディタの右クリックメニュー（コンテキストピンなしで、空のグラフで開いたメニュー）が出すアクションを検索。`Keyword` はメニュー名・カテゴリ・検索キーワードに、`Category` はカテゴリに、どちらも大文字・小文字を区別しない部分一致で当てる。候補はカテゴリとメニュー名の順に並べ、`MaxResults`（1〜200、既定 50）で切る。`TotalMatched` は一致した全件の数、`Truncated` は切り捨てがあったかを示す。各候補は `ActionId`・`Category`・`MenuName`・`NodeClass`・`ActionObjectPath`・`Placeable`（偽なら `NotPlaceableReason` も）・`RequiredCapabilities` を持つ。読み取り専用で、アセットを読み込まない。`EditorInspect` が必要 |
+| `AddGraphNodeByAction` | `FindGraphNodeActions` が同じグラフについて返した `ActionId` で、1 つのアクションのノードを置く — プラグインが追加するノードなど、`AddGraphNode` のどの種類にも無いノード向け。コードを実行するノードも含めて何でも置けるので、何を置くかに関わらず、`BlueprintGraphEdit` に加えて常に `BlueprintUnrestrictedNodePlace` が必要。`Result` と artifact が `NodeId`・`NodeClass`・`MenuName`・`ActionId`・`AlreadyExisted`・`AdditionalNodes`（`NodeType: Action`、`Role: SpawnedWithAction`）を返す。`NodeX` / `NodeY` と `SkipCompile` を取る |
+
+- **`ActionId`** は、`v1:` に小文字の 16 進 40 桁が続く形です。ほかの形の値は、検索する前に `InvalidParams` になります。グラフのどのアクションも持たない ID は `NotFound` です。アクションが変わると ID も変わるので、検索し直してください。複数のアクションに当たる ID は `InvalidParams` で、`AddGraphNode` の種類で置けるノードならそれを案内します。何にも一致しない検索はエラーではなく、空の `Candidates` と `TotalMatched: 0` で成功します。
+- **出てくる候補。** 何も読み込まずに見つかるものだけです。読み込まれていないアセットのアクションは出ません。アクターやコンポーネントへの束縛が要るアクションも出ません。それらは `ComponentBoundEvent` / `ActorBoundEvent` で置いてください。コンテキストピンには対応していません。置いた後に `ConnectBlueprintPins` でつないでください。
+- **配置。** 1 つのアクションで、右クリックメニューで選んだときと同じく 1 つのノードを置き、1 回の Undo の単位になります。アクションがほかのノードも置いたときは `AdditionalNodes` に入ります。アクションが Blueprint にすでにあるイベントなら、既存のノードを `AlreadyExisted: true` で返し、何も変えず、コンパイルもしません。編集を受け付けないグラフは `NotAllowed`、`/Engine/` の Blueprint も `NotAllowed` です。
+- **レベル Blueprint。** どちらのコマンドも開いているマップのパスを受け付けますが、レベル Blueprint を作りません。レベル Blueprint の無いマップは `NotFound` で、先に `AddGraphNode` などで何か置くよう案内します。PIE 中は、通常の Blueprint は検索できますが、レベル Blueprint はできません。
 
 ### コンポーネント — SCS（8）
 
@@ -827,8 +1804,8 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 | `RenameBlueprintComponent` | SCS コンポーネントをリネーム |
 | `ReparentBlueprintComponent` | SCS コンポーネントの親を変更。親を指定する場合はコンポーネントと親の双方が `USceneComponent` のサブクラスである必要がある。ルートレベルへの移動（`NewParentVariableName` が空）はどのコンポーネントクラスでも可能 |
 | `DuplicateBlueprintComponent` | SCS コンポーネントを複製。⚠️ プロジェクト・プラグイン定義のコンポーネントクラスには `ComponentCustomTypeEdit` が追加で必要になりました — 下の Note を参照 |
-| `GetBlueprintComponentProperty` | SCS コンポーネントのプロパティ値を取得 |
-| `SetBlueprintComponentProperty` | SCS コンポーネントのプロパティを設定。値はエンジンテキストなら `Value`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
+| `GetBlueprintComponentProperty` | SCS コンポーネントのプロパティ値を取得 シークレットのプロパティ、またはパスの途中に秘密の親があるものは `***` で返る。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照。親の Blueprint から継承したコンポーネントの名前でも読める: 子の Blueprint に上書きがあればその値、無ければ継承した値（詳細パネルに表示される値）を返す。読み取りで上書きは作らない `PropertyPath` は `Instanced` プロパティが持つオブジェクトの中まで続けられます（例: `SensesConfig[0].SightRadius`）。[Instanced サブオブジェクトへのプロパティパス](#instanced-subobject-paths)を参照してください。 |
+| `SetBlueprintComponentProperty` | SCS コンポーネントのプロパティを設定。値はエンジンテキストなら `Value`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。親の Blueprint から継承したコンポーネントの名前でも書ける: 値は子の Blueprint の上書きとして残り（無ければ作る）、親の値は変わらない。Undo 1 回で書く前に戻る。子自身に同名のコンポーネントがあればそちらを書き、親の C++ クラスが作るコンポーネントは書けない `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 `PropertyPath` は `Instanced` プロパティが持つオブジェクトの中まで続けられます（例: `SensesConfig[0].SightRadius`）。[Instanced サブオブジェクトへのプロパティパス](#instanced-subobject-paths)を参照してください。 |
 
 > ⚠️ **破壊的変更 — `AddBlueprintComponent` と `DuplicateBlueprintComponent` がコンポーネントクラスをゲートするようになりました。**
 >
@@ -842,8 +1819,22 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 
 | コマンド | 説明 |
 |---|---|
-| `CompileBlueprint` | Blueprint をコンパイルし、CompileStatus + 構造化されたメッセージログを返す（AnimBlueprint・WidgetBlueprint は非対応） |
+| `CompileBlueprint` | Blueprint をコンパイルし、CompileStatus + 構造化されたメッセージログを返す（AnimBlueprint・WidgetBlueprint は非対応 — `CompileAnimBlueprint` / `CompileWidgetBlueprint` を使う） |
 | `GetBlueprintCompileStatus` | コンパイルを実行せずに Blueprint の現在のコンパイル状態を取得する |
+
+### レベル Blueprint
+
+`BlueprintPath` にマップのパッケージパスを渡すと — `/Game/Maps/L_Puzzle` でも `/Game/Maps/L_Puzzle.L_Puzzle` でもよい — そのマップのレベル Blueprint を対象にします。
+
+- **マップのパスを受け付けるコマンド**: `AddGraphNode`、`DeleteGraphNode`、`ConnectBlueprintPins`、`DisconnectBlueprintPins`、`ListBlueprintPins`、`SetPinDefaultValue`、`GetPinDefaultValue`、`AddBlueprintVariable`、`DeleteBlueprintVariable`、`SetBlueprintVariableDefault`、`AddFunctionOverride`、`ApplyBlueprintGraphEdit`、`CompileBlueprint`、`GetBlueprintCompileStatus`、`FindGraphNodeActions`、`AddGraphNodeByAction`、`ListBlueprintGraphs`、`GetBlueprintGraphInfo`、`RegenerateGraphNodeGuid`、`RegenerateGraphGuid`。[コンポーネント — SCS](#コンポーネント--scs8) の 8 コマンドは、レベル Blueprint にコンポーネントが無いので、マップのパスを `InvalidParams` で断ります。そのほかの Blueprint のコマンドは、マップのパスに対してこれまでどおり失敗します。
+- **対象にできるマップ**: エディタで開いているマップと、その読み込み済みのサブレベル。開いていないマップは `PreconditionFailed` で断り、開くよう求めます。何も読み込まず、何も変えません。レベルインスタンスと、プレビューなど一時的なワールドのレベルは `InvalidParams` です。PIE 中はレベル Blueprint を、読み取りも含めて `NotAllowed` で断ります。通常の Blueprint を編集するコマンドも、PIE 中は `NotAllowed` で断ります（[グラフの読み取りと ID による書き戻し](#グラフの読み取りと-id-による書き戻し) の PIE の項を参照）。
+- **応答。** これらのコマンドは `Result`（artifact を書くコマンドでは artifact にも）に `TargetKind` を載せます。値は `Blueprint` または `LevelScriptBlueprint` です。レベル Blueprint では、`ResolvedBlueprintPath` が、マップのパスから解決したレベル Blueprint のオブジェクトパスです。これまで `Result` を返さなかったコマンドも、これらの項目を持つ `Result` を返すようになりました。
+- **レベル Blueprint の無いマップ。** レベル Blueprint を作るのは、何かを追加する 4 コマンド — `AddGraphNode`、`AddBlueprintVariable`、`AddFunctionOverride`、`ApplyBlueprintGraphEdit` — だけで、要求を断りうる検査をすべて通った後に作ります。作ったときの応答は、結果に関わらず `Result.Warnings` に警告を載せます。マップに未保存の変更ができたことを示します。⚠️ **レベル Blueprint の作成は Undo で戻りません。** エディタで要求を Undo しても、戻るのは要求が追加した内容だけで、レベル Blueprint は残ります（エンジンが生成するクラスを、どの Undo の単位も記録しないため）。これは 4 コマンドすべてに当てはまり、`AddGraphNode`・`AddBlueprintVariable`・`AddFunctionOverride` は説明文でもそう述べています。エンジンは新しいレベル Blueprint に既定のイベントを置くので、新しいマップへの `EventBeginPlay` は `AlreadyExisted: true` を返します。レベル Blueprint を作った後に要求が断られるまれな場合は、エディタで Open Level Blueprint を押した後と同じく、空のレベル Blueprint が残ります。ほかのコマンドは作らずに `NotFound` を返し、メッセージが作るコマンドのうち 3 つ（`UAIP.Editor.Blueprint.AddGraphNode, UAIP.Editor.Blueprint.AddBlueprintVariable, UAIP.Editor.Blueprint.AddFunctionOverride`）を示します。マップに変更の印は付きません。レベル Blueprint がまだ無いあいだは、`GraphGuid` は `NotFound`、`FunctionClassName` の無い `FunctionCall` はクラスの指定を求める `NotFound`、`AddFunctionOverride` はイベントとして置かれる関数（`ReceiveBeginPlay` など）を `AddGraphNode` を案内する `InvalidParams` で断ります。
+- **コンパイル。** レベル Blueprint をコンパイルすると、エンジンがレベルスクリプトアクターを作り直します。配置のたびに、`SkipCompile` が `true` でなければコンパイルします。
+- **保存。** `SaveAsset` にマップのパスを渡して保存します。マップのパッケージ全体を書き込むので、UAIP の Blueprint 編集によらない未保存の変更がマップにあったかもしれないときは、応答の `Result.Warnings` に警告を載せたうえで保存します。World Partition のマップでは、未保存の外部アクターのパッケージも一緒に書き込み、警告はそれらも数えます。一度も保存していないワールドは `OpenLevel` で開き直せません。先に `SaveAsset` で保存してください。別のマップに切り替える前に保存してください。
+- **`SkipCompile` の綴りはドメインで違います**: これらのグラフのコマンドは `SkipCompile`、`SetWidgetProperties` などの UMG の書き込みは `bSkipCompile` です。グラフのコマンドは、後からコンパイルが要るかを返しません。`GetBlueprintCompileStatus` で確かめてください。
+
+> ⚠️ **破壊的変更 — UAIP が書き込んでよい場所の外にある Blueprint への書き込みを、通常の Blueprint でも断るようになりました。** `AddGraphNode`、`DeleteGraphNode`、`ConnectBlueprintPins`、`DisconnectBlueprintPins`、`AddBlueprintVariable`、`DeleteBlueprintVariable`、`SetBlueprintVariableDefault`、`AddFunctionOverride` は、`SetPinDefaultValue` と `CompileBlueprint` がすでにそうだったように、`/Engine/` の Blueprint を `NotAllowed` で断ります。新しい `AddGraphNodeByAction` も同じです。`AddGraphNode`、`DeleteGraphNode` と変数のコマンドは、1 回の呼び出しを 1 回の Undo の単位として、取り消せるようにもなりました。
 
 ---
 
@@ -851,7 +1842,7 @@ Blueprint 変数・イベントグラフノード・SCS コンポーネントの
 
 Widget Blueprint 編集 — ツリー・変数・アニメーション・バインディング。
 
-### ネイティブ（22）
+### ネイティブ（24）
 
 | コマンド | 説明 |
 |---|---|
@@ -864,8 +1855,10 @@ Widget Blueprint 編集 — ツリー・変数・アニメーション・バイ�
 | `SetNamedSlotContent` | NamedSlot ウィジェットの内容を設定 |
 | `GetNamedSlots` | Widget Blueprint の NamedSlot 一覧 |
 | `ReparentWidgetBlueprint` | Widget Blueprint の親クラスを変更 |
-| `GetSlotProperties` | ウィジェットのスロットプロパティを取得（CPF フィルタ・最大 64 キー）。あわせて `PropertyWriteRequirements` マップを返し、各プロパティへの書き込みに何が必要か・どの入力形式で渡すかを示します |
-| `SetSlotProperties` | ウィジェットのスロットプロパティを設定（32 KiB 制限・UObject 参照は `/Game/` 以下のみ）。参照には `WidgetSlotReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要になり、これらの値はエンジンの括弧表記ではなく **JSON ドキュメント** で渡します — 書く前に取得系の `WriteInputForm` を確認してください。拒否された書き込みは undo エントリを残さず、アセットを dirty にもしません |
+| `GetSlotProperties` | ウィジェットのスロットプロパティを取得（CPF フィルタ・最大 64 キー）。あわせて `PropertyWriteRequirements` マップを返し、各プロパティへの書き込みに何が必要か・どの入力形式で渡すかを示します `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 `Properties` は「名前 → 値」の辞書のままです。秘密の値は `***` になり、伏せた名前は `MaskedFields` に並びます（`GetWidgetProperties` と同じく `IsMasked` は付きません）。`PropertyWriteRequirements` は値を含まないので、秘密のプロパティも今までどおり載ります。 |
+| `SetSlotProperties` | ウィジェットのスロットプロパティを設定（32 KiB 制限・UObject 参照は `/Game/` 以下のみ）。参照には `WidgetSlotReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要になり、これらの値はエンジンの括弧表記ではなく **JSON ドキュメント** で渡します — 書く前に取得系の `WriteInputForm` を確認してください。拒否された書き込みは undo エントリを残さず、アセットを dirty にもしません。成功した書き込みは Widget Blueprint をコンパイルし、実行時に作られるウィジェットへ変更が届きます。`bSkipCompile: true` を渡すと変更済みの印だけを付け（応答は `bRequiresFollowupCompile: true` になる）、複数の編集のあとに `CompileWidgetBlueprint` で 1 回コンパイルできます `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `GetWidgetProperties` | Widget Blueprint のウィジェット（ルートウィジェットを含む）のプロパティを UE のテキストエクスポート形式で読む。`PropertyNames` を省くと、編集可能で非推奨でないすべてのプロパティを artifact に載せる。`PropertyNames`（64 個まで）を渡すと、指定した値を `Result` にも載せる。どのプロパティにも一致しない名前、編集できない・非推奨のプロパティの名前は `InvalidParams`。artifact には `PropertyWriteRequirements` も載り、各プロパティの書き込みに何が要るかを示す。ほかのコマンドの担当なので `SetWidgetProperties` が断るプロパティも含む。秘密の値（パスワード欄のテキストを含む）は `***` になり、`MaskedFields` に載る。平文の値は `IncludeSecretValues` で求める — [シークレット値の読み取り](#reading-secret-values) を参照。PIE 中は断る。`EditorInspect` が必要 |
+| `SetWidgetProperties` | Widget Blueprint のウィジェット（ルートウィジェットを含む）のプロパティを、Designer の詳細パネルで変えるのと同じく設定する。`Properties` は、プロパティ名からその値の文字列への対応 — 64 プロパティ・値の合計 32 KiB まで。スカラーと単純な値の構造体は UE のテキストエクスポート形式、参照は完全修飾のオブジェクトパス、そのほかの構造体とコンテナは文字列に書いた JSON ドキュメント。すべてのプロパティを書くか、1 つも書かないかのどちらか。`bSkipCompile` が `true` でなければ、後で Widget Blueprint をコンパイルするので、次に作られるウィジェット（PIE を含む）に値が届く。`WidgetPropertyEdit` が必要で、参照には `PropertyReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` も要る — 下の注記を参照 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `GetWidgets` | ウィジェットツリー構造を取得（JSON） |
 | `ListWidgetClasses` | 利用可能なウィジェットクラス一覧（最大 500 件） |
 | `CompileWidgetBlueprint` | Widget Blueprint をコンパイルしエラー / 警告を返す |
@@ -877,6 +1870,21 @@ Widget Blueprint 編集 — ツリー・変数・アニメーション・バイ�
 | `AddPropertyBinding` | プロパティバインディングを追加（同一 WBP 内関数/変数のみ） |
 | `RemovePropertyBinding` | プロパティバインディングを削除 |
 | `ExtractWidgetToUserWidget` | ウィジェットサブツリーを新規 UserWidget として抽出 |
+
+> **新規 — `GetWidgetProperties` / `SetWidgetProperties` は、ウィジェットそのもののプロパティを読み書きします**（TextBlock の Text、SpinBox の Min / Max / Value、ComboBoxString の選択肢など）。Designer の詳細パネルと同じ操作です。ウィジェットの名前は先に `GetWidgets` で調べてください。
+>
+> - **`SetWidgetProperties` が返すもの。** `Result` と artifact は `AppliedPropertyNames`、`ChangedPropertyNames`、`PreviousValues`（書き込み前の値。秘密の値は `***`）、`MaskedFields`、`bRequiresFollowupCompile`、`Warnings` を持ちます。書き込んだ値は返さず、UAIP が残す記録の中では `Properties` 引数をマスクします。
+> - **コンパイル。** コンパイルが失敗しても書き込みは取り消しません。呼び出しは成功し、`Warnings` が失敗を伝え、`bRequiresFollowupCompile` が `true` になります。`bSkipCompile: true` のときは Widget Blueprint に変更済みの印を付けるだけで、`bRequiresFollowupCompile` は `true` になり、実行中のウィジェットに値が届くのはコンパイル（`CompileWidgetBlueprint`）の後です。Undo はエディタ上の値を 1 回で戻します。実行時に作られるウィジェットに戻した値が出るのは、次のコンパイルの後です。
+> - **すべてか、何もしないか。** 1 つでも書けないプロパティがあれば、どれも書かず、アセットの未保存の印も元に戻します。ウィジェットが宣言していない名前は `InvalidParams`（`'<name>' does not exist`）です。次のプロパティは `PolicyViolation` で断り、使うべきコマンドがあればその名前を示します: `Slot`（`UAIP.Editor.UMG.SetSlotProperties`）、変数フラグ `bIsVariable`（`UAIP.Editor.UMG.SetWidgetAsVariable`）、デリゲート（`UAIP.Editor.UMG.AddPropertyBinding`、`UAIP.Editor.UMG.RemovePropertyBinding`）、`Navigation` のようなインスタンス化されたサブオブジェクト（作ると値の代入ではなくオブジェクトの構造を変えるため）。そもそも書いてはいけないプロパティも `PolicyViolation` です。64 個を超えるプロパティ、32 KiB を超える値、空の `Properties` は `InvalidParams` です。
+> - **Capability。** 常に `WidgetPropertyEdit`。参照である値・参照を含む値には `PropertyReferenceEdit`（参照先は UAIP が書き込んでよいコンテンツに限る）。単純な値の集合に入らない構造体とコンテナには `PropertyStructuredEdit`。後の 2 つは書き込みの最中に各プロパティの型から決まるので、`RequiredCapabilities` には現れません。`GetWidgetProperties` の `PropertyWriteRequirements` がプロパティごとに示します。
+> - **パスワード欄。** パスワード欄の `IsPassword` を true から false にするには、そのテキストを平文で読むのと同じ許可 — 安全ポリシーの設定 `AllowSecretValueRead` と Capability `SecretValueRead` — が要り、無ければ `PolicyViolation` で断ります。欄を普通の欄に変えて読み戻せないようにするためです。
+> - **バインディング。** Designer でバインディングを設定したプロパティにも書き込みます。実行時にはバインディングが値を上書きすることを `Warnings` が伝えます。
+> - **値の構造体。** カタログの入力形式が `TextOrJson` の構造体（たとえば `FVector2D`）は、値をテキスト形式のほかに、JSON オブジェクトを入れた文字列（たとえば `"{\"X\":1,\"Y\":2}"`）でも渡せます。
+> - PIE 中（`NotAllowed`）と、`/Engine/` の Widget Blueprint（`NotAllowed`）は**断ります**。
+> - **`GetWidgetProperties`** は、`PropertyNames` を渡していないときに artifact を保存できなければ `ExecutionFailed` で失敗します。そのときは artifact が唯一の結果だからです。`PropertyNames` を渡していれば、呼び出しは成功して `ArtifactsNotSaved` を伝えます。`SetWidgetProperties` は artifact を保存できなくても、書き込みはすでに済んでいるので、`ArtifactsNotSaved` を付けて成功します。
+> - `SetAssetProperty` はウィジェットへの書き込みを断り、`SetWidgetProperties` を案内します — [UAIP.Editor.Property](#uaipeditorproperty) を参照。
+
+PIE または Simulate の間も、読み取りコマンド `GetNamedSlots`・`GetSlotProperties`・`GetWidgetAnimationInfo`・`GetWidgetProperties`・`GetWidgets`・`ListPropertyBindings`・`ListWidgetAnimations` は Widget Blueprint を読めます。もう断りません。Toolset ブリッジの読み取り 4 本 `GetNamedSlots`・`GetWidgets`・`ListWidgetBlueprints`・`ListWidgetClasses` も UAIP 側では断らなくなり、返る内容はエンジンの Toolset に従います。
 
 ### Toolset ブリッジ（13）🧩
 
@@ -892,17 +1900,28 @@ Material グラフ編集とパラメータ管理。
 
 | コマンド | 説明 |
 |---|---|
-| `GetMaterialInfo` | 基本情報（NodeCount・ShadingModel・BlendMode・bHasErrors） |
-| `ListMaterialNodes` | Material グラフのノード一覧（NodeId・ExpressionClass・座標・bIsParameter） |
+| `GetMaterialInfo` | 基本情報（NodeCount・ShadingModel・BlendMode・bHasErrors）。PIE や Simulate の間も読める |
+| `ListMaterialNodes` | Material グラフのノード一覧（NodeId・ExpressionClass・座標・bIsParameter）。返される一覧では、出力（ルート）ノードの `NodeId` は、Material エディタを開いているかに関係なく固定値 `4d415445-5249-414c-524f-4f5400000001`。エディタを開いている間は作業中の内容の一覧。下の Note を参照。PIE や Simulate の間も読める |
 | `AddMaterialNode` | Material グラフにノードを追加（`ExpressionClass` 指定）— プロジェクト定義またはカスタム HLSL のクラスには Capability が必要、詳細は下記の Note を参照 |
 | `DeleteMaterialNode` | NodeId 指定でノードを削除（ルート削除は Conflict） |
 | `ConnectMaterialPins` | Material グラフの 2 ピンを接続（循環・型不一致検出） |
 | `DisconnectMaterialPins` | ピン接続を切断 |
 | `CompileMaterial` | マテリアルをコンパイルしエラー / 警告を返す |
 | `SetMaterialParameterValue` | マテリアルパラメータの値を設定 |
-| `GetMaterialParameterValue` | マテリアルパラメータの値を取得 |
+| `GetMaterialParameterValue` | マテリアルパラメータの値を取得。PIE や Simulate の間も読める |
 | `ListMaterialExpressionClasses` | `UMaterialExpression` 派生クラスの一覧（最大 500 件）。各エントリは `AddMaterialNode` が検証するのと同じポリシー由来の `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持つ。`ClassPath` を `AddMaterialNode` の `ExpressionClass` 引数に使用する。`TotalCount` / `ReturnedCount` / `Truncated` を返す — 詳細は下記の Note を参照 |
-| `RefreshMaterial` | マテリアルを強制再コンパイル（保存済みアセットをパス省略で即時再ビルド） |
+| `RefreshMaterial` | マテリアルを強制再コンパイル（保存済みアセットをパス省略で即時再ビルド）。アセットそのものを再コンパイルし、パッケージを dirty にする。Material エディタを開いていても、再コンパイルするのはアセットそのもの。エディタの作業コピーはコンパイルも適用もしないので、人がまだ適用していない変更はエディタに残る。`Result.EditorSync` は `EditorOpen` だけを持つ |
+| `ArrangeMaterialGraph` | Material **または MaterialFunction** のノードを、入力が左、出力ノードが右になるよう並べ直す。`AssetPath` と共通の引数を取る。`NodeIds` は `ListMaterialNodes` が返す `NodeId`（`MaterialExpressionGuid`、または出力ノードの固定 ID）。同じ `MaterialExpressionGuid` の式が複数あるアセットも並べ、添付では 2 件目以降を `<GUID>#<オブジェクト名>` で示す。重複した GUID を `NodeIds` に指定すると、どの式か決められないので `InvalidParams` で断る。位置だけ（コメントボックスの枠と出力ノードの位置も）を変え、コンパイルも Apply もしない。Material エディタを開いているときは、エディタの作業中の内容とアセット本体の両方を並べ、作業中の内容にしか無い（まだ Apply していない）ノードの数を `EditorSync.WorkingCopyOnlyNodeCount` で返す。`Method=Engine` はエンジンの整列で、コメントと出力につながっていないノードは動かさない。`MaterialGraphEdit` 必須。[グラフの自動整列](#グラフの自動整列) を参照 |
+
+> **Note — Material エディタを開いている間、Material のコマンドはエディタが画面に出している内容に対して動きます。** 対象は書き込み 7 コマンド（`AddMaterialNode`、`DeleteMaterialNode`、`ConnectMaterialPins`、`DisconnectMaterialPins`、`SetMaterialParameterValue`、`CompileMaterial`、`RefreshMaterial`）と読み取り 3 コマンド（`GetMaterialInfo`、`ListMaterialNodes`、`GetMaterialParameterValue`）です。以前は、エディタを開いたまま書き込むとアセットには届くものの、画面にノードが出ませんでした。
+>
+> - **書き込みはエディタの作業中の内容へ入る**ので、追加したノードがその場で画面に出ます。書き込みの後に作業中の内容をコンパイルし、**コンパイルが終わるのを待ちます**。妨げるものが無ければエディタの Apply を行い、変更がアセット本体にも届きます。Apply は作業中の内容を丸ごと写すので（Apply ボタンと同じ。保存はしません）、コマンドを始める前にエディタが持っていた変更も確定してしまいます。そのため、エディタにまだ適用していない変更があったときは、セッションが `MaterialUnappliedEditorChangesApply`（既定で拒否。[Safety & Capabilities](safety.md#マテリアル編集) を参照）を持たない限り、Apply を行いません。待つため、エディタを閉じているときより応答が遅くなることがあります。エディタを閉じているときは、従来どおりアセットに対して動きます
+> - **読み取りは、エディタを開いている間、作業中の内容を返します**（まだ Apply していない編集も含む）
+> - **書き込み 7 コマンドの応答に `Result.EditorSync` が付きます。** `EditorOpen`（bool）と、エディタを開いているときの `Applied`（bool。Apply しない `RefreshMaterial` は返しません）です。`Applied` が `false` のときは `ApplyDeferredReason` が理由を示します。`CompileErrors`（コンパイルの後も作業中の内容にエラーがあるので Apply を保留した。そのまま Apply すると閉じられないダイアログが出るため。書き込み自体は成功して画面に出ている。`UnappliedEditorChanges` より優先される。変更は作業中の内容に残るので、次の書き込みは、人がエディタで Apply するまで `UnappliedEditorChanges` で保留される）、`UnappliedEditorChanges`（コマンドを始めたとき、エディタにまだ適用していない変更があった。人の編集のことも、先の書き込みが作業中の内容に残ったもののこともある。Apply はその変更まで確定してしまうので、コマンドの結果は作業中の内容に残し、エディタで適用したときにまとめてアセットへ届く。呼び出しは `Success` のままで、`WorkingCopyOnly` は `true`。付与すれば Apply が進むときは、`EditorSync.ApplyRequiredCapability` に `MaterialUnappliedEditorChangesApply` が載る。その Capability が意図して拒否されている（`DeniedCapabilities`）ときは載らない。付与があれば Apply が走り、その変更もコマンドの結果と一緒に確定する。コンパイルエラーがあれば `CompileErrors` で保留される。対象は Apply する書き込み 5 コマンド（`AddMaterialNode`・`DeleteMaterialNode`・`ConnectMaterialPins`・`DisconnectMaterialPins`・`SetMaterialParameterValue`）と `CompileMaterial` で、`ArrangeMaterialGraph` と `RefreshMaterial` は Apply しない）、`ApplyNotExecuted`（エディタが Apply を実行しなかった）、`ApplyCanceled`（Apply は走ったが、コンパイルエラーのダイアログで人が Abort を選んだので、アセットは変わっていない。確認が表示されずに中止を選んだ扱いになったときもこの値になる。`[UAIP.ModalDialog] HandleDialogsOpenedByWrites` が `false`（既定）のときは常にこの扱いで、`true` のときはダイアログに答えるコマンドを使えない環境でこの扱いになる。統計パネルの派生マテリアルインスタンスのエラーなど、事前に調べられないエラーではこのダイアログが出ることがある）、`CompileSkipped`（呼び出しが `bSkipCompile` を指定したので、コンパイルも Apply もしなかった）、`NoChange`（既につながっている線をつなぐなど、コマンドが何も変えなかった。前の保留はそのまま残る）。エディタを閉じているときの `EditorSync` は `{ "EditorOpen": false }` です。**`WorkingCopyOnly: true`** は、変更が開いているエディタの作業コピーに残り、アセット本体に届かなかったときだけ `EditorSync` に付きます。対象は `CompileSkipped`・`CompileErrors`・`UnappliedEditorChanges`・`ApplyCanceled`・`ApplyNotExecuted` の後です（どれかは `ApplyDeferredReason` が示します）。`CompileMaterial` では、エディタに未適用の変更があったとき（`UnappliedEditorChanges`）に付きます。Capability が無ければ `CompileMaterial` はそれを適用しません。`RefreshMaterial` はアセットそのものに対して動くので、付けません。変更がアセットに届いたとき、何も変えなかったとき（`NoChange`）、エディタを閉じているときは、このキーはありません。キーがあれば、アセットは更新されていません。呼び出しは `Success` のままです
+> - Apply を保留している間にアセットを保存すると、前の内容が保存されます。エディタを閉じようとすると反映するかの確認が出ます（`ShutdownEditor` は `PreconditionFailed` と `AssetEditorsStillOpen` で断ります）。統計パネルでプラットフォーム統計を表示していると、UAIP が事前に調べられないエラーでダイアログが出ることがあります（Material のエラーを直した直後の書き込みでも出ます）
+> - **ノードの ID は、エディタを閉じていても、開いていても、開き直しても同じです。** **出力ノード**の ID は、どの Material でも固定値 `4d415445-5249-414c-524f-4f5400000001` になりました（以前はエディタを開くたびに変わっていました）。`ListMaterialNodes` など出力ノードを返すコマンドはこの値を返し、出力ノードの ID を受け取るコマンドは、以前の出力ノードの `NodeGuid` も引き続き受け付けます。以前に取った ID は使えます。保存した出力ノードの ID と比べている呼び出し側では、この 1 つの値だけが変わって見えます
+> - **Material エディタを開いている間、`Undo` / `Redo` が断られる場合があります。** [`UAIP.Editor.Workspace`](#uaipeditorworkspace) を参照してください。Material エディタは Undo / Redo のたびに Apply を行い、作業中の内容にコンパイルエラーがあるとダイアログで止まるためです
+> - `ArrangeMaterialGraph`（上）はコンパイルも Apply もせず、作業中の内容とアセット本体の両方に位置を書きます
 
 > **Note — プロジェクト定義・カスタム HLSL の ExpressionClass は Capability で制御されます**: エンジン組み込みモジュール（`Engine` / `RenderCore` / `MaterialEditor` / `Landscape`）由来の `ExpressionClass` は従来どおり追加できます。それ以外のモジュール由来のクラス — プロジェクトやプラグインが定義した `UMaterialExpression` 派生クラス — は `MaterialCustomTypeEdit` が必要になりました。`UMaterialExpressionCustom` / `UMaterialExpressionCustomOutput` とその派生クラス（任意の HLSL を含められる）は、どのモジュール由来かに関わらず `MaterialCustomNodeEdit` が必要です — この Capability は以前から登録されていましたが、これまでどのコマンドも要求していませんでした。両方に該当するクラスは両方の Capability が必要で、拒否には不足しているものがすべて挙がります。どちらも既定では付与されません。[Safety & Capabilities](safety.md#マテリアル編集) を参照。
 >
@@ -928,7 +1947,7 @@ Material グラフ編集とパラメータ管理。
 | `AddRestrictedGameplayTag` | Restricted タグを RestrictedTagList INI に追加 |
 | `RemoveGameplayTag` | タグを INI から削除（子タグ / ネイティブタグ保護） |
 | `RenameGameplayTag` | タグ名を変更（任意でアセット参照も更新） |
-| `FindGameplayTagReferencers` | タグを参照するアセット一覧 |
+| `FindGameplayTagReferencers` | タグを参照するアセット一覧 | `IncludeSecretValues` と他の 2 つの許可がそろわないと、秘密または秘密を含みうるタグを外し、一致の有無によらず `Result.SecretTagsExcluded: true` を付けます
 
 ### Toolset ブリッジ — GameplayTags（6 件）🧩
 
@@ -960,10 +1979,36 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 | コマンド | 説明 |
 |---|---|
 | `ListGameFeatures` 🧩 | GameFeature Plugin 一覧（`FilterState`：All / Installed / Mounted / Registered / Loaded / Active） |
-| `GetGameFeatureInfo` 🧩 | GFP 詳細（State・Actions・依存関係） |
+| `GetGameFeatureInfo` 🧩 | GFP 詳細（State・Actions・依存関係）。`PluginName` で指定し、プラグインマネージャーが知っているプラグインのときは、アーティファクトに `DeletionRequiredCapabilities` と `DeletionRefusedReason` も入る。表の下の注記を参照 |
 | `GetGameFeatureActions` 🧩 | GameFeature Plugin の `UGameFeatureData` が宣言する Action 一覧 |
-| `CreateGameFeaturePlugin` 🧩 | 新規 GameFeature Plugin のスキャフォールド（名前バリデーション付き） |
-| `DeleteGameFeaturePlugin` 🧩 | コンテンツのみの GameFeature Plugin をディスクから削除 |
+| `CreateGameFeaturePlugin` 🧩 | プロジェクトの `Plugins/GameFeatures/` の下に新しい GameFeature Plugin を作り、Game Feature サブシステムに登録して `InitialState` まで進める。表の下の注記を参照 |
+| `DeleteGameFeaturePlugin` 🧩 | プロジェクトの `Plugins/GameFeatures/` にあるコンテンツのみの GameFeature Plugin を削除。`GameFeatureDelete` が必要。フォルダに別のプラグインやリンクがある、別のプラグインの中にある、またはリンク経由で届くときは、`GameFeatureDeleteNestedPlugin` / `GameFeatureDeleteLinks` も必要。`Plugins/` の下だが `Plugins/GameFeatures/` の外にあるプラグインは `GameFeatureDeleteOutsideGameFeatures`、中のフォルダを一覧にできなかったときは `GameFeatureDeleteUnscanned` も必要。`DisableSave` が有効なときは `PolicyViolation` で拒否。表の下の注記を参照 |
+
+> **`CreateGameFeaturePlugin`** には `GameFeatureCreate` と `PluginName`（英字で始まり、英数字と `_` を合わせて最大 64 文字）が必要です。省略可能な `OutputPath` の既定はプロジェクトの `Plugins/GameFeatures/` で、相対パスで指定するとプロジェクトルートが基準になります（`Plugins/GameFeatures/Combat` なら、`Plugins/GameFeatures/Combat/<PluginName>/` に作成）。省略可能な `InitialState`（`Installed` / `Registered` / `Loaded` / `Active`。既定は `Active`）は、作成後に進める状態で、再起動後に始まる状態でもあります。プラグインには同名の GameFeature データのアセットが作られ、作成したセッションのうちに（通常は数秒以内）GameFeature として登録されます。エディタを再起動しても同じように登録されます。`.uproject` は変更しません。
+>
+> - **成功**: `Data` に `PluginPath`（プロジェクトルートからの相対パス。実際の作成先）・`PluginUrl`・`State`・`Warnings` が入ります。プロジェクトに GameFeature データのアセット管理設定が無いときは、`Warnings` に、パッケージ版でこの GameFeature のデータが含まれない恐れがあることと、`DefaultGame.ini` に足す設定行が入ります。プロジェクトの設定をコマンドが書き換えることはありません。
+> - **`InvalidParams`**: `OutputPath` がプロジェクトの `Plugins/GameFeatures/` の外（`Plugins/` の直下やプロジェクトの外など）・既存プラグインの中・ジャンクション経由でプロジェクト外を指す場合、名前や `InitialState` が不正な場合。何も作りません。同名のフォルダやプラグインがあると `Conflict`、エディタが終了中・PIE 中・コマンドレット実行中は `NotAllowed`、安全ポリシーがディスク書き込みを無効にしていると `PolicyViolation` です。
+> - **`ExecutionFailed`**: 途中の手順（プラグイン作成・データアセットの作成や保存・登録）が失敗した、登録が 30 秒以内に終わらなかった、エディタの終了が始まった、または作成後にもう一度場所を確かめたらプロジェクトの外だった場合。作ったものは消さずに残し、`Data` にどこまで進んだか（`CreatedOnDisk` / `Mounted` / `DataAssetCreated` / `DataAssetSaved` / `Registered`）・到達した `State`・`PluginPath` を載せます。同じ内容を JSON の成果物にも残し、`.uplugin` があればその写しも付けます。後始末には `DeleteGameFeaturePlugin` を使ってください。ただし場所の確認で外れた場合は例外で、プラグインはエディタから外されますがファイルは残り、`DeleteGameFeaturePlugin` も拒否するので、手で確認して削除してください。
+>
+> **`DeleteGameFeaturePlugin`** は `PluginName` を取ります。GameFeature の登録を解除し（作成の途中で失敗して一度も登録されなかったものは、この手順を飛ばします）、アセットの読み込みを解除し、削除してよい対象かをもう一度確かめてから、プラグインを（中にあるプラグインから先に）プラグイン一覧から外し、フォルダを削除します。次の場合は拒否し、何も消しません。
+>
+> - プラグインが無い（`NotFound`）。
+> - **どの Capability でも解除できない拒否**（`NotAllowed`。セッションが何を持っていても同じです）。対象がプロジェクトの `Plugins` フォルダの外にある、`Plugins` フォルダそのもの、`GameFeatures` フォルダそのものかその上のフォルダ、またはコードのモジュールを持つ。対象が `Plugins/GameFeatures/` の中にあるのに GameFeature ではない（`Plugins/` の下だが `Plugins/GameFeatures/` の外にあるプラグイン〔旧版が `Plugins/` 直下に作ったものを含む〕は、この理由では拒否されず、下の Capability を要ります）。プラグイン自身のフォルダがジャンクションなどのリンク。プラグインの実体の場所が、コマンドが守るフォルダ（`GameFeatures` フォルダ、`Plugins` フォルダ、プロジェクトのフォルダ、エンジンのフォルダ、それらの親フォルダ、ドライブのルート）と同じか、その上にある。実体の場所を割り出せない。中にある有効なプラグインの場所を調べられない。プラグイン自身のフォルダを調べられない（文は「The plugin directory could not be examined.」。プラグインの中のフォルダを一覧にできないのは、下の別の場合です）。プロジェクトのフォルダの外にあるのに、そこへ導いたリンク（`Plugins` フォルダ自身を含む）を見つけられない（理由を言い切れない。文は「The plugin directory resolves outside the project but no link leads there.」）。理由は `GetGameFeatureInfo` が返します（下記）。
+> - **Capability が足りない**（`CapabilityNotAvailable`。足りないものを全部名指しします。運用者が明示的に禁止していると `PolicyViolation`）。`GameFeatureDelete` に加えて、フォルダに別のプラグインがある、または別のプラグインの中にあるときは `GameFeatureDeleteNestedPlugin`（エンジンに登録されていない内側のプラグインは、**コードのモジュールを持っていても**ふつうのファイルとして消えます。登録済みで無効な内側のプラグインは、外側と一緒にプラグイン一覧から外れます）、フォルダにリンクがある、その上のフォルダ（たとえば `Plugins/GameFeatures` 自身）がリンク、または `Plugins` フォルダ自身がプロジェクトの外へのリンクで、プラグインの実体がプロジェクトの外にあるとき（リンク先がプロジェクトの中なら何も要りません）は `GameFeatureDeleteLinks`。`CreateGameFeaturePlugin` は `Plugins` がプロジェクトの外へのリンクでも従来どおりプラグインを作れますが、そのプラグインの削除には `GameFeatureDeleteLinks` が要ります。中のリンクはリンクだけが消え、**リンク先の中身は消えません**。上のリンクは違い、リンクが導く先の実体のプラグインが消え、それはプロジェクトの外にあることもあります。両方に当たるプラグインは両方を要します。`GameFeatureDeleteOutsideGameFeatures` は、プラグインが `Plugins/` の下で `Plugins/GameFeatures/` の外にあるときに要ります。エンジンが GameFeature と扱わない一般のプラグインなので、GameFeature かどうかの確認は行いません。消すとプラグイン一覧から外れフォルダも消えますが、エンジンのマウントポイントはエディタを再起動するまで残り、プラグインマネージャーが一覧から外さなかったプラグイン（有効なもの）は `Warnings` に載ります。`GameFeatureDeleteUnscanned` は、プラグインの中のフォルダを一覧にできなかったときに要ります。走査では中のリンクや別のプラグインがないと言い切れないので、`GameFeatureDeleteLinks` と `GameFeatureDeleteNestedPlugin` も要求し、一覧にできないフォルダのところで削除が途中で止まって、プラグインを一覧から外した後にファイルの一部が残ることがあります。これらは既定で拒否されているので、拒否の応答が名指しします（外にあるプラグインと走査できないフォルダは、以前は `NotAllowed` で拒否していました）。
+> - **内側に有効なプラグインが残っている**（`PreconditionFailed`。残っているプラグインの名前を挙げます）。外側は消しません。内容だけの GameFeature なら先に消せます。GameFeature でないプラグインは、`SetPluginEnabled` とエディタの再起動で無効にしてから消します。コード付きの GameFeature は UAIP では解けません。
+> - GameFeature の状態が切り替わっている最中（`PreconditionFailed`。待ってから再試行）。
+> - アセットの読み込み解除に失敗した、登録の解除が 30 秒以内に終わらなかった、またはエディタの終了が始まった（`ExecutionFailed`）。
+>
+> **削除の直前にもう一度確かめます。** Capability（`GameFeatureDelete` も）と、フォルダが同じものかどうかを再確認します。途中で許可が外れた、またはフォルダが別のものに差し替わったときは、何も消しません。プラグインはすでに止まっていて、ファイルは残り、応答の文にその状態が書かれます。プラグインマネージャーが内側のプラグインを一覧から外せなかったとき（有効なままのものなど）は、削除を続け、`Warnings` にそのプラグインを載せます。成功のときも、その後で失敗したときも載ります。
+>
+> **`GetGameFeatureInfo`** は、`PluginName` で指定し、プラグインマネージャーが知っているプラグインのとき、アーティファクトに 2 つのキーを足します（`PluginUrl` で指定したとき、削除を評価できない構成では出ません）。
+>
+> | キー | 意味 |
+> |---|---|
+> | `DeletionRequiredCapabilities` | `DeleteGameFeaturePlugin` が `GameFeatureDelete` に**加えて**要る Capability（`GameFeatureDeleteLinks`、`GameFeatureDeleteNestedPlugin`、`GameFeatureDeleteOutsideGameFeatures`、`GameFeatureDeleteUnscanned`。この順）。不要なときは空。削除が拒否されるときも空 |
+> | `DeletionRefusedReason` | セッションが何を持っていても削除を拒否する規則。拒否が無ければ空文字列 |
+>
+> `DeletionRefusedReason` の値は `NotAssessed`・`PolicyUnavailable`・`OutsideGameFeatures`・`NotAGameFeature`・`HasCodeModules`・`RootIsLink`・`FinalPathUnresolved`・`InnerPluginUnresolved`・`ProtectedFinalPath`・`LinkNotProven`・`ScanFailed` のいずれかです。最初の検査を通ったプラグインのフォルダだけを走査し、何も書き込みません。
 
 ### Toolset ブリッジ — GameFeatures（4 件）🧩
 
@@ -974,7 +2019,7 @@ GameFeature Plugin 管理。`GameFeatures` + `GameFeaturesEditor` プラグイ�
 | `Toolset.Editor.GameFeatures.ListGameFeatures` | このブリッジコマンド経由では利用不可 — 代わりに `UAIP.Editor.GameFeatures.ListGameFeatures` を使ってください（後述の注記を参照） |
 | `Toolset.Editor.GameFeatures.FindGameFeatureData` | ⚠️ **呼び出せません** — 委譲先が存在せず、ネイティブの代替もありません（後述の注記を参照） |
 | `Toolset.Editor.GameFeatures.GetActions` | ⚠️ **呼び出せません** — 委譲先が存在せず、ネイティブの代替もありません（後述の注記を参照） |
-| `Toolset.Editor.GameFeatures.CreateGameFeaturePlugin` | ⚠️ **呼び出せません** — 代わりに `UAIP.Editor.GameFeatures.CreateGameFeaturePlugin` を使ってください（後述の注記を参照） |
+| `Toolset.Editor.GameFeatures.CreateGameFeaturePlugin` | ⚠️ **呼び出せません** — 代わりに `UAIP.Editor.GameFeatures.CreateGameFeaturePlugin` を使ってください（後述の注記を参照） ⚠️ ハンドラは、`DisableSave` の間は委譲の前に `PolicyViolation` で断るようになりました（呼び出せない状態は変わらないので、エンジンに委譲先が加わったときにだけ効きます）。 |
 
 > **⚠️ Breaking change — `Toolset.Editor.GameFeatures.ListGameFeatures` は、このブリッジコマンド経由ではどのエンジンバージョンでも呼び出せません。** 内部で委譲している `GameFeaturesToolset` が `ListGameFeatures` という名前の関数を宣言していないため、そもそも実行に到達できませんでした — これまでは何を渡しても実行時に汎用的な `ExecutionFailed` で失敗していました。現在は `UAIP.Core.DescribeCommand` と `uaip_list_commands` が `Available: false` を報告し、`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "DelegationTargetMissing"` が付きます。名前指定で呼び出すと依然として失敗しますが、今度は `PolicyViolation` になり、`ErrorMessage` には同じ説明が入ります。**代わりに `UAIP.Editor.GameFeatures.ListGameFeatures` を使ってください** — ネイティブコマンドが委譲せずに同じ操作を行い、この変更の影響を受けません。
 
@@ -1002,7 +2047,7 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `GetSystemData` 🧩 | システムのデータ構造 |
 | `GetEmitterData` 🧩 | エミッターのデータ構造 |
 | `GetRendererData` 🧩 | レンダラーのデータ構造 |
-| `GetStackInputData` 🧩 | モジュールスタック入力値 — 名前・型・値モード（Local/Linked/Dynamic/DataInterface/Expression）・`AddSetParameterEntry` がそのまま書き戻せる形の現在値・入れ子の `WriteRequirements` オブジェクトを返す。必須パラメータ `ModuleId` は `GetSystemTopology` / `GetEmitterTopology` / `GetScriptStackTopology` / `GetModuleTopology` のいずれか、または `AddModule` 自身のレスポンスから得られる（4つの取得系と書き込み系すべてが同じ小文字ハイフン区切り形式で返す）。UAIP でモジュールを追加したことのないアセットでも、既存モジュールを読み取ることができる。 |
+| `GetStackInputData` 🧩 | モジュールスタック入力値 — 名前・型・値モード（Local/Linked/Dynamic/DataInterface/Expression）・`AddSetParameterEntry` がそのまま書き戻せる形の現在値・入れ子の `WriteRequirements` オブジェクトを返す。必須パラメータ `ModuleId` は `GetSystemTopology` / `GetEmitterTopology` / `GetScriptStackTopology` / `GetModuleTopology` のいずれか、または `AddModule` 自身のレスポンスから得られる（4つの取得系と書き込み系すべてが同じ小文字ハイフン区切り形式で返す）。UAIP でモジュールを追加したことのないアセットでも、既存モジュールを読み取ることができる。 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密と判定した入力の `Value` は、値の指定の仕方（直接の値・ほかのパラメータへのリンク・式）に関わらず伏せます（式のテキストが値を含みうるため）。引き当てられない入力（静的スイッチなど）は伏せて `UnverifiedMaskedFields` に載せます。Toolset 版も同じ伏せ方です — [シークレット値の読み取り](#reading-secret-values) を参照。 |
 | `UEnum_Info` 🧩 | UEnum 情報 |
 | `GetAvailableNiagaraRendererClasses` 🧩 | `UNiagaraRendererProperties` 派生クラスの一覧（上限 200 件）。返された `ClassPath` を `AddRenderer` の `RendererClass` 引数として使用する。 |
 
@@ -1073,7 +2118,7 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | コマンド | 説明 |
 |---|---|
 | `GetStackIssues` 🧩 | システム全体のスタック Issue（エラー / 警告 / 情報、dismiss 済みを含む）と `IssueId`・`FixId`。UE 5.8+ 専用。UE 5.7 では `Available: false` |
-| `ApplyStackIssueFix` 🧩 | `IssueId` + `FixId` を指定して Fix 形式の自動修正を適用（Link 形式は拒否・`NiagaraStackAutoFix` 必要）。UE 5.8+ 専用。UE 5.7 では `Available: false` |
+| `ApplyStackIssueFix` 🧩 | `IssueId` + `FixId` を指定して Fix 形式の自動修正を適用（Link 形式は拒否・`NiagaraStackAutoFix` 必要）。UE 5.8+ 専用。UE 5.7 では `Available: false`。PIE や Simulate の間は、引数を検査したあとに `NotAllowed` で断る |
 
 > **Note — `GetStackIssues` が返す各 issue の `Location` オブジェクトは、該当する方に応じて `InputNameStack` か `RendererIndex` のどちらかを持ち、issue がモジュールやシステム全体を指す場合はどちらも持ちません。** `Location` は常に `EmitterName`・`ScriptName`・`ModuleName` を持ちます。issue が特定のスタック入力を指す場合、`Location` はさらに `InputNameStack` を持ちます — これは `GetStackInputSchema`・`GetStackInputTopology`・`GetDynamicInputSchema`・`SetStackInputData` が自身の `InputNameStack` パラメータとして受け付けるのと同じ、モジュールレベルから末端の入力までの順序付き名前配列です。issue がレンダラーを指す場合は、代わりに `RendererIndex` を持ちます。この2フィールドは互いに排他的で、該当しない場合に空配列や `-1` で埋められることもありません — フィールドの**値**ではなく**存在そのもの**が「該当するかどうか」を表します。`GetStackIssues` が返した `InputNameStack` を、パスを組み立て直すことなくそのまま上記4コマンドのいずれかへ渡せば、issue が指す入力をそのまま調べたり修正したりできます。`GetStackIssues` 自体が UE 5.8+ 専用（前述）なので、`Location` とこの往復も UE 5.8+ でのみ成立します。
 >
@@ -1088,21 +2133,21 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 | `DuplicateEmitter` 🧩 | エミッターを複製。このネイティブコマンドでは使えず、対応する Toolset ブリッジ側にも動く委譲先がありません — 後述の注記を参照 |
 | `SetEmitterEnabled` 🧩 | エミッターの有効/無効を切り替え |
 | `SetEmitterName` 🧩 | エミッターの名前を変更 |
-| `SetEmitterData` 🧩 | エミッターのデータを設定 |
+| `SetEmitterData` 🧩 | エミッターのデータを設定 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `AddRenderer` 🧩 | エミッターにレンダラーを追加 |
 | `RemoveRenderer` 🧩 | レンダラーを削除 |
-| `SetRendererData` 🧩 | レンダラーのデータを設定（`NiagaraStackEdit` 必須）。指定クラスのレンダラーがエミッタに無い場合は `NotFound` を返すようになりました — 最初に見つかった別のレンダラーへ書き込むフォールバックは廃止されています。書き込み経路が扱えないプロパティ名は黙って無視されず、リクエスト全体が `PolicyViolation` で失敗します。構造体の初期値が途中までしか解釈できない場合は「既定値として解釈した」成功ではなく `InvalidParams` で拒否されます。成功時は `PostEditChangeProperty` を呼ぶため、変更がエディタへ即座に反映されます |
+| `SetRendererData` 🧩 | レンダラーのデータを設定（`NiagaraStackEdit` 必須）。指定クラスのレンダラーがエミッタに無い場合は `NotFound` を返すようになりました — 最初に見つかった別のレンダラーへ書き込むフォールバックは廃止されています。書き込み経路が扱えないプロパティ名は黙って無視されず、リクエスト全体が `PolicyViolation` で失敗します。構造体の初期値が途中までしか解釈できない場合は「既定値として解釈した」成功ではなく `InvalidParams` で拒否されます。成功時は `PostEditChangeProperty` を呼ぶため、変更がエディタへ即座に反映されます `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `AddModule` 🧩 | エミッターのモジュールスタックにモジュールを追加 |
 | `RemoveModule` 🧩 | モジュールを削除 |
 | `MoveModule` 🧩 | スタック内でモジュールを移動。このネイティブコマンドでは使えず、対応する Toolset ブリッジ側にも動く委譲先がありません — 後述の注記を参照 |
 | `SetModuleEnabled` 🧩 | モジュールの有効/無効を切り替え |
-| `SetStackInputData` 🧩 | モジュールスタック入力値を設定 |
-| `SetSystemData` 🧩 | システムのデータを設定 |
-| `AddUserVariables` 🧩 | システムにユーザー変数を追加 |
+| `SetStackInputData` 🧩 | モジュールスタック入力値を設定 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `SetSystemData` 🧩 | システムのデータを設定 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `AddUserVariables` 🧩 | システムにユーザー変数を追加 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `RemoveUserVariables` 🧩 | ユーザー変数を削除 |
 | `CompileNiagaraSystem` 🧩 | Niagara システムをコンパイル |
-| `AddSetParametersModule` 🧩 | Set Parameters モジュールをスタックに追加し、初期パラメータエントリを登録する。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）に加え、`NiagaraReferenceEdit` があればオブジェクトパスで渡したデータインターフェース / オブジェクト型パラメータにも適用される — 下の Note を参照。 |
-| `AddSetParameterEntry` 🧩 | 既存の Set Parameters モジュールにパラメータエントリを追加する。`ScriptName`（例：`Spawn` / `Update`）が必須。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）に加え、`NiagaraReferenceEdit` があればオブジェクトパスで渡したデータインターフェース / オブジェクト型パラメータにも適用される — 下の Note を参照。 |
+| `AddSetParametersModule` 🧩 | Set Parameters モジュールをスタックに追加し、初期パラメータエントリを登録する。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）に加え、`NiagaraReferenceEdit` があればオブジェクトパスで渡したデータインターフェース / オブジェクト型パラメータにも適用される — 下の Note を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `AddSetParameterEntry` 🧩 | 既存の Set Parameters モジュールにパラメータエントリを追加する。`ScriptName`（例：`Spawn` / `Update`）が必須。`DefaultValue` フィールドは一般的な型（float / int / bool / struct）に加え、`NiagaraReferenceEdit` があればオブジェクトパスで渡したデータインターフェース / オブジェクト型パラメータにも適用される — 下の Note を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `RemoveSetParameterEntry` 🧩 | Set Parameters モジュールからパラメータエントリを削除する。`ScriptName`（例：`Spawn` / `Update`）が必須。 |
 
 > **⚠️ Breaking change — `DuplicateEmitter` と `MoveModule` は、これらのネイティブコマンド経由ではどのエンジンバージョンでも呼び出せません。** 内部で呼んでいるエンジン側 API（`FNiagaraSystemViewModel::DuplicateEmitters` と `FNiagaraStackGraphUtilities::MoveModule`）がエンジンモジュールの外へ export されていないため、そもそも実行に到達できませんでした — これまでは何を渡しても実行時に `NotAllowed` で失敗していました。現在は `UAIP.Core.DescribeCommand` と `uaip_list_commands` が、どのエンジンバージョンでも両方とも `Available: false` を報告し、`UnavailableReason: "HandlerUnavailable"` / `UnavailableDetail: "EngineApiNotExported"` が付きます。**エンジンを上げても解決しません** — export の欠落はどのバージョンでも同じだからです。名前指定で呼び出すと依然として失敗しますが、今度は `PolicyViolation` になり、`ErrorMessage` には同じ説明が入ります。
@@ -1149,6 +2194,19 @@ Niagara VFX システム編集。`Niagara` + `NiagaraEditor` プラグインお�
 > **7 件目として `GetSystemInfo` が加わりました。** 全件の突き合わせにより、`Toolset.Editor.Niagara.GetSystemInfo` も委譲先が存在しないことが分かりました。toolset が宣言しているのは `GetSystemSummary` と `GetSystemData` で、どちらもこのコマンドの呼び出し元に約束された形を返しません。`Available: false` と `UnavailableDetail: "DelegationTargetMissing"` を返すようになりました。**`UAIP.Editor.Niagara.GetSystemInfo`** が同じ操作をネイティブで行います。
 >
 > **逆に `GetAssetDiscoveryInfo` は動くようになりました。** このコマンドは `NiagaraToolset_Info` へ委譲していましたが、実物は `NiagaraToolset_Assets` にあり、ToolsetRegistry は 1 回の完全一致検索でしか解決しないため到達していませんでした。宛先を修正済みです。
+
+> **引数は Niagara Toolset が宣言する形に揃えています。**
+>
+> - **参照引数は、オブジェクトパスの文字列でも `{"refPath": "..."}` でも渡せます。** このセクションの全コマンドの、アセット・クラス・`System` の参照が対象です。どちらの形も以前から受け付けていました。ブリッジは Toolset へ `{"refPath": ...}` で送ります。
+> - **スタック項目の参照は、メンバーとその既定値を宣言します。** 参照を取る 19 コマンド（`AddRenderer`・`AddSetParameterEntry`・`AddSetParametersModule`・`GetDynamicInputSchema`・`GetEmitterData`・`GetEmitterTopology`・`GetModuleSchema`・`GetModuleTopology`・`GetRendererData`・`GetScriptStackTopology`・`GetStackInputData`・`GetStackInputSchema`・`GetStackInputTopology`、および次の項目の 6 コマンド）のスキーマに、`EmitterName` / `ScriptName` / `ModuleName`（既定値 `"None"`）、`RendererIndex`（既定値 `-1`）、`InputNameStack`（省略すると空配列を送る）が載ります。Toolset 自身の既定値なので、メンバーを省略した呼び出しの意味は以前と変わりません。
+> - ⚠️ **次の 6 コマンドは、スタック項目の参照を中身を検査しないオブジェクトで受けていましたが、宣言するようになりました:** `RemoveRenderer`（`RendererToRemove`）、`RemoveSetParameterEntry` と `SetModuleEnabled`（`ModuleRef`）、`SetEmitterData`（`Emitter`）、`SetRendererData`（`Renderer`）、`SetStackInputData`（`StackInputRef`）。`System` は必須（パス文字列または `{"refPath": ...}`）、`EmitterName` / `ScriptName` / `ModuleName` は文字列、`RendererIndex` は整数、`InputNameStack` は配列です。`System` の欠落や、メンバーの型違い（たとえば整数でない `RendererIndex`）は、Toolset を呼ぶ前に `InvalidParams` で断ります。参照の中の宣言していないメンバーは受け付けて無視します（Toolset へは送りません）。これは上の 6 コマンドに限らず、スタック項目の参照を取る 19 の Niagara コマンド（上の 6 コマンドに加えて `AddSetParametersModule`・`AddSetParameterEntry`・`AddRenderer`・`GetEmitterTopology`・`GetEmitterData`・`GetScriptStackTopology`・`GetModuleTopology`・`GetModuleSchema`・`GetStackInputData`・`GetStackInputTopology`・`GetStackInputSchema`・`GetRendererData`・`GetDynamicInputSchema`）に共通です。
+> - ⚠️ **`SetEmitterData`（`EmitterData`）・`SetRendererData`（`RendererData`）・`SetSystemData`（`SystemData`）は `PropertyValues` だけを取ります**（文字列、必須）。ほかのメンバー、`PropertyValues` の欠落、文字列でない値は `InvalidParams` で断ります。
+> - ⚠️ **`GetAvailableDynamicInputs` は `Type` の中に `ClassStructOrEnum` だけを取ります**（必須。パス文字列または `{"refPath": ...}`）。ほかのメンバーや `ClassStructOrEnum` の欠落は `InvalidParams` で断ります。
+> - **次の 5 つの引数の要素の形を宣言するようになりました:** `AddUserVariables`（`VariablesToAdd`）・`RemoveUserVariables`（`VariablesToRemove`）・`AddSetParametersModule`（`Parameters`）・`AddSetParameterEntry`（`Entry`）・`SetStackInputData`（`InputData`）。以前は検査しない値の配列、または開いたオブジェクトで受けていました。
+>   - 変数は `Name`（文字列、必須）と `Type.ClassStructOrEnum`（必須。パス文字列または `{"refPath": ...}`。Toolset へは `{"refPath": ...}` で送ります）です。`AddUserVariables` は `Description`（文字列、既定値 `""`）も取ります。`AddSetParametersModule` では同じ 2 つが `Variable` の下（`Variable.Name`・`Variable.Type.ClassStructOrEnum`）に、`AddSetParameterEntry` では `Entry.Variable` の下にあります。`RemoveUserVariables` は、Toolset が名前と型の両方でパラメータを探すため、どちらも必要です。
+>   - `DefaultValue`（`VariablesToAdd` の要素、`Parameters` の要素、`Entry` の中）は省略可能で、`Struct`（パス文字列または `{"refPath": ...}`）と `value`（中身が構造体ごとに違い、検査しないオブジェクト）の 2 メンバーを持ちます。両方を渡すか、両方とも渡さないかにしてください。片方だけはスキーマを通りますが、Toolset が断ります。`DefaultValue` を省略した呼び出しは従来どおり動きます。
+>   - `SetStackInputData` は `InputData.Struct`（必須。パス文字列または `{"refPath": ...}`）と `InputData.value`（必須のオブジェクト）を取ります。`value` は Toolset が読む綴りで、`GetStackInputData` が返す綴りでもある小文字なので、結果をそのまま渡せます。
+>   - これらの形の要素や、その中のどの階層でも、宣言していないメンバーは受け付けて無視します（従来どおり Toolset へは送りません）。裸の文字列の要素と、`Name`・型・`Struct`・`value` の欠落は、Toolset も断っていたので `InvalidParams` で断ります。上に挙げたスタック項目の参照（`ModuleRef` など）の中も同じで、断るのは `System` の欠落とメンバーの型違いだけです。
 
 ---
 
@@ -1228,8 +2286,9 @@ Dataflow グラフ編集。`DataflowEditor` プラグインが必要です。
 | `ConnectDataflowPins` 🧩 | 2 ピンを接続 |
 | `DisconnectDataflowPins` 🧩 | ピン接続を切断 |
 | `ListDataflowVariables` 🧩 | グラフ変数一覧 |
-| `GetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を取得（プリミティブ / enum / FName / FString / 単純構造体） |
-| `SetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を設定。ドメイン非依存（Cloth の Weight Map・シミュレーション設定ノード等から利用される）。参照・構造体・コンテナは `ValueJson` で書き込み、コンテナの要素 1 つは `Operation` / `ElementIndex` / `ElementKeyJson` で指定する — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。参照に触れる書き込みは `DataflowGraphEdit` に加えて `DataflowReferenceEdit` が必要で、構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。ハード参照（例: `TObjectPtr<UGroomAsset>`）の値は**既にロード済み**のアセットのオブジェクトパス — プロパティ書き込みが副作用でアセットをロードすることはない。ソフト参照はアセットレジストリに対して検証されるため、対象のロードを必要としない |
+| `GetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を取得（プリミティブ / enum / FName / FString / 単純構造体） `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密の配列への添字を含むプロパティのパスは 3 つの許可が要ります。定義がまだ解決できない値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `SetDataflowNodeProperty` 🧩 | ノードの `EditAnywhere` プロパティ値を設定。ドメイン非依存（Cloth の Weight Map・シミュレーション設定ノード等から利用される）。参照・構造体・コンテナは `ValueJson` で書き込み、コンテナの要素 1 つは `Operation` / `ElementIndex` / `ElementKeyJson` で指定する — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。参照に触れる書き込みは `DataflowGraphEdit` に加えて `DataflowReferenceEdit` が必要で、構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。ハード参照（例: `TObjectPtr<UGroomAsset>`）の値は**既にロード済み**のアセットのオブジェクトパス — プロパティ書き込みが副作用でアセットをロードすることはない。ソフト参照はアセットレジストリに対して検証されるため、対象のロードを必要としない `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `ArrangeDataflowGraph` 🧩 | Dataflow グラフのノードを、左→右にデータが流れるよう並べ直す。`AssetPath`（`/Game/` のみ）と共通の引数を取る。`NodeIds` は `GetDataflowGraphInfo` の `NodeGuid`。どのノードにも当たらない ID は `RemoveDataflowNode` と同じ `ExecutionFailed`。位置だけを変え、評価は走らない。`DataflowGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 ### Toolset ブリッジ — Dataflow（7 件）🧩
 
@@ -1271,6 +2330,8 @@ Chaos Cloth Asset 編集と `ChaosClothAssetToolset` ブリッジ（UE 5.8, Expe
 ### Toolset ブリッジ（6）
 
 `ChaosClothAssetToolset` の6関数をそのままミラー。プロバイダ：`Toolset.Editor.ChaosClothAsset.*`。UE 5.8+ かつ `ChaosClothAssetToolset` + `ToolsetRegistry` 有効時のみ利用可能。
+
+> ⚠️ **`AssignClothingToSection`・`GetSectionClothing`・`RemoveClothingFromSection` は整数を取ります。** `LodIndex`・`SectionIndex`、および `AssignClothingToSection` の `ClothingLodIndex` は数値として宣言されていました。小数部のない数値は受け付けます（`1` も `1.0` も添字 1 です）。小数部のある値（例: `1.5`）は `InvalidParams` で断ります。以前は、そうした値を Toolset が 0 方向へ切り捨てて受け取っていたため、`1.5` が添字 `1` に効き、指定とは別の位置を操作していました。
 
 | コマンド | 説明 |
 |---|---|
@@ -1391,7 +2452,7 @@ MetaHuman キャラクターのオーサリング — アセット作成、体�
 
 | コマンド | 説明 |
 |---|---|
-| `GetViewportSettings` | プレビュービューポート設定を取得 — ライティング環境・ライト回転・背景色・LOD・ヘアカード / ストランドの切り替え・プレビュー用スキンマテリアル・カメラフレーミング（読み取り専用、`EditorInspect` のみで実行可能） |
+| `GetViewportSettings` | プレビュービューポート設定を取得 — ライティング環境・ライト回転・背景色・LOD・ヘアカード / ストランドの切り替え・プレビュー用スキンマテリアル・カメラフレーミング（読み取り専用、`EditorInspect` のみで実行可能。PIE や Simulate の間も動く） |
 | `SetViewportSettings` | プレビュービューポート設定を部分更新（最低 1 項目の指定が必要、範囲外はクランプせず拒否）。`PreviewMaterial` はエディタのビューポートツールバーの表示名に合わせてあり、**色を確認するためにキャプチャする前には `Skin` を選ぶこと** — `Topology` はトポロジ可視化で肌・メイク・眼の色を完全に隠し、`Clay` はテクスチャなしのグレー。`CameraFrame` は常にキャラクターへ記録されるが、プレビューカメラが実際に動くのは MetaHuman キャラクターエディタで開いている間だけ。カスタムライティング環境はここからは選べない — サポート対象の 2 つのエンジンバージョンで表現が異なるため、エディタのビューポートツールバーで設定する |
 | `RefreshCharacterPreview` ⬆️ | 保留中のコレクション編集をキャラクターへ反映し、エディタパイプラインを再実行してプレビューへ反映 |
 
@@ -1444,11 +2505,11 @@ DataTable 行の管理とインポート / エクスポート。
 |---|---|
 | `ListDataTableRows` | DataTable の行キー一覧 |
 | `AddDataTableRow` | 新規行を追加 |
-| `DeleteDataTableRow` | 行を削除 |
+| `DeleteDataTableRow` | 行を削除 行の構造体が秘密を含む（ファイルパスの列も含む）、または対象の行の値が秘密や中身を読めない型の値を含む（`FInstancedStruct` のような動的な型の構造体は中身まで見ます）とき、3 つの許可がそろわなければ、何も削除せず・スナップショットも作らずに `PolicyViolation` で断ります。見るのは削除する行だけです。`IncludeSecretValues` を受け付けます — [シークレット値の読み取り](#reading-secret-values) を参照。秘密を含まない表は影響を受けません。 |
 | `DuplicateDataTableRow` | 行を複製 |
-| `ImportDataTableFromCSV` | CSV 文字列を一括インポート（Replace / Merge モード） |
-| `ExportDataTableToCSV` | DataTable を CSV Artifact としてエクスポート |
-| `GetDataTableRowStruct` | 行構造（UScriptStruct）フィールド定義を取得 |
+| `ImportDataTableFromCSV` | CSV 文字列を一括インポート（Replace / Merge モード） 行の構造体が秘密を含む（ファイルパスの列も含む）、または表のどれかの行の値が秘密や中身を読めない型の値を含む（`FInstancedStruct` のような動的な型の構造体は中身まで見ます）とき、3 つの許可がそろわなければ、何も取り込まず・スナップショットも作らずに `PolicyViolation` で断ります。`IncludeSecretValues` を受け付けます — [シークレット値の読み取り](#reading-secret-values) を参照。秘密を含まない表は影響を受けません。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `ExportDataTableToCSV` | DataTable を CSV Artifact としてエクスポート 行の構造体が秘密を含む（ファイルパスの列も含む）、またはどれかの行の値が秘密や中身を読めない型の値を含む（`FInstancedStruct` のような動的な型の構造体は中身まで見ます）とき、3 つの許可がそろわなければ、何も書き出さずに `PolicyViolation` で断ります（そろえば CSV には平文が入ります）。`IncludeSecretValues` を受け付けます — [シークレット値の読み取り](#reading-secret-values) を参照。秘密を含まない表は影響を受けません。 |
+| `GetDataTableRowStruct` | 行構造（UScriptStruct）フィールド定義を取得 秘密のフィールドの既定値は、アーティファクトでは `***` と `IsMasked: true` で返る。秘密かどうかは、名前やメタデータに加えて、既定値が持つ中身でも判定し、中身に秘密がある値、または中身を読めない型の値は伏せる。`IncludeSecretValues` / `SecretValuesOffset` を取る。3 つの許可がそろえば、平文の既定値が `Result.SecretFieldValues`（キーはフィールド名）に返り、アーティファクトは伏せたまま。アーティファクトには伏せたフィールドの名前を並べた `MaskedFields` も入る。応答には常に `Result` が付き、`FieldCount` と `MaskedFieldCount`（`MaskedFields` の要素数）が入る。許可が足りないときは、コマンドは成功し、値は伏せたまま、`Result.SecretValuesWithheldReason` が理由を返す — [シークレット値の読み取り](#reading-secret-values)を参照。 |
 | `ListDataTableRowStructs` | 行構造に使える `FTableRowBase` 派生 struct の一覧 — `ClassPath` を `CreateAsset` の `FactoryParams.RowStructPath` に渡す |
 
 ---
@@ -1470,14 +2531,16 @@ Anim Blueprint グラフと StateMachine 編集。
 | `AddAnimTransition` | From→To Transition を追加（重複時 idempotent） |
 | `RemoveAnimTransition` | NodeId 指定で Transition を削除 |
 | `CompileAnimBlueprint` | コンパイルし CompileStatus + エラーログを返す |
-| `SetAnimGraphNodeProperty` | AnimGraph ノードの `EditAnywhere` プロパティをドット記法の `PropertyPath` で書き込み。参照は `ValueJson` + `AnimBlueprintReferenceEdit`、構造体・コンテナは `PropertyStructuredEdit` 経由 — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。プロパティがピンとして公開されていて何も接続されていない場合、書き込みに合わせてピンの既定値も更新されるため、次のコンパイルで値が捨てられない。接続済みのピンには触れない |
-| `GetAnimGraphNodeDetails` | AnimGraph ノード 1 個分のピン・プロパティ詳細（読み取り専用。秘匿値は `IsSecret: true` のみ報告され `Value` は省略される） |
+| `SetAnimGraphNodeProperty` | AnimGraph ノードの `EditAnywhere` プロパティをドット記法の `PropertyPath` で書き込み。参照は `ValueJson` + `AnimBlueprintReferenceEdit`、構造体・コンテナは `PropertyStructuredEdit` 経由 — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。プロパティがピンとして公開されていて何も接続されていない場合、書き込みに合わせてピンの既定値も更新されるため、次のコンパイルで値が捨てられない。接続済みのピンには触れない `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `GetAnimGraphNodeDetails` | AnimGraph ノード 1 個分のピン・プロパティ詳細（読み取り専用。秘匿値は `IsSecret: true` のみ報告され `Value` は省略される） `IncludeSecretValues` を受け付けます。伏せ方は従来のままで、秘密のプロパティは `Value` を省いて `IsSecret: true` を付けます（`***` にはしません）。3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 |
 | `AddAnimGraphNodePosePin` | 動的な Pose 入力ピンを 1 つ追加（現状は `UAnimGraphNode_LayeredBoneBlend` のみ対応）。非冪等 |
 | `RemoveAnimGraphNodePosePin` | `PinIndex` 指定で動的な Pose 入力ピンを 1 つ削除。削除すると残りのピン番号が繰り上がる |
 | `AddAnimLayerGraph` | ルート AnimBlueprint 上に自己完結型の Anim Layer グラフを新規作成。派生 AnimBlueprint 上では拒否される |
 | `RemoveAnimLayerGraph` | 自己完結型の Anim Layer グラフを削除。`RemoveReferencingNodes` が true の場合、参照している `LinkedAnimLayer` ノードも合わせて削除 |
 | `ImplementAnimLayerInterface` | `UAnimLayerInterface` 派生インターフェースを実装し、宣言された anim-layer 関数ごとに 1 つずつレイヤーグラフを生成。`AnimBlueprintReferenceEdit` が必要（実装インターフェース一覧へクラス参照を書き込むため） |
 | `AddLinkedAnimLayerNode` | 自己完結型レイヤー、または（`InterfacePath` 指定時は）実装済みインターフェースのレイヤー関数を指す `LinkedAnimLayer` ノードを配置。後者はさらに `AnimBlueprintReferenceEdit` が必要。ノードを配置するグラフは `TargetGraph`（名前）または `GraphGuid` で選ぶ。詳細は表の下の Note を参照 |
+| `ArrangeAnimGraph` | AnimGraph のノードを自前の整列で並べ直す（出力ノードが右端、それに入るノードが左へ伸びる）。`AssetPath` と、`TargetGraph` か `GraphGuid`（既定は最初の AnimGraph。複数のグラフが共有する名前は `MatchedGraphGuids` 付きで拒否）を取る。`NodeIds` は `GetAnimBlueprintInfo` の `NodeId`。AnimGraph の中の Unified Animation Framework のノードも他のノードと同じように並べる。位置だけを変え、コンパイルはしない。`AnimBlueprintGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
+| `ArrangeAnimStateMachine` | `StateMachineNodeId`（ステートマシンノードの `NodeGuid`）のステートマシングラフを、入口を左端に、状態を遷移の向きに並べ直す。遷移ノードはエディタが 2 つの状態の間に描くので、それ自体は並べない（接続として扱い、サイクルを先に除き、`TotalNodeCount` にも数えない）。`NodeIds` に遷移ノードを指定すると `InvalidParams`。`NodeIds` は状態・コンジットの `NodeId`。`AnimStateMachineEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 > **Note — `AddLinkedAnimLayerNode` の `TargetGraph` / `GraphGuid`（ノードを配置するグラフ）**: `TargetGraph`（Optional String。未指定は最初の AnimGraph）と `GraphGuid`（Optional String。`UEdGraph::GraphGuid`）は排他 — 両方指定すると `InvalidParams`。`TargetGraph` はまず AnimBlueprint 自身の AnimGraph（ルートグラフとその自己完結型レイヤー）の中で探し、そこで一致が無かった場合に限り、実装済みインターフェースのレイヤーグラフへフォールバックする — そのため自己完結型レイヤーが同名のインターフェースレイヤーに負けることはなく、このフォールバック自体が自己側の候補との間で複数一致になることもない（自己側を先に網羅的に確認するため）。実際に一致が生じた側の集合内で複数のグラフに一致した場合は `InvalidParams` を返し、`Result.MatchedGraphGuids` に各候補の `GraphGuid` が入る — いずれかを `GraphGuid` として渡し直せば絞り込める。どちらの集合にも存在しない名前を指定した場合は `NotFound`。
 >
@@ -1529,11 +2592,12 @@ Unified Animation Framework アセット（`UUAFAnimGraph` / `UUAFSystem`）の�
 | `RemoveUAFGraphNode` | 名前指定で RigVM ノードを削除。削除するノードの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit` が必要 |
 | `ConnectUAFPins` | 出力ピンと入力ピンを接続（`NodeName.PinName` 形式）。接続の両端いずれかの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit` が必要 |
 | `DisconnectUAFPins` | 出力ピンと入力ピンの接続を切断。`ConnectUAFPins` と同じ `UAFCustomTypeEdit` の条件が適用される |
-| `SetUAFPinValue` | ピンの既定値を設定（UE テキストインポート表記）。所有ノードの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit`、ピンの宣言型がオブジェクト／クラス参照を含む場合は `UAFReferenceEdit` が必要 |
-| `AddUAFVariable` | メンバー変数を新規作成。`ValueType` / `ContainerType` は `EPropertyBagPropertyType` / `EPropertyBagContainerType` の列挙子名。参照型の変数には `UAFReferenceEdit` が必要 |
+| `SetUAFPinValue` | ピンの既定値を設定（UE テキストインポート表記）。所有ノードの構造体がこのドメインの同梱外の場合は `UAFCustomTypeEdit`、ピンの宣言型がオブジェクト／クラス参照を含む場合は `UAFReferenceEdit` が必要。秘密のピン（秘密かどうか分からないものを含む）では、応答の `PinValue` は `***` と `IsMasked: true` になる `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `AddUAFVariable` | メンバー変数を新規作成。`ValueType` / `ContainerType` は `EPropertyBagPropertyType` / `EPropertyBagContainerType` の列挙子名。参照型の変数には `UAFReferenceEdit` が必要。⚠️ 型は、アセットを開く前に UAF エディタの変数型メニューで選べるものに限られます。64 ビット整数、テキスト型、ソフト参照、ユーザー定義構造体、Blueprint で使えない型は `InvalidParams` で拒否され（権限では解除できません）、`ValueType` と種類が合わない `TypeObject` も同じです。UAF のエンジンが扱えない `Int8` / `Int16` / `UInt16` / `UInt32` / `UInt64` も、アセットを開く前に拒否されます。`ValueTypeObjectPath` にはユーザー定義の構造体・列挙型（コンテンツ上のパス）を渡せず、`/Script/<Module>.<Class>` の型を指定します。`ContainerType` は `None` か `Array` で、セット・マップは `UnsupportedOperation` です。秘密の変数（秘密かどうか分からないものを含む）では、追加直後に読み戻した `DefaultValue` は `***` と `IsMasked: true` になる `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `RemoveUAFVariable` | 名前指定でメンバー変数を削除（同名のエントリが存在しない場合も、存在するが変数でない場合も `VariableNotFound`） |
 | `AddUAFEventGraph` | `StructPath` で指定した RigVM Unit 構造体をルートとする新規イベントグラフエントリを追加。`UUAFSystem` 専用 — `UUAFAnimGraph` はアニメーショングラフエントリを 1 つ固定で持ちイベントグラフの余地がないため `UnsupportedOperation` で拒否される |
 | `CompileUAFAsset` | `RequestAssetCompilation` 経由で同期コンパイルを実行。アセットごとにセッション単位のレート制限（`MinCompileIntervalSeconds`）あり |
+| `ArrangeUAFGraph` | UAF アセットの 1 つのエントリの RigVM グラフを、実行ワイヤーに沿って左→右に、値だけを渡すノードは読む側の左に並べ直す。`EntryName`（必須）で、`RemoveUAFGraphNode` と同じようにグラフを持つエントリを選ぶ。グラフを持たないエントリは `InvalidParams`。`NodeIds` は `ListUAFNodes` が返すノード名。位置とコメントの枠だけを変え、Undo 1 回で戻り、コンパイルはしない。`UAFGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 上記の書き込み系 9 コマンドはすべて、静的な必須 Capability として `UAFGraphEdit` を要求します。
 
@@ -1563,8 +2627,9 @@ SoundCue グラフ編集。
 | `RemoveSoundCueNode` | NodeId 指定でノードを削除（ルート削除は Conflict）。削除するノードのクラスが `/Script/Engine` の外から来る場合は `SoundCueCustomTypeEdit` が必要 |
 | `ConnectSoundCuePins` | 2 ピンを接続（循環検出・動的入力ピン自動追加）。どちらかの端点のクラスが `/Script/Engine` の外から来る場合は `SoundCueCustomTypeEdit` が必要。ルート出力ノードは自身の SoundNode クラスを持たないため、この確認には一切関与しない |
 | `DisconnectSoundCuePins` | ピン接続を切断（PinIndex=-1 で全切断）。対象ノードのクラスが `/Script/Engine` の外から来る場合は `SoundCueCustomTypeEdit` が必要 |
-| `SetSoundCueNodeProperty` | SoundCue ノードのプロパティを設定。オブジェクト / クラス / デリゲート参照・構造体・コンテナは恒久的に拒否されなくなり、`ValueJson` で渡して `PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。対象ノードのクラスが `/Script/Engine` の外から来る場合は追加で `SoundCueCustomTypeEdit` が必要 |
+| `SetSoundCueNodeProperty` | SoundCue ノードのプロパティを設定。オブジェクト / クラス / デリゲート参照・構造体・コンテナは恒久的に拒否されなくなり、`ValueJson` で渡して `PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。対象ノードのクラスが `/Script/Engine` の外から来る場合は追加で `SoundCueCustomTypeEdit` が必要 `IncludeSecretValues` を受け付けますが、実行を許すための指定です（[シークレット値の読み取り](#reading-secret-values) を参照）。秘密の対象の `ElementKeyJson` は `***` と `IsMasked: true` になり、`Changed` は出ません。伏せるのは呼び出し元が送った値の反響だけで、SoundCue のノードの値を読むコマンドはありません。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `CompileSoundCue` | SoundNode ツリーをグラフから再構築。`SoundCueCustomTypeEdit` は一切要求しない — このコマンド自体はノードクラスを一切名指しせず、cue が既に保持しているクラス群は権限を要求しない別の判定で確認されるため、プロジェクト製のノードを含む cue でも権限なしでコンパイルし続けられる |
+| `ArrangeSoundCueGraph` | SoundCue グラフのノードを、音源が左、出力ノードが右になるよう並べ直す。`AssetPath` と共通の引数を取る。`NodeIds` は `GetSoundCueInfo` の `NodeId`。位置だけを変え、キューは再コンパイルしない。`SoundCueGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 > ⚠️ **破壊的変更 — 削除・接続・切断・プロパティ編集は以前ゲートされていませんでした。** この Capability が導入される前は `AddSoundCueNode` だけが追加するノードクラスを確認しており、残り 4 つの mutation コマンドは対象ノードのクラスにかかわらず無条件で実行されていました。一般則については [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。
 
@@ -1578,16 +2643,16 @@ SoundClass ツリー・SoundAttenuation・SoundMix アセットのプロパテ�
 
 | コマンド | 説明 |
 |---|---|
-| `GetSoundClassInfo` | SoundClass の Properties（FSoundClassProperties）・ChildClasses・ParentClass・PassiveSoundMixModifiers を返す |
-| `SetSoundClassSettings` | SoundClass の FSoundClassProperties フィールドを 1 プロパティ単位で設定（LoadingBehavior の変更は拒否） |
+| `GetSoundClassInfo` | SoundClass の Properties（FSoundClassProperties）・ChildClasses・ParentClass・PassiveSoundMixModifiers を返す `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。  |
+| `SetSoundClassSettings` | SoundClass の FSoundClassProperties フィールドを 1 プロパティ単位で設定（LoadingBehavior の変更は拒否） `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `ListSoundClasses` | プロジェクト内 SoundClass を列挙（AssetPath / ParentClassPath / ChildClassPaths；最大 1000 件） |
 | `AddSoundClassChild` | SoundClass 階層に子クラスを追加（循環参照検出・深度上限 32） |
 | `RemoveSoundClassChild` | SoundClass 階層から子クラスを削除し、双方向リンクを解除 |
-| `GetSoundAttenuationInfo` | SoundAttenuation の FSoundAttenuationSettings を JSON で返す |
-| `SetSoundAttenuationSettings` | SoundAttenuation の FSoundAttenuationSettings フィールドを 1 プロパティ単位で設定 |
+| `GetSoundAttenuationInfo` | SoundAttenuation の FSoundAttenuationSettings を JSON で返す `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。  |
+| `SetSoundAttenuationSettings` | SoundAttenuation の FSoundAttenuationSettings フィールドを 1 プロパティ単位で設定 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `ListSoundAttenuations` | プロジェクト内 SoundAttenuation を列挙（最大 1000 件） |
-| `GetSoundMixInfo` | SoundMix の全設定（EQ・SoundClassEffects・Fade タイミング）を JSON で返す |
-| `SetSoundMixSettings` | SoundMix のトップレベルフィールドを 1 プロパティ単位で設定（SoundClassEffects 配列の直接書き込みは拒否） |
+| `GetSoundMixInfo` | SoundMix の全設定（EQ・SoundClassEffects・Fade タイミング）を JSON で返す `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 C++ で派生したサウンドミックスのクラスのプロパティも返すようになりました（以前は基本のクラスのプロパティだけ）。`USoundMix` より上のプロパティは今までどおり返しません。 |
+| `SetSoundMixSettings` | SoundMix のトップレベルフィールドを 1 プロパティ単位で設定（SoundClassEffects 配列の直接書き込みは拒否） `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `SetSoundMixAdjuster` | SoundClassAdjuster を追加または更新（SoundClass パスをキーとした Upsert；省略フィールドは既存値を維持または既定値） |
 | `RemoveSoundMixAdjuster` | SoundMix から対象 SoundClass の SoundClassAdjuster を削除 |
 | `ListSoundMixes` | プロジェクト内 SoundMix を列挙（最大 1000 件） |
@@ -1605,7 +2670,7 @@ ViewModel Blueprint のプロパティ管理、View Binding / Event の作成、
 | コマンド | 説明 |
 |---|---|
 | `ListViewModelClasses` | AssetRegistry から `UMVVMViewModelBase` 派生 Blueprint クラスを列挙する（`SearchPath` フィルタ省略可；最大 1000 件） |
-| `AddViewModelProperty` | ViewModel Blueprint にプロパティを追加する（7 種類の PropertyType；`DefaultValue` 省略可；Getter / Setter 生成省略可） |
+| `AddViewModelProperty` | ViewModel Blueprint にプロパティを追加する（7 種類の PropertyType；`DefaultValue` 省略可；Getter / Setter 生成省略可）。名前が秘密を示すプロパティでは、応答の `DefaultValue` は `***` と `IsMasked: true` になる `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `RemoveViewModelProperty` | ViewModel Blueprint からプロパティを名前指定で削除する |
 | `ListViewModelProperties` | ViewModel Blueprint の全プロパティを一覧返却する |
 
@@ -1660,10 +2725,16 @@ ViewModel Blueprint のプロパティ管理、View Binding / Event の作成、
 
 `MVVMToolset` プラグイン（UE 5.8 以上）経由のブリッジコマンド。プロバイダ: `Toolset.MVVM.*`。`CreateViewModel` および `ListViewModels` はブリッジ固有；その他はネイティブコマンドに対応する。
 
+> **参照引数は、Toolset の参照の形に揃えています。**
+>
+> - ⚠️ **参照は、文字列の `refPath` が必須のオブジェクトです。** 対象は `AddViewModelProperty` の `ViewModel`、`AddViewModelToWidget` の `WidgetBlueprint` と `ViewModelClass`、`CreateViewBinding` の `WidgetBlueprint` / `SourceContext` / `DestinationContext`、`ListConversionFunctions`・`ListWidgetViewBindings`・`ListWidgetViewModels`・`RemoveWidgetViewBinding` の `WidgetBlueprint` です。これらの引数は、中身を問わないオブジェクトとして受けていました。`{}`、文字列でない `refPath`、裸の文字列は `InvalidParams` で断ります。Toolset も以前から断っていた形です。`refPath` 以外のメンバーは受け付けますが、送りません。
+> - ⚠️ **参照が必須の引数では、空の `refPath` を先に断ります。** 次の 6 引数は、`{"refPath": ""}` を Toolset を呼ばずに `InvalidParams`（`Parameter '<名前>.refPath' must not be empty`）で断ります: `AddViewModelProperty` の `ViewModel`、`AddViewModelToWidget`・`CreateViewBinding`・`ListWidgetViewBindings`・`ListWidgetViewModels`・`RemoveWidgetViewBinding` の `WidgetBlueprint`。空の参照は Toolset も失敗していました。編集系のコマンドでは、書き込みパスの `NotAllowed` ではなく `InvalidParams` になる点も変わります。
+> - **以前動いていた `null` は引き続き受け付けます:** `CreateViewBinding` の `SourceContext` / `DestinationContext`（ウィジェットブループリント自身）、`ListConversionFunctions` の `WidgetBlueprint`、`AddViewModelToWidget` の `ViewModelClass`。`CreateViewBinding` では `{"refPath": ""}` も `null` と同じ意味です。
+
 | コマンド | 説明 |
 |---|---|
 | `Toolset.MVVM.CreateViewModel` | ViewModel Blueprint アセットを作成する |
-| `Toolset.MVVM.AddViewModelProperty` | ViewModel Blueprint にプロパティを追加する |
+| `Toolset.MVVM.AddViewModelProperty` | ViewModel Blueprint にプロパティを追加する `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `Toolset.MVVM.ListViewModels` | ViewModel クラスを列挙する（クラス型フィルタ方式） |
 | `Toolset.MVVM.ListWidgetViewModels` | WidgetBlueprint に接続済みの ViewModel を列挙する |
 | `Toolset.MVVM.AddViewModelToWidget` | WidgetBlueprint に ViewModel を接続する |
@@ -1680,8 +2751,8 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 
 | コマンド | 説明 |
 |---|---|
-| `GetBehaviorTreeNodeList` | 全ノードのフラットな一覧 — `NodeGuid`・`NodeClass`・`DisplayName`・`Depth`（0 = ルート Composite）・`ParentNodeGuid` |
-| `GetBehaviorTreeSubtree` | `NodeGuid` を起点としたサブツリー（Composite / Task / Decorator / Service）を再帰 JSON で返す（`MaxDepth` 1〜32） |
+| `GetBehaviorTreeNodeList` | 全ノードのフラットな一覧 — `NodeGuid`・`NodeClass`・`DisplayName`・`Depth`（0 = ルート Composite）・`ParentNodeGuid`。各ノードに `ExecutionIndex`（そのアセットをトップレベルのツリーとして実行したときのノードの番号で、実行時の応答が返す番号と同じ）も付く。付けられないノードは `null` と `ExecutionIndexUnavailableReason`。[実行時のノードをエディタのアセットと突き合わせる](#実行時のノードをエディタのアセットと突き合わせる) を参照 |
+| `GetBehaviorTreeSubtree` | `NodeGuid` を起点としたサブツリー（Composite / Task / Decorator / Service）を再帰 JSON で返す（`MaxDepth` 1〜32）。各ノードに `ExecutionIndex`（そのアセットをトップレベルのツリーとして実行したときのノードの番号で、実行時の応答が返す番号と同じ）も付く。付けられないノードは `null` と `ExecutionIndexUnavailableReason`。[実行時のノードをエディタのアセットと突き合わせる](#実行時のノードをエディタのアセットと突き合わせる) を参照 |
 | `GetAvailableBTCompositeClasses` | `UBTCompositeNode` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeCompositeNode` に渡す。各エントリは追加コマンドと同じ policy から得た `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を併記するようになりました。このドメインが出荷しているモジュールでの絞り込みは廃止しています。`ClassPath` 昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200 件）を報告します。`SchemaVersion` は `2` になりました — 下の Note を参照してください |
 | `GetAvailableBTTaskClasses` | `UBTTaskNode` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeTaskNode` に渡す。上と同じ Admission・件数フィールドを報告します |
 | `GetAvailableBTDecoratorClasses` | `UBTDecorator` サブクラス一覧 — `ClassPath` を `AddBehaviorTreeDecoratorNode` に渡す。上と同じ Admission・件数フィールドを報告します |
@@ -1691,13 +2762,28 @@ Behavior Tree グラフ編集と Blackboard キー管理。
 | `AddBehaviorTreeDecoratorNode` | 親ノードに Decorator を附加 — 確認内容は上と同じ |
 | `AddBehaviorTreeServiceNode` | 親 Composite ノードに Service を附加 — 確認内容は上と同じ |
 | `RemoveBehaviorTreeNode` | NodeId 指定でノードを削除 — そのノードのクラスが要求する Capability が同じく必要です |
-| `GetBehaviorTreeNodeProperties` | ノードの `NodeInstance` が宣言する全プロパティ — `PropertyName`・`PropertyType`（C++ の型名）・`SetBehaviorTreeNodeProperty` がそのまま書き戻せる形の `PropertyValue`・入れ子の `WriteRequirements` オブジェクトを返す。`FBlackboardKeySelector` プロパティはベアなキー名として報告され、書き込みコマンド側の特別扱いと一致する。読み取り専用、PIE 中も許可（縮退モード）。要 `EditorInspect` |
-| `SetBehaviorTreeNodeProperty` | ノードプロパティを設定（FBlackboardKeySelector / 汎用 ImportText_Direct）。書き込み対象ノードのクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です。ツリーに Blackboard アセットが設定されていない場合、キーセレクタへの書き込みは拒否されるようになりました — Blackboard が無いとキー名の妥当性を確認できず、従来は名前と種類が食い違った状態が残ることがありました。拒否された書き込みはアセットを dirty にせず、空の undo エントリも残しません |
+| `GetBehaviorTreeNodeProperties` | ノードの `NodeInstance` が宣言する全プロパティ — `PropertyName`・`PropertyType`（C++ の型名）・`SetBehaviorTreeNodeProperty` がそのまま書き戻せる形の `PropertyValue`・入れ子の `WriteRequirements` オブジェクトを返す。`FBlackboardKeySelector` プロパティはベアなキー名として報告され、書き込みコマンド側の特別扱いと一致する。列挙される `ExecutionIndex` プロパティはアセットに保存されない一時的なエンジンの値で、BehaviorTree エディタで開いた後にだけ値が入り、アセットを読み込んだ直後は 0 のままのため、実行時の応答と突き合わせるには代わりに `GetBehaviorTreeNodeList` / `GetBehaviorTreeSubtree` の `ExecutionIndex` を使う。読み取り専用、PIE 中も許可（縮退モード）。要 `EditorInspect` `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。  |
+| `SetBehaviorTreeNodeProperty` | ノードプロパティを設定（FBlackboardKeySelector / 汎用 ImportText_Direct）。書き込み対象ノードのクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です。ツリーに Blackboard アセットが設定されていない場合、キーセレクタへの書き込みは拒否されるようになりました — Blackboard が無いとキー名の妥当性を確認できず、従来は名前と種類が食い違った状態が残ることがありました。拒否された書き込みはアセットを dirty にせず、空の undo エントリも残しません `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `ListBlackboardKeys` | Blackboard アセットのキー一覧（PIE 中も許可） |
 | `AddBlackboardKey` | キーを追加（重複名チェック）。`/Script/AIModule` 以外のキー型と、書き込み側が指す先を選べる 2 種のキー型には、それぞれ Capability が要ります — 下の Note を参照してください |
 | `RemoveBlackboardKey` | 未参照のキーを削除（使用中は Conflict + 参照元を返す）— そのキーの型が要求する Capability が同じく必要です |
 | `SetBehaviorTreeBlackboard` | BT アセットの参照 Blackboard を変更 |
-| `RequestBehaviorTreeAutoArrange` | 開いている BT エディタで AutoArrange パスを実行 |
+| `RequestBehaviorTreeAutoArrange` | ⚠️ **非推奨** — 代わりに `ArrangeBehaviorTreeGraph` を使用。BehaviorTree エディタで開いている Behavior Tree に対して、エンジンの整列を Undo 1 回で実行する。引数と応答の形は変わらず、`Arranged: true` は整列が実行されたことを表し、ノードが動いたことは表さない。開いていないアセット、または開いていても描画がまだのノードがあるツリーは、何も変えずに `Arranged: false` を返す。閉じているアセットを整列するには `ArrangeBehaviorTreeGraph` を使う |
+| `ArrangeBehaviorTreeGraph` | BehaviorTree を木として並べ直す（ルートが上、子は親の下に、実行する順に左から。**実行順は変わらない**）。`AssetPath` と共通の引数を取る。`NodeIds` は `GetBehaviorTreeNodeList` の `NodeGuid`（デコレーターとサービスは親に追従するので指定できない）。エディタで開いていないアセットでも動き、Undo 1 回で戻り、ワイヤー・プロパティ・実行時の木は変えない。`Method=Auto` は、アセットが開いていて全ノードが描画済みで、`NodeIds`・間隔・中身のあるコメントが無く、全ノードがルートにつながり、X が同じ兄弟がいないときだけエンジンの整列を使い、それ以外は自前の整列で `MethodReason` に理由を返す。`Method=Engine` はエディタが開いていて全ノードが描画済みであることが必要で、エディタの表示をグラフ全体にズームし直す。`NodeIds` で順を保てる置き場所が無いときは `Conflict`。`BehaviorTreeGraphEdit` 必須。[グラフの自動整列](#グラフの自動整列) を参照 |
+
+> **Note — ノードを追加しても木は並べ直されなくなりました。** `AddBehaviorTreeCompositeNode` と `AddBehaviorTreeTaskNode` は、追加のたびに自動整列を実行していましたが、実行しなくなりました。新しいノードは親の近くに置かれ、ほかのノードは動きません。木を整えたいときは `ArrangeBehaviorTreeGraph` を呼びます。
+>
+> **`RequestBehaviorTreeAutoArrange` は非推奨**になり、移行先は `ArrangeBehaviorTreeGraph` です（移行先は非推奨の案内と一緒に返ります）。引数（`AssetPath` のみ）と応答（`AssetPath`、`Arranged`）の形は変わらず、1.2.0 と同じ動作を保ちます。BehaviorTree エディタで開いているツリーを、エンジンの整列で並べます。新しくなったのは、整列が Undo 1 回で戻ること、ノードが 1 つも動かなかったときに変更済みの印を付けないこと、応答に非推奨の案内が付くことです。
+>
+> - **`Arranged: true`** — アセットが開いていて、整列が実行された。ノードが動いたかどうかは表さない。動かすノードが無い、ルートノードの無いツリーも `true` を返す。
+> - **`Arranged: false`** — 何も変更していない。アセットがエディタで開いていない、描画済みのノードがまだ無い、または整列に必要なノードの準備ができていない（ルートから辿れるノードにウィジェットがまだ無い、ルートのグラフパネルが無い、リンクが輪になっている）。アセットを開いてツリーが描かれるのを待ってから呼び直すか、閉じたアセットにも使える `ArrangeBehaviorTreeGraph` を使う。
+> - パスが不正、見つからない、Play-in-Editor 中で使用中、またはグラフを取得できない場合は、従来どおり `InvalidParams` / `NotFound` / `NotAllowed` / `ExecutionFailed` を返す。
+
+> **成功時の `Result`（BehaviorTree の編集 3 コマンド）。** 要求で渡した識別子をそのまま返します（正規化はしません）。**設定した値（`Value`）は載せません。**
+>
+> - `SetBehaviorTreeNodeProperty`: `AssetPath`、`NodeId`（書き込んだノードの GUID）、`PropertyName`。`FBlackboardKeySelector` への書き込みでも、汎用の書き込みでも同じです
+> - `RemoveBehaviorTreeNode`: `AssetPath`、`NodeId`、`Removed`（常に `true`）。主ノードでも、子ノード（Decorator / Service）でも同じです
+> - `RemoveBlackboardKey`: `BlackboardAssetPath`、`KeyName`、`Removed`（常に `true`）
 
 > **Note — このドメインは 3 か所で型を受理しており、Capability も 3 つあります**: 配置・操作されるノードのクラス、書き込まれるノードプロパティを宣言しているクラス、宣言・削除される Blackboard キー型のクラス、の 3 か所です。それぞれ従来から受け入れてきたモジュールの集合が異なり、その非対称は意図的なものです。
 >
@@ -1751,8 +2837,9 @@ MetaSound グラフ編集。`Metasound` プラグインが必要です。
 | `DisconnectMetaSoundPins` 🧩 | ピン接続を切断 — 両端が確認される |
 | `AddMetaSoundInput` 🧩 | 入力頂点を追加（単一ページアセットのみ） |
 | `AddMetaSoundOutput` 🧩 | 出力頂点を追加（単一ページアセットのみ） |
-| `SetMetaSoundNodeProperty` 🧩 | 入力デフォルト値を設定（Bool / Int / Float / String、NaN / Inf 拒否）— 対象ノードがそれらのクラスの場合は同じ Capability が必要 |
+| `SetMetaSoundNodeProperty` 🧩 | 入力デフォルト値を設定（Bool / Int / Float / String、NaN / Inf 拒否）— 対象ノードがそれらのクラスの場合は同じ Capability が必要 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `CompileMetaSound` 🧩 | Frontend に登録（セッション単位 1 秒レートリミット）— カスタム型の Capability を要求することはない |
+| `ArrangeMetaSoundGraph` 🧩 | MetaSound グラフのノードを、入力が左、出力が右になるよう並べ直す。`AssetPath` と共通の引数を取る。`NodeIds` は `GetMetaSoundInfo` の `NodeId`（返された表記のまま）。MetaSound ドキュメントのノードの位置（とコメントの枠）だけを変え、再コンパイルはしない。開いている MetaSound エディタには次の更新で新しい配置が出る。ノードの大きさは常に推定。`MetaSoundGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 > **Note — エンジンの 4 Namespace 外のノードクラスは Capability で制御されます**: `ClassName` の Namespace が `UE` / `Metasound` / `MetasoundStandardNodes` / `MetasoundEditor` のいずれかであれば従来どおり追加できます。それ以外の Namespace のクラス — プロジェクトやプラグインのモジュールが独自に登録したもの — は、無条件で拒否されるのではなく `MetaSoundCustomTypeEdit` が必要になりました。既定では付与されません。[Safety & Capabilities](safety.md#オプショングラフエディタ) を参照。このドメインには（AnimBlueprint・ControlRig・Enhanced Input と同じく、Material とは異なり）対になる「危険な型」用の Capability はありません — MetaSound ノードはレジストリエントリが記述する固定の信号処理を評価するだけで、リクエストが持ち込んだコードは実行しないためです。
 >
@@ -1774,15 +2861,23 @@ EQS クエリ編集。`EnvironmentQueryEditor` プラグインが必要です。
 
 | コマンド | 説明 |
 |---|---|
-| `GetEQSQueryInfo` 🧩 | EQS Generator Option / Test 構造。すべての Option と Test が実際のクラス名を返すようになりました — degraded（PIE 中）の読み取りでも伏せ字にしません — あわせて `Admission` / `RequiredCapabilities` / `MissingCapabilities` を報告します。詳細は下記の Note を参照。degraded モードでは引き続き `NodeX` / `NodeY` と `GeneratorProperties` を省略します。`SchemaVersion` は `2` になりました |
+| `GetEQSQueryInfo` 🧩 | EQS Generator Option / Test 構造。すべての Option と Test が実際のクラス名を返すようになりました — degraded（PIE 中）の読み取りでも伏せ字にしません — あわせて `Admission` / `RequiredCapabilities` / `MissingCapabilities` を報告します。詳細は下記の Note を参照。degraded モードでは引き続き `NodeX` / `NodeY` と `GeneratorProperties` を省略します。`SchemaVersion` は `2` になりました `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 `GeneratorProperties` は「名前 → 値」の辞書のままです。秘密の値は `***` になり、その option に `IsMasked: true` と、伏せた名前の一覧 `MaskedFields` が付きます。値を返すのは今までどおり、エンジンの AI モジュールが宣言したプロパティだけです。 |
 | `GetAvailableEQSGeneratorClasses` 🧩 | `UEnvQueryGenerator` サブクラス一覧 — `ClassPath` を `AddEQSGenerator` に渡す。各エントリは追加コマンドと同じ policy から得た `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を併記するようになりました。このドメインが出荷しているモジュールでの絞り込みは廃止しています。`ClassPath` 昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200 件）を報告します。`SchemaVersion` は `2` になりました — 下の Note を参照してください |
 | `GetAvailableEQSTestClasses` 🧩 | `UEnvQueryTest` サブクラス一覧 — `ClassPath` を `AddEQSTest` に渡す。上と同じ Admission・件数フィールドを報告します |
 | `AddEQSGenerator` 🧩 | Generator Option を追加 — このドメインが出荷していないモジュール由来のクラスには Capability が要ります。下の Note を参照してください |
 | `RemoveEQSGenerator` 🧩 | NodeId 指定で Generator Option を削除（配下 Test も一括削除）— その Generator のクラスが要求する Capability が同じく必要です |
 | `AddEQSTest` 🧩 | Generator Option に Test を追加 — 確認内容は `AddEQSGenerator` と同じ |
 | `RemoveEQSTest` 🧩 | NodeId 指定で Test を削除 — その Test のクラスが要求する Capability が同じく必要です |
-| `SetEQSGeneratorProperty` 🧩 | Generator プロパティを設定（汎用 ImportText_Direct）— 書き込み対象 Generator のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
-| `SetEQSTestProperty` 🧩 | Test プロパティを設定（`param:<Name>` → `UAIDataProvider_QueryParams`）— 確認内容は上と同じ。`bTestEnabled` の切り替え（`PropertyName: "TestEnabled"`）も、そのフラグ自体はグラフノード側にあり Test インスタンス側にはないにもかかわらず、Test 自身のクラスによってゲートされるようになりました — この経路は従来まったくゲートされていませんでした。下の Note を参照してください |
+| `SetEQSGeneratorProperty` 🧩 | Generator プロパティを設定（汎用 ImportText_Direct）— 書き込み対象 Generator のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です `IncludeSecretValues` を受け付けますが、実行を許すための指定です（[シークレット値の読み取り](#reading-secret-values) を参照）。値は返さず、秘密の対象の失敗の文言は汎用になります。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `SetEQSTestProperty` 🧩 | Test プロパティを設定（`param:<Name>` → `UAIDataProvider_QueryParams`）— 確認内容は上と同じ。`bTestEnabled` の切り替え（`PropertyName: "TestEnabled"`）も、そのフラグ自体はグラフノード側にあり Test インスタンス側にはないにもかかわらず、Test 自身のクラスによってゲートされるようになりました — この経路は従来まったくゲートされていませんでした。下の Note を参照してください `IncludeSecretValues` を受け付けますが、実行を許すための指定です（[シークレット値の読み取り](#reading-secret-values) を参照）。値は返さず、秘密の対象の失敗の文言は汎用になります。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `ArrangeEQSGraph` 🧩 | EQS クエリを木として並べ直す（ROOT が上、その下にオプションをクエリが実行する順に左から、テストはオプションに追従）。**オプションの順は変わらない**（今の左右の順を保ち、X を厳密に増加させる）。`AssetPath` と共通の引数を取る。`NodeIds` は `GetEQSQueryInfo` の `OptionId`（テストと ROOT は指定できない）。順を保てる置き場所が無いときは `Conflict`。クエリは再構築しない。`EQSAssetEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
+
+> **成功時の `Result`（EQS の編集 4 コマンド）。** 要求で渡した識別子をそのまま返します（正規化はしません）。**設定した値（`Value`）は載せません。**
+>
+> - `RemoveEQSGenerator`: `AssetPath`、`OptionId`（削除した Option の GUID）、`Removed`（常に `true`）
+> - `RemoveEQSTest`: `AssetPath`、`TestId`、`Removed`（常に `true`）
+> - `SetEQSGeneratorProperty`: `AssetPath`、`OptionId`、`PropertyName`
+> - `SetEQSTestProperty`: `AssetPath`、`TestId`、`PropertyName`（`TestEnabled` の切り替えでも同じ）
 
 > **Note — このドメインは 3 か所で型を受理しており、Capability は 2 つあります**: 配置・操作される Generator のクラス、配置・操作される Test のクラス、書き込まれるノードプロパティを宣言しているクラス、の 3 か所です。3 つの面はいずれも従来から `/Script/AIModule` という同じ 1 つのモジュールだけを受け入れてきました。
 >
@@ -1814,7 +2909,7 @@ EQS クエリ編集。`EnvironmentQueryEditor` プラグインが必要です。
 
 LevelSequence 編集 — トラック・セクション・キーフレーム・再生・バインド。
 
-### ネイティブ（129）
+### ネイティブ（131）
 
 #### 構造（15）
 
@@ -1864,7 +2959,7 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | コマンド | 説明 |
 |---|---|
 | `GetSequenceInfo` | トラック / セクション / チャンネル / バインド / DisplayRate / 再生範囲 |
-| `GetBindings` | Possessable バインド一覧（GUID・名前・クラス） |
+| `GetBindings` | Possessable と Spawnable のバインド一覧（GUID・名前・バインド種別・クラス。Spawnable はオブジェクトテンプレートのクラス） |
 | `GetTracks` | 指定 BindingGuid のトラック一覧 |
 | `GetSections` | トラックのセクション一覧（フレーム範囲付き） |
 | `GetDisplayRate` | LevelSequence の DisplayRate |
@@ -1895,8 +2990,8 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 
 | コマンド | 説明 |
 |---|---|
-| `GetSectionProperty` | UMovieSceneSection のプロパティ値を取得 |
-| `SetSectionProperty` | UMovieSceneSection のプロパティを設定。値はエンジンテキストなら `PropertyValue`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 |
+| `GetSectionProperty` | UMovieSceneSection のプロパティ値を取得 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 秘密の配列への添字を含むプロパティのパス（`SecretList[5]`）は、書き込みと同じく 3 つの許可が要ります。定義がまだ解決できない値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
+| `SetSectionProperty` | UMovieSceneSection のプロパティを設定。値はエンジンテキストなら `PropertyValue`、JSON なら `ValueJson` で渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `GetSectionWeight` | セクションの重みを取得 |
 | `SetSectionWeight` | セクションの重みを設定 |
 
@@ -1983,7 +3078,7 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `AddMixerTransition` | Transition を追加 |
 | `RemoveMixerTransition` | Transition を削除 |
 | `GetMixerSectionInfo` | AnimMixer セクション情報を取得 |
-| `AddMixerChildTrack` | `LayerIndex` のレイヤーに紐づく子トラックとして ControlRig 子トラックを追加し、`ControlRigPath`（`UControlRig` 派生である必要がある）の ControlRig インスタンスを生成してパラメータセクションを紐づける。`LayerIndex` は現在のレイヤー数と同じ値を指定して末尾に新規行を追加できる。任意の `IsLayered`（既定 false）で新しい ControlRig を加算式に設定できる。対象レイヤーに既に子トラックまたはアニメーションセクションがある場合は副作用なしで `Conflict` |
+| `AddMixerChildTrack` | `LayerIndex` のレイヤーに紐づく子トラックとして ControlRig 子トラックを追加し、`ControlRigPath`（`UControlRig` 派生である必要がある）の ControlRig インスタンスを生成してパラメータセクションを紐づける。`LayerIndex` は現在のレイヤー数と同じ値を指定して末尾に新規行を追加できる。任意の `IsLayered`（既定 false）で新しい ControlRig を加算式に設定できる。対象レイヤーに既に子トラックまたはアニメーションセクションがある場合は副作用なしで `Conflict`。`ControlRigPath` はどちらの形式の Control Rig アセットも受け付ける（UE 5.8 ではアセット本体のパス。例: `/Game/X.X`。`/Game/X.X:X_EditorOnly` のような内部の部品のパスは見つからない扱い）。Control Rig ではないパスは `NotFound` |
 | `RemoveMixerChildTrack` | `LayerIndex` のレイヤーに紐づく子トラックを削除し、レイヤー参照・子トラック管理データ・Decoration・バインディングをまとめて片付ける。レイヤーに子トラックが無ければ `NotFound` |
 | `GetMixerChildTracks` | バインディングの AnimMixer トラックの全レイヤーにわたる子トラック一覧。各エントリは `LayerIndex`・`TrackName`・`TrackClass` を持つ |
 | `MoveMixerChildTrack` | `LayerIndex` に紐づく子トラックを `NewLayerIndex` へ移動する。両インデックスが等しい場合は副作用なしの no-op として成功する。移動先レイヤーに既に子トラックまたはアニメーションセクションがある場合は副作用なしで `Conflict` |
@@ -1998,8 +3093,8 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 |---|---|
 | `GetControlRigTracks` | LevelSequence 内の全 ControlRig パラメータトラック。各エントリは `IsChildTrack` を持ち、`true` のときのみ `LayerIndex` も含まれる |
 | `GetControlRigSectionInfo` | セクションのプロパティ — `IsInfinite`・`StartFrame`・`EndFrame`・`IsActive`・クラス名 |
-| `FindOrCreateControlRigTrack` | バインディングの ControlRig パラメータトラックを取得または作成し `TrackCreated` を返す。任意の `IsLayered`（既定 false）で新規作成する ControlRig を加算式に設定できる。既存トラックが見つかった場合は無視される |
-| `BakeToControlRig` | バインディングのアニメーションを ControlRig トラックへベイク（表示レートフレーム・`Tolerance` は 0.0〜1.0） |
+| `FindOrCreateControlRigTrack` | バインディングの ControlRig パラメータトラックを取得または作成し `TrackCreated` を返す。任意の `IsLayered`（既定 false）で新規作成する ControlRig を加算式に設定できる。既存トラックが見つかった場合は無視される。どちらの形式の Control Rig アセットも受け付ける（UE 5.8 では内部の部品のパスではなくアセット本体のパス、例: `/Game/X.X` を渡す）。Control Rig を指さないパスは `NotFound`。別の Control Rig のトラックを取り違えることはない |
+| `BakeToControlRig` | バインディングのアニメーションを ControlRig トラックへベイク（表示レートフレーム・`Tolerance` は 0.0〜1.0）。どちらの形式の Control Rig も受け付け、Control Rig を指さないパスは `NotFound`。**UE 5.8 の新形式（ランタイムアセット）の Control Rig ではキー削減が異なります。** `Tolerance` が 0 より大きければ削減する点は同じですが、古い形式のキー値の差そのものではなく値の幅に対する割合（`0.1` なら 10%）として扱われるため、既定の `0.1` はエンジンの画面の既定（5%）より強く削減します。削減にはそのシーケンスをレベルシーケンスエディタで開いておく必要があり、開いていない場合（別のシーケンスが開いている場合も含む）は `PreconditionFailed` で断り、トラックもキーも変更しません。シーケンスを開くか、削減しないなら `Tolerance: 0` を渡してください。ベイク後は、そのバインディングのアニメーショントラックをすべて無効にします（古い形式は 1 本目のみ） |
 | `KeyControls` | 指定コントロールを 1 つの表示レートフレームでキー（`ControlNames` 省略時は表示中の全コントロール） |
 | `KeyControlsAtFrames` | 指定コントロールを複数の表示レートフレームでキー。UE 5.8+ 専用。UE 5.7 では `Available: false`（`UnavailableDetail: "EngineVersion"`） |
 | `GetControlsMask` | ControlRig セクションのコントロール別表示マスク |
@@ -2009,6 +3104,15 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 | `LoadAnimIntoRig` | AnimSequence を ControlRig セクションのコントロールへ焼き込む。トラックのバインディングが解決するスケルタルメッシュを通してアニメーションをサンプリングするため、対象アクターのいるレベルが開かれている必要がある（開かれていない場合は `NotFound`） |
 | `GetActorTransformAtFrame` | 指定フレームでシーケンスを評価し、名前指定したアクターのワールドトランスフォームを返す |
 
+#### ギズモの大きさ（2）
+
+Animation Mode ビューポートの旧トランスフォームギズモの大きさで、エディタ設定に保存される値です。この 2 コマンドは Toolset レジストリが無くても、UE 5.7 でも使えます。引数名 `Scale` はそのままですが、**倍率ではありません**。旧ギズモの大きさに足すオフセットで、範囲は -10〜150、既定は 0 です。0 と負の値は受け付け、150 を超える値・数値でない値・無限大は `InvalidParams` で断られます。読むのは旧ギズモだけです。UE 5.8 で既定の TRS ギズモは軸の倍率で大きさが決まるので、[`UAIP.Editor.Level.SetTransformGizmoSize`](#uaipeditorlevel) で変えてください（このオフセットも `LegacySizeOffset` として書けます）。
+
+| コマンド | 説明 |
+|---|---|
+| `GetAnimModeGizmoScale` | 旧ギズモの大きさのオフセットを `Scale` として返す。同名の Toolset ブリッジコマンドと違い、エディタ設定に保存された値を読む。`EditorInspect` 必要 |
+| `SetAnimModeGizmoScale` | 旧ギズモの大きさのオフセット（`Scale`、-10〜150、既定 0）を設定し、エディタ設定に保存してビューポートを描き直す。Toolset ブリッジコマンドと違い、値は再起動後も残る。`SequencerStructureEdit` 必要 |
+
 ### Toolset ブリッジ（61）🧩
 
 プロバイダ：`Toolset.Editor.AnimationAssistant.*`（41 件 — Lifecycle 6・Playback 10・Property 9・MarkedFrame 5・UI 11）と `Toolset.Editor.SequencerAnimMixer.*`（20 件 — Layers 10・Transitions 5・Decorations 5）。UE 5.8+ が必要。
@@ -2016,6 +3120,14 @@ LevelSequence 編集 — トラック・セクション・キーフレーム・�
 > Sequencer モジュール実装のもう 1 つのブリッジプロバイダ `Toolset.Editor.SequencerControlRig.*`（63 件）は、コマンドの対象が ControlRig のコントロールであるため [`UAIP.Editor.ControlRig`](#uaipeditorcontrolrig) 側に掲載しています。
 
 > Decoration の変更系 2 コマンド（`AddDecoration` / `RemoveDecoration`）は、native 版とまったく同じ形で `SequencerCustomTypeEdit` によりゲートされています — native 側だけを塞いでも、同じクラスが bridge 経由でそのまま到達できてしまうためです。Decoration の一覧系 2 コマンド（`GetCompatibleDecorations` / `GetDecorations`）は、外部 Toolset レジストリの応答をそのまま通す passthrough 実装のため、native の一覧コマンドが返すようになった `Admission` / `RequiredCapabilities` / `MissingCapabilities` を持ちません。この情報が必要な場合は native コマンドを使用してください。
+
+> **範囲・マーカー・ロックの引数は、Sequencer Toolset 自身の引数に揃えています。** 各コマンドは、対応する Toolset 関数が取る単位で受け付けます。ブリッジはフレームと秒の換算をしません（もう一方の単位やラベルが要るときは、ネイティブの `UAIP.Editor.Sequencer.*` コマンドを使ってください）。
+>
+> - ⚠️ **`AddMarkedFrame` は `Label` を取らなくなりました。** Toolset にラベルの引数が無く、反映されなかったためです。`Label` を送ると `InvalidParams` で断ります。
+> - ⚠️ **`SetPlaybackRange` と `SetSelectionRange` は `StartFrame` と `EndFrame` が必須になりました**（整数。以前は任意）。`SetPlaybackRange` は `StartSeconds` / `EndSeconds` を取らなくなりました。開始が終了より前でない再生範囲は Toolset が断ります。
+> - ⚠️ **`SetViewRange` と `SetWorkRange` は `StartSeconds` と `EndSeconds` が必須になりました**（数値。以前は任意）。`StartFrame` / `EndFrame` は取らなくなりました。片側だけの範囲や数値でない値は `InvalidParams` で断ります。
+> - ⚠️ **`SetSequenceLocked` は `Locked` ではなく `Lock` を取ります**（真偽値、必須）。`Locked` で呼ぶと常に失敗していました。
+> - ⚠️ **`Toolset.Editor.SequencerControlRig.MergeControlRigAnimLayers`: `Indices` の要素を整数と宣言しました。** 数値は従来どおり動きます。文字列の要素は `InvalidParams` で断ります。
 
 ---
 
@@ -2071,9 +3183,9 @@ StateTree 編集。
 | `RemoveStateTransition` | TransitionId 指定で Transition を削除 |
 | `AddStateEnterCondition` | State に Enter Condition を追加 — `AddStateTask` と同じ Capability 確認。`ConditionId` を返す |
 | `RemoveStateEnterCondition` | ConditionId 指定で Enter Condition を削除 — 削除される Condition 自身のクラスが要求する Capability が同じく必要です |
-| `SetEnterConditionProperty` | Enter Condition ノードのプロパティを設定 — Condition 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
+| `SetEnterConditionProperty` | Enter Condition ノードのプロパティを設定 — Condition 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `GetStateNodeProperty` | ノード GUID のトップレベルプロパティ 1 件をエクスポートテキストで取得 |
-| `SetStateNodeProperty` | Task ノードのプロパティを設定（汎用 ImportText_Direct）— Task 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
+| `SetStateNodeProperty` | Task ノードのプロパティを設定（汎用 ImportText_Direct）— Task 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 
 #### グローバル Task / Evaluator 編集（6）
 
@@ -2081,10 +3193,10 @@ StateTree 編集。
 |---|---|
 | `AddGlobalTask` | グローバル Task を追加 — `AddStateTask` と同じ Capability 確認。`TaskId` を返す |
 | `RemoveGlobalTask` | TaskId 指定でグローバル Task を削除 — 削除される Task 自身のクラスが要求する Capability が同じく必要です |
-| `SetGlobalTaskProperty` | グローバル Task ノードのプロパティを設定 — Task 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
+| `SetGlobalTaskProperty` | グローバル Task ノードのプロパティを設定 — Task 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `AddEvaluator` | Evaluator を追加 — `AddStateTask` と同じ Capability 確認。`EvaluatorId` を返す |
 | `RemoveEvaluator` | EvaluatorId 指定で Evaluator を削除 — 削除される Evaluator 自身のクラスが要求する Capability が同じく必要です |
-| `SetEvaluatorProperty` | Evaluator ノードのプロパティを設定 — Evaluator 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です |
+| `SetEvaluatorProperty` | Evaluator ノードのプロパティを設定 — Evaluator 自身のクラスと、そのプロパティを宣言しているクラスの**両方**が要求する Capability が必要です `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 
 > **Note — プロジェクト製の Task・Evaluator・Enter Condition クラスは Capability でゲートされ、無条件に拒否されることはありません**: `/Script/StateTreeModule`・`/Script/AIModule`・`/Script/GameplayStateTreeModule` 以外から来たクラスまたは struct — プロジェクトのモジュール、プラグインのモジュール、Blueprint 生成クラス — には `StateTreeCustomTypeEdit` が必要です。既定では付与されません。[安全性と Capability](safety.md#statetree-編集) を参照してください。MetaSound や Enhanced Input と同様、Material とは異なり、このドメインに「危険な型」用の別 Capability はありません。Task・Evaluator・Enter Condition フィールドはツリーが自身のインスタンスデータの値で呼び出すコンパイル済み関数であり、ノードプロパティは単なるデータメンバです — どちらも呼び出し元が持ち込んだコードを運びません。
 >
@@ -2104,13 +3216,34 @@ StateTree 編集。
 
 | コマンド | 説明 |
 |---|---|
-| `GetStateTreeParameters` | ルートパラメータのディスクリプタ（`Name`・`ParameterType`・現在のシリアライズ値）と、パラメータごとに入れ子の `WriteRequirements` オブジェクト。`ParameterType` は enum / struct / object / soft object / class / soft class と残りの整数幅を名前で返すようになりました（従来は非スカラーを一律 `Unknown` と報告していました） |
+| `GetStateTreeParameters` | ルートパラメータのディスクリプタ（`Name`・`ParameterType`・現在のシリアライズ値）と、パラメータごとに入れ子の `WriteRequirements` オブジェクト。`ParameterType` は enum / struct / object / soft object / class / soft class と残りの整数幅を名前で返すようになりました（従来は非スカラーを一律 `Unknown` と報告していました） `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 定義がまだ解決できない値は伏せたままで、`UnverifiedMaskedFields` に載ります。 |
 | `AddStateTreeParameter` | ルートパラメータを追加（Bool / Byte / Int32 / Int64 / Float / Double / Name / String / Text） |
 | `RemoveStateTreeParameter` | 名前指定でルートパラメータを削除 |
-| `SetStateTreeParameter` | ルートパラメータ値を設定。参照には `StateTreeParameterReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要で、これらの値は括弧表記ではなく JSON で渡します。拒否コードは一律 `NotFound` ではなく `CapabilityNotAvailable` / `PolicyViolation` / `InvalidParams` / `NotFound` に細分化され、拒否された書き込みはアセットを dirty にせず、成功した書き込みは undo できるようになりました |
+| `SetStateTreeParameter` | ルートパラメータ値を設定。参照には `StateTreeParameterReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要で、これらの値は括弧表記ではなく JSON で渡します。拒否コードは一律 `NotFound` ではなく `CapabilityNotAvailable` / `PolicyViolation` / `InvalidParams` / `NotFound` に細分化され、拒否された書き込みはアセットを dirty にせず、成功した書き込みは undo できるようになりました `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `AddPropertyBinding` | ソースノードのプロパティをターゲットノードのプロパティへバインド |
 | `RemovePropertyBinding` | ターゲットノードのプロパティバインディングを削除 |
 | `CompileStateTree` | StateTree をコンパイル（連続呼び出しにはアセット単位のレートリミット） |
+
+> **成功時の `Result`（StateTree の編集 18 コマンド）。** 次の 18 コマンドは、成功すると識別子と操作の種類を `Result` に返します。`AssetPath` は要求で渡したパスのままで、GUID は `8-4-4-4-12` 形式の文字列です。**設定した値（`Value` / `ParameterValue`）は載せません。**
+>
+> - `AddPropertyBinding`: `AssetPath`、`SourceNodeId`、`SourceProperty`、`TargetNodeId`、`TargetProperty`、`Added`（常に `true`）
+> - `AddStateTreeParameter`: `AssetPath`、`ParameterName`、`ParameterType`（型名）、`Added`（常に `true`）
+> - `CompileStateTree`: `AssetPath`、`Compiled`（常に `true`）
+> - `MoveState`: `AssetPath`、`StateId`、`NewParentStateId`、`AfterStateId`、`Moved`（常に `true`）。`NewParentStateId` と `AfterStateId` は、要求が有効な GUID ならその文字列で、省略・空・無効なら空文字（親は空ならルート、`AfterStateId` は空なら先頭）。キーは常に載ります
+> - `SetStateName`: `AssetPath`、`StateId`、`NewName`、`Renamed`（常に `true`）
+> - `SetStateNodeProperty`: `AssetPath`、`NodeId`、`PropertyName`、`Updated`（常に `true`）
+> - `SetStateTreeParameter`: `AssetPath`、`ParameterName`、`Updated`（常に `true`）
+> - `SetEnterConditionProperty`: `AssetPath`、`StateId`、`ConditionId`、`PropertyName`、`Updated`（常に `true`）
+> - `SetEvaluatorProperty`: `AssetPath`、`EvaluatorId`、`PropertyName`、`Updated`（常に `true`）
+> - `SetGlobalTaskProperty`: `AssetPath`、`TaskId`、`PropertyName`、`Updated`（常に `true`）
+> - `RemoveEvaluator`: `AssetPath`、`EvaluatorId`、`Removed`（常に `true`）
+> - `RemoveGlobalTask`: `AssetPath`、`TaskId`、`Removed`（常に `true`）
+> - `RemovePropertyBinding`: `AssetPath`、`TargetNodeId`、`TargetProperty`、`Removed`（常に `true`）
+> - `RemoveStateEnterCondition`: `AssetPath`、`StateId`、`ConditionId`、`Removed`（常に `true`）
+> - `RemoveState`: `AssetPath`、`StateId`、`Removed`（常に `true`）
+> - `RemoveStateTask`: `AssetPath`、`StateId`、`TaskId`、`Removed`（常に `true`）
+> - `RemoveStateTransition`: `AssetPath`、`StateId`、`TransitionId`、`Removed`（常に `true`）
+> - `RemoveStateTreeParameter`: `AssetPath`、`ParameterName`、`Removed`（常に `true`）
 
 ### Toolset ブリッジ（8 件）🧩
 
@@ -2167,23 +3300,24 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 | `GetPCGGraphSchema` 🧩 | グラフのノード / ピン構成をスキーマ形式で取得 |
 | `GetPCGGraphDescription` 🧩 | グラフの Description 文字列を取得 |
 | `SetPCGGraphDescription` 🧩 | グラフの Description を設定（`PCGGraphEdit` 必須） |
-| `SetPCGGraphParams` 🧩 | グラフパラメータを追加 / 更新（`PCGGraphEdit` 必須）。値は範囲・NaN を検査し、不正な値は `InvalidParams` で拒否します。適用はいったん複製に対して行うため、拒否時に部分適用・undo エントリ・dirty マークが残りません |
+| `SetPCGGraphParams` 🧩 | グラフパラメータを追加 / 更新（`PCGGraphEdit` 必須）。値は範囲・NaN を検査し、不正な値は `InvalidParams` で拒否します。適用はいったん複製に対して行うため、拒否時に部分適用・undo エントリ・dirty マークが残りません `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `RemovePCGGraphParams` 🧩 | グラフパラメータを削除（`PCGGraphEdit` 必須） |
 | `ListPCGGraphInstances` 🧩 | レベル内の UPCGComponent 一覧を取得 |
 | `SpawnPCGGraphInstance` 🧩 | APCGVolume を World にスポーン（`PCGVolumeSpawn` 必須） |
 | `GetPCGGraphInstanceParams` 🧩 | インスタンスのオーバーライドパラメータを取得 |
-| `SetPCGGraphInstanceParams` 🧩 | インスタンスパラメータをオーバーライド（`PCGGraphEdit` 必須）。範囲 / NaN の検査と全件適用か全件不適用かの扱いは `SetPCGGraphParams` と同じ |
+| `SetPCGGraphInstanceParams` 🧩 | インスタンスパラメータをオーバーライド（`PCGGraphEdit` 必須）。範囲 / NaN の検査と全件適用か全件不適用かの扱いは `SetPCGGraphParams` と同じ `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `ResetPCGGraphInstanceParams` 🧩 | インスタンスパラメータをデフォルトにリセット（`PCGGraphEdit` 必須）。リセットする対象が無い場合も従来どおり成功を返しますが、トランザクションを開かず dirty マークも付けなくなりました |
 | `ListPCGAvailableSubgraphs` 🧩 | プロジェクト内のサブグラフ候補を列挙 |
 | `GetPCGNativeNodeSchema` 🧩 | ネイティブ PCG ノードクラスの EditAnywhere プロパティを JSON スキーマで返す。`GetCustomPCGNodeSchema` と同じ絞り込みが働き、`HiddenCount` / `HiddenCapabilities` / `HiddenReasons` を返す |
 | `AddPCGSubgraphNode` 🧩 | サブグラフ参照ノードを追加（`PCGGraphEdit` 必須） |
-| `RepositionPCGNode` 🧩 | ノード位置を変更（`PCGGraphEdit` 必須） |
+| `RepositionPCGNode` 🧩 | ノード位置を変更（`PCGGraphEdit` 必須）。Undo 1 回で位置が戻り、開いている PCG エディタにもその場で反映される。エディタを閉じている間に書いた位置も、後で開いたときに出る |
 | `AddPCGCommentBox` 🧩 | コメントボックスを追加（`PCGGraphEdit` 必須） |
 | `UpdatePCGCommentBox` 🧩 | コメントボックスを更新（`PCGGraphEdit` 必須） |
 | `RemovePCGCommentBox` 🧩 | コメントボックスを削除（`PCGGraphEdit` 必須） |
 | `GetPCGNodeDataView` 🧩 | PCG ノードの実行データビューを取得（`PCGNodeInspect` 必須。`PCG_PROFILING_ENABLED=0` 時は CapabilityNotAvailable） |
 | `RunPCGInstantGraph` 🧩 | アクター / コンポーネント不要の fire-and-forget PCG グラフ実行（`PCGGraphExecute` 必須） |
 | `DrawPCGSpline` 🧩 | レベルビューポートで人間がスプラインを描き終える対話を開始し、待たずに `InteractionId` を返す（`IsInteractive: true`）。`GetPendingInteractionStatus` でポーリング、`WaitForPendingInteraction` で短時間ブロック、`CancelPendingInteraction` でキャンセルできる。`PCGSplineDraw` と `SafetyPolicy.AllowUserInteractionPrompt`（別ゲート）が必須。ビューポートを保持できる対話は同時に 1 件のみ |
+| `ArrangePCGGraph` 🧩 | PCG グラフを左→右にデータが流れるよう並べ直す。`AssetPath`（`/Game/` のみ）と共通の引数を取る。`NodeIds` は `GetPCGGraphInfo` の `NodePath`。`NodeIds` を指定しなければ、グラフの入力・出力ノードも並べる。ノードを囲むコメントボックスは中身と一緒に動く。ノードとコメントの大きさは、PCG エディタで一度開いたグラフなら実測し、そうでなければ推定する。エディタを開いているかに関係なく位置を書き（エディタ用のグラフにも届くので、後で開いても新しい位置で出る）、位置だけを変えて再生成はしない。`Method=Auto` は常に自前の整列。**`Method=Engine` は UE 5.8 のみ**（5.7 では `InvalidParams`）で、PCG エディタ自身の Auto Layout を実行する。グラフがそれ自身の PCG エディタで開かれ、タブが表示されていて、別のグラフのタブにフォーカスが無いことが必要で、満たさなければ `PreconditionFailed`。そのエディタでノードを選んでいれば選んだノードだけが並ぶ。自前の結果が ±100000 を超えるときは何も書く前に `ExecutionFailed`。`PCGGraphEdit` 必須。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 ### Toolset ブリッジ — PCG（31 件）🧩
 
@@ -2193,27 +3327,58 @@ PCG グラフ編集。`PCG` プラグインが必要です。
 >
 > **ブリッジ経由では UAIP の値検査が及びません。** `SetGraphParams` / `SetGraphInstanceParams` / `ResetGraphInstanceParams` の書き込みは `UPCGToolset` の内部で行われるため、ネイティブ版が適用する型ゲート・範囲 / NaN の検査・途中終了パースの検査・全件不可なら 1 件も書かない扱いは適用されません。検査が必要な場合はネイティブの `SetPCGGraphParams` / `SetPCGGraphInstanceParams` / `ResetPCGGraphInstanceParams` を使ってください。
 
+> **書き込みブリッジは、送った値ではなくエンジンの戻り値で答えます。** 書き込みをして真偽値を返すブリッジは 12 本あります: `SetGraphParams`、`SetGraphInstanceParams`、`UpdateNode`、`RemoveGraphParams`、`SetGraphDescription`、`ResetGraphInstanceParams`、`SetNodeComment`、`RepositionNode`、`RemoveNode`、`DisconnectNodePins`、`UpdateCommentBox`、`RemoveCommentBox`。これらは真偽値だけを通します。
+>
+> - ⚠️ **`false` は失敗として返ります。** エンジンがエラーを上げずに `false` を返したとき、`ExecutionFailed` と固定文 `Toolset.<Tool> returned false; the change may have been applied in part.` で答え、`Result.Result` は `false` です。送った値は引用しません。今まではこの呼び出しが `Success` で返っていました。変更が一部だけ反映されていることがあるので（`SetGraphParams` では、パラメータの定義が足された後のことがあります）、グラフを読み直して状態を確かめ、入力を直して送り直してください。たとえば `SetGraphParams` の `DefaultValueJson` や `SetGraphInstanceParams` の `JsonParams` に、解析できない JSON を送ったときに起きます。
+> - **真偽値でない戻り値は落とされます。** 呼び出しは `{"Result": true, "ReturnValueWithheld": true}` で成功します（空の `null` も同じ）。UE 5.8 のエンジンはこの形を返さないので、将来のエンジンでだけ起こりえます。
+> - エンジンがエラーを上げて失敗した場合は今までどおりで、`ExecutionFailed` と固定文 `Toolset.<Tool> failed.` です。
+>
+> `AddCommentBox` は文字列（コメントの ID）を返すので対象外です。`AddNode`・`AddSubgraphNode`・`SpawnGraphInstance`・`ConnectNodePins` の成功応答は、作った・つないだノードやアクターの参照パスだけを返し、`AddCommentBox` はコメントの ID だけを返します。ノードの設定値（`JsonParams`）やコメントの文は返りません。
+
+> **引数は PCG Toolset が宣言する形に揃えています。**
+>
+> - **オブジェクト引数は、オブジェクトパスの文字列でも `{"refPath": "..."}` でも渡せます。** 対象は `AddNode`・`AddSubgraphNode`・`ConnectNodePins`・`DisconnectNodePins`・`ExecuteGraphInstance`・`GetGraphDescription`・`GetGraphInstanceParams`・`GetGraphSchema`・`GetGraphStructure`・`GetNodeDataView`・`GetNodeInfo`・`RemoveCommentBox`・`RemoveGraphParams`・`RemoveNode`・`RepositionNode` の `Graph` / `Node` / `FromNode` / `ToNode` / `PCGVolume` / `SubGraphForNode` と、下の作り直した 9 コマンドのオブジェクト引数です。`{"refPath": ...}` の呼び出しは従来どおり動きます。以前は Toolset に断られていたパス文字列も動くようになりました。パスは `Package.Object` の形（例: `/Game/PCG/G.G`）で、パッケージパスだけでは解決できません。
+> - **Toolset が必須とする引数に既定値を付けました。** `AddNode` と `AddSubgraphNode` の `JsonParams` / `NodeTitle` / `NodeComment`、`GetNodeDataView` の `AttributeName`、`UpdateNode` の `JsonParams` / `NodeTitle` は既定値 `""` です。省略しても Toolset 側で失敗しなくなります。
+> - **`AddCommentBox`: `Graph` と `Nodes` はパス文字列でも `{"refPath": ...}` でも渡せます。** `Color` はオブジェクトで、`r` / `g` / `b` / `a` は数値（`"0.5"` のような数値の文字列は変換します）、既定値は各 `1` で、ブリッジは常に 4 つとも送ります。`Color` のそれ以外のメンバーは無視し、送りません。数値として読めない成分は Toolset へ渡し、Toolset が断ります。
+> - **`UpdateCommentBox` は呼ぶたびに色を設定します。** `Color` を省略すると既定の白で上書きされます（ブリッジは現在の色を読めないため）。
+> - ⚠️ **9 コマンドを Toolset 自身の引数で作り直しました。** 以前は Toolset が宣言していないネイティブ風のキーを送っていたため、Toolset が必ず断っていました。旧キーは `InvalidParams` で先に断るようになりますが、動いていた呼び出しが失われることはありません。
+>
+> | コマンド | 現在の引数 | 受け付けなくなった旧キー |
+> |---|---|---|
+> | `ResetGraphInstanceParams` | `PCGVolume`（必須）、`ParamNames`（必須、文字列の配列） | `ActorIdentifier` |
+> | `RunPCGInstantGraph` | `Graph`（必須）、`Params`（必須、値がすべて文字列のオブジェクト。無ければ `{}`） | `AssetPath` |
+> | `SetGraphDescription` | `Graph`（必須）、`Description`（必須） | `AssetPath` |
+> | `SetGraphInstanceParams` | `PCGVolume`（必須）、`JsonParams`（必須、**JSON 文字列**） | `ActorIdentifier`、`Parameters` |
+> | `SetGraphParams` | `Graph`（必須）、`Params`（必須、パラメータ定義の配列。`Name` と `Type` は必須、`Description`・`ContainerType`・`DefaultValueJson` は省略可能） | `AssetPath`、`Parameters` |
+> | `SetNodeComment` | `Node`（必須）、`NodeComment`（必須） | `AssetPath`、`NodePath`、`CommentText` |
+> | `SpawnGraphInstance` | `Graph`（必須）、`Name`（必須）、`Transform`（任意。`Transform.location.x/y/z`・`Transform.rotation.pitch/yaw/roll`・`Transform.scale.x/y/z`。省略した部分は恒等変換）、`JsonParams`（既定値 `""`） | `AssetPath`、`ActorLabel` |
+> | `UpdateCommentBox` | `Graph`（必須）、`CommentId`（必須）、`Nodes`（必須。ノードをそのままにするなら `[]`）、`Comment`（既定値 `""`）、`Color.r/g/b/a`（既定値 `1`） | `AssetPath`、`CommentNodeGuid`、`CommentText`、`NodeX`、`NodeY`、`CommentWidth`、`CommentHeight` |
+> | `UpdateNode` | `Node`（必須）、`JsonParams`（既定値 `""`）、`NodeTitle`（既定値 `""`） | `AssetPath`、`NodePath`、`PropertyName`、`PropertyValue` |
+>
+> 同名の `UAIP.Editor.PCG.*` ネイティブコマンドは、これまでのキーのままです。
+> - **`SetGraphParams` は `Params` の要素の形を宣言します。** 各要素は、`Name`（文字列）と `Type`（Toolset の型名。`float` のような小文字も可。または数値）がどちらも必須のオブジェクトで、`Description`（既定値 `""`）・`ContainerType`（既定値 `"None"`）・`DefaultValueJson`（既定値 `""`）は省略するとこの既定値で送られます。一覧にないメンバーは受け付けて送らず、文字列でない（数値など）`Description` / `ContainerType` / `DefaultValueJson` は従来どおりそのまま Toolset へ渡します。⚠️ `Name` や `Type` の無い要素と裸の文字列の要素は、Toolset を呼ぶ前に `InvalidParams` で断ります。
+
 | コマンド | 説明 |
 |---|---|
 | `Toolset.Editor.PCG.CreateGraph` 🧩 | PCG グラフアセットを作成（`PCGGraphAssetCreate` 必須） |
 | `Toolset.Editor.PCG.GetGraphStructure` 🧩 | グラフ全体の構造（ノード・エッジ・パラメータ）を取得 |
-| `Toolset.Editor.PCG.SetGraphParams` 🧩 | グラフパラメータを設定（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.SetGraphParams` 🧩 | グラフパラメータを設定（`PCGGraphEdit` 必須） `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `Toolset.Editor.PCG.RemoveGraphParams` 🧩 | グラフパラメータを削除（`PCGGraphEdit` 必須） |
 | `Toolset.Editor.PCG.GetGraphSchema` 🧩 | グラフスキーマを取得 |
 | `Toolset.Editor.PCG.GetGraphDescription` 🧩 | グラフの説明文を取得 |
 | `Toolset.Editor.PCG.SetGraphDescription` 🧩 | グラフの説明文を設定（`PCGGraphEdit` 必須） |
 | `Toolset.Editor.PCG.ListGraphInstances` 🧩 | グラフを参照しているボリュームアクター一覧 |
-| `Toolset.Editor.PCG.SpawnGraphInstance` 🧩 | PCG ボリュームアクターをスポーン（`PCGVolumeSpawn` 必須） |
+| `Toolset.Editor.PCG.SpawnGraphInstance` 🧩 | PCG ボリュームアクターをスポーン（`PCGVolumeSpawn` 必須） `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `Toolset.Editor.PCG.ExecuteGraphInstance` 🧩 | PCG ボリューム上でグラフを実行（`PCGGraphExecute` 必須；非同期・デフォルト 300 秒） |
 | `Toolset.Editor.PCG.GetGraphInstanceParams` 🧩 | インスタンスのパラメータオーバーライドを取得 |
-| `Toolset.Editor.PCG.SetGraphInstanceParams` 🧩 | インスタンスパラメータを上書き（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.SetGraphInstanceParams` 🧩 | インスタンスパラメータを上書き（`PCGGraphEdit` 必須） `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `Toolset.Editor.PCG.ResetGraphInstanceParams` 🧩 | インスタンスパラメータをリセット（`PCGGraphEdit` 必須） |
 | `Toolset.Editor.PCG.ListNativeNodes` 🧩 | 登録済みネイティブ PCG ノードクラスを一覧 |
 | `Toolset.Editor.PCG.ListAvailableSubgraphs` 🧩 | サブグラフとして利用可能な PCG アセットを一覧 |
 | `Toolset.Editor.PCG.GetNativeNodeSchema` 🧩 | ネイティブノードクラスのパラメータスキーマを取得 |
-| `Toolset.Editor.PCG.AddNode` 🧩 | ネイティブノードを追加（`PCGGraphEdit` + `PCGToolsetUnsafeNodeAdd` 必須；Allowlist バイパス） |
-| `Toolset.Editor.PCG.AddSubgraphNode` 🧩 | サブグラフノードを追加（`PCGGraphEdit` 必須） |
-| `Toolset.Editor.PCG.UpdateNode` 🧩 | ノードのプロパティを更新（`PCGGraphEdit` 必須） |
+| `Toolset.Editor.PCG.AddNode` 🧩 | ネイティブノードを追加（`PCGGraphEdit` + `PCGToolsetUnsafeNodeAdd` 必須；Allowlist バイパス） `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `Toolset.Editor.PCG.AddSubgraphNode` 🧩 | サブグラフノードを追加（`PCGGraphEdit` 必須） `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `Toolset.Editor.PCG.UpdateNode` 🧩 | ノードのプロパティを更新（`PCGGraphEdit` 必須） `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `Toolset.Editor.PCG.SetNodeComment` 🧩 | ノードのインラインコメントを設定（`PCGGraphEdit` 必須） |
 | `Toolset.Editor.PCG.GetNodeInfo` 🧩 | 特定ノードの情報を取得 |
 | `Toolset.Editor.PCG.RepositionNode` 🧩 | グラフキャンバス上のノードを移動（`PCGGraphEdit` 必須） |
@@ -2238,7 +3403,7 @@ WorldConditions 編集。`WorldConditions` プラグインが必要です。
 | `GetWorldConditionInfo` 🧩 | 条件セット構造（Operator / Depth / プロパティ）。各プロパティエントリに `WriteRequirements` オブジェクトが入れ子で付きます。`RequiredCapabilities` は常に空です — この経路は参照もコンテナも一切受け付けないため、付与して解禁できる Capability が存在しません。各条件も自身の型について `Admission` / `RequiredCapabilities` / `MissingCapabilities` を報告するようになりました。下の Note を参照してください |
 | `AddWorldCondition` 🧩 | 条件を追加（`InsertAtIndex=-1` で末尾追加）— このドメインが出荷していないモジュール由来の型には Capability が要ります。下の Note を参照してください |
 | `RemoveWorldCondition` 🧩 | インデックス指定で条件を削除 — 削除される条件の型が要求する Capability が同じく必要です |
-| `SetWorldConditionProperty` 🧩 | 条件 USTRUCT のプロパティを設定（ImportText 値文字列）— 書き込み対象の条件の型と、そのプロパティを宣言している型の**両方**が要求する Capability が必要です |
+| `SetWorldConditionProperty` 🧩 | 条件 USTRUCT のプロパティを設定（ImportText 値文字列）— 書き込み対象の条件の型と、そのプロパティを宣言している型の**両方**が要求する Capability が必要です `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `SetWorldConditionOperator` 🧩 | Operator（And / Or）と bInvert を設定（Index 0 は Copy 固定）— その条件自身の型が要求する Capability が同じく必要です |
 | `SetWorldConditionExpressionDepth` 🧩 | ExpressionDepth（0–4）を設定 — 確認内容は上と同じ |
 | `ListWorldConditionClasses` 🧩 | `FWorldConditionBase` 派生クラス一覧 — 有効な `ConditionClass` 値の探索に使う。各エントリは `AddWorldCondition` と同じ policy から得た `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を併記するようになりました。このドメインが出荷しているモジュールでの絞り込みは廃止しています。フルパス（`/Script/<Module>.<Class>`）昇順で並び、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200 件）を報告します |
@@ -2247,7 +3412,7 @@ WorldConditions 編集。`WorldConditions` プラグインが必要です。
 | `DuplicateWorldCondition` 🧩 | `SourceIndex` の条件を複製し `InsertIndex` に挿入 — 確認内容は `AddWorldCondition` と同じ |
 | `ReplaceWorldCondition` 🧩 | 条件の型を `NewConditionClass` の既定値へ差し替え（Depth・Operator・bInvert は維持）— 確認内容は `AddWorldCondition` と同じ |
 | `ClearWorldConditionQuery` 🧩 | 全条件を削除して空のクエリにする — 削除される全条件が要求する Capability が必要です |
-| `SetMultipleWorldConditionProperties` 🧩 | 1〜32 件のプロパティ編集を単一トランザクションで適用（全件適用か全件不適用）— 編集ごとに `SetWorldConditionProperty` と同じ確認を行います |
+| `SetMultipleWorldConditionProperties` 🧩 | 1〜32 件のプロパティ編集を単一トランザクションで適用（全件適用か全件不適用）— 編集ごとに `SetWorldConditionProperty` と同じ確認を行います `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 
 > **⚠️ 破壊的変更 — `SetMultipleWorldConditionProperties` の成功応答の形が変わりました。** このコマンドは全件適用か全件不適用のどちらかになりました。全編集をいったんステージングして検査し（ドメインゲート・テキストインポート・途中終了パースの検出・妥当性検証）、すべて通ったときにだけトランザクションを開いて一括コミットします。1 件でも失敗するとトップレベルの `ErrorCode` / `ErrorMessage` だけを返して何も書きません。したがって従来の編集ごとの `Results[]` と `AllSucceeded` は表すものが無くなりました。成功応答は `AppliedEdits`（実際にコミットされた `{ConditionIndex, SubPropertyName}` の配列）と `SkippedEdits`（プロパティ名が一致せず飛ばされた同形の配列。名前の不一致は従来どおりバッチを失敗させません）になります。`Results[]` / `AllSucceeded` を読んでいる呼び出し側は修正が必要です。
 >
@@ -2289,6 +3454,9 @@ ConversationDB グラフ編集。`CommonConversation` プラグインが必要�
 | `ConnectConversationNodes` 🧩 | ノード間の遷移エッジを追加。両端いずれかのクラスが `/Script/CommonConversationRuntime` の外から来る場合 `ConversationCustomTypeEdit` が必要 |
 | `DisconnectConversationNodes` 🧩 | 遷移エッジを削除。両端いずれかのクラスが `/Script/CommonConversationRuntime` の外から来る場合 `ConversationCustomTypeEdit` が必要 |
 | `SetConversationNodeProperty` 🧩 | プロパティを設定（FText は BIDI strip・PUA reject・4096 文字上限）。値は JSON ドキュメント。参照・構造体・コンテナは恒久的に拒否されなくなり、`PropertyReferenceEdit` / `PropertyStructuredEdit` で制御される — [参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照。対象ノードのクラスが `/Script/CommonConversationRuntime` の外から来る場合、追加で `ConversationCustomTypeEdit` が必要 |
+| `ArrangeConversationGraph` 🧩 | 会話データベースの 1 つの編集グラフを木として並べ直す（入口が上、そこから続くノードが下に、会話が実行する順に左から。複数の入口は左右に並べる。**後でデータベースをコンパイルしても実行順は変わらない**）。`AssetPath`、`GraphIndex`（既定 `0`）と共通の引数を取る。`NodeIds` は `AddConversationNode` が返す `NodeGuid`（大文字・ハイフンなし。一覧のコマンドはノード ID を返さない）。サブノードはホストに追従するので指定できない。順を保てる置き場所が無いときは `Conflict`。ノードとワイヤーは変えず、コンパイル済みのバンクも再構築しない。`ConversationGraphEdit` 必須。PIE 中は拒否。[グラフの自動整列](#グラフの自動整列) を参照 |
+
+**書き込めるのは `/Game/` と追加のコンテンツルートだけです。** 書き込みは `/Game/` と、`[UAIP.SafetyPolicy] AdditionalContentRoots` に挙げたルートの下だけで許可されます。書き込む 7 つのコマンドは、`/Engine/` の下の `AssetPath` を、そう伝えるメッセージとともに `NotAllowed` で断ります。この検査はデータベースを読み込む前に行われるので、そのパスからは何も読まれず、何も変わりません。**⚠️ 1.2.0 との違い：** `AddConversationNode`・`AddConversationSubNode`・`RemoveConversationNode`・`ConnectConversationNodes`・`DisconnectConversationNodes`・`SetConversationNodeProperty` は、`/Engine/` のデータベースを読み込み、メモリ上で編集して `Success` を返していましたが、これからは `NotAllowed` を返します。1.3.0 で新しい `ArrangeConversationGraph` も同じです。`AddConversationNode` と `AddConversationSubNode` は先にノードクラスを見るため、そのようなパスでも、不明または拒否された `NodeClass` は従来どおり `NotFound` または `PolicyViolation` で報告されます。どちらの場合もデータベースは書かれません。
 
 > ⚠️ **破壊的変更 — 削除・接続・切断・プロパティ編集は以前ゲートされていませんでした。** この Capability が導入される前は `AddConversationNode` / `AddConversationSubNode` だけが追加するノードクラスを確認しており、残り 4 つの mutation コマンドは対象ノードのクラスにかかわらず無条件で実行されていました。一般則については [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。すべての mutation はデータベースのコンパイル済みバンクも再構築しますが、これはデータベースが既に保持している全ノードクラスに対しても同じ確認を行います — プロジェクト製のノードを既に含むデータベースは、コンパイルも既存ノードの削除も、Capability の付与なしに引き続き行えます。既存インスタンスへの操作はリクエストが持ち込んだコードを一切実行しないためです。
 
@@ -2314,7 +3482,52 @@ ConversationDB グラフ編集。`CommonConversation` プラグインが必要�
 
 ControlRig ヒエラルキーと RigVM グラフ編集。
 
-### ネイティブ（68）
+#### Control Rig アセットの形式
+
+UE 5.8 の Control Rig アセットには 2 つの形式があります。ここのネイティブコマンドはどちらも同じパラメーターで受け付けます（Undo / Redo、ダーティ印、ModularRig の保護も同じように働きます）。
+
+| 形式 | クラスパス | 備考 |
+|---|---|---|
+| ランタイムアセット（UE 5.8 の既定） | `/Script/ControlRig.ControlRigRuntimeAsset` | UE 5.7 には存在しない |
+| 旧形式（Blueprint） | `/Script/ControlRigDeveloper.ControlRigBlueprint` | |
+
+新規アセットがどちらの形式になるかは、プロジェクトのコンソール変数 `RigVM.BlueprintIndependentAssets` で決まります（UE 5.8 の既定は有効。プロジェクトの `DefaultEngine.ini` の `[ConsoleVariables]` に `RigVM.BlueprintIndependentAssets=0` を置くと旧形式になります）。この変数はエディタの作成メニューを含むプロジェクト全体に効き、UAIP が変更することはありません。
+
+- **`CreateAsset` は設定に従います。** クラスパスは設定と一致している必要があります。プロジェクトがランタイムアセットを作る設定なのに旧形式のクラスを指定した場合（逆の場合も）は `InvalidParams` で断り、何も作らず、正しいクラスと変更すべき変数をメッセージで案内します。`ControlRigBlueprintCreate` Capability が無い場合はそちらが先に、`AssetPath` に既にアセットがある場合は Factory の指定の誤りより先に報告されます。プロジェクトが旧形式の設定なら、旧形式のクラスに `FactoryClassName` は不要です。
+- **以前のドキュメントにあったクラスパス `/Script/ControlRig.ControlRigBlueprint` は誤りでした。** UE 5.8 では解決できず「class could not be resolved」になります。上の 2 つのパスのどちらかを使ってください。
+- **応答に出るアセットのパス**は常にアセット本体（`/Game/X.X`）です。ランタイムアセットの内部の部品のパス（`/Game/X.X:X_EditorOnly`）は、これらのネイティブコマンドでは入力として受け付けられ、応答にはアセット本体のパスが返ります。
+- **`AddVariable` は実際に付いた名前を返し**、リグを再コンパイルし、初期値を保存して開き直しても保持します。ランタイムアセットの Control Rig では `IsReadOnly` は受け付けられますが効きません。エンジンが反映せず、変数は読み書きできるままです。
+- **`Toolset.Editor.ControlRig.*` はランタイムアセット形式を断ります。** 委譲する前に `UnsupportedOperation` で断り、同じことができる `UAIP.Editor.ControlRig.*` のコマンド名（無い場合はこのドメイン）を案内します。この判定は ModularRig の保護より先です。旧形式のアセットと読めなかったアセットは、今までどおり Toolset に任せます。`Toolset.Editor.ControlRig.Create` はプロジェクトの設定にかかわらず常に**旧形式**で作成し、作成先に既存アセットがある場合の扱いも今までどおりです。
+- **`Toolset.Editor.ControlRig.GetPinValue` / `ListVariables` / `GetVariable` は秘密を伏せ、Toolset の成果物を返しません。** Toolset を呼んだ後の失敗はエンジンの失敗理由ではなく固定の文言 `Toolset.<Tool> failed.` を返し、呼ぶ前の拒否は今までの文言のままです。[シークレット値の読み取り](#reading-secret-values) を参照してください。 `Toolset.Editor.ControlRig.SetPinValue` も `IncludeSecretValues` を受け付けますが、実行を許すためだけの指定です。秘密の配列ピン（秘密かどうか確かめられない配列を含む）の要素を指す `Pin` は、3 つの許可がそろわなければ、Toolset を呼ぶ前に native の `SetPinValue` と同じ文言の `PolicyViolation` で断られます。応答は変わりません。Toolset の中でエンジンが作る失敗の文言はこの保護の対象外で、呼び出し元が送った値を引用することがあります。
+- **`ClassName=/Script/Engine.Blueprint` で Control Rig の `FactoryParams.ParentClass` を渡した `CreateAsset` は断られます。** 何も作る前に `InvalidParams` になります（親は `UControlRig` かその派生: Modular Rig、プロジェクト定義の派生、Control Rig の生成クラス）。汎用の Blueprint Factory は、Control Rig のアセットではなくそのクラスを親にした普通の Blueprint を、`ControlRigBlueprintCreate` Capability を調べずに作ってしまい、Control Rig のコマンドでは編集できません。メッセージは `ClassName` に指定するクラス（プロジェクトが作る形式に応じてランタイムアセットか旧形式のクラス）を挙げ、親クラスは `FactoryParams.ParentClass` に残すよう案内します（例: `/Script/ControlRig.ModularRig`）。Capability の不足、`AssetPath` の使用中、`FactoryClassName` の誤りは、これより先に報告されます。
+- UE 5.7 には旧形式しかありません。ランタイムアセットのクラスを指定すると `InvalidParams`（「class could not be resolved」）になります。
+
+#### 変数の型・名前と、エディタに届く前の検証
+
+`AddVariable` と `ChangeVariableType`（ネイティブも Toolset ブリッジも）は、変数の型をエディタの変数型メニューで選べるものに限ります。また、Control Rig のコマンドに渡される名前は、エンジンに届く前に長さの上限で検査されます。どちらもアセットを開く前に確かめるので、拒否されたときにアセットは変わりません。
+
+- ⚠️ **型は基本型名か完全なパスで書き、それ以外は受け付けません。** 基本型名は `bool` / `int32` / `float` / `double` / `FName` / `FString`（大文字小文字を区別）で、ほかは `/Script/CoreUObject.Vector` のような完全なオブジェクトパスです。配列は、そのどちらかを 1 段の `TArray<...>` で包みます。短い名前（`Vector`）、C++ の書き方（`FVector` / `TObjectPtr<AActor>` / `TSubclassOf<AActor>` / `EMyEnum`）、引用付きの書き方（`Class'/Script/Engine.Actor'`）、入れ子の配列、閉じていない `TArray<` は `InvalidParams` で拒否されます。クラスのパスは、そのクラスのオブジェクトへの参照を意味します。読み込み済みの型に解決できない完全なパスも `InvalidParams` です。型を含むアセットやモジュールを読み込んでから再実行してください。型の指定が 1023 文字を超える場合も拒否されます。
+- ⚠️ **変数型メニューで選べない型は拒否されますが、Capability で解除できるかは型によって違います。** 型は次の 4 つに分かれます（配列は要素の型で判定します）。マップ・セットの型はどの区分でも `UnsupportedOperation` です。
+
+  | 区分 | 該当する型 | ネイティブの `UAIP.Editor.ControlRig.AddVariable` / `ChangeVariableType` | `Toolset.Editor.ControlRig.*` ブリッジ |
+  |---|---|---|---|
+  | **Offered** | メニューが提示する型。基本型、Blueprint で使える構造体・列挙型・クラス、組み込みの `Vector` / `Rotator` / `Transform` | 使える | 使える |
+  | **OffMenu** | メニューには無いが、変数としては動く型。BlueprintType でない（または内部用の印がある）構造体・列挙型・クラス、Control Rig のグラフのスキーマが受けない型 | `ControlRigOffMenuVariableType` を名指しして `CapabilityNotAvailable` で拒否（運用者が明示的に禁止していると `PolicyViolation`）。セッションが `ControlRigOffMenuVariableType`（既定で拒否）を持てば使える | 解禁されない。`InvalidParams` で、文がネイティブのコマンドを案内する |
+  | **DeprecatedClass**（UE 5.8 以降） | 非推奨の印があるクラス | `ControlRigDeprecatedClassVariableType` を名指しして `CapabilityNotAvailable` と `Result.Reason: DeprecatedControlRigVariableClass` で拒否（運用者が明示的に禁止していると `PolicyViolation` と `Result.Reason: DeprecatedControlRigVariableClassDenied`）。セッションが `ControlRigDeprecatedClassVariableType`（既定で拒否）を持てば使える。以前は `InvalidParams` で拒否していた | 解禁されない。`InvalidParams` で、`Result.Reason` なし |
+  | **Invalid** | 動く変数にならない型。テキスト型（`FText`）、メニューに無い 64 ビット整数などの整数型、素のバイト型、ワイルドカード、インターフェース、実行ピン・実行コンテキスト・ディスパッチファクトリの構造体、Blueprint のスケルトン、新しい版に置き換わった型、レベルスクリプトのクラス、更新されていないユーザー定義構造体、テスト用フィクスチャの型、UE 5.7 の非推奨のクラス、（エディタがオブジェクトを扱わない設定のときの）クラス型 | `InvalidParams`。文に、セッションの Capability では変わらないと書かれる。テキスト、64 ビットなどのサイズ付き整数、素のバイト（メニューに無い基本型）には `Result.Reason: UnsupportedControlRigVariableBasicType` が付く。エンジンが動く変数を作れないので、どの Capability でも解除できない。更新されていない、または新しい版に置き換わったユーザー定義構造体には `Result.Reason: StaleControlRigVariableStruct` が付く。構造体を保存・コンパイルして最新にしてから呼び直す（どの Capability でも解除できない） | `InvalidParams`（同じ）。同じ `Result.Reason`（`UnsupportedControlRigVariableBasicType` または `StaleControlRigVariableStruct`）も付く |
+
+  `ControlRigOffMenuVariableType` を判定するのはネイティブのコマンドだけで、Toolset ブリッジは拒否を解除しません。読み込まれていない型を代わりに探すことはしないので、先にアセットやモジュールを読み込んでください。UE 5.7 では、クラス型はセッションの Capability に関わらず `UnsupportedOperation`（UE 5.8 より前のエンジンは、レガシー形式のメンバー変数にオブジェクト参照を持てません。文は Capability を名指ししません）で、ブリッジ経由では `InvalidParams` です。構造体と列挙型は使えます。`OffMenu` の型には、メニューにある `Texture2D` と同じく、Get / Set ノードを置けないものがあります。
+- ⚠️ **拒否の優先順が変わりました。** 型の判定はアセットを開く前に行われるため、存在しないアセット（`AddVariable` では、既にある名前も）に不正な型を指定すると、`NotFound` や重複ではなく型の拒否が返ります。UE 5.7 で存在しないパスのオブジェクト型を指定した場合は、`UnsupportedOperation` ではなく `InvalidParams`（型が見つからない）になります。UE 5.8 では、**インターフェース**のクラスパスは `InvalidParams` で拒否されます（以前は、インターフェースとして働かない変数が作られていました）。
+- ⚠️ **名前に長さの上限があります。** グラフ名・要素名・コンポーネント名・変数名・イベント名などの名前は、1023 文字を超えると `InvalidParams` で拒否されます。新しく作るグラフの名前は 1012 文字まで、ノード名とコントロール名は従来どおり 128 文字までです。メッセージにはフィールドと上限が示されます。Toolset ブリッジのコマンドにも同じ上限が掛かります。
+- ⚠️ **ピン系のコマンドは、より長いアセットパスを受け付けます。** 257〜512 文字の `AssetPath` を誤って拒否していたピン系の 7 コマンドが、512 文字まで受け付けるようになりました。
+- **Toolset ブリッジの `AddVariable` は、既にある名前を `InvalidParams` で拒否します。** 委譲の前に判定されます（`UAIP.Editor.ControlRig.AddVariable` と同じです）。
+- ⚠️ **Toolset ブリッジの `ChangeVariableType` が扱えるのは、基本型・構造体とその配列です。** それ以外の型（列挙型・オブジェクト型・クラス）への変更と、ノードから参照されている変数の変更（エディタが確認を求める状況）は `UnsupportedOperation` で拒否され、代わりに使うネイティブの `UAIP.Editor.ControlRig.ChangeVariableType` が案内されます。両方のブリッジのパラメータ説明には、通る型の例（`/Script/CoreUObject.Vector`、`float`、`TArray<FString>`）が示されます。
+- ⚠️ **権限が要る初期値や新しい型は、何かを変更する前に権限が確かめられます。** ブリッジでも、参照を含む型の初期値には `PropertyReferenceEdit` が要り、参照先のアセットはロードされません。`ChangeVariableType`（ネイティブもブリッジも）は、変数に値があるかどうかにかかわらず、新しい型の書き込み権限を判定します。参照を含む型への変更には `PropertyReferenceEdit` が、配列の型と、`Vector` などの組み込みの構造体ではない構造体への変更には `PropertyStructuredEdit` が要ります（無ければ `CapabilityNotAvailable`）。基本型と組み込みの構造体には、どちらも要りません。拒否されたときにアセットは変わりません。
+- **旧形式の Control Rig の `ChangeVariableType` で、列挙型・オブジェクト型へ変えられるようになりました。** 以前は、エディタが落ちるか、型が壊れたまま成功が返っていました。エディタの確認ダイアログでコマンドが止まることはなくなり、応答には常に `RebuiltReferencingNodeCount`（その変数を参照していて作り直したノードの数。0 件でも載ります）が含まれます。UE 5.7 のオブジェクト型は、`AddVariable` と同じく `UnsupportedOperation` です。 ⚠️ ランタイムアセットの Control Rig では、変数の既存の初期値は、新しい型で読めればそのまま保たれ（float の 2.5 を double に変える場合など）、読めない場合や一部しか読めない場合（テキスト `not a vector` を Vector に変える場合など）は捨てられて、変数は新しい型の初期値から始まります。どちらの場合も型の変更は成立します。`Result` と artifact に `DefaultValueDiscarded` が載ります（値を捨てたときは `true`、読めた・元から空・旧形式のときは `false`）。載るのは `RebuiltReferencingNodeCount` と同じ応答（成功と、型が要求と違った失敗）です。
+- **型の変更・追加が成立しなかったときは失敗として返ります。** ネイティブの `ChangeVariableType` と、Toolset ブリッジの `AddVariable` / `ChangeVariableType` は、実行後に変数を読み直して確かめます。変数が消えている、または要求と違う型になっているときは `ExecutionFailed` で、`Result` に `VariableLost` と `ActualType`（変数の実際の型）が載ります。ネイティブは artifact にも同じ項目を載せ、ブリッジも同じ形で応答します。変更は自動では元に戻されず、エディタの元に戻す履歴に残ります。ランタイムアセットの Control Rig で、エンジンが型を引き直すときにアセットの読み込みが要る型（ユーザー定義の列挙型など）への変更は、何も変更せず `UnsupportedOperation` で拒否されます（以前は変数が消えたまま成功が返っていました）。同じ短い名前の別の型がある型への変更も同様です。
+- **Toolset ブリッジの `AddVariable` で、エンジンが別の名前を付けた場合は確かめられません。** 委譲先が実際の名前を返さないため、「要求した名前の変数が見つからない」という `ExecutionFailed` になり、作られた変数がどれかは示されません。
+
+### ネイティブ（69）
 
 #### ヒエラルキー観測（10）
 
@@ -2371,7 +3584,7 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 | `AddBackwardSolveGraph` | BackwardSolve グラフを追加 |
 | `AddInteractionGraph` | Interaction グラフを追加 |
 
-#### ノード（10）
+#### ノード（11）
 
 | コマンド | 説明 |
 |---|---|
@@ -2385,14 +3598,15 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 | `DuplicateNode` | ノードを複製（複製後の名前を返す） |
 | `AddEventNode` | イベントノードを追加 |
 | `AddVariableNode` | 変数ノードを追加 |
+| `ArrangeControlRigGraph` | ControlRig グラフを、実行ワイヤーに沿って左→右に、値だけを渡すノードは読む側の左に並べ直す。`AssetPath` と `GraphName`（`SetNodePosition` と同じ解決。曖昧な名前は `MatchedFullGraphNames` 付きで拒否）と共通の引数を取る。`NodeIds` は `ListNodes` が返すノード名。ノードの位置とコメントの枠だけを変え、リグは再コンパイルしない。ModularRig のアセットは拒否。`ControlRigGraphEdit` 必須。`Method=Engine` は `InvalidParams`。[グラフの自動整列](#グラフの自動整列) を参照 |
 
 #### ピン（7）
 
 | コマンド | 説明 |
 |---|---|
 | `ListPins` | ノードのピン一覧 |
-| `GetPinValue` | ピンの値を取得 |
-| `SetPinValue` | ピンの値を設定 |
+| `GetPinValue` | ピンの値を取得 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 配列のピンの要素を指す（`Pin[5]`）には 3 つの許可が要ります。定義がまだ解決できない値（例: 関数グラフのローカル変数や入力引数を読む変数ノードの値ピン）は伏せたままで、`UnverifiedMaskedFields` に載ります。3 つの許可がそろい、さらにセッションが `ControlRigUnverifiedPinValueRead`（既定で拒否）を持つときだけ、平文を `SecretFieldValues` で返します。持たないときは `SecretFieldValues` を返さず、`Result.SecretValuesWithheldReason` に `SecretValuesWithheldUnverified` を付けます。 |
+| `SetPinValue` | ピンの値を設定 `IncludeSecretValues` を受け付けます。秘密のピンの `PinValue` は `***` と `IsMasked: true` で返ります。配列のピンの要素を指すには 3 つの許可が要ります。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `ResetPinValue` | ピン値をデフォルトに戻す |
 | `GetConnectedPins` | ピンの接続情報 |
 | `ConnectControlRigPins` | RigVM グラフのピンを接続 |
@@ -2406,7 +3620,7 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 
 | コマンド | 説明 |
 |---|---|
-| `AddVariable` | RigVM 変数を追加。デフォルト値は変数の型が確定してから検証され、拒否された場合は **変数の追加ごと取り消されます**（`AddBlueprintVariable` と同じ扱い）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトは追加後に `SetBlueprintDefault` で設定してください。拒否された呼び出しはアセットを dirty にしません |
+| `AddVariable` | RigVM 変数を追加。デフォルト値は変数の型が確定してから検証され、拒否された場合は **変数の追加ごと取り消されます**（`AddBlueprintVariable` と同じ扱い）。デフォルト値はエンジンのテキスト形式のみを受け取るため、参照・コンテナのデフォルトは追加後に `SetBlueprintDefault` で設定してください。拒否された呼び出しはアセットを dirty にしません。変数が実際に受け取った名前（エンジンがスペースを含む名前などを整えることがあります）を返し、リグを再コンパイルします。UE 5.8 のランタイムアセットの Control Rig では `IsReadOnly` は受け付けられますが効かず、変数は読み書きできるままです `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `ListVariables` | RigVM 変数一覧 |
 | `GetVariable` | RigVM 変数の値 |
 | `ChangeVariableType` | RigVM 変数の型を変更 |
@@ -2419,14 +3633,14 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 | コマンド | 説明 |
 |---|---|
 | `ListComponents` | 1 要素のコンポーネント一覧。`ElementName` と `ElementType` をどちらも省略するとヒエラルキー全体を列挙する。各エントリは所属要素・型パス・`IsProcedural` を持ち、レスポンスは `TotalCount` / `ReturnedCount` / `Truncated` を返す |
-| `GetComponent` | 1 コンポーネントの型と内容。`ContentText`（エンジンのエクスポート形式）は常に返る。`Content`（JSON）は JSON で表現できない型の場合に明示的な `null` と `ContentConversion` 理由になり、変換不能なコンポーネントが空のものと取り違えられることはない |
+| `GetComponent` | 1 コンポーネントの型と内容。`ContentText`（エンジンのエクスポート形式）は常に返る。`Content`（JSON）は JSON で表現できない型の場合に明示的な `null` と `ContentConversion` 理由になり、変換不能なコンポーネントが空のものと取り違えられることはない `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 コンポーネントの構造体が秘密を 1 つでも含めば、`ContentText` は全体が `***` になります（一部だけ伏せたテキストは `SetComponentContent` に戻せる形か保証できないため）。`Content` は秘密のキーだけを伏せ、そのキーは `MaskedFields` に並びます。そのようなコンポーネントを往復させるには、3 つの許可付きで読み、平文の `ContentText` を使います。 |
 | `ListAddableComponentTypes` | エディタが知る `FRigBaseComponent` 派生構造体をすべて列挙する（対象ヒエラルキーにコンポーネントが 1 つも無くても列挙できる）。各エントリは `AddComponent` が検証するのと同じポリシー由来の `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持ち、レスポンスは `TotalCount` / `ReturnedCount` / `Truncated` を返す — 詳細は下記の Note を参照 |
 | `CanAddComponent` | ある型をある要素に取り付けられるかどうかを、実際に取り付けずに判定する。上記一覧と同じ `Admission` と `RequiredCapabilities` / `MissingCapabilities` を返し、**このセッションが既にその型を扱える場合に限り**エンジンにも問い合わせて `CanAdd` / `FailureReason` にその答えを返す — 詳細は下記の Note を参照 |
-| `AddComponent` | 新しいコンポーネントを取り付ける。初期内容は任意で、`Content`（JSON）**または** `ContentText`（エクスポート形式）のどちらか一方のみ。作成前に内容を完全に検証するため、拒否された要求はコンポーネントを残さない |
+| `AddComponent` | 新しいコンポーネントを取り付ける。初期内容は任意で、`Content`（JSON）**または** `ContentText`（エクスポート形式）のどちらか一方のみ。作成前に内容を完全に検証するため、拒否された要求はコンポーネントを残さない 秘密を含むコンポーネントの `ContentText` は全体が `***` になり、`Content` は秘密のキーだけを伏せます（`MaskedFields`）。追加に失敗したときは、値を引用しうるエンジンの取り込みの詳細を文言から省きます。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `RemoveComponent` | コンポーネントを削除する。そのキーを保持する他コンポーネントの扱いは `ReferenceHandling` が決める（`Reject`＝既定 / `Detach` / `Force`）。見つかった参照はすべて `References` に、どう扱われたかとともに返る |
 | `RenameComponent` | コンポーネントを `NewName` へ改名し、そのコンポーネントを指していた参照を張り替える |
 | `ReparentComponent` | `NewParentName` と `NewParentType` が指す要素へコンポーネントを付け替え、参照を張り替える。存在しない付け替え先は、何も変更する前に拒否される |
-| `SetComponentContent` | コンポーネントの内容を置き換える（`Content` **または** `ContentText` のどちらか一方が必須）。書き込み後に読み戻し、実際に書き込まれた内容を返す |
+| `SetComponentContent` | コンポーネントの内容を置き換える（`Content` **または** `ContentText` のどちらか一方が必須）。書き込み後に読み戻し、実際に書き込まれた内容を返す 秘密を含むコンポーネントの `ContentText` は全体が `***` になり、`Content` は秘密のキーだけを伏せます（`MaskedFields`）。失敗したときは、値を引用しうるエンジンの取り込みの詳細を文言から省きます。平文の `ContentText` は、`GetComponent` を 3 つの許可付きで呼んで読みます。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 
 > **⚠️ 変更 — `ListAddableComponentTypes` と `CanAddComponent` は単純な `Addable` フラグではなく `Admission` を返すようになりました**: 各エントリは `Admission` を持ち、4 つの値のいずれかになります — `Allowed`（現在のセッションで今すぐ使える）、`RequiresCapabilities`（`MissingCapabilities` に挙がる Capability を付与すれば使える。`MissingCapabilities` は `RequiredCapabilities` の部分集合）、`NotAddable`（基底型違い・`Deprecated`・`Hidden` など、Capability をどれだけ付与しても解消しない構造的な理由で拒否される）、`CompatibilityUnknownUntilAuthorized`（セッションはこの構造体に対する `ControlRigCustomTypeEdit` を既に保有しているが、エンジン側の互換性チェックはまだ実行されていない — 詳細は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照）。あわせて `RequiredCapabilities` / `MissingCapabilities` を返します。`CanAddComponent` はさらにエンジン（`URigHierarchy::CanAddComponent`）にも問い合わせますが、**`Admission` が `Allowed` または `CompatibilityUnknownUntilAuthorized` の型に限られます** — `NotAddable` または `RequiresCapabilities` の型はエンジンに一切触れずに回答されるため、Capability を持たないセッションがその型自身のコードを走らせることはありません。エンジンの回答は `Admission` を上書きせず、`CanAdd` / `FailureReason` に入ります。両者は併せて読めます（`Admission: CompatibilityUnknownUntilAuthorized` かつ `CanAdd: false` は、セッションは認可されているがエンジンがこの組み合わせを拒否した、という意味になります）。⚠️ **破壊的変更 — この 2 コマンドが返していた bool の `Addable` と文字列の `NotAddableReason` は無くなりました**。どちらかで分岐していた呼び出し元は `Admission` に切り替える必要があります。形式不正な `ComponentStructPath` は、`CanAddComponent` では `CanAdd: false` のレスポンスではなく `InvalidParams` になりました（`AddComponent` と同じ扱いです）。
 >
@@ -2471,9 +3685,20 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 
 いずれも `AnimationAssistantToolset`（UE 5.8+）へ委譲する 2 つのブリッジプロバイダがあります。
 
-**`Toolset.Editor.ControlRig.*`（44 件）** — 上記ネイティブのアセット編集コマンドのミラー。グループ：アセット作成（1）/ ヒエラルキー観測（8）/ ヒエラルキー編集（7）/ グラフ管理（10）/ ノード（7）/ ピン（6）/ 変数（5）。
+**`Toolset.Editor.ControlRig.*`（44 件）** — 上記ネイティブのアセット編集コマンドのミラー。グループ：アセット作成（1。`Create` はプロジェクトの `RigVM.BlueprintIndependentAssets` の設定にかかわらず常に旧形式の Control Rig を作ります。`CreateAsset` とは異なります。[Control Rig アセットの形式](#control-rig-アセットの形式) を参照）/ ヒエラルキー観測（8）/ ヒエラルキー編集（7）/ グラフ管理（10）/ ノード（7）/ ピン（6）/ 変数（5）。
 
-**`Toolset.Editor.SequencerControlRig.*`（63 件）** — アニメーション時のコントロールオーサリング。実装は Sequencer モジュール（`SequencerControlRigTools`）ですが、全コマンドが ControlRig のコントロールを対象とするため本セクションに掲載しています。ControlRig に加えて `MovieSceneAnimMixer` が必要です。グループ：
+**`Toolset.Editor.SequencerControlRig.*`（63 件）** — アニメーション時のコントロールオーサリング。実装は Sequencer モジュール（`SequencerControlRigTools`）ですが、全コマンドが ControlRig のコントロールを対象とするため本セクションに掲載しています。ControlRig に加えて `MovieSceneAnimMixer` が必要です。UE 5.8 では、`ControlRigPath` を使う 37 件（残りの 26 件は使わず、影響を受けません。`ZeroControlRigTransforms` は `ControlRigPath` を互換のために受け付けるだけで、アクティブな Sequencer の rig に作用するので、この 26 件に入ります）は、ランタイムアセットの Control Rig を、委譲する前に `UnsupportedOperation` で断ります。委譲先の Toolset はシーケンス内の rig を Blueprint のクラスで探しますが、ランタイムアセットにはそのクラスが無く、見つからずに失敗するか、パスの文字列が重なる別の旧形式の rig を操作してしまうためです。値の読み取りだけのコマンド（`Get...` / `Is...`）も同じく断ります。メッセージにはコマンド名とアセットのパスが入り、パスはオブジェクトパス（`/Game/Rigs/CR_X.CR_X`）でもパッケージパス（`/Game/Rigs/CR_X`）でも同じです。案内できる同等のネイティブコマンドはありません。`AssetPath` や `ControlRigPath` の欠落は今までどおり先に `InvalidParams` になり、旧形式の rig、アセットが存在しないパス、アセットのパスでない値は今までどおり委譲されます。グループ：
+
+> **`Toolset.Editor.ControlRig.*` の引数は、Control Rig Toolset 自身の引数に揃えています。**
+>
+> - **要素とイベントの種別は、取りうる値をスキーマに載せます。** `AddBone`・`AddNull`・`AddControlElement`・`AddElement` の `Parent.Type`、`GetChildren`・`GetParent`・`GetGlobalTransform`・`SetGlobalTransform`・`GetLocalTransform`・`SetLocalTransform` の `Item.Type`、`GetElements` の `ElementType` に、Toolset が取る要素の種別（`Bone` が先頭）が載ります。`AddEventNode` と `GetEventGraph` の `EventType` は `FORWARD_SOLVE`・`BACKWARD_SOLVE`・`INTERACTION` を載せます。値は素通しで、強制はしないので、以前動いた呼び出しは引き続き動きます。`AddEventGraph` は `FORWARD_SOLVE` を取りません。Toolset が断るため、`EventType` には `BACKWARD_SOLVE` と `INTERACTION` だけを載せます。
+> - ⚠️ **`AddElement` は `ElementType` を省略するとボーンを追加します。** スキーマに `Bone` と `Null` が載り、既定値 `Bone` が示されます。Toolset は種別を必須とするため、省略した呼び出しは以前は失敗していましたが、今はボーンを追加して成功します。`Control` は引き続き Toolset が断ります。
+> - ⚠️ **`AddEventNode` と `AddVariableNode` は、`X` / `Y` で指定した位置にノードを置きます。** 以前は位置が黙って捨てられていました。片方の座標だけを指定した場合はもう一方が `0` になり、どちらも無ければ位置を送りません。
+> - ⚠️ **`CreateNode` は、`OffsetX` / `OffsetY` の位置にノードを置きます。** この 2 つの引数は宣言されていましたが、Toolset に届いていませんでした。同じ規則で、欠けた座標は `0`、どちらも無ければ位置を送りません。`X` / `Y` は受け付けません（以前もスキーマが断っていました）。
+> - **`SetNodePosition` が動くようになりました。** 以前は呼ぶたびに失敗していました。今は位置を Toolset へ送ります。`X` と `Y` の両方が必須なのは従来どおりです。
+> - **Toolset が必要とする次の 2 引数に、既定値 `""` を付けました:** `CreateNode` の `NodeName`、`AddVariable` の `DefaultValue`。省略しても Toolset 側で失敗しなくなります。
+> - **`AddControlElement` は `Settings` のすべてのメンバーを、Toolset の既定値つきで宣言します。** `Settings` は省略可能です。省略したとき、または一部のメンバーだけを渡したときは、ブリッジが呼び出しの前に 23 メンバー全部へ補うので、Toolset の必須メンバーの一覧で断られることはありません。渡した値は保たれ、省略したメンバーは次の既定値になります。`LimitEnabled` の要素の中（`bMinimum`・`bMaximum`: `false`）、`MinimumValue` / `MaximumValue`（すべて 0）、`ShapeColor`、`Customization` の中も同様です。既定値: `AnimationType` `"AnimationControl"`、`ControlType` `"EulerTransform"`、`DisplayName` `"None"`、`PrimaryAxis` `"X"`、`bIsCurve` `false`、`LimitEnabled` `[]`、`bDrawLimits` `true`、`bShapeVisible` `true`、`ShapeVisibility` `"UserDefined"`、`ShapeName` `"Default"`、`ShapeColor` 赤（`R` 1、`G` 0、`B` 0、`A` 1）、`bIsTransientControl` `false`、`ControlEnum` `null`、`Customization` は `AvailableSpaces` と `RemovedSpaces` が空、`DrivenControls` `[]`、`bGroupWithParentControl` `false`、`bRestrictSpaceSwitching` `false`、`FilteredChannels` `[]`、`PreferredRotationOrder` `"YZX"`、`bUsePreferredRotationOrder` `false`、`ShapeTransform` は恒等（`Location` はすべて 0、`Rotation` はすべて 0、`Scale` はすべて 1。省略した部分はこの値で補われ、結果は変わりません）。列挙の 5 メンバー（`AnimationType`・`ControlType`・`PrimaryAxis`・`ShapeVisibility`・`PreferredRotationOrder`）は名前でも数値でも渡せます。一覧にない `Settings` のメンバーは受け付けて、そのまま渡します。 `Settings` の中で要素名・表示名になる名前は、Toolset を呼ぶ前に長さを確認します。対象は `DisplayName`、`ShapeName`、`Customization.AvailableSpaces`（`Key.Name` と `Label`）・`Customization.RemovedSpaces`・`DrivenControls` の各要素の `Name` と `Label` です。1023 文字を超えるものは `InvalidParams` で断られ、メッセージには一覧の中の位置まで含めたフィールド名（例: `Settings.DrivenControls[1].Name`）が入ります。ここでもメンバー名は大文字小文字を区別せずに照合します。
+>   スカラーのメンバー（真偽値と数値）は、もう一方の JSON の型も受け付けます（文字列で渡した真偽値、数値の文字列など）。Toolset は従来どおりに読みます。
 
 | グループ | 件数 | コマンド |
 |---|---:|---|
@@ -2487,7 +3712,9 @@ ControlRig ヒエラルキーと RigVM グラフ編集。
 | 選択 | 4 | `GetSelectedControls`・`SelectControl`・`ClearControlSelection`・`FrameControlSelection` |
 | FBX | 2 | `ExportFBXFromRig`・`ImportFBXToRig` |
 | Sequencer 問い合わせ | 4 | `GetSequencerControlRigs`・`GetSequencerControlsInfo`・`Get`/`SetControlRigTransformInSequencer` |
-| アニメーションモード設定 | 12 | `AnimModeGizmoScale`・`AnimModeHierarchy`・`AnimModeNulls`・`AnimModeHideManips`・`AnimModeOnlyRigSel`・`AnimModeLocalSpaces` の `Get`/`Set` |
+| アニメーションモード設定 | 12 | `AnimModeGizmoScale`（`Scale` は旧ギズモの大きさに足すオフセットで、倍率ではない。範囲 -10〜150、既定 0。0 と負の値は受け付け、150 超・数値でない値・無限大は拒否される。ブリッジは動作中のエディタだけを変えて何も保存せず、UE 5.8 の既定ギズモは読まない。保存したいときは[ギズモの大きさ](#ギズモの大きさ2)のネイティブ 2 本を、既定ギズモには [`UAIP.Editor.Level.SetTransformGizmoSize`](#uaipeditorlevel) を使う）・`AnimModeHierarchy`・`AnimModeNulls`・`AnimModeHideManips`・`AnimModeOnlyRigSel`・`AnimModeLocalSpaces` の `Get`/`Set` |
+
+> ⚠️ **Control Rig のブリッジコマンド 5 本が書き込みの扱いになりました。** `SelectControl`・`ClearControlSelection`・`FrameControlSelection`・`SelectMirroredControls` はエディタの表示を変えるので、`SequencerPlaybackControl` が必要になりました。`ExportFBXFromRig` はファイルを書くので `SequencerFBXExport`（DefaultDenied。許可することは、指定した任意のパスへの書き込みを許可することと同じ）が必要です。以前は `EditorInspect` だけで動きました。5 本とも、安全ポリシーが `ReadOnly` のときは断り、`Experimental` です。選択の 4 本は PIE や Simulate の間も動きますが、`ExportFBXFromRig` はそのときも断ります。[Safety & Capabilities](safety.md) を参照。
 
 ---
 
@@ -2583,31 +3810,33 @@ ControlRig ヒエラルキー上の `ControlRigPhysics` コンポーネント型
 
 ## UAIP.Editor.EnhancedInput
 
-Enhanced Input アセット編集 — Input Action と Input Mapping Context。
+Enhanced Input アセット編集 — Input Action と Input Mapping Context。同じモジュールが `UAIP.Editor.Blueprint.AddGraphNode` のノードの種類 `EnhancedInputAction` も提供します。Input Action のイベントを Blueprint のグラフに置くものです — [`AddGraphNode` のノードの種類](#addgraphnode-のノードの種類) を参照。
 
 | コマンド | 説明 |
 |---|---|
 | `ListInputActions` | プロジェクト内の Enhanced Input Action アセット一覧 |
 | `ListMappingContexts` | プロジェクト内の Input Mapping Context アセット一覧 |
-| `GetInputActionInfo` | Input Action の詳細（ValueType・Triggers・Modifiers）。各 Trigger / Modifier の `Params` が参照・コンテナ・構造体の値も返すようになり（書き込み側が受け付けるのと同じ形式）、あわせて `PropertyWriteRequirements` マップが付きます |
-| `GetMappingContextInfo` | Mapping Context の詳細（エントリ・キー・Modifier・Trigger）。`Params` の構造化された値と `PropertyWriteRequirements` マップは `GetInputActionInfo` と同じ |
-| `DeleteInputAction` | Input Action アセットを削除 |
-| `DeleteMappingContext` | Input Mapping Context アセットを削除 |
+| `GetInputActionInfo` | Input Action の詳細（ValueType・Triggers・Modifiers）。各 Trigger / Modifier の `Params` が参照・コンテナ・構造体の値も返すようになり（書き込み側が受け付けるのと同じ形式）、あわせて `PropertyWriteRequirements` マップが付きます `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 構造体の中では秘密のメンバーだけを伏せ、兄弟のメンバーは残します。`Params` は Set 系へ書き戻せる形のまま、値を `***` にします。印はトリガー・モディファイアのエントリ単位で、`IsMasked: true` と、伏せたメンバーの完全なキーの一覧 `MaskedFields` が付きます（秘密が無いエントリの形は変わりません）。`SecretFieldValues` のキーは `Triggers[0].Params.CredentialList[1].ApiToken` のようなパスです。 |
+| `GetMappingContextInfo` | Mapping Context の詳細（エントリ・キー・Modifier・Trigger）。`Params` の構造化された値と `PropertyWriteRequirements` マップは `GetInputActionInfo` と同じ `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 伏せ方は `GetInputActionInfo` と同じです。`SecretFieldValues` のキーは先頭に `Mappings[m].` が付きます。 |
+| `DeleteInputAction` | Input Action アセットを削除。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
+| `DeleteMappingContext` | Input Mapping Context アセットを削除。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | `AddInputMapping` | Mapping Context にキーマッピングを追加 |
 | `RemoveInputMapping` | インデックス指定でキーマッピングを削除 |
 | `SetInputMappingKey` | マッピングのキーを変更 |
-| `SetInputMappingModifier` | マッピングの Modifier を設定/置換 |
-| `SetInputMappingTrigger` | マッピングの Trigger を設定/置換 |
-| `SetInputActionModifier` | Input Action の Modifier を設定/置換 |
-| `SetInputActionTrigger` | Input Action の Trigger を設定/置換 |
-| `GetAvailableInputTriggerClasses` | このエディタがロード済みの `UInputTrigger` 派生クラスを、このセッションが今名指しできるかどうかにかかわらず全件返す — 結果の `ClassPath` を `SetInputActionTrigger` / `SetInputMappingTrigger` の `Triggers` エントリの `Class` として渡せる。各エントリは `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持ち、両セッターが検証するのと同じポリシーで判定される — `/Script/EnhancedInput` の外から来るクラスも一覧から外されず `EnhancedInputCustomTypeEdit` を挙げて掲載され、`UInputTriggerChordAction` / `UInputTriggerChordBlocker` はどの Capability でも開かないため `NotAddable` として掲載される。`ClassPath` 順にソートされ、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200）を報告する。`EditorInspect` が必要 |
+| `SetInputMappingModifier` | マッピングの Modifier を設定/置換 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `SetInputMappingTrigger` | マッピングの Trigger を設定/置換 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `SetInputActionModifier` | Input Action の Modifier を設定/置換 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `SetInputActionTrigger` | Input Action の Trigger を設定/置換 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `GetAvailableInputTriggerClasses` | このエディタがロード済みの `UInputTrigger` 派生クラスを、このセッションが今名指しできるかどうかにかかわらず全件返す — 結果の `ClassPath` を `SetInputActionTrigger` / `SetInputMappingTrigger` の `Triggers` エントリの `Class` として渡せる。各エントリは `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities` を持ち、両セッターが検証するのと同じポリシーで判定される — `/Script/EnhancedInput` の外から来るクラスも一覧から外されず `EnhancedInputCustomTypeEdit` を挙げて掲載され、`UInputTriggerChordBlocker` はどの Capability でも開かないため `NotAddable` として掲載される（`UInputTriggerChordAction` は `Allowed`）。`ClassPath` 順にソートされ、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200）を報告する。`EditorInspect` が必要 |
 | `GetAvailableInputModifierClasses` | このエディタがロード済みの `UInputModifier` 派生クラスを、このセッションが今名指しできるかどうかにかかわらず全件返す — 結果の `ClassPath` を `SetInputActionModifier` / `SetInputMappingModifier` の `Modifiers` エントリの `Class` として渡せる。`GetAvailableInputTriggerClasses` と同じ `Admission` / `RequiredCapabilities` / `MissingCapabilities` を、両セッターが検証するのと同じポリシーで報告する — `/Script/EnhancedInput` の外から来るクラスも一覧から外されず `EnhancedInputCustomTypeEdit` を挙げて掲載される。`ClassPath` 順にソートされ、`TotalCount` / `ReturnedCount` / `Truncated`（上限 200）を報告する。`EditorInspect` が必要 |
 
 > Trigger / Modifier を書き込む 4 コマンド（`SetInputMappingModifier` / `SetInputMappingTrigger` / `SetInputActionModifier` / `SetInputActionTrigger`）は、参照・コンテナを一律拒否しなくなりました。参照には `EnhancedInputEdit` に加えて `EnhancedInputReferenceEdit`、構造体・コンテナには `PropertyStructuredEdit` が必要で、これらの値はエンジンの括弧表記ではなく JSON で渡します — 必要な形式は上記 2 つの取得系がプロパティごとに報告します。なお他の多くの書き込みコマンドと異なり、`Params` にプロパティ名と一致しないキーがあるとリクエスト全体が失敗します（これらの応答には「飛ばしたキー」を報告する場所が無いためです）。
 
-> **Note — プロジェクト・プラグイン定義の Trigger / Modifier クラスは Capability でゲートされます**: `/Script/EnhancedInput` モジュール由来の `Class` はこれまでどおり受け付けられます。それ以外に由来するクラス — プロジェクトモジュール、プラグインモジュール、`UInputTrigger` / `UInputModifier` の Blueprint 派生クラス — には `EnhancedInputCustomTypeEdit` が必要になりました。Material と違い、このドメインに対になる「危険な型」用の Capability はありません。Trigger はキー状態を評価し、Modifier は入力値を変換するだけで、どちらもリクエストが運んできたコードを実行しないためです。2 種の Trigger — `UInputTriggerChordAction` と `UInputTriggerChordBlocker`、およびそれらの派生 — は、**どの Capability を持っていても拒否されます**。Enhanced Input が chord の一部として自前で組み立てて設定する種別であり、作者が選ぶ対象ではないからです（エンジン自身のクラスピッカーも同じ理由でこれらを隠しています）。`UInputTrigger` / `UInputModifier` 自体は抽象クラスで、同様に到達できません。[安全性と Capability](safety.md#ゲームプレイシステム) を参照してください。
+> **Note — プロジェクト・プラグイン定義の Trigger / Modifier クラスは Capability でゲートされます**: `/Script/EnhancedInput` モジュール由来の `Class` はこれまでどおり受け付けられます。それ以外に由来するクラス — プロジェクトモジュール、プラグインモジュール、`UInputTrigger` / `UInputModifier` の Blueprint 派生クラス — には `EnhancedInputCustomTypeEdit` が必要になりました。Material と違い、このドメインに対になる「危険な型」用の Capability はありません。Trigger はキー状態を評価し、Modifier は入力値を変換するだけで、どちらもリクエストが運んできたコードを実行しないためです。`UInputTriggerChordBlocker` だけは、**どの Capability を持っていても拒否されます**。Chorded Action が自分のために内部で生成する Trigger で、エンジン自身が手で足さないものと定め、ドロップダウンからも隠しているからです。`UInputTrigger` / `UInputModifier` 自体は抽象クラスで、同様に到達できません。[安全性と Capability](safety.md#ゲームプレイシステム) を参照してください。
 >
 > **`Class` はフルオブジェクトパスも受け付けるようになりました。** パス区切りを含まない名前はこれまでどおり `/Script/EnhancedInput` の中で解決されます（`Pressed` も `InputTriggerPressed` も従来と同じように解決されます）。それ以外に由来するクラスはフルオブジェクトパスで指定します — `/Script/MyGame.MyGameInputTrigger`、Blueprint なら `/Game/Input/BPT_Hold.BPT_Hold_C` のように書きます。これが無い間は、そうしたクラスへ到達できる綴りがそもそも存在しませんでした。クラスは既にロード済みである必要があります。許可されるかどうかを判定するためにロードは行わず、何にも一致しない名前は `NotFound` になります。
+>
+> **同時押し（Chorded Action）を組めるようになりました。** 「Shift を押しながら R」は、Shift 用の Input Action（例: `IA_Shift`）をマッピングしたうえで、R のマッピング（または R の Input Action）の `Triggers` に `{"Class": "ChordAction", "Params": {"ChordAction": "/Game/Input/IA_Shift.IA_Shift"}}` を書いて組みます。`ChordAction` は Input Action への参照なので、`EnhancedInputEdit` に加えて `EnhancedInputReferenceEdit` が必要です。参照先はロード済みの Input Action である必要があり、ロードされていないパスは `NotFound`、Input Action 以外のオブジェクトは `InvalidParams` になります。既存の Chorded Action の `ChordAction` を書き換えることもできます。
 >
 > この確認は 4 つの書き込みコマンドに限りません — 一般規則は [Capability でゲートされたカスタム型](#capability-でゲートされたカスタム型) を参照してください。このドメインではさらに `RemoveInputMapping` / `DeleteInputAction` / `DeleteMappingContext` も対象です。マッピングエントリの削除やアセットの削除は、それが保持していた Trigger / Modifier インスタンスを丸ごと捨てるため、このドメインが同梱していないクラスは「入れるとき」と同じ Capability を「出すとき」にも要します。3 コマンドについてこれ以外の変更はなく、Enhanced Input のクラスしか保持していない対象 — エディタから普通に設定した chord トリガーを含みます — は従来どおり Capability 不要で削除できます。
 >
@@ -2692,16 +3921,16 @@ Sandbox セッションのライフサイクル管理。`FileSandbox` プラグ�
 | コマンド | 説明 |
 |---|---|
 | `ListDataLayers` | 現在のレベルに存在する全 Data Layer インスタンスを一覧表示 |
-| `GetDataLayerInfo` | Data Layer インスタンスの詳細情報を取得 — タイプ・ランタイム状態・可視性・親階層 |
+| `GetDataLayerInfo` | Data Layer インスタンスの詳細情報を取得 — タイプ・読み込みフィルタ・ランタイム状態・可視性・親階層 |
 | `CreateDataLayerAsset` | コンテンツブラウザに新しい Data Layer アセットを作成（`DataLayerEdit` 必須） |
-| `DeleteDataLayerAsset` | Data Layer アセットを削除（`DataLayerEdit` 必須） |
+| `DeleteDataLayerAsset` | Data Layer アセットを削除（`DataLayerEdit` 必須）。`DisableSave` が有効なときは `PolicyViolation` で拒否。エディタからは消えたがパッケージのファイルを削除できなかったときは `ExecutionFailed`（artifact なし）を返す: ファイルは削除できず、アセットは次のエディタ起動で戻る |
 | `CreateDataLayerInstance` | Data Layer アセットから現在のレベルに Data Layer インスタンスを追加（`DataLayerEdit` 必須） |
 | `DeleteDataLayerInstance` | 現在のレベルから Data Layer インスタンスを削除（`DataLayerEdit` 必須） |
 | `SetDataLayerType` | Data Layer インスタンスのタイプを設定 — Editor または Runtime（`DataLayerEdit` 必須） |
 | `SetDataLayerInitialRuntimeState` | Data Layer の初期ランタイム状態を設定 — Unloaded / Loaded / Activated（`DataLayerEdit` 必須） |
 | `SetDataLayerIsLoadedInEditor` | エディタビューポートで Data Layer をロードするかどうかを設定（`DataLayerEdit` 必須） |
 | `SetDataLayerVisibility` | エディタ内の Data Layer の可視性を設定（`DataLayerEdit` 必須） |
-| `SetParentDataLayerInstance` | 親 Data Layer インスタンスを設定して階層を構築（最大 64 レベル・`DataLayerEdit` 必須） |
+| `SetParentDataLayerInstance` | 親 Data Layer インスタンスを設定して階層を構築（最大 64 レベル・`DataLayerEdit` 必須）。親にできない組み合わせは理由を添えて拒否されます |
 | `GetActorDataLayers` | アクターに割り当てられた Data Layer インスタンスを取得 |
 | `AddActorToDataLayer` | アクターを Data Layer インスタンスに追加（`DataLayerEdit` 必須） |
 | `RemoveActorFromDataLayer` | アクターを Data Layer インスタンスから除外（`DataLayerEdit` 必須） |
@@ -2713,7 +3942,7 @@ Sandbox セッションのライフサイクル管理。`FileSandbox` プラグ�
 |---|---|
 | `ListHLODLayers` | プロジェクト内の全 HLOD Layer アセットを一覧表示 |
 | `CreateHLODLayer` | `/Game/` 配下に新しい HLOD Layer アセットを作成（`HLODBuild` 必須） |
-| `DeleteHLODs` | 指定した HLOD Layer のビルド済み HLOD データを削除（`HLODBuild` 必須） |
+| `DeleteHLODs` | 指定した HLOD Layer のビルド済み HLOD データを削除（`HLODBuild` 必須）。`DisableSave` が有効なときは `PolicyViolation` で拒否 |
 | `SetActorHLODLayer` | アクターを HLOD Layer アセットに割り当て（`HLODBuild` 必須） |
 | `BuildHLODs` | 現在のワールドの HLOD ビルドジョブを開始。`HLODBuildJobId` を返す（`HLODBuild` 必須） |
 | `CancelHLODBuild` | ジョブ ID を指定して進行中の HLOD ビルドジョブをキャンセル（`HLODBuild` 必須） |
@@ -2767,13 +3996,15 @@ UE 5.8 Data Registry のエディタ時観測 — 一覧・スキーマ取得・
 | `ListItems` | レジストリに登録済みのアイテム ID を一覧表示（キャッシュ済みとは限らない） |
 | `ListDataSources` | レジストリの編集時定義データソースを一覧表示 |
 | `ListRuntimeSources` | レジストリの実行時展開後データソースを一覧表示 |
-| `GetItems` | 指定名のキャッシュ済みアイテムを機密フィールドマスキング付きで取得。未キャッシュのアイテムは黙って省略せず `MissingItems` に理由付きで報告 |
-| `GetAllCachedItems` | アイテム名を事前指定せず、現在キャッシュ済みの全アイテムを取得（1000件・1MiB を上限。Toolset に対応なし） |
-| `AcquireItems` | 指定アイテムの非同期キャッシュロードをトリガー — カスタム/Remote ソースで必要（DataTable ソースは自動事前ロード済み。Toolset に対応なし） |
+| `GetItems` | 指定名のキャッシュ済みアイテムを機密フィールドマスキング付きで取得。未キャッシュのアイテムは黙って省略せず `MissingItems` に理由付きで報告。`IncludeSecretValues` / `SecretValuesOffset` を受け付け、同じ 3 層がそろうと秘密の欄の平文を `Result.SecretFieldValues`（エントリは `{ Key, Value }`、キーは `<ItemName>.<フィールドパス>`）で返す（[秘密の値を読む](#reading-secret-values)）。アーティファクトは常に伏せたまま。引数を付けない呼び出しの応答は今までと変わらない |
+| `GetAllCachedItems` | アイテム名を事前指定せず、現在キャッシュ済みの全アイテムを取得（1000件・1MiB を上限。Toolset に対応なし）。`GetItems` と同じく `IncludeSecretValues` / `SecretValuesOffset` を受け付ける（`Result.SecretFieldValues`、キーは `<ItemName>.<フィールドパス>`、`SecretValuesWithheldReason`、`NextSecretValuesOffset`、`SecretFieldValuesOmittedCount`）。アーティファクトは常に伏せたまま。引数を付けない呼び出しの応答は今までと変わらない |
+| `AcquireItems` | 指定アイテムの非同期キャッシュロードをトリガー — カスタム/Remote ソースで必要（DataTable ソースは自動事前ロード済み。Toolset に対応なし）。`GetItems` と同じく `IncludeSecretValues` / `SecretValuesOffset` を受け付ける。3 層の判定は非同期ロードの完了時ではなくコマンドの呼び出し時に 1 回だけ行う。タイムアウトしたとき（`ErrorCode=Timeout`、読み込めたアイテムだけの部分結果）は、3 層がそろっていても平文を返さない（`SecretFieldValues` を載せず、`Result.SecretValuesWithheldReason` は `SecretValuesWithheldOnTimeout`。許可が足りないときは従来どおり `SecretValuesWithheldBySafetyPolicy` / `SecretValuesWithheld` が優先して入る）。アーティファクトは常に伏せたまま。引数を付けない呼び出しの応答は今までと変わらない |
 
 ### Toolset ブリッジ（7 コマンド）🧩
 
-`DataRegistryToolset` プラグイン（UE 5.8+）経由でネイティブコマンドのうち先頭7個をミラー。プロバイダ: `Toolset.Editor.DataRegistry.*`。`GetItems` はここでは挙動が異なる: 見つからないアイテムは黙って省略され、機密マスキングも適用されない — マスキングや欠損明示が必要な場合はネイティブの `GetItems` を使用すること。
+`DataRegistryToolset` プラグイン（UE 5.8+）経由でネイティブコマンドのうち先頭7個をミラー。プロバイダ: `Toolset.Editor.DataRegistry.*`。`GetItems` はここでは挙動が異なる: 見つからないアイテムは黙って省略される — 明示が必要な場合はネイティブの `GetItems` を使用すること。アイテムの秘密の欄は `***` になり `MaskedFields` に載り、平文は `IncludeSecretValues` と `SecretValuesOffset` で読む（[秘密の値を読む](#reading-secret-values)）。`RegistryName` は文字列（パターン `^[A-Za-z][A-Za-z0-9_.]{0,127}$`）、`ItemNames` は文字列の配列で、256 要素以下・1 要素 256 文字以下・合計 16 KiB 以下。
+
+> `ListRegistries` は `StructFilter` を引き続き文字列で受けます。ブリッジは Toolset へ `{"refPath": ...}` で送り、空または省略のときは何も送りません（フィルタなし）。
 
 | コマンド | 説明 |
 |---|---|
@@ -2783,7 +4014,7 @@ UE 5.8 Data Registry のエディタ時観測 — 一覧・スキーマ取得・
 | `Toolset.Editor.DataRegistry.ListItems` | `DataRegistryToolset` への passthrough |
 | `Toolset.Editor.DataRegistry.ListDataSources` | `DataRegistryToolset` への passthrough |
 | `Toolset.Editor.DataRegistry.ListRuntimeSources` | `DataRegistryToolset` への passthrough |
-| `Toolset.Editor.DataRegistry.GetItems` | `DataRegistryToolset` への passthrough。欠損アイテムは黙って省略、マスキングなし |
+| `Toolset.Editor.DataRegistry.GetItems` | `DataRegistryToolset` への passthrough。欠損アイテムは黙って省略。秘密の欄はマスクし、平文は `IncludeSecretValues` / `SecretValuesOffset` |
 
 ---
 
@@ -2797,7 +4028,7 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 
 | コマンド | 説明 |
 |---|---|
-| `GetPoseSearchDatabaseInfo` | `UPoseSearchDatabase` の構造情報を取得 — Schema/NormalizationSet 参照、PoseSearchMode、PCA/KDTree 設定、`AnimationAssets` の各エントリ（パス・クラス・有効フラグ・ミラーオプション・サンプリング範囲/グリッド）。Chooser 内包データベースは拒否 |
+| `GetPoseSearchDatabaseInfo` | `UPoseSearchDatabase` の構造情報を取得 — Schema/NormalizationSet 参照、PoseSearchMode、PCA/KDTree 設定、`AnimationAssets` の各エントリ（パス・クラス・有効フラグ・ミラーオプション・サンプリング範囲/グリッド）。Chooser 内包データベースは拒否。PIE や Simulate の間も読める |
 | `AddAnimationToPoseSearchDatabase`（要 `PoseSearchAssetEdit`） | アニメーションアセットを `InsertAt` に追加。任意のエントリ設定（有効フラグ・ミラーオプション・サンプリング範囲/グリッド）を指定可能。通常（非 BranchIn）エントリとしてすでに登録済みの場合は既定で冪等。`bAllowDuplicate: true` を指定するとこの判定を迂回し、常に新しいエントリを追加する |
 | `RemoveAnimationFromPoseSearchDatabase`（要 `PoseSearchAssetEdit`） | 指定アニメーションアセットを参照する全エントリを削除。全体成功/全体失敗方式 — 一致したエントリのいずれかが PoseSearchBranchIn アニメーション通知で作成されたものだった場合は失敗 |
 | `SetPoseSearchDatabaseAnimationSettings`（要 `PoseSearchAssetEdit`） | 既存の `AnimationAssets` エントリ 1 件の設定を部分更新。アニメーションパスで対象を解決し、必要な場合は `Index` で一意化。UE 5.8 限定（UE 5.7 では `Available: false`） |
@@ -2808,15 +4039,15 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 
 | コマンド | 説明 |
 |---|---|
-| `GetPoseSearchSchemaInfo` | `UPoseSearchSchema` の構造情報を取得 — SampleRate、DataPreprocessor、SchemaCardinality、ロール付き `Skeletons` 配列、`Finalize()` 展開後の `Channels` 配列、そして編集系コマンドが実際に対象とする finalize 前の `RawChannels` ツリー（`ChannelPath` / `ClassPath`）。各 `RawChannels[]` エントリ（ネストしたものも含む）は `Admission` / `RequiredCapabilities` / `MissingCapabilities` も返すようになった — そのチャンネルのプロパティを編集する場合の基準で判定される。詳細は下の Note を参照 |
+| `GetPoseSearchSchemaInfo` | `UPoseSearchSchema` の構造情報を取得 — SampleRate、DataPreprocessor、SchemaCardinality、ロール付き `Skeletons` 配列、`Finalize()` 展開後の `Channels` 配列、そして編集系コマンドが実際に対象とする finalize 前の `RawChannels` ツリー（`ChannelPath` / `ClassPath`）。各 `RawChannels[]` エントリ（ネストしたものも含む）は `Admission` / `RequiredCapabilities` / `MissingCapabilities` も返すようになった — そのチャンネルのプロパティを編集する場合の基準で判定される。詳細は下の Note を参照。PIE や Simulate の間も読める |
 | `SetPoseSearchSchemaDataPreprocessor`（要 `PoseSearchAssetEdit`） | `DataPreprocessor` を変更（`None` / `Normalize` / `NormalizeOnlyByDeviation` / `NormalizeWithCommonSchema`）。応答にはこの Schema を参照していると見つかった全データベース（ベストエフォート）を列挙 |
 | `AddPoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `ChannelClass` のチャンネルを作成し、チャンネルツリーへ挿入。任意で `ParentChannelPath` の下へネストし、`InsertAt` で挿入位置を指定可能。冪等ではない — 同じクラスで 2 回呼ぶとチャンネルが 2 つできる。`/Script/PoseSearch` 以外のモジュール由来のクラスにはさらに `MotionMatchingCustomTypeEdit` が必要 — 詳細は下の Note を参照 |
 | `RemovePoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルを、ネストされた子孫チャンネルもろとも削除。任意の `ExpectedChannelClass` で、古いパスによる誤削除を防止できる。削除対象のチャンネル、またはネストする子孫のいずれかのクラスがこのドメインの出荷対象外の場合は `MotionMatchingCustomTypeEdit` が必要 |
 | `MovePoseSearchSchemaChannel`（要 `PoseSearchAssetEdit`） | `SourceChannelPath` のチャンネルを、その親の中で `TargetIndex` へ並べ替え。別の親への移動は非対応 — 削除して追加し直すこと。移動対象のチャンネル自身のクラスがこのドメインの出荷対象外の場合は `MotionMatchingCustomTypeEdit` が必要 — ネストする子孫は並べ替えで動かないため再確認しない。`TargetIndex` が現在位置と同じ（no-op になる）場合も確認は行われるため、権限のないセッションがこの確認を回避してゲート済みチャンネルの位置を探ることはできない |
-| `SetPoseSearchSchemaChannelProperty`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルのトップレベルプロパティへ書き込む — `Value`（UE テキストインポート形式、最大 4 KiB）または `ValueJson`（JSON）で値を渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。参照を内包する型はセッションの保有 Capability に関わらず `PolicyViolation` で拒否される — チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうため、チャンネルの追加は専用コマンドで行うこと。書き込み後の検証に失敗した場合は書き込みをロールバック。チャンネル自身のクラス、または書き込み対象プロパティを宣言しているクラスのいずれかがこのドメインの出荷対象外の場合は `MotionMatchingCustomTypeEdit` が必要 — なぜこれが新規の制限なのかは下の Note を参照 |
+| `SetPoseSearchSchemaChannelProperty`（要 `PoseSearchAssetEdit`） | `ChannelPath` のチャンネルのトップレベルプロパティへ書き込む — `Value`（UE テキストインポート形式、最大 4 KiB）または `ValueJson`（JSON）で値を渡し、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。参照を内包する型はセッションの保有 Capability に関わらず `PolicyViolation` で拒否される — チャンネルのサブチャンネル配列へ直接書けると `AddPoseSearchSchemaChannel` のクラス許可リストを迂回できてしまうため、チャンネルの追加は専用コマンドで行うこと。書き込み後の検証に失敗した場合は書き込みをロールバック。チャンネル自身のクラス、または書き込み対象プロパティを宣言しているクラスのいずれかがこのドメインの出荷対象外の場合は `MotionMatchingCustomTypeEdit` が必要 — なぜこれが新規の制限なのかは下の Note を参照 `IncludeSecretValues` を受け付けますが、実行を許すための指定です（[シークレット値の読み取り](#reading-secret-values) を参照）。秘密の対象の `AppliedValue` / `ElementKeyJson` は `***` と `IsMasked: true` になり、`Changed` は出ません。値を読み戻す方法はありません。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `AddDefaultPoseSearchSchemaChannels`（要 `PoseSearchAssetEdit`） | エディタの Schema ファクトリが作成するのと同じ既定チャンネル（Trajectory + Pose）を追加。既存チャンネルは削除されず維持される — 2 回呼ぶと重複したペアが追加される。追加されるのは常にエンジン自身の 2 チャンネルで呼び出し元が指定できるクラスは無いため、`MotionMatchingCustomTypeEdit` は一切要求しない |
 | `GetAvailablePoseSearchChannelClasses` | 構造的なチェックだけでチャンネルとして認められる `UPoseSearchFeatureChannel` サブクラスをすべて一覧表示する — `AddPoseSearchSchemaChannel` が `ChannelClass` を解決する集合と同じ — このセッションが今すぐ配置できるかどうかを問わない。各エントリは `Admission`（`Allowed` / `RequiresCapabilities` / `NotAddable` / `CompatibilityUnknownUntilAuthorized`）と `RequiredCapabilities` / `MissingCapabilities`、そして有効な `ParentChannelPath` の対象を示す `bCanHostSubChannels` を返す。エントリはフルクラスパス（`/Script/<Module>.<Class>`）順に整列され、アーティファクトは `TotalCount`、`ReturnedCount`、`Truncated`（上限 500）を報告する。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること |
-| `GetPoseSearchChannelClassSchema` | チャンネルクラスの Details パネル表示プロパティを一覧表示。各プロパティは入れ子の `WriteRequirements` オブジェクトを持ち、`SetPoseSearchSchemaChannelProperty` で書き込み可能かを `IsWritable` / `RefusalReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と、構造化形式での書き込みが要求する `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。`DefaultValueText` はそのまま使えるテキストインポート形式の例を提供 |
+| `GetPoseSearchChannelClassSchema` | チャンネルクラスの Details パネル表示プロパティを一覧表示。各プロパティは入れ子の `WriteRequirements` オブジェクトを持ち、`SetPoseSearchSchemaChannelProperty` で書き込み可能かを `IsWritable` / `RefusalReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と、構造化形式での書き込みが要求する `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。`DefaultValueText` はそのまま使えるテキストインポート形式の例を提供 秘密のプロパティの既定値は、アーティファクトでは `***` と `IsMasked: true` で返る。秘密かどうかは、名前やメタデータに加えて、既定値が持つ中身でも判定し、中身に秘密がある値、または中身を読めない型の値は伏せる。`IncludeSecretValues` / `SecretValuesOffset` を取る。3 つの許可がそろえば、平文の既定値が `Result.SecretFieldValues`（キーはプロパティ名）に返り、アーティファクトは伏せたまま。既定の応答の `Result` には `NumProperties` が入る。`IncludeSecretValues` を指定して許可が足りないときは、コマンドは成功し、値は伏せたまま、`Result.SecretValuesWithheldReason` が理由を返す — [シークレット値の読み取り](#reading-secret-values)を参照。 |
 | `AddSkeletonToPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Role` のロール付きスケルトンエントリを追加または置き換え。任意で `MirrorDataTablePath` を指定可能。既存の `Role` を置き換えるには `bAllowOverwrite` が必要 |
 | `RemoveSkeletonFromPoseSearchSchema`（要 `PoseSearchAssetEdit`） | `Skeletons` 配列から `Role` のロール付きスケルトンエントリを削除 |
 
@@ -2838,7 +4069,7 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 
 | コマンド | 説明 |
 |---|---|
-| `GetPoseSearchNormalizationSetInfo` | `UPoseSearchNormalizationSet` の `Databases` 配列（`Index` / `DatabasePath` / `bIsNull`）を格納順で一覧表示 |
+| `GetPoseSearchNormalizationSetInfo` | `UPoseSearchNormalizationSet` の `Databases` 配列（`Index` / `DatabasePath` / `bIsNull`）を格納順で一覧表示。PIE や Simulate の間も読める |
 | `SetPoseSearchDatabaseNormalizationSet`（要 `PoseSearchAssetEdit`） | データベースの `NormalizationSet` 参照を設定またはクリア（`NormalizationSetPath` と `bClearNormalizationSet` は排他）。データベース側のみを編集する — 両側を一致させたい場合は `AddDatabaseToPoseSearchNormalizationSet` と併用すること |
 | `AddDatabaseToPoseSearchNormalizationSet`（要 `PoseSearchAssetEdit`） | `UPoseSearchNormalizationSet` の `Databases` 配列にデータベースを追加。冪等。NormalizationSet 側のみを編集する — `SetPoseSearchDatabaseNormalizationSet` と併用すること |
 | `RemoveDatabaseFromPoseSearchNormalizationSet`（要 `PoseSearchAssetEdit`） | 指定データベースを参照する全スロットを削除。一致したスロットは詰めずに null にクリアされるため、他のスロットの `Index` は変化しない |
@@ -2877,13 +4108,13 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 | `AddChooserColumn`（`ChooserTableEdit` が必要） | 指定した型の列を 1 つ追加し、収まったインデックス・追加後の件数・新しいフィンガープリントを報告する。新しい列には既存の行ごとに 1 つのセルが与えられるため、テーブルは既存の全行に対して引き続き回答できる。`ColumnType` は `ListChooserColumnTypes` が報告する型のいずれかである必要がある。`InsertAt` で位置を指定し、省略すると末尾に追加する |
 | `RemoveChooserColumn`（`ChooserTableEdit` が必要） | 列 1 つを、それが保持するセルごと削除する。各列は自身のセルのみを保持するため、他の列は影響を受けない |
 | `MoveChooserColumn`（`ChooserTableEdit` が必要） | 列 1 つを、保持する全セルごと `ToIndex` の位置へ移動する。`ToIndex` は移動**後**に列が占める位置であり、移動前の位置ではない。自身の現在のインデックスへの移動は成功する no-op |
-| `SetChooserColumnInput`（`ChooserTableEdit` が必要） | 列の入力バインディング（その列が何を参照するかを決めるパラメータ）を設定する。`InputType` / `InputValue` は `ListChooserColumns` が列について報告した内容をそのまま受け取る。`InputValue` を null にすると指定型自身のデフォルトが書き込まれ、これはエディタでパラメータ型を選んだ直後の未バインド状態と同じ。`InputType` は**その列について** `ListChooserInputTypes` が報告する型のいずれかである必要があり、列が値として読めないファミリの型は `InvalidParams` で拒否される。入力バインディングを一切持たない列に対しては、あらゆる型が同様に拒否される |
-| `AddChooserTableRow`（`ChooserTableEdit` が必要） | 行を 1 つ追加し、収まったインデックスを報告する。`InsertAt` で位置を指定し、省略すると末尾に追加する。`ResultType` / `ResultValue` は読み取り系コマンドが報告するのと同じ形で新しい行に結果オブジェクトを与えるため、あるテーブルから読んだ行を別のテーブルへ追加できる。両方省略すると結果が空の行を追加する |
+| `SetChooserColumnInput`（`ChooserTableEdit` が必要） | 列の入力バインディング（その列が何を参照するかを決めるパラメータ）を設定する。`InputType` / `InputValue` は `ListChooserColumns` が列について報告した内容をそのまま受け取る。`InputValue` を null にすると指定型自身のデフォルトが書き込まれ、これはエディタでパラメータ型を選んだ直後の未バインド状態と同じ。`InputType` は**その列について** `ListChooserInputTypes` が報告する型のいずれかである必要があり、列が値として読めないファミリの型は `InvalidParams` で拒否される。入力バインディングを一切持たない列に対しては、あらゆる型が同様に拒否される `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `AddChooserTableRow`（`ChooserTableEdit` が必要） | 行を 1 つ追加し、収まったインデックスを報告する。`InsertAt` で位置を指定し、省略すると末尾に追加する。`ResultType` / `ResultValue` は読み取り系コマンドが報告するのと同じ形で新しい行に結果オブジェクトを与えるため、あるテーブルから読んだ行を別のテーブルへ追加できる。両方省略すると結果が空の行を追加する `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `RemoveChooserTableRows`（`ChooserTableEdit` が必要） | 1 つ以上の行を単一の変更として削除する。`RowIndices` は削除対象の行を現在のインデックスで列挙する。順序は問わないが、各エントリは相異なりかつ範囲内である必要があり、そうでなければリクエスト全体が拒否される。複数行の削除は 1 つの変更なので、1 回の Undo ですべて復元される |
 | `MoveChooserTableRow`（`ChooserTableEdit` が必要） | 行 1 つを、その結果・無効フラグ・全列のセルごと `ToIndex` の位置へ移動する。`ToIndex` の「移動後の位置」という意味は `MoveChooserColumn` と同じ |
-| `SetChooserTableCell`（`ChooserTableEdit` が必要） | セルを 1 つ書き込む（ある行がある列に持つ値）。行ごとのデータを保持しない列、またはセルがプレーンな値として往復できない列（読み取りが `bCellValueUnavailable` を立てて報告する列）は、書き込まれず拒否される |
-| `SetChooserTableResult`（`ChooserTableEdit` が必要） | 1 行が選択する結果オブジェクトを差し替える。`ResultType` を省略または空にすると、再構築ではなく行の結果を空にする（エディタの結果ピッカーが行を戻す状態と同じ）。この場合 `ResultValue` は省略または null である必要がある。行が保持していたネスト chooser は新しい結果の書き込み前にテーブルから登録解除され、書き込まれるネスト chooser は書き込み後に登録されるため、所有権は差し替えに追随する |
-| `SetChooserFallbackResult`（`ChooserTableEdit` が必要） | どの行にもマッチしなかったときにテーブルが返す結果（エディタの Fallback Result）を差し替える。フォールバックは行ではなくテーブルに属するため、このコマンドはインデックスを取らない。`ResultType` 省略による空化とネスト chooser の所有権の扱いは `SetChooserTableResult` と同じ |
+| `SetChooserTableCell`（`ChooserTableEdit` が必要） | セルを 1 つ書き込む（ある行がある列に持つ値）。行ごとのデータを保持しない列、またはセルがプレーンな値として往復できない列（読み取りが `bCellValueUnavailable` を立てて報告する列）は、書き込まれず拒否される `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `SetChooserTableResult`（`ChooserTableEdit` が必要） | 1 行が選択する結果オブジェクトを差し替える。`ResultType` を省略または空にすると、再構築ではなく行の結果を空にする（エディタの結果ピッカーが行を戻す状態と同じ）。この場合 `ResultValue` は省略または null である必要がある。行が保持していたネスト chooser は新しい結果の書き込み前にテーブルから登録解除され、書き込まれるネスト chooser は書き込み後に登録されるため、所有権は差し替えに追随する `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `SetChooserFallbackResult`（`ChooserTableEdit` が必要） | どの行にもマッチしなかったときにテーブルが返す結果（エディタの Fallback Result）を差し替える。フォールバックは行ではなくテーブルに属するため、このコマンドはインデックスを取らない。`ResultType` 省略による空化とネスト chooser の所有権の扱いは `SetChooserTableResult` と同じ `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `SetChooserRowDisabled`（`ChooserTableEdit` が必要） | 行 1 つを評価対象から外す / 戻す。行を移動せず、結果も変更せず、セルにも一切触れない。フィンガープリントも変化しない（行の無効フラグはフィンガープリントが記述する対象ではないため）。列・結果・入力バインディングの型を一切指定しないコマンドのため、必要なのは `ChooserTableEdit` のみ |
 | `CompileChooserTable`（`ChooserTableEdit` が必要） | テーブルを明示的にコンパイルする。アセット保存時にコンパイルは強制されないため、本ドメインの他コマンドで行った編集は、何かが再コンパイルを要求するまで列の入力バインディングが古いオフセットに解決されたまま残ることがある。このコマンドはそのためにある。テーブルに既にある列・結果・バインディングの型を出自の観点で再判定することはなく、テーブルが保持する全入力バインディングを、本ドメインの全書き込みが使うのと同じバインディングチェーン解決器に通すだけ。そのうち 1 つでも評価パスが呼び出す関数へ解決される場合、追加で `ChooserFunctionBindingEdit` が必要になる |
 
@@ -2899,15 +4130,15 @@ Pose Search プラグイン向けの Motion Matching 編集機能 — `UPoseSear
 |---|---|
 | `GetAnimNotifyInfo` | アセット上の全通知トラック（`TrackIndex` / `TrackName` / `TrackColor`）と全通知/通知ステートエントリ（guid・クラス・タイミング・Montage 固有フィールド）、およびアセットレベルのスカラー値（`AssetKind` / `PlayLength` / `NumTracks` / `NumNotifies` / `NumInvalidGuids`）を取得。`UAnimComposite` の場合、対象はアセット自身の `Notifies` 配列のみで、セグメントの `AnimSequence` が持つ通知は含まれない。読み取り専用、要 `EditorInspect` |
 | `GetAvailableAnimNotifyClasses` | `AddAnimNotify` / `AddAnimNotifyState` が `ClassPath` として受け付ける全 `UAnimNotify` / `UAnimNotifyState` サブクラスを一覧表示。`bIsNotifyState` / `bCanBePlaced` / `NotPlaceableReason` を付与。現在ロード済みのクラスのみが対象。Heavy コマンド — ロード済みの全 `UClass` を走査するため、結果をキャッシュすること。読み取り専用、要 `EditorInspect` |
-| `GetAnimNotifyClassSchema` | `UAnimNotify` / `UAnimNotifyState` サブクラスの Details パネル表示プロパティを一覧表示。各プロパティは入れ子の `WriteRequirements` オブジェクトを持ち、`SetAnimNotifyProperty` で書き込み可能かを `IsWritable` / `RefusalReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。加えて `bIsObjectReference` と、そのまま使えるテキストインポート形式の例 `DefaultValueText` を提供。読み取り専用、要 `EditorInspect` |
-| `GetAnimNotifyProperty` | `NotifyGuid` で識別される通知インスタンスについて、プロパティ 1 件（`PropertyName`）、または省略時・空文字時は `GetAnimNotifyClassSchema` が列挙する全プロパティを読み取る。全件読み取りは `PropertyName` / `Value` の代わりに `NumProperties` / `bTruncated` を報告し、上限超過時は切り詰める。単一プロパティ読み取りは切り詰めず、上限超過は `InvalidParams` で拒否する。秘密扱いの値は `GetAnimNotifyClassSchema` の `DefaultValueText` や `SetAnimNotifyProperty` の `AppliedValue` と同じ方式でマスクされる。各プロパティは入れ子の `WriteRequirements` オブジェクトも持ち（`GetAnimNotifyClassSchema` と同じキー名・同じ入れ子の形。判定はクラスのデフォルトではなく通知インスタンスに対して行われる）、`IsWritable` / `RefusalReason`、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）、`RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す。単一プロパティ読み取りでは `Data` に直接載る（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。アセットを変更しない。読み取り専用かつ冪等、要 `EditorInspect` |
+| `GetAnimNotifyClassSchema` | `UAnimNotify` / `UAnimNotifyState` サブクラスの Details パネル表示プロパティを一覧表示。各プロパティは入れ子の `WriteRequirements` オブジェクトを持ち、`SetAnimNotifyProperty` で書き込み可能かを `IsWritable` / `RefusalReason` で示し、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）と `RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。加えて `bIsObjectReference` と、そのまま使えるテキストインポート形式の例 `DefaultValueText` を提供。秘密の既定値は、アーティファクトでは `***` と `IsMasked: true` で返る（名前やメタデータに加えて、クラスの既定値が持つ中身でも判定）。`IncludeSecretValues` / `SecretValuesOffset` を取る。3 つの許可がそろえば平文が `Result.SecretFieldValues`（キーはプロパティ名）に返り、許可が足りないときはコマンドは成功し、`Result.SecretValuesWithheldReason` が理由を返す — [シークレット値の読み取り](#reading-secret-values)を参照。読み取り専用、要 `EditorInspect` |
+| `GetAnimNotifyProperty` | `NotifyGuid` で識別される通知インスタンスについて、プロパティ 1 件（`PropertyName`）、または省略時・空文字時は `GetAnimNotifyClassSchema` が列挙する全プロパティを読み取る。全件読み取りは `PropertyName` / `Value` の代わりに `NumProperties` / `bTruncated` を報告し、上限超過時は切り詰める。単一プロパティ読み取りは切り詰めず、上限超過は `InvalidParams` で拒否する。秘密扱いの値は `GetAnimNotifyClassSchema` の `DefaultValueText` や `SetAnimNotifyProperty` の `AppliedValue` と同じ方式でマスクされる。各プロパティは入れ子の `WriteRequirements` オブジェクトも持ち（`GetAnimNotifyClassSchema` と同じキー名・同じ入れ子の形。判定はクラスのデフォルトではなく通知インスタンスに対して行われる）、`IsWritable` / `RefusalReason`、`WriteInputForm`（`TextOrJson` / `JsonOnly` / `None`）、`RequiredCapabilities` / `HeldCapabilities` / `MissingCapabilities` を返す。単一プロパティ読み取りでは `Data` に直接載る（[書き込みに何が必要かを知る](#書き込みに何が必要かを知る)を参照）。アセットを変更しない。読み取り専用かつ冪等、要 `EditorInspect` 秘密の値は `IsMasked: true` 付きで伏せられる（単一プロパティの読み取りでは `Data` にも付く）。秘密かどうかは、プロパティの名前やメタデータに加えて、通知インスタンスが持つ中身でも判定する。`IncludeSecretValues` / `SecretValuesOffset` を取る。3 つの許可がそろえば平文が `Result.SecretFieldValues`（キーはプロパティ名。全プロパティの読み取りでは、上の切り詰めの後の値）に返り、許可が足りないときはコマンドは成功し、`Result.SecretValuesWithheldReason` が理由を返す — [シークレット値の読み取り](#reading-secret-values)を参照。通知のクラスを引けないときは、名前に関係なく全プロパティの値を伏せます（書き込み側と同じ扱い）。 |
 | `AddAnimNotifyTrack`（要 `AnimNotifyEdit`） | `TrackName` という名前の通知トラックが存在することを保証し、存在しない場合は作成する（任意の `TrackColor`、既定は白）。既存判定に対して冪等 — 既存トラックの `TrackIndex` はそのまま返され、`TrackColor` は無視される。PIE/SIE 実行中は拒否 |
 | `RemoveAnimNotifyTrack`（要 `AnimNotifyEdit`） | `TrackName` という名前の通知トラックを削除し、その上に置かれた全通知も削除する。以降のトラックのインデックスは 1 つずつ繰り上がる — 応答の `RemovedNotifyGuids` / `ReindexedNotifies` が影響範囲全体を報告する。すでに削除済みのトラックには `NotFound` で失敗。PIE/SIE 実行中は拒否 |
 | `AddAnimNotify`（要 `AnimNotifyEdit`） | `TrackName` の `StartTime` へ単発の点通知を追加する。`ClassPath`（`UAnimNotify` サブクラス）/ `NotifyName`（クラスなし、`bRegisterOnSkeleton` で Skeleton へ任意登録可能）のいずれか一方が必須。冪等ではない — 繰り返し呼ぶと新しい `NotifyGuid` を持つ独立した通知が作成される。PIE/SIE 実行中は拒否 |
 | `AddAnimNotifyState`（要 `AnimNotifyEdit`） | `TrackName` へ `[StartTime, StartTime + Duration]` にまたがる単発の通知ステートを追加する。`ClassPath` は `UAnimNotifyState` サブクラスを解決する必要がある。冪等ではない — 繰り返し呼ぶと新しい `NotifyGuid` を持つ独立した通知ステートが作成される。PIE/SIE 実行中は拒否 |
 | `RemoveAnimNotify`（要 `AnimNotifyEdit`） | `NotifyGuid` で識別される通知を 1 件だけ削除する。任意の `ExpectedNotifyClassPath` / `ExpectedNotifyName` は楽観的並行性制御のガード。guid が解決できなくなった場合は no-op 成功ではなく `NotFound` で失敗する。PIE/SIE 実行中は `NotAllowed` で拒否 |
 | `SetAnimNotifyEvent`（要 `AnimNotifyEdit`） | `NotifyGuid` で識別される通知のイベントフィールド（`StartTime` / `Duration` / `TrackName` / `NotifyName` / `MontageTickType` / トリガー・フィルタ設定）を部分更新する — 指定したフィールドのみが変更される。`Duration` は点通知に対しては拒否、`MontageTickType` は `UAnimMontage` 以外では拒否。PIE/SIE 実行中は `NotAllowed` で拒否 |
-| `SetAnimNotifyProperty`（要 `AnimNotifyEdit`。ハードなオブジェクト/クラス参照の書き込みは追加で `AnimNotifyReferenceEdit` が必要） | `NotifyGuid` で識別される通知インスタンスのトップレベルプロパティ 1 件を、`GetAnimNotifyClassSchema` が `DefaultValueText` として報告するのと同じテキストインポート形式で書き込む。新たに `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`（未登録タグ、`Categories` / `GameplayTagFilter` の範囲外のタグ、コンテナ内の重複タグはいずれも `InvalidParams` で拒否）と `FBoneReference`（対象スケルトンに存在しないボーン名、または照合先スケルトンを解決できない場合は `InvalidParams` で拒否）も書き込み可能。ソフト/ウィーク/レイジー参照、マップ、セット、オプショナル、参照を含むものも含めたその他の構造体/配列は `ValueJson` で書き込み、コンテナの要素 1 つは `Operation` / `ElementIndex` / `ElementKeyJson` で指定する（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。ハード参照の値は**既にロード済み**のアセットを指すもので、書き込みが副作用でアセットをロードすることはない。PIE/SIE 実行中は `NotAllowed` で拒否 |
+| `SetAnimNotifyProperty`（要 `AnimNotifyEdit`。ハードなオブジェクト/クラス参照の書き込みは追加で `AnimNotifyReferenceEdit` が必要） | `NotifyGuid` で識別される通知インスタンスのトップレベルプロパティ 1 件を、`GetAnimNotifyClassSchema` が `DefaultValueText` として報告するのと同じテキストインポート形式で書き込む。新たに `FGameplayTag` / `FGameplayTagContainer` / `FGameplayCueTag`（未登録タグ、`Categories` / `GameplayTagFilter` の範囲外のタグ、コンテナ内の重複タグはいずれも `InvalidParams` で拒否）と `FBoneReference`（対象スケルトンに存在しないボーン名、または照合先スケルトンを解決できない場合は `InvalidParams` で拒否）も書き込み可能。ソフト/ウィーク/レイジー参照、マップ、セット、オプショナル、参照を含むものも含めたその他の構造体/配列は `ValueJson` で書き込み、コンテナの要素 1 つは `Operation` / `ElementIndex` / `ElementKeyJson` で指定する（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。ハード参照の値は**既にロード済み**のアセットを指すもので、書き込みが副作用でアセットをロードすることはない。PIE/SIE 実行中は `NotAllowed` で拒否 `IncludeSecretValues` を受け付けますが、実行を許すための指定です（[シークレット値の読み取り](#reading-secret-values) を参照）。秘密の対象の書いた値と `ElementKeyJson` は `***` と `IsMasked: true` になり、`Changed` は出ません。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `FixupAnimNotifyGuids`（要 `AnimNotifyEdit`） | guid が現在無効な全通知に新しい guid を割り当てる。レガシー通知はこれを実行してアセットを保存するまで、リロードのたびに不安定な guid を持ち続ける。冪等 — 修復対象がない場合も `NumFixed: 0` で成功する。PIE/SIE 実行中は拒否 |
 | `SelectAnimNotify`（要 `EditorUIAutomation`） | `NotifyGuid` で識別される通知を、すでに開いているそのアセットのアニメーションエディタ内で選択し、そのエディタの Details パネルにプロパティが表示されるようにする — エンジンに該当 API が無いため、通知のタイムラインウィジェットへ人間が行うクリックをシミュレートする。アセットは変更しない。UE 5.8 以降専用: UE 5.7 では通知ウィジェットの型とそのノードオブジェクトインターフェースが Persona モジュール内部限定のため、任意の通知を選ぶのではなく `Available: false`（`UnavailableDetail: "EngineVersion"`）を返す — [UnavailableDetail](#unavailabledetail--handlerunavailable-の8つの詳細理由) 参照。冪等 |
 
@@ -2990,6 +4221,8 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 
 > **Note**: アクションまたは Modifier へのインデックスベースの書き込み（`RemoveSubsonicEventAction`、`MoveSubsonicEventAction`、`SetSubsonicEventActionProperty`、`AddSubsonicActionModifier`、`RemoveSubsonicActionModifier`、`MoveSubsonicActionModifier`、`SetSubsonicActionModifierProperty`、および `InsertIndex` を明示指定した `AddSubsonicEventAction`）はすべて `ExpectedActionFingerprint`（`Move*` 系コマンドと挿入位置指定を伴う呼び出しではさらに `ExpectedActionsFingerprint`）を要求し、呼び出し側が直前に観測した値と一致しない場合は拒否されます。これは権限チェックではなく楽観的並行性制御です — インデックスベースのアドレッシングは、そうしなければ同時編集によって別のアクションを黙って壊しうるため安全ではありません。拒否された場合はコレクションを読み直すか、直前の書き込みが返した `ActionsFingerprint` / `Actions[]` を使って現在値を取得してください。
 >
+> **指紋が対象とするもの（版 2）。** `ActionFingerprint` / `ActionsFingerprint` は、**秘密のプロパティの値を含めずに**計算されます。秘密の値だけを変えても指紋は変わらないので、秘密のプロパティへ書き込んでも応答の指紋は前と同じで、読み取りの権限しかない人が値の候補を当てはめて指紋と比べても、秘密の値は当てられません。中身が外から見通せない型（JSON をくるむ型、実行時にしか型が決まらない値）も秘密として扱うので、その秘密でない中身の変更でも指紋は変わりません。Modifier の追加・削除・並べ替え・型の変更や、秘密でない値の変更では、今までどおり指紋が変わります。`Modifiers` の配列そのものが秘密と宣言されているときは、配列の中の何を変えても指紋が変わらないので、そのアクションでは古い Modifier の `Index` を指紋で検出できません。指紋の版は 1 から 2 に上がりました。**この変更の前に取った指紋は、秘密を持つかどうかにかかわらず一致せず、`Conflict` で拒否されます。コレクションを読み直して新しい値を使ってください。** `RemoveSubsonicEvent` は指紋を受け取らず、返しません。Binding のコマンド（`AddSubsonicPropertyBinding`、`RemoveSubsonicPropertyBinding`）は、Action / Modifier の書き込みと同じく `ExpectedActionFingerprint` を大文字小文字を区別せずに比べるので、今まで拒否されていた大文字の指紋が通ります。運用者は `AllowSecretValuesInFingerprints` で、`SecretValueRead` を持つセッションに限り秘密の値を指紋へ戻せます（[Subsonic の指紋と秘密の値](safety.md#subsonic-の指紋と秘密の値) を参照）。この設定が効いているセッションで取った指紋は、効いていないセッションで取った指紋と一致しません（`Conflict`。読み直してください）。
+>
 > `AuditionSubsonicEvent` の応答フィールドは「再生された」ではなく `EventDispatched` です — イベントが解決され、public であり、そのアクションの `Execute()` が呼ばれたことを意味するだけで、実際に何か聞こえたことを保証しません。`StopSubsonicAudition` はその executor 自身のスコープが所有する音のみを解放します — `Global` 実行スコープで開始された音は**停止しません**。試聴の発行前に、イベントから静的に到達可能な `FGameplayTag` 参照を走査し、循環している、またはチェーン深度・到達可能アクション数の上限を超える場合は `ExecutionFailed`（応答に `CyclePath`）で拒否します — 実行時にタグを組み立てるプロジェクト独自のアクション型は、このチェックからは見えません。
 >
 > プロパティ⇔パラメータのバインディング（`AddSubsonicPropertyBinding`）に `ParameterScope` 引数はありません — 対象の `ParameterName` は名前のみで解決され、Event スコープのパラメータは同名の Collection スコープのパラメータを覆い隠します。
@@ -2999,7 +4232,7 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 | コマンド | 説明 |
 |---|---|
 | `ListSubsonicEventCollections` | AssetRegistry 経由で `USubsonicEventCollection` アセットを `AssetPath` 順に一覧表示。各エントリは `AssetPath` のみ — 詳細には `GetSubsonicEventCollectionInfo` を使用。`PageIndex` / `PageSize` でページング、`PathFilter` でコンテンツブラウザのパスプレフィックスによる絞り込みが可能 |
-| `GetSubsonicEventCollectionInfo` | 1 つのコレクションの完全な event/action/modifier/parameter/binding 内訳を取得。`EventTagFilter` は `EventTag` に対するプレフィックス一致で絞り込む。`MaxEvents` / `MaxTotalItems` / `MaxResponseBytes` / `MaxContainerElements` / `MaxRecursionDepth` で上限を設定できる（下げることのみ可能、ハード上限は超えられない）。応答本文は artifact として保存され、`Data` にはサマリのみが入る。PIE 実行中でも呼び出し可能 |
+| `GetSubsonicEventCollectionInfo` | 1 つのコレクションの完全な event/action/modifier/parameter/binding 内訳を取得。`EventTagFilter` は `EventTag` に対するプレフィックス一致で絞り込む。`MaxEvents` / `MaxTotalItems` / `MaxResponseBytes` / `MaxContainerElements` / `MaxRecursionDepth` で上限を設定できる（下げることのみ可能、ハード上限は超えられない）。応答本文は artifact として保存され、`Data` にはサマリのみが入る。PIE 実行中でも呼び出し可能 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 アクション・モディファイアの `Properties` は「名前 → 値」の辞書のままです。秘密の値は `***` になり、伏せた名前は隣の `MaskedFields` に並びます（伏せたものが無ければこの欄は出ません）。パラメータは値に `IsMasked: true` が付きます。定義がまだ解決できない値は伏せたままで、`UnverifiedMaskedFields` に載ります。秘密を 1 つでも持つアクションでは、要約文 `DisplayInfo` が `***` に置き換わり、そのアクションの `MaskedFields` に `DisplayInfo` が載ります。アクションが秘密を持つかは指紋と同じ基準で、アクションの全部（表示しないプロパティや、件数の上限で省いた Modifier も含む）を見て決めます。3 つの許可がそろえば、他の秘密の値と同じく、平文の要約文は `SecretFieldValues` に入ります。秘密を持たないアクションの `DisplayInfo` は今までどおり出ます。秘密と判定されないプロパティの値を要約文が含む場合は防げません。`ActionFingerprint` は秘密の値を含みません（上の注記を参照）。 |
 | `ListSubsonicActionTypes` | 検出可能な Subsonic アクション構造体型（非 `Abstract` / 非 `Hidden` / 非 `Deprecated`）を、各型ごとに `SetSubsonicEventActionProperty` が受け付けるプロパティスキーマとともに一覧表示。必須入力は無し。`MaxTotalItems` / `MaxResponseBytes` で上限を設定可能 |
 | `ListSubsonicModifierTypes` | `ActionStructPath` / `PropertyName` で指定された、ネストされた instanced-struct 配列の検出可能な派生型をすべて一覧表示し、各型について `SetSubsonicActionModifierProperty` が受け付けるプロパティスキーマを付与する。基底型はプロパティの `BaseStruct` メタデータから解決されるため、任意の `TArray<TInstancedStruct<...>>` プロパティに対して機能する |
 
@@ -3013,7 +4246,7 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 | `AddSubsonicEventAction` | `ActionStructPath` をインスタンス化し、`EventTag` のアクションシーケンスの `InsertIndex` へ挿入、省略時は末尾に追加する。`ExpectedActionsFingerprint` は `InsertIndex` を指定した場合のみ必須。更新後の `ActionsFingerprint` と、上限付きの `Actions[]` を返す。プレイセッション実行中は拒否 |
 | `RemoveSubsonicEventAction` | `EventTag` のアクションシーケンスから `Index` のアクション（およびそのプロパティバインディング）を削除する。`ExpectedActionFingerprint` は常に必須。更新後の `ActionsFingerprint` と `Actions[]` を返す。プレイセッション実行中は拒否 |
 | `MoveSubsonicEventAction` | `FromIndex` のアクションを移動し、`ToIndex`（移動対象を取り除いた後の配列における位置）へ配置する。`FromIndex == ToIndex` は成功する no-op。`ExpectedActionFingerprint` と `ExpectedActionsFingerprint` の両方が常に必須。プレイセッション実行中は拒否 |
-| `SetSubsonicEventActionProperty` | `Index` のアクションのトップレベルプロパティ `PropertyName` へ `Value` を書き込む。`Value` は元から JSON 値で構造化された値をそのまま運べるため、このコマンドに `ValueJson` は無い。`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。参照の値は**既にロード済み**のアセットを指すもので、このコマンドは参照先を暗黙にロードしなくなったため、以前は通っていた書き込みが先にアセットを開かないと通らなくなる場合がある。ネストされた `TArray<TInstancedStruct<...>>`（`Modifiers`）プロパティは拒否される — 代わりに専用の `AddSubsonicActionModifier` / `RemoveSubsonicActionModifier` / `MoveSubsonicActionModifier` / `SetSubsonicActionModifierProperty` を使用すること。`ExpectedActionFingerprint` は常に必須。プレイセッション実行中は拒否 |
+| `SetSubsonicEventActionProperty` | `Index` のアクションのトップレベルプロパティ `PropertyName` へ `Value` を書き込む。`Value` は元から JSON 値で構造化された値をそのまま運べるため、このコマンドに `ValueJson` は無い。`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要。参照の値は**既にロード済み**のアセットを指すもので、このコマンドは参照先を暗黙にロードしなくなったため、以前は通っていた書き込みが先にアセットを開かないと通らなくなる場合がある。ネストされた `TArray<TInstancedStruct<...>>`（`Modifiers`）プロパティは拒否される — 代わりに専用の `AddSubsonicActionModifier` / `RemoveSubsonicActionModifier` / `MoveSubsonicActionModifier` / `SetSubsonicActionModifierProperty` を使用すること。`ExpectedActionFingerprint` は常に必須。プレイセッション実行中は拒否 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 
 #### Action Modifier editing（4 コマンド）— 要 `SubsonicEventEdit`
 
@@ -3022,15 +4255,15 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 | `AddSubsonicActionModifier` | `ModifierStructPath` をインスタンス化し、`Index` のアクションの `ModifiersPropertyName` 配列へ、`InsertIndex` または末尾に挿入する。冪等ではない — 同じ引数で繰り返し呼ぶと複数の Modifier が追加される。Modifier 配列はその所有アクションの fingerprint の一部であるため、常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
 | `RemoveSubsonicActionModifier` | `Index` のアクションの `ModifiersPropertyName` 配列から `ModifierIndex` の Modifier を削除する。常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
 | `MoveSubsonicActionModifier` | `Index` のアクションの `ModifiersPropertyName` 配列内で、`ModifierFromIndex` の Modifier を `ModifierToIndex` へ移動する。同一インデックスの指定はトランザクションを開かず成功する no-op。常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
-| `SetSubsonicActionModifierProperty` | `ModifierIndex` の Modifier のトップレベルプロパティ `PropertyName` へ `Value` を書き込む。`Value` は元から JSON 値のため `ValueJson` は無く、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要で、参照の値は**既にロード済み**のアセットを指す（参照先は暗黙にロードされなくなった）。常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 |
+| `SetSubsonicActionModifierProperty` | `ModifierIndex` の Modifier のトップレベルプロパティ `PropertyName` へ `Value` を書き込む。`Value` は元から JSON 値のため `ValueJson` は無く、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要で、参照の値は**既にロード済み**のアセットを指す（参照先は暗黙にロードされなくなった）。常に `ExpectedActionFingerprint` が必須。プレイセッション実行中は拒否 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 
 #### Parameter editing（3 コマンド）— 要 `SubsonicEventEdit`
 
 | コマンド | 説明 |
 |---|---|
 | `AddSubsonicParameter` | `Scope`（`Collection` または `Event`。`Event` の場合は `EventTag` が必須）で選択された `FInstancedPropertyBag` へ、`ParameterName` という名前のパラメータを追加する。`ParameterType` は `EPropertyBagPropertyType` の列挙子名（`Bool` / `Int32` / `Int64` / `Float` / `Double` / `Name` / `String` / `Enum` / `Object` / `Struct`）。`ValueTypePath` は `Enum` / `Object` / `Struct` でのみ必須で、それ以外では省略が必要 — struct 型の `ValueTypePath` はさらに `FGameplayTag`（現時点で書き込み可能な唯一の struct 型）に限定される。既存のパラメータ名を再度追加しようとした場合は、上書きではなく拒否される。プレイセッション実行中は拒否 |
-| `RemoveSubsonicParameter` | 選択された `Scope` のバッグから `ParameterName` のパラメータを削除する。`UnboundPropertyCount` / `ReboundPropertyCount` は、そのパラメータにバインドされていた全アクションプロパティの結果を分類する — rebind されたプロパティは、同名かつ型互換の Collection レベルのパラメータが引き継いだために解決を維持できたもの（`Scope: "Event"` の場合のみ発生しうる）。選択したスコープに `ParameterName` のパラメータが無い場合は `NotFound` で失敗。プレイセッション実行中は拒否 |
-| `SetSubsonicParameterValue` | 選択された `Scope` のバッグにある既存パラメータ `ParameterName` の既定値を設定する。`Value` はアクションプロパティの setter と同じ許可リストで検証され、`Float` / `Double` の NaN/Inf も拒否される。`Value` は元から JSON 値のため `ValueJson` は無く、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要で、参照の値は**既にロード済み**のアセットを指す（参照先は暗黙にロードされなくなった）。選択したスコープに `ParameterName` のパラメータが無い場合は `NotFound` で失敗。プレイセッション実行中は拒否 |
+| `RemoveSubsonicParameter` | 選択された `Scope` のバッグから `ParameterName` のパラメータを削除する。`UnboundPropertyCount` / `ReboundPropertyCount` は、そのパラメータにバインドされていた全アクションプロパティの結果を分類する — rebind されたプロパティは、同名かつ型互換の Collection レベルのパラメータが引き継いだために解決を維持できたもの（`Scope: "Event"` の場合のみ発生しうる）。選択したスコープに `ParameterName` のパラメータが無い場合は `NotFound` で失敗。`AffectedEvents` は、削除の前後で指紋が変わったイベントの一覧で、秘密のプロパティの値だけが変わったイベントは載りません。参考の情報で、書き込みの安全には関わらないので、正確な集合が要るときはイベントを読み直してください。プレイセッション実行中は拒否 |
+| `SetSubsonicParameterValue` | 選択された `Scope` のバッグにある既存パラメータ `ParameterName` の既定値を設定する。`Value` はアクションプロパティの setter と同じ許可リストで検証され、`Float` / `Double` の NaN/Inf も拒否される。`Value` は元から JSON 値のため `ValueJson` は無く、`Operation` / `ElementIndex` / `ElementKeyJson` でコンテナの要素 1 つを操作できる（[参照・構造体・コンテナの書き込み](#参照構造体コンテナの書き込み) を参照）。構造体・コンテナにはさらに `PropertyStructuredEdit` が必要で、参照の値は**既にロード済み**のアセットを指す（参照先は暗黙にロードされなくなった）。選択したスコープに `ParameterName` のパラメータが無い場合は `NotFound` で失敗。プレイセッション実行中は拒否 `IncludeSecretValues` を受け付けますが、実行を許すための指定で、平文は返りません。秘密の対象への応答は伏せられ、`Changed` は出ません — [シークレット値の読み取り](#reading-secret-values) を参照。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 
 #### Property Binding editing（2 コマンド）— 要 `SubsonicEventEdit`
 
@@ -3153,7 +4386,7 @@ Subsonic オーディオイベントシステム向け `USubsonicEventCollection
 | コマンド | 説明 |
 |---|---|
 | `ValidateAssets` | 1〜8 件のアセットを同期的に検証して結果を返します。無効だったアセット、警告のあるアセット、検査されなかったアセットは個別に列挙され、何も見つからなかったアセットは `Summary` に集計され、`IncludeValid` が true のときにのみ列挙されます。結果 JSON は 64 KiB 未満の間はインラインで返され、いずれにせよ artifact としても書き出されます。⚠️ 本コマンドには時間予算も中断点も進捗取得もありません — マテリアル 1 件の検証だけでシェーダーコンパイルを伴い数秒かかりうるため、重いアセットを含む呼び出しはエディタを数秒〜数十秒応答させなくしうることに注意してください。`ResultId` は、結果に修正が 1 件以上含まれるときにのみ返ります。`AssetPaths` 内で重複したパスは、黙って重複除去せず `InvalidParams` で拒否します（8 件を明示指定したのに 7 件しか検証されない結果は分かりにくいため） |
-| `StartValidationJob` | フォルダ（`PackagePath` + `Recursive`）または明示的な `AssetPaths` リスト — どちらか一方だけであり、両方指定も両方省略も不可 — を複数フレームに分けて検証し、結果ではなく `JobId` を返します。`MaxAssets` は、リダイレクタ解決と外部オブジェクトの所有者への畳み込みの後に残る件数を制限します（切り捨てた場合は `Summary.AssetLimitReached` が立ちます）。列挙だけで内部上限を超えるほど広いフォルダは、先頭の一部を検証するのではなく `EnumerationLimitExceeded` で失敗しますので、`MaxAssets` を下げるのではなくフォルダを絞ってください。同一セッションのジョブが実行中に 2 つ目を開始すると前のジョブが中断され `ReplacedPreviousJob` が返り、前回からの間隔が短すぎる場合は `TooManyRequests` が返ります。`Recursive` は `PackagePath` と併用したときにのみ意味を持つため、`AssetPaths` と同時に指定した場合は黙って無視せず拒否します（20,000 件を超える `AssetPaths` も同様です） |
+| `StartValidationJob` | フォルダ（`PackagePath` + `Recursive`）または明示的な `AssetPaths` リスト — どちらか一方だけであり、両方指定も両方省略も不可 — を複数フレームに分けて検証し、結果ではなく `JobId` を返します。`MaxAssets` は、リダイレクタ解決と外部オブジェクトの所有者への畳み込みの後に残る件数を制限します（切り捨てた場合は `Summary.AssetLimitReached` が立ちます）。列挙だけで内部上限を超えるほど広いフォルダは、先頭の一部を検証するのではなく `EnumerationLimitExceeded` で失敗しますので、`MaxAssets` を下げるのではなくフォルダを絞ってください。同一セッションのジョブが実行中に 2 つ目を開始すると前のジョブが中断され `ReplacedPreviousJob` が返り、前回からの間隔が短すぎる場合は `TooManyRequests` が返ります。`Recursive` は `PackagePath` と併用したときにのみ意味を持つため、`AssetPaths` と同時に指定した場合は黙って無視せず拒否します（20,000 件を超える `AssetPaths` も同様です）。`PackagePath` は `/Game` のようなコンテンツのルートも、その下のフォルダも受け付ける（末尾の `/` は外される）。拒否されたパスは `InvalidParams` で、文は `'PackagePath' value '…': <理由>` の形になる |
 
 #### Job observation & control（3 コマンド）— 要 `EditorInspect`
 
@@ -3220,20 +4453,24 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `StartPIE` | Play-in-Editor セッションを開始 |
+| 🆓 `StartPIE` | Play-in-Editor セッションを開始 `DisablePIEStart=True` の間は、エディタが PIE を始められない状態でも、先に `PolicyViolation` で断ります。⚠️ 拒否の文言が変わりました。ini のキー `DisablePIEStart` と起動引数 `-uaip-policy-disable-pie-start` を案内します。 |
 | 🆓 `StopPIE` | アクティブな PIE セッションを停止 |
 | 🆓 `PausePIE` | アクティブな PIE セッションを一時停止 |
 | 🆓 `ResumePIE` | 一時停止中の PIE セッションを再開 |
 | 🆓 `LoadMap` | アクティブな PIE セッションでマップをロードし完了を待つ |
 | 🆓 `GetPIEState` | 現在の PIE 状態を返す — `Running`・`Stopped`・`Paused`・`Simulating` |
 
+PIE の遷移中（`LoadMap`・`PausePIE`・`ResumePIE`・`StartPIE`・`StopPIE`）に届いた呼び出しは `PreconditionFailed` で断ります（以前は `ExecutionFailed`）。シナリオの `RetryCount` はこれを再試行します。セッションがすでに動いているときの `StartPIE` は `NotAllowed` で断り、再試行されません。
+
 ### Toolset ブリッジ（3 件）🧩
 
 `EditorAppToolset`（UE 5.8+、EditorToolset プラグイン）経由のブリッジコマンド。プロバイダ：`Toolset.Editor.Toolset.PIE.*`。
 
+> `StartPIE` は呼び出し側から見て変わりません（`bSimulateInEditor` は任意のまま）。ブリッジが Toolset の必須のセッションオプション（`bSimulate`・`playMode` = `PlayMode_InViewPort`・`warmupSeconds` = `2.0`）を送るようになりました。
+
 | コマンド | 説明 |
 |---|---|
-| `Toolset.Editor.Toolset.PIE.StartPIE` | PIE セッションを開始（非同期、`PIEControl` 必要） |
+| `Toolset.Editor.Toolset.PIE.StartPIE` | PIE セッションを開始（非同期、`PIEControl` 必要） `DisablePIEStart=True` の間は、Toolset を呼ぶ前に `StartPIE` と同じ文言の `PolicyViolation` で断ります。 |
 | `Toolset.Editor.Toolset.PIE.StopPIE` | PIE セッションを停止（非同期、`PIEControl` 必要） |
 | `Toolset.Editor.Toolset.PIE.IsPIERunning` | PIE が実行中かどうかを返す |
 
@@ -3243,6 +4480,8 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 
 **実行中**のゲームワールドの操作・検査。旧バージョンではこれらは `UAIP.Runtime.PIE` 配下に登録されていました。
 
+このドメインのコマンドは、`QuitGame` と `ListPlayWorlds`、および CVar 系 2 つを除き、任意パラメータ `TargetNetRole` / `TargetPIEInstance` を受け付けます — [実行時コマンドの対象プレイワールドを指定する](#実行時コマンドの対象プレイワールドを指定する) を参照してください。
+
 | コマンド | 説明 |
 |---|---|
 | `SpawnActor` | アクティブな PIE ワールドに指定クラスのアクターをスポーン（`RuntimeActorManipulation` 必要） |
@@ -3250,10 +4489,34 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 | `TeleportActor` | アクターをワールド空間の指定位置 / 回転にテレポート |
 | `PossessActor` | プレイヤーコントローラーにアクターを憑依させる |
 | `SetTimeScale` | アクティブなゲームワールドのグローバル時間スケールを設定 |
-| `QuitGame` | 実行中のゲームプロセスの正常終了をリクエスト |
+| `QuitGame` | 実行中のゲームプロセスの正常終了をリクエスト（`RuntimeActorManipulation` 必要）。PIE 実行中は PIE セッションを停止します。ゲームを実行していないエディタでは `ExecutionFailed` を返し、エディタは閉じません — `QuitGame` が終了させるのは実行中のゲームであってエディタではありません。エディタを閉じるには [`ShutdownEditor`](#uaipeditorworkspace)（`UAIP.Editor.Workspace.ShutdownEditor`）を使ってください。この場合、以前は何もせずに `Success: true` を返していました |
 | `ExecuteConsoleCommand` | アクティブなゲームワールドでコンソールコマンドを実行（`RuntimeExecCommand` 必要） |
-| 🆓 `GetConsoleVariable` | コンソール変数の値・型・ヘルプテキストを取得。機微な名前は not found 扱い（`RuntimeCVarRead` 必要） |
-| 🆓 `SearchConsoleVariables` | ワイルドカード（`*`）でコンソール変数を検索。`MaxResults` は既定 50・最大 200、機微な名前は除外 |
+| `GetConsoleVariable` | ⚠️ **非推奨** — `UAIP.Runtime.Engine.CVar.GetConsoleVariable` を使用してください。コンソール変数の値・型・ヘルプテキストを取得。機微な名前は not found 扱い（`RuntimeCVarRead` 必要） |
+| `SearchConsoleVariables` | ⚠️ **非推奨** — `UAIP.Runtime.Engine.CVar.SearchConsoleVariables` を使用してください。ワイルドカード（`*`）でコンソール変数を検索。`MaxResults` は既定 50・最大 200、機微な名前は除外 |
+| `ListPlayWorlds` | エンジンがいま保持しているプレイワールドをすべて返します — `PIEInstance`、`NetMode`（`Standalone` / `DedicatedServer` / `ListenServer` / `Client`）、`MapName`、`bIsPrimaryPIEInstance`、および `Count`。プレイしていないときもエラーではなく空のリストを返すため、プレイ開始前に呼んでも安全です。パラメータは一切取りません。ここで返る値がそのまま `TargetNetRole` / `TargetPIEInstance` に渡せます。Capability 不要 |
+
+> ⚠️ **破壊的変更 — `SetTimeScale` / `TeleportActor` / `PossessActor` / `ExecuteConsoleCommand` はエディタで開いているレベルに作用しなくなりました。** この 4 つは対象ワールドを世界種別で絞らずに解決していたため、プレイしていない状態では最初に見つかったワールド — つまり**編集中のレベル** — を掴み、実際にそこへ変更を適用していました。今後は適用されません。プレイセッションの外では失敗し、何も変更しません。拒否の形も変わり、`ExecutionFailed` ＋ `No active game world found.` から **`NotAllowed` ＋ `PIE is not running.`** になりました。この 4 つは実行中のゲームを対象とするコマンドです。編集中のレベルを変更したい場合は、対応する `UAIP.Editor.*` コマンドを使ってください。旧エラーコードや旧メッセージ文字列でパターンマッチしている箇所は更新が必要です。
+
+> ⚠️ **`TeleportActor` は、移動できないアクターに対して成功を返さなくなりました。** `AActor::TeleportTo` は、root コンポーネントが `UPrimitiveComponent` でない場合や衝突チェックを省く経路では、移動が行われなくても `true` を返します。可動設定（Mobility）が `Movable` でないアクターはプレイ中に移動できないため、これまではコマンドが成功を報告しながらアクターが動いていませんでした。今後は移動の前後で位置と回転を突き合わせ、何も変わっていなければ **`ExecutionFailed`** を返します。拒否メッセージは原因も名指しします（**可動設定**／**root コンポーネントが無い**／**要求した場所に置けなかった**）。従来はこの 3 通りが「移動に失敗した」の一文に押し込められていました。衝突で目的地から近くへずらされた場合は、これまでと同じく成功です。同じ理由で `UAIP.Editor.Level.SetActorTransform` も、適用できなかった場合（root コンポーネントを持たないアクター）に `ExecutionFailed` を返すようになりました。
+
+> **エディタのプレイセッションではないゲームワールドは `PIEInstance: -1` を返します**（パッケージ実行時の単一ワールドなど）。この `-1` はここでは実在の番号であり、**そのまま `TargetPIEInstance` に渡せます**。「インスタンス無し」を表す番兵値として除外しないでください。
+
+### Data Layer ランタイム状態（4 件）
+
+**実行中のプレイワールド**における World Partition Data Layer の状態を扱います。Data Layer のオーサリング — 作成・親子付け・レベル開始時の状態指定 — は [`UAIP.Editor.WorldPartition`](#uaipeditorworldpartition) の担当で、このグループはディスクへ何も書き込みません。`DataLayerInstanceId` はエディタ側コマンドと同じ識別子なので、プレイ開始前に調べておいたものをそのまま渡せます。
+
+| コマンド | 説明 |
+|---|---|
+| `SetDataLayerRuntimeState` | ランタイム Data Layer インスタンス 1 つの状態を設定します。`RuntimeState` は `Activated` / `Loaded` / `Unloaded`（大文字小文字は区別せず、それ以外の綴りは受理値 3 つを列挙した `InvalidParams`）。`bIsRecursive: true` で同じ状態を全子孫へ適用し、応答に `AffectedCount`、`bPartialSuccess`、`RejectedDescendants[]` が加わります（各要素は `DataLayerInstanceId` と短い `RejectionReason` トークン `NotRuntime` / `ClientOnlyFromServer` / `ServerOnlyFromClient` / `AuthoritativeFromClient` / `Unknown`）。ただし*指定した*インスタンス自身が拒否された場合は、部分成功ではなくコマンド全体が失敗します。応答には `PreviousRuntimeState`、`RequestedRuntimeState`、`EffectiveRuntimeState`、`bStateChanged`、`bEffectiveStateDiffers`、`LimitingAncestorId`（祖先を実際に特定できたときのみ）、ストリーミングフラグ 2 つ、作用したワールドの情報が含まれます。識別子が未知なら `NotFound`。**実行時状態を持たない Data Layer（編集専用・非公開）も同じく `NotFound`** です。エンジンはプレイ開始時にそれらをワールドから取り除くため、プレイワールドから見ると最初から存在しません。World Partition 無効なワールドなら `ExecutionFailed`、ワールドのネットワーク役割が変更を許さない場合は `NotAllowed`。`RuntimeDataLayerControl` 必要 |
+| `ListDataLayerRuntimeStates` | 対象プレイワールドの全 Data Layer インスタンスを、`DataLayerInstanceName`、`DataLayerType`、`RuntimeState`、`EffectiveRuntimeState`、`ParentInstanceId`（ルートでは省略）、`bIsClientOnly`、`bIsServerOnly` 付きで返します。**配列本体は JSON Artifact 側にあり**、応答には配列の要素数である `Count` と、`bIsWorldPartitionEnabled`、`NetMode`、`WorldContext`、`PIEInstance` が含まれるため、Artifact を取得しなくても分岐できます。一覧に現れるのは実行時状態を持つ Data Layer だけです。編集専用・非公開のものはプレイ開始時にワールドから取り除かれるためここには出ません。種別込みで見たい場合はエディタ側の [`ListDataLayers`](#uaipeditorworldpartition) を使ってください。World Partition 無効なレベルではエラーではなく、空リスト ＋ `bIsWorldPartitionEnabled: false` を返します。Capability 不要 |
+| `GetDataLayerRuntimeState` | インスタンス 1 つの完全な記述を返します。`ListDataLayerRuntimeStates` と同じ項目に加えて `bEffectiveStateDiffers`、`LimitingAncestorId`、ストリーミングフラグ 2 つ。小さいので全体が Artifact と応答の両方に入ります。World Partition 無効なレベルでは `NotFound` ではなく `bIsWorldPartitionEnabled: false` を返します — これが「このレベルには Data Layer が存在しない」と「その識別子の Data Layer が無い」を区別します。Capability 不要 |
+| `WaitForDataLayerStreaming` | `DataLayerInstanceIds` で指定したインスタンス群 — 省略または空なら対象ワールドの全ランタイム Data Layer インスタンス — のストリーミングが落ち着くまでポーリングします。完了すると `ElapsedSeconds` と空の `IncompleteDataLayerInstanceIds[]` を伴う `Success`、時間切れなら同じ項目に未完了分を列挙した `Timeout` を返します。待機中にプレイワールドが破棄された場合は `ExecutionFailed` となり、待機がセッションより長生きすることはありません。World Partition 無効なレベルでは待たずに `bIsWorldPartitionEnabled: false` で完了します。Capability 不要 |
+
+> **`WaitForDataLayerStreaming` の上限は待機開始前に検査され、違反は `Timeout` ではなく `InvalidParams` になります。** `TimeoutSeconds` は既定 30、0 より大きい有限の数値で**最大 60** — `WaitForCondition` と同じ上限で、待機系コマンドの契約を揃えています。`PollIntervalSeconds` は既定 0.1 で 0.05〜1.0 の範囲。`DataLayerInstanceIds` は**最大 64 件**で、それ以上必要な場合はパラメータを省略してワールド全体を待つよう切り替える合図です。リスト中に存在しない識別子があれば、これも待機前に `NotFound` となります。
+
+> **2 つのストリーミングフラグは別々の問いに答えており、どちらも他方を包含しません。** `bStreamingCompleted` は対象の Data Layer に絞られていますが、位置に応じて読み込まれるセルを見ません。`bWorldStreamingCompleted` はワールド全体を見ますが、対象の Data Layer には絞れません。`SetDataLayerRuntimeState` / `GetDataLayerRuntimeState` / `WaitForDataLayerStreaming` がいずれも両方を返すのはこのためです — **確実を期すなら両方が完了になるまで待ってください**。
+
+> **`bStateChanged` は成功フラグではありません。** 「状態が以前と変わったか」に答えるものなので、すでに要求と同じ状態だった Data Layer は、完全に成功した呼び出しでも `bStateChanged: false` を返します。要求が効いたかどうかは `RequestedRuntimeState` と `EffectiveRuntimeState` の一致で判定してください。両者が食い違う場合は `bEffectiveStateDiffers` が `true` になり、`LimitingAncestorId` が実効状態を抑えている祖先を示します — 未読み込みの親は子が到達できる状態に上限を課しますが、要求自体は失われず記録されています。
 
 ### Toolset ブリッジ（1 件）🧩
 
@@ -3261,7 +4524,7 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 
 | コマンド | 説明 |
 |---|---|
-| `Toolset.Editor.Toolset.World.SearchCVars` | コンソール変数を名前の部分一致で検索。機微な変数は除外（`CVarInspect` 必要） |
+| `Toolset.Editor.Toolset.World.SearchCVars` | ⚠️ **非推奨** — `Toolset.Editor.Toolset.EngineManagement.SearchCVars` を使用してください。コンソール変数を名前の部分一致で検索。機微な変数は除外（`CVarInspect` 必要）。現在は `UAIPEditorEngineManagement` モジュールが提供し、移行先のコマンドと同じ動作をします。応答には `SensitiveExclusionCount` が付きます |
 
 ---
 
@@ -3273,12 +4536,133 @@ PIE セッションのライフサイクル。実行中ワールドの操作は 
 |---|---|
 | 🆓 `CaptureViewportImage` | 指定プレイヤーのゲームビューポートを PNG キャプチャ |
 | 🆓 `DumpWorldState` | アクティブな PIE ワールドの全アクター / コンポーネントのスナップショット（JSON） |
-| 🆓 `DumpActorState` | 指定アクターの状態（任意でコンポーネント含む） |
-| 🆓 `DumpComponentState` | 指定アクターコンポーネントの状態 |
+| 🆓 `DumpActorState` | 指定アクターの状態（任意でコンポーネント含む）。見つからないアクターは `ExecutionFailed` ではなく `NotFound` になるため、シナリオの `RetryCount` では再試行されません |
+| 🆓 `DumpComponentState` | 指定アクターコンポーネントの状態。見つからないコンポーネントは `ExecutionFailed` ではなく `NotFound` になるため、シナリオの `RetryCount` では再試行されません |
 | 🆓 `DumpRuntimeLog` | バッファリングされた Runtime ログ（テキスト Artifact） |
 | 🆓 `CapturePerformanceSnapshot` | CPU / GPU パフォーマンススナップショット（FPS・メモリ・ドローコール） |
 | 🆓 `CheckpointCapture` | スクリーンショット + 状態ダンプの複合（シナリオ primitive） |
 | 🆓 `SearchLoadedClasses` | ロード済みクラスを検索（ランタイム内省用） |
+| 🆓 `DumpGameViewportWidgets` | プレイワールドのゲームビューポートの Widget ツリーを返します。ゲーム自身の UI だけで、エディタのツールバーやタブは混ざりません。ツリー全体は JSON artifact に保存し、応答にはノード数、`MaxDepth` / `MaxNodes` で走査が途中で止まったか・どこで止まったか、上位のユーザー Widget の先頭 50 件、各ローカルプレイヤーのキーボード / ゲームパッドのフォーカスと画面領域、`Limitations` が入ります。各ノードは Slate の型、UMG の名前とクラス、矩形、実際に見えているか、どのレイヤーにあるかを持ちます。テキストは `IncludeText: true` のときだけ読みます。[ゲームビューポートの UI と HUD](#ゲームビューポートの-ui-と-hud4) を参照 |
+| 🆓 `FindGameViewportWidgets` | 同じツリーから、指定した条件をすべて満たすノードを探します（`WidgetClass`・`SlateType`・`WidgetName` / `WidgetNameContains`・`OwningPlayerIndex`。1 つ以上が必須）。`WithinWidgetPath` を渡すと、CommonUI の画面など 1 つの Widget の部分木に探す範囲を絞れます。一致には、`ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText` に渡し直す `TypePath` と `Fingerprint` が付きます。何も見つからなくても成功です。一覧を切ったか、走査が途中で止まったかは `ResultLimitReached` と `SearchIncomplete` の limitation で分かります。テキストは読みません |
+| 🆓 `DumpGameViewportWidgetTexts` | ゲームビューポートの**すべての**テキスト Widget のテキストと、入力欄の値を、画面に出ているかどうかを問わず JSON artifact として返します。各エントリに、そのテキストが画面に出ているかの印が付きます。`RuntimeWidgetTextRead`（DefaultDenied）が必要です。パスワード欄、またはパスワード欄かどうか判定できない欄の平文は artifact には書かれず、そのエントリは `Value: "***"` と `IsMasked: true` になり、artifact のトップレベルの `MaskedFields` と `UnverifiedMaskedFields` に `TypePath` で一覧されます。平文は、セッションが `RuntimeWidgetPasswordTextRead` も持ち、かつ安全設定 `AllowRuntimePasswordFieldRead` がオンのときだけ応答（`PasswordFieldValues`）に入ります。[ゲームビューポートの UI と HUD](#ゲームビューポートの-ui-と-hud4) を参照してください |
+| 🆓 `DumpHUDState` | 各ローカルプレイヤーの HUD の状態を JSON artifact として返します: HUD のクラス、表示フラグ、`ShowDebug` の状態、デバッグテキスト、ヒットボックスの名前、HUD が参照している Widget、プレイヤーコントローラーが画面に出している Widget。HUD が描いた内容（線・文字・ボックス）とヒットボックスの位置は読めず、`Limitations` で報告します |
+| 🆓 `ListSubsystems` | エンジン・GameInstance・プレイワールド・ローカルプレイヤーの下で生きている Subsystem を、実体ごとに 1 行（クラス・クラスパス・実体のパス・所有者・状態）で返します。行は決まった 1 つの順に並び、`StartIndex` / `MaxEntries` でページに区切られます。`IncludeNotCreated: true` を付けると、ロード済みで所有者の下に実体が無いクラスも載ります。`Engine` 種別だけの要求ならプレイワールド無しで動きます。プロパティの値は読みません |
+| 🆓 `DumpSubsystemState` | 1 つの Subsystem の実体のプロパティの値を JSON artifact として返します。`RuntimeInspect` と `SubsystemStateDump`（DefaultDenied）が必要です。応答には要約だけが載り、値は artifact に入ります。⚠️ `SubsystemStateDump` を外しても、すでに作られた artifact は残ります — [Safety & Capabilities](safety.md#runtime-subsystem) を参照 |
+
+### ゲームビューポートの UI と HUD（4）
+
+実行中のゲームの UI を読み取ります: ゲームビューポートにどの Widget があるか、どこにあるか、見えているか、HUD が何を表示する状態か。返るのはゲーム自身の UI だけで、エディタのツールバーやタブは混ざりません。エディタ全体を対象にする `DumpSlateTree` との違いはここです。PIE でも `-game` 起動でもパッケージ版でも、同じコマンドで使えます。4 つとも [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付け、読み取り専用です: 安全ポリシーが `ReadOnly` のときもモーダルが開いている間も動きます。ゲームビューポートを持たないワールド（サーバーのワールド）は `NotAllowed` で拒否され、選び直せるクライアント側のプレイワールドが応答に添えられます。
+
+**Capability。** `DumpGameViewportWidgets`・`FindGameViewportWidgets`・`DumpHUDState` は `RuntimeInspect`（DefaultAllow）が必要です。`DumpGameViewportWidgetTexts` は `RuntimeWidgetTextRead`（DefaultDenied）が必要で、応答にパスワード欄の平文を入れるには、さらに `RuntimeWidgetPasswordTextRead`（DefaultDenied）が必要です。足りない場合は、その名前を示した `CapabilityNotAvailable` になります。`DeniedCapabilities` で明示的に拒否している場合は `PolicyViolation` です。詳細は [安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) を参照してください。パスワード欄の平文には、安全設定 `AllowRuntimePasswordFieldRead=True` も必要です。Capability だけでは値は伏せられ、`Result.SecretValuesWithheldReason` が `PasswordTextWithheldBySafetyPolicy` になります。
+
+**見つけた Widget を操作するには**、一致の `TypePath` と `Fingerprint` を [`ClickGameViewportWidget`・`PressGameViewportUIKey`・`TypeGameViewportText`](#ゲームビューポートの-ui-入力3) に渡し、効果はもう一度ツリーを読んで確かめます。
+
+#### 読み取りが表すもの
+
+- **矩形**は、ゲームビューポート左上を原点とした物理ピクセルで、直前に描いたフレームの位置です。操作の直後は古い位置のことがあります。描画しない環境（`-nullrhi`）ではツリーは取れても矩形は取れず、`Limitations` に理由が出ます。
+- **テキスト。** `DumpGameViewportWidgets` を `IncludeText: true` で呼んだとき平文になるのは、**画面に出ている**テキストだけです。256 文字で切り詰め、制御文字は除きます。次のものは画面に出ていないとみなします: 非表示、UI の不透明度・色の設定で完全に透明（マテリアルなど色以外の手段で透明にしたものは判定できません）、スクロールの外やビューポートの外などで切り取られている・大きさが 0、描画できない環境。他の Widget に**覆われている**かどうかは判定しません。覆われたテキストも平文になり、その旨が注記されます。入力欄は、長さの区分 — `Empty`、`NonEmpty`（1〜127 文字）、`Long`（128 文字以上）— と、パスワード欄かどうかだけを返します。パスワード欄かどうか判定できない欄は、パスワード欄として扱います。
+- **`DumpGameViewportWidgetTexts` はすべてを返します。** 画面に出ているかを問わず、各エントリに出ているかの印が付きます。結果は artifact に保存され、既定では 24 時間残り、既定の HTTP 設定では ID を知っていれば誰でも取得できます。**パスワード欄は伏せられます。** パスワード欄と、パスワード欄かどうか判定できない入力欄は、artifact のエントリが `Value: "***"` と `IsMasked: true` になり、長さの区分 `LengthBucket` だけが残ります。エントリに `PasswordState` は付きません。artifact のトップレベルには、伏せた欄を `TypePath` で一覧した `MaskedFields`（パスワード欄）と `UnverifiedMaskedFields`（パスワード欄かどうか判定できなかった欄）が常に書かれ、何も伏せていなければ空です。`Result` には 2 つの一覧の件数 `MaskedFieldCount` と `UnverifiedMaskedFieldCount` が入ります（artifact には繰り返しません）。平文は応答の `PasswordFieldValues`（最大 16 件・各 256 文字。残りは件数だけ）にだけ入り、`RuntimeWidgetPasswordTextRead` **と**安全設定 `AllowRuntimePasswordFieldRead` の両方があるときに限ります。運用者が `DeniedCapabilities` で明示的に拒否した Capability は、持っていないものとして扱います。欄を伏せて平文を返さなかったときは、`Result.SecretValuesWithheldReason` が理由を示します。安全設定がオフなら（Capability の有無によらず）`PasswordTextWithheldBySafetyPolicy`、設定がオンで Capability が無いか拒否されているなら `PasswordTextWithheld` です。`Limitations` にはどちらの名前も入らず、応答に `PasswordFieldCount` はありません。
+- **Blueprint のバインディングが呼ばれることがあります。** Widget が何を表示するかを求める過程で、ゲームの Blueprint のバインディング関数が呼ばれることがあります。Widget の観測の応答は、常に `Limitations` でそれを知らせます。
+- **`FindGameViewportWidgets` は既定で見えている Widget だけを探します**（`VisibleOnly: true`）。ここでの「見えている」は、自分と親の表示の設定で非表示になっていないことです。不透明度が 0 の Widget や画面の外にある Widget も含むので、テキストの「画面に出ている」より広い意味です。何も見つからなくても成功です。応答は、一覧を切ったか（`ResultLimitReached`）、走査が途中で止まったか（`SearchIncomplete`）、見えている Widget だけを探した結果の 0 件か、を示すので、「無い」と「見ていない」を区別できます。
+- **開いているドロップダウン**（ゲーム自身のメニュー）の中身もツリーに含まれます。
+- **フォーカス。** 応答は、各ローカルプレイヤーのフォーカスが UI にあるか、ゲームビューポートそのものにあるか、ゲームビューポートの外にあるか、どこにも無いかを返します。
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `MaxDepth` | `DumpGameViewportWidgets`・`FindGameViewportWidgets`・`DumpGameViewportWidgetTexts` | 走査する最大の深さ。1〜128（ルートが 0）。既定 64。範囲外は切り詰めずに `InvalidParams` で拒否されます |
+| `MaxNodes` | 同じ 3 つ | 走査するノード数の上限。1〜20000。既定 5000。範囲外は拒否されます |
+| `IncludeDebugLayer` | 同じ 3 つ | ウィンドウのオーバーレイより下のデバッグ層も走査します。既定 `false` |
+| `IncludeCollapsed` | 同じ 3 つ | 自身の表示が `Collapsed` の枝も走査します。既定 `true` |
+| `IncludeText` | `DumpGameViewportWidgets` | 画面に出ているテキストを含めます（上記）。既定 `false` |
+| `WidgetClass` | `FindGameViewportWidgets` | UMG Widget のクラス名（大文字小文字を区別しない）。クラスはロードしないため、親クラスでの一致はすでにロード済みのクラスに限られます |
+| `IncludeSubclasses` | `FindGameViewportWidgets` | UMG Widget の親クラスも `WidgetClass` と比べます。既定 `true` |
+| `SlateType` | `FindGameViewportWidgets` | Slate の型名。完全一致（例: `STextBlock`） |
+| `WidgetName`・`WidgetNameContains` | `FindGameViewportWidgets` | UMG Widget の名前の完全一致 / 部分一致（大文字小文字を区別しない）。同時には指定できません |
+| `OwningPlayerIndex` | `FindGameViewportWidgets` | そのノードが属するユーザー Widget を持つ**ローカルプレイヤー**の番号（0 以上）。何も持たない、またはいないプレイヤーは一致 0 件で、成功です |
+| `VisibleOnly` | `FindGameViewportWidgets` | 実際に見えている Widget だけを対象にします。既定 `true` |
+| `MaxResults` | `FindGameViewportWidgets` | 返す一致の上限。1〜500。既定 50。超えた分は数えるだけで返しません |
+| `WithinWidgetPath` | `FindGameViewportWidgets` | 中を探す UMG Widget のオブジェクトパス（4096 文字以内）。たとえば [`UAIP.Runtime.CommonUI.DumpActivatableStacks`](#uaipruntimecommonui-) が画面ごとに返す `WidgetPath`。探す範囲を絞るもので、それだけでは条件になりません。ゲーム層の全体を走査することに変わりはないので、`MaxDepth` / `MaxNodes` はゲーム層の根から数え、`TypePath` もその根からの相対のままです。ゲーム層の下の Widget に行き着かないパスは、パラメータ名を挙げて `NotFound` です。走査がその Widget に届かなかった場合（非表示・折りたたみ・表示されていないページ・上限の外）は、一致なしで limitation `ScopeRootNotTraversed` が付きます。渡した値は `Result` と artifact にそのまま返します |
+| `RootTypePath` | `DumpGameViewportWidgetTexts` | サブツリーをダンプする Widget の `TypePath`。ゲーム層の全体を走査することに変わりはないので、`MaxDepth` / `MaxNodes` はゲーム層のルートから数えます。Widget に至らない経路は `NotFound`。既定はゲーム層全体 |
+| `PlayerIndex` | `DumpHUDState` | 調べる**ローカルプレイヤー**の番号（0 が 1 人目）。省略すると全ローカルプレイヤー。いない番号は `NotFound` |
+| `TargetNetRole`・`TargetPIEInstance` | 4 つすべて | どのプレイワールドか。[対象プレイワールドを指定する](#実行時コマンドの対象プレイワールドを指定する) を参照 |
+
+`FindGameViewportWidgets` は、`WidgetClass`・`SlateType`・`WidgetName`・`WidgetNameContains`・`OwningPlayerIndex` のうち 1 つ以上を必要とします。1 つも無い場合や、`WidgetName` と `WidgetNameContains` を同時に指定した場合は `InvalidParams` です。`WithinWidgetPath` は条件に数えないので、それだけを渡した場合も `InvalidParams` です。
+
+#### 拒否される場合
+
+| 状況 | 結果 |
+|---|---|
+| プレイワールドが無い、`TargetPIEInstance` に合うワールドが無い、サーバーのワールド | `NotAllowed`（サーバーのワールドには選び直せるクライアント側の候補が添えられます） |
+| `TargetNetRole` と `TargetPIEInstance` が矛盾する、または複数のワールドに当てはまる | `InvalidParams` |
+| ゲーム層がまだ無い（起動直後） | `PreconditionFailed`。少し待って再試行します（シナリオでは自動で再試行されます） |
+| ゲーム層の場所を特定できない（プロジェクトが標準の UI 層を置き換えている） | `NotAllowed`。対応するのは標準のゲーム層だけです |
+| `DumpHUDState` の `PlayerIndex` がいないプレイヤーを指す | `NotFound` |
+| `FindGameViewportWidgets` の `WithinWidgetPath` がゲーム層の下の Widget に行き着かない | `NotFound`（`WithinWidgetPath` を名指しする） |
+
+#### HUD
+
+`DumpHUDState` は、ローカルプレイヤーごとに、HUD のクラスと表示フラグ、`ShowDebug` の状態、デバッグテキスト（HUD が描かれていないときも返り、その場合は結果にそう注記されます）、ヒットボックスの名前、HUD が参照している Widget（最大 64 件）、プレイヤーが画面に出している Widget を返します。これらの一覧にはそれぞれ件数の上限があり、切ったときはそう注記されます。エンジンの版が提供しない欄は、理由とともに省かれます。ゲームビューポートの Canvas の描画統計（描画のまとまりの数）は、`DefaultUAIP.ini` の `[UAIP.RuntimeObservation]` で `EnableHUDCanvasStats=True` にしたときだけ添えられます（起動時に読むので、再起動が必要です）。無効のときは、`Limitations` が有効にする方法を示します。統計は、そのゲームビューポートに HUD が描かれた直近のフレームの値で、フレームをまたいで足し上がりません。分割画面では、そのフレームにそのビューポートへ描いた全 HUD の合計になります。まだ HUD が一度も描かれていないゲームビューポートには統計が無く、結果にそう注記されます。[安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) を参照してください。
+
+### Subsystem（2）
+
+実行中のゲームの Subsystem を読み取ります: どの Subsystem がどの所有者の下で生きているか、そして（許可した場合に）その 1 つの中身の値です。Subsystem は 4 種類の所有者のいずれかの下にあります: `Engine`、`GameInstance`、`World`（プレイワールド）、`LocalPlayer`。どちらのコマンドも読み取り専用で、安全ポリシーが `ReadOnly` のときも実行できます。
+
+**Capability。** `ListSubsystems` は `RuntimeInspect`（DefaultAllow）を必要とします。`DumpSubsystemState` は `RuntimeInspect` に加えて `SubsystemStateDump`（DefaultDenied）を必要とします。値はプロジェクトが保持しているものそのままで、秘密が含まれることもあるためです。足りない Capability は、その名前を示した `CapabilityNotAvailable` になります。`DeniedCapabilities` で明示的に拒否している場合は `PolicyViolation` です。[Safety & Capabilities](safety.md#runtime-subsystem) を参照してください。
+
+**プレイワールド。** `Engine` 種別だけの要求はプレイワールドを必要とせず、`TargetNetRole` も `TargetPIEInstance` も受け付けません。応答にもワールドの情報（ネットモード・PIE インスタンス）は載りません。それ以外の種別はプレイワールドが必要で、対象は [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) で選びます。プレイワールドが無いときはそのような要求は `NotAllowed` になり、代わりに `Engine` の結果を返すことはしません。
+
+**デモ版。** 2 つのコマンドはどちらもデモ版に含まれます。デモ版の既定の設定は `SubsystemStateDump` を許可していません。`DumpSubsystemState` を使うには、自分で `+AllowedCapabilities=SubsystemStateDump` を追加してください。
+
+#### 読み取りの内容
+
+- `ListSubsystems` の **行** には、`Scope`・`ClassName`・`ClassPath`・`ObjectPath`・`Owner`（所有者が持つ部分だけ: `PIEInstance`・`PlayerIndex`）・`Status`・`IsTickableWorldSubsystem` が載ります。`Status` は `Created`（生きている実体）、`NonAuthoritativeClass`（ホットリロード・Live Coding・Blueprint の再コンパイルでクラスが新しい版に置き換わった後も残っている、改名された旧クラスの実体）、`NotCreated`（ロード済みで所有者の下に実体が無いクラス。`IncludeNotCreated: true` のときだけ）のいずれかです。
+- **並び順。** 行は種別（`Engine`・`GameInstance`・`World`・`LocalPlayer`）、PIE インスタンス、プレイヤー番号、状態、クラスパス、実体のパスの順に並びます。同じ状態なら、いつ呼んでも同じ行が同じ順で返ります。
+- **ページ。** 応答にはそのページの先頭 50 行が載り、JSON artifact にはページ全体が入ります。`Truncated: true` は続きのページがあることを示します。`NextStartIndex` を `StartIndex` に指定して呼び直してください（残りが無いときは `NextStartIndex` は省かれます）。`DataEntriesTruncated` は、応答の行数がページより少ないことを示します。`StartIndex` が全件数以上なら空のページが返り、これは成功です。
+- **件数。** `TotalCount`・`CreatedCount`・`NonAuthoritativeCount`・`NotCreatedCount` は、`ClassNameContains` で絞った後、ページに区切る前の件数です。`Scopes[]` は要求した種別ごとに 1 件で、`Scope`・`Availability`（`Available` または `Unavailable`）・`Count`、利用できないときは `Reason` が載ります。
+- **`IncludeNotCreated`** は、ロード済みのクラスと各所有者の下の実体を突き合わせます。ロードされていないクラスは載りません。`Engine` 種別には `NotCreated` の行は出ません。作られなかった理由は返りません。まだ Subsystem を作っていない所有者（GameInstance やプレイヤーを追加した直後など）は、行が 0 件になるだけです。どれが当てはまるかは `Limitations` に書かれます。
+- **`DumpSubsystemState`** が選ぶのは、指定したクラスそのものだけです。基底クラスを指定しても、派生クラスの実体は選ばれません。応答の Data には、識別（`Scope`・`ClassName`・`ClassPath`・`ObjectPath`）、`Owner`、`Status`、`PropertyCount`、`IncludedCount`、`Truncated`、`StopReason`（ダンプが途中で止まったときだけ）、`Limitations` が載ります。プロパティは artifact の `Properties[]` にだけ入り、それぞれ `Name`・`DeclaredBy`・`Type`・`Flags`（Transient・Config・BlueprintVisible・BlueprintReadOnly・Net・SaveGame のうち立っているもの）・`Value` を持ち、基底クラス側から宣言順に並びます。Subsystem の共通の基底クラスが持つプロパティと、エディタ専用のプロパティは載りません。
+- **大きさ。** ダンプは約 256 KiB で打ち切られます。それでも成功で、`Truncated: true` と `StopReason`（実際には `TotalBudget`）が付き、`PropertyCount` には省かれたプロパティも数えられます。コンテナは先頭 32 要素、文字列は 1024 文字で切られ、構造体は 1 段だけ展開され、参照は参照先のパスで書かれます（辿りません）。
+- **リロードの後。** ホットリロードや Live Coding の前から残っている Subsystem は、改名後のクラス名で `NonAuthoritativeClass` として一覧に出ます。ダンプするには、その改名後の名前かパスを指定します。現行のクラスに実体が無く、同じ所有者に古い実体が残っているときは、`NotFound` の結果の `Candidates` に改名後のクラス名が並びます（最大 16 件）。
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `Scopes` | `ListSubsystems` | `Engine`・`GameInstance`・`World`・`LocalPlayer` のうち、重複しない 1〜4 個の名前（大文字小文字は区別しません）。既定は 4 種類すべて。プレイワールド無しで動くのは `Engine` だけです |
+| `PlayerIndex` | 両方 | **ローカルプレイヤー**の番号（0 は GameInstance の最初のローカルプレイヤー）。`ListSubsystems` では `Scopes` に `LocalPlayer` を含むときだけ指定でき、省くと全ローカルプレイヤーを一覧します。`DumpSubsystemState` では `Scope: LocalPlayer` のときだけ指定でき、ローカルプレイヤーがちょうど 1 人のあいだに限り省けます |
+| `ClassNameContains` | `ListSubsystems` | クラス名に含まれていなければならない文字列。1〜256 文字、大文字小文字は区別しません。行を集める段階で適用されます |
+| `IncludeNotCreated` | `ListSubsystems` | 所有者の下に実体が無いロード済みのクラスも、状態 `NotCreated` で一覧に加えます。既定は `false`。`Engine` 種別には適用されません |
+| `StartIndex` | `ListSubsystems` | 並べ替えた一覧の中で、ページの最初の行の位置。0 以上、既定は 0 |
+| `MaxEntries` | `ListSubsystems` | 1 ページの行数の上限。1〜4096、既定は 256。範囲外の値は丸められず `InvalidParams` で拒否されます |
+| `Scope`（必須） | `DumpSubsystemState` | `Engine`・`GameInstance`・`World`・`LocalPlayer`（大文字小文字は区別しません） |
+| `SubsystemClass`（必須） | `DumpSubsystemState` | Subsystem のクラス。`A-Z a-z 0-9 _ . / : -` の 1〜1024 文字。スラッシュを含む値はクラスパス、それ以外はクラスのオブジェクト名と完全一致で（大文字小文字は区別せず）比べる短いクラス名です。C++ の型名の頭の `U` は付けても外してもかまいません。Blueprint のクラスは `_C` 付きの名前が必要です。対象にできるのはロード済みのクラスだけです |
+| `TargetNetRole`、`TargetPIEInstance` | 両方 | どのプレイワールドか。[対象プレイワールドの指定](#実行時コマンドの対象プレイワールドを指定する)を参照してください。`Engine` 種別だけを指定した要求では受け付けません |
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータが欠けている・型が違う・範囲外・未知のキー。未知または重複した種別。`LocalPlayer` 以外の種別に付けた `PlayerIndex`。`Engine` 種別だけの要求に付けたプレイワールドの指定。`TargetNetRole` / `TargetPIEInstance` が互いに矛盾する、または複数のワールドに一致する。`ListSubsystems` では、`ClassNameContains` で絞った後も 65536 行を超える要求（`IncludeNotCreated` を外すか、要求を絞ってください）。`DumpSubsystemState` では、複数の場所のクラスに一致する短い `SubsystemClass`（クラスパスが `Candidates` に入ります。そのうち 1 つを指定して呼び直してください）と、ローカルプレイヤーが 2 人以上いるのに `PlayerIndex` を省いた `Scope: LocalPlayer` |
+| `NotAllowed` | `Engine` 以外の種別を指定したのにプレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い |
+| `NotFound` | `DumpSubsystemState`: 対象が存在しない。結果の `Reason` が理由を示す（下記）。`ListSubsystems`: どのローカルプレイヤーも持たない `PlayerIndex`（`Reason` は `PlayerNotFound`。プレイワールドに GameInstance が無いときは `NoGameInstance`） |
+| `CapabilityNotAvailable` | `RuntimeInspect`、`DumpSubsystemState` では `SubsystemStateDump` も、許可されていない |
+| `PolicyViolation` | Capability が安全ポリシーで拒否されている |
+
+`NotFound` の結果には、機械で読める `Reason` が付きます。
+
+| `Reason` | 意味 |
+|---|---|
+| `NotInstantiated` | クラスはロード済みだが、その種別・所有者の下に実体が無い。`Candidates` には、リロード前から残っている改名後の実体が載ることがあります |
+| `ClassNotFound` | 名前やパスに一致するロード済みのクラスが無い。`Candidates` には、その種別・所有者の下に実在するクラス名が載ります（最大 16 件）。ロードされていないクラスは対象にできません |
+| `NoGameInstance` | プレイワールドに GameInstance が無いため、GameInstance もローカルプレイヤーも存在しない |
+| `NoLocalPlayer` | GameInstance にローカルプレイヤーがおらず（専用サーバーなど）、`PlayerIndex` も指定されていない |
+| `PlayerNotFound` | `PlayerIndex` を指定したが、その番号のローカルプレイヤーがいない |
+
+同じ 5 つの値は、`Unavailable` になった `ListSubsystems` の `Scopes[]` の `Reason` にも現れます。`PlayerIndex` を指定しない `ListSubsystems` はこれらの理由では失敗せず、その種別が理由付きで `Unavailable` と報告され、他の種別は通常どおり返ります。
+
+成功した呼び出しは必ず JSON artifact を 1 つ保存します。失敗した呼び出しは保存しません。
 
 ---
 
@@ -3288,9 +4672,101 @@ PIE / Standalone でのテスト実行。
 
 | コマンド | 説明 |
 |---|---|
-| `RunFunctionalTest` | `AFunctionalTest` アクターをアセットパス指定で実行し JSON レポートを返す |
-| `RunRuntimeAutomationTest` | PIE 文脈で UE Automation Test を実行 |
+| `RunFunctionalTest` | PIE ワールドの `AFunctionalTest` アクターを表示名（アクターラベル）で指定して実行し JSON レポートを返す |
+| `RunRuntimeAutomationTest` | PIE 文脈で UE Automation Test を実行し、テストごとのレポート（Pass / Fail / Skipped / Error / Cancelled。[レポートの共通契約](#automation-test-のレポートの共通契約) を参照）を返す |
 | `RunGauntletTest` | RunUAT 経由で Gauntlet テストを外部プロセスとして起動 |
+
+> **`RunFunctionalTest`** は、PIE ワールドの `AFunctionalTest` アクターのうち、表示名（アクターラベル）が `TestPath` と大文字小文字を無視して完全一致するものを実行します。名前はファイルパスではないため、`..` を含む名前も使えます。
+>
+> **`RunGauntletTest`** は `TestName`（必須）、`TestParams`（任意）、`TimeoutSec`（任意。1 から 1800、既定 600）を受け取ります。`GauntletExecution` Capability が必要です。以下の書式の外にあるものは `InvalidParams` で拒否され、何も起動されません。
+>
+> **`TestName`** は 512 文字以下で、カンマ区切りのテスト指定の並びです。例は `UE.BootTest` です。
+>
+> - 各指定はドット区切りの名前です。各部分は ASCII の英字か `_` で始まり、その後ろは ASCII の英字・数字・`_` です。これが既定の形です。
+> - 指定の後ろに、括弧で囲んだテスト単位のパラメータリストを 1 つ付けられます（例: `UE.BootTest(Map=Foo)`）。リストにはどんな形でも `GauntletUnrestrictedArguments` が必要です（下記）。
+> - 広げた形にも `GauntletUnrestrictedArguments` が必要です。エンジンが自分のテストについて示す名前（`Test1, Test2`（カンマの後ろに空白）、`A(p2=foo bar)`、`Ns.Outer+Inner`）を受け付けます。名前には、拒否されない文字ならどれでも使えます（下の「文字」を参照）。`/` `:`、括弧の外の記号、数字で始まる名前も含まれます。パラメータリストにも拒否されない文字を書け、括弧は対応が取れていれば入れ子にできます。`-` で始まる名前は RunUAT.bat が自身のスイッチとして読むため、同じくこの Capability が必要です。
+> - この文法から外れる形は `InvalidParams` で拒否されます。括弧の対応が取れない、空の要素（`A,,B`、`A,`）、名前のないリスト（`(x)`）、閉じ括弧の後ろの文字（`A(x)y`）、空白だけの名前です。ここで空白とみなすのは ASCII の空白だけで、タブは制御文字です。
+> - 入れ子の括弧は受け付けますが、Gauntlet は括弧の対応を見ずに `),` でテスト名を切ります。`A(x=(1),y=2)` は `y=2)` という名前のテストを探して失敗します。`A(x=(1))` と `A(x=(1) y=2)` には `),` が無いので、そのまま届くと見込まれます（ソースの読解で、実測はしていません）。
+>
+> **`TestParams`** は 32 件以下のオブジェクトです。値は文字列・数値・真偽値のどれかで、数値と真偽値はその文字列として渡されます（`600` は `"600"`、`true` は `"true"`）。`null`・配列・オブジェクトは `InvalidParams` で拒否されます。パラメータは Gauntlet に `-Key="Value"` の形で渡されます。
+>
+> - **キー**: 1 から 128 文字。既定の形は `[A-Za-z][A-Za-z0-9_]*` です。検査の前に、先頭の `-` が 1 個外されます（`-Foo` は `Foo`）。先頭の `-` の有無が違い、外した後に大文字小文字を無視して同じになる 2 つのキー（`Foo` と `-FOO`）は `InvalidParams` で拒否されます。大文字小文字だけが違う 2 つのキー（`Foo` と `FOO`）は JSON のオブジェクトを読んだ時点で 1 件になるので、要求はそのどちらか一方で受理されます。どちらの値が残るかは JSON の順序で決まります。下の危険なキーの判定は、先頭の `-` を全部外した名前で行うので、`--compile` と `-compile` は `Compile` として扱われます。
+> - **広げたキー**（`GauntletUnrestrictedArguments` が必要）: ASCII の英数字と `_ . - : / +`。`..` は含められません。数字か `_` で始まるキーもこの形です。エラー文とログには、このようなキーは既定の形に入る先頭の部分だけが出ます（長さは出ません）。成果物の `TestParamKeys` には、受理したキー（外した先頭の `-` 1 個を除いたもの）が載ります。キーに秘密を入れないでください。
+> - **値**: 1024 文字以下。既定の形は `[A-Za-z0-9_.:/+-]` の文字だけで、`..` は含められません。空の値は許可されます。それ以外の文字は、下の「文字」の表に従います。
+>
+> 書式が正しくても、テストやその子プロセスの動作を変えるものがあります。これらには `GauntletUnrestrictedArguments` Capability が必要で、既定では拒否されます（[Safety & Capabilities](safety.md) 参照）。持っていない場合は `CapabilityNotAvailable` で失敗します。以下の照合はすべて大文字小文字を無視します。
+>
+> - `TestName` の括弧によるテスト単位のパラメータリスト。
+> - 末尾が次のいずれかのキー: `Args`、`ExecCmds`、`Cmds`、`CommandLine`、`Cmdline`、`Platform`、`Configuration`、`Flavor`、`Dir`、`Directory`、`Path`、`Root`、`File`、`URL`。
+> - 先頭が次のいずれかのキー: `Skip`、`Editor`、`Script`、`Automation`、`Horde`、`Telemetry`、`Device`、`P4`。
+> - 次のいずれかに完全一致するキー: `NoCompileUAT`、`noturnkeyvariables`、`profile`、`ScriptsForProject`、`Bootstrap`、`Build`、`Builds`、`Project`、`ProjectName`、`Target`、`CustomModuleRoles`、`Sandbox`、`Clean`、`FullClean`、`cleardevices`、`Reboot`、`FirmwareVersion`、`UpdateFirmware`、`TryUpdateFirmware`、`VerifyLogin`、`test`、`tests`、`Namespaces`、`RunTest`、`TestFilter`、`TagFilter`、`Map`、`Controller`、`EnablePlugins`、`DDC`、`RHI`、`UseEditor`、`CookedEditor`、`packaged`、`staged`、`bulk`、`notbulk`、`devices`、`PerfSpec`、`PrefSpec`、`PerfModel`、`PrefModel`、`RequiredDeviceTags`、`PreferredDeviceTags`、`UndesiredDeviceTags`、`BlockedDeviceTags`、`WorkerJobID`、`LocalDeviceIndex`、`MaxLocalDevices`、`MaxVirtualDevices`、`username`、`password`、`JobDetails`、`PublishTelemetryTo`、`PerfReportServer`、`uploadreport`、`UseAgentTag`、`EnableHordeDeviceReservations`、`clientip`、`serverip`、`hostip`、`EpicApp`、`McpRegion`、`McpSubRegion`、`BuildIDOverride`、`NoMCP`、`RemoteServer`、`RequiresLogin`、`PreAssignAccount`、`ArtifactName`、`ArtifactPostfix`、`PgcFilenamePrefix`、`LocalReplay`、`MemPro`、`EditorTraces`、`ClientTraces`、`ServerTraces`、`VerboseLogCategories`、`Compile`、`NoCompile`、`CompileOnly`、`Submit`、`NoSubmit`、`NoKill`、`BuildMachine`、`UseLocalBuildStorage`、`WaitForDebugger`、`List`、`Help`、`forcestepfail`、`listargs`、`listallargs`。
+> - Gauntlet が子プロセスへ転送するキー: `TestName` の各ドット区切りの部分、および既定の名前空間（`Gauntlet`、`UnrealTest`、`UnrealGame`、`UnrealEditor`）の各部分について、最初の `test` より前の文字列（`test` を含まない部分は部分全体）で始まるキー。`UE.BootTest` では `UE` と `Boot` などが該当します。`test` で始まる部分があると、すべてのキーが転送されます。
+> - `:` を含む値、または `+` で区切った要素のどれかが `/` で始まる値（絶対パス・UNC パス・URL）。
+> - `-` と ASCII の英字で始まる値。RunUAT.bat が自身のスイッチとして読むためです。
+>
+> **文字。** `TestName`・値・キーの文字は、次の 3 つの区分のどれかに入ります。
+>
+> | 区分 | `TestName` と値 | キー |
+> |---|---|---|
+> | 既定で通る | 値: ASCII の英数字と `_ . : / + -`（既定の形。上に挙げた値は、それでも Capability が要ります）。`TestName`: 上の既定の形だけ。ドット区切りの名前を、空白を挟まずに `,` で区切ったもの（`A.Test,B.Test`） | `[A-Za-z][A-Za-z0-9_]*` |
+> | `GauntletUnrestrictedArguments` で解禁する | 空白、`, ; = ( ) ' ! @ # $ ~ [ ] { } * ?`、バッククォート、下で拒否するもの以外の非 ASCII の文字。上の広げた形の `TestName`（名前の中の `: / + -` と、数字で始まる名前を含む。`TestName` の要素を区切る `,` はこれに当たりません） | ASCII の英数字と `_ . - : / +`（`..` は不可） |
+> | 呼び出し側が何を持っていても拒否する（`InvalidParams`） | 下に列挙 | それ以外の全部（空白、`,` `;` `=`、下に列挙する文字、非 ASCII の文字） |
+>
+> 何を持っていても拒否されるもの:
+>
+> - **`& | < > % ^`**: `cmd.exe` が解釈してしまうためです。エラー文は Gauntlet のプロファイルファイルを案内し、Gauntlet はそのファイルをシェルを通さずに読むと伝えます（下記）。
+> - **`"`**: どの経路でも、文字としてはテストに届きません。エラー文はこの旨を別の文で伝え、プロファイルファイルは案内しません。`TestName` と値はどれも二重引用符の中に書かれるので、空白などをまとめる目的なら引用符は要りません。`&` を運ぶためだけに `"x&y"` と書いていた場合は、プロファイルファイルを使ってください。
+> - **常に**: `..`、`\`、制御文字（C0・DEL・C1）、U+2028、U+2029、双方向の制御文字（U+200E、U+200F、U+202A〜U+202E、U+2066〜U+2069）、孤立サロゲート、長さの上限。
+>
+> **これらの拒否の `Reason`。** どれも `InvalidParams` と並べて `Result.Reason` を返すので、ほかの `InvalidParams` と見分けられます。`Reason` の値は `GauntletArgumentEmpty`、`GauntletArgumentTooLong`、`GauntletArgumentControlCharacter`、`GauntletArgumentInjectionCharacter`、`GauntletArgumentQuoteCharacter`、`GauntletArgumentBackslash`、`GauntletArgumentMalformedTestName`、`GauntletArgumentMalformedKey`、`GauntletArgumentDotDot` のいずれかです。最初に拒否された入力を示します（テスト名をパラメーターより先に、パラメーターはキーの順に判定します）。
+>
+> | `Reason` | 最初に拒否された入力 |
+> |---|---|
+> | `GauntletArgumentEmpty` | テスト名またはパラメーターのキーが空 |
+> | `GauntletArgumentTooLong` | テスト名・キー・値のどれかが上限より長い |
+> | `GauntletArgumentControlCharacter` | 制御文字、DEL、行区切り、双方向の制御文字、孤立サロゲート |
+> | `GauntletArgumentInjectionCharacter` | 値またはテスト名に `& \| < > % ^` のどれかがある |
+> | `GauntletArgumentQuoteCharacter` | `"` がある |
+> | `GauntletArgumentBackslash` | `\` がある |
+> | `GauntletArgumentMalformedTestName` | テスト名が文法の外: 括弧の対応が崩れている、空の要素がある、閉じ括弧の後に文字がある |
+> | `GauntletArgumentMalformedKey` | パラメーターのキーに、許される文字の外の文字（非 ASCII の文字など）がある |
+> | `GauntletArgumentDotDot` | `..` がある |
+>
+> `GauntletUnrestrictedArguments` だけで通せる引数は `CapabilityNotAvailable` で拒否され、これらの値は付きません。
+>
+> `Name=Value` の形で書いたキーは拒否されます。キー `Name`、値 `Value` として渡してください。入力に複数の区分の文字が混ざっているときは拒否が報告されます。付与しても足りないときに Capability が案内されないようにするためです。Capability が無いと `CapabilityNotAvailable` で失敗し、`DeniedCapabilities` で明示的に拒否されていれば `PolicyViolation` で失敗します。
+>
+> **拒否される文字を渡すには: Gauntlet のプロファイルファイル。** Gauntlet はプロファイルの JSON ファイルをシェルを通さずに読むので、`& | < > % ^` はその経路ならそのままテストに届きます。ファイルの絶対パスを `TestParams` のキー `profile`（小文字で完全一致）で渡します。
+>
+> - `{"profile":"C:/path/to/profile.json"}` のように、区切りは `/` で書きます（`\` は拒否されます）。`profile` は危険なキーで、値は絶対パスなので、`GauntletUnrestrictedArguments` が必要です。
+> - ファイルは `{"scripts":[{"script":"RunUnreal","ExecCmds":"..."}]}` の形です。空白と拒否される記号を同時に含む値は、1 要素のリストにします（`"ExecCmds":["a b&c"]`）。文字列のままだと空白で切れます。`"` はどうやっても運べません。
+> - ファイルの中の JSON のキーには、`TestParams` のキーに使えない文字も書けます。Gauntlet は `-args` の値を空白で分け、`-` で始まらない語を捨てます。どの経路でも同じです。
+> - 文字列の `"true"` と `"false"` はどちらも裸のスイッチ `-Key` になります。JSON の真偽値は `true` が `-Key` になり、`false` は落ちます。空の値も落ちます。`test` キーは `TestName` に**追加**されます。置き換えません。
+> - テスト単位のパラメータリストの中の値は、ファイルには書けません。同じ名前のキーとしてファイルに書いてください。全テストに適用されるので、テストごとに違う値は表せません。
+> - **存在しないパスは Gauntlet に黙って無視されます。** 値が届かなくても、テストは成功することがあります。
+> - 運用者向け: プロファイルファイルは別の AutomationTool コマンド（`script`）を実行でき、環境変数を設定できます（空のキー）。同じ Capability で以前から届く範囲です。付与する前に [Safety & Capabilities](safety.md) を読んでください。
+>
+> **RunUAT が `cmd.exe` ではなく bash を通って動く場合**（サポートする起動は Windows です）、引用に頼る入力（広げた文字・キー・`TestName` の形）は、Capability があっても `ExecutionFailed` で拒否されます。
+>
+> **パス。** コマンドラインに載るパスは 1 つずつ検査されます。RunUAT.bat は引数を展開する前に引用符を外すためです。どの記号が許されるかは、そのパスが何かで決まります。
+>
+> | パス | そのまま通る | `GauntletUnsafeProjectPath` が要る | 拒否 |
+> |---|---|---|---|
+> | エンジン（RunUAT） | `!` | - | `"` `%` `&` `\|` `<` `>` `^`、制御文字 |
+> | プロジェクトファイルと、レポートのディレクトリのうちプロジェクトの `Saved` ディレクトリ由来の部分 | `!` `^` `%` | `&` | `"` `\|` `<` `>`、制御文字 |
+> | レポートのディレクトリのセッション ID | それ以外のすべて（下記参照） | - | `"` `%` `!` `&` `\|` `<` `>` `^`、制御文字。プロジェクト側に `&` があるときは、ASCII の英数字と `-` `_` `/` 以外すべて |
+>
+> - **プロジェクトのパスの `&`** には `GauntletUnsafeProjectPath` Capability が要ります。既定では拒否されており、`GauntletUnrestrictedArguments` では**付与されません**。持っていないと `CapabilityNotAvailable` で失敗し、Capability 名が案内されます（`DeniedCapabilities` で明示的に拒否されているなら `PolicyViolation`）。**付与すると、`&` より後ろの文字列が `cmd.exe` で独立したコマンドとして実行されます**。信頼できるプロジェクトの場所にだけ付与してください。付与すれば、`&` を含むパスのプロジェクトも 1.2.0 と同じように起動します。
+> - **`cmd.exe` が展開する `%` の組**（2 つの `%` の間の文字列が環境変数の名前、または `CD` や `DATE` のように `cmd.exe` 自身が値を入れる名前になっているもの）は、パスが別のパスとして RunUAT に届いてしまうため、`ExecutionFailed` で拒否されます。単独の `%`、または存在しない名前を挟んだ組は通ります。
+> - **レポートのディレクトリ**はプロジェクト配下の `Saved/UAIP/<SessionId>/...` です。セッション ID によって `Saved/UAIP/` の外へ出てしまう場合（`../` を含む、`...` のようなセグメントがある、など）は、何も作らずに `PolicyViolation` で拒否されます。セッション ID に `"` `%` `!` `&` `|` `<` `>` `^` のいずれか、または制御文字が含まれる場合も `PolicyViolation` で拒否され、プロセスは起動しません（以前は起動していました）。この拒否はどの権限でも解けません。値を決めるのは呼び出し側であり、ASCII の英数字と `-` `_` で作った ID でも同じ結果になるためです。プロジェクトのパスに `&` があり（`GauntletUnsafeProjectPath` を付与している場合）、レポートのディレクトリのうち `&` より後ろの部分がコマンドとして実行されるため、セッション ID は ASCII の英数字と `-` `_` `/` に限られ、空白や `=` も `PolicyViolation` で拒否されます。
+> - パスに拒否される文字が複数ある場合は、どの権限でも解けないものが先に報告されます。付与しても足りないときに Capability が案内されないようにするためです。
+>
+> エンジンのパスの `&` `%` `^` と、Windows がファイル名に使えない記号は、1.2.0 でも起動できず、`ExecutionFailed` で拒否されたままです。
+>
+>
+> パラメータの値と、テスト単位のパラメータリストの中身は、ログ・エラー・成果物のどこにも残りません。パラメータリストは `(<redacted>)`、広げた形の `TestName` の要素は `<redacted>` と表示され、既定の形の外にあるキーはエラーとログでは既定の形に入る先頭の部分だけ（`'Password'...`）が出ます。先頭の部分が無いキーは `<redacted>` と表示されます。キーの長さは出ません。成果物の `TestParamKeys` には、受理したキー（外した先頭の `-` 1 個を除いたもの）が残ります。渡した `TestName` と `TestParams` は監査ログ・完了通知・コマンドの記録で伏せられ（`TestName` は `UE.BootTest` のような普通の名前も丸ごと伏せられます）、失敗理由の文も伏せられます。呼び出し側への応答は変わりません。
+>
+> エラー: 引数の拒否は `InvalidParams`、`GauntletUnrestrictedArguments` が要るのに持っていない場合、または `&` を含むプロジェクトのパスに必要な `GauntletUnsafeProjectPath` を持っていない場合は `CapabilityNotAvailable`（その Capability が `DeniedCapabilities` で明示的に拒否されているなら `PolicyViolation`）、拒否される文字を含む、または `Saved/UAIP/` の外へレポートのディレクトリを出してしまうセッション ID は `PolicyViolation`、起動できなかった場合（別の Gauntlet テストが実行中、RunUAT やシェルが見つからない、RunUAT.bat が運べないパス、`cmd.exe` が展開する `%` の組、bash で `cmd.exe` の引用が要る引数、プロセスの起動失敗）は `ExecutionFailed` です。
 
 ---
 
@@ -3301,9 +4777,11 @@ PIE / Standalone でのテスト実行。
 | コマンド | 説明 |
 |---|---|
 | 🆓 `WaitSeconds` | 指定秒数だけ待機（シナリオ primitive） |
-| 🆓 `WaitForCondition` | 条件が真になるまでポーリング |
-| 🆓 `AssertActorProperty` | アクタープロパティが期待値と一致することをアサート |
-| 🆓 `AssertWorldState` | 複数プロパティを 1 回でバッチアサート |
+| 🆓 `WaitForCondition` | 条件が真になるまでポーリング `IncludeSecretValues` を受け付けます。秘密のプロパティは、3 つの許可がそろわなければ比べず、読めないプロパティと同じ形で失敗します。比べたときも、期待値・実際の値をログに書きません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
+| 🆓 `AssertActorProperty` | アクタープロパティが期待値と一致することをアサート `IncludeSecretValues` を受け付けます。秘密のプロパティは、3 つの許可がそろわなければ比べず、読めないプロパティと同じ形で失敗します。比べたときも、期待値・実際の値をログに書きません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
+| 🆓 `AssertWorldState` | 複数プロパティを 1 回でバッチアサート `IncludeSecretValues` を受け付けます。秘密のプロパティは、3 つの許可がそろわなければ比べず、読めないプロパティと同じ形で失敗します。比べたときも、期待値・実際の値をログに書きません — [シークレット値の読み取り](#reading-secret-values) を参照。 |
+
+> **`WaitSeconds` — 成功時の `Result`。** `WaitedSeconds`（数値）を返します。値は要求した秒数で、実際に経過した時間の実測値ではありません。
 
 ---
 
@@ -3336,7 +4814,7 @@ GameplayAbilities 状態の検査と実行時操作。`GameplayAbilities` プラ
 | `ApplyEffect` 🧩 | アクターに GameplayEffect を適用 |
 | `RemoveEffect` 🧩 | 指定 GameplayEffect クラスの有効インスタンスをすべて削除 |
 | `ClearActiveEffects` 🧩 | 有効な GameplayEffect をすべて削除（`TagFilter` で絞り込み可） |
-| `SetAttributeValue` 🧩 | 属性の base 値を設定（`AttributeName` は `UMyAttributeSet.Health` 形式） |
+| `SetAttributeValue` 🧩 | 属性の base 値を設定（`AttributeName` は `Health` と、`GetAttributeValues` が返す `MyAttributeSet.Health` 形式の両方を受け付ける） |
 | `ResetAttributesToBase` 🧩 | 全属性の current 値を base 値へリセット |
 | `SendGameplayEvent` 🧩 | アクターへ GameplayEvent を送信（magnitude 任意） |
 
@@ -3357,12 +4835,122 @@ Runtime での入力注入と Enhanced Input 状態検査。PIE 必須。
 | `RemoveMappingContext` | ローカルプレイヤーから Input Mapping Context を削除 |
 | `SetInputMode` | 入力モードを設定（GameOnly / UIOnly / GameAndUI） |
 | `FlushInput` | テスト終了時の押下中キー状態をフラッシュ |
-| `DumpInputState` | 現在の入力状態（押下中キー・軸値・優先度付きの有効 Mapping Context、`IncludeActionStates=true` 指定時はアクション単位の Trigger 状態も含む）をダンプ |
-| `GetEnhancedInputActionValue` | Enhanced Input Action の現在値を取得 |
+| 🆓 `DumpInputState` | 現在の入力状態（押下中キー・軸値・優先度付きの有効 Mapping Context・推定した入力モードの根拠・注入ゲートの判定、`IncludeActionStates=true` 指定時はアクション単位の Trigger 状態も含む）をダンプ。プロジェクトのコードは実行しません。[注入ゲート](#注入ゲート) を参照 |
+| 🆓 `GetEnhancedInputActionValue` | Enhanced Input Action の現在値を取得 |
+| `EvaluateInputGateWithProjectCode` | 注入ゲートを、実際の注入と同じく**ゲームビューポートクライアントのプロジェクトの override を実行して**評価し、何も注入せずに判定を返します。`PlayerIndex` はプレイヤーコントローラの番号（既定 0）。ゲートが止める場合も成功です（`Decision: "Blocked"`）。`RuntimeInspect` と `InputProjectCodeExecution`（DefaultDenied）が必要です。読み取り専用のコマンドではないので、安全設定の読み取り専用モードでは拒否されます。デモ版にはありません |
+| `ClickGameViewportWidget` | 実行中のゲームの UI の Widget をマウスでクリックします。押す位置へポインターを動かし、カーソルの真下にあるのが対象（またはその中身）であることを確かめてから、ボタンを押して離します。対象は UMG の `WidgetPath`、`ViewportPosition`、または `FindGameViewportWidgets` が返した `TypePath` と `Fingerprint` で指定します。`RuntimeUIInputInjection` が必要です。[ゲームビューポートの UI 入力](#ゲームビューポートの-ui-入力3) を参照 |
+| `PressGameViewportUIKey` | ローカルプレイヤーの Slate ユーザーとして、UI 用のキー（矢印・Tab・Enter・Space・Escape・ゲームパッドのボタン）を押します: キーを押す → 安全の再確認 → キーを離す。対象を指定しないと、そのプレイヤーのフォーカスがある Widget に届き、指定すると先にフォーカスをそこへ移します。`RuntimeUIInputInjection` が必要です |
+| `TypeGameViewportText` | 実行中のゲームの UI の入力欄へ、ローカルプレイヤーの Slate ユーザーとして 1 文字ずつ文字を打ちます。確定はしません（確定には `PressGameViewportUIKey` で Enter を送ります）。欄の値を直接書き換えることもしません。打った文字列はログにも応答にも記録にも残りません。`RuntimeUIInputInjection` が必要で、パスワード欄に打つには安全設定 `AllowRuntimePasswordFieldWrite` も要ります |
 
 ---
 
 > **Note**: `DumpInputState` は常に `ActiveMappingContexts`（`Priority` 降順・同値は `Path` 昇順でソート）と `EnhancedInputState`（`"Available"` / `"Unavailable"`。「取得できて 0 件」と「そもそも取得できない」を区別する）を返します。`IncludeActionStates=true` を渡すと、有効な Mapping Context から到達できるアクションごとに `ActionStates[]` が追加されます。各エントリは `Trigger`（`ETriggerEvent` の全 6 値のいずれか。発火していないアクションを表す `"None"` を含む）、`ValueX`/`ValueY`/`ValueZ`、`SourceContexts[]`（どの有効 Context がそのアクションを設定しているか）、`ConfiguredKeys[]`（重複排除・ソート済み）を持ち、`ActionStatesTotalCount` と `ActionStatesTruncated`（`ActionPath` 昇順で最大 256 件に打ち切り）も併せて返されます。`IncludeActionStates` を既定の `false` のままにすると呼び出しは軽量なままです — このパラメータが opt-in なのは、コストがロード済み Mapping Context 数ではなくマッピング済みアクション数に比例して増えるためです。
+
+### `DumpInputState` の出力
+
+`DumpInputState` はプロジェクトのコードを実行しません。Mapping Context は、サブシステムの override できる関数を通さず、Enhanced Input の評価そのものが使うデータから読みます。そのため、それらの関数を override しているプロジェクトでも、入力の処理が実際に適用している Context が見えます。`PlayerIndex` の解決も同じで、プロジェクトが override できる関数を通さず、ゲームインスタンスのローカルプレイヤー一覧とゲームステートのプレイヤー配列から読みます。実行中のエンジンの版でそのデータを読めないときは、`EnhancedInputState` が `"Unavailable"` になり、`EnhancedInputUnavailableReason` が理由を示します（例 `"ReflectedFieldUnavailable:AppliedInputContextData"`）。この欄はそのときだけ付きます。
+
+| 欄 | 意味 |
+|---|---|
+| `InputModeEvidence` | 入力モードを推定した根拠。`Viewport`（`IgnoreInput`・`MouseCaptureMode`・`MouseLockMode`・`HideCursorDuringCapture`。ゲームビューポートが無ければ `null`）、`PlayerController`（`IgnoreMoveInput`・`IgnoreLookInput`・`ShowMouseCursor`）、`LastSetInputModeDebugString`（開発用ビルドだけ） |
+| `PlayerControllerPath` | `PlayerIndex` が指したプレイヤーコントローラのオブジェクトパス。`PlayerIndex` はプレイヤーの出入りで変わる番号付けの中の位置なので、どのプレイヤーコントローラのダンプか、2 つのダンプが同じプレイヤーコントローラのものかは、このパスで見分けます。ローカルのプレイヤーコントローラにもリモートのものにも付きます |
+| `ViewportClientClass` | ゲームビューポートクライアントのクラス |
+| `ViewportClientIsVerifiedEngineClass` | そのクラスがエンジンのクラス（またはゲートの差し込みが確かめたクラス）と完全に一致するときに `true`。`false` のときは、上のビューポートの値はプロジェクトの override ではなくエンジンの実装の値です — `GameInputGate` を参照 |
+| `GameInputGate` | 注入ゲートが下す判定。`Decision`（`Allowed` / `Blocked`）、`Source`（`Bypass` / `ViewportInference` / `Contributor`）、`InferredInputMode`、`ViewportReadStatus`（`Read` / `NoViewport` / `ChangedDuringProjectCode` / `OutOfRangeValue`）、`ContributorInstalled`、`Contributor`（`Name`・`Applicability`・`AllowsGameInput`・`Reason`・`Evidence`。差し込みが無ければ `null`）。確かめていないビューポートクライアントのクラスでは、`RequiresCapabilities: ["InputProjectCodeExecution"]` と `SeeCommand: "UAIP.Runtime.Input.EvaluateInputGateWithProjectCode"` が付きます（デモ版では `RequiresCapabilities: ["NotInThisEdition"]` で、`SeeCommand` は付きません） |
+| `Limitations[]` | `{Code}`: `ViewportClientOverridesNotEvaluated`・`ViewportInputStateOutOfRange`・`ViewportChangedDuringProjectCode`・`InputModeDebugStringUnavailableInThisBuild`・`ReflectedFieldUnavailable:<欄>` |
+
+`Result` は `{PlayerIndex, InferredInputMode, GameInputGate: {Decision, Source}}` です。
+
+引数はプレイワールドを探す前に検査します。負の `PlayerIndex` や bool でない `IncludeActionStates` は `InvalidParams` です。どのプレイヤーコントローラも持たない `PlayerIndex` は `NotFound` で、存在する番号を挙げます。
+
+### 注入ゲート
+
+注入の 5 コマンド（`InjectInputKey`・`InjectEnhancedInputAction`・`InjectLegacyAction`・`InjectLegacyAxisInput`・`InjectLegacySpeechInput`）は、ゲームがゲーム入力を受け付けていない間は注入を断ります。ゲートは 2 つの判定を合わせ、どちらかが止めれば止めます。
+
+- **ViewportInference** — ゲームビューポートクライアントとプレイヤーコントローラから推定した入力モード。
+- **差し込み（contributor）** — UI フレームワーク自身の入力の振り分けを知っている任意の連携。[CommonUI 連携](#uaipruntimecommonui-) が `CommonUIRouter` という名前で差し込みます。たとえば CommonUI のアクションルーターがメニューモードの間は、ゲーム入力を止めます。差し込めるのは 1 つまでです。
+
+注入は、実際の入力と同じ読み方でゲームビューポートクライアントを読みます。`IgnoreInput`・`GetMouseCaptureMode`・`HideCursorDuringCapture` のプロジェクトの override も実行します。`DumpInputState` はエンジンの実装だけを読むので、これらを override しているプロジェクトのビューポートクライアントでは、その `GameInputGate` が注入の判定と食い違うことがあります。注入そのものの判定は `EvaluateInputGateWithProjectCode` が返します。読み取りの途中で実行されたプロジェクトのコードが、プレイヤーコントローラ・ローカルプレイヤー・ワールド・ビューポートクライアントのどれかを入れ替えた場合、ゲートは `ViewportReadStatus: "ChangedDuringProjectCode"` で止めます。
+
+拒否は `NotAllowed` で、メッセージは止めた判定（`ViewportInference` または差し込みの名前）とその理由を示します。安全設定のバイパスを許していないときの `BypassInputMode=true` に対する `PolicyViolation` は変わりません。注入ごとの監査記録には `GateSource`・`GateContributorReason`・`GateViewportReadStatus` が入ります。
+
+ゲートはすべてを写すわけではありません。人が押したキーは、ゲーム入力に届く前に UI のアクションのバインド（CommonUI のものなど）に消費されることがありますが、ゲートはそれを再現しません。コンソールを有効にしたビルドでビューポートのコンソールのオブジェクトが無いときは、ゲートはエンジンより厳しく判定します。
+
+`EvaluateInputGateWithProjectCode` はフレームの安全な地点を待ちません — 注入が評価するのと同じ地点で評価するので、注入が受ける判定をそのまま返します。プロジェクトのコードを実行するため、読み取り専用モードでは `PolicyViolation`、モーダルダイアログが開いている間やエンジンの tick が止まっている間は `NotAllowed` で拒否されます。
+
+### ゲームビューポートの UI 入力（3）
+
+実行中のゲームの UI を、人と同じ入力経路で操作します。ポインターを対象の上へ動かし、押下は Slate の入力ルーティングを通り、フォーカスはゲーム自身の UI が動かす規則どおりに動きます。ボタンの処理を直接呼ぶことも、入力欄の値を直接書き換えることもしないので、ゲームの入力処理（CommonUI やプロジェクト独自の入力処理）も関与します。OS のカーソルは動かず、Unreal Editor が背面にあっても動きます。PIE でも `-game` 起動でもパッケージ版でも動作します（パッケージ版で HTTP を使うには `-uaip-http-enable` が必要です）。3 つとも [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付け、選んだワールドのゲームビューポートの中にだけ送ります。
+
+**Capability。** 3 つとも `RuntimeUIInputInjection`（DefaultDenied）が必要です。これは **`RuntimeInputInjection` とは別**で、後者を許可しても UI は操作できません。エディタ内の PIE では、エディタが PIE 用のショートカットに割り当てているキー（既定では PIE を停止する Escape）を送るには、さらに `RuntimeUIEditorReservedKeyInput`（DefaultDenied）が必要です。Standalone とパッケージ版では制限されません。Capability は、要求を受け付けたときと、実際に送る直前の 2 回確かめます。詳細は [安全性と Capability](safety.md#runtime-ゲームビューポートの-ui) を参照してください。
+
+#### 対象の指定
+
+`ClickGameViewportWidget` は対象をちょうど 1 つ指定します。`PressGameViewportUIKey` と `TypeGameViewportText` は省略でき、その場合はそのプレイヤーのフォーカスがある Widget に届きます。
+
+| パラメータ | 意味 |
+|---|---|
+| `WidgetPath` | 画面に出ている UMG Widget のオブジェクトパス。名前のある Widget ではこれが最も確実です |
+| `ViewportPosition` | ゲームビューポート左上からの物理ピクセルでの `{X, Y}`。その位置の最前面の Widget が対象になります |
+| `TypePath` + `Fingerprint` | `FindGameViewportWidgets` が一致に付けて返した値。`TypePath` にある Widget が Fingerprint の示すものと違う場合（画面が作り直された）は `Conflict` で拒否されます。検索し直してください。名前も Tag も無い同じ型の Widget が並んでいると、入れ替わりを見分けられないことがあります |
+| `LocalX` + `LocalY` | `ClickGameViewportWidget` のみ。対象の矩形の左上からのオフセットで押す位置を指定します。両方を同時に、矩形の内側で、`ViewportPosition` とは併用しません。省略時は中央 |
+| `MouseButton` | `ClickGameViewportWidget` のみ。`Left`（既定）または `Right` |
+| `Key`（必須） | `PressGameViewportUIKey` のみ。UI 用の許可リストのキー: 矢印キー、`Tab`、`Enter`、`SpaceBar`、`Escape`、ゲームパッドの十字キー・フェイスボタン・ショルダー・トリガー・特殊ボタン、`Virtual_Gamepad_Accept` / `Virtual_Gamepad_Back`。それ以外のキー（修飾キーはすべて）は、許可される名前を `AllowedKeys` に添えて拒否されます。修飾キーが付くことはありません |
+| `Text`（必須） | `TypeGameViewportText` のみ。1〜1024 コードポイント（結合した絵文字や国旗は複数と数えます）。制御文字は不可で、改行は打てません |
+| `PlayerIndex` | `PressGameViewportUIKey` と `TypeGameViewportText`。操作するプレイヤーの**ローカルプレイヤー**の番号。既定 0 |
+
+**`PlayerIndex` はプレイヤーコントローラーの番号ではありません。** 既存の入力コマンド（`InjectInputKey` など）はワールドの**プレイヤーコントローラー**の番号を取ります。この 2 つはゲームインスタンスの**ローカルプレイヤー**の一覧の番号（0 が 1 人目）を取ります。負の数は `InvalidParams`、いないローカルプレイヤーの番号は `NotFound` です。クリックは常にマウスを持つユーザー（通常は 1 人目のローカルプレイヤー）として送られるため、他のローカルプレイヤーの画面の UI も押せます。その場合は応答に注意書きが付きます。
+
+#### 操作の流れ
+
+1. **クリック。** ポインターを押す位置へ動かし、カーソルの真下にあるのが対象（またはその中身）であることを確かめます。違えば何も押さず（`ExecutionFailed`、最前面の Widget を添える）、合っていればボタンを押して離します。
+2. **キー。** 対象を指定した場合は、先にフォーカスを移して移ったことを確かめます。キーを押し、安全の再確認をしてから離します。`ReachedGameViewport` は、UI が処理せずにキーがゲーム側へ届いたかを示します: `true`・`false`・`Unknown`。`false` のときは `ReachedGameViewportReason` が `HandledBeforeGameViewport` になります。フォーカスのある Widget か、それを含む Widget がキーを処理したため、ゲームビューポートで入力を読むもの（プレイヤーコントローラーの入力や、ゲームがビューポートクライアント経由で結び付けた入力アクション）には届いていません。コマンド自体は成功します。`FocusAfter` と、その画面がキーを自分で結び付けているかを確かめてください。`Unknown`（別のビューポートへ行った可能性がある）には理由を付けません。
+3. **文字。** 対象を指定した場合は、先にフォーカスを移します。文字は人がキーボードで打つのと同じ形で 1 文字ずつ送ります（IME の変換は送りません）。1 文字ごとに、フォーカスが同じ欄にあること、パスワード欄かどうかが変わっていないことを確かめ、変わっていれば止めます。パスワード欄かどうかは送る時点で判定し、判定できない欄はパスワード欄として扱います。
+
+応答は、入力を送り終えてから返ります。何に当たったか（`HitWidget`・`HitWidgetIsTarget`）、操作後のフォーカス（`FocusAfter`）、入力がゲームまで届いたか（`ReachedGameViewport`）、モーダルが開いたか（`ModalOpened`）、`Limitations` が入ります。`TypeGameViewportText` はさらに、送った文字数（`CharactersDelivered`）、止まった理由、操作の前後の入力欄の長さの区分（`Empty`・`NonEmpty`・`Long`）を返します。文字列そのものは返しません。
+
+#### `Success` の意味
+
+`Success` は**人の入力と同じ経路で入力を送り終えた**という意味です。ボタンの処理が実際に動いたことや、画面が変わったことは保証しません。途中にある処理（CommonUI、プロジェクト独自の入力処理、エディタの入力の監視）は、人の入力と同じく入力を消費・変換しうるためです。効果はもう一度ツリー（`DumpGameViewportWidgets`）を読んで確かめてください。UI が処理しなかった入力は、人の操作と同じくゲーム側の入力（移動・攻撃など）になることがあります。各操作の応答にはその旨が必ず付きます。要求を受け付けてから送るまでの間に、呼び出し側がまだ待っていること、およびワールド・セッション・Capability・対象が変わっていないことを確かめます。呼び出し側が待つのをやめていた場合は何も送りません。二重押しは減りますが、確かめた直後のタイムアウトとの行き違いまでは防げません。
+
+#### 拒否される場合
+
+特に書かない限り、どの場合も何も送られません。
+
+| 状況 | 結果 |
+|---|---|
+| プレイワールドが無い、サーバーのワールド、指定に合うワールドが無い | `NotAllowed`（サーバーのワールドには選び直せるクライアント側の候補が添えられます）。指定が矛盾・曖昧な場合は `InvalidParams`。専用サーバーのプロセスでは、これらのコマンドは使えず、拒否の文が理由を示します |
+| ゲーム層がまだ無い | `PreconditionFailed`（再試行）。場所を特定できない場合は `NotAllowed` |
+| Capability が許可されていない | 名前を示した `CapabilityNotAvailable`（エディタ用に予約されたキーでは、当たったショートカットの名前と、ゲームパッドの「戻る」を使う案内も添えられます）。明示的に拒否している場合は `PolicyViolation` |
+| クリックでゲームビューポートがマウスを掴んでいる（入力モードがゲーム専用）、対象なしのキー・文字でフォーカスがゲームビューポートそのものにある、ドラッグ中、モーダルがどれか開いている、ゲームビューポートの外のメニューが開いている | `NotAllowed`。フォーカスとマウスキャプチャの状態が添えられます。入力モードは勝手に変えません（`SetInputMode` を使ってください）。ゲーム自身の UI のドロップダウンが開いているだけなら妨げになりません |
+| ゲームを載せているウィンドウが最小化または非表示（`Reason: HostWindowUnavailable`。[キャプチャが断られるとき](#キャプチャが断られるとき)を参照） | `NotAllowed`。ホストウィンドウがまだ無い場合は `PreconditionFailed` |
+| 対象が無い、またはビューポートに追加されていない | `NotFound` |
+| 検索の後で画面が作り直された | `Conflict`（検索し直す） |
+| 対象が非表示または無効 | `NotAllowed` |
+| 対象の前に別の Widget がある（エディタ内の PIE では、エディタのビューポート用のツールバーやメッセージも含む） | 最前面の Widget を示した `ExecutionFailed`。ツールチップなどホバーによる反応は起きています |
+| 座標で指定した位置の最前面がエディタの表示や別のウィンドウ、キー・文字の送り先のフォーカスがゲームビューポートの外 | `NotAllowed` |
+| 対象なしのキー・文字で、そのプレイヤーのフォーカスがどこにも無い | `NotFound` |
+| フォーカスを対象へ移せなかった | `NotAllowed`（移した後のフォーカスを添える） |
+| 押してから離すまでの間に状況が変わった（画面・ワールド・モーダル） | `PartialDelivery`（クリックは `DownOnly`、キーは `KeyDownOnly`）を添えた `NotAllowed`。離す操作は送らず、押下状態を解除します |
+| 押した操作そのものでモーダルが開いた | `ModalOpened` と `PartialDelivery` を添えた**成功**。離す操作は送りません |
+| パスワード欄、またはパスワード欄かどうか判定できない欄に、`AllowRuntimePasswordFieldWrite` なしで文字を打つ | フォーカスを移す前に `PolicyViolation`。拒否の文が、どちらだったかを区別します |
+| 入力欄ではない、読み取り専用、または無効なものに文字を打つ | `NotAllowed` |
+| 文字入力の途中で止まった（フォーカスが移った、パスワード欄かどうかが変わった、アプリの状態が変わった） | 1 文字以上送っていれば、送った文字数を `CharactersDelivered` に入れた `NotAllowed`。まだ 1 文字も送っていなければ、上の該当する状況の拒否。2 つに分けて送る文字（絵文字など）の途中で止まった場合は、その旨が返ります。送った文字でモーダルが開いた場合は**成功**で、`ModalOpened` と送った文字数を添え、入力欄の操作後の長さの区分は返しません |
+| `PlayerIndex` のローカルプレイヤーがいない | `NotFound` |
+| 許可リストに無いキー、空または長すぎる文字列、制御文字、対象の外を指す位置、`LocalX` / `LocalY` の片方だけ、`LocalX` / `LocalY` と `ViewportPosition` の併用、クリックで対象が無い・2 つ以上ある、`Fingerprint` の無い `TypePath`、負の `PlayerIndex` | 違反した項目と許される範囲を示した `InvalidParams` |
+| Unreal Engine が終了処理に入った | `ExecutionFailed`（終了による取り消し） |
+
+シナリオが自動で再試行するのは、`ExecutionFailed` と `PreconditionFailed` の後だけです。途中まで届いた場合を `NotAllowed` にしているのはこのためで、再試行されると二度押しや文字の重複になるからです。
+
+キーを押し、ゲーム側がその押下を見た後で止まった場合は、そのプレイヤーのゲーム側の押下状態も解除します。このとき、利用者が実際にキーボードで押しているキーの状態も一緒に消えます。ゲーム側が押下を見たか判定できない場合と、プレイヤーがもういない場合は解除せず、応答にそう注記されます。
+
+#### 知っておくこと
+
+- **分割画面。** ツリーとフォーカスは、各ローカルプレイヤーの画面領域を報告します。キーと文字は指定したプレイヤーとして、クリックは常にマウスを持つユーザーとして送られます。
+- **同じプロセスの複数の PIE。** 入力は選んだワールドのビューポートの中にだけ送られますが、入力の通り道の一部（CommonUI の全体処理）は PIE 同士で共有されます。「ゲームパッドを 2 つ目のウィンドウへ送る」が有効だと、ゲームパッドのキーが別の PIE に届くことがあり、そのとき `ReachedGameViewport` は `Unknown` です。別々の PIE で同時にゲーム内のメニューが開いていると、どちらのメニューかを見分けられないことがあります。
+- **描画しない環境（`-nullrhi`）。** ツリーに矩形が無く、操作は `NotAllowed` で拒否されます（待っても通りません）。起動直後でまだ何も描かれていないだけなら `PreconditionFailed` です。
+- **機微な値。** `DescribeCommand` は、完了通知・監査記録で伏せるパラメータ（`SensitiveParams`。`TypeGameViewportText` は `Text`）と、同様に伏せる応答の項目（`SensitiveResponseData`。`DumpGameViewportWidgetTexts` はパスワード欄の平文）を示します。購読者・監査記録には、長さも載らない `"<redacted>"` が渡ります。伏せるパラメータを確かめられないときはパラメータ全体が、伏せる応答の項目を確かめられないときはトップレベルの項目名を残して応答の `Data` 全体が伏せられます。シナリオで、前のステップの応答から取ったこうした値を後のステップに埋め込むと、そのステップと、その応答を受け取る後続のステップは丸ごと伏せられます。対象のコマンドが結果として保存するファイルは対象外です。[機微な値と伏せる場所](#機微な値と伏せる場所) を参照してください。
+- **CLI では入力が残ります。** コマンドライン（`-uaip-request=`）やリクエストファイル（`-uaip-request-file=`）に渡した文字列、および応答ファイルは、そこに残ります。呼び出し側が選んだコマンドラインやファイルは UAIP では伏せられません。秘密はそこに渡さないか、HTTP / MCP を使ってください。
 
 ## UAIP.Runtime.Niagara 🧩
 
@@ -3374,12 +4962,14 @@ PIE 中の Niagara コンポーネント検査とパラメータ上書き。`Nia
 |---|---|
 | `GetUserVariables` 🧩 | Niagara System Component のユーザー公開変数を取得 |
 | `GetVariable` 🧩 | 特定のユーザー変数の値を取得 |
-| `SetVariable` 🧩 | ユーザー変数の値を Runtime で設定 |
+| `SetVariable` 🧩 | ユーザー変数の値を Runtime で設定 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 | `SetSystem` 🧩 | コンポーネントの Niagara System アセットを Runtime で差し替え |
+
+プレイワールドが無いあいだ、ネイティブの 4 コマンドは `PreconditionFailed` を返すため、`RetryCount` を付けたシナリオのステップは PIE が始まるまで再試行されます。ほかの Runtime コマンドが共通で返す `NotAllowed` の、唯一の例外です。[互換性](#互換性-すでにあったコマンドで変わったこと)を参照してください。下の Toolset ブリッジは `NotAllowed` を返します。
 
 ### Toolset ブリッジ（4）🧩
 
-プロバイダ：`Toolset.Runtime.Niagara.*`。UE 5.8+ と `NiagaraToolsets` が必要。ネイティブコマンドをミラー。
+プロバイダ：`Toolset.Runtime.Niagara.*`。UE 5.8+ と `NiagaraToolsets` が必要。ネイティブコマンドをミラー。`GetVariable` と `GetUserVariables` は、Toolset が値を返さないとき、または想定外の形の値を返したとき、`ExecutionFailed` と固定の文 `Toolset.<ツール名> failed.` で失敗する。
 
 ---
 
@@ -3426,6 +5016,47 @@ LiveLink の Source / Subject 観測、クライアント状態の制御、UAIP 
 
 ---
 
+## UAIP.Editor.Mass 🧩
+
+Mass シミュレーションの元になるデータの読み取りと組み立てを行うコマンド群です。対象は、セッションが選べる Trait クラス、Mass のエンティティ構成アセット（宣言している内容、継承している内容、有効かどうか）、エンティティを配置するスポナーです。**MassGameplay** プラグインが必要です。このプラグインなしで作ったビルドでも 7 コマンドは一覧に出ますが、`Available: false`（`UnavailableDetail: OptionalPluginDisabled`）になります。デモ版には含まれません。実行中のゲームのエンティティを観測するには [`UAIP.Runtime.Mass`](#uaipruntimemass) を使います。
+
+**Capability。** 読み取りの 3 コマンドは `EditorInspect`（DefaultAllow）を必要とします。書き込みの 4 コマンドは `MassAssetEdit`（DefaultDenied）を必要とし、呼び出しごとに、リクエストが指す内容に応じて追加の Capability が要ることがあります。エンジン自身の Mass モジュールの外にある Trait・スポナーの生成器クラスには `MassCustomTypeEdit`、呼び出しがプロジェクトのコードを走らせる場合は `MassProjectCodeExecution` です。Capability が足りない場合は `CapabilityNotAvailable` で、`RequiredCapabilities` と `MissingCapabilities` を載せ、何も変更しません。`MassProjectCodeExecution` を許可すると何にさらされるかは [安全性と Capability](safety.md#mass-の観測と編集) を参照してください。
+
+**読み取りはエディタのワールドを変えません。** `DumpMassEntityConfig`・`ValidateMassEntityConfig`・`ListMassEntityTraits` は、構成が何を組み立てるかを、呼び出しの間だけ存在する専用の空のワールドで各 Trait を組み立てて求めます。そのため、エディタのワールドもアセットも変わりません。結果は実行モード `EditorWorld`（`EvaluatedExecutionMode`）のものです。ワールドの実行モードで振る舞いを変える Trait は、実行中のゲームでは別のものを組み立てることがあり、`Limitations` がそれを伝えます。エンジンの Mass モジュールの外にある Trait は、`MassProjectCodeExecution` を持たないセッションでは、組み立ても、プロパティ値の読み取りもされず、`SkippedTraits`（または `ElementsOmittedReason`）に載ります。このとき `ValidateMassEntityConfig` は `IsComplete: false` を返し、`Verdict` は `Inconclusive` になります。ただし、省かれた Trait では取り消せないエラーがすでにあれば `Invalid` です。読み取りは PIE 中でも許可されます。
+
+**読み取りは、読み取り専用モードの間と、ゲームループが止められている間は、プロジェクトの Trait のコードを走らせません。** 安全ポリシーの `ReadOnly` モードがオンの間、エンジンの Mass モジュールの外にある Trait は、**セッションが何を持っていても**（`MassProjectCodeExecution` を含め）組み立てられず、プロパティ値も読まれません。理由 `ReadOnlyPolicy` で報告され、`DumpMassEntityConfig` と `ValidateMassEntityConfig` の `SkippedTraits[].Reason`、`DumpMassEntityConfig` の Trait ごとの `PropertiesOmittedReason`、`ListMassEntityTraits` の `ElementsOmittedReason` に載ります。モーダルダイアログや長い処理がゲームループを止めている間も同じです（運用者の starved tick 許可リストでその間もコマンドを実行できるようにしている場合）。理由は `NotAtSafePoint` で、ループが空いているときの後の呼び出しなら Trait は評価されます。両方に当てはまるときの理由は `ReadOnlyPolicy` です。どちらの理由の省略にも `RequiredCapabilities` は載らず、`ListMassEntityTraits` は `ReadOnlyPolicy` のとき `EvaluationRequiredCapabilities` を省きます（解除できる Capability が無いため）。`NotAtSafePoint` のときは残します。エンジンの Mass モジュールが同梱する Trait は、どちらの場合も評価されます。どちらにも当てはまらないときは何も変わりません。3 つのコマンドは読み取り専用のままで、`ReadOnly` の下でも実行できます。省かれた Trait は他の省かれた Trait と同じに数えられます（`UnevaluatedTraitCount`。`ValidateMassEntityConfig` では `IsComplete: false` と `Verdict` の `Inconclusive`）。書き込む 4 つのコマンドは影響を受けません。
+
+**出力の上限。** 上限のある一覧 `<List>`（`OwnTraits`・`CombinedTraits`・`Composition`・`PerTrait`・`SkippedTraits`・`Issues`・`EntityTypes`・`SpawnDataGenerators`）には `<List>TotalCount`、`<List>Truncated`、Data のみ `<List>DataEntriesTruncated` が付きます。`<List>Truncated` は、**応答が返した結果（Data と成果物を合わせたもの）の外に**まだ要素があるときに true で、Data と成果物で同じ値です。`<List>DataEntriesTruncated` は Data の件数が成果物の件数より少ないときに true で、残りは成果物にあります。`ListMassEntityTraits` は接頭辞の無い `TotalCount`・`Truncated`・`DataEntriesTruncated` を使い、`MaxClasses` で一覧を切った場合もここでは `Truncated` が true になります。`ReturnedCount` はそのドキュメント自身の件数で、`Truncated` の判定の基準にする件数とは別です。`ArtifactTruncated` / `ArtifactTruncationIndex` は成果物がサイズ予算で止まったことを示します。
+
+**曖昧な要素名。** `ListMassEntityTraits` の `AddsElement` が複数の要素の型に一致する短い名前だと、このコマンドは `InvalidParams` で失敗します。その失敗応答の `Result` には、`AmbiguousName`（指定された名前）、`Candidates`（候補の型パス。並べ替え済み、最大 10 件）、`TotalCandidateCount`（一致した型の総数）が載ります。候補の型パスのどれかで指定し直すと、曖昧さが解けます。
+
+**書き込み。** 書き込みは元に戻せる 1 ステップです。断られたリクエストは何も変えません（アセットも、そのパッケージのダーティフラグも、Undo 履歴も変わりません）。プレイセッション中、および読み取り専用の場所（`/Engine` 配下など）にあるアセットへの書き込みは `NotAllowed` で断られます。構成への書き込みが成功すると、その構成と、読み込み済みの子孫の構成について、エディタのワールドが覚えているテンプレートを外します。応答は `RemovedEditorWorldTemplates`・`UnloadedDescendantCount`・`TemplateRegistryUnavailable` を返します。汎用のプロパティコマンド、手による編集、Undo / Redo では外しません。
+
+> **Mass Debugger のタブ。** Mass Debugger のタブが開いていると、一時ワールドの作成でエンジン内部のチェック（`ensure`）が 1 回失敗し、ログにコールスタックが出ます（デバッガーを付けて起動しているとそこで止まります）。エンジン自身も、Trait の一覧のために作る一時ワールドで同じことをします。コマンドは成功し、一時ワールドは Mass Debugger の環境の一覧には出ません。避けたいときは、先にタブを閉じてください。
+
+| コマンド | 説明 |
+|---|---|
+| `ListMassEntityTraits` | セッションが選べる Mass の Trait クラスを一覧する。各エントリは `ClassPath`・`DisplayName`・`Admission`（`Allowed`・`RequiresCapabilities`・`NotAddable`・`CompatibilityUnknownUntilAuthorized`）、追加に要る `RequiredCapabilities` / `MissingCapabilities`、要素の読み取りに要る `EvaluationRequiredCapabilities`、`Deprecated`、Trait が追加・要求する要素（`AddedElements` / `RequiredElements`）を持つ。セッションが置けないクラスも、断る理由付きで一覧に残る。`AddsElement` はその要素を追加する Trait だけに絞り（読めずに判定から漏れた Trait の数が `UnevaluatedTraitCount`）、`NameFilter` はクラスパスまたは表示名に大文字小文字を区別せず一致させ、`MaxClasses`（1〜1000、既定 200）が件数の上限（`TotalCount` / `Truncated`。応答が返した結果の外にクラスが残るとき true）。クラスパス順。Data は先頭のエントリを、成果物はサイズ予算までの残りを持ち、Data の件数が成果物より少ないときは `DataEntriesTruncated`（Data のみ）が true になる。読み取り専用。`EditorInspect` が必要で、プロジェクトの Trait の要素を読むときだけ `MassProjectCodeExecution` も必要 |
+| `DumpMassEntityConfig` | Mass のエンティティ構成アセット（`AssetPath`）を読み、宣言している内容を保存する。`OwnTraits`、`ParentChain`（近い順）、`InheritanceCycle`、`CombinedTraits`（親の連なりのすべての Trait。`OverriddenBy` と `Effective` 付き）、`Composition`（有効な Trait が組み立てるテンプレートの要素）、`PerTrait`（有効な Trait ごとの追加・要求・除去）、`SkippedTraits`。親の連なりが循環していると、`CombinedTraits`・`Composition`・`PerTrait` は空になり、`Limitations` に `CompositionNotComputedDueToCycle` が付く。読み取り専用。`EditorInspect` が必要で、プロジェクトの Trait を評価するときだけ `MassProjectCodeExecution` も必要 `IncludeSecretValues` を受け付けます。秘密の値は `***` と `IsMasked: true` で返り、3 つの許可がそろえば平文が `Result.SecretFieldValues` に入ります — [シークレット値の読み取り](#reading-secret-values) を参照。 平文を返すのは応答に出したトレイトだけです。応答の件数の上限で切られたトレイトは解禁されません。 |
+| `ValidateMassEntityConfig` | 構成（`AssetPath`）を、エンジンが Trait の組み立てるエンティティテンプレートを検証するのと同じ方法で検証する。`Verdict` は `Valid`・`Invalid`・`Inconclusive`。`IsComplete` はすべての Trait を評価できたかを示し、true なら `Verdict` はエンジン自身の検証と一致する。`Issues` の各エントリは `Kind`（`MissingElement`・`DuplicateElement`・`TraitValidationFailed`・`InheritanceCycle`・`TraitOverridden`）と `Severity` を持ち、足りない要素には `SuggestedTraits` が付く。`SuggestionsComplete` と `UnevaluatedTraitCount` は、候補がすべての Trait クラスに基づくかを示す。Trait 固有の検証が失敗した理由はエンジンのログにしか出ない（`TraitValidationReasonOnlyInLog`）。読み取り専用。`EditorInspect` が必要で、プロジェクトの Trait を評価するときだけ `MassProjectCodeExecution` も必要 |
+| `AddMassEntityConfigTrait`（`MassAssetEdit` が必要） | 構成に Trait を追加する。`TraitClass` は `ListMassEntityTraits` が返す、読み込み済みの Trait クラスのパス（未読み込みのクラスは読み込まずに `NotFound`）。`InitialProperties`（任意、最大 64 件）は追加の前に新しい Trait へ書き込まれ、1 件でも断られれば追加全体を取り消す。`ValidTargetConfig`（任意）は対象フラグ（`Standalone`・`Server`・`Client`・`Editor`・`EditorWorld` をカンマ区切り、または `None`）。UE 5.7 には無く `NotApplicable` だけを受け付ける。同じ対象ですでに構成が宣言している Trait は `InvalidParams` で `CandidateIndices` を返し、親が宣言している Trait は上書きとなり `OverridesParentTrait` が示す。クラスがエンジンの Mass モジュールの外にあるときは `MassCustomTypeEdit` も、`InitialProperties` を渡すときはクラスを問わず `MassProjectCodeExecution` も必要 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `RemoveMassEntityConfigTrait`（`MassAssetEdit` が必要） | 構成が自分で宣言している Trait を外す。`Index`（構成自身の Trait の中での位置。`DumpMassEntityConfig` の `OwnTraits` と同じ）か `TraitClass` のどちらか 1 つだけで指定する。構成自身の複数の Trait に一致するクラスは `InvalidParams` で `CandidateIndices` を返し、親だけが宣言している Trait は `InvalidParams` で `ParentAssetPaths`（代わりに編集すべき構成）を返す。Trait の処理は走らないので、ほかの Capability は要らない |
+| `SetMassEntityConfigTraitProperty`（`MassAssetEdit` と `MassProjectCodeExecution` が必要） | 構成が自分で宣言している Trait のプロパティを 1 つ設定する。Trait の指定は `RemoveMassEntityConfigTrait` と同じ。`PropertyPath`（1024 文字まで）と `Value`（null は不可）で書き込む内容を指す。文字列はプロパティがテキストを受け付けるときテキストとして、それ以外の JSON 値は構造化ドキュメントとして書く。値によって Trait が構成のほかの Trait と重複する場合は `InvalidParams`、プロパティの書き込み経路が断った値はその経路自身のエラーコードで返す。**Trait のクラスを問わず**両方の Capability が要る。Trait のすべてのメンバーは共通のプロパティ書き込み経路で書かれ、エンジンの Mass モジュールの外の Trait では、その書き込みがプロジェクト自身のコードを走らせるため。参照や入れ子のオブジェクトを含む値は、`PropertyReferenceEdit` または `PropertyStructuredEdit` も要ることがある `IncludeSecretValues` を受け付けます。秘密のプロパティの `Value` は、応答と artifact のどちらでも `***` と `IsMasked: true` になります。平文は `DumpMassEntityConfig` で読みます。 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
+| `ConfigureMassSpawner`（`MassAssetEdit` が必要） | エディタのワールドにある Mass スポナー（`ActorIdentifier` はそのラベルまたはオブジェクトパス）の `Count`・`EntityTypes`・`SpawnDataGenerators`・`AutoSpawnOnBeginPlay` を設定する。少なくとも 1 つが必要で、指定したものだけが置き換わる。リストを指定すると全体が置き換わり（最大 64 件、`Proportion` の既定は 1）、エントリごとに新しい生成器が作られる。生成器のクラスは読み込み済みであること。生成器のクラスがエンジンの Mass モジュールの外にあるときは `MassCustomTypeEdit` も、エンティティの種類を置き換えた結果、エディタのワールドが、そのような Trait（受け継いだ Trait を含む）に行き着くテンプレートを登録するときは `MassProjectCodeExecution` も必要。テンプレートがすでにある構成は再利用され、どちらも要らない。応答は、作ったものと再利用したものを示す（`TemplatesBuiltInEditorWorld`・`ExistingTemplatesReused`）。`ExistingTemplatesReused` が 0 でなければ、古いテンプレートが使われている可能性がある（`ExistingEditorWorldTemplateReused`） |
+
+**エラー。**
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `NotAllowed` | プレイセッション中の書き込み、または読み取り専用の場所にあるアセットへの書き込み |
+| `NotFound` | アセット・Trait・クラス（未読み込み）・スポナーが存在しない。複数のアクターが持つラベルは `NotFound` で、該当するアクターを `CandidateActorPaths` に列挙する |
+| `InvalidParams` | Trait の重複、曖昧な Trait や親だけが持つ Trait、構成ではないアセット、Trait や生成器ではないクラス、不正または範囲外のパラメータ |
+| `CapabilityNotAvailable` / `PolicyViolation` | 必要な Capability が与えられていない / セーフティポリシーで拒否されている |
+
+**Mass のアセットと汎用コマンド。** エンティティ構成アセットの作成、スポナーの配置、構成の親の設定は、既存の汎用コマンドで行います。このドメインの追加以降、Mass のアセット（構成・スポナー・Trait・生成器、およびそれらの設定を運ぶ構造体）に対する汎用のプロパティ書き込みには、`MassAssetEdit` と `MassProjectCodeExecution` も必要です。[安全性と Capability](safety.md#mass-の観測と編集) を参照してください。
+
+---
+
 ## UAIP.Runtime.Engine.Log
 
 ランタイム環境でのログ詳細レベル取得・ログカテゴリ一覧取得。`UAIP.Editor.Engine.Log` の Runtime 版に相当します。
@@ -3465,7 +5096,7 @@ LiveLink の Source / Subject 観測、クライアント状態の制御、UAIP 
 | ✏️ `SetConsoleVariable` | 指定した CVar の値を設定（機密名・`ECVF_ReadOnly` 付きは拒否。`ECVF_Cheat` 付きは `AllowCheatCVarWrite` が有効でない限り拒否） |
 | ✏️ `ResetConsoleVariable` | 指定した CVar をデフォルト値にリセット（機密名・`ECVF_ReadOnly` 付きは拒否。`ECVF_Cheat` 付きは `AllowCheatCVarWrite` が有効でない限り拒否） |
 
-> **注意**: `UAIP.Runtime.PIE` にあった旧 `GetConsoleVariable` / `SearchConsoleVariables` コマンドは非推奨です（v1.2 で削除予定）。本コマンド群を使用してください。
+> **注意**: `UAIP.Runtime.World` にある旧 `GetConsoleVariable` / `SearchConsoleVariables` コマンド（旧バージョンでは `UAIP.Runtime.PIE` 配下に登録されていました）は非推奨です。引き続き動作しますが、本コマンド群を使用してください。
 
 ---
 
@@ -3475,8 +5106,8 @@ LiveLink の Source / Subject 観測、クライアント状態の制御、UAIP 
 
 | コマンド | 説明 |
 |---|---|
-| 🆓 `GetConfigValue` | セクション名とキー名を指定して ini キーの文字列値を読み取る。Capability 不要 |
-| `SetConfigValue` | raw ini キーを書き込みまたは削除。`ConfigSettingsEdit` 必要。パッケージ版ビルドでは実行不可。キー・値フィールドへの ini インジェクション文字（`[`・`]`）は拒否 |
+| 🆓 `GetConfigValue` | セクション名とキー名を指定して ini キーの文字列値を読み取る。Capability 不要。シークレットのキーは `***` と `IsMasked: true` で返る。セクションが設定クラス（`/Script/<モジュール>.<クラス>`）ならそのクラスのプロパティで、そうでなければキー名で判定する。`IncludeSecretValues` を取る — [シークレット値の読み取り](#reading-secret-values)を参照 |
+| `SetConfigValue` | raw ini キーを書き込みまたは削除。`ConfigSettingsEdit` 必要。パッケージ版ビルドでは実行不可。キー・値フィールドへの ini インジェクション文字（`[`・`]`）は拒否 応答の `OldValue` は、シークレットのキーなら `GetConfigValue` と同じ判定で `***` と `IsMasked: true` になり、`IncludeSecretValues` で平文を返せる — [シークレット値の読み取り](#reading-secret-values)を参照。隠れるのはこの `OldValue` だけで、書き込む値は監査ログでは伏せられない `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。 |
 
 ---
 
@@ -3509,6 +5140,8 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 | `BeginTraceRegion` | 採取中のトレースに名前付き区間（`Name`、省略可の `Category`）を開き、それを閉じるための `RegionId` を返します。区間は名前ではなく id で対応付けるため、入れ子の区間や同名の区間も区別されます。区間チャネルが無効でも `RegionId` は返り（`Written: false`）、閉じ方は同じです。開いたままの区間はトレース停止時とモジュール終了時に自動で閉じられます。`AddTraceBookmark` と同じく `AllowLogDump` でゲートされます |
 | `EndTraceRegion` | `BeginTraceRegion` が開いた区間を `RegionId` で閉じます（開いている区間を指さない id は `NotFound`。自動クローズ済みの id を含む）。`DurationSeconds` はプロセス内で計測するため、区間チャネルが無効で何も書き込まれていなくても報告されます。自身はテキストを持たないため、ログダンプポリシーで拒否されることはありません |
 
+**ここでの `Warnings` の形。** トレース系コマンド（および Insights の解析コマンド）の `Warnings` は、要素が `{ "Code": "<コード>", "Message": "<本文>" }` のオブジェクトです（例: `ChannelNotRestoredAfterResume`）。`Warnings` が文字列の配列である他の多くのコマンドとは形が異なります（[応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) を参照）。判定には `Message` の文面ではなく `Code` を使ってください。
+
 ---
 
 ## UAIP.Runtime.Insights.Analysis
@@ -3537,6 +5170,1153 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 
 ---
 
+## UAIP.Runtime.SaveGame
+
+ゲームのセーブスロット（エンジンのセーブの仕組みがスロット名ごとに保存する `USaveGame` オブジェクト）を、一覧・確認・読み出し・退避・用意・削除・復元するコマンド群です。「特定のセーブから始める」「セーブが無い状態から始める」テストを組み、終わったら元に戻すために使います。エディタ（PIE の有無を問わない）でも、`-game` 起動やパッケージ版でも動作し、プラグインの依存はありません。
+
+**何も読み込みません。** スロットを読むときにクラスやアセットを読み込むことはありません。スロットが指す SaveGame クラスと、その中のハード参照が指すオブジェクトは、すべてプロセス内に読み込み済みである必要があります。C++ のクラスはエディタでプロジェクトを開いていれば通常は読み込まれていますが、Blueprint のクラスはそのアセットを開くまで読み込まれていないことがあります。また、スロットの読み書きは実行中のゲームの状態を一切変えません。UAIP が担うのはスロットの読み書きまでで、読み込んだスロットをどう反映するかはゲーム側が決めます。
+
+**Capability。** `ListSaveGameSlots`・`GetSaveGameInfo`・`ListSaveGameSnapshots` は `RuntimeSaveGameInspect`（DefaultAllow）が必要です。`DumpSaveGame` は `RuntimeSaveGameContentRead`（DefaultDenied）が必要です。スロットやスナップショットを変えるコマンドはすべて `RuntimeSaveGameWrite`（DefaultDenied）が必要です。`SnapshotSaveGame` も、スロットの生のバイト列を UAIP の作業ディレクトリへ複製するため、これに含まれます。さらに 2 つの引数が Capability を追加で要求します。`WriteSaveGame` で `BaseSlotName` を指定すると `RuntimeSaveGameContentRead` も必要になり、`CopySaveGameSlot` / `RestoreSaveGame` で `SkipValidation: true` を指定すると `RuntimeSaveGameUnvalidatedWrite`（DefaultDenied）が必要になります。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-savegame-スロット) を参照してください。
+
+**名前。** コマンドに渡すスロット名・スナップショット名は、`A-Z`・`a-z`・`0-9`・`_`・`-` からなる 1〜64 文字で、Windows の予約デバイス名（`CON`・`PRN`・`AUX`・`NUL`・`COM0`〜`COM9`・`LPT0`〜`LPT9`）ではないものに限ります。それ以外は `InvalidParams` です。スロット名とスナップショット名は別の名前空間なので、スナップショットに元のスロットと同じ名前を付けても構いません。`UserIndex` は 0 以上の整数（既定 0）です。Windows の標準のセーブの仕組みはこれを無視し、すべてのユーザー番号を同じファイルに保存します。
+
+**典型的な流れ。** `SnapshotSaveGame` でスロットを退避 → スロットを変更（`DeleteSaveGame`・`WriteSaveGame`・`CopySaveGameSlot`）→ テストを実行して PIE を止める → `RestoreSaveGame` でスナップショットを戻す（スロットがあれば `Overwrite: true`）→ 不要になったら `DeleteSaveGameSnapshot`。変更前にスロットが無かった場合は退避するものがありません。後片付けは、作ったスロットの削除で行います。
+
+### 確認（3）— `RuntimeSaveGameInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `ListSaveGameSlots` | 設定中のセーブの仕組みが持つスロット名を、名前の昇順（大文字小文字を区別しない）で返します。`MaxResults` は 1〜1024（既定 256）で、漏れたスロットがあれば `Truncated` が `true` になります。`Slots[]` の各要素は `Name`・`Addressable`（他のコマンドに渡せない名前なら `false`。そのスロットは一覧には出ますが詳細は付きません）・`NameTruncated`（ファイル由来の名前は無害化したうえで 256 文字で切り詰めます）を持ちます。`IncludeDetails: true` を指定すると、指定できるスロットごとに `Status`・`ByteCount`・`ModifiedAt`・`Format`・`SaveGameClassName`・`ClassNameIsGuess`・`SaveGameClassNameTruncated` が付きます。読むのはスロットの先頭部分だけです（標準のセーブの仕組みでは先頭 1 MiB）。読んだ量の合計が 256 MiB に達すると、残りのスロットは詳細なしで返し、`DetailsTruncated` が `true` になります。`SaveGameSystem` には `ConfiguredSaveGameSystemModule` と `GenericPathsAvailable`（プロジェクトが標準のセーブの仕組みを使っているか。サイズと更新日時が得られるのはこのときです）が入ります。異常なスロットがあってもコマンドは失敗しません。セーブの仕組みがスロットの一覧に対応していないプロジェクトでは `UnsupportedOperation` を返します。スロット名が分かっていれば、他のコマンドは使えます |
+| `GetSaveGameInfo` | 1 つのスロットのメタ情報を、クラスを読み込まずに返します。`Status`・`Format`・`StoppedAtStage`・`FileVersion`・`PackageFileUEVersion`・`EngineVersion`・`CustomVersionFormat`・`UnregisteredCustomVersionCount`・`SaveGameClassName`・`ClassNameIsGuess`・`SaveGameClassNameTruncated`・`ClassLoaded`（そのクラスが今読み込まれているか。探すだけで読み込みはしません）・`ByteCount`・`ModifiedAt`・`ContentHash`（SHA-1 を 16 進 40 桁で表したもの。`ExpectedHash` に渡す値です）。壊れている・大きすぎる・読めないスロットでもコマンドは失敗せず、`Status` でそれを示し、読めたところまでを返します。`ContentHash` はスロット全体を読めたときだけ返すため、`TooLarge` と `Unreadable` では付きません。`ModifiedAt` は標準のセーブの仕組みのときだけです。存在しないスロットは `NotFound` です |
+| `ListSaveGameSnapshots` | `SnapshotSaveGame` が作ったスナップショットを、名前の昇順（大文字小文字を区別しない）で返します。`MaxResults` は 1〜1024（既定 256）で、`Truncated` も返します。読むのはメタ情報だけで、スロットのバイト列は読みません。`Snapshots[]` の各要素は `Name`・`NameTruncated`・`Status` を持ちます。`Status` は `OK`、またはメタ情報を読めないスナップショットファイルなら `Corrupt` です。`OK` の要素には `SourceSlotName`・`UserIndex`・`CreatedAt`（UTC）・`ByteCount`・`ContentHash`・`Format` と、ヘッダにクラス名があれば `SaveGameClassName`（切り詰めた場合は `SaveGameClassNameTruncated` も）が付きます。`Corrupt` の要素は上の 3 つのキーだけを持ち、見つけて削除できるように一覧に残します |
+
+### 中身の読み出し（1）— `RuntimeSaveGameContentRead` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `DumpSaveGame` | 1 つのスロットを読み、プロパティの値を JSON の artifact として返します。artifact には `Properties`（プロパティ名 → 値）・`PropertyCount`・`UnresolvedReferences` / `ClearedSoftReferences` とその件数が入り、応答には `PropertyCount`・`UnresolvedReferenceCount`・`ClearedSoftReferenceCount` が入ります。読み込まれていないオブジェクトへのハード参照は `null` になり、そのパスを `UnresolvedReferences` に挙げます。ソフト参照は通常パスのまま残り、例外的に空にしたものを `ClearedSoftReferences` に挙げます。どちらの一覧も重複を除いて先頭 64 件までで、件数は全件を数えます。1023 文字を超えるパスは切り詰めて末尾に `...` を付けます。文字列テーブルを参照するテキストは、文字列テーブルを読み込まずに出力します。本体を読む前に拒否するもの: このコマンドが扱えないヘッダ（`ExecutionFailed`）、読み込まれていない SaveGame クラス（`NotFound`）や使えない SaveGame クラス、`MaxSaveFileBytes` を超えるスロット（`NotAllowed`）。⚠️ artifact にはセーブの中身がそのまま入ります — 後述の [DumpSaveGame の artifact とスナップショット](#dumpsavegame-の-artifact-とスナップショットはセーブをそのまま持つ) を参照してください | 秘密と判定した欄は `Properties` で `***` になり、`Result.MaskedFields` に載ります。`UnresolvedReferenceCount` と `ClearedSoftReferenceCount` は秘密の欄の参照を数えません。`IncludeSecretValues` と他の 2 つの許可がそろえば、平文が `Result.SecretFieldValues`（キーは `<名前>#<番号>`）に入り、`SecretValuesOffset` で続きを読めます
+
+### スロットの変更（3）— `RuntimeSaveGameWrite` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `DeleteSaveGame` | 1 つのスロットを削除します。存在しないスロットは、`ExpectedHash` の有無にかかわらず `NotFound` です。`ExpectedHash` を渡すと、先にスロット全体を 1 回読んで比較し、一致しなければ `Conflict` です。削除したスロットは元に戻せません。大事なデータなら先にスナップショットを取ってください。応答は `Deleted`・`PreviousContentHash`（スロットを読んだときだけ）・`PlayWorldActive` |
+| `CopySaveGameSlot` | `SourceSlotName` のバイト列を、そのまま `TargetSlotName` へ複製します。2 つが同じスロット（大文字小文字を区別せずに比較）であってはいけません。複製するバイト列は SaveGame のヘッダ（形式・バージョン・クラス）まで確かめ、ヘッダが指すクラスは読み込み済みである必要があります。ヘッダより後ろの本体は確かめないため、本体が壊れたスロットも複製でき、それを後で読み込んだゲームが止まることがあります。`SkipValidation: true` でヘッダの確認を省けます — 後述の [SkipValidation](#skipvalidation) を参照してください。応答は `ByteCount`・`Overwritten`・`ContentHash`・`PreviousContentHash`（`ExpectedHash` のために複製先を読んだときだけ）・`ValidationSkipped`・`ValidationSkipReason`（省いたときは `RequestedByCaller`）・`PlayWorldActive` |
+| `WriteSaveGame` | JSON オブジェクト `Values` からスロットを書きます。次のどちらか一方だけを指定します。**`SaveGameClass`** — そのクラスの新しいオブジェクトをクラスの初期値で作り、`Values` を適用します。クラスはフルパス（`/Script/<Module>.<Class>` または `/Game/<Path>/<Blueprint>.<Blueprint>_C`）で指定し、短い名前は拒否します。**`BaseSlotName`** — そのスロットを読んで復元し、`Values` を上書きした結果を `SlotName` へ保存します。`SlotName` は同じスロットでも（このときは `Overwrite: true` が必要）別のスロットでも構いません。一部書き換えは元のスロットの中身を読むため、`RuntimeSaveGameContentRead` も必要です。書き込む前にすべてのキーと値を確かめ、1 つでも拒否された値があれば何も書きません。配列・セット・マップは丸ごと置き換わり（要素を 1 つだけ指定すると他の要素は消えます）、構造体は指定した項目だけが変わります。保存するバイト列は SaveGame のヘッダまで確かめ、本体は確かめません。応答は `ByteCount`・`Overwritten`・`ContentHash`・`PreviousContentHash`（書き先を読んだときだけ）・`ValidationSkipped`（常に `false`）・`PlayWorldActive`。`Values` に書けるものは後述の [WriteSaveGame の Values](#writesavegame-の-values) を参照してください | ちょうど `***` を送った秘密の欄は `InvalidParams` で断られ、一部書き換えでは、作り直される値の中の秘密の欄を除いて送った場合も断られます — [ダンプを書き戻す](#writing-a-dump-back) を参照 `AllowMaskPlaceholderValue` を取ります。書き込み先が秘密のとき、`***` を含む値は `Result.Reason: MaskPlaceholderValue` で拒否されます（[マスクされた値の書き戻し](#マスクされた値の書き戻し)を参照）。
+
+### スナップショット（3）— `RuntimeSaveGameWrite` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `SnapshotSaveGame` | スロットのバイト列を、そのまま名前付きのスナップショット（退避データ）へ複製します。保存先は UAIP 作業ディレクトリの `SaveGameSnapshots` フォルダ内のファイルです（[`AllowedArtifactDirectory`](config.md#allowedartifactdirectory-オーバーライド) で移していなければ `Saved/UAIP/SaveGameSnapshots/`）。バイト列は確かめないため、壊れたスロットやゲーム独自形式のスロットも退避できます。拒否するのは `MaxSaveFileBytes` を超えるスロットだけです（`NotAllowed`）。スナップショットには、退避元のスロット・ユーザー番号・退避した日時（UTC）・サイズ・内容のハッシュ・`Format`、ヘッダにあれば SaveGame クラスを記録します。同じ名前のスナップショットがあれば、`Overwrite: true` のときだけ置き換えます。置き換えは不可分ではありませんが、どこで止まっても古いものか新しいもののどちらかが残ります。スロットは読むだけなので、エディタでプレイ中でも `DisableSave` 下でも使えます。応答は `ByteCount`・`ContentHash`・`Format`（`SaveGameHeader`・`Legacy`・`Unknown`）・`Overwritten`・`PlayWorldActive`（`true` なら実行中のゲームも同じスロットへ書きうるため、ゲームが次に保存する内容とスナップショットが一致しないことがあります） |
+| `RestoreSaveGame` | スナップショットのバイト列をスロットへ書き戻します。スロットに触れる前にスナップショットを確かめ、壊れていれば `ExecutionFailed`（理由 `SnapshotCorrupt`）です。`SlotName` と `UserIndex` はそれぞれ省略するとスナップショットに記録された値を使うため、省略すれば退避元のスロットへ戻ります。退避元と同じスロット・同じユーザー番号へ戻し（スロット名は大文字小文字を区別せずに比較）、バイト列のハッシュがスナップショットに記録したものから変わっていなければ、ヘッダの確認は自動的に省かれます（`ValidationSkipReason: "SameSourceSlot"`。追加の Capability は不要）。以前そこにあった中身を戻すだけなので、独自形式のセーブを使うゲームでもスナップショットを使えます。別のスロットへ戻す場合と、ハッシュが一致しない場合は通常どおり確かめるため、独自形式なら `SkipValidation: true` を指定しない限り失敗します。スナップショットは残るので、何度でも復元できます。応答のキーは `CopySaveGameSlot` と同じで、確認を省いたときの `ValidationSkipReason` は `SameSourceSlot` か `RequestedByCaller` です |
+| `DeleteSaveGameSnapshot` | 1 つのスナップショットを、そのバックアップと、中断された退避が残した一時ファイルとともに削除します。存在しないスナップショットは `NotFound` です。壊れたスナップショットも削除できます。スロットには触れないため、エディタでプレイ中でも `DisableSave` 下でも使えます。応答は `Deleted` |
+
+#### スロットの状態（Status）
+
+| `Status` | 意味 |
+|---|---|
+| `OK` | ヘッダを最後まで読め、すべての確認を通った |
+| `LegacyOrUnknown` | バイト列が SaveGame のヘッダで始まっていない（ゲーム独自の形式、または古いエンジンの形式）。報告されるクラス名は推定値（`ClassNameIsGuess: true`） |
+| `UnsupportedVersion` | ヘッダがこのエンジンより新しい形式、または意図的に読まない古い版（UE4・UE 5.0 など）を示している |
+| `Corrupt` | ヘッダが途中で切れている、形が崩れている、または範囲外の値を含む |
+| `TooLarge` | ファイルが `MaxSaveFileBytes` を超えており、読んでいない |
+| `Unreadable` | セーブの仕組みがスロットの読み込みに失敗した |
+
+**確かめるのはファイルの先頭部分だけ**なので、`OK` はファイルの残りを復元できることを保証しません。また、スロットの保存は不可分ではないため、ゲームがちょうど書いている最中のスロットは `Corrupt` と読めることがあります。安定した複製が必要なら、先にスナップショットを取ってください。
+
+**`PackageFileUEVersion` は数値ではなく文字列です。** `"UE4=<n>"`、またはヘッダが UE5 のバージョンも持つ場合は `"UE4=<n> UE5=<m>"` の形です。ヘッダの読み取りがそこまで届かなかった場合は省略されます。`StoppedAtStage` は読み取りが到達した段階（`ByteCount`・`Tag`・`FileVersion`・`EngineVersion`・`CustomVersionFormat`・`CustomVersions`・`ClassName`・`Completed`）を示し、`Corrupt` のヘッダをどこまで読めたかが分かります。
+
+**`SaveGameClassNameTruncated`。** クラス名はファイルから来るため、無害化したうえで 256 文字で切り詰めてから返します。切り詰めた場合は、その隣に `SaveGameClassNameTruncated: true` が付きます。対象は `GetSaveGameInfo`、`IncludeDetails` を指定した `ListSaveGameSlots`、`ListSaveGameSnapshots` です。切り詰めていなければこのキーは付きません。切り詰めた名前はクラスの本当のパスではないため、そのまま `SaveGameClass` に渡さないでください。
+
+#### DumpSaveGame の artifact とスナップショットはセーブをそのまま持つ
+
+> ⚠️ **`DumpSaveGame` の artifact は、セーブの中身を JSON にしたものです。** セーブファイルには個人情報（プレイヤー名・アカウントの識別子など、ゲームが保存するあらゆるもの）が入りうるうえ、ランタイムでの秘密の伏せは判定であって保証ではありません。秘密と判定した欄（メタデータ・秘密らしい名前・型による）は `***` になりますが、そうした手がかりの無い欄は保存されたとおりに入ります。`RuntimeSaveGameContentRead` が既定で無効なのはこのためです。artifact は Artifact の自動 GC が消すまで artifact ストアに残り（[設定リファレンス](config.md) の `[UAIP.ArtifactGC]`）、UAIP の作業ディレクトリを読める人なら誰でも読めます。
+>
+> **スナップショットも同じものを生のバイト列のまま持ち**、`DeleteSaveGameSnapshot` で削除するまで残ります。件数や合計サイズの上限は無く、自動では削除されません。不要になったスナップショットは削除してください。
+
+#### WriteSaveGame の Values
+
+- キーはプロパティ名と大文字小文字を区別せずに照合します（入れ子の構造体の中も同様）。存在しないキーや、一時的（Transient）・非推奨・保存対象外のプロパティは、無視せずに拒否します。
+- JSON は最大 49152 バイト、入れ子は 16 段、値は 4096 個までです。名前・列挙子名・参照パスは 1023 文字までです。
+- 数値はプロパティの型に収まる必要があります。64 ビット整数は ±2^53 まで受け付けます（JSON の数値で正確に表せる範囲です。それを超える値は丸まってしまうため拒否します）。浮動小数点数は文字列 `"NaN"`・`"Infinity"`・`"-Infinity"` も受け付けます。列挙型は列挙子名か宣言された値で指定します。
+- テキストは指定した文字列がそのまま保存されます。文字列テーブル参照の書式で書いても参照としては扱わず、文字列テーブルも読み込みません。
+- オブジェクト・クラス・ソフト参照は `/` で始まるフルパスで指定します（`DumpSaveGame` が出力する `Class'/Path.Obj'` の形もそのまま使えます）。ハード参照は読み込み済みのオブジェクトに解決できる必要があり、できなければ `NotFound` です。空文字列 `""` を渡すと参照は何も指さなくなります。
+- 構造体は文字列ではなく JSON オブジェクトで指定します。セットに同じ要素を、マップに同じキーを 2 回指定してはいけません。
+- 書けないもの: インターフェース・Lazy・デリゲート・フィールドパスのプロパティと、セーブが持つ入れ子のオブジェクト（`_ClassName` を持つオブジェクト）。作ると任意のクラスを読み込むことになるためです。
+- 拒否された値が 1 つでもあれば、リクエスト全体が `InvalidParams` で失敗します。失敗診断の artifact には、どこがなぜ拒否されたか（`RejectedValues`・`RejectedValueCount`）が入り、値そのものは入りません。
+
+> ⚠️ **`null` は片方向にしか通りません。** 何も指していない参照は `DumpSaveGame` では `null` として出力されますが、`WriteSaveGame` は `null` をどこでも拒否します。そのため、読み出した JSON をそのまま書き戻せないことがあります。参照を空にするには `""` を渡してください。`BaseSlotName` で一部書き換えをする場合は、そのキーを `Values` から外せば、元のスロットの値がそのまま残ります。
+
+> ⚠️ **大文字小文字だけが違うキーは、重複として拒否されません。** `Values` はキーの大文字小文字を区別せずに読むため、`{"Score": 1, "score": 2}` は受け付けられ、後に書いた方だけが残ります。文字列をキーにするマップも同じ結果になります。ゲーム側でもそのキーを大文字小文字を区別せずに扱うため、保存される結果は変わりません。送る前に、大文字小文字だけが違うキーが無いか確かめてください。
+
+**読み出した JSON をそのまま書き戻せない場合。** `null` のほかに、±2^53 を超える 64 ビット整数は `DumpSaveGame` の出力で丸まっており、ここでは拒否されます。テキストは単なる文字列として書かれます（文字列テーブル参照やローカライズ情報は残りません）。入れ子のオブジェクト（`_ClassName`）と、インターフェース・Lazy・デリゲート・フィールドパスのプロパティは書けません。
+
+<a id="writing-a-dump-back"></a>
+**ダンプを書き戻す。** `DumpSaveGame` は秘密の欄を `***` で返しますが、`***` は読み取りが代わりに見せる印にすぎません。そのため `WriteSaveGame` は、秘密の String・Name・Text の欄にちょうど `***` を送ると `InvalidParams` で断り、何も書かず、スロットは変わりません。既存のスロットを一部書き換える（`BaseSlotName`）場合は、要求から作り直される値（配列・Set・Map の値・Optional と、その中の struct）の中の秘密の欄を除いて送ると、保存済みの秘密が既定値に戻って失われるため、これも断ります。秘密を持つ固定長配列を短く送った場合も同じです。`SaveGameClass` でスロットを作る場合は失う値が無いので、この理由では断りません。断った内容は `Diagnostics.RejectedValues` に `"<位置>": <理由>` で載り、理由は次のいずれかです。
+
+| 状況 | 理由 |
+|---|---|
+| 作り直されない秘密の欄（トップレベル、または作り直されない struct）に `***` を送った | `The field is secret and "***" is only the placeholder a read shows in its place. To keep the stored value, leave the field out of the request.` |
+| 作り直される値の中の秘密の欄に `***` を送った | `The field is secret and "***" is only the placeholder a read shows in its place. The value around it is rebuilt from the request, so give the plain value read with IncludeSecretValues, or any value for a new element.` |
+| 作り直される値で、秘密の欄を除いて送った | `The field holds a secret and the value around it is rebuilt from the request, so a field left out would be reset and the stored secret lost. Give the plain value read with IncludeSecretValues, or any value for a new element. For an unset optional, give null.` |
+| 秘密で作り直される struct のメンバーを除いて送った | `The value around the field is secret and rebuilt from the request, so a member left out would be reset and the stored secret lost. Give every member: the plain values read with IncludeSecretValues, or any values for a new element. For an unset optional, give null.` |
+| 作り直される値の中で、秘密の固定長配列が短い | `The property is a fixed size array that holds a secret inside a value rebuilt from the request, so an element left out would be reset and the stored secret lost. Give every element: the plain values read with IncludeSecretValues, or any values for a new element.` |
+
+送り方: トップレベルの秘密の欄と、作り直されない struct の中の秘密の欄は、要求から除けば保存された値が残ります。作り直される値の中の秘密の欄は、`DumpSaveGame` と [秘密の値を読む](#reading-secret-values) の 3 つの許可で読んだ平文を入れて送ります（平文は伏せなかったときのダンプと同じ JSON で返るので、数値は数値のままです。64 件を超える分は `SecretValuesOffset` で読みます）。新しい要素には読む平文が無いので、任意の値を送ります。作り直される値の中の未設定の秘密の Optional には `null` を送ります（それ以外の `null` は受け付けません）。次の 3 つは限界として残ります: 作り直される要素の中の `FInstancedStruct`・プロパティバッグ・`FInstancedStructContainer`・`FJsonObjectWrapper` は書き戻せず、そこで省いた欄は既定値に戻ります（以前からの挙動で、中の秘密は検出しません）。固定長配列の要素になっている struct はテキストの形で返り、書き戻せません。
+
+**参照が失われるスロットの一部書き換え。** 元のスロットに、`DumpSaveGame` なら `UnresolvedReferences` か `ClearedSoftReferences` に挙がる参照が 1 件でもあれば、`WriteSaveGame` は `NotFound` で拒否し、失敗診断の artifact にそのパスを挙げます。そのまま保存すると、変えていない参照まで消えるためです。先に参照先のアセットを読み込んでください。
+
+#### 本体を読む前に拒否するもの
+
+`DumpSaveGame` と、`BaseSlotName` を指定した `WriteSaveGame` は、スロットをそのクラスのオブジェクトへ復元します。その前に保存されたプロパティの並びを走査し、読み込むとエディタが止まるスロットを `ExecutionFailed` で拒否します。エラーには該当したプロパティの位置と理由が入り、値は入りません。
+
+- クラス側で文字列でも文章（`FText`）でもない型に変わったプロパティ（配列・セット・マップの要素を含む）や、クラスから無くなったプロパティに、1024 文字以上の文字列が保存されている
+- クラス側で名前（`FName`）型に変わったプロパティに、文章が保存されている（長さを問わない）
+- クラス側でフィールドパス型に変わったプロパティに、オブジェクト参照が保存されている
+- 並びの構造が壊れている（値の大きさが範囲外、要素数が負など）
+
+ゲーム自身は、このうち一部（特に、無くなったプロパティに残った長い文字列）を問題なく読めることがあります。UAIP はこれらを読みません。独自の方法で直列化する構造体（`InstancedStruct` など）の内側までは確かめません — [残るリスク](safety.md#runtime-savegame-スロット) を参照してください。
+
+#### 上書きと ExpectedHash
+
+`CopySaveGameSlot`・`WriteSaveGame`・`RestoreSaveGame` と、既存のスナップショットに対する `SnapshotSaveGame` は、`Overwrite: true` を指定しない限り既にあるものを置き換えません（`NotAllowed`）。同じスロットへの一部書き換えには常に必要です。置き換えた場合、応答の `Overwritten` が `true` になります。
+
+`DeleteSaveGame`・`CopySaveGameSlot`・`WriteSaveGame`・`RestoreSaveGame` の `ExpectedHash` は、書き込む直前に**書き先のスロット**（複製元・一部書き換えの元・スナップショットではない）が持っているべき内容のハッシュです。16 進 40 桁で、大文字小文字を区別せずに比較し、`GetSaveGameInfo` が返す値をそのまま使えます。一致しない場合や、書き先が無い場合は `Conflict` で、何も書きません（`DeleteSaveGame` で対象が無い場合は `NotFound`）。`ExpectedHash` を渡すと書き先を全部読むため、読み取りの上限がかかります。渡さなければ書き先を読まないので、上限を超えるスロットでも置き換え・削除できます。確認は書き込む直前の 1 回だけです。確認と書き込みの間にゲームが非同期で保存したり、別のプロセスが書き込んだりすることまでは防げません。
+
+#### プレイ中と DisableSave 下
+
+`DeleteSaveGame`・`CopySaveGameSlot`・`WriteSaveGame`・`RestoreSaveGame` は、エディタでプレイ中は `NotAllowed` で拒否します。実行中のゲームが同じスロットを読んだり上書きしたりしうるためです。エラーには、許可する設定 `[UAIP.SaveGame]` の `bAllowWritesDuringPIE` の名前が入ります。プレイを止めてから再実行してください。`-game` 起動やパッケージ版ではこの拒否はありません（ゲームが後から同じスロットを上書きすることはあります）。同じ 4 つは、SafetyPolicy が `DisableSave` のとき `PolicyViolation` で拒否します。
+
+`ListSaveGameSlots`・`GetSaveGameInfo`・`DumpSaveGame`・`SnapshotSaveGame`・`ListSaveGameSnapshots`・`DeleteSaveGameSnapshot` は、どちらの場合も使えます。スロットを変える 4 つと `SnapshotSaveGame` の応答にある `PlayWorldActive` は、その時点でゲームが同じスロットへ書きうる状態だったか（エディタでプレイ中、または `-game` 起動やパッケージ版で動作中）を示します。
+
+**書き込みは不可分ではありません。** 書き込みの途中で失敗すると（ディスクの容量不足、ファイルのロックなど）、書き先のスロットが壊れることがあります。残したいスロットは、置き換える前にスナップショットを取ってください。スナップショットから戻せます。
+
+#### SkipValidation
+
+`CopySaveGameSlot` と `RestoreSaveGame` は `SkipValidation: true` を受け付けます。ヘッダの確認を省くため、ゲーム独自形式・壊れている・対応していない版・クラスが読み込まれていないスロットでも、任意のスロットへ複製・復元できます。`RuntimeSaveGameUnvalidatedWrite`（DefaultDenied）が必要で、無ければ `CapabilityNotAvailable`（`DeniedCapabilities` で明示的に拒否されていれば `PolicyViolation`）で失敗します。復元が `SameSourceSlot` に当たる場合でも同じです。応答は `ValidationSkipped: true` と `ValidationSkipReason: "RequestedByCaller"`（`SameSourceSlot` にも当たる場合は `"SameSourceSlot"`）です。サイズの上限は省けません。⚠️ **こうして書いたスロットは、それを読み込んだゲームを止めることがあります。**
+
+#### エラー
+
+| ErrorCode | 発生する場面 |
+|---|---|
+| `InvalidParams` | 名前・`UserIndex`・`MaxResults`・ハッシュ・クラスパス・値が正しくない。`SourceSlotName` と `TargetSlotName` が同じスロット。`WriteSaveGame` に `SaveGameClass` と `BaseSlotName` を両方指定した、またはどちらも指定しなかった。クラスが `USaveGame` の具象で現行のサブクラスではない |
+| `NotFound` | スロットやスナップショットが無い。SaveGame クラスや、値が参照するオブジェクトが読み込まれていない。一部書き換えの元のスロットに、失われる参照がある |
+| `NotAllowed` | 書き先があるのに `Overwrite` が `true` でない。エディタでプレイ中。ファイルが `MaxSaveFileBytes` を超えている（エラーに設定名が入る） |
+| `Conflict` | `ExpectedHash` が一致しない、または指定した書き先が無い |
+| `PolicyViolation` | SafetyPolicy が `DisableSave`（スロットの変更のみ）、または必要な Capability が `DeniedCapabilities` で明示的に拒否されている（`CapabilityNotAvailable` より先に判定されるため、こちらが優先） |
+| `CapabilityNotAvailable` | 必要な Capability（引数が追加で要求するものを含む）が無い。エラーにその名前が入る |
+| `ExecutionFailed` | ヘッダを扱えない、データが示すクラスを使えない、本体を読めない（上記の拒否を含む）、スナップショットが壊れている、スロットやスナップショットの読み書きに失敗した |
+| `UnsupportedOperation` | スロットの一覧に対応していないセーブの仕組みで `ListSaveGameSlots` を呼んだ |
+
+失敗したコマンドは失敗診断の artifact を付けます。中身は `Command`・`FailedStage`・`Reason`（原因。例: `SnapshotCorrupt`）・`ErrorMessage` と、失敗した段階が報告した内容です（扱えなかったヘッダの各項目、解決できない参照のパス、拒否した `Values` の `RejectedValues` / `RejectedValueCount` など）。セーブに保存された値が含まれることはありません。
+
+---
+
+## UAIP.Runtime.AI
+
+このドメインは、実行中のゲームの AI を観測します。AI 感知システムのほか、BehaviorTree と Blackboard も観測します（下の [BehaviorTree と Blackboard の観測](#behaviortree-と-blackboard-の観測) を参照）。そのセクションの手前までは、感知の 6 コマンドの説明です。
+
+実行中のゲームの AI 感知システム（AI Perception）を観測するコマンド群です。1 体の AI がいま何を感知しているか、ある Actor をどの AI が感知しているか、感知システム自体の状態、視覚がなぜ対象を見る／見ないのか、感覚設定の値を返します。感知のコマンドはどれも読むだけで、AI の感知内容を変えることはありません。エディタでは PIE の実行中に、また `-game` 起動やパッケージ版でも動作し、プラグインの依存はありません。感知の 6 コマンドすべてが [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。
+
+**Capability。** 感知の 6 コマンドすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`DumpAIPerceptionSenseConfigs` は、プロジェクト独自の感覚クラスのものを含めて感覚設定の値をすべて書き出すため、`AIPerceptionConfigDump`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-ai-の感知) を参照してください。
+
+**感知はサーバーにしかありません。** AI コントローラーと感知システムが存在するのはスタンドアロンかサーバーのワールドだけです。ネットワークプレイの PIE では `TargetNetRole: "Server"` または `TargetPIEInstance` でサーバーを指定してください。クライアントのワールドを観測してもコマンドは成功しますが、`Availability.State: "Unavailable"`・`Reason: "ClientWorld"` を返し、再実行先となるサーバー側のプレイワールドを列挙します — [感知システムが使えないとき](#感知システムが使えないとき) を参照してください。
+
+### 感知の状態（5）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `DumpAIPerceptionState` | 1 体の AI の感知コンポーネントが持つ内容をすべて返します。`ActorIdentifier` には Pawn・AI コントローラー・その他の感知コンポーネントを持つ Actor を指定します（[感知コンポーネントの探し方](#感知コンポーネントの探し方) を参照）。artifact には設定された感覚（`Senses[]`）・`ListenerId`（登録済みのとき）・`TeamId`（`255` はチームなし）・`DominantSense`・感知中の Actor とその刺激（`Targets[]`）・`AgeUnitNote` が入ります。`MaxTargets` は 1〜4096（既定 256）。期限切れの刺激は `IncludeInactiveStimuli: true` を指定しない限り除外し、その場合は刺激がすべて期限切れの Actor は一覧にも件数にも含めません。応答には `ListenerRegistered`・`TargetCount`・`TargetsTotalCount`・`TargetsTruncated` が入ります |
+| 🆓 `GetPerceivedActors` | 1 体の AI がいま感知している Actor（`Mode: "Current"`、既定）か、感知を失ってもまだ覚えている Actor を含めたもの（`Mode: "Known"`）を返します。`Mode` の大文字小文字は区別しません。`Sense` を指定すると、コンポーネントに設定された感覚の 1 つに絞り込み、状態もその感覚だけで判定します。指定は短い名前（`Sight` など。大文字小文字を区別しない）かクラスパス（完全一致）です。設定された感覚のどれにも一致しない、または複数に一致する名前は `InvalidParams` で、メッセージに設定されている感覚を列挙します。`HostileOnly: true` はエンジンが敵対と記録した Actor だけを残します。`MaxActors` は 1〜4096（既定 256）。応答には `Actors[]`（`Name`・`Label`・`Path`・`Senses[]`・`IsHostile`）の先頭 50 件・`ActorsTotalCount`・`ActorsTruncated`・`Mode`、指定したときは `Sense` が入り、artifact には全件が入ります。返った `Name` はそのまま `ActorIdentifier` に渡せます。ただし別の Actor のラベルが同じ文字列の場合は除きます |
+| 🆓 `GetActorPerceivers` | 逆方向の問い合わせです。`ActorIdentifier` の Actor をどの AI が感知しているかを返します。この Actor 自身は感知コンポーネントを持っていなくて構いません。`Perceivers[]` には感知しているコンポーネント（`ComponentOwner`）ごとに、その Actor について持っている刺激が入ります。期限切れの刺激は常に除外します。`Source` は刺激の発生源としての Actor を表します。`ConfiguredOnSourceComponent[]`（Actor が持つ刺激源コンポーネントと、その `AutoRegister`・登録先の感覚）、`ObservedBySight[]`（ワールドで動いている視覚の実装ごとに、Actor が視覚の対象として登録されているか。感知システムが使えない間は省略）、`OtherSenses: "Unknown"`（他の感覚に登録されているかは読み取れません）です。`MaxPerceivers` は 1〜4096（既定 256）。応答には先頭 50 件・`PerceiversTotalCount`・`PerceiversTruncated` が入り、artifact には全件が入ります |
+| 🆓 `DumpAIPerceptionSystemState` | ワールド全体の感知システムを返します。応答には `HasBegunPlay`・`HasAuthGameMode`・`ComponentsWithValidListenerId`（近似値。リスナー ID を持つコンポーネントの数）・`SightStatistics[]`（視覚の実装ごとの `ObservedTargetCount`・`QueriesInRangeCount`・`QueriesOutOfRangeCount`・`QueriesPendingCount`）・`ComponentCount`・`ComponentsTotalCount`・`ComponentsTruncated` が入ります。artifact にはさらに `PerceptionAgingRate`・`Senses[]`（感覚ごとの `IsInstantiated`。設定されたが生成されていない感覚も含む）・`Components[]`（感知コンポーネントごとの `ListenerRegistered` と `EnabledSenses[]`）が入ります。`MaxComponents` は 1〜4096（既定 256） |
+| 🆓 `ExplainSightPerception` | `ObserverIdentifier` から見て `TargetIdentifier` が視覚で見える／見えない理由を、順序付きの 14 段階で返します。対象は感知コンポーネントを持っていなくて構いません。応答と artifact は同じオブジェクトです。説明は現在の状態から計算し直したもので、**エンジンの判定そのものではありません** — [ExplainSightPerception の読み方](#explainsightperception-の読み方) を参照してください |
+
+### 感覚設定の値（1）— `RuntimeInspect` と `AIPerceptionConfigDump` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `DumpAIPerceptionSenseConfigs` | 1 体の AI の感知コンポーネントにある感覚設定すべてについて、全プロパティの値を返します。プロジェクト独自の感覚クラスの設定も含みます。応答には `SenseCount` と `Truncated` が入り、値は artifact の `Senses[]` に入ります — [DumpAIPerceptionSenseConfigs の値](#dumpaiperceptionsenseconfigs-の値) を参照してください。感知システムが使えるかどうかの影響を受けません。⚠️ artifact は `AIPerceptionConfigDump` を外した後も残ります — [安全性と Capability](safety.md#runtime-ai-の感知) を参照してください |
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `ActorIdentifier`（必須） | `DumpAIPerceptionState`、`GetPerceivedActors`、`DumpAIPerceptionSenseConfigs` | 感知コンポーネントを読む Pawn・AI コントローラー・その他の Actor のラベルまたはオブジェクト名 |
+| `ActorIdentifier`（必須） | `GetActorPerceivers` | 感知される側の Actor のラベルまたはオブジェクト名 |
+| `ObserverIdentifier`、`TargetIdentifier`（どちらも必須） | `ExplainSightPerception` | 見る側の Actor（`ActorIdentifier` と同じ方法で探します）と、見えるかを説明する Actor のラベルまたはオブジェクト名 |
+| `MaxTargets` / `MaxActors` / `MaxPerceivers` / `MaxComponents` | それぞれ 1 つ | 主となる一覧の上限。1〜4096 の整数で、既定 256 |
+| `IncludeInactiveStimuli` | `DumpAIPerceptionState` | 真偽値、既定 `false`。`true` で期限切れの刺激も返します |
+| `Mode` | `GetPerceivedActors` | `"Current"`（既定）または `"Known"`。大文字小文字は区別しません |
+| `Sense` | `GetPerceivedActors` | 感覚の短い名前かクラスパス。`A-Z`・`a-z`・`0-9`・`_ . / : -` からなる 256 文字以内 |
+| `HostileOnly` | `GetPerceivedActors` | 真偽値、既定 `false` |
+
+識別子は制御文字を含まない 1〜256 文字です。真偽値は JSON の真偽値、上限値は JSON の整数でなければならず、それ以外の型・未知のキー・1〜4096 の範囲外の上限値は `InvalidParams` です。パラメータはプレイワールドを探す前に検査するため、PIE が動いていなくても不正な要求は拒否されます。
+
+#### 感知コンポーネントの探し方
+
+`DumpAIPerceptionState`・`GetPerceivedActors`・`ExplainSightPerception`（見る側）・`DumpAIPerceptionSenseConfigs` には、Pawn・その AI コントローラー・感知コンポーネントを持つその他の Actor のどれを指定しても構いません。コンポーネントは指定した Actor と、それと対になるコントローラーまたは Pawn から探し、両方が持っている場合はコントローラー側を使います。使ったコンポーネントは応答の `ComponentOwner`（`Name`・`Path`・`ComponentPath`）で示し、他に見つかったものは `OtherComponentsFound[]` に `OtherComponentsFoundTotalCount`・`OtherComponentsFoundTruncated` と共に挙げます。対のどちらも感知コンポーネントを持っていない場合は `NotFound` です。
+
+#### すべての応答に入るフィールド
+
+| フィールド | 意味 |
+|---|---|
+| `CapturedAt` | 状態を読んだ時刻（ISO 8601、UTC） |
+| `Frame` | そのときのエンジンのフレーム番号 |
+| `NetMode` | 観測したワールドのネットモード |
+| `WorldContext` | コマンドが読んだワールドコンテキスト |
+| `PIEInstance` | 観測したワールドの PIE インスタンス。PIE 以外では省略 |
+| `Availability` | `State` は `Available` か `Unavailable`。使えないときは `Reason` が付き、`ClientWorld` のときはさらに `ServerCandidates[]`（サーバー側プレイワールドごとの `PIEInstance`・`NetMode`・`MapName`・`IsPrimaryPIEInstance`）が付きます |
+| `DegradedSections[]` | 埋められなかった部分。各要素は `Section` と `Cause`（`PerceptionSystemUnavailable` または `UnreadableField`）を持ちます。空の配列なら欠けた部分はありません |
+| `Limitations[]` | 返した内容についての注意事項。各要素は `Code` と、場合によって `Detail` を持ちます |
+
+`Limitations[].Code` は次のいずれかです。
+
+| `Code` | 意味 |
+|---|---|
+| `UnreadableField` | このエンジンバージョンではエンジン側の値を読めませんでした。`Detail` がそのフィールドを示し、それに依存する部分は省きます |
+| `UnknownStimulusExcludedFromMode` | 状態を分類できない刺激があります。`GetPerceivedActors` はこれをどの `Mode` にも一致させません |
+| `StaleTargetsSkipped` | もう存在しない Actor の項目を飛ばしました。`Detail` は飛ばした件数です |
+| `CustomSightImplementation` | 視覚がエンジン標準の視覚クラスで実装されていません。`Detail` が使われているクラスを示します |
+| `RecomputedFromCurrentState` | `ExplainSightPerception` のみで、常に付きます。説明が現在の状態から計算し直したものであることを示します |
+
+#### 感知システムが使えないとき
+
+使える感知システムが無いワールドはエラーになりません。コマンドは成功し、`Availability.State` が `Unavailable`、`Availability.Reason` がその理由を示します。
+
+| `Reason` | 意味 |
+|---|---|
+| `ClientWorld` | クライアントのワールドです。AI はサーバーにしかありません。`ServerCandidates[]` がサーバー側のプレイワールドを列挙します |
+| `AISystemDisabled` | ワールド設定で AI が無効になっており、AI システムがありません |
+| `CustomAISystem` | ワールドの AI システムがエンジン標準のものではなく、その感知システムに届きません |
+| `Unknown` | 上記以外の理由で、AI システムまたは感知システムがありません |
+
+このとき感知システムに依存する部分は `DegradedSections[]` に挙げ、結果から省きます。
+
+| コマンド | `Section`（原因 `PerceptionSystemUnavailable`） | `Section`（原因 `UnreadableField`） |
+|---|---|---|
+| `DumpAIPerceptionState` | `Targets`、`Senses` | `Targets` |
+| `GetPerceivedActors` | `Actors` | `Actors` |
+| `GetActorPerceivers` | `Perceivers`、`Source.ObservedBySight` | `Perceivers` |
+| `DumpAIPerceptionSystemState` | `Senses`、`SightStatistics`、`ComponentsWithValidListenerId` | — |
+| `ExplainSightPerception` | —（常に空。代わりに最初の段階が失敗します） | — |
+| `DumpAIPerceptionSenseConfigs` | —（常に空。影響を受けません） | — |
+
+`ListenerRegistered` と各感覚の `IsInstantiated` は、感知システムが使えるときだけ書き出します。Actor とコンポーネントの確認が先に行われるため、感知システムの無いワールドでも、存在しない Actor は `NotFound` になります。
+
+#### 一覧・件数・値の無い項目
+
+- **値が無い項目は省略し、`null` にはしません。** エンジンの「未設定」を表す番兵値（一度も設定されていない位置など）や、有限でない数値も同様です。このドメインで `null` になるのは `ExplainSightPerception` の `Diverged` だけです。
+- **一覧の並び順**は `Name`（大文字小文字を区別しない）、次に `Path` です。コンポーネントは所有者の名前、次に `ComponentPath` の順です。感覚設定は設定された順のままです。
+- **内側の一覧**（対象ごとの刺激、Actor ごとの感覚、他に見つかったコンポーネントなど）は最大 64 件で、`<Key>TotalCount` と `<Key>Truncated` が付きます。
+- **`<Key>Truncated` は、`Max*` の上限で一覧が切られたことを表します**（[応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の `Truncated`）。`Data` の件数の上限では `true` になりません。`<Key>Truncated` は `Data` と artifact に同じ値で付きます。
+- **`<Key>DataEntriesTruncated` は、`Data` が artifact より少ない件数を載せたことを表します。** `Data` にだけ付く bool で、外側の一覧に常に付きます: `TargetsDataEntriesTruncated`（`DumpAIPerceptionState`）・`ActorsDataEntriesTruncated`（`GetPerceivedActors`）・`PerceiversDataEntriesTruncated`（`GetActorPerceivers`）・`ComponentsDataEntriesTruncated`（`DumpAIPerceptionSystemState`）。`DumpAIPerceptionSenseConfigs` の一覧は 1 つだけなので、キーは一覧名の無い `DataEntriesTruncated` です。`GetPerceivedActors` と `GetActorPerceivers` は、何も切られていなくても `Data` には先頭 50 件しか入れないので、取得した件数が 50 を超えると `true` になります。`DumpAIPerceptionState`・`DumpAIPerceptionSystemState`・`DumpAIPerceptionSenseConfigs` の `Data` は一覧を持たず件数（`TargetCount`・`ComponentCount`・`SenseCount`）だけを載せるので、一覧が 1 件でもあれば `true` で、全件は artifact にあります。たとえば `ActorsTruncated: false`・`ActorsDataEntriesTruncated: true` で `Actors[]` が 50 件、`ActorsTotalCount: 120` なら、残りの 70 件は artifact から読んでください。`ActorsTruncated: true` なら、取得時の上限で切っているので、artifact にも残りはありません（`MaxActors` を上げて呼び直します）。
+- **内側の一覧**（対象ごとの刺激・Actor ごとの感覚・他に見つかったコンポーネントなど）は `Data` と artifact で同じ上限なので、`<Key>Truncated` だけが付き、`DataEntriesTruncated` は付きません。
+
+#### 刺激
+
+刺激ごとに `SenseClass`（感覚が生成されていれば `SenseName` も）・`StimulusState`・`Strength`・`Age`・`ExpirationAge`・`StimulusLocation`・`ReceiverLocation`・`Tag`・`WasSuccessfullySensed`・`IsExpired` が入ります。値が無い項目は省略します。
+
+| `StimulusState` | 意味 |
+|---|---|
+| `Sensing` | いま感知している |
+| `LostButRemembered` | 感知を失ったが、まだ期限切れではない |
+| `Expired` | 最大経過時間を過ぎた。`IncludeInactiveStimuli: true` のときだけ返します |
+| `Unknown` | 分類できない。一覧と件数には含めますが、どの `Mode` にも一致させず、`UnknownStimulusExcludedFromMode` を付けます |
+
+不具合に見えるがエンジンの仕様どおりのもの:
+
+- **出来事を通知する感覚（聴覚など）は、刺激が期限切れになるまで `Sensing` のままです。** こうした感覚は自分から「失った」と通知しません。
+- **最大経過時間が 0（感覚設定の既定値）の刺激は期限切れになりません。** そのため `LostButRemembered` のまま残り続けます。
+- **経過時間は段階的に進みます。** 感知システムが刺激の経過時間を進めるのは `PerceptionAgingRate` 秒（既定 0.3 秒）ごとなので、`Age` と `ExpirationAge`（ゲーム時間の秒）は、刺激からの実際の経過時間より最大でその間隔ぶん遅れることがあります。artifact の `AgeUnitNote` も同じことを述べています。
+- **AI システムの「古い Actor を忘れる」設定が有効な場合、`Expired` は現れません。** エンジンは刺激がすべて期限切れになった Actor を、期限切れとして残さずに取り除きます。
+
+#### ExplainSightPerception の読み方
+
+応答は**現在の状態**から作ります。1〜9 段階はエンジンがいま持っている状態を読み、10〜14 段階は現在の設定・位置・チームから視覚の判定を計算し直します。これは**エンジン自身の判定記録ではなく**、エンジンが最後に更新したときの判定と食い違うことがあります — その後に見る側が動いた、クエリがまだ再評価されていない、トレースが非同期で走っている、実行中に設定が変わった、といった場合です。判定そのものではなく、診断の手掛かりとして使ってください。`Limitations` には常に `RecomputedFromCurrentState` が付きます。
+
+`AlgorithmRevision`（整数。現在は `1`）は段階の評価方法を識別します。段階の意味が変わるたびに上がるので、説明どうしを比べるのはこの値が同じときだけにしてください。`EvaluationBasis` は常に `"CurrentState"` です。
+
+`Steps[]` の各要素は `Step`・`Basis`（`EngineState` または `Recomputed`）・`Result`、場合によって `Detail` を持ちます。14 段階すべてが常にこの順で入ります。
+
+| # | `Step` | `Basis` | 確認する内容 |
+|---:|---|---|---|
+| 1 | `PerceptionSystemAvailable` | `EngineState` | ワールドに使える感知システムがある |
+| 2 | `ListenerRegistered` | `EngineState` | 見る側の感知コンポーネントがリスナーとして登録されている |
+| 3 | `SightConfigured` | `EngineState` | コンポーネントに視覚の設定がある |
+| 4 | `SightEnabled` | `EngineState` | コンポーネントで視覚が有効になっている |
+| 5 | `SightInstantiated` | `EngineState` | 感知システムに視覚の感覚が生成されている |
+| 6 | `TargetIsNotSelf` | `EngineState` | 対象が見る側自身ではない |
+| 7 | `DigestAvailable` | `EngineState` | 視覚の感覚が、見る側の設定を取り込んだもの（ダイジェスト）を持っている |
+| 8 | `ObservedBySight` | `EngineState` | 対象が視覚の対象として登録されている |
+| 9 | `QueryExists` | `EngineState` | この見る側と対象の組の視覚クエリがある |
+| 10 | `Affiliation` | `Recomputed` | チームの関係が対象の感知を許している |
+| 11 | `AutoSuccess` | `Recomputed` | 対象が最後に見えた位置からの自動成功範囲内にいる |
+| 12 | `Distance` | `Recomputed` | 対象が視覚の範囲内にいる |
+| 13 | `PeripheralAngle` | `Recomputed` | 対象が周辺視野角の内側にいる |
+| 14 | `Occlusion` | `Recomputed` | 視線を遮るものがない |
+
+`Result` は `Pass`・`Fail`・`Skipped`（前の段階の結果により評価しなかった）・`NotApplied`（その段階が当てはまらない）・`Delegated`（対象が自分で判断する）のいずれかです。段階どうしの関係は次のとおりです。
+
+- 1〜8 段階は最初の `Fail` で止まり、それ以降はすべて `Skipped` になります。
+- `QueryExists` が失敗した場合は、候補となる理由として `Affiliation` だけを評価し（クエリが作られない理由はたいていチームの関係です）、残りは `Skipped` です。
+- `QueryExists` が通った場合は、クエリがある時点でチームの関係はすでに作成を許しているので `Affiliation` は `Skipped` になり、11〜14 段階を評価します。
+- `AutoSuccess` は失敗しません。`Pass` なら残りの段階は `Skipped` になり、そうでなければ `NotApplied` です（既定の設定では常に `NotApplied`）。
+- `Distance` は、エンジンが前回対象を見ていた場合は視覚を失う半径を、そうでなければ視覚の半径を使います。
+- `Distance` か `PeripheralAngle` が `Fail` なら `Occlusion` は `Skipped` です。
+- 視覚対象のインターフェースを実装した対象は自分で見えるかを判断するため、`Occlusion` は `Delegated` になり、その判定関数は呼びません。
+
+`QueryExists` には `QueryList`（`SightQueriesInRange`・`SightQueriesOutOfRange`・`SightQueriesPending` のいずれか）・`Pending`・`LastSeenLocation`・`LastResult`（クエリが保留中でないときだけ）・`AsynchronousTrace` が付きます。`Affiliation` には `TeamAgent`（`Owner`・`BodyActor`・`None` のいずれか。どのチームを使ったか）が付きます。`Occlusion` には、視線を遮るものがあれば `HitActor` が付きます。
+
+各フィールドが入る条件:
+
+| フィールド | 入る条件 |
+|---|---|
+| `Observer`、`Target`（`Name`・`Label`・`Path`）、`ComponentOwner`、`OtherComponentsFound[]` | 常に |
+| `EvaluationBasis`、`AlgorithmRevision`、`Steps[]` | 常に |
+| `Diverged` | 常に。計算し直した結果をエンジンの前回の結果と比べられるときは `true` か `false`、比べられないとき（エンジン状態の段階が失敗した、クエリが保留中、`Occlusion` が `Delegated`）は `null` |
+| `DivergenceCandidates[]` | 常に。要素が入るのは `Diverged` が `true` のときだけです。入りうる要素: `StaleListenerLocation`・`QueryNotYetReevaluated`・`AsynchronousTrace`・`ConfigChangedAtRuntime`・`CustomSightImplementation` |
+| `ConfigDigestMismatch[]` | 常に。視覚の設定と、視覚の感覚がそれを取り込んだ値とで食い違う項目ごとに `{Field, FromConfig, Digested}` が 1 つ入ります（`SightRadiusSq`・`LoseSightRadiusSq`・`NearClippingRadiusSq`・`PeripheralVisionAngleCos`・`PointOfViewBackwardOffset`・`AutoSuccessRangeSqFromLastSeenLocation`・`AffiliationFlags`） |
+| `ListenerRegistered` | `ListenerRegistered` 段階を評価したとき |
+| `FirstFailingStep` | 失敗した段階があるとき。`QueryExists` が失敗した場合は `QueryExists` で、`Affiliation` がその候補となる理由です |
+| `SightConfigUsed`（`ConfigClass`・`ImplementationClass`・`OtherSightConfigs[]`） | `SightConfigured` が通ったとき。最初の視覚設定を使い、他は一覧に挙げます |
+| `EngineLastResult` | `QueryExists` が通り、クエリが保留中でないとき |
+| `EngineConeCheck` | `DigestAvailable` が通ったとき |
+
+視覚がエンジン標準の視覚クラスで実装されていない場合は、`Limitations` に `CustomSightImplementation` が付き、計算し直した段階は目安にとどまります。**視覚対象のインターフェースが、保留中の見え方の判定を別スレッドで完了させる対象には対応していません。** そのような対象についてこのコマンドが返す内容は保証されません。
+
+#### DumpAIPerceptionSenseConfigs の値
+
+`Senses[]` の各要素は `SenseName`（生成されているとき）・`SenseClass`・`ConfigClass`・`IsEnabled`・`IsInstantiated`（感知システムが使えるときだけ）・`Properties[]`（`Name`・`Type`・`Value`）・`Truncated` を持ちます。プロパティは基底クラスのものが先で、各クラス内は宣言順です。エディタ専用のプロパティは挙げません。値は次の形で書き出します。
+
+| プロパティ | 書き出し方 |
+|---|---|
+| 数値、真偽値 | 値そのもの。有限でない浮動小数点数は文字列 `"NaN"`・`"Infinity"`・`"-Infinity"` |
+| 列挙型 | 項目名。名前の無い値は数値 |
+| Name、文字列、テキスト | 文字列。1024 文字で切り詰め |
+| 構造体 | 1 階層だけ展開したオブジェクト。それより深い構造体や、コンテナ要素としての構造体は `{"Type": "<型>"}` |
+| 配列、Set、Map、固定長配列 | 先頭 32 要素を持つ `{"Value": [...], "TotalCount": N, "Truncated": bool}`。Map の要素は `[キー, 値]`、Set と Map は格納順 |
+| オブジェクト・クラス・ソフト・ウィーク・レイジー・インターフェースの参照 | パスの文字列。空なら `"None"`。何も読み込みません |
+| デリゲートなど対応しない型 | `{"Unsupported": "<型>"}` |
+
+上限は感覚 64 個、感覚ごとに 64 KiB、合計 256 KiB です。自分の上限に達した感覚は収まった分を残して `Truncated: true` を返し、合計の上限を使い切った後の感覚は識別情報だけを持つ `Omitted: true` として書き出します。応答の `SenseCount` は書き出した感覚の数（`Omitted` のものを含む）で、`Truncated` はこれらの上限のどれかでダンプが切られたときに `true` です。`Data` には感覚の一覧が入らず件数だけなので、`Data` にだけ付く `DataEntriesTruncated` は、感覚設定が 1 つでもあれば `true` です（全件は artifact の `Senses[]`）。`Truncated` は `Data` と artifact に同じ値で付きます。
+
+`DumpAIPerceptionState` も同じ設定を `Senses[]` に、より簡略な形で挙げます。エンジンが宣言したプロパティは値を示し（それを継承したプロジェクト独自の設定クラスでも同様）、プロジェクトが宣言したプロパティは `Name` と `Type` だけで `Value` キーを持ちません。その値は `DumpAIPerceptionSenseConfigs` で読んでください。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータが欠けている・型が違う・範囲外・未知のキー。`Sense` が設定された感覚のどれにも一致しない、または複数に一致する。`TargetNetRole` / `TargetPIEInstance` を満たせない |
+| `NotAllowed` | プレイワールドが動いていない（`PIE is not running.`）、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い |
+| `NotFound` | 識別子に一致する Actor が無い。Actor とそれと対になるコントローラーまたは Pawn のどれも感知コンポーネントを持っていない（"The actor has no AI perception component, and neither does the controller or pawn it is paired with."）。`ExplainSightPerception` ではメッセージが `The observer actor could not be resolved.` または `The target actor could not be resolved.` で始まり、コンポーネントのメッセージは見る側の Actor を指します |
+| `ExecutionFailed` | 識別子に一致する Actor が複数ある。artifact を書き出せなかった |
+| `CapabilityNotAvailable` | `RuntimeInspect`、または `DumpAIPerceptionSenseConfigs` の場合は `AIPerceptionConfigDump` が付与されていない |
+| `PolicyViolation` | Capability が安全ポリシーで拒否されている |
+
+観測したワールドがクライアントの場合、ワールドを見つけた後のエラーメッセージの末尾に、AI はサーバーにしかないことと、`TargetPIEInstance` で再実行する先のサーバー側プレイワールドが付きます。
+
+成功した呼び出しは JSON の artifact をちょうど 1 つ保存し、失敗した呼び出しは何も保存しません。
+
+### BehaviorTree と Blackboard の観測
+
+AI が実行している BehaviorTree と、それが読む Blackboard を観測します。どのノードがアクティブか、どの Decorator が通るか、Blackboard が何を持っているか、ツリーが時間とともにどう動いたかが分かります。8 つのうち 7 つは読むだけです。`DescribeBehaviorTreeWithProjectCode` だけは例外で、プロジェクトのコードを実行するため、下で別に説明します。コマンドは、プレイワールドの 1 つのアクターを対象にし（検証しているのは PIE で、`-game` 起動とパッケージ版は未検証）、[`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。ただし `GetBehaviorTreeEventLog` と `StopBehaviorTreeCapture` は `CaptureId` を受け取り、プレイワールドを解決しないので、プレイセッションの終了後も使えます。アクターは `ActorIdentifier` に、AI コントローラー・その Pawn・コンポーネントを持つ任意のアクターのラベルまたはオブジェクト名で指定します。名前が分からないときは `ListBehaviorTreeAgents` が使うべき名前を返します。
+
+**Capability。** 8 つすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`GetBlackboardValues` は、Blackboard の値がプロジェクトのデータであるため、`BlackboardValueRead`（DefaultDenied）も必要です。`DescribeBehaviorTreeWithProjectCode` はさらに `AIBehaviorProjectCodeExecution`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-ai-のビヘイビアツリーと-blackboard) を参照してください。秘密と判定した Blackboard のキーと、それを参照するノードは、[秘密値の平文での読み取り](#reading-secret-values) の 3 つの層が平文を許さない限り伏せられます。[秘密の Blackboard キーとノードの説明](#秘密の-blackboard-キーとノードの説明) を参照してください。
+
+**デモ版。** `DescribeBehaviorTreeWithProjectCode` と Capability `AIBehaviorProjectCodeExecution` はデモバイナリに含まれません。コマンドは存在せず `CommandNotFound` を返します。残りの 7 コマンドは含まれます。`BlackboardValueRead` はデモにも登録されていますが、デモの ini はこれを付与しないため、値を読むには利用者自身の ini 追記が要ります。製品版の応答が、省いた説明を読むのに必要な許可として `AIBehaviorProjectCodeExecution` を挙げる箇所で、デモ版は代わりに `NotInThisEdition` を返します。
+
+#### 現在の状態（3）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `ListBehaviorTreeAgents` | 対象のプレイワールドで BehaviorTree を実行しているアクターを、それぞれの BehaviorTree コンポーネントと、ツリーが一時停止中かどうかとともに列挙します。一時停止中のツリーは含まれ、停止済みのツリーや一度も開始されていないツリーは含まれません。`MaxEntries` は 1〜4096（既定 256）。応答には `AgentCount`・`AgentsTotalCount`・`AgentsTruncated` が入り、artifact に全件が入ります。クライアント側のプレイワールドのように AI システムが無いワールドでは空の一覧を返します。エンジンの状態が更新の途中かもしれない間（モーダルダイアログや長い処理がゲームループを止めている、またはワールドが Tick の途中）は何も読まず、`Availability` は `NotAtSafePoint` です。返った名前を、ほかのコマンドの `ActorIdentifier` に使います |
+| 🆓 `GetActiveBehaviorTreeNode` | 1 つのアクターの BehaviorTree のアクティブなノードと、そこからルートまでの経路を、`IsRunning` と `IsPaused` とともに返します。`DumpBehaviorTreeState` の軽量版で、説明も判定も Blackboard も読まず、返しません。応答と artifact は同じ結果を持ちます |
+| 🆓 `DumpBehaviorTreeState` | 既定の観測が答えてよい範囲の、1 つのアクターの BehaviorTree の全体像。`IsRunning`・`IsPaused`・`IsRestartPending`・`IsAbortPending`、ツリーインスタンスのスタック（サブツリーは別のインスタンス）— 各インスタンスの `TreeAsset`、アクティブなノードとルートまでの経路、`ActiveNodeType`（`Composite`・`ActiveTask`・`AbortingTask`・`InactiveTask`）、有効な補助ノード（Decorator と Service）、並列タスクとその `Status` — を返します。Blackboard のキー定義は、Blackboard に届く限り、ツリーが動いていなくても返ります。各ノードは `InstanceIndex`・`TreeAsset`・`ExecutionIndex`・`NodeName`・`ClassPath`・`NodeRole` を持ちます。既定の観測で説明してよいノードには `StaticDescription` と `RuntimeDescription` を付け、アクティブノードからルートまでの経路上の Decorator と有効な補助 Decorator には `Verdict`（`Passed`・`Failed`・`Unknown`）を付けます。それ以外のノードには、省いた理由（`DescriptionOmittedReason` / `VerdictUnknownReason`）と、それを出せる Capability（`RequiresCapabilities[]`）を返します — [既定の観測が省くもの](#既定の観測が省くもの) を参照してください。`MaxEntries`（1〜4096、既定 256）が説明するノード数の上限です。応答には各一覧の先頭の項目が入り、artifact に全件が入ります。ツリーが開始されていない（`Availability: NotRunning`）、またはエンジンの状態が更新の途中かもしれず読まなかった（`NotAtSafePoint`）場合は、エラーではなく縮退した結果を返します |
+
+#### Blackboard の値（1）— `RuntimeInspect` と `BlackboardValueRead` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `GetBlackboardValues` | 1 つのアクターの Blackboard の全キーの値と、実行中のノードのうち Blackboard の値を表示する説明文の全文を返します。標準のキー型は型付きの値で返ります（`Bool`・`Int`・`Float`・`Name`・`String`・`Vector`・`Rotator`・`Enum`・`NativeEnum`・`Object`・`Class`・`Struct`）。`Object` / `Class` キーは、空の参照（`Empty`）、生きている参照（`Live`）、破棄済みの参照（`Destroyed`）を区別します。`Struct` キーは、構造体の書き出し関数を呼ばず、決まった上限の中でフィールドごとに書き出します。プロジェクトが定義した型のキーは型名だけを返し、`RequiresCapabilities: ["AIBehaviorProjectCodeExecution"]` を付けます（デモ版は `NotInThisEdition`）。ここで説明文を作れないノードは、理由と、それを出せる Capability とともに列挙します。`MaxEntries`（1〜4096、既定 256）がキー数の上限です。Blackboard アセットが未設定の Blackboard コンポーネントは、キー無しと `BlackboardAvailability: NoAsset` を返します。Blackboard コンポーネントが無いアクターは `NotFound` です。秘密と判定したキーと、それを参照するノードの説明は `***` と `IsMasked: true` で返り、平文には [秘密値の平文での読み取り](#reading-secret-values) の 3 つの層（`IncludeSecretValues`、`SecretValuesOffset`）が要ります。[Blackboard の値の読み方](#blackboard-の値の読み方) と [秘密の Blackboard キーとノードの説明](#秘密の-blackboard-キーとノードの説明) を参照してください |
+
+#### プロジェクトのコード（1）— `RuntimeInspect`・`BlackboardValueRead`・`AIBehaviorProjectCodeExecution` が必要
+
+デモ版には含まれません。
+
+| コマンド | 説明 |
+|---|---|
+| `DescribeBehaviorTreeWithProjectCode` | 他のコマンドが、作るのにプロジェクトのコードを実行するため省いたものを、1 つのアクターについて説明します。プロジェクトのノードと Blueprint ノードの静的・実行時の説明、プロジェクトのコードに届くエンジンの Decorator の判定、プロジェクトが派生させた BehaviorTree コンポーネントクラスの実行時の説明と判定、プロジェクトが定義した型の Blackboard キーの値です。これらのいずれかが当てはまる実行中のノードだけを列挙します。裏にあるエンジンのコードを確かめていないため、どのコマンドも作らない出力は、呼ばずに理由（`EngineCallNotVerified`）とともに列挙します。`MaxEntries`（1〜4096、既定 256）が説明するノード数の上限で、上限を超えたノードは呼びません。⚠️ **プロジェクトのコードを実行するため、実行中にツリーが変わることがあります。** 呼び出しの前にそのつど、ツリーを確かめ直します。実行中でなくなったノードは省いて `NodeDeactivatedDuringProjectCode` で報告し、ツリーや Blackboard が変わった場合（ツリーが停止した、Blackboard アセットが差し替えられた、キーの型が変わった、アクターを指すキーの指す先が変わった）は `TreeChangedDuringProjectCode` で説明を打ち切り、それまでに作った結果を返します。Blackboard の値が書き換えられただけでは打ち切らず、以降の説明は書き換え後の値で作ります。読み取り専用ではありません。安全ポリシーの読み取り専用モードでは `PolicyViolation`、モーダルダイアログや長い処理がゲームループを止めている間は `NotAllowed` で拒否されます（運用者の starved tick 許可リストでその間も実行できるようにしていても、何も読まず `NotAtSafePoint` を返します）。BehaviorTree コンポーネントが無いアクターは `NotFound` です。`GetBlackboardValues` と同じく `IncludeSecretValues` と `SecretValuesOffset` を取ります。プロジェクトが定義した型のキーの値は、キーの名前が秘密と判定されないとき、または 3 つの層がすべて平文を許すときだけ求め（プロジェクトのコードが走ります）、それ以外では `***` になり、そのキーにプロジェクトのコードは呼びません。秘密のキーを参照するノードの実行時の説明も `***` です。[秘密の Blackboard キーとノードの説明](#秘密の-blackboard-キーとノードの説明) を参照してください |
+
+#### 記録（3）— `RuntimeInspect` が必要
+
+記録は、開始したセッションのものです。ほかのセッションからはその ID が `NotFound` になり、存在するかどうかも分かりません。記録は、ワールドの Tick ごとに、全アクターの Tick が終わった後でツリーを 1 回読み、変化したものを保存します。Blackboard の値は記録しません。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `StartBehaviorTreeCapture` | 1 つのアクターの BehaviorTree が時間とともにどう変わるかを、呼び出したセッションが所有する記録として開始し、その `CaptureId` を返します。ツリーが停止中・未開始でも始められ、開始されたときにその開始が記録されます。`MaxDurationSeconds`（1〜600、既定 120）、`BufferCapacity`（64〜16384、既定 4096。古いものを捨てて数えるまでに保持するエントリ数）、`ReplaceExisting`（既定 `false`。同じコンポーネントの 2 本目の記録を拒否して最初のものを示す。`true` ならその記録を止めて新しく始める）。1 セッションが同時に記録できる BehaviorTree は 8 本、1 ワールドの記録中の capture は全セッション合計で 32 本までで、停止した capture は 30 分保持されます。最初のエントリは開始時点の状態を表す `Baseline` です。その時点でエンジンの状態が更新の途中かもしれない場合も記録は始まり、Baseline はゲームが進んだ後の最初の読み取りで取られ、応答は `BaselinePending: true` を返します。記録は、`MaxDurationSeconds` に達したとき、プレイセッションが終わったとき、コンポーネントが破棄されたときに自動で止まります。アクターに BehaviorTree コンポーネントが無ければ `NotFound` です |
+| 🆓 `GetBehaviorTreeEventLog` | capture のエントリを、古いものから、`SinceSequence`（既定 0）以降について読みます。`CaptureId`（必須）は `StartBehaviorTreeCapture` が返した ID です。`MaxEntries` は 1〜4096（既定 256）。応答には読んだ分の先頭 50 件が入り、artifact にはその読み取りの全エントリが入ります。`NextSequence` は artifact の最後のエントリの続きを読むための `SinceSequence` です。`SinceSequence` 以降のエントリが読まれる前に捨てられた場合は `bGap` が true になり、`DroppedCount` は capture の容量、または 1 回のツリー読み取りが生むエントリ数の上限のために捨てられた件数を数えます。応答には capture の `State`、停止した理由（`EndReason`）、`OldestAvailableSequence`、`BaselinePending`、`RecordingSeconds`、`Limitations[]` も入ります。プレイセッションの終了後も使えます。未知・期限切れ・他人の `CaptureId` は、どれなのかを明かさず `NotFound` です |
+| 🆓 `StopBehaviorTreeCapture` | capture を止め、その最終状態 — 止まった理由、Baseline が取れたか、記録時間、連番の管理 — を返します。すでに止まっている capture の停止は成功し、最初の終了理由（`Stopped`・`DurationLimit`・`WorldTornDown`・`Replaced`・`TargetDestroyed`）を保ちます。プレイセッションの終了後も使えます。1 セッションが保持する停止済み capture は最大 4 本で、古いものから捨てられます。未知・期限切れ・他人の `CaptureId` は、どれなのかを明かさず `NotFound` です |
+
+#### 既定の観測が省くもの
+
+`DumpBehaviorTreeState` と記録は、安全だと確かめられたノードだけを説明します。ノードのクラスがプラグインの確認済みのもので、参照する Blackboard キーがすべて標準の型であることが条件です。それ以外のノードは、説明が空、判定は `Unknown` になり、応答に理由と、それを出せる許可が入ります。
+
+| 理由（`DescriptionOmittedReason` / `VerdictUnknownReason`） | 意味 | 読む方法 |
+|---|---|---|
+| `BlackboardValueReadRequired` | 説明が Blackboard の値を表示してしまう — キーの値を表示するエンジンのノードや、Blackboard キーに結び付けたパラメータ（残り時間などが値から導かれる） | `GetBlackboardValues`（`BlackboardValueRead` が必要） |
+| `ProjectCodeExecutionRequired` | 作るのにプロジェクトのコードを実行する — プロジェクトや Blueprint が定義したノード、プロジェクトが定義した型・構造体・列挙型のキーを参照するノード、判定がプロジェクト側のオブジェクトを呼ぶエンジンの Decorator（たとえば Blackboard キーが指すアクターのゲームプレイタグを調べるもの） | `DescribeBehaviorTreeWithProjectCode`（`AIBehaviorProjectCodeExecution` が必要） |
+| `ProjectDerivedComponent` | プロジェクトが派生させた BehaviorTree コンポーネントクラスで動いていて、その実行時の説明と判定をエンジンのものと同じとは扱えない | `DescribeBehaviorTreeWithProjectCode` |
+| `EngineCallNotVerified` | 説明や判定を呼んで安全か確かめていない、または安全でないと分かっているエンジンのノード（たとえばループ Decorator の実行時の説明）。どのコマンドも呼ばない | なし |
+| `NodeMemoryUnavailable` | ノードが実行中のツリーのために持つメモリに届かなかったため、そのノードに問い合わせなかった | なし |
+
+Blackboard キーに結び付いたノードでも、キーの型を確かめられない場合 — BehaviorTree コンポーネントに Blackboard アセットが無い、キーがアセットに無い、ノードが期待する型がキーの型と食い違う — は、許可を与えても読めるようにならないため、許可の理由ではなく `EngineCallNotVerified` になります。デモ版では `RequiresCapabilities` に `AIBehaviorProjectCodeExecution` は現れず、`NotInThisEdition` になります。
+
+#### Blackboard の値の読み方
+
+- **キー定義の `IsSet`**（`DumpBehaviorTreeState`・`GetBlackboardValues`）は、`Vector`・`Rotator`・`Object`・`Class` のキーでは `true` / `false`、それ以外の型では `null`（不明）です。ゼロや空の値と未設定を区別できないためです。`Object` / `Class` では、破棄済みのオブジェクトを指す参照も未設定として数えます。`GetBlackboardValues` は、空の参照と破棄済みの参照を区別して返します。`Limitations` の `IsSetNotDeterminable` がこれを示します。
+- **構造体のキー**は、フィールドごとに書き出します。入れ子の構造体はさらに 1 段だけ展開し、それより深いものは型名で書きます。構造体の中の、実行時に種類が決まる構造体（インスタンス化された構造体やプロパティバッグ）は展開せず、`NestedInstancedStructNotExpanded` が示します。
+- **列挙型のキー**は、数値と列挙子の名前を返します。Blueprint で定義した列挙型では、名前はエディタで付けた表示名ではなく内部名です（`UserDefinedEnumNamesAreInternal`）。エンジンで非推奨のネイティブ列挙型キーは値の領域を持たないため、値の代わりに `ValueOmittedReason` で読めない理由を返します。
+- **上限。** 構造体キーの中のコンテナは先頭 32 要素まで、文字列は 1024 文字で切り、1 つのキーの値は 64 KiB、1 回の応答は 256 KiB までです。収まらないものは切るか省き、その旨の印を付けます。参照はパスとして書き、たどりません。
+- **アセットが無い Blackboard コンポーネント**は、キー無しの `BlackboardAvailability: NoAsset` を返します。**Blackboard コンポーネントが無い**場合、`DumpBehaviorTreeState` は `NoComponent`、`GetBlackboardValues` は `NotFound` です。
+
+#### 秘密の Blackboard キーとノードの説明
+
+`GetBlackboardValues` と `DescribeBehaviorTreeWithProjectCode` は、[秘密値の平文での読み取り](#reading-secret-values) の方法で秘密を伏せます。どちらも、そのために `IncludeSecretValues` と `SecretValuesOffset` を取ります。
+
+- **キーは名前で秘密かどうかを判定します**（他のすべての秘密の読み取りと同じ語）。Struct のキーは、中身でも判定します。プロジェクトが定義した型のキーの中は調べません。秘密と判定したキーの値は、型によらず `Value: "***"` と `IsMasked: true` で、`<Actor>/Blackboard/<Key>` が `MaskedFields` に載ります。
+- **秘密のキーを参照するノードの実行時の説明**（名前が秘密と判定される Blackboard キーに束縛されたパラメータを持つノード）は、丸ごと伏せられます。`RuntimeDescription: "***"` と `IsMasked: true` になり、`MaskedFields` に `<Actor>/Nodes/<InstanceIndex>.<ExecutionIndex>.RuntimeDescription` として載ります。キーの参照を最後まで走査できなかったノードも、秘密のキーを参照しないと示せないため伏せます。秘密のキーを参照しないノードは従来どおり説明され、静的な説明（`StaticDescription`）は伏せません。キーの値ではなく、ノードの設定を表すためです。プロジェクトが書いたノードが、パラメータを介さずにキーを名前で読んで表示することがあります。走査はそれを見つけられないため、そのような説明は、ノードがパラメータでも秘密のキーを参照しているときだけ伏せられます。
+- **`DescribeBehaviorTreeWithProjectCode` の、プロジェクトが定義した型のキー。** このコマンドは、そのようなキーの値をプロジェクトのコードに求めます。キーの名前が秘密と判定されるときは、3 つの層がすべて平文を許さない限り、そのコードを**呼びません**。キーは `***` になります。
+- **平文**は `Result.SecretFieldValues` にだけ、`MaskedFields` と同じ名前（キーの値、または説明文）で返ります。artifact といつもの場所には `***` が残ります。返らないときは `Result.SecretValuesWithheldReason` が理由を示します。`DescribeBehaviorTreeWithProjectCode` の 3 つの層は `GetBlackboardValues` と同じです。`IncludeSecretValues: true`、Capability `SecretValueRead`、安全設定 `AllowSecretValueRead` です。どちらかの引数の型が違うと `InvalidParams` になり、何も読まず、プロジェクトのコードも走らず、artifact も保存されません。`DumpBehaviorTreeState` と `GetActiveBehaviorTreeNode` は、キーの値も、キーに束縛された説明も返さないので、変わりません。
+- **上限。** `DescribeBehaviorTreeWithProjectCode` の `Data` は、先頭から `MaxEntries` 個のノードとキーを残しますが、`MaskedFields` は、`Data` が上限で省いたものも含め、その呼び出しが読んだ伏せたキーとノードをすべて一覧します。
+
+#### 実行時のノードをエディタのアセットと突き合わせる
+
+実行時の応答のノードは、`TreeAsset` と `ExecutionIndex` の組で識別されます。同じ番号を Editor コマンドの `GetBehaviorTreeNodeList` と `GetBehaviorTreeSubtree`（[`UAIP.Editor.BehaviorTree`](#uaipeditorbehaviortree)）が、そのアセットをトップレベルのツリーとして実行したときの番号として、PIE を開かず、アセットを保存せずに返します。実行時の組をそこで探せば、アセット上のノードが分かります。`GetBehaviorTreeNodeProperties` に出る番号は別の値で、突き合わせには使えません。
+
+番号を付けられないノードは `ExecutionIndex: null` と `ExecutionIndexUnavailableReason` を返します。理由は次のどれかです。
+
+| `ExecutionIndexUnavailableReason` | 意味 |
+|---|---|
+| `ContextDependentInjectedDecorator` | アセットの根に付いた Decorator。別のツリーから呼ばれたときにだけ働き、番号は呼ぶ側のツリーで決まるので、呼ぶ側のアセットで探します |
+| `NotInCompiledTree` | グラフにはあるが、アセットが実行するツリーにはまだ入っていないノード（追加した直後など） |
+
+#### BehaviorTree の応答に共通のフィールド
+
+| フィールド | 意味 |
+|---|---|
+| `CapturedAt`・`Frame`・`NetMode`・`WorldContext`・`PIEInstance`・`WorldTimeSeconds` | 状態をいつ・どこで読んだか: ISO 8601 の UTC 時刻、エンジンのフレーム番号、ネットモードとワールドコンテキスト、PIE インスタンス（PIE 外では省略）、ワールドの時間 |
+| `Actor`・`Component` | 観測したアクターと BehaviorTree コンポーネント |
+| `Availability` | `Running`、`NotRunning`（ツリーが未開始、または停止済み。インスタンスとノードは空、Blackboard のキー定義は返る）、`NotAtSafePoint`（エンジンの状態が更新の途中かもしれず、何も読まなかった。ダイアログや読み込みが終わってから呼び直す）。一時停止中のツリーは `IsPaused: true` の `Running` です。`AvailabilityReason` に理由が文章で入ります |
+| `BlackboardAvailability` | `Available`・`NoAsset`・`NoComponent`・`NotAtSafePoint` |
+| `Limitations[]` | 返した内容についての注意。`Code` と、場合によって `Detail` を持つ |
+
+`Limitations[].Code` は次のいずれかです。
+
+| `Code` | 意味 |
+|---|---|
+| `InstanceWithoutTasksNotVisible` | タスクを 1 つも含まないツリーインスタンス（サブツリーの段）は見えない。検出できたときに報告され、検出できない並び方もある |
+| `SubTickTransitionsNotVisible` | 記録は Tick ごとに 1 回ツリーを読むので、1 フレームの中でツリーが何度も動いても最後の状態しか見えない |
+| `ReasonNotRecorded` | 記録は何が変わったかを残すが、なぜ変わったかは残さない |
+| `NotPolledWhileWorldPaused` | ゲームの一時停止中は記録を読まない。その間の変化は再開後にまとめて現れる |
+| `BaselineNotTaken` | 最初の読み取りの前に記録が止まったため、`Baseline` エントリが無い |
+| `NodeDeactivatedDuringProjectCode` | プロジェクトのコードの実行中に実行中でなくなったノードを、`DescribeBehaviorTreeWithProjectCode` が省いた |
+| `TreeChangedDuringProjectCode` | プロジェクトのコードがツリーや Blackboard を変えたため、`DescribeBehaviorTreeWithProjectCode` が打ち切った。応答にはそれまでの結果が入る |
+| `NotAtSafePoint` | エンジンの状態が更新の途中かもしれなかったため、読まなかった |
+| `NestedInstancedStructNotExpanded` | 構造体の値の中の、実行時に種類が決まる構造体は展開されない |
+| `IsSetNotDeterminable` | 未設定とゼロ値を区別できないキー型では `IsSet` が `null` |
+| `UserDefinedEnumNamesAreInternal` | Blueprint で定義した列挙型の列挙子の名前は内部名 |
+
+**一覧の切り詰めの印。** `ListBehaviorTreeAgents`・`DumpBehaviorTreeState`・`GetBlackboardValues`・`DescribeBehaviorTreeWithProjectCode` の外側の一覧（`Agents`・`Nodes`、Blackboard のキーの一覧）には、[応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の 2 つの印が付きます。
+
+- `AgentsTruncated`・`NodesTruncated`・`KeysTruncated` は、`MaxEntries` や取得時の絶対上限で一覧が切られたときだけ `true` です。`Data` の件数の上限（先頭 50 件）だけで切った場合は `false` で、`Data` と artifact に同じ値が付きます。`AgentsTotalCount`・`NodesTotalCount` などの総数の値は変わりません。
+- `AgentsDataEntriesTruncated`・`NodesDataEntriesTruncated`・`KeysDataEntriesTruncated` は `Data` にだけ付く bool で、`Data` が artifact より少ない件数を載せたとき `true` です。全件は artifact にあります。
+- インスタンスの内側の一覧（`ActivePath`・`AuxNodes`・`ParallelTasks`）は `Data` と artifact で上限が同じなので、`Truncated` だけで `DataEntriesTruncated` は付きません。構造体キーの `Truncated` と文字列キーの `Truncated`（切ったときだけ付く）は、それぞれの値を切ったことを表し、意味は変わりません。
+- `GetBehaviorTreeEventLog` は `Truncated` を使いません。`EntriesReturned`（読み取りが返したエントリ数。`Data` と artifact で同じ値）と `EntriesInData`（その文書が載せたエントリ数。`Data` は先頭 50 件まで）の差で、`Data` が全件を載せたかが分かります。続きは `NextSequence` から読みます。
+
+記録のエントリは `Sequence`・フレーム・時刻と `Kind` を持ちます。`Kind` は `Baseline`・`TreeStarted`・`TreeStopped`・`Paused`・`Resumed`・`InstancePushed`・`InstancePopped`・`ActiveNodeChanged`・`ActiveNodeTypeChanged`・`AuxNodeActivated`・`AuxNodeDeactivated`・`ParallelTaskChanged`・`RestartPendingChanged`・`AbortPendingChanged` です。`Baseline` エントリはツリーの状態を `Snapshot` に持ち、開始時ではなく開始後の最初の読み取りで取った `Baseline` には `Deferred` が付きます。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータが欠けている・型が違う・範囲外・未知のキー。`TargetNetRole` / `TargetPIEInstance` を満たせない。範囲外の記録時間・容量・上限は丸めずに拒否 |
+| `NotAllowed` | プレイワールドが動いていない（`PIE is not running.`）、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い。記録の上限（セッション単位・ワールド単位）に達した、またはコンポーネントがすでに記録中で `ReplaceExisting` が無い。モーダルダイアログや長い処理がゲームループを止めている間の `DescribeBehaviorTreeWithProjectCode` |
+| `NotFound` | 識別子に一致するアクターが無い（クライアント側のワールドでは、サーバー側の候補をメッセージに添える）。アクターとそれと対になるコントローラーまたは Pawn のどれも BehaviorTree / Blackboard コンポーネントを持っていない。未知・期限切れ・形式不正・他人の `CaptureId` |
+| `ExecutionFailed` | 識別子に一致するアクターが複数ある。artifact を書き出せなかった（`StartBehaviorTreeCapture` と `StopBehaviorTreeCapture` では、保存先そのものを解決できない場合に限る） |
+| `CapabilityNotAvailable` | `RuntimeInspect`・`BlackboardValueRead`・`AIBehaviorProjectCodeExecution` のいずれかが付与されていない。メッセージに足りないものの名前が入る |
+| `PolicyViolation` | 必要な Capability が安全ポリシーで拒否されている、または `DescribeBehaviorTreeWithProjectCode` を読み取り専用モードで呼んだ |
+
+成功した呼び出しは JSON の artifact をちょうど 1 つ保存します（記録の `StartBehaviorTreeCapture` と `StopBehaviorTreeCapture` は補助の artifact を保存します）。失敗した呼び出しは何も保存しません。
+
+---
+
+## UAIP.Runtime.StateTree 🧩
+
+AI が実行している StateTree を観測するコマンド群です。どの状態がアクティブか、どのタスクが動いているか、どの遅延遷移が待っているか、ツリーが時間とともにどう動いたか、そして許可すれば保持している値が分かります。`StateTree` と `GameplayStateTree` の両プラグインが必要です。どちらかが無効だとコマンドは登録されず、呼ぶとプラグイン名を添えた `CommandNotFound` を返します（状態は `UAIP.Core.ListIntegrations` で分かります）。デモ版には含まれません。どのコマンドも読むだけです。コマンドは、プレイワールドのアクターの `UStateTreeComponent` 系（`UStateTreeAIComponent` を含む）を対象にし、[`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。ただし `GetStateTreeEventLog` と `StopStateTreeCapture` は `CaptureId` を受け取り、プレイワールドを解決しないので、プレイセッションの終了後も使えます。
+
+**Capability。** 7 つすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`DumpStateTreeInstanceData` は、ツリーのパラメータやノードの値がプロジェクトのデータであるため、`StateTreeInstanceDataDump`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-statetree-の観測) を参照してください。
+
+**コンポーネントの探し方。** `ActorIdentifier` はアクターのラベルまたはオブジェクト名です。コンポーネントはまずそのアクターから探し、無ければ、Pawn なら AI コントローラーから、AI コントローラーならその Pawn から探します（`UStateTreeAIComponent` は AI コントローラーに、`UStateTreeComponent` は Pawn に付くことが多いためです）。複数見つかった場合は `ComponentName`（コンポーネントのオブジェクト名）で 1 つを選ぶ必要があります。省略すると `InvalidParams` で失敗して候補を列挙し、どの候補にも一致しない名前は候補付きの `NotFound` です。`ListStateTreeComponents` が使うべき名前を返します。
+
+**プロジェクトが派生させたコンポーネントクラスは読みません。** そのクラスがエンジンのコンポーネントと同じ方法でツリーを動かしているかを確かめる手段がエンジンに無く、誤って読むとエンジン自身の検証機能を止めてしまうためです。観測のコマンドは読まずに成功し、その旨を返します（`Availability: ProjectDerivedComponent` と、`Limitations` の `ProjectDerivedComponentNotVerified`）。`ListStateTreeComponents` は `RunStatus: null` と理由付きでそれを列挙します。`StartStateTreeCapture` は記録を始められますが、そのクラスが別の Owner や Tree の組でツリーを動かしていると何も記録されません。
+
+#### 現在の状態（3）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `ListStateTreeComponents` 🧩 | 対象のプレイワールドのアクターの StateTree コンポーネントを、アクター・コンポーネント・クラス・実行するよう設定されたツリーアセット・`RunStatus` とともに列挙します。読まないコンポーネント（プロジェクトが派生させたクラス、リンクされていないツリー）の実行状態は `null` で、`RunStatusUnavailableReason` が付きます。`MaxEntries` は 1〜4096（既定 256）。応答には先頭のコンポーネントが入り、artifact に全件が入ります。エンジンの状態が更新の途中かもしれない間（モーダルダイアログや長い処理がゲームループを止めている、またはワールドが Tick の途中）はアクターを走査せず、一覧も返さず、`Availability` は `NotAtSafePoint` です |
+| `GetActiveStateTreeState` 🧩 | 1 つのコンポーネントの StateTree のアクティブな状態を返します。`RunStatus` と、アクティブなフレームスタックのフレームごとに、ツリーアセットとルートから各アクティブ状態までの経路です。`DumpStateTreeState` の軽量版で、タスク・遅延遷移・次の Tick は含みません。応答と artifact は同じ内容です |
+| `DumpStateTreeState` 🧩 | 1 つのコンポーネントの StateTree の全体像。`RunStatus`（`Running`・`Stopped`・`Succeeded`・`Failed`・`Unset`）と `LastTickStatus`、アクティブなフレームスタックの `Frames[]`（各フレームのツリーアセットと、アクティブな状態の名前・タグ・`StateType`（`State`・`Group`・`Linked`・`LinkedAsset`・`Subtree`）・経路）、アクティブな状態のタスクとその `Status`、待機中の遅延遷移（遷移先の状態と `RemainingSeconds`）、`NextScheduledTickSeconds` を返します。応答には先頭のフレームが入り、artifact に全件が入ります。ツリーが開始されていない、コンポーネントにツリーが無い・実行の準備ができていない、プロジェクトが派生させたクラスである、またはエンジンの状態が更新の途中かもしれず読まなかった場合は、エラーではなく縮退した結果を返します |
+
+#### インスタンスデータ（1）— `RuntimeInspect` と `StateTreeInstanceDataDump` が必要
+
+| コマンド | 説明 |
+|---|---|
+| `DumpStateTreeInstanceData` 🧩 | 1 つのコンポーネントが持つ値 — ツリーのパラメータ、各アクティブな状態のパラメータ、各アクティブなノードのインスタンスデータ — を、値を持つプロパティのブロック（`Blocks[]`。それぞれ `BlockKind` を持つ）として返します。値はリフレクションで読み、ノードやその他のプロジェクトの型の関数は実行しません。構造体は 1 段展開し、配列・セット・マップは先頭の要素を残し、長い文字列は切り、バイト予算に収まらない値は切るか省きます（`bOmitted`）。切ったものは元の件数とともに報告します。構造体の中の、実行時に種類が決まる構造体は展開しません（`NestedInstancedStructNotExpanded`）。`MaxEntries`（1〜4096、既定 256）がブロック数の上限です。応答には先頭のブロックが入り、artifact に全件が入ります。縮退の仕方は `DumpStateTreeState` と同じです。出てくるものについては [安全性と Capability](safety.md#runtime-statetree-の観測) を参照してください |
+
+#### 記録（3）— `RuntimeInspect` が必要
+
+記録は、開始したセッションのものです。ほかのセッションからはその ID が `NotFound` になり、存在するかどうかも分かりません。
+
+| コマンド | 説明 |
+|---|---|
+| `StartStateTreeCapture` 🧩 | 1 つのコンポーネントの StateTree が時間とともに何をするかを、呼び出したセッションが所有する記録として開始し、その `CaptureId` を返します。記録はエンジンの StateTree のデバッグ通知から作られます。`Kinds` で記録するエントリの種類を絞れます（既定は全種類。空の一覧や未知の種類は `InvalidParams`）。種類は `StateEntered`・`StateExited`・`StateCompleted`・`StateSelected`・`Transition`・`EventSent` です。`MaxDurationSeconds`（1〜600、既定 120）、`BufferCapacity`（64〜16384、既定 4096）、`ReplaceExisting`（既定 `false`）は `StartBehaviorTreeCapture` と同じです。1 セッションが同時に記録できる StateTree コンポーネントは 8 本、1 ワールドの記録中の capture は全セッション合計で 32 本までで、停止した capture は 30 分保持されます。未開始のツリーや、インスタンスデータが未初期化のツリーも記録でき、開始された後の動きが記録されます。記録は、`MaxDurationSeconds` に達したとき、プレイセッションが終わったとき、コンポーネントが破棄されたとき、コンポーネントが別のツリーを実行するよう設定されたとき（`TargetChanged`）に自動で止まります。**次の場合は `NotAllowed` で失敗します** — 安全な地点でない瞬間（ダイアログや読み込みが終わってから呼び直す）、コンポーネントに StateTree が設定されていないとき（設定してから開始し直す）、エンジンが StateTree のデバッグ通知を提供しない構成のビルド（開発用のエディタビルド（Development または DebugGame）を使う。ほかのコマンドは影響を受けない）。アクターに StateTree コンポーネントが無ければ `NotFound` です |
+| `GetStateTreeEventLog` 🧩 | capture のエントリを、古いものから、`SinceSequence`（既定 0）以降について読みます。`CaptureId`（必須）は `StartStateTreeCapture` が返した ID です。`MaxEntries` は 1〜4096（既定 256）。応答には読んだ分の先頭 50 件が入り、artifact にはその読み取りの全エントリが入ります。`NextSequence` は artifact の最後のエントリの続きを読むための `SinceSequence` です。`bGap` と `DroppedCount` は `GetBehaviorTreeEventLog` と同じです。応答には capture の状態、停止した理由、記録時間、`Limitations[]` も入ります。プレイセッションの終了後や、エンジンがデバッグ通知を提供しない構成のビルドでも使えます。未知・期限切れ・他人の `CaptureId` は、どれなのかを明かさず `NotFound` です |
+| `StopStateTreeCapture` 🧩 | capture を止め、その最終状態 — 止まった理由、記録時間、連番の管理 — を返します。すでに止まっている capture の停止は成功し、最初の終了理由（`Stopped`・`DurationLimit`・`WorldTornDown`・`Replaced`・`TargetDestroyed`・`TargetChanged`）を保ちます。プレイセッションの終了後も使えます。1 セッションが保持する停止済み capture は最大 4 本で、古いものから捨てられます。未知・期限切れ・他人の `CaptureId` は、どれなのかを明かさず `NotFound` です |
+
+エントリの種類の意味。名前から受ける印象と違うものがあります。
+
+| `Kind` | 意味 |
+|---|---|
+| `StateEntered` / `StateExited` | 状態に入った・出た。同じ状態が選び直されて実際には何も変わらないときにも記録される |
+| `StateCompleted` | 状態が完了した。1 回の完了で、アクティブな経路上のすべての状態について記録される |
+| `StateSelected` | 状態が選ばれた。選択を試みた時点の通知で、その選択が後で取り消されることがある。状態の名前は、選ばれた状態が属するフレームのツリーから引く。そのツリーを確実に特定できないとき、または記録が登録していないリンク先アセットのときは、名前を付けず状態の番号だけを記録する |
+| `Transition` | 遷移が起きた: 遷移元の状態（分かる場合。`SourceState`）、遷移先の状態、きっかけの種類 `Trigger`（`OnStateCompleted`・`OnStateSucceeded`・`OnStateFailed`・`OnTick`・`OnEvent`・`OnDelegate`）、遷移が待つよう設定された `RequiredEventTag`、`Priority`、`DelaySeconds`、遷移の出どころ `SourceType`（`Asset`・`ExternalRequest`・`Internal`）。ツリーの開始・停止や強制的な遷移による状態の変化は遷移として記録されず、入った・出たのエントリだけが残る |
+| `EventSent` | ツリーにイベントが送られた: `EventTag` と、中身の型名（`EventPayloadType`）。中身の値は記録しない |
+
+状態に入ってからの経過時間はどこにも保持されていません。その状態の `StateEntered` エントリの時刻から計算してください。
+
+#### StateTree の応答に共通のフィールド
+
+| フィールド | 意味 |
+|---|---|
+| `CapturedAt`・`Frame`・`NetMode`・`WorldContext`・`PIEInstance`・`WorldTimeSeconds` | 状態をいつ・どこで読んだか。BehaviorTree のコマンドと同じ |
+| `Actor`・`Component`・`TreeAssetPath` | 観測したアクター・StateTree コンポーネント・ツリーアセット |
+| `Availability` | `Running`、`NotRunning`（ツリーが未開始）、`NoTree`（コンポーネントにツリーが無い）、`NotInitialized`（インスタンスデータが未初期化）、`Unreadable`（コンポーネントを読めなかった — 所有者がいない、破棄中、エンジンの更新で読み取りに必要な内部の項目が見つからない。`NotInitialized` とは別）、`ProjectDerivedComponent`、`NotAtSafePoint`。`AvailabilityReason` に理由が文章で入ります |
+| `Limitations[]` | 返した内容についての注意。`Code` と、場合によって `Detail` を持つ |
+
+`Limitations[].Code` は次のいずれかです。
+
+| `Code` | 意味 |
+|---|---|
+| `ProjectDerivedComponentNotVerified` | コンポーネントクラスをプロジェクトが派生させている。観測では状態を読まなかった。記録では、そのクラスが別の Owner や Tree でツリーを動かしていると何も記録されないことがある |
+| `NotAtSafePoint` | エンジンの状態が更新の途中かもしれなかったため、読まなかった |
+| `EventSentMatchedByOwnerAndTree` | イベントは Owner と Tree だけで記録に結び付けるため、同じ Owner の上で同じツリーの別の実行（コンポーネントが複数ある、BehaviorTree のタスクの中で同じツリーが動いている）に送られたイベントも記録される |
+| `TriggeringEventNotRecorded` | 遷移を実際に発火させたイベントは記録されない。遷移には、それが待つよう設定されたイベントだけが書かれる。直前の `EventSent` エントリが手がかりになる |
+| `NestedInstancedStructNotExpanded` | 構造体の値の中の、実行時に種類が決まる構造体は展開されない |
+| `TreeNotStarted` | ツリーが開始されていないので、報告する状態が無い |
+
+StateTree の記録中は、プロセス内のすべての StateTree のデバッグ通知にわずかな処理が入るため、その分 StateTree の実行が遅れ、複数のスレッドで動く StateTree の通知は 1 本ずつ順に処理されます。必要なものだけを記録し、終わったら止めてください。
+
+**一覧の切り詰めの印。** `DumpStateTreeState` の `Frames`、`ListStateTreeComponents` の `Components`、`DumpStateTreeInstanceData` の `Blocks` には、[応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の 2 つの印が付きます。
+
+- `FramesTruncated`・`ComponentsTruncated`・`BlocksTruncated` は、`MaxEntries` や取得時の絶対上限で一覧が切られたときだけ `true` です。`Data` の件数の上限（先頭 50 件）だけで切った場合は `false` で、`Data` と artifact に同じ値が付きます。`<一覧名>TotalCount` の値は変わりません。
+- `FramesDataEntriesTruncated`・`ComponentsDataEntriesTruncated`・`BlocksDataEntriesTruncated` は `Data` にだけ付く bool で、`Data` が artifact より少ない件数を載せたとき `true` です。全件は artifact にあります。
+- `GetActiveStateTreeState` の `Frames` は `Data` と artifact が同じ内容なので `FramesDataEntriesTruncated` は付きません。内側の一覧（`ActiveStates`・`Tasks`・`PendingTransitions`）とブロックの中の `Truncated` も同様で、意味は変わりません。
+- `GetStateTreeEventLog` は `TotalCount` と `Truncated` の代わりに `EntriesReturned`（読み取りが返したエントリ数。`Data` と artifact で同じ値）と `EntriesInData`（その文書が載せたエントリ数。`Data` は先頭 50 件まで）を返し、`Truncated` も `DataEntriesTruncated` も付けません。`EntriesInData` が `EntriesReturned` より小さければ、`Data` は全件を載せていません。続きは `NextSequence` から読みます。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータが欠けている・型が違う・範囲外・未知のキー。`Kinds` が空、または未知の種類を指している。アクターに StateTree コンポーネントが複数あるのに `ComponentName` が無い（候補を列挙する） |
+| `NotAllowed` | プレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い。`StartStateTreeCapture` が、安全な地点でない瞬間・ツリーが無いコンポーネント・StateTree のデバッグ通知が無い構成のビルドで呼ばれた。記録の上限に達した、またはコンポーネントがすでに記録中で `ReplaceExisting` が無い |
+| `NotFound` | 識別子に一致するアクターが無い。アクターとそれと対になるコントローラーまたは Pawn のどれも StateTree コンポーネントを持っていない。`ComponentName` がどの候補にも一致しない。未知・期限切れ・形式不正・他人の `CaptureId` |
+| `ExecutionFailed` | 識別子に一致するアクターが複数ある。artifact を書き出せなかった |
+| `CapabilityNotAvailable` | `RuntimeInspect`、または `DumpStateTreeInstanceData` の場合は `StateTreeInstanceDataDump` が付与されていない |
+| `PolicyViolation` | 必要な Capability が安全ポリシーで拒否されている |
+
+成功した呼び出しは JSON の artifact をちょうど 1 つ保存します（記録の `StartStateTreeCapture` と `StopStateTreeCapture` は補助の artifact を保存します）。失敗した呼び出しは何も保存しません。
+
+---
+
+## UAIP.Runtime.CommonUI 🧩
+
+実行中のゲームの CommonUI の状態を観測します。活性化ウィジェットのコンテナ（スタックとキュー）とそれぞれが表示しているウィジェット、ローカルプレイヤーごとに CommonUI が持つ入力の状態（アクションルーターが適用している入力モード・最前面の活性化ウィジェット・フォーカス・入力の種類・バインドされたアクション）、アクションの表示テキストです。`CommonUI` プラグイン（と、CommonUI 自身が要求する `EnhancedInput`）が必要です。無効ならコマンドは登録されず、呼ぶとプラグイン名を示した `CommandNotFound` になります。状態は `UAIP.Core.ListIntegrations` が報告します。CommonUI なしでビルドした UAIP では、コマンドは一覧に出たまま `UnavailableDetail: OptionalPluginDisabled` で断ります。デモ版にはありません。4 つとも [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付け、未知のパラメータは拒否します。PIE でも `-game` やパッケージ版でも動きます。
+
+**Capability。** 4 つとも `RuntimeInspect`（DefaultAllow）が必要です。`GetActionDisplayNames` は、テキストがゲームの表示するものなので、さらに `RuntimeWidgetTextRead`（DefaultDenied）が必要です — [ゲームビューポートの Widget](#ゲームビューポートの-ui-と-hud4) のテキストと同じ Capability です。`DescribeActivatableWidgetsWithProjectCode` は、さらに `CommonUIProjectCodeExecution`（DefaultDenied）が必要です。[安全性と Capability](safety.md#runtime-commonui-の観測) を参照してください。
+
+**既定ではプロジェクトのコードを実行しません。** 最初の 3 つのコマンドは、プロジェクトが override しうる関数を呼びません。活性化ウィジェットの getter（そのウィジェットが求める入力設定とフォーカス先）は省き、どの応答も `ProjectCodeFields`（`Omitted`・`OmittedReason: "ProjectCodeExecutionRequired"`・`RequiresCapabilities: ["CommonUIProjectCodeExecution"]`・`Command`）でそれを示します。ルーターの判定は、プロジェクトがルーターを派生させていても CommonUI 自身の判定です。それでも、エンジンの 2 つの経路は virtual 関数を通じてプロジェクトのコードに届きえます。Widget のツリーの走査（子の列挙を override したプロジェクトの Widget）と、Slate の Widget を持つ活性化ウィジェットの検索（プロジェクト独自の Slate メタデータの型）です。override しうる getter を呼ぶのは `DescribeActivatableWidgetsWithProjectCode` だけです。
+
+**`PlayerIndex` はローカルプレイヤーの番号です。** `GetInputState` と `GetActionDisplayNames` は、`PressGameViewportUIKey` と同じく、ゲームインスタンスの**ローカルプレイヤー**に番号を振ります（0 が最初）。`DumpInputState` と `EvaluateInputGateWithProjectCode` は、ワールドの**プレイヤーコントローラ**に番号を振ります。順序は、このマシンのローカルプレイヤーが先（ゲームのローカルプレイヤーの順）、ほかのプレイヤーが後（ゲームステートが挙げる順）で、どちらもいないときだけワールド自身のプレイヤーコントローラの一覧の順になります。負の番号は `InvalidParams`、どのローカルプレイヤーも持たない番号は `NotFound` で、メッセージが存在する番号を挙げます。省略すると全ローカルプレイヤーを読みます。
+
+| コマンド | 説明 |
+|---|---|
+| `DumpActivatableStacks` 🧩 | コンテナごとに、種類と順序、所有するローカルプレイヤー（`OwningPlayerIndex`。分からなければ `null`）、Slate の Widget が構築済みか・ゲーム層にあるか、それを持つ活性化ウィジェット（`ParentActivatable`）、表示しているウィジェット（`ActiveWidget`・`ActiveWidgetIsActivated`）、2 つのウィジェットの切り替えの途中か（`IsTransitioning`。切り替えの前半では `ActiveWidgetIsOutgoing` も）、スタックの RootContent、追加された順のエントリ（`IsDisplayed`・`IsActivated`・`IsModal`・`SupportsActivationFocus`・`AutoRestoresFocus`・`IsBackHandler`・`AutoActivate`）を返します。どのコンテナにも入っていない活性化ウィジェットは `UncontainedActivatedWidgets` に入ります。除いたウィジェットとコンテナは、理由ごとに `ExcludedCounts` で数えます（`PendingKill`・`DesignTime`・`NoWorld`・`OtherWorld`、まだ構築されていないコンテナは `Unconstructed`）。`IncludeUnconstructed`（既定 `false`）を渡すと、それらのコンテナも列挙します。上限: コンテナ 64、コンテナあたりのエントリ 256（表示中のエントリは必ず残す）、コンテナに入っていないウィジェット 64。`Result` は件数・`ExcludedCounts`・`Limitations` と、最初の 16 コンテナが表示しているウィジェットです |
+| `GetInputState` 🧩 | ローカルプレイヤーごとに、アクションルーターのクラス（`RouterClass`・`RouterIsEngineBaseClass`）、適用している入力モード（`InputMode`: `Menu`・`Game`・`All`・`NotApplied`）、適用しているマウスキャプチャ、活性化ウィジェットのツリーを組み直している最中か、`RouterAllowsGameInput` と判定に使った値（`GameInputDecisionEvidence`）、CommonUI が最前面として扱う活性化ウィジェット（`Leafmost`。UE 5.8 以降）、Slate ユーザーの実際のフォーカス（`Focus`）とそれが `Leafmost` の中にあるか、入力の種類（`InputType`・`RawInputType`・`GamepadName`・`IsUsingPointerInput`）、プレイヤーコントローラが無視しているもの・表示しているものを返します。ワールドに 1 つ: ゲームビューポートの入力の状態（`ViewportState`）、そのクラス、CommonUI のゲームビューポートクライアントの派生か、確かめたエンジンのクラスか、CommonUI の判定が[注入ゲート](#注入ゲート)に差し込まれているか（`GameInputGateContributorInstalled`）。`IncludeActions`（既定 `false`）を渡すと、プレイヤーごとにバインドされたアクション（名前・識別子・入力イベント・入力モード・キー・バインド先の Widget）を、表示テキスト抜きで加えます。上限: プレイヤーあたりのアクション 128、アクションあたりのキー 8（通常のキーと長押しのキーで別々に数える）。`Result` は各プレイヤーの番号・状態・入力モード・`RouterAllowsGameInput`・`Leafmost` のパスと、`ViewportClientIsCommonUIBased`・`Limitations` です |
+| `GetActionDisplayNames` 🧩 | バインドされたアクションの表示テキストです。アクションごとに、出どころの違う 3 つのテキストを返します: `ActionDisplayName`（バインドが持つ表示名）、`LegacyRowDisplayName`（アクションを定義する DataTable の行の表示名）、`InputActionDescription`（アクションを定義する Enhanced Input のアクションの説明）。無い出どころは `null` です。画面がどれを表示するかはゲーム次第なので、コマンドは選びません。プロジェクトがクラスを派生させた DataTable の行は読みません（`LegacyRowNotReadFromProjectDataTable`）。`ActionName`・`ActionIdentifier`・`InputEvent`・`InputMode`・`BoundWidget.WidgetPath` の組で、`GetInputState` の `Actions` の同じアクションと突き合わせられます。2 つのコマンドは別の時点で読むので、片方にだけアクションが出ることがあります。アクションルーターの無いプレイヤーは `Status: "Unavailable"` です。テキストは artifact にだけ書きます。`Result` は各プレイヤーの番号・状態・アクションの数と、limitation です。`RuntimeWidgetTextRead` が必要です |
+| `DescribeActivatableWidgetsWithProjectCode` 🧩 | **プロジェクトのコードを実行します。** 活性化ウィジェットが override しうる getter を呼び、`DesiredInputConfig`（`InputMode`・`MouseCaptureMode`・`MouseLockMode`・`HideCursorDuringViewportCapture`・`IgnoreMoveInput`・`IgnoreLookInput`。何も求めていなければ `null`）と `DesiredFocusTarget`（指していなければ `null`。破棄中や別のワールドの Widget なら省いて `DesiredFocusTargetExcludedReason` を付ける）を返します。`WidgetPaths` は `DumpActivatableStacks` が返す `WidgetPath` でウィジェットを指定します。1〜32 件で、各要素は `/` で始まり、単一引用符と制御文字を含まず、1023 文字以下の完全なオブジェクトパスです（外れれば要求全体が `InvalidParams`）。重複はそのまま保ち、指定したウィジェットは活性化していなくても評価します。省略するとワールドの活性化ウィジェットをすべて評価します（ゲーム層のものが先）。各対象には `Status` が付きます: `Evaluated`、`NotEvaluated`（その前でコマンドが止まった）、`NotFound`、`Excluded` と `ExcludedReason`（`PendingKill`・`DesignTime`・`NoWorld`・`OtherWorld`）。呼び出しの前後ごとにワールドとウィジェットを確かめ直します。活性化が外れただけのウィジェットは `DeactivatedDuringProjectCode` を付けて評価を続けます。ワールドかウィジェットが変わればコマンドは止まり、そこまでに評価した結果で成功を返します。`StoppedAt` がウィジェットと getter を示し、`Limitations` に `ScreenChangedDuringProjectCode`（または `NotAtSafePoint`）が入ります。上限: 対象 32。読み取り専用のコマンドではないので、安全設定の読み取り専用モードでは拒否されます。`CommonUIProjectCodeExecution` が必要です。デモ版にはありません |
+
+#### CommonUI のすべての応答に付く欄
+
+| 欄 | 意味 |
+|---|---|
+| `CapturedAt`・`Frame`・`NetMode`・`WorldContext`・`PIEInstance` | 状態を読んだ時点と場所 |
+| `Availability` | エンジンの状態が更新の途中かもしれないとき（モーダルダイアログや長い処理がゲームループを止めている、またはワールドが tick の途中）は `NotAtSafePoint`。何も読まず、成功して一覧を返しません。呼び直してください |
+| `WidgetPath` | すべてのウィジェットに付きます。`FindGameViewportWidgets` に `WithinWidgetPath` として渡すと、そのウィジェットの中を探せます |
+| `TypePath`・`Fingerprint` | ゲーム層にある構築済みのウィジェットに付きます。[ゲームビューポートの UI 入力](#ゲームビューポートの-ui-入力3)のコマンドに対象として渡せます。ゲーム層の根を解決できないときは `InGameLayer` とともに省きます（`GameLayerRootUnresolved`） |
+| `ProjectCodeFields` | プロジェクトのコードでしか作れない欄と、それを作る Capability とコマンド |
+| `XTruncated`・`XTotalCount` | 一覧を切ったときだけ、切る前の件数とともに付きます |
+| `ActionDisplayNameTruncated`・`LegacyRowDisplayNameTruncated`・`InputActionDescriptionTruncated` | テキストを切った。テキストは制御文字を除き、256 文字で切ります |
+| `Limitations[]` | 返した内容の注意点。それぞれ `Code` と、場合により `Detail` を持ちます |
+
+`Limitations[].Code` は次のいずれかです:
+
+| `Code` | 意味 |
+|---|---|
+| `NotAtSafePoint` | エンジンの状態が更新の途中だったかもしれないので読まなかった（`DescribeActivatableWidgetsWithProjectCode` では、プロジェクトのコードの実行中にエンジンが安全な地点を離れた） |
+| `GeometryFromPreviousFrame` | 位置と大きさは、最後にレイアウトしたフレームの値 |
+| `GameLayerRootUnresolved` | ゲーム層の根を解決できなかった。`InGameLayer`・`TypePath`・`Fingerprint` を省いた |
+| `TransitionStateUnavailable` | コンテナが切り替えの途中かどうかを読めなかった |
+| `ReflectedFieldUnavailable:<欄>` | 名前で読むエンジンの欄が、このエンジンの版に無かった。それに依存するものを省いた |
+| `NoLocalPlayers` | ワールドにローカルプレイヤーがいない |
+| `SlateUnavailable` | Slate が初期化されていない（描画の無いプロセスなど） |
+| `LeafmostUnavailableOnThisEngineVersion` | UE 5.7: エンジンが最前面の活性化ウィジェットを公開していないので、`Leafmost` を省いた |
+| `InputModeNotEnforced` | ゲームビューポートクライアントが CommonUI のものの派生ではないので、CommonUI の入力モードがゲーム入力の経路で適用されない |
+| `GameInputGateContributorNotInstalled` | このプロセスでは、CommonUI の判定が注入ゲートに入っていない |
+| `ViewportClientOverridesNotEvaluated` | ゲームビューポートクライアントがプロジェクトのクラス。その override は実行していないので、ビューポートの値はエンジンの実装の値 |
+| `ScreenChangedDuringProjectCode` | プロジェクトのコードの実行中にワールドかウィジェットが変わり、コマンドが止まった |
+| `LegacyRowNotReadFromProjectDataTable` | DataTable のクラスをプロジェクトが派生させているので、その行を読まなかった |
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータの型が違う・範囲外・未知のキー。`WidgetPaths` の要素が上の規則に外れる |
+| `NotAllowed` | プレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い。`DescribeActivatableWidgetsWithProjectCode` で、モーダルダイアログが開いている、またはエンジンの tick が止まっている |
+| `NotFound` | `PlayerIndex` がどのローカルプレイヤーも指さない（メッセージが存在する番号を挙げる） |
+| `CapabilityNotAvailable` | 必要な Capability が付与されていない |
+| `PolicyViolation` | 必要な Capability が安全ポリシーで拒否されている。読み取り専用モードでの `DescribeActivatableWidgetsWithProjectCode` |
+| `CommandNotFound` | `CommonUI` プラグインが無効。デモ版 |
+
+パッケージしたゲームでは、これらのコマンドは連携が組み込まれているときだけ使えます。Shipping のゲームには `.uproject` で有効にした連携だけが組み込まれ、ほかの多くの連携と違い、Shipping 以外（Development・DebugGame・Test）のゲームも同じ扱いで、UAIP をプロジェクトの `Plugins` フォルダーに置き、`.uproject` で `CommonUI` を有効にしたときだけ組み込まれます（CommonUI プラグインは無効でも起動時にネイティブの Gameplay Tag を登録し、自身のコンテンツを探すため、Shipping 以外のすべてのゲームに組み込むと、使っていないゲームで ensure が起きます）。組み込まれていないときは、ほかの任意の連携と同じく、4 つのコマンドは一覧に出たまま `OptionalPluginDisabled` で断ります。プロジェクトと一緒にコンパイルされるよう UAIP をプロジェクトの `Plugins` フォルダーに置き、`.uproject` で `CommonUI` を有効にしてください。[Capability リファレンス](safety.md#capability-リファレンス) を参照してください。
+
+---
+
+## UAIP.Runtime.ChaosDestruction
+
+実行中のゲームの Chaos 破壊を観測するコマンド群です。ワールドにどの Geometry Collection コンポーネントがあってどれだけ壊れているか、ピースごとの状態、ワールドに作用する物理 Field、破壊イベントの時系列、各ピースが抱えるひずみを返します。破壊そのものを変えることはありません。観測コマンドは読むだけで、ゲームの通知を有効にする唯一のコマンド（`EnableForcedDestructionNotify`）は後述のとおり別扱いです。エディタでは PIE の実行中に、また `-game` 起動やパッケージ版でも動作し、プラグインの依存はありません。
+
+**Capability。** すべてのコマンドが `RuntimeInspect`（DefaultAllow）を必要とします。`EnableForcedDestructionNotify` は `ChaosDestructionForceNotify`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#runtime-chaos-destruction) を参照してください。
+
+**デモ版。** `EnableForcedDestructionNotify` と Capability `ChaosDestructionForceNotify` はデモ版では提供されません。残りの 7 コマンドは提供されます。デモ版ではこのコマンドは存在せず、`CommandNotFound` を返します。
+
+**プレイワールド。** `ListGeometryCollections`、`DumpGeometryCollectionState`、`DumpChaosFieldState`、`StartDestructionCapture`、`CaptureGeometryCollectionStrain` は [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。`CaptureId` を取る 3 つの記録コマンド（`GetDestructionEventLog`、`StopDestructionCapture`、`EnableForcedDestructionNotify`）の宛先はワールドではなく記録です。
+
+**ゲーム側で破壊の通知が無効のことがあります。** Geometry Collection コンポーネントは、ゲームが対応する通知を有効にしたときだけ破壊・崩壊・衝突・除去を通知し、エンジンの既定は無効です。状態を返すコマンド（`ListGeometryCollections`、`DumpGeometryCollectionState`）はピースを直接読むので影響を受けません。記録（capture）は、サンプリングで検出できるピース単位のイベントは記録し、記録できた種類とできなかった種類、その理由を各応答の `Coverage` で報告します。ゲームを変えずにエンジン自身のイベントデータを記録したいときは `EnableForcedDestructionNotify` を参照してください。
+
+### 現在の状態（3）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `ListGeometryCollections` | 対象プレイワールドの Geometry Collection コンポーネントを、アクターパス、続いてコンポーネント名の順に 1 コンポーネント 1 エントリで列挙します。各エントリは、アクター、コンポーネント、レストコレクションのアセット、トランスフォーム数、ルートが壊れたか・どれだけ前か、状態別のピース数、ゲームが設定した通知フラグ、コンポーネントが読めるかどうかを持ちます。`StartIndex`（既定 0）と `MaxEntries` 1〜4096（既定 256）でページを選び、`IncludeClassification: false` でピース数を省けます（既定 `true`）。Data には当該ページの先頭 50 件、成果物にはページ全体が入り、続きのコンポーネントがあるうちは `NextStartIndex` がその次を指します。1 コマンドで分類するトランスフォームは最大 262144 個で、それを超えるコンポーネントは `ClassificationSkipped` を付けて数なしで列挙します。物理状態を持たないコンポーネントは、エラーではなく読めない理由つきで列挙します |
+| 🆓 `DumpGeometryCollectionState` | 1 つの Geometry Collection コンポーネントをダンプします。同じアクターの他のコンポーネントを含むコンポーネントの概要、階層レベルごとのピース数、ピースごとの状態（Active、Broken、Decayed、ClusterReleased）・動的状態・位置・回転・速度、ダメージ設定、アセットがアンカーしているトランスフォーム、コンポーネントを初期化する Field を返します。`ActorIdentifier`（必須）でアクターをラベルかオブジェクト名で指定し、アクターに複数ある場合は `ComponentName` でコンポーネントを指定します。`Indices`（トランスフォームインデックス 1〜4096 個）と `States`（`Sleeping`、`Kinematic`、`Static`、`Dynamic`、`Broken`、`Decayed`、`ClusterReleased`、`Active`、`Inactive` のいずれか。大文字小文字は区別しません）でピースを絞り、`StartIndex` と `MaxEntries` 1〜4096（既定 256）でページを選び、`IncludeTransforms` と `IncludeVelocities`（既定 `true`）で位置・回転、または速度を省けます。Data には当該ページの先頭 50 ピース、成果物にはページ全体が入り、続きのピースがあるうちは `NextStartIndex` がその次を指します。ピースがキネマティックや静的である理由（アセット・Field・スクリプト）は区別できません。物理状態を持たないコンポーネントは、エラーではなく読めない理由つきでダンプします |
+| 🆓 `DumpChaosFieldState` | 対象プレイワールドに作用する Field をダンプします。ワールドの物理 Field が持つ永続・構築時・直近 tick の一時コマンドについて、物理タイプ、対象属性、発生元アクター名、範囲、大きさ、中心、メタデータ、ノードツリーを返し、レベルに置かれた Field System アクターとそれが持つコマンドも返します。種類ごとに `MaxEntries` 1〜4096（既定 256）で個別に上限をかけ、総数と切り詰めの有無を併記します。`IncludeNodeTrees: false` でノードツリーを省けます（既定 `true`）。Data には各リストの先頭 50 件、成果物には `MaxEntries` が許す分がすべて入ります。物理 Field が無効なワールドは、空のコマンドリストと理由つきで成功し、Field System アクターは列挙します。GPU 上にしかない Field は観測できません |
+
+### イベントの記録（3）— `RuntimeInspect` が必要
+
+記録（capture）はそれを開始したセッションのものです。他のセッションがその ID を指定すると、存在するかどうかを教えずに `NotFound` になります。
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `StartDestructionCapture` | 対象プレイワールドの破壊を、呼び出したセッションが持つ記録へ書き始め、その `CaptureId` を返します。`Targets`（1〜64 個のオブジェクト。各 `ActorIdentifier` と任意の `ComponentName`）で指定した Geometry Collection コンポーネントを、`Targets` を省略したときはワールドのすべてのコンポーネント（後から現れるものも含む）を、`StopDestructionCapture` が呼ばれる、実時間で `MaxDurationSeconds`（1〜600、既定 120）が経つ、またはプレイセッションが終わるまで記録します。`Kinds` で記録するイベントの種類を `RootBroken`、`ClusterReleased`、`PieceBrokenOff`、`PieceDecayed`、`AnchorReleased`、`PieceStateChanged`、`CollectionReset`、`Break`、`Crumble`、`Removal`、`Collision`、`FieldApplied` から選びます。既定は `PieceStateChanged` 以外のすべてです。`BufferCapacity`（64〜16384、既定 4096）は保持するイベント数で、超えると古いものから捨て、その数を数えます。1 つのワールドが持てる記録中の capture は全セッション合わせて 8 件、追跡するトランスフォームは 65536 個までで、1 つのセッションがワールドごとに持てる記録中の capture は 1 件です。`ReplaceExisting: true` なら、その capture を止めて新しく始めます（既定 `false`。開始を拒否し、その capture を示します）。トランスフォームの上限を超えるコレクションは追跡されず、`Coverage` と `Limitations` で報告します。ワールドに物理シーンやソルバーが無いときは `PreconditionFailed` で失敗します |
+| 🆓 `GetDestructionEventLog` | 記録のイベントを、`SinceSequence`（既定 0）以降、古い順に読みます。`CaptureId`（必須）は `StartDestructionCapture` が返した ID です。プレイセッションが終わった後も使えます。停止した記録はイベントを 30 分保持し、1 セッションは直近の停止済み 4 件を保持します。`MaxEntries` 1〜4096（既定 256）で読むイベント数に上限をかけます。Data には読んだ分の先頭 50 件、成果物にはその全件が入り、`NextSequence` は成果物の最後のイベントの次から続けるための `SinceSequence` です。`SinceSequence` 以降のイベントが読まれる前に捨てられていたときは `Gap` が true になります。応答には、記録の状態、止まった理由、追跡しているコレクションとトランスフォーム、サンプルしたフレーム、記録した秒数、イベントの種類ごとのカバレッジも入ります。異なる発生源のイベントの順序が因果の順であるとは限りません。未知・失効・他人の `CaptureId` は、どれかを教えずに `NotFound` で失敗します |
+| 🆓 `StopDestructionCapture` | 記録を止め、最終状態を返します。止まった理由、追跡したコレクションとトランスフォーム、サンプルしたフレーム、記録した秒数、シーケンスの管理情報、イベントの種類ごとのカバレッジを含みます。すでに止まっている記録を止めても成功し、最初に止まった理由（`Stopped`、`DurationLimit`、`WorldTornDown`、`Replaced`）を保ちます。プレイセッションが終わった後も使えます。停止した記録はイベントを 30 分保持し、その間は `GetDestructionEventLog` で読めます。未知・失効・他人の `CaptureId` は、どれかを教えずに `NotFound` で失敗します |
+
+止め忘れた記録は、`MaxDurationSeconds` に達したとき、またはプレイワールドが片付けられたときに自動で止まります。
+
+### ひずみのスナップショット（1）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `CaptureGeometryCollectionStrain` | 1 つの Geometry Collection コンポーネントのピースが抱えるひずみを、次の物理ステップで取得します。ピースごとに、内部ひずみ（親から外れるまでに残っている強度。外れないものは `Unbreakable`）、前ステップの衝突インパルス（または `ForcedBreakMarker`）、外部ひずみ、適用された最大値、余裕、壊れるかどうかを、コンポーネントのダメージ設定とともに返します。`ActorIdentifier`（必須）と `ComponentName` は `DumpGeometryCollectionState` と同じ指定で、`Indices`（1〜4096 個）、`StartIndex`、`MaxEntries` 1〜4096（既定 256）でピースを選びます。物理ステップを最大 `TimeoutSeconds`（0 より大きく 60 まで、既定 5）まで、`PollIntervalSeconds`（0.05〜1、既定 0.05）ごとに確認しながら待ち、ゲームがポーズ中は `NotAllowed` で拒否します。Data には当該ページの先頭 50 ピース、成果物にはページ全体が入ります。トランスフォームインデックスを持たない内部クラスターは報告しません。物理プロキシが無い、または既定以外のソルバーで動くコンポーネントは、エラーではなく理由とダメージ設定つきで報告します。タイムアウトしたときは、`Executed` が false の `Result` とゲームがポーズ中だったかを返します |
+
+### 破壊の通知を強制的に有効にする（1）— `RuntimeInspect` と `ChaosDestructionForceNotify` が必要
+
+デモ版では提供されません。
+
+| コマンド | 説明 |
+|---|---|
+| `EnableForcedDestructionNotify` | `Kinds`（`Breaks`、`Crumblings`、`Collisions`、`Removals`。大文字小文字は区別せず、各 1 回まで）で指定した破壊の通知を、呼び出したセッションの記録中の capture が既定の物理ソルバー上で追跡している Geometry Collection コンポーネント（capture が後から追跡し始めるものを含む）で、その capture が止まるまで有効にします。`CaptureId`（必須）で capture を指定します。その通知で得られるイベント（壊れたピースの質量・速度・範囲、崩壊が解放した子、衝突の相手とインパルスなど）は、その capture だけが記録します。同じワールドの他の capture には、ゲーム自身の設定のままに見えます。強制できるのは、capture が記録するイベントの種類に対応する通知だけです（`Breaks` は `Break`、`Crumblings` は `Crumble`、`Collisions` は `Collision`、`Removals` は `Removal`）。それ以外は `InvalidParams` で拒否し、何も強制しません。同じ capture に再度呼ぶと種類が追加されます。ゲームがすでに有効にしている通知には触れません。capture の状態を返します。この capture が強制したセルは `Coverage` に `ForcedByUAIP` が付き、`Limitations` に `ForceNotifySideEffects` が入ります。読み取り専用モードでは拒否されます。未知・失効・他人の `CaptureId` は `NotFound`、すでに停止した capture は `NotAllowed` で失敗します。⚠️ 副作用と戻せない点は [強制した破壊の通知](#強制した破壊の通知) を参照してください |
+
+#### 強制した破壊の通知
+
+- **ゲーム自身のリスナーにもイベントが届きます。** 通知を強制している間は、ゲームがその通知に登録したリスナーにも、capture だけでなくイベントが届きます。エンジンは、通知を有効にするたび、および元に戻すときに、コンポーネントの Chaos イベントをすべて登録解除して登録し直すので、別の経路で登録したリスナーに影響が出ることがあります。
+- **戻せない部分があります。** 通知を有効にすると、ソルバーのイベントフィルターが上がります。エンジンにはこれを下げる手段がありません。capture が止まった後も、プレイセッションが終わるまで、ソルバーはそのイベントデータを作り続けます。
+- **復元。** capture が止まる（`StopDestructionCapture`、時間切れ、置き換え、セッション終了）と、どの capture も強制しなくなった通知は、強制した値のままなら元に戻します。その間にゲームが切った通知はゲームが設定したままにします。ゲームが有効に書き戻した通知は区別できないので、同じく元に戻します。プレイワールドが片付けられるときは何も戻しません。
+- **独自の衝突プロファイルを持つコンポーネントでは、衝突の通知を強制しません。** パーツごと・レベルごとの衝突プロファイル、またはレプリケートするコンポーネントの Abandoned 用プロファイルを設定している場合です。強制するとそれらのプロファイルが物理状態を作り直すまで上書きされるため、そのコンポーネントでは `Collisions` を受け付けてもカバレッジが `NotGenerated`（`ForceNotSupported`）になり、衝突の設定はそのまま残ります。同じ記録の他のコンポーネントと、他の種類の通知は強制されます。
+
+Capability の付与方法は [安全性と Capability](safety.md#runtime-chaos-destruction) を参照してください。
+
+#### すべての応答に含まれるフィールド
+
+各応答には、いつ・どこを読んだか（観測した capture やプレイワールド、フレーム、時刻）が入ります。埋められなかった部分は黙って省かず、`Limitations[]` に（`Code` つきで）返ったものの注意点を載せ、記録系の応答は `Coverage[]`（イベントの種類とコレクションごとの 1 セル）で、その種類のイベントを記録できたかどうかを示します。
+
+パラメーターはプレイワールドを探す前に検証するので、PIE が動いていなくても、不正なリクエストは `InvalidParams` で拒否されます。未知のキー、JSON の型違い、範囲外の値、空の配列は `InvalidParams` です。
+
+成功した呼び出しは必ず JSON の成果物を 1 つ保存し、失敗した呼び出しは何も保存しません。
+
+**一覧の切り詰めの印。** 外側の一覧の `Truncated` と `DataEntriesTruncated` は [応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の定義に従います。`ListGeometryCollections` は、一覧が 1 つなので、`GeometryCollections` の印を一覧名の無い `Truncated` と `DataEntriesTruncated` で返します。`DumpGeometryCollectionState` と `CaptureGeometryCollectionStrain` の `Pieces` は `PiecesTruncated` と `PiecesDataEntriesTruncated`、`DumpChaosFieldState` の 4 つの一覧（永続・構築時・直近 tick の一時コマンドと Field System アクター）は一覧ごとに `<一覧名>Truncated` と `<一覧名>DataEntriesTruncated` を返します。
+
+- `Truncated` は、続きのページがあるとき（`NextStartIndex` と同時に `true`）、または `DumpChaosFieldState` でスナップショットを取るときの上限で総数より少なく取ったときだけ `true` です。`Data` の件数の上限（先頭 50 件）だけで切った場合は `false` で、`Data` と artifact に同じ値が付きます。`TotalCount` は全ページの総数のままで、`Truncated` の判定には使いません。そのため最後のページで総数がページの件数より大きくても `false` です。
+- `DataEntriesTruncated` は `Data` にだけ付く bool で、`Data` が artifact より少ない件数を載せたとき `true` です。全件（そのページ）は artifact にあります。
+- 内側の一覧（`Indices`・`Children`・`OtherComponents`・`Levels`・`InitializationFields`・`ConstructionCommands`・`Coverage`）は `Data` と artifact で同じ上限なので、`DataEntriesTruncated` は付きません。`GetDestructionEventLog` の `EventsReturned` と `EventsInData` は変わりません。
+
+---
+
+## UAIP.Runtime.Navigation
+
+ワールドの NavMesh と経路探索を観測するコマンド群です。ナビゲーションシステムがあるか・どう設定されているか、ある地点から別の地点へ行けるか・行けないならなぜか、経路そのものとエリアごとのコスト、メッシュのタイル、メッシュを形作るモディファイア、AI が経路上で何をしているか、メッシュの再生成が落ち着いたか、を返します。7 つのコマンドは観測だけを行い、8 つ目の `RebuildNavigation` はメッシュの再生成を予約します（下で別に説明します）。エディタ（PIE の有無を問わない）でも、`-game` 起動やパッケージ版でも動作し、プラグインの依存はありません。
+
+**Capability。** 7 つのコマンドは `RuntimeInspect`（DefaultAllow）を必要とします。`RebuildNavigation` は `RuntimeNavigationRebuild`（DefaultDenied）を必要とします。`FindPath` と `IsLocationReachable` は、`MaxSearchNodes` が 8192 を超えるとき**だけ**、さらに `RuntimeNavigationExtendedSearch`（DefaultDenied）を必要とします。この Capability は要求ごとに判定するため、コマンドが宣言する `RequiredCapabilities` には現れません。足りない場合は、その名前を示した `CapabilityNotAvailable` になります。詳細は [安全性と Capability](safety.md#runtime-ナビゲーション) を参照してください。
+
+**デモ版。** `RebuildNavigation` と `RuntimeNavigationRebuild` Capability はデモ版に含まれません。ほかの 7 コマンドは提供されます。デモ版ではこのコマンドは存在せず、`CommandNotFound` を返します。
+
+**どのワールドを読むか。** `DumpNavigationSystemState`・`FindPath`・`IsLocationReachable`・`DumpNavMeshTiles`・`QueryNavModifiers`・`WaitForNavigationBuild` は、プレイワールドが動いていればそれを、動いていなければエディタワールドを読みます — NavMesh はエディタで生成・保存されるため、PIE を起動せずに確かめられます。`GetPathFollowingState`（AI コントローラーはプレイワールドにしか存在しません）と `RebuildNavigation`（エディタのレベルは変更しません）は、プレイワールドだけを対象にします。8 つすべてが [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。存在しないプレイワールドを指定すると `NotAllowed` になり、エディタワールドへ切り替わることはありません。
+
+### 観測（6）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `DumpNavigationSystemState` | 対象ワールドのナビゲーションシステムの状態を返します。プレイワールド選択子以外のパラメータはありません。応答には `NavDataCount` と `NavData[]`（最大 64 件。`Name`・`IsMain`・`IsRecast`・`HasValidNavMesh`・`AgentName`・`AgentRadius`・`AgentHeight`・`StepHeight`・`MaxSlopeDegrees`・`RuntimeGeneration`（`Static` / `DynamicModifiersOnly` / `Dynamic`）・`ActiveTilesOnly`・`TileCount`・`TilePoolCapacity`、および `CellSize`・`CellHeight`・`TileSizeUU`・`TilePoolSize` などの `GenerationParameters`）、3 種類の境界 — `NavigationBounds[]`（システムに登録されたボリューム。最大 256 件）・`NavigableBounds`（各ナビゲーションデータが対象とする範囲）・`NavMeshBounds`（生成されたメッシュが実際に覆う範囲）—、`Areas[]`（最大 64 件。`DefaultCost` と `FixedAreaEnteringCost`）、`BuildState`、`SearchLimits` が入ります。`SearchLimits` は経路探索がどこまで探せるかを示します: `DefaultCeiling`（8192）・`ExtendedCeiling`（65534）・`ExtendedSearchCapability`（上限を引き上げる Capability の名前）・`ExtendedSearchGranted`（呼び出したセッションがそれを持っているか）・`EngineDefaultMaxSearchNodes`。artifact には全項目が入ります |
+| 🆓 `FindPath` | 2 点間の経路と、終点に到達できるかを返します。各点は座標（`StartLocation` / `EndLocation`）かアクター（`StartActor` / `EndActor`）で指定します。`AgentActor`（Pawn またはそのコントローラー）は、クエリに Owner・ナビゲーションデータ・既定フィルタを貸し、省略された始点の代わりにもなります。応答には `Reachable`（`true`・`false`、判定できないときは `null`）、`Reason`（[到達判定の読み方](#到達判定の読み方) を参照）、`Result`、`QueryConditions`（クエリが実際に使った条件: `Owner`・`NavData`・`Filter{Class, Source, QuerierPresent}`・`StartSource`・`EndSource`・`RequireNavigableEndLocation`・`AllowPartialPath`・`MaxSearchNodes{Value, Source, Ceiling}`）が入り、経路が得られる `Reason` では `IsPartial`・`Length`・`Cost`・先頭 50 件の `PathPoints` と `PathPointsTotalCount`・`AreaBreakdown[]`（経路上の各エリアが占めるコストと長さ。除外されたエリアは `Traversable: false` と `ExclusionSource`）も入ります。点をメッシュへ投影できなかったときは、`StartProjection` / `EndProjection` がどちらが失敗したかを示し、`TileExistsAtLocation` にその地点にタイルがあるかを入れます。artifact には最大 `MaxPathPoints` 個の点とコリドーが入ります |
+| 🆓 `IsLocationReachable` | `FindPath` と同じ問いを、同じパラメータ（`MaxPathPoints` を除く）で行い、`Reachable`・`Reason`・`QueryConditions`・着地に失敗した点の投影結果は同じものを返します。経路・長さ・コスト・エリア内訳は返しません |
+| 🆓 `DumpNavMeshTiles` | 1 つのナビゲーションメッシュのタイルを (X, Y, Layer) の順に返します。各タイルの `X`・`Y`・`Layer`・`Bounds`・`Resolution`・`PolygonCount` が入ります。`Box` を指定するとそれに重なるタイルだけに絞り、`NavDataName` でナビゲーションデータを選び（既定はメインのもの）、`MaxTiles` は 1〜4096（既定 256）です。応答には先頭 50 件の `Tiles[]` と `TotalCount`（`MaxTiles` を適用する前に数えた正確な件数）が入り、artifact には一覧に載せた全タイルが入ります。ポリゴン数は一覧に載せるタイルについてだけ読みます |
+| 🆓 `QueryNavModifiers` | 必須の `Box` に触れるナビゲーションモディファイアと、その領域のメッシュのポリゴンがエリアにどう分かれているかを返します。各モディファイアには発生源（`Name`・`Path`・`Label`）・`Bounds`・エリアクラス・置き換え対象のエリアクラス・`Shape`・`ApplyMode` が入ります。エンジンがまだ収集していないモディファイアは `PendingLazyGathering` が付き、コンポーネントが宣言している `DeclaredAreaClass` を添えます。`AreaBreakdown` はエリアごとのポリゴン数で、`MaxPolygons`（1〜16384、既定 4096）まで数えます。`AreaBreakdown.CountComplete: false` は件数が下限であることを示します。`MaxModifiers` は 1〜4096（既定 256）です。応答には先頭 50 件のモディファイアと `TotalCount` が入り、artifact には捕捉した全モディファイアが入ります |
+| 🆓 `GetPathFollowingState` | 1 体の AI の PathFollowingComponent がいま何をしているかを返します（プレイワールドのみ）。`Status`（`Idle`・`Waiting`・`Paused`・`Moving`）・`HasPath`・`RequestId`・目標（`GoalLocation` はたどっている経路の終点で、`PathPoints` が打ち切られても経路の終点を返し、経路が無いときは省きます。`MoveGoal` はアクターへ向かうときのそのアクターです）・いま向かっている区間の終点（`CurrentTargetLocation`）・いまの区間（`CurrentPathIndex`・`NextPathIndex`）・`AcceptanceRadius`・`HasPartialPath`・経路を作ったナビゲーションデータ（`NavDataUsed`）・先頭 50 件の `PathPoints`・経路の `AreaBreakdown[]` が入ります。`ActorIdentifier`（必須）には Pawn かその AI コントローラーを指定します。`MaxPathPoints` は 1〜4096（既定 256）で、artifact に書く点数の上限です。ナビゲーションシステムやメッシュが使えない間も追従状態は返し、エリア内訳だけを省きます |
+
+### 待機（1）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `WaitForNavigationBuild` | 対象ワールドのナビゲーションシステムが静止するまで待ちます。静止とは、残っている生成タスクが無く、処理待ちの dirty area も無い状態です。このコマンドは観測だけを行い（ポーリングするだけで、ワールドは進めません）、受動待機なのでトランスポートの単一コマンド枠を占有しません。`TimeoutSeconds` は 0 より大きく 60 以下（既定 30）、`PollIntervalSeconds` は 0.05〜1.0（既定 0.1）です。`WaitOutcome` は `NotApplicable`（ナビゲーションシステムが無い、または有効なナビゲーションデータが無い）・`AlreadyQuiescent`（何も生成していなかった）・`Quiescent`（待つ間に落ち着いた）のいずれかで、先に `TimeoutSeconds` が過ぎたときは `Timeout` で失敗し、結果と artifact は返します。応答には `CompletionScope: "NavigationSystemQuiescent"`・`ElapsedSeconds`・`BuildStateAtStart`・`BuildStateAtEnd`・`World` が入ります。**待機の完了が保証するのは**ナビゲーションシステム全体の静止であって、特定の領域の完了ではありません。エンジンが観測できない形で保留している更新もあり（`Limitations: UnobservablePendingUpdates`）、確認の直後に生成が始まることがあります |
+
+### 再生成の予約（1）— `RuntimeNavigationRebuild` が必要
+
+デモ版では提供されません。
+
+| コマンド | 説明 |
+|---|---|
+| `RebuildNavigation` | 対象の**プレイ**ワールドのナビゲーションメッシュの再生成を予約し、待たずにすぐ応答します（`IsReadOnly` は false）。`Box` を省くと登録済みの全ナビゲーション範囲を、指定するとその領域だけを予約します。応答には `Queued`・`Scope`（`Full` / `Box`）・`QueuedAreaCount`・`NextStep: "WaitForNavigationBuild"`（その後にこのコマンドを実行し、静止したと返ってから改めて問い合わせてください）・`BuildState` が入り、ナビゲーションデータごとに `Eligible`（再生成の対象か）・`GeometryRebuild`（ジオメトリまで作り直すか。`DynamicModifiersOnly` はモディファイアの再適用だけ）・`ActiveTilesOnly`（Invoker や読み込み済みの World Partition セルの周りのタイルに限って作り直すか）を返します。ワールドにナビゲーションシステムが無い、生成する先が無い、ゲーム中に再生成するナビゲーションデータが無い（`Static`）ときは、何も予約せず `PreconditionFailed` で失敗します。`ErrorMessage` は理由（`NavigationSystemMissing`・`NothingToBuild`・`NoRuntimeGeneration`）で始まり、その説明が続きます。失敗応答に `Data` はありません。ビルドロック・一時停止中のワールド・どの範囲にも入らない領域・生成状態に現れない予約は、失敗ではなく `Limitations[]` で知らせます。artifact は応答と同じ内容で、保存に失敗してもコマンドは成功のままです |
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `StartLocation` / `EndLocation` | `FindPath`、`IsLocationReachable` | `{X, Y, Z}` のワールド座標。それぞれ `StartActor` / `EndActor` とは排他です。座標は有限で ±2097152 以内でなければなりません |
+| `StartActor` / `EndActor` | `FindPath`、`IsLocationReachable` | 経路の始点・終点にするアクターのラベルまたはオブジェクト名（1〜256 文字、制御文字なし）。ナビゲーションエージェントならその足元の位置、そうでなければアクターの位置を使います |
+| `AgentActor` | `FindPath`、`IsLocationReachable` | Pawn かそのコントローラーのラベルまたはオブジェクト名。クエリに Owner・ナビゲーションデータ・既定フィルタを貸し、`StartLocation` / `StartActor` が無いときは始点の代わりになります。`NavDataName` とは排他です。Pawn を持たないコントローラーや、ナビゲーションエージェントでない Pawn は `InvalidParams` です |
+| `NavDataName` | `FindPath`、`IsLocationReachable`、`DumpNavMeshTiles`、`QueryNavModifiers` | 使うナビゲーションデータのオブジェクト名（1〜256 文字）。省略するとメインのナビゲーションデータを使います。どれにも一致しない名前は `InvalidParams` で、存在する名前を列挙します |
+| `FilterClass` | `FindPath`、`IsLocationReachable` | ナビゲーションクエリフィルタのクラスパス（例: `/Script/MyGame.MyQueryFilter`）。すでに読み込まれているクラスだけを受け付け、何も読み込みません。省略するとエージェント（またはナビゲーションデータ）の既定フィルタを使います |
+| `RequireNavigableEndLocation` | `FindPath`、`IsLocationReachable` | 真偽値、既定 `true`。メッシュ外の終点でクエリを失敗させるか |
+| `AllowPartialPath` | `FindPath`、`IsLocationReachable` | 真偽値、既定 `true`。終点の手前で止まる経路を受け付けるか |
+| `MaxSearchNodes` | `FindPath`、`IsLocationReachable` | 4〜65534 の整数。省略するとフィルタ自身の値を使い、`RuntimeNavigationExtendedSearch` が無ければ 8192 を上限に丸め、4 未満なら 4 に引き上げます（どちらも `Limitations: SearchNodesClamped`）。8192 を超える値には Capability が必要で、65534 を超える値や 4 未満の値は、セッションの権限に関わらず `InvalidParams` です。4 ノード未満では、ナビゲーションメッシュが探索ノードプールの範囲外へ書き込むためです。`QueryConditions.MaxSearchNodes.Value` には、クエリが実際に使ったノード数が入ります |
+| `MaxPathPoints` | `FindPath`、`GetPathFollowingState` | 1〜4096 の整数、既定 256。artifact に書く経路の点数 |
+| `Box` | `DumpNavMeshTiles`（任意）、`QueryNavModifiers`（必須）、`RebuildNavigation`（任意） | `{Min: {X, Y, Z}, Max: {X, Y, Z}}`。どの軸でも `Min` は `Max` を超えてはならず（角を入れ替えることはしません）、X と Y には幅が必要です。高さが 0 なのは許されます |
+| `MaxTiles` | `DumpNavMeshTiles` | 1〜4096 の整数、既定 256 |
+| `MaxModifiers` | `QueryNavModifiers` | 1〜4096 の整数、既定 256 |
+| `MaxPolygons` | `QueryNavModifiers` | 1〜16384 の整数、既定 4096。エリア内訳のために数えるポリゴン数 |
+| `ActorIdentifier`（必須） | `GetPathFollowingState` | Pawn または AI コントローラーのラベルまたはオブジェクト名 |
+| `TimeoutSeconds` / `PollIntervalSeconds` | `WaitForNavigationBuild` | 数値。上のコマンドの説明を参照 |
+
+始点は `StartLocation`・`StartActor`・（どちらも無いとき）`AgentActor` の Pawn のうちちょうど 1 つ、終点は `EndLocation` と `EndActor` のうちちょうど 1 つです（`AgentActor` は終点の代わりにはなりません）。1 つの点に両方の形を指定する、どれも指定しない、`AgentActor` と `NavDataName` を両方指定する、のいずれも `InvalidParams` です。真偽値は JSON の真偽値、上限値は JSON の整数でなければならず、それ以外の型・未知のキー・範囲外の値は `InvalidParams` です。パラメータはプレイワールドを探す前に検査するため、PIE が動いていなくても不正な要求は拒否されます。
+
+#### すべての応答に入る項目
+
+| 項目 | 意味 |
+|---|---|
+| `CapturedAt` / `Frame` | 状態を読んだ時刻（ISO 8601、UTC）と、その時点のエンジンのフレーム番号 |
+| `NetMode` / `WorldContext` / `PIEInstance` | 読んだワールド。`WorldContext` は `PIE`・`Editor`・`Game` のいずれかで、PIE 以外では `PIEInstance` は省かれます |
+| `WorldPartitioned` | 観測したワールドが World Partition を使っているか |
+| `Availability` | `State`: `Available`・`Degraded`・`Unavailable`。`Reason` は `NavigationSystemMissing`（`Detail` は `ClientWorld`（再実行先のサーバー側プレイワールドを `ServerCandidates[]` に列挙）・`NoNavigationSystemConfig`・`Unknown`）・`NoNavigationData`・`NoNavigationDataForAgent`・`NavMeshNotBuilt` のいずれか、または — `DumpNavigationSystemState` だけで、一部のナビゲーションデータにだけメッシュがあるとき — `SomeNavDataNotBuilt`（`Degraded`） |
+| `BuildState` | `RemainingTasks`・`RunningTasks`・`DirtyAreasQueued`・`Locks[]`（`NoUpdateInEditor`・`NoUpdateInPIE`・`InitialLock`・`Custom`、UE 5.8 では `AsyncLoadLock`）・`AutoUpdateEnabled`・`WorldPaused`・`Quiescent`。ナビゲーションシステムが無いときは省かれます |
+| `DegradedSections[]` | 埋められなかった部分。それぞれ `Section` と `Cause`（`NavigationUnavailable`・`SomeNavDataNotBuilt`・`UnreadableField`） |
+| `Limitations[]` | 返した内容に関する注意。それぞれ `Code` と `Detail` を持ちます（下を参照） |
+
+ナビゲーションシステムが無いワールドや、ナビゲーションデータにメッシュが生成されていないワールドは、観測コマンドにとって**エラーではありません**。コマンドは成功し、ナビゲーションシステム由来の項目を省いて、理由を `Availability` で示します。このとき `NavDataName` や `FilterClass` の名前は何とも照合されず（`Limitations: SelectionNotEvaluated`）、入力の誤りとして報告されることはありません。判定できない値は、既定値で埋めずに省きます。
+
+#### 到達判定の読み方
+
+`Reachable` は三値で、`null` は「到達できない」ではありません。`SearchLimitReached`・`Unknown`・`NavigationUnavailable`・`NavMeshNotBuilt` は、問いに決着がつかなかったことを意味します。`Reason` は、当てはまる最初の行です。
+
+| `Reason` | `Reachable` | 意味 |
+|---|---|---|
+| `NavigationUnavailable` | `null` | ワールドにナビゲーションシステムが無い、または有効なナビゲーションデータが無い。経路は計算していない |
+| `NavMeshNotBuilt` | `null` | 選んだナビゲーションデータにメッシュが生成されていない。経路は計算していない |
+| `StartNotOnNavMesh` | `false` | 始点をメッシュへ投影できなかった |
+| `EndNotOnNavMesh` | `false` | 終点をメッシュへ投影できなかった（`RequireNavigableEndLocation: false` のときは起きない） |
+| `Reachable` | `true` | 完全な経路がある。始点と終点がほぼ同じ点のときは、長さ 0 の 1 点の経路になる |
+| `SearchLimitReached` | `null` | 探索ノードを使い切った。`IsPartial` は true で、経路は探索できたところまで。`MaxSearchNodes` を上げる（8192 超には `RuntimeNavigationExtendedSearch` が必要） |
+| `PartialPathOnly` | `false` | 手前で止まる経路しかなく、`AllowPartialPath` は true。部分経路を返す |
+| `NoPath` | `false` | 経路が無い、または `AllowPartialPath` が false で部分経路しかない。経路は返さない |
+| `Unknown` | `null` | 経路探索の答えが上のどれにも当てはまらない |
+
+`StartNotOnNavMesh` / `EndNotOnNavMesh` では、`StartProjection` / `EndProjection` がどちらの点が失敗したか（`Projected: false`）を示し、`TileExistsAtLocation` がその地点にタイルがあるかを示します — タイルが無いときは、座標の誤りよりも、World Partition の未読み込みの範囲を疑ってください。
+
+`AgentActor` を指定しないクエリには Querier が無いため、ナビゲーションデータの既定以外のフィルタは Querier なしで初期化され、メタフィルタは解決されません。その場合、応答に `Limitations: QuerierlessFilter` が付きます。AI と同じ結果を見るには `AgentActor` を指定してください。AI が入れないエリアは、巨大なコストではなく `Traversable: false` と `ExclusionSource`（`AreaCost`・`AreaFlags`・`NullArea`）で示します。
+
+#### Limitations のコード
+
+| コード | 意味 |
+|---|---|
+| `UnreadableField` | 項目をエンジンから読めなかったので省いた |
+| `CountIncomplete` | `TotalCount` が下限である（`CountComplete` が false） |
+| `SelectionNotEvaluated` | ナビゲーションシステムやそのデータが使えないため、`NavDataName` / `FilterClass` を何とも照合しなかった |
+| `NonRecastNavData` | Recast メッシュでないナビゲーションデータがあり、メッシュ固有の項目を省いた |
+| `DefaultAgentNameUnreadable` | エンジンの既定エージェント名を読めなかったので、それを条件にせずメインのナビゲーションデータを選んだ |
+| `QuerierlessFilter` | フィルタが Querier なしで初期化された（上を参照） |
+| `SearchNodesClamped` | フィルタ自身の探索ノード数が 8192 を超えていたので下げた、または 4 未満だったので引き上げた。`Detail` にフィルタの値と実際に使った値、下げたときは上限とそれを引き上げる Capability が入る |
+| `ActivePathRegistered` | エディタワールドでは、クエリの経路がナビゲーションデータへ登録され、そこでは掃除されない |
+| `StaleCorridor` | 経路のコリドーの一部が、その後に再生成されたタイルを指している。該当する項目は `Valid: false` になる |
+| `DeclaredAreaUnreadable` | モディファイアのコンポーネントが宣言するエリアを読めなかった |
+| `UnobservablePendingUpdates` | エンジンが観測できない更新を保留しているため、静止と答えた直後に生成が始まることがある |
+| `NavMeshNotBuiltAtQuiescence` | 静止したが、メッシュが無いナビゲーションデータが残っている。`Detail` にその名前が入る |
+| `BuildLocked` | ビルドロックが掛かっている。`Detail` にそのロックが入る。予約した範囲はロックの解除後に処理される |
+| `WorldPaused` | ワールドが一時停止している。その間、予約した範囲は処理されないことがある |
+| `AutoUpdateDisabled` | エディタワールドで自動更新が無効。dirty area が捨てられ、何も生成しないまま静止に見えることがある |
+| `OutsideNavigationBounds` | `RebuildNavigation`: `Box` がどの登録済みナビゲーション範囲の外にある |
+| `ModifiersOnlyRebuild` | `RebuildNavigation`: モディファイアの再適用だけを行うナビゲーションデータがある（`DynamicModifiersOnly`） |
+| `ActiveTilesGenerationOnly` | `RebuildNavigation`: アクティブなタイルに限って再生成するナビゲーションデータがある |
+| `QueueNotObserved` | `RebuildNavigation`: 予約の直後に読んだ生成状態に予約中の範囲が現れず、エンジンが要求を捨てた可能性がある。`Detail` に予約した範囲の数が入る |
+
+#### 出力の上限
+
+`Data` に直接載せる一覧は先頭 50 件までで、捕捉した全件は artifact に入ります。件数の上限は、タイルとモディファイアが 4096、経路の点が 4096、ナビゲーションデータが 64、登録済みの範囲が 256、エリアが 64 です。上限で切った一覧は `TotalCount` を併記し、内側の配列は 64 件で切って `Truncated` を付けます。
+
+外側の一覧（`NavData`・`NavigationBounds`・`Areas`（`DumpNavigationSystemState`）、`Tiles`（`DumpNavMeshTiles`）、`Modifiers`（`QueryNavModifiers`）、`PathPoints`（`FindPath`・`GetPathFollowingState`））の `Truncated` と `DataEntriesTruncated` は [応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の定義に従います。
+
+- `Truncated` は、取得時の上限（`MaxTiles`・`MaxModifiers`・`MaxPathPoints` や上に挙げた件数の上限）を超えて総数がそれより多いときだけ `true` で、`Data` と artifact に同じ値が付きます。`Data` の先頭 50 件だけで切った場合は `false` です。取得した件数と総数が同じなら `false` です。
+- `DataEntriesTruncated` は `Data` にだけ付く bool で、`Data` が artifact より少ない件数を載せたとき `true` です。`DumpNavigationSystemState` の `NavigationBounds` は `Data` に総数（`TotalCount`）だけを載せ、配列は artifact にあるので、1 件でもあれば `true` です。
+- `AreaBreakdown` や `RebuildNavigation` の `NavData` など、`Data` と artifact が同じ内容の一覧と、artifact にだけある `Corridor` には、`DataEntriesTruncated` は付きません。
+
+1 回の要求の作業量にも上限があります: 処理するポリゴン数（`MaxPolygons`）と探索ノード数（8192。`RuntimeNavigationExtendedSearch` があれば 65534）です。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータが欠けている・型が違う・範囲外・未知のキー。上の排他の組み合わせ。どれにも一致しない `NavDataName`（メッセージに存在する名前を列挙）。読み込まれていない、またはナビゲーションクエリフィルタでない `FilterClass`。65534 を超える、または 4 未満の `MaxSearchNodes`。`TargetNetRole` / `TargetPIEInstance` を満たせない |
+| `CapabilityNotAvailable` | `RuntimeInspect`、（`RebuildNavigation` では）`RuntimeNavigationRebuild`、（`MaxSearchNodes` が 8192 を超えるときは）`RuntimeNavigationExtendedSearch` が付与されていない。メッセージにその名前が入る |
+| `PolicyViolation` | その Capability が安全ポリシーで明示的に拒否されている |
+| `NotAllowed` | プレイワールドを必要とするコマンドでプレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い |
+| `NotFound` | `StartActor`・`EndActor`・`AgentActor`・`ActorIdentifier` に一致するアクターが無い。`GetPathFollowingState` では、アクターが AI コントローラーに動かされていない場合と、AI コントローラーに PathFollowingComponent が無い場合（それぞれ別のメッセージ） |
+| `ExecutionFailed` | 識別子に複数のアクターが一致する。フィルタを解決できなかった。観測コマンドの artifact を書けなかった。`WaitForNavigationBuild` の待機中にワールドが破棄された |
+| `PreconditionFailed` | `RebuildNavigation` のみ: ワールドにナビゲーションシステムが無い、生成する先が無い、またはゲーム中に再生成するナビゲーションデータが無いため、何も予約しなかった |
+| `Timeout` | `WaitForNavigationBuild` のみ: `TimeoutSeconds` 以内に静止しなかった。結果と artifact は返す |
+
+観測コマンドは、成功した呼び出しごとにちょうど 1 つの JSON artifact を保存し、失敗した呼び出しは何も保存しません。`RebuildNavigation` と `WaitForNavigationBuild` は、artifact の保存そのものに失敗しても成功のままですが、保存はできたのに保存先のパスを解決できなかったときは `ExecutionFailed` で終わり、このとき `Result` は付けません（`WaitForNavigationBuild` は待機がタイムアウトした後でも同じで、`Timeout` ではなく `ExecutionFailed` になります）。
+
+---
+
+## UAIP.Runtime.Animation
+
+実行中のゲームでキャラクターのアニメーション状態を観測するコマンド群です。ステートマシンごとのアクティブな State、ブレンドのウェイト、再生中のモンタージュ、アニメーションカーブの値、アニメーションがそもそも更新されているか、AnimInstance の変数の値、そして Motion Matching では直近の検索がどのポーズを選んだか、を返します。どのコマンドも読むだけで、アニメーションの挙動を変えることはありません。エディタでは PIE の実行中に、また `-game` 起動やパッケージ版でも動作します。7 つすべてが [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。ステートマシン名と State 名は Anim Blueprint エディタと同じ綴りで返るため、ここで見た State をエディタ側で名前から探せます。
+
+**Capability。** 7 つすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`DumpAnimInstanceVariables` は、さらに `AnimInstanceVariableDump`（DefaultDenied）を必要とします。プロジェクト自身の AnimInstance クラスが宣言した変数の値を書き出し、それにはプロジェクトの任意のデータが入りうるためです。足りない場合は、その名前を示した `CapabilityNotAvailable` になります。詳細は [安全性と Capability](safety.md#runtime-アニメーション) を参照してください。
+
+**オプションのプラグイン。** `GetMotionMatchingState` 🧩 は、PoseSearch プラグインが有効なときだけ登録されます。無効なときはこのコマンドが存在せず（必要なプラグインを示す案内付きの `CommandNotFound`）、ほかの 6 コマンドは影響を受けません。デモ版には含まれません。
+
+**読み取りが表すもの。** 値は呼び出した瞬間のものです。履歴は返しません。モンタージュがいつブレンドアウトに入ったかは分からず、ブレンドアウトが終わったモンタージュは残っていません。応答の識別子（`InstanceId`、`MachineId`、`NodeId`、`MontageInstanceId`）は、その応答の中で項目を区別するためのものです。Anim Blueprint の再コンパイルや別のプレイセッションをまたいでは保たれないので、保存して後の照合に使わず、次に調べるときはステートマシン名・State 名で絞り込んでください。
+
+### 観測（5）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `DumpAnimInstanceState` | 以下のすべてを 1 回の読み取りでまとめて返すので、各節が同じフレームを表します。1 つのスケルタルメッシュコンポーネントの本体・Linked・Post Process の AnimInstance について、更新状態・ステートマシン・ブレンドのウェイト・モンタージュ・カーブです。ステートマシン（`StateMachineName`）とカーブ（`CurveType`、`CurveNameContains`）を絞り込めます。Motion Matching と変数は含みません — それぞれ `GetMotionMatchingState` と `DumpAnimInstanceVariables` を使ってください。応答には要約と各一覧の先頭の項目が載り、成果物には残した項目がすべて入ります |
+| 🆓 `GetAnimStateMachineStates` | ステートマシンの状態です。マシンごとに、アクティブな State（`ActiveState`）とその State にいる経過時間（`ActiveStateElapsedSeconds`）、ウェイトを持つ State（`StateWeights`）、進行中の遷移（`ActiveTransitions`: `PreviousState` → `NextState` と `NextStateWeight`）、マシン自体のウェイトを返します。アクティブと報告される State には、ブレンドアウト中の State も含まれます。遷移には名前も経過時間もなく、進み具合は遷移先の State のウェイトで示します。まだ動き出していないマシンは、ウェイトも遷移も無い `Uninitialized` として返ります。`StateMachineName` で絞り込め、同じ名前のマシンはすべて返ります |
+| 🆓 `GetAnimBlendWeights` | 再生中のアセットとその最終ブレンドウェイト（`Players`。ブレンドスペースは座標とサンプルのウェイト付き）、ブレンドスペースのプレイヤーノード（`BlendSpaceNodes`）、レイヤードブレンドのノードと各ブレンドポーズのウェイト（`LayeredBlends`）、単一ノードの AnimInstance では再生中のアセット（`SingleNode`）を返します。ブレンドアウト中のモンタージュも有効として数えるため、そのブレンドはブレンドアウトが終わるまでウェイトに含まれます。絞り込みはありません |
+| 🆓 `GetActiveMontages` | 有効なモンタージュ（ブレンドアウト中を含む）です。モンタージュのインスタンスごとに、`State`（`BlendingIn`、`Playing`、`BlendingDown`、`BlendingOut`、`Stopped`、`HoldingAtEnd`、`Paused`、`Unknown`）、`PositionSeconds` と `PlayLengthSeconds`、`PlayRate`、現在と次のセクション、`Weight` と `DesiredWeight`、グループ、再生しているスロットとそのウェイトを返します。本体のモンタージュのデータを使う Linked の AnimInstance は、繰り返さずに `SharedWithMain` の印を付けます。絞り込みはありません |
+| 🆓 `GetAnimCurveValues` | アニメーションカーブを名前順に、名前・値・種別（`Types`）で返します。すべてのカーブは `Attribute` で、マテリアルパラメータやモーフターゲットも駆動するカーブには、さらに `Material` または `MorphTarget` が付きます。`CurveType` で絞り込めます（`Material` か `MorphTarget`。`All` と `Attribute` はすべてのカーブを残します）。`CurveNameContains` は名前に指定の文字列を含むカーブを残します。`TotalCount` はフィルターを通ったカーブの数、`UnfilteredCount` は通す前の数です。値は最後に完了した評価のもので、更新レートの最適化で評価を省いた箇所では補間された値か直前の値です。カーブの一覧は `MaxEntries` で変えない限り 1024 件で切ります。Linked の AnimInstance と、本体があるときの Post Process の AnimInstance は、カーブを繰り返さずに `SharedWithMain` の印を付けます |
+
+### 変数の値の観測（1）— `RuntimeInspect` と `AnimInstanceVariableDump` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `DumpAnimInstanceVariables` | プロジェクトが持つ AnimInstance クラスが宣言した変数の値を、本体と、`InstanceScope` が `Main` でなければ Linked・Post Process の AnimInstance について、それぞれ自分の値で返します。変数ごとに名前・宣言したクラス・型・値を返します。**プロジェクトが持つ**とは、プロジェクトの Anim Blueprint と C++ クラス、およびプロジェクトの `Plugins/` に入れたプラグインのものです。エンジン本体・エンジンに同梱されたプラグイン・エンジン側にある親クラスが宣言した変数は出ません（親がエンジン側のクラスであるプロジェクトの Anim Blueprint でも、親が宣言した変数は出ません）。ノードの内部構造も出しません。オブジェクト参照は参照先のパスで書き、辿りません。大きな値は切り詰めます: 配列は 32 要素、文字列は 1024 文字、構造体は 1 段まで展開します。サイズの予算を使い切ったときは、変数や AnimInstance ごと省き、省いたことを示す印を付けます。`VariableNameContains` は名前に指定の文字列を含む変数を残します。応答には AnimInstance ごとに先頭 50 個の変数が載り、成果物には残した変数がすべて入ります。⚠️ **この Capability を解禁すると、変数に入っている文字列やパスがそのまま成果物に出ます** — [安全性と Capability](safety.md#runtime-アニメーション) を参照してください |
+
+### Motion Matching（1）🧩 — `RuntimeInspect` が必要
+
+デモ版には含まれません。PoseSearch プラグインが有効なときだけ登録されます。
+
+| コマンド | 説明 |
+|---|---|
+| `GetMotionMatchingState` | 直近のポーズ検索が Motion Matching のノードごとに残した状態です。選ばれたアニメーション（`SelectedAnimationPath`）とその中の時刻（`SelectedTimeSeconds`）、ミラーかどうか（`Mirrored`）、ブレンドスペースの座標（`BlendParameters`）、選ばれた元のポーズ検索データベース（`SelectedDatabasePath`）、合計コスト（`SearchCost`）、検索が再生中のポーズを継続したか（`IsContinuingPoseSearch`）、検索が望む再生速度（`WantedPlayRate`）、最後にポーズが切り替わってからの秒数（`ElapsedPoseSearchTimeSeconds`）を返します。まだ何も選んでいないノードは `HasSearchResult: false` で、選択に関する項目はすべて `null` です。AnimInstance ごとに自分のエントリで読み、ノードはその `MotionMatching` の下に入ります。Motion Matching を使っていないキャラクターは、失敗ではなく空の一覧と制限事項 `NoMotionMatchingNode` を返す成功です — ただし、対象のすべての AnimInstance を読めたときだけ言います。読めなかった AnimInstance があれば、その理由だけを示します。ノードは `MaxEntries` まで並べ、切った後ろのノードは数えないため、一覧を切ったときの `TotalCount` は `null` です。コストの内訳・候補ポーズ・検索したデータベースの一覧・ポーズの番号は返しません |
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `ActorIdentifier`（必須） | すべて | 観測するスケルタルメッシュコンポーネントを持つアクターのラベルまたは名前（1〜256 文字） |
+| `ComponentName` | すべて | スケルタルメッシュコンポーネントの名前。大文字小文字を区別しない完全一致（1〜256 文字）。省略したときは [読むメッシュの選び方](#読むメッシュの選び方) に従って選びます |
+| `InstanceScope` | すべて | `Main`（本体の AnimInstance だけ）または `All`（本体と Linked・Post Process）。既定は `All` |
+| `MaxEntries` | すべて | カーブを含むすべての一覧の件数の上限。1〜4096 の整数。既定はカーブ以外が 256、カーブが 1024。値はすべての一覧に効くため、`300` を指定するとカーブの上限も 1024 から 300 になります |
+| `StateMachineName` | `GetAnimStateMachineStates`、`DumpAnimInstanceState` | 返すステートマシンの名前。大文字小文字を区別しない完全一致（1〜256 文字）。同じ名前のマシンはすべて返ります |
+| `CurveType` | `GetAnimCurveValues`、`DumpAnimInstanceState` | `All`（既定）、`Attribute`、`Material`、`MorphTarget` |
+| `CurveNameContains` | `GetAnimCurveValues`、`DumpAnimInstanceState` | カーブ名に含まれるべき文字列。大文字小文字を区別しない部分一致（1〜256 文字） |
+| `VariableNameContains` | `DumpAnimInstanceVariables` | 変数名に含まれるべき文字列。大文字小文字を区別しない部分一致（1〜256 文字） |
+| `TargetNetRole` / `TargetPIEInstance` | すべて | [実行時コマンドの対象プレイワールドを指定する](#実行時コマンドの対象プレイワールドを指定する) を参照 |
+
+絞り込みのパラメータは、対応するコマンドだけが受け付けます。それ以外のコマンドに渡す、知らないキー、空の文字列、256 文字を超える名前、1〜4096 の外の件数、知らない種別は `InvalidParams` です。パラメータはプレイワールドを探す前に検査されるため、PIE が動いていなくても不正な要求は拒否されます。
+
+#### 読むメッシュの選び方
+
+`ComponentName` を省略したときは、次の順で選びます。アニメーションを持つスケルタルメッシュコンポーネントが 1 つだけならそれ。複数あるときは、キャラクター本体のメッシュ（持つアクターの場合）。アニメーションを持つものが 1 つも無く、メッシュが 1 つだけならそのメッシュです。応答には、どう選んだか（`ByName`、`OnlyAnimated`、`CharacterMesh`、`OnlyMesh`）と、ほかの候補の一覧が載ります。どの規則でも 1 つに絞れないときは、候補の一覧付きの `InvalidParams` で失敗するので、名前を選んで指定し直してください。MetaHuman のように顔が別のメッシュのキャラクターでは、既定では体のメッシュを読みます。顔のメッシュを読むには、その名前を指定します。
+
+AnimInstance を持たないメッシュはエラーではありません。アニメーションの節を空にし、`NoAnimInstance` と、メッシュのアニメーションの設定（Anim Blueprint を使う / 単一アセット / なし）を示す成功になります。`ComponentName` で名前を指定した、本体に追従するだけのメッシュでも同じです。
+
+#### すべての応答に含まれるフィールド
+
+| フィールド | 意味 |
+|---|---|
+| `CapturedAt` / `Frame` | 状態を読んだ時刻（ISO 8601、UTC）と、そのときのエンジンのフレーム番号 |
+| `NetMode` / `WorldContext` / `PIEInstance` | 読んだワールド。`PIEInstance` は PIE 以外では省略されます |
+| `Actor` / `Component` / `ComponentSelection` / `Candidates[]` | 読んだアクターとメッシュコンポーネント、メッシュの選び方、アクターのほかのスケルタルメッシュコンポーネント |
+| `Instances[]` | AnimInstance ごとに 1 項目。本体 → Linked → Post Process の順です: `InstanceId`、`Role`（`Main`、`Linked`、`PostProcess`）、`ClassPath`、`IsAnimBlueprintClass`、`Initialized`、`SharedWithMain`、そのコマンドが読む節。1 つのメッシュで読む AnimInstance は 64 個までで、超えた分は「省いた」と示されます |
+| `UpdateState` | アニメーションが更新されているか。止まっているときは `Details` にその理由が並びます: `AnimationDisabled`、`AnimationPaused`、`SkeletonUpdateDisabled`、`ComponentTickDisabled`、`WorldPaused`、`NotRendered`。更新レートの最適化の状態も併記されます。更新レートの最適化で今回のフレームだけ更新を飛ばしている場合は、止まっているとは扱わず `UpdateSkippedByURO` で示します |
+| `ValueBasis` | 値がどの時点のものかに依存する項目で、その基準を示します: `NodeLastUpdate`、`RecordedReadBuffer`、`InstanceCurrent`、`LastCompletedEvaluation` |
+| `DegradedSections[]` / `Limitations[]` | 埋められなかった部分とその理由、および返した内容に関する注意。それぞれ `Code` と、場合により `Detail` を持ちます。同じ理由が何度も出るときは 1 つにまとめて `Count` を付けます |
+
+読めない節があるときは、その部分だけを省いて理由を示し、コマンド自体は成功します。例: 初期化されていない AnimInstance は中身を読まずに列挙します（`AnimInstanceNotInitialized`）。動き出していないステートマシンは `Uninitialized` です。アニメーションが無効のメッシュでは、マシンのウェイトだけを省きます。非数や無限大の数値は `null` にします。Anim Blueprint を使わない AnimInstance（C++ だけのもの、単一アセットの再生）はステートマシンもノードも持たず、その理由を示します（`NativeAnimInstance`、`SingleNodeInstance`）。モンタージュ・カーブ・再生中のアセットは読めますが、C++ だけの AnimInstance では再生中のアセットの位置が空になることがあります。単一アセットの再生でモンタージュを再生しているときは、`SingleNode` が `null` になり、モンタージュとして返ります。モンタージュ以外を再生していて別のモンタージュが有効なときは、位置がモンタージュのものである可能性があります（`SingleNodePositionFromMontage`）。
+
+#### 出力の上限
+
+一覧は `MaxEntries`（既定は 256、カーブは 1024、最大 4096）で、決まった順序で打ち切り、`TotalCount` を報告します。入れ子の一覧（ブレンドスペースのサンプル、モンタージュのスロット、メッシュの候補）は 64 件までです。1 つのコマンドの量は全体でも上限があり、達したらそれより後ろの一覧は読まずに「省いた」と示すため、空だった一覧と省いた一覧を区別できます。応答には各一覧の先頭 50 件が載り、成果物には上限の範囲で読めたものがすべて入ります。
+
+一覧は、`Truncated`・`IncludedCount`・`TotalCount`・`Entries` などを持つオブジェクトとして各節に入ります（応答の直下のキーではありません）。`Truncated` と `DataEntriesTruncated` は [応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved) の定義に従います。
+
+- `Truncated` は、`MaxEntries` などの取得時の上限で落とした要素があるときだけ `true` で、`Data` と成果物に同じ値が付きます。応答の先頭 50 件だけで切った場合は `false` です。
+- `DataEntriesTruncated` は `Data` にだけ付く bool で、応答の先頭 50 件が成果物より少ないとき `true` です。成果物には付きません。セクション直下の一覧（ステートマシン・プレイヤー・ブレンドスペースノード・レイヤードブレンド・モンタージュ・カーブ・変数など）に付きます。
+- 内側の一覧（`StateWeights`・`ActiveTransitions`・サンプル・スロットなど）、`Candidates`、`Limitations` は応答と成果物で上限が同じなので、`DataEntriesTruncated` は付きません。
+
+#### Linked Anim Layer と Post Process
+
+既定では、本体・Linked・Post Process のすべての AnimInstance を、本体を先頭にして返します。Linked のカーブは本体の複製なので繰り返しません。Post Process のカーブも、本体があるあいだは繰り返しません。Linked のモンタージュは、本体のモンタージュのデータを使う設定のときは繰り返しません。変数はすべての AnimInstance について、それぞれ自分の値を返します。Linked Anim Layer を差し替えた直後の 1 回は、再生位置に 1 フレーム古い値が混じることがあります。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータの型の誤り・空・長すぎる・範囲外・未知。対応しないコマンドに絞り込みを渡した。メッシュを 1 つに絞れない（メッセージに候補の一覧が付く）。`TargetNetRole` / `TargetPIEInstance` を満たせない |
+| `CapabilityNotAvailable` | `RuntimeInspect`、または `DumpAnimInstanceVariables` の `AnimInstanceVariableDump` が許可されていない。メッセージに名前が付く |
+| `PolicyViolation` | 安全ポリシーでその Capability が明示的に拒否されている |
+| `NotAllowed` | プレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い |
+| `NotFound` | アクターが見つからない、スケルタルメッシュコンポーネントを持たない、または `ComponentName` の名前のコンポーネントが無い（メッセージに候補の一覧が付く） |
+| `PreconditionFailed` | 呼び出した瞬間に、メッシュのアニメーションがワーカースレッドで評価中だった。何も読まず、成果物も保存しません。待つと観測のせいでゲームのイベントが早まって発火するため、待ちません。もう一度呼んでください |
+| `ExecutionFailed` | 識別子に一致するアクターが複数ある、または成果物を保存できなかった |
+
+成功した呼び出しは必ず JSON の成果物を 1 つ保存します。失敗した呼び出しは何も保存しません。
+
+---
+
+## UAIP.Runtime.Network
+
+実行中のゲームのネットワークを観測するコマンド群です。ワールドの NetDriver とその合計値、NetDriver が持つコネクションとそれぞれの往復時間・損失・通信量、アクターのレプリケーション設定と、その送信についてサーバーが把握している状態を返します。観測に加えて、レプリケートされるプロパティの値を読み、サーバーとクライアントの間でその値を比べ、パケットを遅延・損失・重複・順序入れ替えさせて回線の悪い状態を再現するパケットエミュレーションを変更できます。エディタでは PIE の実行中に、また `-game` 起動やパッケージ版でも動作します。7 つすべてが [`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付け、ネットワークを使う Play-in-Editor セッションのサーバーワールドか、クライアントワールドの 1 つを選べます。
+
+**Capability。** `GetNetDriverState`・`ListNetConnections`・`DumpActorReplication`・`DumpReplicatedPropertyValues`・`CompareReplicatedProperties` は `RuntimeInspect`（DefaultAllow）を必要とします。`DumpReplicatedPropertyValues` と `CompareReplicatedProperties` は、さらに `RuntimeReplicatedPropertyValueRead`（DefaultDenied）を必要とします。値にはプレイヤーのプラットフォームアカウント識別子（`PlayerState` のレプリケートされる `UniqueId`）やプレイヤー名が入りうるためです。`ListNetConnections` は、`IncludeRemoteAddress` が `true` のとき**だけ**、さらに `RuntimeNetConnectionAddressRead`（DefaultDenied）を必要とします。この Capability は要求ごとに判定するため、コマンドが宣言する `RequiredCapabilities` には現れません。`SetNetworkEmulation` と `ResetNetworkEmulation` は `RuntimeNetworkEmulationControl`（DefaultDenied）を必要とし、読み取り専用ではないため、安全ポリシーが読み取り専用モードのときは拒否されます。足りない場合は、その名前を示した `CapabilityNotAvailable` になります。詳細は [安全性と Capability](safety.md#runtime-ネットワークとレプリケーション) を参照してください。
+
+**デモ版。** `GetNetDriverState`・`ListNetConnections`・`DumpActorReplication` と `RuntimeNetConnectionAddressRead` はデモ版でも提供されます。`DumpReplicatedPropertyValues`・`CompareReplicatedProperties`・`SetNetworkEmulation`・`ResetNetworkEmulation` は含まれず、デモ版ではこれらのコマンドは存在せず `CommandNotFound` を返します。その Capability（`RuntimeReplicatedPropertyValueRead`、`RuntimeNetworkEmulationControl`）はデモ版にも登録されますが、この版では使えない印が付くため、ini で許可しても効果はありません。
+
+**Shipping ビルド。** `SetNetworkEmulation`・`ResetNetworkEmulation`・`RuntimeNetworkEmulationControl` は、エンジンのパケットエミュレーションを使えるビルドでだけ登録されます。Shipping ビルドでは登録されません（`CommandNotFound`）。
+
+**読み取りが表すもの。** 観測は呼び出した瞬間の状態を読み、履歴は持ちません。どのコマンドもコネクションの確立を待ちません。クライアントの参加を待つには、`GetNetDriverState` を繰り返し呼び、サーバーでは `LoggedInConnectionCount`、クライアントでは `Availability` を見てください。コネクション番号（`ConnectionIndex`）は、`ListNetConnections` が並べる NetDriver 内での位置です。サーバーはクライアントとのコネクションを NetDriver が保持する順に並べ、クライアントはサーバーとの 1 本のコネクションを並べます。閉じたコネクションも NetDriver が手放すまでは番号を保つため、その後に番号がずれることがあります。後で番号を使う前に、もう一度一覧を取り直してください。分割画面の 2 人目以降のプレイヤーのコネクションは並びません。NetDriver 名（`NetDriverName`）は大文字小文字を区別せずに照合します。
+
+**Iris。** Iris レプリケーションシステムでは、汎用のレプリケーションシステムにしか無い構造から読む項目があります。それらは `null` で返り、応答に `Limitations: IrisReplicationActive` が付きます: `ListNetConnections` の `ActorChannelCount`、`DumpActorReplication` の `Connections` と `NetworkObjectInfo`、そして `CompareReplicatedProperties` では、実行時に条件が変わりうるプロパティが `NotComparable` になります。`GetNetDriverState` は、NetDriver のどれかが Iris を使っているときに同じ制限事項を付けます。
+
+### 観測（3）— `RuntimeInspect` が必要
+
+| コマンド | 説明 |
+|---|---|
+| 🆓 `GetNetDriverState` | 対象ワールドの NetDriver を返します。プレイワールド選択子以外のパラメータはありません。`Availability.State` は `Available`・`Connecting`（クライアントが参加中。`Reason: PendingNetGame`）・`Unavailable`（`Reason: NoNetDriver`: ワールドにゲーム用の NetDriver が無い）のいずれかで、`Available` のときは `Reason` を省きます。`RunAsDedicated` と `HasGameViewport` は、ワールドがどんな種類のプロセスで動いているかを示します。`NetDrivers[]` の各項目には、`NetDriverName`・`NetDriverDefinition`・`IsServer`・`ReplicationSystem`（`Generic` / `Iris`）・`ConnectionCount`・`LoggedInConnectionCount`・`MaxClientRate`・`MaxInternetClientRate`・`MaxNetTickRate`・`NetServerMaxTickRate`・`ConnectionTimeoutSeconds`・コネクション全体の `Totals`（`InBytesPerSecond`・`OutBytesPerSecond`・`InPacketsPerSecond`・`OutPacketsPerSecond`、毎秒のパケット数で重み付けした `InLossRatioWeighted` / `OutLossRatioWeighted`、最も悪いコネクションの `InLossRatioMax` / `OutLossRatioMax`、合計に含めた統計の準備ができたコネクションの数 `StatsReadyConnectionCount`）・`MaxPlayers` / `MaxSpectators`（ゲームセッションを持つサーバーのときだけ。それ以外は省きます）・NetDriver の `PacketSimulation` 設定・`EmulationModifiedByUAIP`（`SetNetworkEmulation` がこの NetDriver かそのコネクションの元の設定を保存しているか）・`EmulationDisabledByConfig`（NetDriver が設定でエミュレーションを無視するか）が入ります。ゲーム用の NetDriver が無いワールドも成功で、ほかの NetDriver は並び、理由を `Availability` で示します。応答と成果物は同じ内容です |
+| 🆓 `ListNetConnections` | 1 つの NetDriver（`NetDriverName`、既定 `GameNetDriver`）のコネクションを、ページ単位（`StartIndex`、`MaxEntries`）で返します。各項目には、`ConnectionIndex`・`Direction`（`ToClient` / `ToServer`）・`ConnectionState`・`ClientLoginState`・`LoggedIn`・`PlayerController`・`PlayerState`・`ConnectedSeconds`・`LastReceiveAgeSeconds`・`StatsReady`・`RttMs`・`RawPingMs`・`PlayerPingMs`・`JitterMs`・`InLossRatio`・`OutLossRatio`・`InLossRatioAvg`・`OutLossRatioAvg`・`InBytesPerSecond`・`OutBytesPerSecond`・`InPacketsPerSecond`・`OutPacketsPerSecond`・累計の `InTotalBytes`・`OutTotalBytes`・`InTotalPackets`・`OutTotalPackets`・`InTotalPacketsLost`・`OutTotalPacketsLost`・`CurrentNetSpeedBytesPerSecond`・`QueuedBits`・`IsNetReady`・`OpenChannelCount`・`ActorChannelCount`・コネクションに実際に効いている `PacketSimulation`・`AddressKind`（`Loopback`・`Private`・`Public`、アドレスが 4 バイトでも 16 バイトでもないときは `Unknown`）が入ります。生の IP アドレスとポートである `RemoteAddress` は、`IncludeRemoteAddress` が `true` のときだけ書きます。`StatsReady` が false のあいだは、往復時間・ジッター・4 つの損失率・4 つの毎秒の値が `null` です。`RttMs` は直近の統計期間の平均で、次の期間が終わるまでは前の値を保ちます。累計のカウンターはエンジン内で 32 ビット整数のため、長いセッションでは一周することがあります。成果物には、ページ全体と `TotalCount`・`ReturnedCount`、残りがあるあいだは `NextStartIndex` が入ります。応答には同じ項目とページの先頭 50 件のコネクションが入り、ページにそれより多く入っているときは `DataEntriesTruncated: true`（`Data` にだけ付く bool。完全なページは成果物にあります）です。`Truncated` は、このページの後ろにコネクションが残っている（`NextStartIndex` が付く）ときだけ `true` で、`Data` と成果物に同じ値が付きます（[応答の共通キー](#応答の共通キー--truncateddataentriestruncatedartifactsnotsaved)）。全ページの総数 `TotalCount` は判定に使わないので、最後のページでは `false` です。ゲーム用の NetDriver が無いワールドでは、`NetDriverName` を省いたときは空の一覧で成功し、理由を `Availability` で示します |
+| 🆓 `DumpActorReplication` | 1 つのアクター（`ActorIdentifier`）のレプリケーション設定と、その送信についてサーバーが把握している状態を返します。`Actor` には `Name`・`Path`・`Class` が入ります。`Replication` には `Replicates`・`LocalRole`・`RemoteRole`・`NetOwner`・`HasOwningConnection`・`NetDormancy`・`NetUpdateFrequency`・`MinNetUpdateFrequency`・`NetCullDistance`（二乗ではなく距離そのもの）・`NetPriority`・`AlwaysRelevant`・`OnlyRelevantToOwner`・`IsNetStartupActor`・`ReplicateMovement` が入ります。`Properties[]` にアクターの、`Components[]` にレプリケートされる各コンポーネントの、レプリケートされるプロパティが並び、それぞれ `Name`・`Type`・`DeclaredBy`・`ArrayDim`・`DeclaredCondition`（`COND_` を除いた条件名）・`DeclaredRepNotifyCondition`（`OnChanged` / `Always`）・`RepNotifyFunction`（無いときは `null`）・`PushBased` を持ちます。サーバーでは、`Connections[]` がコネクションごとに、アクターチャンネルが開いているか（`ActorChannelOpen`）、見つかった変更をまだ送っていないか（`HasUnsentComparedChanges`）、アクター自身のどのプロパティが非アクティブか（`InactiveProperties`。エンジンが評価するまでは `null`）、直前の更新が空だったか（`LastUpdateEmpty`）を示し、`NetworkObjectInfo` に `NextUpdateTime`・`LastNetReplicateTime`・`PendingNetUpdate`・`DormantConnectionCount` が入ります。`Connections` と `NetworkObjectInfo` は、クライアント、Iris、NetDriver の無いワールド（理由は `Availability`）では `null` です。`HasUnsentComparedChanges: false` は、クライアントが同期していることを意味しません。ライフタイムプロパティに登録されていないレプリケート対象のプロパティは `DeclaredCondition: null` で、応答に `Limitations: PropertyMissingFromLifetimeProps` が付きます。`MaxProperties` はアクターとコンポーネントのプロパティを合わせた件数を、`MaxConnections` はコネクションの件数を制限し、切った一覧は `PropertiesTruncated` / `TotalPropertyCount` または `ConnectionsTruncated` / `TotalConnectionCount` を報告します。ページングはありません。応答と成果物は同じ内容です |
+
+### プロパティの値の観測（2）— `RuntimeInspect` と `RuntimeReplicatedPropertyValueRead` が必要
+
+デモ版では提供されません。
+
+| コマンド | 説明 |
+|---|---|
+| `DumpReplicatedPropertyValues` | 選んだワールドで、1 つのアクター（`ActorIdentifier`）とレプリケートされる各コンポーネントの、レプリケートされるプロパティ（レプリケーション指定のあるプロパティだけ）の値を返します。クライアントワールドではクライアントが受け取った値なので、サーバーワールドとクライアントワールドで呼べば両者を並べて見られます。`Actor` には `Name`・`Path`・`Class` が入り、アクターのプロパティは `Properties[]`（`Name`・`Type`・`Value`）に、各コンポーネントのプロパティは `Components[]` のその項目（`Name` と同じ項目）に入ります。長い文字列・大きなコンテナ・入れ子の構造体は切り詰めます。各オブジェクトは `PropertiesTruncated`・`PropertiesOmitted`・`TotalPropertyCount` と、サイズの予算で止まったときは `StopReason`（`PerObjectBudget`・`TotalBudget`・`ExternalBudget`）を報告し、どれかのオブジェクトを切った、またはプロパティを省いたときは最上位の `Truncated` が `true` です。64 ビット整数は、絶対値が 2^53 を超えて JSON の数値では正確に表せないときだけ文字列で書きます。±2^53 ちょうどは数値のままです。ワールドに NetDriver が無くても、`Availability.State: Unavailable`（`Reason: NoNetDriver`）を添えて値を返します。応答と成果物は同じ内容です。⚠️ **値には `PlayerState` のレプリケートされる `UniqueId`（プラットフォームのアカウント識別子）やプレイヤー名が入りえます** — [安全性と Capability](safety.md#runtime-ネットワークとレプリケーション) を参照してください |
+| `CompareReplicatedProperties` | サーバーワールドのアクターのレプリケートされるプロパティを、1 つのクライアントが受け取った同じアクターと比べ、アクターとレプリケートされるコンポーネントのプロパティごとに `Equal`・`Different`・`NotComparable`（理由 `Reason` 付き）を返します。値は返しません。プレイワールド選択子は**クライアント**ワールドを、`ActorIdentifier` は**サーバー**ワールドのアクターを指します。サーバーワールドは、このプロセス内でただ 1 つのリッスンサーバーまたは専用サーバーでなければなりません（Play-in-Editor の **Run Under One Process**）。下の [比較結果の読み方](#比較結果の読み方) を参照してください | [秘密の値を読む](#reading-secret-values) の 3 つの許可がそろわないと、秘密のプロパティは `NotComparable`（`Reason: SecretValue`）になります。
+
+### パケットエミュレーション（2）— `RuntimeNetworkEmulationControl` が必要
+
+デモ版と Shipping ビルドでは提供されません。
+
+| コマンド | 説明 |
+|---|---|
+| `SetNetworkEmulation` | 対象プレイワールドの NetDriver の、または `ConnectionIndex` を指定したときはそのコネクションの、パケットエミュレーション設定（遅延・損失・ジッター・重複・順序入れ替え）を変更します。変わるのは指定した項目だけで、ほかの項目は今の値を保ちます。`ConnectionIndex` を省くと NetDriver 全体の設定を変え、すべてのコネクションへ写します。最初の変更の前にあった設定は保存され、`ResetNetworkEmulation` で戻せます。変更は、戻すか NetDriver が破棄される（プレイセッションの終了時、またはクライアントが別のマップへ移動して再接続したとき）まで残ります。応答には `Availability`・`Target`（`PIEInstance`・`NetDriverName`、指定したときは `ConnectionIndex`）・`Before` と `After`（読み取り専用の `PktFrameDelay`・`PktBufferBloatInMS`・`PktIncomingFrameDelay`・`PktIncomingBufferBloatInMS`・`PktLossMinSize`・`PktLossMaxSize` を含む、エンジンの設定の全項目）・`Limitations[]` が入ります。下の [パケットエミュレーション](#パケットエミュレーション) を参照してください |
+| `ResetNetworkEmulation` | NetDriver（`NetDriverName`、既定 `GameNetDriver`）とそのすべてのコネクションを、最初の `SetNetworkEmulation` の変更の前に保存した設定へ無条件に戻します。その後にコンソールから行った変更も失われます。1 つのコネクションだけを戻す方法はありません。応答には `Availability`・`NetDriverName`・`Restored[]`（NetDriver が先頭で、続いてコネクション。それぞれ `Scope`（`Driver` / `Connection`）、コネクションの `ConnectionIndex`（もう番号が付いていないときは `null`）、`After`）・`Discarded`（NetDriver やコネクションがもう無いために捨てた保存項目の数。以前の呼び出しがすでに捨てていることもあります）・`Limitations[]`（NetDriver そのものを戻したときは `ForcedPacketSettingsRemains`）が入ります。戻すものが無いときは、空の `Restored` で成功します: `NetDriverName` を省いた、ゲーム用の NetDriver が無いワールド、一度も変更していない NetDriver、すでに終わったプレイセッションで保存した設定、のいずれかです |
+
+#### パラメータ
+
+| パラメータ | コマンド | 意味 |
+|---|---|---|
+| `NetDriverName` | `ListNetConnections`、`SetNetworkEmulation`、`ResetNetworkEmulation` | `GetNetDriverState` が並べる NetDriver の名前。1〜256 文字で、大文字小文字を区別せずに照合します。既定 `GameNetDriver`。明示した名前をワールドが持たないときは `NotFound` で、メッセージにワールドの NetDriver を列挙します |
+| `StartIndex` | `ListNetConnections` | 0 から int32 の最大値までの整数、既定 0。ページの最初のコネクション。コネクションの数以上の値は空のページを返します |
+| `MaxEntries` | `ListNetConnections` | 1〜500 の整数、既定 50。ページに入れるコネクションの数 |
+| `IncludeRemoteAddress` | `ListNetConnections` | 真偽値、既定 `false`。`RemoteAddress` を書くか。`true` には `RuntimeNetConnectionAddressRead` が必要で、プレイワールドを探す前に判定します |
+| `ActorIdentifier`（必須） | `DumpActorReplication`、`DumpReplicatedPropertyValues`、`CompareReplicatedProperties` | アクターのラベルまたはオブジェクト名（1〜256 文字）。[読むアクターの選び方](#読むアクターの選び方) を参照 |
+| `MaxProperties` | `DumpActorReplication`、`CompareReplicatedProperties` | 1〜1024 の整数、既定 256。`DumpActorReplication` ではアクターとコンポーネントのプロパティを合わせた件数を、`CompareReplicatedProperties` では `Properties` の一覧だけを制限し、比較と `Summary` はすべてのプロパティを対象にします |
+| `MaxConnections` | `DumpActorReplication` | 1〜256 の整数、既定 16 |
+| `ConnectionIndex` | `SetNetworkEmulation` | 0 から int32 の最大値までの整数で、`ListNetConnections` と同じ番号付け。省くと NetDriver 全体を変更します。NetDriver が持たない番号は `NotFound` です |
+| `PktLag`、`PktLagVariance`、`PktLagMin`、`PktLagMax`、`PktIncomingLagMin`、`PktIncomingLagMax`、`PktJitter` | `SetNetworkEmulation` | ミリ秒単位の整数、0〜10000 |
+| `PktLoss`、`PktIncomingLoss`、`PktDup` | `SetNetworkEmulation` | パーセント単位の整数、0〜100 |
+| `PktOrder` | `SetNetworkEmulation` | 真偽値。送信するパケットの順序を入れ替えます |
+| `TargetNetRole` / `TargetPIEInstance` | すべて | [実行時コマンドの対象プレイワールドを指定する](#実行時コマンドの対象プレイワールドを指定する) を参照。`CompareReplicatedProperties` ではクライアントワールドを指します |
+
+`SetNetworkEmulation` には、エミュレーションの項目が少なくとも 1 つ必要です。最小値が最大値を超える（`PktLagMin` / `PktLagMax`、`PktIncomingLagMin` / `PktIncomingLagMax`）と `InvalidParams` で、片方だけを指定したときはもう片方の今の値と比べます。真偽値は JSON の真偽値、上限値は JSON の整数でなければならず、それ以外の型・空の文字列・未知のキー・範囲外の値は `InvalidParams` で、何も変更しません。
+
+#### 読むアクターの選び方
+
+`ActorIdentifier` は、ラベル（エディタビルドのとき）またはオブジェクト名が文字列と大文字小文字を区別せずに完全一致するアクターに一致します。部分一致は受け付けません。完全一致するものが無いときは `NotFound` で失敗し、名前かラベルにその文字列を含むアクターを最大 10 件、メッセージで候補として示します。完全一致するアクターが複数あるときは `ExecutionFailed` で失敗します。1 つのアクターだけに一致する識別子を指定してください。
+
+#### すべての応答に含まれるフィールド
+
+| フィールド | 意味 |
+|---|---|
+| `CapturedAt` / `Frame` | 状態を読んだ時刻（ISO 8601、UTC）と、そのときのエンジンのフレーム番号 |
+| `NetMode` / `WorldContext` / `PIEInstance` | 読んだワールド。`CompareReplicatedProperties` ではクライアントワールドで、サーバーワールドは `ServerWorld` に入ります |
+| `Availability` | `CompareReplicatedProperties` 以外のすべて: `State`（`Available`・`Connecting`・`Unavailable`）と、`Available` 以外のときは `Reason`（`PendingNetGame`・`NoNetDriver`） |
+| `Limitations[]` | 返した内容に関する注意のコード（下を参照）。`DumpReplicatedPropertyValues` にはありません |
+
+#### Limitations のコード
+
+| コード | コマンド | 意味 |
+|---|---|---|
+| `IrisReplicationActive` | `GetNetDriverState`、`ListNetConnections`、`DumpActorReplication`、`CompareReplicatedProperties` | Iris を使っている。上の **Iris** で挙げた項目が `null` または比較不能になる |
+| `NetTestDisabledInBuild` | `GetNetDriverState`、`ListNetConnections` | ビルドにパケットエミュレーションの機能が無いため、`PacketSimulation`（と `EmulationDisabledByConfig`）が `null` |
+| `LossRatioDenominatorsDiffer` | `GetNetDriverState`（常に） | 受信の損失率は受信したパケットと失ったパケットの合計を、送信の損失率は確認応答を受けたパケットを分母にしている。両者を直接比べないこと |
+| `PropertyMissingFromLifetimeProps` | `DumpActorReplication`、`CompareReplicatedProperties` | レプリケーション指定があるのにライフタイムプロパティに登録されていないプロパティがあり、その条件が分からない。エンジンはこのプロパティを送らない |
+| `CustomActiveStateNotObserved` | `CompareReplicatedProperties`（常に） | ゲームはカスタムのアクティブ状態でプロパティの送信を止められるが、それは観測していないため、そうしたプロパティも `Different` と報告されうる |
+| `DriverWideChangeOverwritesConnection` | `SetNetworkEmulation` | 1 つのコネクションに対して変更した。その後の NetDriver 全体への変更（このコマンドでも、コンソールの `Net PktLag=...` などでも）で上書きされる |
+| `ForcedPacketSettingsRemains` | `SetNetworkEmulation`、`ResetNetworkEmulation` | NetDriver 全体を変更した、または戻した。エンジンは NetDriver が破棄されるまで、戻した後も、プロジェクト設定から設定を読み直さなくなる |
+| `PacketLagSettingIgnored` | `SetNetworkEmulation` | `After` の遅延の項目が 0 ではないが、ほかの項目が優先されるためエンジンはそれを無視する（下を参照） |
+
+#### 比較結果の読み方
+
+`CompareReplicatedProperties` は、まずクライアント側のアクターの複製を探します。見つかれば `Counterpart.Status` は `Resolved` です。見つからないときはコマンドは成功して何も比べず、ステータスで理由を示します: `NotReplicated`（サーバーがアクターのネットワーク識別子を持たない）、`NotReached`（クライアントがまだその識別子を知らない）、`Pending`（クライアントがまだ読み込み中）、`Broken`（クライアントが壊れていると印を付けた）、`Destroyed`（クライアント側の複製がもう有効でない）、`ConnectionNotFound`（ログイン前など、クライアントワールドに対応するサーバー側のコネクションが見つからない）。`Pending` と `Broken` は汎用のレプリケーションシステムでだけ起きます。`Components[]` の各項目は、それぞれ自分の `Counterpart.Status` を持ちます。
+
+応答には `ServerWorld`（`PIEInstance`、`NetMode`）・`ClientWorld`（`PIEInstance`）・`Actor`（`Name`、`ServerPath`）・`ReplicationSystem`・`Counterpart`（`Status`、`ClientPath`）・`Summary`（すべてのプロパティについての `Equal`・`Different`・`NotComparable` の件数）・`Different`・`NotComparable`・`Equal` の順に並べた `Properties[]`（`Name`・`Owner`・`Result`、`NotComparable` のときは `Reason`）・`PropertiesTruncated`・`TotalPropertyCount`・`Limitations[]` が入ります。応答と成果物は同じ内容です。
+
+⚠️ **比較結果は、アクターが「同期している」とは決して言いません。** 比べるのは評価できるプロパティだけで、`Equal` は呼び出した瞬間に 2 つの値が同じだったことしか示しません。`Different` もバグの証明ではありません。値は送信中や、更新頻度・休眠のために正当に遅れますし、ゲームがカスタムのアクティブ状態で送信を止めたプロパティは `Different` と報告されます（`Limitations` には常に `CustomActiveStateNotObserved` が付きます）。独自のネットワークシリアライズを持つ型が `NotComparable` になるのは、プロパティそのものがその型のときだけです。要素がそうした型の配列 — たとえば `TArray<FVector_NetQuantize>` — は値ごとに比べるため、量子化による正当な丸めでも `Different` と報告されることがあります。
+
+評価できないプロパティは、次のいずれかの理由付きで `NotComparable` になります。
+
+| `Reason` | 意味 |
+|---|---|
+| `InitialOnly` | オブジェクトの生成時に 1 回だけレプリケートされるプロパティ |
+| `ConditionUnknown` | 条件が実行時に決まる（カスタムまたはダイナミック）もので、エンジンがこのコネクションについてまだ評価していない。コンポーネントのプロパティと、Iris のときは常にこれになる |
+| `ConditionNotApplicable` | 条件がこのクライアントに当てはまらず、プロパティが送られない。ライフタイムプロパティに登録されていないプロパティ（`Limitations: PropertyMissingFromLifetimeProps`）も含む |
+| `DeltaSerialized` | 差分でシリアライズされる（Fast Array）ため、比べられる値全体が無い |
+| `ObjectReference` | オブジェクト参照で、参照先を 2 つのワールドの間で対応付けられなかった |
+| `NestedObjectReference` | コンテナや構造体の中にオブジェクト参照を持つ |
+| `CustomNetSerialization` | 独自のネットワークシリアライズを持つ型で、値を正当に丸めることがあり、値が一致しなかった。一致したものは `Equal` になる |
+| `ClassMismatch` | サーバー側とクライアント側のオブジェクトのクラスが違う |
+| `SecretValue` | プロパティが秘密で、[秘密の値を読む](#reading-secret-values) の 3 つの許可がそろっていない。値は読まないので、両側が等しいかどうかも分からない |
+
+**拒否。** クライアントがまだ接続中（`Connecting`）、選んだワールドに NetDriver が無い（`NoNetDriver`）またはクライアントでない（`TargetIsNotClient`）、プロセスにサーバーワールドが無い（`NoServerWorld`）または複数ある（`MultipleServerWorlds`。メッセージにプレイワールドを最大 8 件列挙）ときは、何も保存せず `NotAllowed` で拒否します。`ErrorMessage` はその理由で始まり、`nothing was compared` が続きます。ゲーム用の NetDriver を持たないサーバーワールドは `ExecutionFailed` です。
+
+#### パケットエミュレーション
+
+エンジンは送信側の遅延の項目を次の優先順で読みます。`SetNetworkEmulation` は、無視される項目が 0 でないときに `PacketLagSettingIgnored` を付けます。
+
+1. `PktFrameDelay`（ここでは読み取り専用）が 0 より大きい、または `PktOrder` が有効なときは、`PktLag`・`PktLagVariance`・`PktLagMin`・`PktLagMax`・`PktJitter` を無視します。
+2. そうでなく `PktJitter` が 0 でないときは、`PktLagMin` を基準にジッターと揺らぎで広げた遅延を使い、`PktLag` と `PktLagMax` を無視します。
+3. そうでなく `PktLag` が 0 でないときは、それを `PktLagVariance` とともに使い、`PktLagMin` と `PktLagMax` を無視します。
+4. それ以外は `PktLagMin` から `PktLagMax` の間で遅延を決め、`PktLagVariance` を無視します。
+
+受信側の項目（`PktIncomingLagMin`・`PktIncomingLagMax`・`PktIncomingLoss`）は、これとは独立です。
+
+1 つのコネクションに対する設定は、その後の NetDriver 全体への変更（このコマンドでも、コンソールからでも）で上書きされます（`DriverWideChangeOverwritesConnection`）。NetDriver 全体を変更すると、エンジンはその NetDriver が破棄されるまで、`ResetNetworkEmulation` の後も、プロジェクト設定から設定を読み直さなくなります（`ForcedPacketSettingsRemains`）。
+
+⚠️ **`RuntimeNetworkEmulationControl` の解禁を取り消す前に `ResetNetworkEmulation` を呼んでください。** 戻すにも同じ Capability が必要なため、取り消した後は NetDriver が破棄されるまで変更が残ります。
+
+**成果物の保存。** 成果物を保存する時点では、変更（または復元）はすでに済んでいます。そのため保存に失敗しても、`SetNetworkEmulation` と `ResetNetworkEmulation` は成果物なしで成功します。唯一の例外は、成果物は書けたもののその場所を解決できなかった場合で、このときコマンドは `ExecutionFailed` で失敗し、メッセージに、設定はすでに変更済みで `ResetNetworkEmulation` で戻せること（`ResetNetworkEmulation` では、保存していた設定はすでに戻して破棄したこと）が入ります。
+
+#### 完了通知と監査記録で伏せるもの
+
+生のアドレスとプロパティの値は、呼び出し元にはそのまま返り、成果物にもそのまま保存されます。エディタの完了通知に流す応答の写し（エディタ自身の通知と、コマンドを記録するコード — 監査記録・ログ — が受け取るもの）では伏せます。`ListNetConnections` の `Connections[]` の各 `RemoteAddress` と、`DumpReplicatedPropertyValues` の `Properties[]` と `Components[].Properties[]` の各 `Value` が `"<redacted>"` になります。ほかの項目はそのままです。`IncludeRemoteAddress` を指定しない `ListNetConnections` には伏せるアドレスが無いので、写しは元と同じです。`CompareReplicatedProperties` は値を返さないので、伏せるものはありません。シナリオで、前のステップの応答からアドレスや値を取ったステップは、パラメータと応答の `Data` を伏せて記録されます。`DescribeCommand` はこれらの位置を `SensitiveResponseData` に示します。[機微な値と伏せる場所](#機微な値と伏せる場所) を参照してください。
+
+#### エラー
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `InvalidParams` | パラメータの型の誤り・空・長すぎる・範囲外・未知。エミュレーションの項目を 1 つも指定しない、または最小値が最大値を超える `SetNetworkEmulation`。`TargetNetRole` / `TargetPIEInstance` を満たせない |
+| `CapabilityNotAvailable` | `RuntimeInspect`・`RuntimeReplicatedPropertyValueRead`・`RuntimeNetworkEmulationControl`、または（`IncludeRemoteAddress: true` のときは）`RuntimeNetConnectionAddressRead` が許可されていない。メッセージに名前が付く |
+| `PolicyViolation` | 安全ポリシーでその Capability が明示的に拒否されている、または読み取り専用モードで `SetNetworkEmulation` / `ResetNetworkEmulation` を呼んだ |
+| `NotAllowed` | プレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に一致するものが無い。`CompareReplicatedProperties` の拒否（上を参照）。設定でエミュレーションを禁じている NetDriver への `SetNetworkEmulation`（`EmulationDisabledByConfig`） |
+| `NotFound` | `ActorIdentifier` に一致するアクターが無い（メッセージに候補が付く）。明示した `NetDriverName` をワールドが持たない（メッセージに NetDriver の一覧が付く）。`NetDriverName` を省いた `SetNetworkEmulation` で、ワールドにゲーム用の NetDriver が無い（スタンドアロンのゲーム）、または NetDriver が持たない `ConnectionIndex` |
+| `ExecutionFailed` | 識別子に一致するアクターが複数ある。観測コマンドの成果物を保存できなかった。`CompareReplicatedProperties` のサーバーワールドにゲーム用の NetDriver が無い。`SetNetworkEmulation` / `ResetNetworkEmulation` の成果物は書けたが、その場所を解決できなかった |
+| `CommandNotFound` | ビルドが提供していないコマンド: デモ版での値の読み取り・比較・エミュレーションのコマンドと、Shipping ビルドでのエミュレーションのコマンド |
+
+観測コマンドは、成功した呼び出しごとにちょうど 1 つの JSON 成果物を保存し、失敗した呼び出しは何も保存しません。拒否された要求も何も保存しません。
+
+---
+
+## UAIP.Runtime.Mass
+
+プレイワールドの Mass シミュレーションを観測するコマンド群です。エンティティがいくつあるか、どのアーキタイプにまとまっているか、どのプロセッサがどの順で動くか、1 体のエンティティがどの要素の型を持つか、そして許可すればその要素の値が分かります。このモジュールが必要とするのはエンジン同梱の `MassEntity` モジュールだけで、`MassGameplay` プラグインは要らないため、🧩 は付きません。エディタでのみ読み込まれ（ゲームのビルドには含まれません）、デモ版にも含まれません。すべてのコマンドは読み取りだけを行います。シミュレーションの元になるアセットの読み取りと組み立ては [`UAIP.Editor.Mass`](#uaipeditormass-) を参照してください。
+
+6 つのうち 5 つは、エディタ上のプレイワールドの Mass エンティティマネージャーに作用し、[`TargetNetRole` / `TargetPIEInstance`](#実行時コマンドの対象プレイワールドを指定する) を受け付けます。`DumpMassEntitySettings` はエンジンの設定を読むので、パラメータを取りません。
+
+**Capability。** 6 つすべてが `RuntimeInspect`（DefaultAllow）を必要とします。`GetMassEntityFragments` は、フラグメントの値がプロジェクトのデータであるため、`RuntimeMassFragmentValueRead`（DefaultDenied）も必要です。足りない場合は `CapabilityNotAvailable` です。詳細は [安全性と Capability](safety.md#mass-の観測と編集) を参照してください。
+
+**エンティティの指定。** エンティティは、先に返った応答が示した `EntityIndex` と `EntitySerialNumber` の組で指定します（見本は `DumpMassEntityArchetypes` の `SampleEntitiesPerArchetype` で求めます）。プレイワールドについての応答には、観測したワールドを識別する `WorldToken` が付きます。これをそのまま返してください。`GetMassEntityFragments` は必須で、別のワールド（たとえば PIE を再起動した後）について答えることを `Conflict` で断ります。`DescribeMassEntity` は渡されれば検証し、渡されなければ `WorldTokenNotVerified` の制限事項でそれを示します。
+
+**安全点での読み取り。** エンジンの状態が更新の途中かもしれないとき（モーダルダイアログや長い処理がゲームループを止めている、またはワールドがティックの途中）は、何も読まずに、`Availability: NotAtSafePoint` とデータなしで**成功**を返します。これは空のワールドとは別物で、`DescribeMassEntity` / `GetMassEntityFragments` ではエンティティが存在するかどうかも分かりません。もう一度呼んでください。
+
+**出力の上限。** 上限は設定できません。Data は先頭のエントリを、成果物はサイズ予算までの残りを持ちます。上限のある一覧 `<List>`（`Archetypes`・`Processors`・`PrunedProcessors`・`Observers`・`Elements`・`ProcessorCDOs`）には次のキーが付きます。
+
+- `<List>TotalCount` — 切り捨て前の件数。
+- `<List>Truncated` — **応答が返した結果（Data と成果物を合わせたもの）の外に**まだ要素がある。Data と成果物で同じ値になる。続きのページがある（`NextStartIndex`）とき、または総数が二つの一覧の大きい方より多いときに true。成果物が全件を持っていれば、Data がどれだけ短くても false のまま。
+- `<List>DataEntriesTruncated` — Data のみ。Data の件数が成果物の件数より少ないとき true。true のとき、残りは成果物にある。
+- `ArtifactTruncated` / `ArtifactTruncationIndex` — 成果物がサイズ予算で止まったこと（とその位置）。`NextStartIndex` は変わらない。
+
+例: アーキタイプが 60 件あり、続きのページが無く、成果物が 60 件すべてを持つ場合は、`ArchetypesTruncated` は false、Data の `ArchetypesDataEntriesTruncated` は true になります。成果物が予算で止まっても Data が全件を持つ場合は、`ArchetypesTruncated` は false、`ArtifactTruncated` は true です。
+
+**曖昧な要素名。** 短い要素名が複数の型に一致すると、`GetMassEntityCount`・`DumpMassEntityArchetypes`・`GetMassEntityFragments` は `InvalidParams` で失敗します。その失敗応答の `Result` には、`AmbiguousName`（指定された名前）、`Candidates`（候補の型パス。並べ替え済み、最大 10 件）、`TotalCandidateCount`（一致した型の総数。載せた 10 件より多いことがある）が載ります。候補の型パスのどれかで指定し直すと、曖昧さが解けます。
+
+**デバッグ用インターフェース。** `GetMassEntityCount`・`DumpMassEntityArchetypes`・`DumpMassProcessorGraph` は Mass のデバッグ用インターフェースを必要とします。ビルド構成によっては含まれません（Shipping ビルドのように `WITH_MASSENTITY_DEBUG` が 0 のエンジンビルド）。その場合、これらは `Available: false`（`UnavailableDetail: BuildConfiguration`）で、理由を示すメッセージ付きで一覧に出ます。
+
+**Mass が動いていないとき。** プロジェクト設定やコンソール変数（たとえば `mass.RuntimeSubsystemsEnabled`）でプレイワールドの Mass のサブシステムが無効になっていると、それを必要とするコマンドは、設定の名前を示した `PreconditionFailed` で断られます。`DumpMassEntitySettings` は影響を受けません。
+
+**TEDS を無効にしているとき。** エディタの Typed Elements Data Storage（TEDS）が有効（既定）なら、このモジュールによる新たな副作用はありません。TEDS を無効にしていると、このモジュールの読み込みでエディタが `MassEntity` モジュールを読み込み、エディタ側のワールド（エディタのワールドなど）に Mass のサブシステムが作られることがあります。影響はエディタの中に限られ、ゲームには及びません。
+
+| コマンド | 説明 |
+|---|---|
+| `DumpMassEntitySettings` | エンジンの Mass 設定を JSON 成果物として保存する。`ChunkMemorySize`（エンティティメモリ 1 チャンクのバイト数）、`ProcessingPhases`（`Phase` と `PhaseGroupClassPath`。設定が並べる順）、設定が集めたプロセッサクラスの `ProcessorCDOs`（`ClassPath`・`Phase`・`Group`/`Before`/`After` 付きの `ExecutionOrder`・`ExecutionFlags`・`AutoRegisterWithProcessingPhases`）。設定はクラスのデフォルトオブジェクトから読むため、プレイワールドは不要で、応答に `WorldToken` は付かず、`Availability` は常に `Available`。Data は先頭 50 件のプロセッサクラスと `ProcessorCDOsTotalCount`・`ProcessorCDOsTruncated`・`ProcessorCDOsDataEntriesTruncated` を持つ。読み取り専用。`RuntimeInspect` が必要 |
+| `GetMassEntityCount` | 対象プレイワールドのエンティティ数を数える。`TotalEntityCount`（ワールド全体）、`MatchingEntityCount`、`MatchingArchetypeCount`、`Archetypes`（条件に合うアーキタイプごとの `ArchetypeId` と `EntityCount`。多い順）。`RequiredElements` は列挙した要素の型をすべて持つアーキタイプに絞り、`ExcludedElements` はどれかを持つものを除く。名前は `TransformFragment` のような短い名前、または `/Script/MassCommon.TransformFragment` のような完全なパスで、不明・曖昧・要素の型でない名前は断られる（1 つのリストにつき 64 個まで、各 512 文字まで）。エンティティが無いワールドは件数 0 になる。Data は先頭 50 件のアーキタイプを持つ（`ArchetypesTruncated`・`ArchetypesDataEntriesTruncated`）。読み取り専用。`RuntimeInspect` が必要 |
+| `DumpMassEntityArchetypes` | 対象プレイワールドのアーキタイプを 1 ページずつ一覧する。各アーキタイプに `ArchetypeId`・`Composition`（各要素の `Kind` と `Type`）・`EntityCount`・`ChunkCount`・`EntitiesPerChunk`・`AllocatedSizeBytes`・`WastedEntityMemoryBytes`・`BytesPerEntity`・`DebugNames`・`SampleEntities`（`SampleEntitiesPerArchetype` 個までのエンティティの `Index` と `SerialNumber`。既定では無し）。`RequiredElements` / `ExcludedElements` の絞り込みは上と同じ。`StartIndex`・`MaxArchetypes`（1〜500、既定 50）・`SampleEntitiesPerArchetype`（0〜16）で、安定した順序の中をページ送りする。応答は `TotalArchetypeCount`・`TotalEntityCount`（絞り込み前）・`MatchingArchetypeCount`・`NextStartIndex`（アーキタイプが残っているときだけ）・`ArchetypesTruncated`・Data のみ `ArchetypesDataEntriesTruncated` を持つ。ページの間にアーキタイプが変わることがある。読み取り専用。`RuntimeInspect` が必要 |
+| `DumpMassProcessorGraph` | 対象プレイワールドのプロセッサグラフ。処理フェーズごとに、実行される順のプロセッサ、続いてエンジンが除いたプロセッサと、要素の追加・除去を監視するプロセッサ。各プロセッサは、クラス、位置、自分より前に走るべきプロセッサ、宣言しているグループ・順序・実行フラグ、クエリの要件（要素の型と種類、読み取りか読み書きか、エンティティが持つ必要があるか）を持つ。Data は先頭のエントリを、成果物は残りを持ち、各フェーズの `Processors` と `PrunedProcessors`・`Observers` には「出力の上限」のフラグが付く。Mass デバッガーの処理環境が無いワールドは、制限事項 `ProcessingEnvironmentNotFound` 付きの空のグラフを返す。これはプロセッサが無いワールドとは別物。読み取り専用。`RuntimeInspect` が必要 |
+| `DescribeMassEntity` | 1 体のエンティティがどの要素の型を持つかを、値を読まずに返す。所属するアーキタイプのハッシュと、Fragment・Tag・Shared Fragment・Const Shared Fragment・Chunk Fragment を、種類と型パスの組で返す。UE 5.8 以降では、sparse Fragment（型のみ）も列挙し、常に `SparseTagsNotListed` を返す。エンティティ単位の sparse Tag は列挙できないので、Tag の一覧が空でも持っていないという意味ではない。要素の一覧には「出力の上限」のフラグ（`ElementsTotalCount`・`ElementsTruncated`・`ElementsDataEntriesTruncated`）が付く。`EntityIndex` と `EntitySerialNumber` が必要で、`WorldToken` は任意。エンティティが存在しないと `NotFound`。読み取り専用。`RuntimeInspect` が必要。値は `GetMassEntityFragments` で読む |
+| `GetMassEntityFragments` | 1 体のエンティティの Fragment・Shared Fragment・Const Shared Fragment の値。`EntityIndex`・`EntitySerialNumber`・`WorldToken` が必要。`ElementTypes`（最大 64 個）で、名前を挙げた型だけに読み取りを絞る。Tag と Chunk Fragment は 1 体のエンティティについて読む値が無いので `InvalidParams`、エンティティが持たない型は `MissingRequestedElements` に載る。`Elements` には「出力の上限」のフラグ（`ElementsTotalCount`・`ElementsTruncated`・`ElementsDataEntriesTruncated`）が付く。`Elements` の各エントリは `Kind`・`Type` を持ち、読めた場合は `Value`（構造体のメンバーの一覧。`Name`・`Type`・`Value`）、1 つの Fragment の予算（16 KiB）で切ったときは `ValueTruncated`、省いたときは `ValueOmittedReason` を持つ。1 回の応答の値は 256 KiB の予算を共有し、尽きた後の要素は型だけと `ValueBudgetExceeded` を返す。`Limitations` が省いたものを示す。強参照のオブジェクトは読まない（`ObjectReferenceOmitted`）、実行時に型が決まる構造体は展開しない（`NestedInstancedStructNotExpanded`）、リフレクションされないメンバーは出力しない（`NonReflectedMembersOmitted`）、展開が 4 段を超える入れ子の構造体は型名だけを返す（`StructDepthTruncated`。`Detail` は要素の型パスで、型ごとに 1 回。値の中に印は無いので、打ち切られたかどうかは `Limitations` で判断する）、UE 5.8 以降の sparse 要素は型のみ（`SparseElementValuesNotRead`）。読み取り専用。`RuntimeInspect` と `RuntimeMassFragmentValueRead` が必要 |
+
+**エラー。**
+
+| ErrorCode | 発生条件 |
+|---|---|
+| `NotAllowed` | プレイワールドが動いていない、または `TargetNetRole` / `TargetPIEInstance` に合うものが無い |
+| `PreconditionFailed` | プレイワールドで Mass が無効になっている（プロジェクト設定やコンソール変数） |
+| `NotFound` | エンティティが存在しない、破棄済み、またはシリアル番号がインデックスに属さない |
+| `Conflict` | `WorldToken` が今観測しているワールドを指していない |
+| `InvalidParams` | 不明・曖昧・要素の型でない名前、`ElementTypes` の Tag や Chunk Fragment、範囲外のパラメータ |
+| `CapabilityNotAvailable` / `PolicyViolation` | 必要な Capability が与えられていない / セーフティポリシーで拒否されている |
+
+---
+
 ## シナリオ実行ルート
 
 シナリオは単一コマンドではなく、複数コマンドを順序付きリストとして 1 リクエストで送信する独立ルートです。詳細は [シナリオ実行](scenario.md) を参照してください。利用可能なエントリポイント：
@@ -3552,4 +6332,4 @@ Unreal Insights のトレース採取を制御するコマンド群。トレー�
 
 ---
 
-> スキーマやパラメータの詳細は本ページでは意図的に省略しています。任意のコマンドの完全スキーマは `uaip_describe_command(CommandName="...")` で取得してください。
+> スキーマやパラメータの詳細は本ページでは意図的に省略しています。任意のコマンドの完全スキーマは `{"Command": "UAIP.Core.DescribeCommand", "Params": {"Name": "<コマンド名>"}}`（HTTP / WebSocket / CLI）または `uaip_describe_command(CommandName="<コマンド名>")`（MCP）（引数名は前者が `Name`、後者が `CommandName` で異なります） で取得してください。

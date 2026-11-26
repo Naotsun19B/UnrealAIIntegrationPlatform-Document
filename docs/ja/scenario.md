@@ -200,7 +200,7 @@ flowchart LR
 | 最大ステップ数 | 100 |
 | シナリオ全体の制限時間 | 1800 秒 |
 | 同時実行数 | 1（実行中に送信すると `TooManyRequests`） |
-| ペイロードサイズ | 合計 1 MiB、Params 文字列 8 KiB |
+| ペイロードサイズ | 合計 1 MiB、Params 文字列 8 KiB。合計 1 MiB はすべての transport で同じ（HTTP の `POST /uaip/scenarios`、MCP の `uaip_run_scenario`、WebSocket の `ScenarioRequest`、CLI） |
 
 ---
 

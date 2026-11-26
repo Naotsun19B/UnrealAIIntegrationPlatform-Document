@@ -39,6 +39,8 @@ UAIP は **開発者マシンと、信頼できる社内 CI** での利用を想
 
 WebSocket だけでなく、HTTP のどのモードもループバックにバインドされます。UAIP は `FHttpServerModule::GetHttpRouter()` を呼ぶ際に bind アドレスを一切指定していません。エンジン側の `FHttpServerListenerConfig::BindAddress` の既定値は `"localhost"` であり、本プロジェクトの `Config/DefaultUAIP.ini` にも `DefaultEngine.ini` にも `[HTTPServer.Listeners]` の上書きはありません。これは MCPOnly だけでなく FullHTTP にも当てはまります — FullHTTP の Bearer トークン認証はリモートエージェントからの接続を想定して設計されましたが、実装としては socket 自体がマシンの外へは出ません。`-uaip-http-no-auth` もトークン検証を外すだけで、bind アドレスは変わりません。
 
+**パッケージしたゲームの WebSocket は、防御の層が 1 段減ります。** Shipping 以外のパッケージしたゲームでは、`-uaip-ws-enable` だけで WebSocket サーバーが起動します。以前は、このフラグに加えて、プロジェクトの `.uproject` で WebSocketNetworking プラグインを有効にする必要がありました。フラグは引き続き明示が必要なので、フラグが無ければ何も待ち受けず、ループバックへの bind・クライアントアドレスの確認・Bearer トークンも変わりません。Shipping のゲームは従来どおりで、プロジェクトで WebSocketNetworking を有効にしたときだけ WebSocket トランスポートが入ります。
+
 FullHTTP を本当に別 PC から到達可能にしたい運用者は、エンジン設定層の `[HTTPServer.Listeners]` で該当ポートの `BindAddress` を自分で上書きする必要があります（UAIP 側にはこのための設定項目はありません）。そうした場合、開いたポートとネットワークの間にあるのは Bearer トークンとファイアウォールだけになります。`-uaip-http-enable` を付けて起動するだけとは別の、明示的な判断として扱ってください。
 
 ---

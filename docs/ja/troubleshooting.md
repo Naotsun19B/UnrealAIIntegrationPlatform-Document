@@ -15,8 +15,8 @@ UAIP のコマンドが失敗すると、レスポンスに `ErrorCode` と `Err
 | `CommandNotFound` | 完全修飾コマンド名が登録されていない | `uaip_list_commands(ProviderPrefix="UAIP.Core")` で正しい名前を確認してください。🧩 マーク付きのコマンドの場合、`ErrorMessage` に統合名と対処が示されます — 多くの場合はプラグインを有効化してエディタを再起動するだけです。`UAIP.Core.ListIntegrations` ですべての統合の状態を一度に確認できます |
 | `CapabilityNotAvailable` | セッションに必要な Capability がない | `ErrorMessage` に不足している Capability 名が含まれます。`Config/DefaultUAIP.ini` の `[UAIP.SafetyPolicy] +AllowedCapabilities=<名前>` に追加し、エディタを再起動するか `UAIP.Core.ReloadCapabilities` を呼び出してください |
 | `PolicyViolation` | 3 つの異なる原因がある。(a) SafetyPolicy ゲートまたはルート opt-in 不足で拒否された、(b) このコマンドの `IsAvailable()` が、既定で無効な SafetyPolicy フラグがこのプロセスで無効であることを理由に `false`（`UnavailableDetail: SafetyPolicyDisabled`）、(c) `IsAvailable()` が `false` だがそれ以上具体的な detail が報告されていない（`UnavailableDetail: Unspecified`、まれ） | `"is denied by SafetyPolicy"` の場合は ini フラグがオフ、`"is not enabled"` の場合は CLI の opt-in フラグ（`-uaip-enable-scenario`・`-uaip-http-enable` など）が起動時に指定されていません。(b) の場合は `ErrorMessage` に名指しされたフラグを `Config/DefaultUAIP.ini` で有効にしてから再起動するか `UAIP.Core.ReloadCapabilities` を呼んでください。(c) の場合は `UAIP.Core.DescribeCommand` を呼んで再試行してください |
-| `AbilityUnavailable` | このコマンドの `IsAvailable()` が、環境またはビルドに起因する理由で `false` になっている：必要な Optional モジュール／プラグインが読み込まれていない、必要な構成でこのプロセスがビルドされていない、稼働中のエンジンバージョンがこのコマンドに対応していない、またはそもそも到達できる実装経路が無い | `UAIP.Core.DescribeCommand(CommandName="...")` を呼んで `UnavailableDetail`（`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`）を確認してください — 最後の 2 つは設定変更では解決しないので、Toolset ブリッジまたはネイティブの代替コマンドを探してください。[API リファレンス → コマンド可用性フィールド](api.md#65-コマンド可用性フィールド) も参照してください |
-| `InvalidParams` | パラメータの誤りや欠落。シナリオでは `${...}` テンプレート参照が解決できなかった場合も含む | `uaip_describe_command(CommandName="...")` でスキーマを再確認してください。テンプレートの失敗については [シナリオ実行 → テンプレート解決の失敗](scenario.md#テンプレート解決の失敗) を参照してください — `RetryCount` によるリトライ対象**外**です |
+| `AbilityUnavailable` | このコマンドの `IsAvailable()` が、環境またはビルドに起因する理由で `false` になっている：必要な Optional モジュール／プラグインが読み込まれていない、必要な構成でこのプロセスがビルドされていない、稼働中のエンジンバージョンがこのコマンドに対応していない、またはそもそも到達できる実装経路が無い | `uaip_describe_command(CommandName="...")` を呼んで `UnavailableDetail`（`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`）を確認してください — 最後の 2 つは設定変更では解決しないので、Toolset ブリッジまたはネイティブの代替コマンドを探してください。[API リファレンス → コマンド可用性フィールド](api.md#65-コマンド可用性フィールド) も参照してください |
+| `InvalidParams` | パラメータの誤りや欠落。シナリオでは `${...}` テンプレート参照が解決できなかった場合も含む | `{"Command": "UAIP.Core.DescribeCommand", "Params": {"Name": "<コマンド名>"}}`（HTTP / WebSocket / CLI）または `uaip_describe_command(CommandName="<コマンド名>")`（MCP）（引数名は前者が `Name`、後者が `CommandName` で異なります） でスキーマを再確認してください。パラメータの欠落や不正を示す `ErrorMessage` には、多くの場合 `UAIP.Core.DescribeCommand` と `ParameterSchema` を確かめるよう案内が付いています。テンプレートの失敗については [シナリオ実行 → テンプレート解決の失敗](scenario.md#テンプレート解決の失敗) を参照してください — `RetryCount` によるリトライ対象**外**です |
 | `NotFound` | 対象のアセット・アクター・オブジェクトが存在しない | パスや名前を確認し、`SearchAssets` や `ListLevelActors` で実在を確かめてください |
 | `ExecutionFailed` | コマンド内部の Runtime 処理で失敗 | `ErrorMessage` の詳細を確認してください。シナリオの中で起きた場合は該当ステップに `RetryCount` を設定するのが有効です |
 | `NotAllowed` | 禁止パス（`/Engine/` など）や禁止タイミング（PIE 中の Editor 編集） | 別のパスを選ぶか、PIE を停止してから再試行してください |
@@ -96,6 +96,20 @@ UE 5.7 のエンジンの欠陥で、UE 5.8 では修正されています。Dat
 - エンジン自身の機能（コンテンツブラウザの「複製」など）で作った複製は影響を受けます。こうしたアセットを複製したら、保存してエディタを再起動してから、複製を削除・アンロードしてください。新しいエディタのセッションで読み込み直したアセットにはリスナーが残っていません。
 - UE 5.8 は影響を受けません。
 
+### C++ プロジェクトのビルドで、UnrealAIIntegrationPlatform について `does not list plugin ... as a dependency` の警告が大量に出る
+
+この警告は無害です。次のような形で出ます。
+
+```
+Warning: Plugin 'UnrealAIIntegrationPlatform' does not list plugin 'StateTree' as a dependency, but module 'UAIPRuntimeStateTree' depends on module 'StateTreeModule'.
+```
+
+UAIP は多くのエンジンのプラグインと任意で連携します。ソースの記述子では、それらをすべて「無効・任意」の依存として列挙しています。UAIP があなたのプロジェクトでそれらのプラグインを勝手に有効にしないためで、連携はあなたがそのプラグインを有効にしたときだけ読み込まれます。配布用にパッケージ化するとき、エンジンが記述子を書き直し、無効の依存から「任意」の印を外します。そのため UnrealBuildTool が、それらのプラグインへのモジュールの依存を 1 件ずつ報告します。
+
+- ビルドは成功します。どのプラグインが有効になるか、何が読み込まれ・リンクされるかは変わりません。警告に出てくるプラグインを有効にする必要はありません。
+- エディタターゲットで出ます（100 行前後）。ゲームターゲットでも、一部の Runtime モジュールの分だけ出ます。UE 5.8 では、差分ビルドを含め、ビルドのたびに同じ警告が再表示されます。
+- 警告を消すために、UAIP の `.uplugin` でそれらの依存を `"Enabled": true` に書き換えないでください。それらのプラグインがすべて、あなたのプロジェクトで強制的に有効になります。
+
 ### エディタがダイアログを表示している間、応答がまったく返らない
 
 コマンドはエディタのティッカーコールバック内で実行されており、モーダルダイアログはそのティッカーごとゲームスレッドを止めます。したがって**ダイアログが開いている間は UAIP がいっさい応答しません**。ダイアログが背面に隠れていて気づかない場合もあり、AI 側からは「エディタが固まった」ようにしか見えません。
@@ -115,6 +129,22 @@ UE 5.7 のエンジンの欠陥で、UE 5.8 では修正されています。Dat
 3. `RecommendedAction` が実際に復旧を促している場合 — 例えば `State` が `CRASHED`（`RETRY:`）や `PORT_OCCUPIED`（`CHECK CONFIGURATION:`）の場合 — にのみ対応してください。`uaip_execute(CommandName="UAIP.Editor.Workspace.RestartEditor")` を呼べば Bridge がきれいに再起動処理を行います。
 4. MCP 自体（エディタではなく）が応答しない場合は、Bridge プロセスだけを再起動してください（エディタは生かしたままで OK）。
 5. 最終手段として、`uaip_get_editor_status` で `UNRESPONSIVE` ではないことを確認した上でのみ、AI クライアントを閉じてから対象エディタの PID を狙って `Stop-Process` を呼んでください。
+
+### 「MCP Bridge のインストーラが 'The deployment was refused (exit N)' と表示する」
+
+何も削除されていません。理由はその行のすぐ上に表示されています。下の表で終了コードを探してください。
+
+| 終了コード | 意味 | 対処 |
+|---|---|---|
+| 13 | UAIP プラグインが見つからない | 表示された `Plugins` フォルダの下に置くか、`UnrealAIIntegrationPlatform.uplugin` を直接含むフォルダを `-UAIPPluginDir` / `--uaip-plugin-dir` で渡す |
+| 14 | UAIP のコピーが 2 つ以上見つかった | 使わないコピーを `Plugins` の外へ移すか、表示されたパスのうち 1 つを `-UAIPPluginDir` / `--uaip-plugin-dir` で渡す |
+| 15 | 展開したパッケージとデプロイ先が互いを含んでいる | リリース zip をデプロイ先の外（例：Downloads）に展開し、そこからインストーラを実行する |
+| 16 | デプロイ先が探索の起点の外に出てしまう（プラグインが `Plugins` の直下、またはドライブルートの直下にある） | プラグインのファイルを `Plugins` の下の専用フォルダに移すか、プラグインのフォルダをドライブルートより 1 階層以上下に置く |
+| 17 | 探索中にフォルダを読めなかった | そのフォルダへのアクセスを直すか、`-UAIPPluginDir` / `--uaip-plugin-dir` を渡して探索を省く |
+| 18 | 既存のデプロイ先がディレクトリでない、または Bridge に見えない | そのフォルダの中身を確認して退避し、インストーラをもう一度実行する |
+| 19 | デプロイ先を安全に使えない（リンクである、プラグイン・探索の起点・プロジェクトフォルダと重なる、パスに未対応の文字がある） | リンクなら、リンクだけを外してから再実行する：PowerShell では `cmd /c rmdir "<path>"`、Git Bash では `cmd //c rmdir "<path>"`、macOS / Linux では `rm "<path>"`（末尾にスラッシュを付けない）。PowerShell の `rmdir` は `Remove-Item` なので使わない |
+
+`-UAIPPluginDir` は `install.ps1` / `install.cmd` の引数、`--uaip-plugin-dir` は `install.sh` の引数です。[接続方法 → MCP Bridge](connections.md#mcp-bridge) を参照してください。
 
 ---
 

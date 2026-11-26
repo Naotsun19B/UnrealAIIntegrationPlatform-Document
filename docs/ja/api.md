@@ -52,7 +52,7 @@ bind 層と認証層の関係の詳細は [セキュリティ → ネットワ�
 
 ```json
 {
-  "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage",
+  "Command":     "UAIP.Editor.Observation.CaptureActiveWindowImage",
   "Params":      { ... },
   "SessionId":   "my-task-001",
   "TimeoutSeconds": 300
@@ -61,10 +61,12 @@ bind 層と認証層の関係の詳細は [セキュリティ → ネットワ�
 
 | フィールド | 型 | 必須 | 備考 |
 |---|---|---|---|
-| `CommandName` | string | はい | 完全修飾名（例：`UAIP.Core.HealthCheck`） |
+| `Command` | string | はい | 完全修飾名（例：`UAIP.Core.HealthCheck`） |
 | `Params` | object | いいえ | コマンド固有パラメータ（デフォルト `{}`）。コマンドの `ParameterSchema` で検証 |
 | `SessionId` | string | いいえ | `[A-Za-z0-9_-]{1,128}`。省略時は匿名セッション |
-| `TimeoutSeconds` | number | いいえ | トップレベルフィールド（`Params` の中ではない）。エディタが応答を待つ秒数の上限：1〜1800（既定 120。[接続方法 → 制限値](connections.md#制限値) 参照）。範囲外・型違い・数値の文字列（`"300"`）はコマンドの実行前に 400・`InvalidParams` で拒否される。`Params` にはコピーされないため、コマンドのハンドラからは一切見えない。`uaip_execute`（MCP）も `CommandName` と同じ階層で同じフィールドを受け付ける — §2.4 参照 |
+| `TimeoutSeconds` | number | いいえ | トップレベルフィールド（`Params` の中ではない）。エディタが応答を待つ秒数の上限：1〜1800（既定 120。[接続方法 → 制限値](connections.md#制限値) 参照）。範囲外・型違い・数値の文字列（`"300"`）はコマンドの実行前に 400・`InvalidParams` で拒否される。`Params` にはコピーされないため、コマンドのハンドラからは一切見えない。`uaip_execute`（MCP）も、引数 `CommandName` と同じ階層で同じフィールドを受け付ける — §2.4 参照 |
+
+> **`Command` と `CommandName` の違い**：HTTP・WebSocket・CLI のリクエスト（stdin ストリームの各行も含む）では、コマンド名のキーは `Command` です。`CommandName` を使うのは MCP ツールの引数（`uaip_execute`・`uaip_describe_command`）と、シナリオのステップ（§7.1）だけです。トランスポートのリクエストに `CommandName` で送ると、`Missing or non-string 'command' field.` で拒否されます。
 
 ### 2.2 `CommandRequest`（WebSocket フレーム）
 
@@ -75,7 +77,7 @@ bind 層と認証層の関係の詳細は [セキュリティ → ネットワ�
   "Token":                 "<32文字 Bearer>",
   "RequestId":             "req-001",
   "SessionId":             "my-task-001",
-  "CommandName":           "UAIP.Core.HealthCheck",
+  "Command":               "UAIP.Core.HealthCheck",
   "Params":                {}
 }
 ```
@@ -87,20 +89,22 @@ bind 層と認証層の関係の詳細は [セキュリティ → ネットワ�
 ### 2.3 `CommandRequest`（CLI インライン）
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-request="{\"CommandName\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
+UnrealEditor.exe MyProject.uproject -uaip-request="{\"Command\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
 ```
 
 または繰り返し利用：
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-request-file=path/to/cmd.json
+UnrealEditor.exe MyProject.uproject -uaip-request-file=Saved/UAIP/Requests/cmd.json
 ```
 
 CLI リクエストは自動生成 `SessionId` を取得し、レスポンス書き出し後にエディタ終了。
 
+リクエストファイルとシナリオファイルは `Saved/UAIP/Requests/` の下からしか読み込めず、`-uaip-response-file` は `Saved/UAIP/Responses/` の下にしか書き出せません。その下にあれば、相対パスでも絶対パスでも渡せます。
+
 ### 2.4 `CommandRequest`（MCP）
 
-MCP Bridge が同じ `CommandRequest` 形状をツール呼び出しでラップ：
+MCP Bridge が同じ `CommandRequest` 形状をツール呼び出しでラップ。ここではコマンド名を引数 `CommandName` で渡す：
 
 ```python
 uaip_execute(
@@ -124,8 +128,8 @@ uaip_execute(
 ```json
 {
   "Success":      true,
-  "Data":         { ... },
-  "Artifacts":    [ { "ArtifactId": "...", "FilePath": "...", "Type": "Image" } ],
+  "Result":       { ... },
+  "Artifacts":    [ { "ArtifactId": "...", "FilePath": "...", "Type": "Image", "SizeBytes": 123456 } ],
   "ErrorCode":    "Success",
   "ErrorMessage": "",
   "SessionId":    "HTTP-Anonymous-7b8e"
@@ -135,7 +139,7 @@ uaip_execute(
 | フィールド | 型 | 備考 |
 |---|---|---|
 | `Success` | bool | `ErrorCode == "Success"` なら true |
-| `Data` | object | コマンド固有の結果データ（各コマンドが形状を定義） |
+| `Result` | object | コマンド固有の結果データ（各コマンドが形状を定義）。常に含まれ、コマンドが何も返さなかったときは `{}`。この文書の他の箇所では、このオブジェクトをレスポンスの `Data` と呼ぶことが多く、シナリオのテンプレートでは `${StepName.Data...}` で読みます。どちらもこのフィールドを指します。例外はブリッジ自身の MCP ツール（`uaip_get_editor_status` / `uaip_reload_config`）で、こちらは独自の `Data` フィールドで応答します |
 | `Artifacts` | array | 生成された Artifact 毎に 1 エントリ。詳細は [§5](#5-artifact-契約) |
 | `ErrorCode` | string | [§4](#4-エラーコード) のコードのいずれか、または `"Success"` |
 | `ErrorMessage` | string | 人間可読の詳細。成功時は空 |
@@ -161,6 +165,16 @@ uaip_execute(
 | `ScenarioResponse` | サーバ → クライアント | `ScenarioRequest` への返信 |
 | `OutputLogEntry` | サーバ → クライアント | UE ログストリーミング（`-uaip-ws-no-output-log` で抑止可能） |
 
+**ログのストリームの購読。** クライアントは `Type` が `SubscribeOutputLog` のフレームを送ります（止めるときは `UnsubscribeOutputLog`）。購読の成否は、次に届くフレームで見分けます。
+
+| 結果 | 届くもの |
+|---|---|
+| 購読された | `Event` が `OutputLogSubscribed` のフレーム。その後に `OutputLogEntry` のフレーム |
+| SafetyPolicy で断られた（`AllowLogDump=False`。既定） | `RequestId` が**空**で `ErrorCode` が `PolicyViolation` の `CommandResponse`。購読は立たず、ログは 1 行も届きません。文言は `AllowLogDump` と起動引数 `-uaip-policy-allow-log-dump=True` を案内し、起動時に読むことを伝えます |
+| サーバーがログの取り込み無しで動いている（`-uaip-ws-no-output-log`、または認証の無い接続にログを流さないための `-uaip-ws-no-auth`） | `RequestId` が空で `ErrorCode` が `NotAllowed` の `CommandResponse`。文言は起動引数を案内します |
+
+判定は、安全設定、ログの取り込みの有無の順です。断られた後も接続はそのまま使えます。`UnsubscribeOutputLog` は設定に関係なく常に成功します。ストリームを止めるのは `AllowLogDump` だけで、`+DeniedCommands=UAIP.Editor.Observation.DumpOutputLog` では止まりません。⚠️ 以前は `AllowLogDump` に関係なく購読を受け付け、ログの取り込み無しで起動したサーバーも受け付けたうえで 1 行も届けませんでした。
+
 ### 3.3 CLI レスポンス
 
 `-uaip-response-file=<path>` 指定時は JSON をそのパスに書き出します。指定なしの場合、レスポンスは stdout マーカーで囲まれます：
@@ -173,6 +187,20 @@ __UAIP_RESPONSE_END__
 
 stdin-stream モードでも同じマーカーがリクエスト毎に出ます。
 
+CLI transport が何かを実行する前にリクエストを拒否した場合も、レスポンスは `Success: false` の通常の `CommandResponse` で、コマンドもシナリオの手順も実行されません。失敗の種類は `ErrorCode` で見分けます。
+
+| 拒否の理由 | ErrorCode |
+|---|---|
+| リクエストの誤り：リクエストの指定元が複数ある、リクエスト / シナリオ / レスポンスファイルのパスが許可ディレクトリの外にある・許可されない拡張子である、読めないファイル、サイズ上限を超えたファイルや入力、壊れた JSON、不正な `Command` / `SessionId` / `Params` | `InvalidParams` |
+| 指定した `SessionId` のセッションがエディタに存在しない | `NotFound` |
+| `[UAIP.Roles]` にロールが定義されていて `AllowRoleBlindTransports` が有効でないため、この transport は許可されない | `PolicyViolation` |
+| コマンドはディスパッチされたが 120 秒以内に完了しなかった | `Timeout` |
+| シナリオモジュールが利用できない | `InternalError` |
+
+拒否されるレスポンスファイルのパスは、何かを実行する前に検査され、`InvalidParams` のレスポンスは stdout に出ます（拒否されたパスには何も書き込みません）。パスは許可されているが書き込めないレスポンスファイルは別のケースです。これはコマンド（またはシナリオ）を実行した**後**の失敗なので、コマンドの効果はすでに反映されています。このときのレスポンスは `InternalError` で stdout に出ます。
+
+プロセスの終了コードは、成功が `0`、コマンドを実行して失敗した場合（120 秒の `Timeout` を含む）は `1`、何も実行する前に transport が拒否した場合と、コマンドの実行後にレスポンスファイルを書き込めなかった場合は `2` です（呼び出し側が結果を受け取れていないため、コマンド自体が成功していても `2` になります）。
+
 ---
 
 ## 4. エラーコード
@@ -180,20 +208,22 @@ stdin-stream モードでも同じマーカーがリクエスト毎に出ます�
 | ErrorCode | HTTP ステータス | 発生時 | 復旧方法 |
 |---|---|---|---|
 | `Success` | 200 | コマンド完了 | — |
-| `CommandNotFound` | 404 | `CommandName` 未登録 | `UAIP.Core.ListCommands` で確認。オプションプラグインコマンドはプラグインロードが必要 |
-| `InvalidParams` | 400 | 必須欠落 / 型不一致 / `AdditionalProperties:false` での未知フィールド。シナリオでは `${...}` テンプレート参照が解決できなかった場合も含む | `UAIP.Core.DescribeCommand` でスキーマ再取得。テンプレートの失敗は `RetryCount` によるリトライ対象**外**です — [シナリオ API](scenario.md#テンプレート解決の失敗) を参照 |
+| `CommandNotFound` | 404 | 指定したコマンドが未登録 | `UAIP.Core.ListCommands` で確認。オプションプラグインコマンドはプラグインロードが必要 |
+| `InvalidParams` | 400 | 必須欠落 / 型不一致 / `AdditionalProperties:false` での未知フィールド。名前や ID が複数の要素に当たる（応答の `Matched*` の欄が候補を示す）。シナリオでは `${...}` テンプレート参照が解決できなかった場合も含む | `UAIP.Core.DescribeCommand` でスキーマ再取得。名前や ID が曖昧なときは、応答が示す候補の 1 つを指定して呼び直す。テンプレートの失敗は `RetryCount` によるリトライ対象**外**です — [シナリオ API](scenario.md#テンプレート解決の失敗) を参照 |
 | `CapabilityNotAvailable` | 403 | セッションに必要 Capability 不足 | `ErrorMessage` に不足 Capability 名。`Config/DefaultUAIP.ini` で有効化して再起動、または `UAIP.Core.ReloadCapabilities` |
-| `AbilityUnavailable` | 501 | このコマンドの `IsAvailable()` が、環境またはビルドに起因する理由で `false` になっている：必要な Optional モジュール／プラグイン（例：Sequencer、LevelSequenceEditor）が読み込まれていない、必要な構成でこのプロセスがビルドされていない、稼働中のエンジンバージョンがこのコマンドに対応していない、またはこのコマンド（ネイティブ・Toolset ブリッジ転送のいずれも）にそもそも到達できる実装経路が無い | `ErrorMessage` に何が欠けているかが載る。`UAIP.Core.DescribeCommand` を呼んで `UnavailableDetail`（`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`）を読み、値ごとの対処に従う — `EngineApiNotExported` と `DelegationTargetMissing` は設定変更では解決しないので、Toolset ブリッジまたはネイティブの代替コマンドを探す |
+| `AbilityUnavailable` | 501 | このコマンドの `IsAvailable()` が、環境またはビルドに起因する理由で `false` になっている：必要な Optional モジュール／プラグイン（例：Sequencer、LevelSequenceEditor）が読み込まれていない、必要な構成でこのプロセスがビルドされていない、稼働中のエンジンバージョンがこのコマンドに対応していない、またはこのコマンド（ネイティブ・Toolset ブリッジ転送のいずれも）にそもそも到達できる実装経路が無い、**あるいは引数で求めたコマンドの一部の機能が、このビルド・環境では使えない**（例：打ち切りに対応しない Python のバージョンで `AbortAfterSeconds` を付けた `RunEditorPythonScript`） | `ErrorMessage` に何が欠けているかが載る。`UAIP.Core.DescribeCommand` を呼んで `UnavailableDetail`（`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`）を読み、値ごとの対処に従う — `EngineApiNotExported` と `DelegationTargetMissing` は設定変更では解決しないので、Toolset ブリッジまたはネイティブの代替コマンドを探す。引数で求めた一部の機能だけが使えない場合は `IsAvailable()` が `true` なので `UnavailableDetail` は手掛かりにならない — `ErrorMessage` を読み、その機能を外して呼び直す（`AbortAfterSeconds` なら `0` を渡す） |
 | `UnsupportedOperation` | 501 | 要求された操作の実装が、このプラットフォーム／ビルド構成に**構造的に**存在しない。バージョンに依存しない恒久的な非対応（例：ControlRig の ModularRig 編集） | 設定変更では解決しない。このドメインでは別の手段を使う |
 | `PolicyViolation` | 403 | このコードは 3 つの異なる原因を表す。(a) SafetyPolicy による拒否またはルート opt-in 不足、(b) このコマンドの `IsAvailable()` が、既定で無効な SafetyPolicy フラグがこのプロセスで無効であることを理由に `false`（`UnavailableDetail: SafetyPolicyDisabled`）、(c) `IsAvailable()` が `false` だがそれ以上具体的な detail が報告されていない（`UnavailableDetail: Unspecified`）— まれなケースで、多くは可用性チェックと detail 取得の間の競合。再試行だけで解決することが多い | (a) の場合：`ErrorMessage` は「SafetyPolicy による拒否」と「環境で未有効」を区別する。`Config/DefaultUAIP.ini` または起動フラグを調整する。(b) の場合：`Config/DefaultUAIP.ini` で該当フラグを有効にしてエディタを再起動するか、`AllowCapabilityReload` が既に有効なら `UAIP.Core.ReloadCapabilities` を呼ぶ。(c) の場合：`UAIP.Core.DescribeCommand` を呼んで再試行する。解消しない場合は `AbilityUnavailable` と同様に扱う |
-| `PreconditionFailed` | 503 | ハンドラが走る**前**の前提が成立していない（エディタがまだ使えない、ゲームワールドが無い、サブシステムが未登録など） | 待ってから再試行する。`PolicyViolation` と異なり一時的なランタイム状態であって設定の問題ではない。シナリオでは `RetryCount` により自動で再試行される |
+| `PreconditionFailed` | 503 | ハンドラが走る**前**の前提が成立していない（エディタがまだ使えない、再生ワールドが無いときに呼ばれた `UAIP.Runtime.Niagara` のネイティブ 4 コマンド〔ほかの Runtime コマンドはこの場合 `NotAllowed` を返す〕、サブシステムが未登録、Python の初期化前や終了処理中に `AbortAfterSeconds` を付けて `RunEditorPythonScript` を呼んだ、キャプチャのコマンドの対象ウィンドウがまだ無い・描画先がまだ無い（`Reason` は `NoWindow` / `NotRenderable`）、など） | 待ってから再試行する。`PolicyViolation` と異なり一時的なランタイム状態であって設定の問題ではない。シナリオでは `RetryCount` により自動で再試行される |
 | `NotFound` | 404 | パラメータ参照のアセット / アクター / オブジェクトが存在しない。**存在するリソースの中の要素**（グラフ上に無いノードやピンなど）が見つからない場合も含む | `Search*` / `List*` コマンドでパス / GUID 確認 |
-| `NotAllowed` | 409 | 禁止パス（例：`/Engine/`）、禁止タイミング（PIE 中の Editor 編集）、または現在の状態がこの操作そのものを禁じている（モーダル表示中、対象が他者の所有下にある等） | 別パスを選ぶ、PIE 停止まで待つ、または再試行前に状態を変える |
+| `NotAllowed` | 409 | 禁止パス（例：`/Engine/`）、禁止タイミング（PIE 中の Editor 編集）、または現在の状態がこの操作そのものを禁じている（モーダル表示中、対象が他者の所有下にある、キャプチャのコマンドの対象ウィンドウが最小化・非表示・モーダルの背後にある〔`Reason` は `Minimized` / `Hidden` / `BlockedByModal` など。[キャプチャが断られるとき](commands.md#キャプチャが断られるとき)〕等） | 別パスを選ぶ、PIE 停止まで待つ、または再試行前に状態を変える。シナリオの `RetryCount` は再試行しない |
 | `Conflict` | 409 | 呼び出し側が前提としていた状態が、コマンドの現在の状態と食い違っている（例：最後に読んでから構造フィンガープリントが変わった） | 最新の状態を読み直し、その前提で再試行する。機械的な再試行では解決しない — タイミングではなく状態そのものが原因のため |
 | `ExecutionFailed` | 500 | ハンドラ内の Runtime 失敗 | `ErrorMessage` に詳細。シナリオでは `RetryCount` 活用 |
-| `Timeout` | 408 | ステップ単位 / シナリオ単位の壁時計上限超過 | `TimeoutSeconds` を増やすかシナリオ分割 |
+| `Timeout` | 408 | ステップ単位 / シナリオ単位の壁時計上限超過、またはコマンド自身の打ち切り期限の到来（`AbortAfterSeconds` を付けた `RunEditorPythonScript`） | `TimeoutSeconds` を増やすかシナリオ分割。応答の `Data` に `NotExecuted: false` があれば、コマンドは**部分的に実行済み**で、その編集は残っている — 再実行の前にエディタの状態を確かめる。`NotExecuted` が無い場合（シナリオやステップの期限切れ）は従来どおり |
 | `TooManyRequests` | 429 | 並行性制限ヒット — 単一コマンド枠、シナリオの同時実行（1 件まで）、シナリオ実行中の単発コマンド（逆方向も含む）、有効化時の受動的待機プールのいずれか — [設定リファレンス → `[UAIP.Transport]` 受動的待機の同時実行](config.md#uaiptransport--受動的待機の同時実行既定オフ) と [シナリオ実行 → 単発コマンドとの排他](scenario.md#単発コマンドとの排他) を参照 | 進行中リクエスト終了待ち。HTTP レスポンスには `Retry-After: 1` が付く |
-| `InternalError` | 500 | プロセス障害レベル（ハンドラ例外、ディスパッチャ不変条件違反） | `RestartEditor`、継続なら `Saved/Crashes/` 添付で Issue 起票 |
+
+| `ModalDialogPending` | 202（REST）、MCP は 200 | 書き込みがモーダルダイアログを開き、**まだ実行中**。`[UAIP.ModalDialog]` の `HandleDialogsOpenedByWrites` が `true` のときだけ返る（既定は `false`。[設定](config.md#uaipmodaldialog--応答のないダイアログの打ち切り既定で無効)を参照）。結果ではなく早期の報告。`Success` は `false`（MCP は `isError` が立つ）だが、コマンドは失敗していない。成否は状態ではなく `ErrorCode` で判断する | コマンドを送り直さない。`Result.Dialog` と `Result.CanAnswer` を読み、`AcceptDialog` / `CancelDialog`（`ExpectedDialogId` と応答の `SessionId` を付ける）で答え、`GetActiveDialog` で最終結果を読む — [書き込みが開いたモーダルダイアログ](commands.md#書き込みが開いたモーダルダイアログ)を参照 |
+| `InternalError` | 500 | プロセス障害レベル（ハンドラ例外、ディスパッチャ不変条件違反）。CLI transport では、レスポンスファイルを書き出せない場合とシナリオモジュールが利用できない場合にも返る。それ以外の CLI の拒否は `InvalidParams` / `NotFound` / `PolicyViolation` / `Timeout`（[CLI レスポンス](#33-cli-レスポンス) を参照） | `RestartEditor`、継続なら `Saved/Crashes/` 添付で Issue 起票 |
 
 HTTP ステータスは参考値 — 分岐は常に `ErrorCode` で。WebSocket と CLI は HTTP ステータスを持ちません。
 `NotAllowed` と `Conflict` はどちらも 409 になるため、HTTP ステータスだけでは区別できません。これも
@@ -237,9 +267,9 @@ Authorization: Bearer <token>
 
 | クエリパラメータ | 型 | 必須 | 備考 |
 |---|---|---|---|
-| `SessionId` | string | 移行期間中は省略可 | 対象をそのセッションの Artifact に絞り込む。**現在は省略しても受け付けられる**が、省略した呼び出しは、このエディタプロセスが**今回の起動中**に作った Artifact しか解決できない — 前回のセッションから見つけ直された Artifact には到達できない（[Artifacts](artifacts.md) 参照）。省略した呼び出しが**成功した**場合の応答には `Deprecation` レスポンスヘッダ（RFC 9745）と、移行手順を指す `Link; rel="deprecation"` ヘッダが付く。`SessionId` を明示した呼び出しにはどちらのヘッダも付かない。**`SessionId` は将来のメジャーバージョンでこのルートにおいて必須になります** — 移行方法は [Changelog](changelog.md#uaip-plugin-120--2026-09-29) を参照してください |
+| `SessionId` | string | 移行期間中は省略可 | 対象をそのセッションの Artifact に絞り込む。**現在は省略しても受け付けられる**が、省略した呼び出しは、このエディタプロセスが**今回の起動中**に作った Artifact しか解決できない — 前回のセッションから見つけ直された Artifact には到達できない（[Artifacts](artifacts.md) 参照）。省略した呼び出しが**成功した**場合の応答には `Deprecation` レスポンスヘッダ（RFC 9745）と、移行手順を指す `Link; rel="deprecation"` ヘッダが付く。`SessionId` を明示した呼び出しにはどちらのヘッダも付かない。**`SessionId` は 2.0.0 でこのルートにおいて必須になります**。省略した要求は 400 と `ErrorCode: InvalidParams` で拒否されます。エディタを `-uaip-require-artifact-session-id`（値を取らないコマンドラインスイッチ。1.x の間だけ提供し、2.0.0 で削除）付きで起動すると、この拒否を今から試せます。移行方法は [Changelog](changelog.md#uaip-plugin-120--2026-09-29) を参照してください |
 
-レスポンス: 生バイト列、Artifact メタの `Content-Type`。GC 済み（セッション終了または TTL 切れ）の場合 404。
+レスポンス: 生バイト列、Artifact メタの `Content-Type`。GC 済み（セッション終了または TTL 切れ）の場合、または存在しない・呼び出し側から見えない場合は、404 で `ErrorCode: NotFound`。
 
 セッション単位の一覧取得：
 
@@ -247,6 +277,8 @@ Authorization: Bearer <token>
 GET /uaip/sessions/{sessionId}/artifacts
 Authorization: Bearer <token>
 ```
+
+一覧は、セッションが存在しない場合、呼び出し側のロールを解決できない場合、セッションがロールに紐付いていない場合、セッションが呼び出し側と別のロールに紐付いている場合に、404・`ErrorCode: NotFound`・メッセージ `Session not found.` で拒否されます。どの場合も同じ応答なので、セッションの存在は外から分かりません。
 
 ### 5.3 インライン埋め込み（MCP Bridge のみ）
 
@@ -314,7 +346,7 @@ DELETE /uaip/sessions/{sessionId}
 Authorization: Bearer <token>
 ```
 
-セッション終了で観測 Widget キャッシュ解放、Artifact が GC マーク。
+セッション終了で観測 Widget キャッシュ解放、Artifact が GC マーク。存在しない `sessionId` は 404 で `ErrorCode: NotFound` を返します。
 
 ### 6.4 Capability 発見
 
@@ -355,15 +387,21 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
     { "Name": "PropertyStructuredEdit","DefaultPolicy": "Denied",  "IsGranted": false }
   ],
   "OperationalConstraints": {
-    "IsReadOnly":                    false,
-    "IsSaveDisabled":                false,
-    "IsLogDumpAllowed":              true,
-    "IsContextMenuMutationAllowed":  false,
-    "IsPIEStartDisabled":            false,
-    "HasDeniedCommands":             false,
-    "IsKeyboardInputAllowed":        true,
-    "IsKeyboardModifierInputAllowed":false,
-    "IsPasswordFieldWriteAllowed":   false
+    "IsReadOnly":                              false,
+    "IsSaveDisabled":                          false,
+    "IsLogDumpAllowed":                        false,
+    "IsContextMenuMutationAllowed":            false,
+    "IsPIEStartDisabled":                      false,
+    "HasDeniedCommands":                       false,
+    "IsKeyboardInputAllowed":                  false,
+    "IsKeyboardModifierInputAllowed":          false,
+    "IsPasswordFieldWriteAllowed":             false,
+    "IsRuntimePasswordFieldWriteAllowed":      false,
+    "IsPasswordFieldReadAllowed":              false,
+    "IsRuntimePasswordFieldReadAllowed":       false,
+    "IsSecretValueReadAllowed":                false,
+    "IsToolsetErrorTextAllowed":               false,
+    "IsSecretValueInFingerprintAllowed":       false
   }
 }
 ```
@@ -412,7 +450,7 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
 | `ExecutionEnvironment` | この実行環境が提供していないインフラを要求している（例：レンダーハードウェアインタフェース、対話的セッション） | 別の実行環境で実行する |
 | `EngineApiNotExported` | サポート対象のどのエンジンバージョンでもプラグインへエクスポートされないエンジン側 API に依存している | **エンジン側では何をしても解決しない** — たいていは Toolset bridge に代替手段がある。ただし断定する前に両方を確認する |
 | `DelegationTargetMissing` | これは Toolset ブリッジコマンドで、委譲先の Toolset が、サポート対象のどのエンジンバージョンでもこのコマンド名に一致する関数を宣言していない——転送された呼び出しの行き先が無い | **エンジン側では何をしても解決しない** — 同名のネイティブコマンドを探す。そちらも利用不可なら、このプラグインにはこの操作の動く経路が無い |
-| `OptionalPluginDisabled` | 依存先の Optional プラグインへの対応が、このバイナリには**一切コンパイルされていない** — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」という案内はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します。プラグインが単に**無効**なだけで存在はしている場合、この値にはなりません — その場合は代わりに（対処付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。[`UAIP.Core.ListIntegrations`](commands.md#uaipcore) を参照 |
+| `OptionalPluginDisabled` | 依存先の Optional プラグインへの対応が、このバイナリには**一切コンパイルされていない** — この UAIP バイナリがビルドされた時点のエンジンに、そのプラグインが存在しなかったことを意味する | **「プラグインを有効化して再起動する」という案内はここでは何も解決しません。** エディタビルドでは、そのプラグインを含むエンジン版向けの UAIP ビルドが対処です（ソースビルドの場合は、そのエンジンにプラグインを追加してリビルドする）。パッケージ化ゲームでは、`.uproject` でプラグインを有効化し、再度パッケージ化します。Shipping のゲームには `.uproject` で有効にした統合だけが入ります。テストには Development のパッケージを使うか、UAIP をプロジェクトの `Plugins` フォルダーに置いてそこでプラグインを有効にしてください。UAIP をエンジンにインストールしていて（Fab 配布版など）Shipping 以外のゲームでこの値が出るのは、UAIP をビルドしたエンジンにそのプラグインが無かったためです。UAIP をプロジェクトの `Plugins` フォルダーへ移し、プロジェクトと一緒にコンパイルしてください。プラグインが単に**無効**なだけで存在はしている場合、この値にはなりません — その場合は代わりに（対処付きの）`CommandNotFound`、または Toolset ブリッジなら `ExecutionEnvironment` として現れます。[`UAIP.Core.ListIntegrations`](commands.md#uaipcore) を参照 |
 | `SafetyPolicyDisabled` | 既定で無効な SafetyPolicy フラグがこのプロセスで無効になっていることが原因。上記の他の値と異なり、環境やビルドで実際に欠けているものは無い | `Config/DefaultUAIP.ini` で該当フラグを設定してエディタを再起動する（`AllowCapabilityReload` が既に有効なら `UAIP.Core.ReloadCapabilities` を呼ぶ） |
 
 `OptionalPluginDisabled` と `EngineApiNotExported` は似て見えますが対処の方向が逆です。`OptionalPluginDisabled` は型を提供するプラグイン自体は存在し、有効化すれば解決することを意味し、`EngineApiNotExported` はエンジン自身がその API をどのプラグインへも渡さないため、プラグインの状態を変えても何も解決しないことを意味します。`DelegationTargetMissing` は `EngineApiNotExported` と、何が欠けているかが異なります。`EngineApiNotExported` は**エンジン自身**がそのコマンドに必要な API をどのプラグインへも export しないことを意味し、`DelegationTargetMissing` は、あるブリッジコマンドが委譲する先の **Toolset** がそもそも一致する関数を宣言していない——つまりそのコマンドが最初から何にも結び付いていない——ことを意味します。どちらも ini フラグや Capability 付与では解決しない点は共通で、違いが意味を持つのは「どこに代替手段を探しに行くか」を判断するときだけです。まれに、ブリッジコマンドとその対応ネイティブコマンドの**両方**がこのどちらかの値を返すことがあり、その場合はこのプラグインにその操作の動く経路が 1 つも無いことを意味します（実例は [コマンド — UAIP.Editor.Niagara](commands.md#uaipeditorniagara-) を参照）。
@@ -455,7 +493,7 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
 | `CommandName` | string | — | `uaip_execute` と同じ |
 | `Params` | object | `{}` | テンプレート解決後 |
 | `AbortOnFailure` | bool | `true` | **このステップが失敗したとき** に評価される。`true` なら以降のステップをすべてスキップ、`false` ならシナリオを継続。**前のステップ** が失敗した際にこのステップへ到達するかどうかは制御しない — [シナリオ実行](scenario.md#失敗時の挙動とクリーンアップ) を参照 |
-| `RetryCount` | int | `0` | `ExecutionFailed` / `PreconditionFailed` のみリトライ — `CapabilityNotAvailable` / `PolicyViolation` はしない |
+| `RetryCount` | int | `0` | `ExecutionFailed` / `PreconditionFailed` のみリトライ — `CapabilityNotAvailable` / `PolicyViolation` はしない。再生ワールドの開始を待つ再試行が効くのは `UAIP.Runtime.Niagara` のネイティブ 4 コマンドだけで、ほかの Runtime コマンドは `NotAllowed` を返し、再試行されない |
 | `TimeoutSeconds` | int | `60` | ステップ単位の壁時計上限 |
 
 ### 7.2 テンプレート式
@@ -492,16 +530,15 @@ uaip_execute(CommandName="UAIP.Core.QueryCapabilities",
       "Success":      true,
       "ErrorCode":    "Success",
       "ErrorMessage": "",
-      "Data":         { ... },
-      "ArtifactIds":  ["8D14..."],
-      "AttemptCount": 1,
-      "DurationMs":   1234
+      "ArtifactIds":  ["8D14..."]
     }
   ],
   "ArtifactIds": ["8D14...", "F521..."],
   "SessionId":   "scenario-001"
 }
 ```
+
+ステップ結果に含まれるのは上の 5 フィールドだけです。ステップの結果データは応答に含まれず、シナリオの実行中に後続のステップが `${StepName.Data...}` テンプレートで読みます。
 
 `SessionId` の意味は `CommandResponse`（§3.1）と同じです — このシナリオ要求が実際に解決されたセッション。要求で `SessionId` を省略した場合はサーバが割り当てた匿名セッションの値が入ります。値が空のときはフィールド自体が応答に出ません。
 
@@ -558,13 +595,12 @@ NaN / Inf は `Number` フィールドで拒否 — ディスパッチャが `In
 
 プログラム的用途（ツール作成・コード生成・LLM 側バリデーション）には、全コマンドの完全スキーマを単一 JSON で取得します。
 
-### 9.1 3 つの入手先
+### 9.1 2 つの入手先
 
 | 入手元 | 使い所 | 注意 |
 |---|---|---|
 | Runtime に `UAIP.Core.DescribeCommand` | 1 コマンドずつ、起動中エディタの実状反映 | 起動中エディタが必要 |
-| 事前生成済み `commands-schema.json`（リリース同梱） | ビルド時ツール、オフラインコード生成 | 既知 UAIP バージョンの安定スナップショット |
-| `docs/scripts/generate_command_schema.py` でローカル生成 | `ICommandProvider` で登録したプロジェクト固有コマンドも含む | 起動中エディタ + HTTP transport が必要 |
+| `docs/scripts/generate_command_schema.py`（本ドキュメントのリポジトリにあります）で `commands-schema.json` を自分で生成 | ビルド時ツール、オフラインコード生成。`ICommandProvider` で登録したプロジェクト固有コマンドも含む。実行したエディタのスナップショットになる | 起動中エディタ + HTTP transport が必要で、設定が `UAIP.Core.ListCommands` / `UAIP.Core.DescribeCommand` を拒否していないこと。このファイルはリリースのパッケージには含まれません。使っている UAIP のバージョンとエンジンで生成してください |
 
 ### 9.2 ローカル生成
 
@@ -579,7 +615,7 @@ python docs/scripts/generate_command_schema.py `
 
 `-uaip-http-no-auth` 起動時は `--no-auth` を追加。Provider 毎の JSON も欲しい場合は `--split-by-provider` を追加（`by-provider/` 配下に出力）。
 
-実行時間は登録済みコマンド数に比例する。オプションプラグインをすべて有効にした場合で最大約 1640 コマンド、無効な構成ではそれより少ない。
+実行時間は登録済みコマンド数に比例する。オプションプラグインをすべて有効にした場合で最大約 1760 コマンド、無効な構成ではそれより少ない。
 
 ### 9.3 出力形状
 
@@ -691,7 +727,7 @@ curl -s -X POST http://127.0.0.1:8765/uaip/commands \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "CommandName": "UAIP.Core.HealthCheck",
+    "Command": "UAIP.Core.HealthCheck",
     "Params": {},
     "SessionId": "smoke-test"
   }' | jq .
@@ -705,7 +741,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   -o capture.png
 ```
 
-> `SessionId` は現時点では省略可能です——省略すると、このエディタプロセス自身が生成した成果物のみを対象に解決され、警告が記録に残ります。*前回の*エディタセッションから見つけ直された成果物へ到達する唯一の方法でもあり（[Artifacts](artifacts.md) を参照）、**将来のメジャーバージョンでこのルートにおいて必須になります**——上記のように常に指定してください。
+> `SessionId` は現時点では省略可能です——省略すると、このエディタプロセス自身が生成した成果物のみを対象に解決され、警告が記録に残ります。*前回の*エディタセッションから見つけ直された成果物へ到達する唯一の方法でもあり（[Artifacts](artifacts.md) を参照）、**2.0.0 でこのルートにおいて必須になります**——上記のように常に指定してください。
 
 ### 10.2 HTTP — Python
 
@@ -721,7 +757,7 @@ class UAIPClient:
         self.session.headers["Content-Type"] = "application/json"
 
     def execute(self, command, params=None, session_id=None):
-        body = {"CommandName": command, "Params": params or {}}
+        body = {"Command": command, "Params": params or {}}
         if session_id:
             body["SessionId"] = session_id
         r = self.session.post(f"{self.host}/uaip/commands", json=body, timeout=120)
@@ -733,7 +769,7 @@ class UAIPClient:
 
     def fetch_artifact(self, artifact_id, session_id=None):
         # SessionId は現時点では省略可能（省略時はこのエディタプロセス自身の成果物のみを
-        # 対象に解決される）だが、将来のメジャーバージョンで必須になる予定で、
+        # 対象に解決される）だが、2.0.0 で必須になり、
         # 前回のエディタセッションから見つけ直された成果物へ到達する唯一の方法でもある。
         # 取得元の SessionId は常に渡すこと。
         params = {"SessionId": session_id} if session_id else None
@@ -742,7 +778,7 @@ class UAIPClient:
         return r.content
 
 client = UAIPClient(token=open("...EditorHttpAuthToken.txt").read().strip())
-print(client.execute("UAIP.Core.HealthCheck")["Data"])
+print(client.execute("UAIP.Core.HealthCheck")["Result"])
 ```
 
 ### 10.3 WebSocket — JavaScript
@@ -764,7 +800,7 @@ ws.on("open", () => {
     Token: token,
     RequestId: "init",
     SessionId: "ws-session",
-    CommandName: "UAIP.Core.HealthCheck",
+    Command: "UAIP.Core.HealthCheck",
     Params: {}
   }));
 });
@@ -786,7 +822,7 @@ function execute(command, params, sessionId) {
       Type: "CommandRequest",
       RequestId: id,
       SessionId: sessionId,
-      CommandName: command,
+      Command: command,
       Params: params
     }));
   });
@@ -795,20 +831,25 @@ function execute(command, params, sessionId) {
 
 ### 10.4 CLI — PowerShell ワンショット
 
+プロジェクトのルートで実行します。
+
 ```powershell
+New-Item -ItemType Directory -Force Saved/UAIP/Requests, Saved/UAIP/Responses | Out-Null
 @'
 {
-  "CommandName": "UAIP.Editor.Execution.RunAutomationTest",
-  "Params":      { "TestName": "MyGame.Smoke.MainMenu" }
+  "Command": "UAIP.Editor.Execution.RunAutomationTest",
+  "Params":  { "TestName": "MyGame.Smoke.MainMenu" }
 }
-'@ | Set-Content cmd.json
+'@ | Set-Content Saved/UAIP/Requests/cmd.json
 
-& "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" `
-    "$pwd/MyGame.uproject" `
-    "-uaip-request-file=$pwd/cmd.json" `
-    "-uaip-response-file=$pwd/result.json"
+# UnrealEditor.exe は GUI アプリなので、`&` では終了を待たずに戻る。Start-Process -Wait で待つ。
+Start-Process -Wait -FilePath "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" -ArgumentList @(
+    "`"$pwd/MyGame.uproject`"",
+    "-uaip-request-file=Saved/UAIP/Requests/cmd.json",
+    "-uaip-response-file=Saved/UAIP/Responses/result.json"
+)
 
-$result = Get-Content result.json | ConvertFrom-Json
+$result = Get-Content Saved/UAIP/Responses/result.json | ConvertFrom-Json
 if (-not $result.Success) {
     Write-Error "$($result.ErrorCode): $($result.ErrorMessage)"
     exit 1
@@ -841,7 +882,7 @@ def read_responses():
 
 threading.Thread(target=lambda: list(read_responses()), daemon=True).start()
 
-proc.stdin.write(json.dumps({"CommandName":"UAIP.Core.HealthCheck","Params":{}}) + "\n")
+proc.stdin.write(json.dumps({"Command":"UAIP.Core.HealthCheck","Params":{}}) + "\n")
 proc.stdin.flush()
 ```
 
@@ -861,7 +902,9 @@ UAIP はコマンドレベルで **セマンティックバージョニング** 
 |---|---|
 | `Stable` | スキーマはマイナーバージョン間で固定。リネーム / 削除はメジャー昇格時のみ |
 | `Experimental` | 任意のリリースでスキーマ変更可能。スキーマダンプはスナップショット扱い、契約ではない |
-| `Deprecated` | 次のメジャーで削除予定。`DeprecationMessage` + `MigrationTarget` が設定される |
+| `Deprecated` | 引き続き動作し、原則として削除しません。例外は、依存するエンジンの API を Epic が削除したときの MAJOR バンプだけです。`DeprecationMessage` + `MigrationTarget` が設定される |
+
+`Stable` のコマンドが返す内容にも同じ契約が当てはまりますが、例外が 1 つあります。値を伏せる変更や、安全のために呼び出しを拒否する変更は、応答に印があり、同じバージョンに同じ結果を得る経路（Capability、ini の設定、秘密の値の 3 層の解禁、changelog の ⚠️ に手順を書いたエディタの外の手作業、または別のコマンドや引数）があり、changelog に ⚠️ があるときは、マイナーバージョンでリリースすることがあります。詳しくは[安全の強化の例外](changelog.md#安全の強化の例外)を参照してください。
 
 ### Capability リネーム
 

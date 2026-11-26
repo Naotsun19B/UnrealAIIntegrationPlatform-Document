@@ -202,7 +202,7 @@ A `TimedOut` response also carries `AllStepsSucceeded: false` and a top-level `E
 | Max steps | 100 |
 | Scenario wall-clock cap | 1800 seconds |
 | Concurrent scenarios | 1 (returns `TooManyRequests` if another is running) |
-| Payload size | 1 MiB total, 8 KiB per Params string |
+| Payload size | 1 MiB total, 8 KiB per Params string. The 1 MiB total is the same on every transport (HTTP `POST /uaip/scenarios`, MCP `uaip_run_scenario`, WebSocket `ScenarioRequest`, CLI) |
 
 ---
 

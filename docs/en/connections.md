@@ -48,7 +48,7 @@ If you only want the shortest path to a working setup, see [Quickstart](quicksta
 
 ### Prerequisites
 
-- The `Plugins/UnrealAIIntegrationPlatform` folder is placed in your project's `Plugins` folder
+- The UAIP plugin is placed under your project's `Plugins` folder (or the engine's `Engine/Plugins` folder). The installer finds it by the file `UnrealAIIntegrationPlatform.uplugin`, so the name of the folder that contains it does not matter
 - The **UnrealAIIntegrationPlatform** plugin is enabled in the UE project
 - Python 3.10 or newer is installed and available on `PATH`
 - One of the supported AI clients (Claude Code, Codex CLI, Claude Desktop, Cursor, Windsurf, GitHub Copilot)
@@ -56,6 +56,8 @@ If you only want the shortest path to a working setup, see [Quickstart](quicksta
 ### Step 1 — Download and extract the Bridge zip
 
 Download `UAIP-MCPBridge-<version>.zip` from the documentation repository's [Releases](../../../releases) page and extract it anywhere — for example, a temporary `Downloads/UAIPMCPBridge/` folder. The extracted layout is the **installer source**, not the final deployment location.
+
+> **Extract the zip outside the deploy target.** Use a folder such as `Downloads`, not the project's or the engine's `Plugins` folder. The zip's top-level folder is `UAIPMCPBridge/`, so extracting it into `Plugins` places it exactly on the deploy target. See [Running the installer from the deploy target](#running-the-installer-from-the-deploy-target) below.
 
 ### Step 2 — Run the installer
 
@@ -79,11 +81,19 @@ You can skip the prompts by passing the path directly:
 .\install\install.ps1 -EnginePath  "F:\Epic Games\UE_5.8"
 ```
 
+The installer searches `<Project>/Plugins` (project install) or `<Engine>/Engine/Plugins` (engine install) for `UnrealAIIntegrationPlatform.uplugin`. If the plugin lives elsewhere (for example under a directory listed in `AdditionalPluginDirectories`), or if more than one copy is found, pass the folder that directly contains that file. The bridge is then deployed next to that folder, as `<folder>/../UAIPMCPBridge/`:
+
+```powershell
+.\install\install.ps1 -UAIPPluginDir "F:\MyProjects\MyGame\Plugins\UnrealAIIntegrationPlatform"
+```
+
+On macOS / Linux (and Git Bash), `install.sh` takes `--uaip-plugin-dir "<folder>"` instead.
+
 What the installer does:
 
 | Step | Action |
 |---|---|
-| 1 | Locate the UAIP plugin and resolve the deploy target |
+| 1 | Locate the UAIP plugin (by `UnrealAIIntegrationPlatform.uplugin`, whatever the folder is called; or the folder you passed with `-UAIPPluginDir`) and resolve the deploy target |
 | 2 | Copy bridge files into `<UAIP-parent>/UAIPMCPBridge/` |
 | 3 | Verify Python 3.10+ is available |
 | 4 | Create a Python virtual environment at `<bridge-root>/.venv/` |
@@ -93,7 +103,23 @@ What the installer does:
 
 Once finished, the bridge lives at `<UAIP-parent>/UAIPMCPBridge/` (sibling to `UnrealAIIntegrationPlatform/`) and the venv Python is at `<bridge-root>/.venv/Scripts/python.exe` (Windows) or `<bridge-root>/.venv/bin/python` (macOS / Linux).
 
-> **Updating an existing install by hand?** Step 6 — adding newly introduced `config.json` keys and migrating values a previous installer left behind — only runs through the installer script. If you update the bridge by manually copying the new files over an existing deployment instead of re-running `install.ps1` / `install.sh`, `config.json` is left exactly as it was: new keys are not added and nothing is migrated. Re-run the installer (safe to run repeatedly — see [Step 2](#step-2--run-the-installer) above) to bring `config.json` up to date, or diff it against `config.json.example` by hand.
+If the installer refuses to deploy ("The deployment was refused (exit N)"), nothing was deleted; see [Troubleshooting](troubleshooting.md) for each exit code.
+
+#### Running the installer from the deploy target
+
+Which installer you run decides whether the result is an update or a repair:
+
+| What you run | Result |
+|---|---|
+| The installer from a **freshly extracted zip, outside** the deploy target | A deploy or an **update**: the bridge files are replaced with the ones in that zip |
+| The installer already **deployed** at `<bridge-root>/install/` (1.3.0 and later) | A **repair**. It prints "Repair mode: ...", keeps the deployed files, and rebuilds only `.venv/` and `config.json` (existing settings are kept). It does not update the bridge |
+| An installer from a zip extracted **inside** `Plugins`, so that the package and the deploy target contain one another | Refused (exit 15). Extract the zip outside the deploy target and run it from there |
+
+To move to a newer release, always extract the new zip outside the deploy target and run its installer. Do not extract a new zip over the deployed bridge: that leaves files of the old release behind and never rebuilds the venv.
+
+> **Warning for the 1.2.0 installer**: it has no such protection. Run from inside the deploy target, it deletes its own files. Always run the 1.2.0 installer from outside.
+
+> **Updating an existing install by hand?** Step 6 — adding newly introduced `config.json` keys and migrating values a previous installer left behind — only runs through the installer script. If you update the bridge by manually copying the new files over an existing deployment instead of re-running `install.ps1` / `install.sh`, `config.json` is left exactly as it was: new keys are not added and nothing is migrated. To bring `config.json` up to date, extract the new release zip outside the deploy target and run its installer (see [Step 2](#step-2--run-the-installer) above), or diff it against `config.json.example` by hand. Re-running the installer that is already deployed inside the bridge is a repair, not an update: it keeps the deployed files and your `config.json` settings.
 
 ### Step 3 — Pick an MCP server key
 
@@ -259,7 +285,9 @@ Typical uses:
   "Status": "Loaded",
   "KeyCount": 7,
   "Keys": ["editor_path", "uproject_path", "http_port", "command_timeout_seconds", "log_level", "enable_scenario", "inline_artifacts"],
-  "LastReloadError": ""
+  "LastReloadError": "",
+  "LastReloadApplyFailure": "",
+  "EditorExtraArgs": []
 }
 ```
 
@@ -270,8 +298,10 @@ Typical uses:
 | `KeyCount` | How many top-level keys `config.json` actually contained. |
 | `Keys` | The **names** of those keys only — never their values. This block is a diagnostic surface, not a way to read secrets like `role_token` back out of the running bridge. |
 | `LastReloadError` | Empty when the most recent `uaip_reload_config` call (if any) succeeded, or when none has been made yet. Non-empty when the last reload attempt failed to parse its `config.json` — the message names the file and the reason, and the bridge kept running on the configuration it already had (a failed reload never tears down the current session). See [Reload config without restarting the MCP client](#reload-config-without-restarting-the-mcp-client) above. |
+| `LastReloadApplyFailure` | Empty unless a `uaip_reload_config` call failed partway while applying the new configuration (for example a file the bridge is made of was being edited and could not be read again). Then the message names the cause, and the bridge cannot tell whether it runs on the old settings, the new settings or a mix: fix the cause and reconnect the MCP server (`/mcp`). Cleared by the next reload that succeeds. Separate from `LastReloadError`, which means the configuration was not applied at all. A failed apply clears `LastReloadError`, since that reload got past the configuration checks; both are non-empty only when a later reload was refused after the failed apply. |
+| `EditorExtraArgs` | The extra command-line arguments the bridge will add the next time it launches the editor — empty when there are none. Unlike `Keys`, this is a value: it never comes from `config.json`, only from the `UAIP_EDITOR_EXTRA_ARGS` environment variable or a `uaip_reload_config(EditorExtraArgs=[...])` call. They stay in effect until replaced, including for a relaunch after a crash, so check here before assuming the editor runs with its usual command line. See [Configuration → Reloading config at runtime](config.md#reloading-config-at-runtime-uaip_reload_config). |
 
-`RecommendedAction` (above) also gets an extra sentence appended when `Config` has something worth flagging — a `Status` of `"Absent"`, or a non-empty `LastReloadError` — so a caller that only ever parses `RecommendedAction` still learns about it without having to read `Data.Config` on every call.
+`RecommendedAction` (above) also gets an extra sentence appended when `Config` has something worth flagging — a `Status` of `"Absent"`, a non-empty `LastReloadError`, or a non-empty `LastReloadApplyFailure` — so a caller that only ever parses `RecommendedAction` still learns about it without having to read `Data.Config` on every call. When both `LastReloadApplyFailure` and `LastReloadError` are non-empty, both notes are appended, the apply failure first: fix `config.json` before reconnecting, because a bridge restarted on a broken `config.json` does not start.
 
 ### Long-running commands and the 120 s async timeout
 
@@ -317,15 +347,19 @@ uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\
 
 See [Configuration → Reloading config at runtime](config.md#reloading-config-at-runtime-uaip_reload_config) for full details.
 
+> **By default, `uaip_reload_config` cannot change the editor path, the extra launch arguments, `enable_scenario` or `launch_attended`, so the `EditorPath` example above is refused unless `allow_reload_launch_command` was `true` when the bridge started.** Changes to the bridge's own source files are not picked up by a reload either; reconnect the MCP client. See [Configuration → What a reload does not change by default](config.md#what-a-reload-does-not-change-by-default).
+
+Which editor a reload may stop depends on who launched it. The bridge stops only an editor it launched itself (`Ownership` of `OWNED` in `uaip_get_editor_status`). After `RestartEditor`, or after an MCP reconnect that attached to an editor already running, the editor is `ATTACHED`: the bridge did not launch it and cannot reliably stop it, so a reload that changes the editor path, the uproject path, the HTTP port, `enable_scenario` or `launch_attended` is refused with nothing changed, and the answer lists the steps (send `ShutdownEditor` only if an AI operation started the editor, otherwise ask its owner to close it or give up the change). The connection stays usable meanwhile. Settings that do not need a new editor are applied as before. See [Configuration → Reloading config at runtime](config.md#when-a-reload-would-have-to-stop-an-editor).
+
 ### MCP setup troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `install.ps1` is blocked by execution policy | PowerShell execution policy | Use `install.cmd`, or run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` then re-run |
-| Installer cannot find the UAIP plugin | Wrong `.uproject` / engine path | Re-run and pass the correct `-ProjectPath` / `-EnginePath` |
+| Installer cannot find the UAIP plugin, or finds more than one | Wrong `.uproject` / engine path, the plugin is outside `Plugins`, or several copies exist | Re-run with the correct `-ProjectPath` / `-EnginePath`, or pass `-UAIPPluginDir` with the folder that contains `UnrealAIIntegrationPlatform.uplugin`. Each refusal is listed in [Troubleshooting](troubleshooting.md) |
 | Tool not found in AI client | MCP server not connected | Check the key and the `thin_proxy.py` path in the snippet; restart the client |
 | Timeout after ~120 s on first command | Editor failed to start | Verify `UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH` in the MCP `env` block |
-| Python error on startup | Missing dependencies in venv | Re-run the installer (the venv is recreated) |
+| Python error on startup | Missing dependencies in venv | Run the installer deployed inside the bridge (`<bridge-root>/install/install.ps1`). This is a repair (1.3.0 and later): it rebuilds the venv and keeps `config.json` settings. It does not update the bridge |
 | `PolicyViolation` on a command | Capability not granted, or SafetyPolicy flag off | See [Safety & Capabilities](safety.md) |
 | `CommandNotFound` | Wrong command name | `uaip_list_commands(ProviderPrefix="UAIP.Core")` |
 | Bridge does not start at all (no tools ever become available) | `config.json` exists but cannot be parsed (bad JSON, wrong encoding, over the 1 MiB size limit) — the bridge refuses to start on a config nobody chose rather than silently falling back to defaults, and exits before any MCP tool call is possible | Check your MCP client's **server log**, not the AI's context — the bridge prints the exact path and reason to stderr and exits with code 2 before it can answer any tool call, so there is no `uaip_get_editor_status` response to read this from |
@@ -396,7 +430,7 @@ Content-Type: application/json
 Authorization: Bearer <token>
 
 {
-  "CommandName": "UAIP.Core.HealthCheck",
+  "Command": "UAIP.Core.HealthCheck",
   "Params": {},
   "SessionId": "my-session",
   "TimeoutSeconds": 300
@@ -410,10 +444,10 @@ Response:
 ```json
 {
   "Success": true,
-  "Data": { ... },
+  "Result": { ... },
   "Artifacts": [...],
-  "ErrorCode": null,
-  "ErrorMessage": null
+  "ErrorCode": "Success",
+  "ErrorMessage": ""
 }
 ```
 
@@ -421,7 +455,8 @@ Response:
 
 | Item | Limit |
 |---|---|
-| Max request body | 64 KiB |
+| Max request body (single command) | 64 KiB — `POST /uaip/commands`, and every `POST /mcp` request other than a `uaip_run_scenario` call. A larger body is answered 413 |
+| Max request body (scenario) | 1 MiB — `POST /uaip/scenarios`, and a `uaip_run_scenario` call on `POST /mcp`. The same cap as the scenario itself and as WebSocket and CLI. A larger body is answered 413 |
 | Max artifact response | 100 MiB |
 | Max concurrent commands | 1 (default; passive-wait commands can be excluded via ini — HTTP / MCP only, see [Configuration → `[UAIP.Transport]` concurrency](config.md#uaiptransport--passive-wait-concurrency-off-by-default)) |
 | Command timeout | 120 s (default; override per request with the optional top-level `TimeoutSeconds` field, 1–1800 s — see [Executing a command](#executing-a-command) above) |
@@ -437,6 +472,8 @@ The WebSocket transport provides persistent bidirectional connections with real-
 ```
 UnrealEditor.exe MyProject.uproject -uaip-ws-enable
 ```
+
+In a packaged game that is not Shipping, `-uaip-ws-enable` alone starts the server: the WebSocketNetworking plugin does not have to be enabled for the project (UAIP loads the module that is linked into the package, and logs that it did). A Shipping game includes the WebSocket transport only when the project's `.uproject` enables WebSocketNetworking. See [Security](security.md#network-surface).
 
 Custom port (default: `8766` for editor, `8768` for packaged):
 
@@ -469,7 +506,7 @@ Include it in the first request frame:
   "Token": "<token>",
   "RequestId": "req-001",
   "SessionId": "my-session",
-  "CommandName": "UAIP.Core.HealthCheck",
+  "Command": "UAIP.Core.HealthCheck",
   "Params": {}
 }
 ```
@@ -532,8 +569,9 @@ The server pushes `OutputLogEntry` events for all UE log output in real time. To
 
 | Item | Limit |
 |---|---|
-| Max receive message | 64 KiB |
-| Max scenario payload | 1 MiB |
+| Max message before authentication | 4 KiB — a larger frame closes the connection without being parsed (an `Auth` frame is about a hundred bytes) |
+| Max receive message (`CommandRequest`) | 64 KiB — a larger frame closes the connection |
+| Max scenario payload (`ScenarioRequest`) | 1 MiB — a larger frame closes the connection |
 | Max concurrent connections | 4 |
 | Handshake timeout | 5 s |
 | Command timeout | 12 s |
@@ -551,7 +589,7 @@ The editor executes the command, writes the result, and exits.
 **Inline JSON:**
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-request="{\"CommandName\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
+UnrealEditor.exe MyProject.uproject -uaip-request="{\"Command\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
 ```
 
 **From a JSON file:**
@@ -569,8 +607,14 @@ UnrealEditor.exe MyProject.uproject -uaip-request-file="..." -uaip-response-file
 **Scenario from a file:**
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-scenario-file="path/to/scenario.json"
+UnrealEditor.exe MyProject.uproject -uaip-scenario-file="Saved/UAIP/Requests/scenario.json"
 ```
+
+Request and scenario files are read only from under `Saved/UAIP/Requests/`, and the response file is written only under `Saved/UAIP/Responses/`. Each path may be relative to the project root or absolute, as long as it falls under that directory. The command name goes under the key `Command` (the MCP tool argument `CommandName` is not accepted here).
+
+**Large requests.** The operating system limits the whole command line to 16,383 characters, so a request passed inline with `-uaip-request=` or `-uaip-scenario=` has to fit in that. Pass a large request as a file with `-uaip-request-file=` or `-uaip-scenario-file=` instead. A request is also limited in size on every path (inline, file, stdin, stream): 1 MiB (1,048,576 bytes), counted as UTF-8 bytes, not characters. Non-ASCII text such as Japanese takes 3 bytes per character, so it reaches the limit sooner than the character count suggests.
+
+When the CLI refuses a request before running anything, it returns a failed response and exits with code 2. The `ErrorCode` tells the kind of mistake: `InvalidParams` for a bad request (a path outside the allowed directories, including the response file path, malformed JSON, an unreadable or oversized file, conflicting flags), `NotFound` for a `SessionId` that does not exist, and `PolicyViolation` when the role gate blocks this transport. A refused response file path is rejected before the command or scenario runs, and the response goes to stdout. A one-shot command that does not finish within 120 seconds returns `Timeout` with exit code 1. `InternalError` is kept for server-side faults. One of them happens after the command ran: if the response file path is allowed but the file cannot be written, the response goes to stdout with `InternalError` and the exit code is 2, even if the command succeeded.
 
 ### Stream mode
 
@@ -585,7 +629,7 @@ sequenceDiagram
     Br->>Ed: spawn (-uaip-stdin-stream)
     Ed-->>Br: stdout: __UAIP_STREAM_READY__
     loop while editor alive
-        Br->>Ed: stdin: { "CommandName": "...", ... }\n
+        Br->>Ed: stdin: { "Command": "...", ... }\n
         Ed-->>Br: stdout: __UAIP_RESPONSE_BEGIN__
         Ed-->>Br: stdout: { "Success": true, ... }
         Ed-->>Br: stdout: __UAIP_RESPONSE_END__
@@ -595,6 +639,8 @@ sequenceDiagram
 ```
 
 The markers (`__UAIP_*__`) make it possible to mix request/response with normal UE log output on stdout.
+
+Each request is one line. A line longer than 1 MiB (1,048,576 bytes, counted as UTF-8) is rejected with `InvalidParams` (`Request line exceeds maximum size of 1048576 bytes.`). That rejection response carries no `SessionId`, because the line never reached session assignment. The stream keeps running and the next line is read as usual.
 
 ```
 UnrealEditor.exe MyProject.uproject -uaip-stdin-stream
@@ -624,5 +670,6 @@ UnrealEditor.exe MyProject.uproject -uaip-stdin-stream
 
 | Item | Limit |
 |---|---|
-| Max request body | 1 MiB |
+| Max request size | 1 MiB (1,048,576 bytes, counted as UTF-8) |
+| Max command line length (`-uaip-request=` / `-uaip-scenario=`) | 16,383 characters (operating system limit) |
 | Command timeout | 120 s |

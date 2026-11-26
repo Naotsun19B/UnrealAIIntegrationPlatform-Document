@@ -48,7 +48,7 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 
 ### 前提条件
 
-- `Plugins/UnrealAIIntegrationPlatform` フォルダがプロジェクトの `Plugins` 配下に配置されている
+- UAIP プラグインがプロジェクトの `Plugins` 配下（またはエンジンの `Engine/Plugins` 配下）に配置されている。インストーラは `UnrealAIIntegrationPlatform.uplugin` というファイルで検出するため、それを含むフォルダの名前は問わない
 - UE プロジェクトで **UnrealAIIntegrationPlatform** プラグインが有効になっている
 - Python 3.10 以降がインストールされ `PATH` に通っている
 - 対応 AI クライアントのいずれか（Claude Code・Codex CLI・Claude Desktop・Cursor・Windsurf・GitHub Copilot）
@@ -56,6 +56,8 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 ### ステップ 1 — Bridge zip をダウンロードして展開
 
 ドキュメントリポジトリの [Releases](../../../releases) から `UAIP-MCPBridge-<version>.zip` をダウンロードし、任意の場所（例：`Downloads/UAIPMCPBridge/`）に展開してください。展開先は **インストーラの実行元** であり、最終的なデプロイ先ではありません。
+
+> **zip はデプロイ先の外に展開してください。** `Downloads` などのフォルダを使い、プロジェクトやエンジンの `Plugins` フォルダには展開しません。zip のトップフォルダは `UAIPMCPBridge/` なので、`Plugins` に展開するとデプロイ先そのものに置くことになります。詳しくは下の「[デプロイ先の中でインストーラを実行したとき](#デプロイ先の中でインストーラを実行したとき)」を参照してください。
 
 ### ステップ 2 — インストーラを実行
 
@@ -79,11 +81,19 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 .\install\install.ps1 -EnginePath  "F:\Epic Games\UE_5.8"
 ```
 
+インストーラは `UnrealAIIntegrationPlatform.uplugin` を `<Project>/Plugins`（プロジェクトインストール）または `<Engine>/Engine/Plugins`（エンジンインストール）から探します。プラグインが別の場所にある場合（例：`AdditionalPluginDirectories` に挙げたディレクトリ配下）や、複数見つかった場合は、そのファイルを直接含むフォルダを指定してください。Bridge はそのフォルダの隣、`<folder>/../UAIPMCPBridge/` にデプロイされます：
+
+```powershell
+.\install\install.ps1 -UAIPPluginDir "F:\MyProjects\MyGame\Plugins\UnrealAIIntegrationPlatform"
+```
+
+macOS / Linux（および Git Bash）の `install.sh` では代わりに `--uaip-plugin-dir "<folder>"` を使います。
+
 インストーラの動作：
 
 | ステップ | アクション |
 |---|---|
-| 1 | UAIP プラグインを探索し、デプロイ先を解決 |
+| 1 | UAIP プラグインを探索（`UnrealAIIntegrationPlatform.uplugin` で検出するのでフォルダ名は問わない。`-UAIPPluginDir` を渡したときはそのフォルダ）し、デプロイ先を解決 |
 | 2 | Bridge ファイルを `<UAIP-parent>/UAIPMCPBridge/` にコピー |
 | 3 | Python 3.10+ の存在を確認 |
 | 4 | `<bridge-root>/.venv/` に Python 仮想環境を作成 |
@@ -93,7 +103,23 @@ AI クライアントと連携するなら MCP Bridge がおすすめです。`t
 
 完了後、Bridge は `<UAIP-parent>/UAIPMCPBridge/`（`UnrealAIIntegrationPlatform/` と同階層）に配置され、venv Python は `<bridge-root>/.venv/Scripts/python.exe`（Windows）または `<bridge-root>/.venv/bin/python`（macOS / Linux）に作成されます。
 
-> **既存インストールを手動で更新する場合の注意**：ステップ 6（新しく追加された `config.json` キーの補完と、旧インストーラが残した値の新既定値への移行）はインストーラスクリプト経由でのみ実行されます。`install.ps1` / `install.sh` を再実行せず、新しいファイルを既存のデプロイ先へ手動でコピーして更新した場合、`config.json` はそのまま手つかずになります — 新規キーは追加されず、移行も走りません。`config.json` を最新の状態にするには、インストーラを再実行する（繰り返し実行しても安全です。上の「[ステップ 2](#ステップ-2--インストーラを実行)」を参照）か、`config.json.example` と手動で見比べてください。
+インストーラが「The deployment was refused (exit N)」と表示してデプロイを拒否した場合、何も削除されていません。終了コードごとの対処は [トラブルシューティング](troubleshooting.md) を参照してください。
+
+#### デプロイ先の中でインストーラを実行したとき
+
+どこのインストーラを実行するかで、結果が更新になるか修復になるかが分かれます：
+
+| 実行するもの | 結果 |
+|---|---|
+| **新しく展開した zip の、デプロイ先の外**にあるインストーラ | デプロイ、つまり**更新**。Bridge のファイルがその zip のものに置き換わる |
+| すでに**デプロイ済み**の `<bridge-root>/install/` にあるインストーラ（1.3.0 以降） | **修復**。「Repair mode: ...」と表示し、デプロイ済みのファイルは残して `.venv/` と `config.json` だけを作り直す（既存の設定は残る）。Bridge は更新されない |
+| `Plugins` の中に展開した zip のインストーラで、パッケージとデプロイ先が互いを含んでいる場合 | 拒否される（終了コード 15）。zip をデプロイ先の外に展開し直し、そこから実行する |
+
+新しいリリースに移るときは、必ず新しい zip をデプロイ先の外に展開し、そのインストーラを実行してください。デプロイ済みの Bridge の上に新しい zip を展開しないでください。古いリリースのファイルが残り、venv も作り直されません。
+
+> **1.2.0 のインストーラの注意**：この保護がありません。デプロイ先の中から実行すると自分自身のファイルを削除します。1.2.0 のインストーラは必ず外から実行してください。
+
+> **既存インストールを手動で更新する場合の注意**：ステップ 6（新しく追加された `config.json` キーの補完と、旧インストーラが残した値の新既定値への移行）はインストーラスクリプト経由でのみ実行されます。`install.ps1` / `install.sh` を再実行せず、新しいファイルを既存のデプロイ先へ手動でコピーして更新した場合、`config.json` はそのまま手つかずになります — 新規キーは追加されず、移行も走りません。`config.json` を最新の状態にするには、新しいリリースの zip をデプロイ先の外に展開してそのインストーラを実行する（上の「[ステップ 2](#ステップ-2--インストーラを実行)」を参照）か、`config.json.example` と手動で見比べてください。Bridge の中にデプロイ済みのインストーラを再実行するのは更新ではなく修復です。デプロイ済みのファイルと `config.json` の設定は残ります。
 
 ### ステップ 3 — MCP サーバーキーを決定
 
@@ -259,7 +285,9 @@ uaip_get_editor_status()
   "Status": "Loaded",
   "KeyCount": 7,
   "Keys": ["editor_path", "uproject_path", "http_port", "command_timeout_seconds", "log_level", "enable_scenario", "inline_artifacts"],
-  "LastReloadError": ""
+  "LastReloadError": "",
+  "LastReloadApplyFailure": "",
+  "EditorExtraArgs": []
 }
 ```
 
@@ -270,8 +298,10 @@ uaip_get_editor_status()
 | `KeyCount` | `config.json` に実際に含まれていたトップレベルキーの数。 |
 | `Keys` | それらキーの**名前のみ** — 値は一切含まれない。この項目は診断用のサーフェスであり、稼働中の Bridge から `role_token` のようなシークレットを読み出す手段ではない。 |
 | `LastReloadError` | 直近の `uaip_reload_config` 呼び出し（あれば）が成功した場合、またはまだ一度も呼ばれていない場合は空文字列。直近のリロード試行が `config.json` の解析に失敗した場合は非空になり、メッセージにファイルと理由が記される — このとき Bridge は既に持っていた設定のまま動作を続ける（リロード失敗が現在のセッションを止めることはない）。上記「[MCP クライアントを再起動せずに config をリロード](#mcp-クライアントを再起動せずに-config-をリロード)」を参照。 |
+| `LastReloadApplyFailure` | 新しい設定を反映する途中で `uaip_reload_config` が失敗した場合（例：ブリッジを構成するファイルの編集中で、読み直せなかった）だけ非空になります。メッセージに原因が記され、ブリッジは古い設定・新しい設定・混ざったもののどれで動いているか分かりません。原因を直してから MCP を再接続（`/mcp`）してください。次にリロードが成功すると空に戻ります。設定がまったく適用されなかったことを表す `LastReloadError` とは別の項目です。反映の途中で失敗したリロードは設定の検証を通っているので、`LastReloadError` を空にします。両方が非空になるのは、その後のリロードが拒否された場合だけです。 |
+| `EditorExtraArgs` | Bridge が次にエディタを起動するときに追加するコマンドライン引数。無ければ空配列。`Keys` と違いこれは値そのもので、`config.json` からは読まれず、環境変数 `UAIP_EDITOR_EXTRA_ARGS` か `uaip_reload_config(EditorExtraArgs=[...])` の呼び出しだけが設定する。置き換えるまで有効なまま残り、クラッシュ後の再起動にも引き継がれるため、エディタが普段どおりのコマンドラインで動いていると決めつける前にここを確認する。「[設定 → 実行時の config リロード](config.md#実行時の-config-リロードuaip_reload_config)」を参照。 |
 
-上記の `RecommendedAction` にも、`Config` に報告すべき事項がある場合 — `Status` が `"Absent"` か、`LastReloadError` が非空 — は追加の一文が付与されます。`RecommendedAction` しか読まない呼び出し側でも、毎回 `Data.Config` を読まなくてもこの事実に気づける仕組みです。
+上記の `RecommendedAction` にも、`Config` に報告すべき事項がある場合 — `Status` が `"Absent"` か、`LastReloadError` が非空、または `LastReloadApplyFailure` が非空 — は追加の一文が付与されます。`RecommendedAction` しか読まない呼び出し側でも、毎回 `Data.Config` を読まなくてもこの事実に気づける仕組みです。`LastReloadApplyFailure` と `LastReloadError` が両方とも非空のときは、反映の失敗を先にして両方の一文が付きます。設定ファイルが壊れたまま再接続すると Bridge が起動できないので、再接続の前に `config.json` を直してください。
 
 ### 長時間コマンドと 120 秒の非同期タイムアウト
 
@@ -317,15 +347,19 @@ uaip_reload_config(EditorPath="F:\\Epic Games\\UE_5.9\\Engine\\Binaries\\Win64\\
 
 詳細は [設定リファレンス → 実行時の config リロード](config.md#実行時の-config-リロードuaip_reload_config) を参照。
 
+> **既定では、`uaip_reload_config` はエディタのパス・追加の起動引数・`enable_scenario`・`launch_attended` を変えられません。** 上の `EditorPath` の例は、Bridge の起動時に `allow_reload_launch_command` が `true` だったときだけ使えます。Bridge 自身のソースファイルの変更も reload では反映されません（MCP クライアントを再接続してください）。詳細は [設定リファレンス → reload が既定では変えないもの](config.md#reload-が既定では変えないもの) を参照。
+
+リロードがどのエディタを止めてよいかは、そのエディタを誰が起動したかで決まります。Bridge が止めるのは、自分で起動したエディタ（`uaip_get_editor_status` の `Ownership` が `OWNED`）だけです。`RestartEditor` の後や、MCP 再接続で既に動いているエディタにつないだ後のエディタは `ATTACHED` で、Bridge が起動したものではなく、確実には止められません。そのため、エディタのパス・uproject のパス・HTTP ポート・`enable_scenario`・`launch_attended` を変えるリロードは何も変えずに拒否され、応答に手順が書かれます（AI 側の操作でエディタを起動したと分かっている場合だけ `ShutdownEditor` を送る。そうでなければ持ち主に閉じてもらうか、変更を見送る）。その間も接続は使えます。新しいエディタが要らない設定は、従来どおり反映されます。[設定 → 実行時の config リロード](config.md#リロードがエディタを止めることになる場合) を参照。
+
 ### MCP セットアップのトラブルシューティング
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
 | `install.ps1` が実行ポリシーでブロック | PowerShell 実行ポリシー | `install.cmd` を使うか、`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` を実行して再試行 |
-| インストーラが UAIP プラグインを見つけられない | `.uproject` / エンジンパスが誤り | 正しい `-ProjectPath` / `-EnginePath` を指定して再実行 |
+| インストーラが UAIP プラグインを見つけられない、または複数見つける | `.uproject` / エンジンパスが誤り、プラグインが `Plugins` の外にある、コピーが複数ある | 正しい `-ProjectPath` / `-EnginePath` を指定して再実行するか、`UnrealAIIntegrationPlatform.uplugin` を含むフォルダを `-UAIPPluginDir` で指定。拒否ごとの対処は [トラブルシューティング](troubleshooting.md) にあります |
 | AI クライアントでツールが見つからない | MCP サーバ未接続 | スニペット内のキーと `thin_proxy.py` のパスを確認し、クライアントを再起動 |
 | 初回コマンドで 120 秒タイムアウト | エディタ起動失敗 | MCP `env` の `UAIP_UE_EDITOR_PATH` / `UAIP_UPROJECT_PATH` を確認 |
-| Python 起動エラー | venv 内の依存不足 | インストーラを再実行（venv が再作成される） |
+| Python 起動エラー | venv 内の依存不足 | Bridge の中にデプロイ済みのインストーラ（`<bridge-root>/install/install.ps1`）を実行する。これは修復（1.3.0 以降）で、venv を作り直し、`config.json` の設定は残す。Bridge は更新されない |
 | `PolicyViolation` が返る | Capability 未付与 / SafetyPolicy フラグ OFF | [Safety & Capabilities](safety.md) を参照 |
 | `CommandNotFound` | コマンド名の間違い | `uaip_list_commands(ProviderPrefix="UAIP.Core")` で確認 |
 | Bridge がそもそも起動しない（ツールが一つも使えるようにならない） | `config.json` は存在するが解析できない（JSON が壊れている・エンコーディングが不正・1 MiB のサイズ上限超過）— 誰も選んでいない既定値へ黙ってフォールバックする代わりに、Bridge は起動そのものを拒否し、どの MCP ツール呼び出しも可能になる前に終了する | AI のコンテキストではなく **MCP クライアントのサーバーログ** を確認する — Bridge は正確なパスと理由を stderr に出力して終了コード 2 で終了する。ツール呼び出しに一度も応答しないため `uaip_get_editor_status` でこれを読み取ることはできない |
@@ -396,7 +430,7 @@ Content-Type: application/json
 Authorization: Bearer <token>
 
 {
-  "CommandName": "UAIP.Core.HealthCheck",
+  "Command": "UAIP.Core.HealthCheck",
   "Params": {},
   "SessionId": "my-session",
   "TimeoutSeconds": 300
@@ -410,10 +444,10 @@ Authorization: Bearer <token>
 ```json
 {
   "Success": true,
-  "Data": { ... },
+  "Result": { ... },
   "Artifacts": [...],
-  "ErrorCode": null,
-  "ErrorMessage": null
+  "ErrorCode": "Success",
+  "ErrorMessage": ""
 }
 ```
 
@@ -421,7 +455,8 @@ Authorization: Bearer <token>
 
 | 項目 | 上限 |
 |---|---|
-| 最大リクエストボディ | 64 KiB |
+| 最大リクエストボディ（単発のコマンド） | 64 KiB — `POST /uaip/commands` と、`uaip_run_scenario` 以外の `POST /mcp` の要求。超えると 413 |
+| 最大リクエストボディ（シナリオ） | 1 MiB — `POST /uaip/scenarios` と、`POST /mcp` の `uaip_run_scenario`。シナリオそのものの上限、WebSocket・CLI の上限と同じ。超えると 413 |
 | 最大 Artifact レスポンス | 100 MiB |
 | 最大同時コマンド数 | 1（既定。ini で受動的待機コマンドを除外可能 — HTTP / MCP のみ。[設定リファレンス → `[UAIP.Transport]` 受動的待機の同時実行](config.md#uaiptransport--受動的待機の同時実行既定オフ) 参照） |
 | コマンドタイムアウト | 120 秒（既定。任意のトップレベルフィールド `TimeoutSeconds`（1〜1800 秒）でリクエストごとに上書き可 — 上記 [コマンド実行例](#コマンド実行例) 参照） |
@@ -437,6 +472,8 @@ WebSocket トランスポートはリアルタイムログストリーミング�
 ```
 UnrealEditor.exe MyProject.uproject -uaip-ws-enable
 ```
+
+Shipping 以外のパッケージしたゲームでは、`-uaip-ws-enable` だけでサーバーが起動します。プロジェクトで WebSocketNetworking プラグインを有効にする必要はありません（パッケージにリンクされているモジュールを UAIP が読み込み、そのことをログに出します）。Shipping のゲームには、プロジェクトの `.uproject` で WebSocketNetworking を有効にしたときだけ WebSocket トランスポートが入ります。[セキュリティ](security.md#ネットワーク面) を参照してください。
 
 ポートを変更する場合（デフォルト：Editor `8766`・Packaged `8768`）：
 
@@ -469,7 +506,7 @@ Saved/UAIP/EditorWsAuthToken.txt
   "Token": "<token>",
   "RequestId": "req-001",
   "SessionId": "my-session",
-  "CommandName": "UAIP.Core.HealthCheck",
+  "Command": "UAIP.Core.HealthCheck",
   "Params": {}
 }
 ```
@@ -534,8 +571,9 @@ sequenceDiagram
 
 | 項目 | 上限 |
 |---|---|
-| 最大受信メッセージサイズ | 64 KiB |
-| 最大シナリオペイロード | 1 MiB |
+| 認証前の最大メッセージサイズ | 4 KiB — 超えるフレームはパースせずに接続を閉じる（`Auth` フレームは 100 バイト程度） |
+| 最大受信メッセージサイズ（`CommandRequest`） | 64 KiB — 超えると接続を閉じる |
+| 最大シナリオペイロード（`ScenarioRequest`） | 1 MiB — 超えると接続を閉じる |
 | 最大同時接続数 | 4 |
 | ハンドシェイクタイムアウト | 5 秒 |
 | コマンドタイムアウト | 12 秒 |
@@ -553,7 +591,7 @@ CLI トランスポートはエディタを特定の引数付きで起動する�
 **インライン JSON：**
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-request="{\"CommandName\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
+UnrealEditor.exe MyProject.uproject -uaip-request="{\"Command\":\"UAIP.Core.HealthCheck\",\"Params\":{}}"
 ```
 
 **JSON ファイルから：**
@@ -571,8 +609,14 @@ UnrealEditor.exe MyProject.uproject -uaip-request-file="..." -uaip-response-file
 **シナリオをファイルから実行：**
 
 ```
-UnrealEditor.exe MyProject.uproject -uaip-scenario-file="path/to/scenario.json"
+UnrealEditor.exe MyProject.uproject -uaip-scenario-file="Saved/UAIP/Requests/scenario.json"
 ```
+
+リクエストファイルとシナリオファイルは `Saved/UAIP/Requests/` の下からしか読み込めず、レスポンスファイルは `Saved/UAIP/Responses/` の下にしか書き出せません。パスはプロジェクトのルートからの相対パスでも絶対パスでもかまいませんが、いずれもそのディレクトリの下にある必要があります。コマンド名のキーは `Command` です（MCP ツールの引数名 `CommandName` はここでは受け付けません）。
+
+**大きなリクエスト。** コマンドライン全体にはオペレーティングシステムの上限（16,383 文字）があるため、`-uaip-request=` や `-uaip-scenario=` でインライン渡しするリクエストはその範囲に収める必要があります。大きなリクエストは `-uaip-request-file=` や `-uaip-scenario-file=` でファイルとして渡してください。リクエストの大きさにはすべての経路（インライン・ファイル・stdin・ストリーム）で上限があり、1 MiB（1,048,576 バイト）です。数えるのは文字数ではなく UTF-8 のバイト数です。日本語などの非 ASCII 文字は 1 文字が 3 バイトになるため、文字数から想像するより早く上限に達します。
+
+CLI は、何も実行する前にリクエストを拒否した場合、失敗レスポンスを返して終了コード 2 で終了します。`ErrorCode` は誤りの種類を表します。`InvalidParams` はリクエストの誤り（レスポンスファイルのパスを含む許可ディレクトリの外のパス、壊れた JSON、読めないファイルやサイズ超過のファイル、併用できないフラグ）、`NotFound` は存在しない `SessionId`、`PolicyViolation` はロールのゲートがこの transport を止めた場合です。拒否されたレスポンスファイルのパスは、コマンドやシナリオを実行する前に拒否され、レスポンスは stdout に出ます。一発実行のコマンドが 120 秒以内に終わらなかった場合は、終了コード 1 で `Timeout` を返します。`InternalError` は、サーバー側の障害のために残してあります。その 1 つはコマンドの実行後に起きます。レスポンスファイルのパスは許可されているがファイルを書き込めない場合は、レスポンスを `InternalError` で stdout に出し、コマンド自体が成功していても終了コードは 2 になります。
 
 ### ストリームモード
 
@@ -591,7 +635,7 @@ sequenceDiagram
     Br->>Ed: 起動（-uaip-stdin-stream）
     Ed-->>Br: stdout: __UAIP_STREAM_READY__
     loop エディタ生存中
-        Br->>Ed: stdin: { "CommandName": "...", ... }\n
+        Br->>Ed: stdin: { "Command": "...", ... }\n
         Ed-->>Br: stdout: __UAIP_RESPONSE_BEGIN__
         Ed-->>Br: stdout: { "Success": true, ... }
         Ed-->>Br: stdout: __UAIP_RESPONSE_END__
@@ -601,6 +645,8 @@ sequenceDiagram
 ```
 
 マーカー（`__UAIP_*__`）により、通常の UE ログ出力と request/response を同じ stdout で混在させられます。
+
+リクエストは 1 行が 1 件です。1 行が 1 MiB（1,048,576 バイト、UTF-8 で数えます）を超えた場合、その行は `InvalidParams`（`Request line exceeds maximum size of 1048576 bytes.`）で拒否されます。この拒否のレスポンスには `SessionId` が付きません。その行はセッションの割り当てに到達していないためです。ストリームは続き、次の行は通常どおり読み込まれます。
 
 **stdout マーカー：**
 
@@ -626,5 +672,6 @@ sequenceDiagram
 
 | 項目 | 上限 |
 |---|---|
-| 最大リクエストボディ | 1 MiB |
+| 最大リクエストサイズ | 1 MiB（1,048,576 バイト、UTF-8 で数える） |
+| コマンドラインの最大長（`-uaip-request=` / `-uaip-scenario=`） | 16,383 文字（OS の上限） |
 | コマンドタイムアウト | 120 秒 |

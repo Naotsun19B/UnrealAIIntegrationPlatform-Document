@@ -79,7 +79,7 @@ The hard rule: **dependencies only flow downward**. The Transport layer doesn't 
 | Layer | Modules | Role |
 |---|---|---|
 | **Core** | `UAIPCore` | Session, capability, policy, command registry, artifact manager. Loaded in every configuration |
-| **Shared** | `UAIPEditorShared`, `UAIPRuntimeShared`, `UAIPExecutionShared`, `UAIPArtifacts`, `UAIPBuildSupport`, `UAIPWatchdogSupport` | Cross-domain utilities — no commands directly |
+| **Shared** | `UAIPEditorShared`, `UAIPRuntimeShared`, `UAIPExecutionShared`, `UAIPArtifacts`, `UAIPWatchdogSupport` | Cross-domain utilities — no commands directly |
 | **Transports** | `UAIPTransportHTTP`, `UAIPTransportWS`, `UAIPTransportCLI` | Per-transport listeners; MCP is external to the editor (Python bridge) |
 | **Editor domain** | `UAIPEditor*` (Workspace, Observation, Execution, UIAutomation, Assets, Level, Property, Blueprint, UMG, Material, GameplayTags, GameFeatures, Niagara, Physics, Dataflow, Skeleton, DataTable, AnimBlueprint, SoundCue, BehaviorTree, MetaSound, EQS, Sequencer, StateTree, Curve, PCG, WorldConditions, Conversation, ControlRig, EnhancedInput, GAS, Foliage, WorldPartition, MVVM, Sound, ChaosClothAsset, DataRegistry, EngineManagement, Sandbox, Debugger, PythonExtension) | Editor-side semantic commands. Loaded in `EditorNoCommandlet` phase |
 | **Runtime domain** | `UAIPRuntimePIE`, `UAIPRuntimeObservation`, `UAIPRuntimeExecution`, `UAIPRuntimeAssertion`, `UAIPRuntimeWorld`, `UAIPRuntimeGAS`, `UAIPRuntimeInput`, `UAIPRuntimeNiagara`, `UAIPRuntimeEngineManagement` | Runtime / PIE-side commands. Some opt-in to packaged builds for Gauntlet |
@@ -206,7 +206,9 @@ Anonymous sessions (no `SessionId` passed) get an auto-generated ID — `MCP-Ano
 
 ## 7. Artifact lifecycle
 
-Every command that produces output (capture, dump, log, report) writes one or more **artifacts** to `Saved/UAIP/<SessionId>/` and returns artifact IDs in the response. Clients fetch the content by ID — file paths are not exposed in the response payload, which prevents path-leak attacks and gives every transport the same handling.
+A command that produces output (capture, dump, log, report) writes one or more **artifacts** to `Saved/UAIP/<SessionId>/` and returns artifact IDs in the response. Clients fetch the content by ID, which gives every transport the same handling. A command response also carries each artifact's `FilePath`, a path inside the editor's save directory, but it is informational: resolve artifacts by ID rather than reading that path, since a remote client cannot reach it. Scenario step results carry IDs only.
+
+A successful response carries its result in `Result`, in an artifact, or in both; artifacts are the auxiliary way to carry a result too large for the response body. A failed response can also carry an artifact that holds the reason or evidence. When a command could not save an artifact it does not require, the response stays successful and `Result.ArtifactsNotSaved` (an array of `Reason`) says why.
 
 See [Artifacts](artifacts.md) for the on-disk layout, inline-vs-fetch behavior, and per-type policies.
 
@@ -251,6 +253,10 @@ UAIP exposes extension hooks so projects can publish their own commands to AI ag
 - **`ICommandHandler`** — the per-command implementation. Your business logic goes in `Execute(Params)` and returns a `CommandResponse`. Handlers are dispatched through the provider you registered.
 
 With these two, custom commands appear to AI clients exactly like built-in ones: same `uaip_execute` invocation, same schema discovery, same capability check, same artifact contract. Whenever you want to make a project-specific asset or in-house tool accessible to AI, implementing these two interfaces is the standard starting point.
+
+**Keeping sensitive values out of records.** A handler can name the values UAIP must not pass to its records — the completion notification, audit records and logs — while the caller still receives them: `GetSensitiveParamKeys()` returns top-level parameter names, and `GetSensitiveResponseDataPaths()` returns positions in the response `Data` as dot paths in which `[]` stands for every element of an array (`Token`, `Items[].Secret`). Both must return a fixed list. See [Sensitive values and where they are masked](commands.md#sensitive-values-and-where-they-are-masked) for the syntax and the rules.
+
+> ⚠️ **Breaking change — `GetSensitiveResponseDataKeys()` was renamed `GetSensitiveResponseDataPaths()`** (see the [Changelog](changelog.md)). Rename your override and keep the values: a top-level field name is a valid path as it is. **A function still named `GetSensitiveResponseDataKeys()` that is not marked `override` can compile without an error and is then never called, so nothing it declared is masked any more.** Mark every override with `override` so that the compiler reports the old name.
 
 Other hooks:
 

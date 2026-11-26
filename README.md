@@ -39,9 +39,10 @@
 AI tools such as Claude Code, Codex CLI, Cursor, Windsurf, and GitHub Copilot can connect via the **Model Context Protocol (MCP)** and issue semantic commands — no coordinate clicks, no brittle UI scripting.
 
 Key capabilities:
-- **Editor control** — open/save assets, edit Blueprints, manipulate actors, run Automation Tests, drive the Sequencer, and much more through 1,200+ UAIP commands (plus 420+ [Toolset](docs/en/glossary.md#toolset--toolset-bridge) bridges to the official UE 5.8 Toolset, 1,600+ total)
+- **Editor control** — open/save assets, edit Blueprints, manipulate actors, run Automation Tests, drive the Sequencer, and much more through 1,300+ UAIP commands (plus 420+ [Toolset](docs/en/glossary.md#toolset--toolset-bridge) bridges to the official UE 5.8 Toolset, 1,700+ total)
 - **Visual & structural observation** — capture screenshots of any editor tab or viewport, dump JSON state of the world, Slate widget tree, editor state, and so on, returned as [Artifacts](docs/en/glossary.md#artifact)
 - **Runtime / [PIE](docs/en/glossary.md#pie-play-in-editor) control** — start/stop PIE, spawn actors, inject input, run Gauntlet tests, assert actor properties
+- **Runtime observation & diagnosis** — while the game runs, see what AI characters perceive, which Behavior Tree and StateTree nodes they run, navigation paths, animation state, network replication, Mass entities, Chaos destruction, live subsystems and the game viewport's UI, and set up or restore SaveGame slots so a test starts from a known save
 - **[Scenario](docs/en/glossary.md#scenario) execution** — submit an ordered list of commands as one request with abort-on-failure, retry, and per-step timeouts
 - **Multi-transport** — reachable over [MCP](docs/en/glossary.md#mcp-model-context-protocol), HTTP, WebSocket, or CLI from within the same process
 - **Safety & capability policy** — per-[session](docs/en/glossary.md#session) [Capability](docs/en/glossary.md#capability) gates and process-wide [SafetyPolicy](docs/en/glossary.md#safetypolicy) switches
@@ -91,7 +92,7 @@ The full version (every transport, full Editor / Runtime editing, no watermark) 
 
 The MCP Bridge is a thin Python proxy that connects your AI client to the UE Editor. It is distributed **separately from the plugin** as `UAIP-MCPBridge-<version>.zip` in this repository's [Releases](../../releases) (UE-version-agnostic).
 
-1. Download `UAIP-MCPBridge-<version>.zip` and extract it anywhere
+1. Download `UAIP-MCPBridge-<version>.zip` and extract it **outside** the project's or engine's `Plugins` folder (for example into `Downloads`). To update later, extract the new zip outside again and run its installer; running the installer already deployed in `Plugins` is only a repair (1.3.0 and later)
 2. Run the installer from the extracted folder — `install/install.ps1` (Windows; or `install/install.cmd` if PowerShell execution policy is restricted) — and answer the interactive prompts for your `.uproject` or engine path. The installer deploys the bridge to `<UAIP-parent>/UAIPMCPBridge/` (sibling to the UAIP plugin), creates a Python venv, and prints an MCP client registration snippet
 3. Paste the printed snippet into your AI client's MCP config file
 4. Ask the AI: **"Run a UAIP HealthCheck"** to verify
@@ -109,7 +110,7 @@ For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-clie
 | [Result View](docs/en/uaip-result-view.md) | Claude Code Mod that draws UAIP MCP tool calls in the transcript as readable summaries |
 | [Use Cases](docs/en/use-cases.md) | Who uses UAIP for what — testing, review, audits, pair programming |
 | [Examples / Cookbook](docs/en/cookbook.md) | Recipes — PIE smoke, AI review, asset audit, BP edit, UI automation |
-| [Commands Reference](docs/en/commands.md) | All 933+ commands organized by domain |
+| [Commands Reference](docs/en/commands.md) | All 1,700+ commands organized by domain |
 | [API Reference](docs/en/api.md) | Full per-command schemas as JSON — for tooling, codegen, validation |
 | [Scenario Execution](docs/en/scenario.md) | Multi-step ordered command batches |
 | [Artifacts](docs/en/artifacts.md) | Screenshots, JSON dumps, logs — how to read them |
@@ -137,4 +138,4 @@ Unless explicitly stated otherwise, all documentation content in this repository
 
 ## Changelog
 
-**Current version**: 1.2.0 (released 2026-09-29) — Pro is now [available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff). See [Changelog](docs/en/changelog.md) for the full history and versioning policy.
+**Current version**: 1.3.0 (released 2026-11-26) — Pro is now [available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff). See [Changelog](docs/en/changelog.md) for the full history and versioning policy.

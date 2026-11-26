@@ -18,7 +18,9 @@ UAIP reads its configuration from four locations, merged in this priority order 
 | 3 | `<Project>/Saved/UAIP/UAIPOverride.ini` | **Packaged builds only** — user-editable override created on first launch | Editor restart |
 | 4 | CLI launch flags (`-uaip-*`) | Per-process, transient | Re-launch the editor |
 
-`UAIP.Core.ReloadCapabilities` can reload `AllowedCapabilities` and `DeniedCapabilities` at runtime without restarting (see [Safety & Capabilities](safety.md#enabling-defaultdenied-capabilities)). All other keys require an editor restart.
+In a non-Shipping build, the engine's own `-ini:UAIP:[<Section>]:<Key>=<Value>` launch argument overrides any key of the ini sources above for that process, including the keys that have no dedicated CLI flag. It is a choice for whoever launches the editor: the MCP Bridge refuses `-ini:UAIP:` in the launch arguments an agent supplies (`EditorExtraArgs`), so an agent cannot use it to change the settings (unless the bridge was started with `allow_reload_uaip_ini_override` set to `true`).
+
+`UAIP.Core.ReloadCapabilities` can reload `AllowedCapabilities` and `DeniedCapabilities` at runtime without restarting (see [Safety & Capabilities](safety.md#enabling-defaultdenied-capabilities)). All other keys require an editor restart, except `[UAIP.SaveGame]`, which is read each time a command runs (see [`[UAIP.SaveGame]`](#uaipsavegame--save-game-slot-commands)), `[UAIP.Build]`, which is a build setting that needs a rebuild and reads only the project's `Config/DefaultUAIP.ini` (see [`[UAIP.Build]`](#uaipbuild--compiling-the-test-only-types)), and `[UAIP.TestSupport]`, which is read when each UAIP automation test starts, so a change takes effect from the next test once the ini has been reloaded (see [`[UAIP.TestSupport]`](#uaiptestsupport--cleaning-up-temporary-blueprints-left-by-tests)).
 
 > The MCP Bridge (`Plugins/UAIPMCPBridge/` after install) has its own configuration layer (`config.json` + environment variables). The bridge is distributed separately from the plugin — see [MCP Bridge config.json](#mcp-bridge-configjson) below.
 
@@ -39,7 +41,7 @@ Displays a Slate toast notification each time a command runs. Intended for devel
 | `MaxConcurrentNotifications` | int32 | `5` | `[1, 20]` | Hard cap on simultaneously visible toasts |
 | `ThrottleWindowSeconds` | float | `2.0` | `[0.1, 60.0]` | Identical-command coalescing window |
 
-No CLI equivalents.
+No dedicated CLI flags. A non-Shipping build can still override these keys with the engine's `-ini:` argument (see [Configuration sources](#configuration-sources)).
 
 ### `[UAIP.CommandPump]` — Running commands while a modal dialog is up (off by default)
 
@@ -51,11 +53,19 @@ Turning this on moves execution away from the moment a command is accepted, to t
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `StarvedTickAllowList` | string | `UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities` | Comma-separated fully-qualified names of the commands that may run while a modal dialog is up. Anything not listed is **not rejected — it stays queued** until the dialog closes |
+| `StarvedTickAllowList` | string | `UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities` | Comma-separated fully-qualified names of the commands that may run while a modal dialog is up. Read whether or not the command pump is on. With the pump off (the default), a command that changes state and is not listed is **refused at once** with `NotAllowed` and has to be sent again after the dialog closes (this does not apply to a dialog that a write opened while `HandleDialogsOpenedByWrites` is `false`, its default: requests from other sessions wait until that dialog closes), while a read-only command runs whether or not it is listed; with the pump on, anything not listed is **not rejected — it stays queued** until the dialog closes |
 
-The default list is deliberately two commands: a modal dialog means the editor is halfway through someone else's operation. `ListCommands` and `DescribeCommand` are read-only, but they ask every registered handler for its availability and schema, which would run code from every domain module in exactly that situation. They are left out for that reason.
+The default list is deliberately two commands: a modal dialog means the editor is halfway through someone else's operation. `ListCommands` and `DescribeCommand` are read-only, but they ask every registered handler for its availability and schema, which would run code from every domain module in exactly that situation. They are left out for that reason. This applies with the command pump on; with the pump off, the list holds back only commands that change state, so read-only commands such as these two run during a modal dialog anyway.
 
 Matching CLI flag: `-uaip-command-pump-starved-tick-allow-list=...`
+
+To let the AI answer a dialog that a write opened (see [Modal dialogs opened by a write](commands.md#modal-dialogs-opened-by-a-write)), list `UAIP.Editor.UIAutomation.AcceptDialog`, `UAIP.Editor.UIAutomation.CancelDialog` or both, for example `StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.AcceptDialog,UAIP.Editor.UIAutomation.CancelDialog`. Keep the default entries, restart the editor, and check the startup log line. This is meant for `[UAIP.ModalDialog] HandleDialogsOpenedByWrites` set to `true`. With its default `false`, the write that opened the dialog gets no early response, so its own caller is not told about the dialog; a person answers it, or another session that holds `EditorDialogCrossSessionAnswer` (see [Safety & Capabilities](safety.md#answering-a-modal-dialog-from-another-session)). Requests from other sessions are then not refused as described above but wait until the dialog closes. Three cautions:
+
+- **Do not put `ShutdownEditor` or `RestartEditor` on the list.** The editor would accept the request but not exit until the dialog closes, and the bridge could no longer recover from it.
+- **`CancelDialog` alone cannot allow cancelling only.** The list is per command, and `ButtonLabel` lets it press any button, `Continue` included.
+- `GetActiveDialog` and `HealthCheck` are always allowed while a dialog is open and need no entry. With [`[UAIP.ModalDialog]`](#uaipmodaldialog--closing-a-dialog-nobody-answers-off-by-default) `HandleDialogsOpenedByWrites` set to `true`, without `AcceptDialog` or `CancelDialog` on the list, the Material Apply and `Undo` / `Redo` confirmations are treated as canceled instead of being shown. With it `false` (the default), the list does not change that: the Material Apply confirmation is always canceled without being shown, and the `Undo` / `Redo` confirmation is always shown.
+
+To close a menu that was opened from inside a modal dialog, add `UAIP.Editor.UIAutomation.DismissMenus` to this list (for example `StarvedTickAllowList=UAIP.Core.HealthCheck,UAIP.Core.QueryCapabilities,UAIP.Editor.UIAutomation.DismissMenus`; the default entries must be kept in the value because the key replaces the default) and restart the editor; the command pump does not need to be on. Without it, `DismissMenus` is refused while the dialog is up (or, with the pump on, waits in the queue until the dialog is closed). Only this one UI command is meant to be added: it changes the state of Slate's menu stack and nothing else.
 
 The effective list is resolved at startup and written to the Output Log as a single line (`Starved tick allowlist: ...`). If an ini edit does not appear to take effect, or an entry was dropped for being malformed, **the startup log is where to look**. Note that reading the `uaip.Command.StarvedTickAllowList` console variable only ever returns the default — the ini and the command line layer on top of it rather than writing back to it.
 
@@ -70,19 +80,66 @@ The effective list is resolved at startup and written to the Output Log as a sin
 
 `StarvedTickAllowList` is read-only because the console is reachable through the very interface this list exists to constrain. A boundary that can be widened from inside is not a boundary.
 
+### `[UAIP.EditorLayout]` — Keeping the saved layout in an editor that does not draw (off by default)
+
+In an editor older than UE 5.8 that does not draw (started with `-NullRHI` or similar, without `-RenderOffScreen`), `OpenAsset` and `FocusEditorTab` close the panels that an asset editor's saved layout puts in a floating window, so that the editor can open (see [Floating window refusals](commands.md#floating-window-refusals)). Such a panel is then lost from the saved layout of that kind of asset editor. The saved layout is a file of the user, shared by every project and every engine version, so an editor run for CI can change the layout a person uses in an editor that draws. This setting keeps it.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `SuppressLayoutSaveWhenHeadless` | bool | `False` | When `True`, the editor does not save its layout while it runs older than UE 5.8 without drawing. `OpenAsset` and `FocusEditorTab` then refuse with `NotAllowed` and `Reason: Headless` instead of closing such panels, so an asset whose saved layout puts a panel in a floating window cannot be opened. It has no effect in UE 5.8 or later, in an editor that draws, or with `-RenderOffScreen` |
+
+- The value is read once at startup, so changing it needs an editor restart. No command changes it. A value that cannot be read as `True` or `False` (a misspelling, for example) is treated as `False`, and the startup log shows a warning.
+- When it is `True` in an affected editor, the startup log has one line saying that the layout is not saved. Use it to check that the setting took effect.
+- The engine can turn the layout save back on by itself (when an exit is canceled, for example). UAIP turns it off again at the start of each command that checks for floating windows and when a `RestartEditor` is canceled. Right after the engine turned it back on by another route, a save can happen before the next such command.
+- No dedicated command line flag, but a non-Shipping build can override it with the engine's `-ini:` argument, for example `-ini:UAIP:[UAIP.EditorLayout]:SuppressLayoutSaveWhenHeadless=True`.
+
+```ini
+[UAIP.EditorLayout]
+SuppressLayoutSaveWhenHeadless=True
+```
+
+### `[UAIP.ModalDialog]` — Closing a dialog nobody answers (off by default)
+
+When a modal dialog stays open and nobody answers it, the command that opened it stays stopped. This setting makes the editor close the window of such a dialog by itself after a time. It is for unattended environments. `HandleDialogsOpenedByWrites` in the same section decides how the callers are answered while a dialog that a write opened is open.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `HandleDialogsOpenedByWrites` | boolean | `false` | What happens while a write command waits on a modal dialog it opened (a confirmation, a save prompt and the like). **`false` keeps the 1.2.0 behavior:** on every route (HTTP, MCP, WebSocket, CLI, scenarios) the dialog is shown and the caller waits for the final result. Requests from other sessions wait until the dialog closes and then run, except `HealthCheck`, `GetActiveDialog`, `ShutdownEditor` and the commands that answer the dialog, which are answered while it is open. The confirmation that the Material Editor's Apply raises during a Material write, which 1.2.0 never showed, is canceled without being shown, on every route: the write still succeeds, and `Result.EditorSync` reports `Applied: false` with `ApplyDeferredReason: ApplyCanceled`. The confirmation that follows `Undo` / `Redo` is shown and stays open until it is answered, as in 1.2.0. **`true` turns on the handling added in 1.3.0:** HTTP and MCP reply at once with `ModalDialogPending` instead of waiting for the final result, which is read afterwards with `GetActiveDialog`; a route that cannot answer the dialog cancels it; and requests from other sessions are refused while it is open (see [Modal dialogs opened by a write](commands.md#modal-dialogs-opened-by-a-write)). **`true` assumes that the AI answers these dialogs with commands** (`AcceptDialog` / `CancelDialog`): with neither of them on the list below, `CanAnswer` stays `false`, so the Material Apply and `Undo` / `Redo` confirmations are canceled without being shown and any other dialog waits for a person. Answering a dialog from outside the editor also needs the answering commands in [`[UAIP.CommandPump]`](#uaipcommandpump--running-commands-while-a-modal-dialog-is-up-off-by-default) `StarvedTickAllowList`, whichever value is set. Read once at startup, so restart the editor after changing it |
+| `UnansweredTimeoutSeconds` | number | not set (off) | Seconds a modal dialog may go without input before the editor closes its window. Accepted values are **5 to 3600**. A value outside that range is logged as a warning and the timeout stays off. **To leave it off, do not write the key**: `UnansweredTimeoutSeconds=0` is also outside the range and only produces the warning. Read once at startup, so restart the editor after changing it |
+
+- `UnansweredTimeoutSeconds` is independent of `HandleDialogsOpenedByWrites`: it is read from the same section and applies to both values.
+- **The editor's response timeout while a write waits (`HandleDialogsOpenedByWrites` `false`).** On HTTP and MCP, the editor's own timeout of the request (120 seconds, or the call's `TimeoutSeconds`) is stopped while the write waits on its dialog, and so is the timeout of each request from another session that waits behind that dialog. When the dialog closes, the timeout starts again at its full length, not with the time that was left. A dialog opened while a progress bar is showing is not tracked this way: the timeout keeps running, and the request can end in `Timeout` while the dialog is still open and the write is still running.
+- **When nobody answers dialogs.** With `HandleDialogsOpenedByWrites` `false`, the caller hears nothing until the dialog closes, and a wait outside the editor is not stopped: the MCP bridge gives up after its `command_timeout_seconds` (180 seconds by default, or the call's `TimeoutSeconds`; see [MCP Bridge `config.json`](#mcp-bridge-configjson)) although the write keeps waiting in the editor. In an environment where nobody answers dialogs, either turn on `HandleDialogsOpenedByWrites` and let the AI answer them with commands, or set `UnansweredTimeoutSeconds` shorter than that wait, so that the final result of the write still reaches the caller.
+- The time is counted from the later of the moment the dialog opened and the last input. A mouse or key input, and an input injected by UAIP (a click, for example), restart the count. A read command of the AI does not. A person who is only reading the dialog, without touching it, is therefore also cut off.
+- It applies to a dialog opened while a command was running and to one opened by `ClickWidget`, whatever the route and whatever `CanAnswer` says.
+- The editor closes the window itself and presses no button. **What happens next is decided by the kind of dialog, so the write may be cancelled or may go on**; code tied to a button does not run. `DialogAutoClosed` is added to the result of the write; read it in `PendingCommand.Response.Result` of `GetActiveDialog`. A dialog opened by `ClickWidget` has no response to carry it, so it is only logged and `DialogOpen` becomes `false`.
+- A window with no close button is left open, and `Dialog.AutoCloseFailed` appears in `GetActiveDialog` and in the log. Only one attempt is made per window.
+- A dialog that is not tied to a command (opened outside a command, or in the middle of asynchronous work) is not covered.
+
+### `[UAIP.UIAutomation]` — Guarding the write commands (off by default)
+
+The click, hover and key commands of `UAIP.Editor.UIAutomation` are refused while a drag is in progress, and when the target is outside the open modal window or menu. `InputText`, `FillForm`, `SetCheckboxState` and `SetComboSelection` do not go through that check unless you turn it on here.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `GuardWriteCommands` | bool | `False` | When `True`, those four commands are checked once, when the request is accepted, in the same way as the click: they are refused with `PolicyViolation` (and `Result.GuardDiagnostics`) while a drag is in progress or when the target is outside the open modal window or menu. `FillForm` is all or nothing: if the target of any field is refused, nothing is written, and `Result.RejectedFieldName` holds the `WidgetRef` of the first refused field. `SetComboSelection` is checked once, not again for the click on the item |
+
+The value is read once at startup, so changing it needs an editor restart. Only `DefaultUAIP.ini` is read, and a value that is not a boolean is ignored with the default kept. No dedicated command line flag, but a non-Shipping build can override it with the engine's `-ini:` argument, for example `-ini:UAIP:[UAIP.UIAutomation]:GuardWriteCommands=True`. See [UAIP.Editor.UIAutomation](commands.md#uaipeditoruiautomation).
+
+
 ### `[UAIP.Jobs]` — Per-frame budget for job-style commands
 
 `UAIP.Editor.Assets.StartAssetAudit` returns as soon as the job is registered and advances its scan between editor frames instead of holding the game thread until the whole audit is done. This key sets how much of each frame that scan may take.
 
 | Key | Type | Default | Range | Description |
 |---|---|---|---|---|
-| `AuditStepBudgetMs` | float | `10.0` | `[1.0, 100.0]` | Milliseconds of each frame the audit job may spend scanning. A larger value finishes audits sooner and makes the editor heavier while one runs; a smaller value does the opposite. A value outside the range is clamped rather than rejected |
+| `AuditStepBudgetMs` | float | `10.0` | `[1.0, 100.0]` | Milliseconds of each frame the audit job may spend scanning. A larger value finishes audits sooner and makes the editor heavier while one runs; a smaller value does the opposite. A value outside the range, or one that cannot be read as a number, is ignored with a startup warning and the default is kept |
 
 The value is read once when the module starts, so an edit takes effect the next time the editor starts.
 
 It is a target rather than a guarantee. A step that cannot be cut in half will overrun it — the initial asset-list query that `Preparing` issues, and the disk-size lookup for a single asset, are both indivisible.
 
-No CLI equivalents.
+No dedicated CLI flags. A non-Shipping build can still override these keys with the engine's `-ini:` argument (see [Configuration sources](#configuration-sources)).
 
 ### `[UAIP.Session]` — Session persistence
 
@@ -101,7 +158,7 @@ CLI equivalents: `-uaip-session-enabled` / `-uaip-session-sub-directory=...` / `
 
 ### `[UAIP.Roles]` — Role-based capability downgrade
 
-Intentionally not detailed here — a role gates capabilities (Layer 1.5), which is a safety concern, so the full reference (ini format, how a session gets bound to a role, opt-in flags for transports that can't carry a role) lives in [Safety & Capabilities → Roles](safety.md#roles-layer-15) alongside the rest of the authorization layers. In short: `+Role=(Name="...", DeniedCapabilities=(...))` lines define roles, and `AllowRoleBlindTransports` (ini-only, default `False`) opts WS / CLI / FullHTTP back in once at least one role is defined.
+Intentionally not detailed here — a role gates capabilities (Layer 1.5), which is a safety concern, so the full reference (ini format, how a session gets bound to a role, opt-in flags for transports that can't carry a role) lives in [Safety & Capabilities → Roles](safety.md#roles-layer-15) alongside the rest of the authorization layers. In short: `+Role=(Name="...", DeniedCapabilities=(...))` lines define roles, and `AllowRoleBlindTransports` (set in the ini, no dedicated CLI flag, default `False`) opts WS / CLI / FullHTTP back in once at least one role is defined.
 
 ### `[UAIP.ArtifactGC]` — Artifact garbage collection
 
@@ -124,7 +181,147 @@ Controls where the scanner looks for `@uaip_command`-decorated Python files. The
 |---|---|---|---|
 | `CommandsDir` | string | `<Project>/Scripts/UAIPCommands` | Directory scanned for Python command definition files. Relative paths are resolved against the project root |
 
-No CLI equivalents.
+The key is read from `Config/DefaultUAIP.ini` first. Only if it is absent there is `Config/DefaultGame.ini` read as a migration fallback, and a value found only there is used but logs a warning asking you to move it to `DefaultUAIP.ini`. If both files set the key and the values differ, `DefaultUAIP.ini` wins and a warning is logged. The effective directory and the file it came from are written to the Output Log at startup, so check the log if the scanner is not looking where you expect.
+
+No dedicated CLI flags. A non-Shipping build can still override these keys with the engine's `-ini:` argument (see [Configuration sources](#configuration-sources)).
+
+### `[UAIP.Python]` — Default abort deadline for `RunEditorPythonScript`
+
+`RunEditorPythonScript` can interrupt a script that runs too long by raising an exception inside it (`AbortAfterSeconds`, see [Commands](commands.md)). This section sets the value used when a call **omits** that parameter (or passes `null`).
+
+| Key | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `DefaultAbortAfterSeconds` | int32 | `0` | `[0, 1800]` | Seconds after which a script that omits `AbortAfterSeconds` is interrupted. `0` disables the abort, which is the behavior before this key existed. A caller can override it per call, including with an explicit `0` to run without an abort |
+
+The value is read **once when the module starts**, so an edit takes effect the next time the editor starts. The effective value is written to the Output Log at startup. A value outside the range, or one that cannot be read as an integer, is ignored with a startup warning and the key keeps its default of `0`.
+
+**No dedicated CLI flag.** It is a default that each call may override with its own argument. A non-Shipping build can override the default with the engine's `-ini:` argument, for example `-ini:UAIP:[UAIP.Python]:DefaultAbortAfterSeconds=60`.
+
+**A build that cannot abort.** The abort works only with the Python version the plugin supports (3.11). If the embedded Python is a different version and this key is set to `1` or more, the editor logs a startup warning, and **every call that omits `AbortAfterSeconds` is refused with `AbilityUnavailable`** without running the script. Clear the key, or pass `AbortAfterSeconds: 0` explicitly, to run without an abort. When Python itself is unavailable, the existing `CapabilityNotAvailable` answer comes first and this warning is not logged.
+
+### `[UAIP.EditorRestart]` — Closing deadline for `RestartEditor`
+
+After `RestartEditor` accepts a request (see [Commands](commands.md)), the editor has a limited time to start closing. This section sets that time.
+
+| Key | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `CloseDeadlineSeconds` | float | `60.0` | `[10.0, 600.0]` | Seconds the editor may take to close after a request has been accepted. If it has not closed by then, the attempt is declined (`Declined`, reason `CloseTimedOut`) and the editor keeps running |
+
+- A value outside the range, or one that cannot be read as a number, is ignored with a Warning in the Output Log, and the default of `60.0` stays.
+- In an editor started normally and operated by a person, the attempt is **not** declined while a modal dialog is open; the deadline is judged again once the dialog closes. The restart itself does not show a save prompt, so this only matters when something else opens a dialog while the editor is waiting to close.
+- Raise it if you often restart right after a heavy save or shader compilation and the attempt is declined before the editor finishes closing.
+- The value is read when the editor starts, so an edit takes effect the next time it starts.
+
+```ini
+[UAIP.EditorRestart]
+CloseDeadlineSeconds=120.0
+```
+
+**No dedicated CLI flag.** A non-Shipping build can override it with the engine's `-ini:` argument, for example `-ini:UAIP:[UAIP.EditorRestart]:CloseDeadlineSeconds=120.0`.
+
+### `[UAIP.SaveGame]` — Save game slot commands
+
+Two settings for the save game slot commands ([`UAIP.Runtime.SaveGame`](commands.md#uaipruntimesavegame)). Which capabilities these commands need, and what each protects, is on [Safety & Capabilities](safety.md#runtime-savegame-slots).
+
+| Key | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `bAllowWritesDuringPIE` | bool | `False` | — | Whether the commands that change a slot may run while the editor is in PIE. Outside PIE, and in `-game` or a packaged build, the setting has no effect |
+| `MaxSaveFileBytes` | int | `67108864` (64 MiB) | `[1048576, 1073741824]` (1 MiB to 1 GiB) | The largest save file, in bytes, that a command reads or stores |
+
+- A `MaxSaveFileBytes` outside the range, or one that cannot be read as a number, is ignored and the default of 64 MiB stays.
+- **Applied per command.** Both keys are read from the already loaded configuration each time a command runs, so no editor restart is needed. Edit the ini, then call `UAIP.Core.ReloadCapabilities` to re-read it (it reloads the ini files from disk), or restart the editor.
+- Neither key has a dedicated CLI flag. A non-Shipping build can override either with the engine's `-ini:` argument, for example `-ini:UAIP:[UAIP.SaveGame]:bAllowWritesDuringPIE=True`.
+
+```ini
+[UAIP.SaveGame]
+bAllowWritesDuringPIE=False
+MaxSaveFileBytes=67108864
+```
+
+### `[UAIP.RuntimeObservation]` — window size message log and HUD draw statistics
+
+`RecordWindowMessages` controls a short log of the window size messages the operating system sends (`WM_SIZE`, `WM_WINDOWPOSCHANGED`, `WM_NCCALCSIZE`). It only records and never consumes a message, keeps the last 64 messages of each regular Slate window (the main window, floating tabs and asset editors in their own windows, modal dialogs; up to 8 windows) and the last 64 of all other windows together, such as notification toasts and menus, and is shown in the `WindowMessageRecording` field of `DumpEditorState` (see [Capture refusals](commands.md#capture-refusals)). It exists to find out why a window kept drawing at an old size after it was restored from the minimized state. It grants nothing and changes no command's permission. With `False` the handler is not registered at all and `RecordingStatus` reads `Disabled`.
+
+`DumpHUDState` ([`UAIP.Runtime.Observation`](commands.md#uaipruntimeobservation)) adds the canvas draw-batch statistics of the game viewport only when `EnableHUDCanvasStats` is on. It grants nothing and changes no command's permission; while it is off, the result explains how to turn it on. See also [Safety & Capabilities](safety.md#runtime-game-viewport-ui).
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `RecordWindowMessages` | bool | `True` | Whether the window size message log is kept |
+| `EnableHUDCanvasStats` | bool | `False` | Whether the HUD canvas statistics are recorded and added to the `DumpHUDState` result |
+
+- Both values are read once at startup, so an edit takes effect after the editor or game is restarted.
+- There is no launch flag.
+
+```ini
+[UAIP.RuntimeObservation]
+RecordWindowMessages=False
+EnableHUDCanvasStats=True
+```
+
+No dedicated command line flag, but a non-Shipping build can override it with the engine's `-ini:` argument, for example `-ini:UAIP:[UAIP.RuntimeObservation]:RecordWindowMessages=False`.
+
+### `[UAIP.Sequencer]` — Keeping a Sequencer Control Rig bound across a recompile
+
+When a Control Rig Blueprint in the legacy (Blueprint) format is recompiled, the engine replaces every instance of the rig with a new one. The new instance of a rig used by a Sequencer Control Rig track does not get the binding to the mesh it drives, so closing that sequence afterwards crashes the editor. This happens however the recompile was started: from a UAIP command that edits the rig (for example `AddVariable` or `CompileControlRig`) or from the editor's own Compile button. With `CarryControlRigBindingOnRecompile` on, UAIP hands the binding of the replaced rig to its replacement. It touches only rigs owned by a Control Rig track that have no binding of their own. Rigs in the runtime-asset format are not replaced on recompile and are not affected. It grants nothing and changes no command's permission.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `CarryControlRigBindingOnRecompile` | bool | `True` | Whether the binding of a Sequencer track's Control Rig is handed to the instance that replaces it on recompile |
+
+- The value is read once at startup, so an edit takes effect after the editor is restarted.
+- Set it to `False` only to leave the replacement exactly as the engine leaves it, for example once an engine version fixes this itself.
+
+```ini
+[UAIP.Sequencer]
+CarryControlRigBindingOnRecompile=False
+```
+
+No dedicated command line flag, but a non-Shipping build can override it with the engine's `-ini:` argument, for example `-ini:UAIP:[UAIP.Sequencer]:CarryControlRigBindingOnRecompile=False`.
+
+### `[UAIP.Build]` — Compiling the test-only types
+
+UAIP's automation tests use reflection types that exist only for testing. They are compiled into the plugin by default, so the tests that depend on them register and run on your machine. They stay out of the editor's type pickers, menus and class lists, and out of UAIP's type-listing commands, unless a test that uses them is running. This section lets you leave them out of the build.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `bCompileTestFixtures` | bool | `True` | Whether the test-only types are compiled into the build. `False` leaves them out; the tests that depend on them are then not registered, and every other test runs as before |
+
+This is a **build setting**: changing it takes a **rebuild**, not just an editor restart. The build log prints one line saying whether the types are included and where the value came from (the built-in default or the project file).
+
+- **Only `<Project>/Config/DefaultUAIP.ini` is read.** The plugin's own `DefaultUAIP.ini` and `DefaultEngine.ini` are not. If the line is not there, add it under `[UAIP.Build]`, adding the section too if needed. A file carried over from an older version has neither the section nor the comment line.
+- **It works only when the plugin sits in the project's `Plugins/` folder and is built from source.** A precompiled plugin (for example one installed under the engine) cannot leave the types out and ignores the setting.
+- A value that cannot be read as `True` or `False` (for example `Flase`) stops the build with an error that names the file, section, key and value. If no build runs (a precompiled plugin), the editor warns at startup and keeps the build as it is.
+
+If the setting and the build disagree when the editor starts, a warning is logged. It names the value in the file, what the binary was built with, and what to do. For a precompiled plugin it says the setting has no effect and to build from source from the project's `Plugins/` folder. Otherwise it says to rebuild the project; if you created the file outside the editor just now, the build may not have noticed it, so it also names the build's stamp file to touch (or the target makefile under `Intermediate/Build` to delete) so the build re-evaluates the setting.
+
+```ini
+[UAIP.Build]
+bCompileTestFixtures=False
+```
+
+No CLI equivalent.
+
+### `[UAIP.TestSupport]` — Cleaning up temporary Blueprints left by tests
+
+UAIP's automation tests create temporary Blueprints (in the transient package or under `/Temp`). When one is left in memory, it is recompiled each time a Play In Editor session starts, and a broken one fails a later test. This section controls what UAIP does with the ones its own tests leave behind.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `BlueprintLeftoverCleanup` | `Off` / `Observe` / `Collect` | `Collect` | `Collect`: after each UAIP test, lets the leftover temporary Blueprints go and collects garbage. `Observe`: only counts them and logs their names; nothing is changed. `Off`: does nothing |
+| `TraceLeftoverReferenceChains` | bool | `False` | When `True`, logs what still references a temporary Blueprint that could not be collected (up to 5 per test). Slow; for diagnosis only. Whether the Undo history still references a temporary Blueprint is also judged only when this is `True`; by default such Blueprints that could not be collected are counted as undetermined |
+
+- **`Collect` acts only in an editor started just to run tests**: started with `-unattended`, with the tests given on the command line (`-ExecCmds="Automation RunTests ..."`, or `RunTest` / `RunFilter` / `RunAll`, or `-TestExit=`), and with no `-uaip-` argument. Any other editor, such as one a person or the MCP bridge started, acts as `Observe` even when the value is `Collect`.
+- **When it is read:** at the start of each UAIP test. A change takes effect from the next test once the ini has been reloaded (for example by `UAIP.Core.ReloadCapabilities`, which works only while `[UAIP.SafetyPolicy] AllowCapabilityReload=True`). Editing the file alone does not change a running editor. There is no dedicated command line flag, but a non-Shipping build can override either key with the engine's `-ini:` argument (see the end of this section).
+- **When the summary is printed:** the summary of what was left behind is printed when all tests have finished. When the tests are run by a UAIP command (for example `UAIP.Editor.Execution.RunAutomationTest`), which does not go through the automation framework's "all tests finished" event, it is printed once for all of them when the editor shuts down instead.
+- **Invalid values:** an empty value counts as not set and uses the default `Collect`. A value other than `Off`, `Observe` or `Collect` also uses `Collect`, and a warning is logged once per distinct value.
+
+```ini
+[UAIP.TestSupport]
+BlueprintLeftoverCleanup=Observe
+TraceLeftoverReferenceChains=False
+```
+
+No dedicated command line flag, but a non-Shipping build can override it with the engine's `-ini:` argument, for example `-ini:UAIP:[UAIP.TestSupport]:BlueprintLeftoverCleanup=Observe`.
 
 ### `[UAIP.Transport]` — Auto-starting the MCP transport on a normal launch
 
@@ -194,7 +391,7 @@ AllowedArtifactDirectory=Saved/MyCustomUAIPStorage
 ```
 
 - Default: `<Project>/Saved/UAIP/`
-- ini-only (no CLI equivalent — the sandbox root is fixed at process start)
+- Set in the ini (no dedicated CLI flag; a non-Shipping build can still override it with the engine's `-ini:` argument — the sandbox root is fixed at process start)
 - The path is resolved relative to the project root if not absolute
 
 ---
@@ -243,47 +440,54 @@ The CLI transport runs a single command (or scenario) from the editor command li
 
 | Flag | Description |
 |---|---|
-| `-uaip-request=<json>` | Inline `uaip_execute` request JSON (escape quotes per your shell) |
-| `-uaip-request-file=<path>` | Read the request JSON from a file |
+| `-uaip-request=<json>` | Inline request JSON, `{"Command": "...", "Params": {...}}` (escape quotes per your shell). The key is `Command`, not the MCP argument name `CommandName` |
+| `-uaip-request-file=<path>` | Read the request JSON from a file under `Saved/UAIP/Requests/` (a relative or absolute path) |
 | `-uaip-scenario=<json>` | Inline `uaip_run_scenario` payload |
-| `-uaip-scenario-file=<path>` | Read the scenario JSON from a file |
-| `-uaip-response-file=<path>` | Where to write the response. Defaults to stdout when omitted |
+| `-uaip-scenario-file=<path>` | Read the scenario JSON from a file under `Saved/UAIP/Requests/` (a relative or absolute path) |
+| `-uaip-response-file=<path>` | Where to write the response, under `Saved/UAIP/Responses/` (a relative or absolute path). Defaults to stdout when omitted |
 | `-uaip-stdin` | Read the request JSON from standard input |
 
 Examples:
 
 ```bash
-# Run HealthCheck once and write the JSON response to ./result.json
+# Run HealthCheck once and write the JSON response to Saved/UAIP/Responses/result.json
 UnrealEditor-Cmd.exe MyProject.uproject \
-  -uaip-request='{"CommandName":"UAIP.Core.HealthCheck","Params":{}}' \
-  -uaip-response-file=./result.json
+  -uaip-request='{"Command":"UAIP.Core.HealthCheck","Params":{}}' \
+  -uaip-response-file=Saved/UAIP/Responses/result.json
 
 # Run a saved scenario
 UnrealEditor-Cmd.exe MyProject.uproject \
-  -uaip-scenario-file=./scenarios/pie-smoke.json \
-  -uaip-response-file=./scenarios/pie-smoke.result.json
+  -uaip-scenario-file=Saved/UAIP/Requests/pie-smoke.json \
+  -uaip-response-file=Saved/UAIP/Responses/pie-smoke.result.json
 ```
 
 ### SafetyPolicy CLI flags
 
-Every `[UAIP.SafetyPolicy]` bool flag has a matching `-uaip-policy-*` CLI flag (the ini keys themselves are documented in [Safety & Capabilities](safety.md#safetypolicy-settings)):
+Every `[UAIP.SafetyPolicy]` bool flag has a matching `-uaip-policy-*` CLI flag, which overrides the ini value (the ini keys themselves are documented in [Safety & Capabilities](safety.md#safetypolicy-settings)):
 
 | ini key | CLI flag |
 |---|---|
-| `ReadOnly` | `-uaip-policy-read-only` |
-| `DisableSave` | `-uaip-policy-disable-save` |
-| `AllowLogDump` | `-uaip-policy-allow-log-dump` |
-| `AllowContextMenuMutation` | `-uaip-policy-allow-context-menu-mutation` |
-| `AllowKeyboardInput` | `-uaip-policy-allow-keyboard-input` |
-| `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input` |
-| `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write` |
-| `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass` |
-| `DisablePIEStart` | `-uaip-policy-disable-pie-start` |
-| `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write` |
-| `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis` |
-| `AllowDisclosingTraceAttachment` | `-uaip-policy-allow-disclosing-trace-attachment` |
+| `ReadOnly` | `-uaip-policy-read-only=True` |
+| `DisableSave` | `-uaip-policy-disable-save=True` |
+| `AllowLogDump` | `-uaip-policy-allow-log-dump=True` |
+| `AllowContextMenuMutation` | `-uaip-policy-allow-context-menu-mutation=True` |
+| `AllowKeyboardInput` | `-uaip-policy-allow-keyboard-input=True` |
+| `AllowKeyboardModifierInput` | `-uaip-policy-allow-keyboard-modifier-input=True` |
+| `AllowPasswordFieldWrite` | `-uaip-policy-allow-password-field-write=True` |
+| `AllowRuntimePasswordFieldWrite` | `-uaip-policy-allow-runtime-password-field-write=True` |
+| `AllowPasswordFieldRead` | `-uaip-policy-allow-password-field-read=True` |
+| `AllowRuntimePasswordFieldRead` | `-uaip-policy-allow-runtime-password-field-read=True` |
+| `AllowInputModeBypass` | `-uaip-policy-allow-input-mode-bypass=True` |
+| `AllowProjectNetDriverNetModeQuery` | `-uaip-policy-allow-project-net-driver-net-mode-query=True` |
+| `DisablePIEStart` | `-uaip-policy-disable-pie-start=True` |
+| `AllowCheatCVarWrite` | `-uaip-policy-allow-cheat-cvar-write=True` |
+| `AllowExternalTraceAnalysis` | `-uaip-policy-allow-external-trace-analysis=True` |
+| `AllowDisclosingTraceAttachment` | `-uaip-policy-allow-disclosing-trace-attachment=True` |
+| `AllowUserInteractionPrompt` | `-uaip-policy-allow-user-interaction-prompt=True` |
 
-`AllowCapabilityReload`, `AllowedCapabilities`, `DeniedCapabilities`, `DeniedCommands`, `AllowedArtifactDirectory`, and `ExternalTraceDirectory` are **ini-only** (no CLI equivalents — they control capability escalation and sandbox boundaries that must not be alterable via the process command line).
+**Every flag takes a value.** Write `-uaip-policy-read-only=True` to turn a setting on, or `=False` to turn off one the ini turns on. The value may be `True` / `False`, `Yes` / `No`, `On` / `Off` or `1` / `0`, in any case. A flag written without a value, such as `-uaip-policy-read-only`, is **ignored without a warning** and the ini value stays; a value that is none of these is ignored with a warning in the log.
+
+`AllowCapabilityReload`, `AllowToolsetErrorText`, `AllowedCapabilities`, `DeniedCapabilities`, `DeniedCommands`, `AllowedArtifactDirectory`, and `ExternalTraceDirectory` are **set in the ini and have no dedicated CLI flag** — they control capability escalation and sandbox boundaries, so nothing a client sends at run time can change them. The engine's own `-ini:UAIP:[UAIP.SafetyPolicy]:<Key>=<Value>` argument (non-Shipping builds) still overrides them for whoever launches the editor, for example `-ini:UAIP:[UAIP.SafetyPolicy]:+AllowedCapabilities=GameFeatureCreate`. The MCP Bridge refuses `-ini:UAIP:` in the launch arguments an agent supplies (`EditorExtraArgs`), so an agent cannot use it to widen its own permissions, unless the bridge was started with `allow_reload_uaip_ini_override` set to `true` (see [Settings read only when the bridge starts](#settings-read-only-when-the-bridge-starts)).
 
 ---
 
@@ -319,7 +523,7 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 | `editor_path` | string | `""` | Absolute path to `UnrealEditor.exe`. Falls back to env override `UAIP_UE_EDITOR_PATH` (env takes precedence). **Not required when `attach_only` is `true`** — a guest-mode bridge never launches an editor, so it has nothing to point this at |
 | `uproject_path` | string | `""` | Absolute path to the `.uproject` file. Falls back to env override `UAIP_UPROJECT_PATH` (env takes precedence). **Always required**, in every mode — used for project-identity verification, auth-token resolution, crash-marker paths, endpoint-descriptor resolution, and reading the per-launch secret at `Saved/UAIP/InstanceSecrets/` that [instance proof](security.md#instance-proof) verification reads under this path |
 | `attach_only` | bool | `false` | Guest mode. When `true`, the bridge never launches an editor of its own — it only attaches to one it finds already listening, resolving the port from the [endpoint descriptor](config.md#endpoint-descriptor-file) with a fallback to `http_port`. It also never launches a replacement when the attached editor's connection drops, whether from a health-check failure or a config reload. See [Connection Methods → Guest-mode connections](connections.md#guest-mode-connections). Env override: `UAIP_ATTACH_ONLY` (`1` / `true` / `yes`) |
-| `http_port` | int | `8765` | HTTP port for the editor's MCP endpoint. Must match `-uaip-http-port` when set |
+| `http_port` | int | `8765` | HTTP port for the editor's MCP endpoint. Must match `-uaip-http-port` when set. Give each project its own port — see [One `http_port` per project](#one-http_port-per-project) |
 | `http_startup_timeout_seconds` | int | `120` | How long the bridge waits for the editor to become ready after launch |
 | `command_timeout_seconds` | int | `180` | Per-request HTTP timeout for forwarded commands. **Cannot be set lower than the HTTP transport's own async command timeout (120 s)** — see the invariant note below |
 | `unresponsive_timeout_seconds` | int | `30` | How long a port that is listening but not answering health pings is tolerated before the bridge marks the editor `UNRESPONSIVE`. In this state the bridge neither auto-launches nor auto-restarts — see [Connection Methods → Check editor status](connections.md#check-editor-status-uaip_get_editor_status) |
@@ -330,7 +534,7 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 | `probe_tcp_timeout_seconds` | float | `1.0` | TCP connect timeout used to check whether the editor's port is listening at all |
 | `probe_ping_timeout_seconds` | float | `5.0` | HTTP ping timeout used to check whether a listening editor actually responds |
 | `process_exit_wait_seconds` | int | `10` | How long the bridge waits for a spawned editor process to exit before giving up |
-| `allow_unverified_attach` | bool | `false` | Opt-in to allow attaching to an existing editor whose `HealthCheck` response lacks `ProjectFilePath` (older plugin versions that predate this field). **Denied by default** — a peer that cannot be identity-verified is refused rather than silently attached |
+| `allow_unverified_attach` | bool | `false` | Opt-in to allow attaching to an existing editor whose `HealthCheck` response lacks `ProjectFilePath` (older plugin versions that predate this field). **Denied by default** — a peer that cannot be identity-verified is refused rather than silently attached. Read only when the bridge starts |
 | `log_level` | string | `"INFO"` | Python logger verbosity — `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `enable_scenario` | bool | `false` | When `true`, the bridge launches the editor with `-uaip-enable-scenario`. Env override: `UAIP_ENABLE_SCENARIO=1` |
 | `role_name` | string | `""` | Only needed when the editor's `[UAIP.Roles]` defines at least one role. Names the role this bridge authenticates as; the bridge reads the matching token lazily from `Saved/UAIP/Roles/<role_name>.token`, only after a request comes back `401` — never on a fixed schedule. Env override: `UAIP_ROLE_NAME` |
@@ -340,6 +544,52 @@ When connecting via the MCP Bridge (deployed at `<UAIP-parent>/UAIPMCPBridge/` �
 | `inline_artifacts.text` | bool | `false` | Inline text artifacts as base64 in MCP responses. **Off by default**, same rationale as `inline_artifacts.json` above |
 
 Environment variables (`UAIP_UE_EDITOR_PATH`, `UAIP_UPROJECT_PATH`, `UAIP_ENABLE_SCENARIO`, `UAIP_ROLE_NAME`, `UAIP_ROLE_TOKEN`) override the corresponding JSON values when set. See `config.json.example` (shipped inside the bridge zip; after install, at `<bridge-root>/config.json.example`) for a fully-commented template.
+
+### Boolean keys accept only `true` and `false`
+
+Every key of type bool in `config.json` — the ones in the table above and in [Settings read only when the bridge starts](#settings-read-only-when-the-bridge-starts) — accepts only the JSON values `true` and `false`. Any other value, a quoted `"false"` or `"true"` included, as well as `0`, `1`, `""`, `null`, an array or an object, makes the bridge refuse to start (exit code 2, with the reason in the MCP client's log), and `uaip_reload_config` refuses it with `InvalidParams` and keeps the configuration in effect. The message names the key, as a dotted path such as `inline_artifacts.json`, and the type of the value, but not the value. Write `true` or `false` without quotes, or remove the key to use its default.
+
+- The file is checked even when an environment variable overrides the key, so removing the variable later cannot uncover a value the bridge refuses.
+- The environment variables keep their own spellings (for example `1`, `true` or `yes`); this rule is about `config.json` only.
+- `"inline_artifacts": true` (not an object) is not a bool key: it is still only a warning, and the three keys keep their defaults.
+- The installer names such keys when it runs and says that the bridge will not start.
+
+### Settings read only when the bridge starts
+
+These keys are read once, when the bridge starts. Editing `config.json` and calling `uaip_reload_config` does not change them (the reload response says the setting takes effect when the bridge is restarted). To change one, edit `config.json` (or set the environment variable) and reconnect the MCP client. The last four lower the bridge's safety posture when `true`; leave them `false` unless you need them.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `log_to_file` | bool | `false` | Also writes the bridge's diagnostic log to a file, one per bridge process, under `<project>/Saved/UAIP/BridgeLogs/`. The log includes the start and the result of every editor identity check, so you can see afterwards which check ran and how it was decided. `uaip_get_editor_status` shows the file in use as `Data.Config.LogFile` (`null` when nothing is written to a file). If the file cannot be created, the bridge prints one warning to standard error and keeps running on standard error alone. Role tokens, secrets, session ids and URL queries are never written. About the newest 20 files are kept, and each process writes at most 10 MB. `log_level` applies to the file as well. Env override: `UAIP_LOG_TO_FILE` (`1`) |
+| `allow_reload_launch_command` | bool | `false` | Lets `uaip_reload_config` change `editor_path`, the extra launch arguments, `enable_scenario` and `launch_attended`. See [What a reload does not change by default](#what-a-reload-does-not-change-by-default). Env override: `UAIP_ALLOW_RELOAD_LAUNCH_COMMAND` (`1`) |
+| `allow_reload_uaip_ini_override` | bool | `false` | Lets the `EditorExtraArgs` of `uaip_reload_config` carry the engine's `-ini:UAIP:` override, which the reload otherwise refuses. Independent of `allow_reload_launch_command`: it does not let a reload change the extra arguments, that still needs `allow_reload_launch_command`. With `true`, the next editor the bridge launches reads the value from that UAIP ini override, including keys of `[UAIP.SafetyPolicy]`, so it loosens safety. Other refusals such as `-uaip-policy-*` do not change. A reload that goes through this way ends its message with a note. See [What a reload does not change by default](#what-a-reload-does-not-change-by-default). Env override: `UAIP_ALLOW_RELOAD_UAIP_INI_OVERRIDE` (`1`) |
+| `allow_reload_bridge_code` | bool | `false` | Lets `uaip_reload_config` re-read the bridge's own source files. See [What a reload does not change by default](#what-a-reload-does-not-change-by-default). Env override: `UAIP_ALLOW_RELOAD_BRIDGE_CODE` (`1`) |
+| `allow_unverified_port_owner` | bool | `false` | On Windows, the bridge checks which process owns the editor's port. When it cannot tell (the query to the OS fails every time, or the owner is not visible), it stops by default and does not send the command; if the editor it launched is the one involved, that editor is left running. With `true`, in that case only, it goes on with the project-identity check alone, as on other platforms, which cannot tell apart another editor that opened the same project. It has no effect when the bridge has confirmed that another process owns the port. Env override: `UAIP_ALLOW_UNVERIFIED_PORT_OWNER` (`1`) |
+
+`allow_unverified_attach` is also read only when the bridge starts. It does not apply while the bridge checks an editor it launched itself and still holds; it applies to attaching to an editor that is already running and to adopting an editor that restarted itself.
+
+### Using a `.bat` as `editor_path`
+
+`editor_path` may point to a `.bat` / `.cmd` wrapper instead of `UnrealEditor.exe`. Because a batch file passes its arguments through `cmd.exe`, the bridge adds these protections whenever the extension is anything other than `.exe` (no extension included):
+
+- **Arguments are checked.** If an argument (the extra launch arguments or the project path) contains a character that `cmd.exe` would interpret again — `%` `!` `^` `&` `|` `<` `>` `"` `(` `)` or a line break — the editor is not started. The error starts with `Failed to start editor:`, names which argument is the problem (never its value), and says to remove that character or to point `editor_path` at the editor's executable. `uaip_get_editor_status` shows `STOPPED`, and the same refusal repeats until you fix the setting and restart the bridge.
+- **Every argument is passed inside double quotes**, because a `.bat` also splits arguments at `,` `;` and `=`. A project path that contains `=` is refused (fix `uproject_path`; a reload can do that). With a `.exe`, the project path is always quoted as well.
+- **The contents of the file are fingerprinted.** The bridge records the contents of the `.bat` when it starts, keeps the file open for as long as it runs so that it cannot be rewritten, renamed or deleted, and compares the contents again right before every launch. If they changed, the editor is not started: the error starts with `Failed to start editor:` and says the file changed after the bridge started, so check the file and restart the bridge. If the file cannot be held open (another program has it open for writing), or could not be read when the bridge started, the editor is not started either.
+
+Limits: a project whose path contains parentheses cannot be launched through a `.bat`, and neither can one whose path contains `=`. **While the bridge is running you cannot edit the `.bat` yourself** — disconnect the MCP client first. Files that the `.bat` itself calls are not checked.
+
+### One `http_port` per project
+
+Two projects that use the same `http_port` (the default is `8765`) can start their editors at almost the same time and compete for the port. The bridge that loses detects it: it sends no command to the editor that holds the port, closes the editor it has just launched (an editor it had already been using is never closed), and refuses with an explanation. `uaip_get_editor_status` then reports `PORT_OCCUPIED` with the reason `LAUNCHED_EDITOR_LOST_PORT`. To avoid the clash altogether, give each project's `config.json` its own `http_port` (and start its editor with the matching `-uaip-http-port`), or close the other editor.
+
+### An editor that keeps running after letting go of the port
+
+If an editor the bridge launched stops answering on its port but its process keeps running (it hangs, or only a `.bat` wrapper is left), the bridge remembers it as still running and **does not launch a second editor for the same project until it has exited**. A new editor is needed only when nothing answers on the port; the call is then refused, and `uaip_get_editor_status` recommends: the editor is still running; if it answers on the port the next call connects to it, otherwise close it by hand, and the call after that launches a new one. If an editor of the same project answers on the port, the bridge still connects to it as usual.
+
+- **The record outlives the bridge.** The remembered editor is written to a record file beside the project lock file: `<project>/Saved/UAIP/mcp_proxy.lock.survivors.json`. It stays across an MCP reconnect (also one that changes `editor_path`), a force-killed bridge, another session's bridge, and a `.bat` wrapper that exited while the editor kept running. If the record file cannot be written, the editor is not launched. Where lock files cannot be used at all, the bridge warns and launches as before, and no record is used, so a second editor is not prevented across bridges.
+- **Closing the editor is enough.** Once the remembered editor has exited, the next call launches a new one; nothing needs to be deleted. When the bridge sees that every editor in the record has exited, it removes the record file itself.
+- **When the OS cannot tell whether it still runs,** the bridge assumes it does and keeps refusing to launch, and it does not remove the record file. The refusal and `uaip_get_editor_status` then name the record file. After you have made sure that editor is gone, **delete that file yourself**; the running bridge launches again from its next call.
+- Helper processes the editor starts (such as `zenserver.exe`) are not recorded. Anyone who can write the record file can block launching with a false record (only launching is blocked).
 
 ### Timeout invariants
 
@@ -366,12 +616,52 @@ uaip_reload_config()
 |---|---|
 | `EditorPath` | Switch engine version at runtime without editing `config.json` |
 | `UProjectPath` | Point at a different `.uproject` for this session |
+| `EditorExtraArgs` | Extra editor command-line arguments as a string array — e.g. `["-stomp2malloc", "-MallocStomp2MinSize=65", "-MallocStomp2MaxSize=80"]` to hunt a memory corruption |
+
+**By default `EditorPath` and `EditorExtraArgs` are refused** and the whole reload changes nothing; they work only when the bridge was started with `allow_reload_launch_command` set to `true`. See [What a reload does not change by default](#what-a-reload-does-not-change-by-default). (`UProjectPath` is not affected.)
+
+`EditorExtraArgs` behaves differently from the other two:
+
+- It **replaces** the extra arguments, and `[]` removes them. Omitting it keeps the ones in effect. The initial value comes from the `UAIP_EDITOR_EXTRA_ARGS` environment variable (whitespace-separated, double quotes group a value containing spaces); there is no `config.json` key for it.
+- It applies **the next time the bridge launches the editor**, never to an editor that is already running, and changing it alone does not shut the editor down (`EditorRestartScheduled` stays `false`). To apply it now, run `UAIP.Editor.Workspace.ShutdownEditor`; the next tool call launches the editor with the new arguments. A guest-mode (`attach_only`) bridge never launches the editor, so the arguments never apply there.
+- The arguments stay in effect until replaced — a relaunch after a crash carries them too. Clear them with `EditorExtraArgs=[]` once they are no longer needed. The response's `Data.EditorExtraArgs` and `uaip_get_editor_status`'s `Data.Config.EditorExtraArgs` both show the list in effect.
+- One argument per element, without surrounding quotes: `"-abslog=C:\\My Logs\\Editor.log"`.
+- Refused with `InvalidParams`, leaving the configuration unchanged: flags starting with `-uaip-` (the bridge manages the port, MCP mode and the scenario route itself; the SafetyPolicy flags `-uaip-policy-*` and the engine's `-ini:UAIP:` override are refused too, so that a client cannot lift its own restrictions — set those keys in `[UAIP.SafetyPolicy]` of the project's `Config/DefaultUAIP.ini` instead; `-ini:UAIP:` alone is accepted when the bridge was started with `allow_reload_uaip_ini_override` set to `true`), `-unattended` (use `launch_attended` instead), `-nopause` (always passed already), empty elements, and elements containing control characters. The same values in `UAIP_EDITOR_EXTRA_ARGS` make the bridge refuse to start, except `-ini:UAIP:`, which that variable accepts because a person writes it, not an agent.
 
 Typical flow after editing `config.json`:
 
 1. Edit `config.json` (e.g. set `enable_scenario: true`)
 2. Call `uaip_reload_config()` — the bridge detects the change and schedules an editor restart
 3. The next `uaip_execute` call launches the editor with the new parameters
+
+#### When a reload would have to stop an editor
+
+Five settings only take effect in a freshly launched editor: the editor path, the uproject path, the HTTP port, the scenario flag (`enable_scenario`) and `launch_attended`. When one of them changes, the reload has to stop the running editor so that the next tool call can launch one with the new settings. Whether it may do that depends on who launched the editor.
+
+- **An editor this bridge launched** is asked to shut down (`ShutdownEditor`) and the reload succeeds. If that editor refuses (for example under a read-only safety setting), its answer is returned and nothing is changed. The next tool call launches the editor with the new settings.
+- **An editor this bridge did not launch** is never stopped by a reload. This is the editor that `RestartEditor` brings up (the editor starts itself, so the bridge only attached to it), the editor an MCP reconnect attached to, and an editor that answers on the configured port while the bridge is not connected to it. The reload is refused, nothing is changed, and the answer names the steps to take: send `UAIP.Editor.Workspace.ShutdownEditor` with `uaip_execute` **only if you know the editor was started or restarted by an AI operation**, then call `uaip_reload_config` again. Otherwise ask whoever owns the editor to close it, or give up the change. Repeating the reload without those steps gives the same answer. Meanwhile the bridge stays usable and other commands still reach the editor. (`Ownership` in `uaip_get_editor_status`: `OWNED` is an editor this bridge launched, `ATTACHED` is one it attached to.)
+- **Nothing answers on the port**: the reload succeeds and stops nothing; the next tool call launches the editor with the new settings.
+- **The editor is in the middle of a restart or of a replacement check** (for example right after `RestartEditor`, before any command has confirmed the new editor): the reload is refused. Send any command, wait until it reaches the editor, and reload again.
+
+Changing the HTTP port follows the same rule. Earlier versions could leave the old editor running and launch a second one on the new port; a reload now refuses in that case.
+
+A reload is also refused, with nothing changed, while another tool call is still running or while an editor launch or switch is still finishing in the background. Retry once it has finished. While a reload itself is running, every other tool call (`uaip_get_editor_status` and a second `uaip_reload_config` included) is turned away at once without doing anything; send it again when the reload has finished, which normally takes at most a few tens of seconds. If calls keep being turned away well past that time (about a minute and a half), the message changes to say the reload did not finish: reconnect the MCP session. A reload that you cancel on the AI side may still run to the end inside the bridge and apply the configuration; check `uaip_get_editor_status` (`Data.Config`) to see whether it did.
+
+**Guest mode (`attach_only`)** A guest bridge never launches or stops an editor, so the refusal above does not apply, and the response says `EditorRestartScheduled: false`. If the bridge was connected, the reload drops the connection without stopping the editor: the next command is refused once (the refusal says the editor was not stopped and to retry as is), and the one after that attaches to the editor answering on its port. While the connection is dropped, `uaip_get_editor_status` reports a `RecommendedAction` beginning `PROCEED:` if something answers on the port (the next command checks it and connects; nothing is launched), and the usual `CHECK CONFIGURATION:` if nothing does. If it was not connected, the new settings apply to the editor it attaches to next; if an earlier reload dropped the connection and no command has been sent since, that next command is still refused once. Changing only `EditorExtraArgs` in guest mode is answered with a note that the arguments are not used. Earlier versions wrongly answered that the editor would relaunch on the next tool call (`EditorRestartScheduled: true`). Only the "restart or replacement check in progress" and "another call running" refusals apply there.
+
+**Switching `attach_only` in the same reload** If the reload changes only `attach_only` (no setting that needs a new editor), it stops no editor and the next tool call is not refused; the answer says whether the bridge will launch the editor from now on or no longer will (`EditorRestartScheduled: false`). If the same reload also changes a setting that needs a new editor, whether it is refused is decided under the mode in effect before it, and an answer that goes through describes the next tool call under the new mode. Turning guest mode off: the next tool call launches an editor with the new settings (`EditorRestartScheduled: true`); the reload itself stopped nothing, so close an editor that is still answering on the port first. If you do not, the next tool call waits for the port to free up and is then refused with "The config reload did not ask any editor to exit ... Close the editor holding the port, then retry." Turning guest mode on: the bridge no longer launches the editor (`EditorRestartScheduled: false`); the next tool call is refused once (the editor was not stopped; retry as is), and the one after that attaches to the editor answering on the port.
+
+#### What a reload does not change by default
+
+A reload only changes settings the AI cannot use to run something new:
+
+- **The launch command is fixed when the bridge starts.** `editor_path`, the extra launch arguments (`EditorExtraArgs`), `enable_scenario` and `launch_attended` keep the values the bridge started with. Passing one of them to `uaip_reload_config`, or editing it in `config.json` and then reloading, makes the whole reload fail with `PolicyViolation`: nothing changes and no editor is restarted or stopped. Passing the same value again is not refused. If `config.json` was edited, the answer lists the changed items with their new values and tells you that reconnecting the MCP client would launch the editor with those values, so check them first; a reload that goes through still returns the same note as a warning while `config.json` differs. This also means switching the engine version with `uaip_reload_config(EditorPath=...)` no longer works unless `allow_reload_launch_command` is `true`.
+- **The bridge's own code is not re-read.** The bridge keeps running the code it loaded at start. If any file it loaded has changed since then (a file it could not read at start counts too), the reload is refused with `PolicyViolation`, naming the changed files. Reconnect the MCP client to use the new code. After it has started, the bridge also removes its own folder from Python's import path, so a file placed there later is never loaded.
+- **Still reloadable:** `uproject_path` and `http_port`, and everything else that does not change the launch command. While an editor the bridge launched is still running, a reload that changes `uproject_path` is refused with nothing changed: close that editor (`ShutdownEditor`, or by hand) and reload again.
+
+- **The `-ini:UAIP:` override is refused in `EditorExtraArgs`.** Even where `allow_reload_launch_command` lets a reload change the extra arguments, an element that targets the UAIP ini through `-ini:` is refused, because it could replace `[UAIP.SafetyPolicy]` for the next editor launch. Set `allow_reload_uaip_ini_override` to `true` before the bridge starts to accept it; `allow_reload_launch_command` is still needed to change the arguments at all. The environment variable `UAIP_EDITOR_EXTRA_ARGS` is not affected, since a person writes it.
+
+To get the old behaviour back, set `allow_reload_launch_command` and/or `allow_reload_bridge_code` to `true` in `config.json` (or set the environment variable) **before** the bridge starts. They lower the bridge's safety posture, and they cannot be switched by a reload.
 
 ---
 

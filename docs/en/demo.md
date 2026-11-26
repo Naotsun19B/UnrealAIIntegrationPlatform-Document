@@ -2,7 +2,7 @@
 
 # Demo Version Guide
 
-The UAIP demo binary is a free, feature-limited build distributed via GitHub Releases. It provides observation, PIE control, assertion, scenario execution, and UI automation, plus read-only inspection of assets, level actors, properties, plugins, settings, logs, console variables and Unreal Insights traces — enough to integrate an AI agent into your review and testing workflow without any cost.
+The UAIP demo binary is a free, feature-limited build distributed via GitHub Releases. It provides observation, PIE control, assertion, scenario execution, and UI automation, plus read-only inspection of assets, level actors, properties, plugins, settings, logs, console variables and Unreal Insights traces, and read-only observation of a running game's AI perception, Chaos destruction, navigation and input state — enough to integrate an AI agent into your review and testing workflow without any cost.
 
 > **License**: the demo is licensed for **personal use and evaluation only**. Commercial use is not covered — see the `EULA.txt` shipped with the release archive. For commercial use, please get the Pro version ([available on Fab](https://www.fab.com/listings/0eedf909-00ac-4d95-b109-8fda51800fff)).
 
@@ -21,9 +21,16 @@ The UAIP demo binary is a free, feature-limited build distributed via GitHub Rel
 | **Commands** | | |
 | Core (HealthCheck, ListCommands, …) | ✅ | ✅ |
 | Editor observation (screenshots, dumps) | ✅ | ✅ |
-| Editor workspace (tab focus, graph framing, editor restart, …) | ✅ | ✅ |
+| Editor workspace (tab focus, graph framing, editor restart, minimizing and restoring the main window, …) | ✅ | ✅ |
 | PIE control (StartPIE, StopPIE, LoadMap, …) | ✅ | ✅ |
-| Runtime observation (viewport capture, world dump) | ✅ | ✅ |
+| Runtime observation (viewport capture, world dump, HUD and widget state) | ✅ | ✅ |
+| Runtime AI perception, Chaos destruction and navigation observation (read-only subset) | ✅ | ✅ |
+| Runtime animation observation (anim instance state, state machines, blend weights, montages, curves; read-only subset) | ✅ | ✅ |
+| Runtime network observation (net drivers, connections, actor replication setup; read-only subset — `ListNetConnections` writes raw addresses only with `RuntimeNetConnectionAddressRead`, which you allow yourself) | ✅ | ✅ |
+| Runtime replicated property values and comparison, packet emulation (`DumpReplicatedPropertyValues`, `CompareReplicatedProperties`, `SetNetworkEmulation`, `ResetNetworkEmulation`) | — | ✅ |
+| Runtime subsystem observation (`ListSubsystems`; `DumpSubsystemState` also needs `SubsystemStateDump`, which you allow yourself) | ✅ | ✅ |
+| Runtime input state observation (`DumpInputState`, `GetEnhancedInputActionValue`) | ✅ | ✅ |
+| Runtime input injection (`InjectInputKey`, `InjectEnhancedInputAction`, `ClickGameViewportWidget`, …) | — | ✅ |
 | Scenario execution (`uaip_run_scenario`) | ✅ | ✅ |
 | UI automation (ClickWidget, PressKey, FillForm, …) | ✅ | ✅ |
 | Runtime assertion (WaitSeconds, AssertActorProperty, …) | ✅ | ✅ |
@@ -111,6 +118,7 @@ Every command below is registered in the demo build. Where a namespace is marked
 | `UAIP.Editor.Workspace.OpenTabById` | Open an editor tab by its Slate layout ID | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.CloseTabById` | Close an editor tab by its Slate layout ID | `EditorTabSpawn` |
 | `UAIP.Editor.Workspace.NormalizeEditorLayout` | Focus the main graph tab and hide transient panels | |
+| `UAIP.Editor.Workspace.SetEditorWindowState` | Minimize the editor main window, or restore it from the minimized state | `EditorWindowStateControl`; while the user works in another application, restoring leaves the editor behind it and does not take the keyboard focus |
 | `UAIP.Editor.Workspace.SetGraphZoom` | Set the graph viewport zoom level | |
 | `UAIP.Editor.Workspace.FrameGraphAll` | Fit all nodes in the graph viewport | |
 | `UAIP.Editor.Workspace.FrameGraphSelection` | Fit the selected nodes in the graph viewport | |
@@ -121,6 +129,7 @@ Every command below is registered in the demo build. Where a namespace is marked
 | `UAIP.Editor.Workspace.SaveAllPackages` | Save all modified packages | |
 | `UAIP.Editor.Workspace.ShutdownEditor` | Shut down the editor | |
 | `UAIP.Editor.Workspace.RestartEditor` | Restart the editor | |
+| `UAIP.Editor.Workspace.GetRestartStatus` | Read the state of a restart attempt | |
 | `UAIP.Editor.Workspace.GetLastCrashReport` | Get the most recent crash report | |
 
 ### `UAIP.Runtime.PIE.*`
@@ -146,6 +155,82 @@ Every command below is registered in the demo build. Where a namespace is marked
 | `UAIP.Runtime.Observation.CapturePerformanceSnapshot` | Capture FPS, memory, and other performance stats | |
 | `UAIP.Runtime.Observation.CheckpointCapture` | Screenshot + state dump combined (scenario primitive) | Watermarked |
 | `UAIP.Runtime.Observation.SearchLoadedClasses` | Search loaded classes | |
+| `UAIP.Runtime.Observation.DumpGameViewportWidgets` | JSON dump of the widget tree of the game viewport | |
+| `UAIP.Runtime.Observation.FindGameViewportWidgets` | Search the widget tree of the game viewport by class, name or owning player | |
+| `UAIP.Runtime.Observation.DumpGameViewportWidgetTexts` | JSON dump of the text of every text widget of the game viewport | `RuntimeWidgetTextRead` (the plain value of a password field also needs `RuntimeWidgetPasswordTextRead`) |
+| `UAIP.Runtime.Observation.DumpHUDState` | JSON dump of the HUD state of each local player | |
+| `UAIP.Runtime.Observation.ListSubsystems` | The subsystems alive in the engine, the game instance, the play world and the local players, one row per instance | |
+| `UAIP.Runtime.Observation.DumpSubsystemState` | JSON dump of the property values of one subsystem instance | `SubsystemStateDump` (needed in addition to `RuntimeInspect`; DefaultDenied in the demo too — you allow it yourself with `+AllowedCapabilities=SubsystemStateDump`) |
+
+### `UAIP.Runtime.Input.*` (read-only subset)
+
+| Command | Description |
+|---|---|
+| `UAIP.Runtime.Input.DumpInputState` | JSON dump of a player controller's input state (pressed keys, axis values, active Enhanced Input mapping contexts) |
+| `UAIP.Runtime.Input.GetEnhancedInputActionValue` | Return the current value of an Enhanced Input action |
+
+The commands that inject input exist only in Pro (see [Excluded commands](#excluded-commands)).
+
+### `UAIP.Runtime.AI.*`
+
+| Command | Description | Note |
+|---|---|---|
+| `UAIP.Runtime.AI.DumpAIPerceptionState` | Everything one AI's perception component holds | |
+| `UAIP.Runtime.AI.GetPerceivedActors` | The actors one AI senses right now, or still remembers | |
+| `UAIP.Runtime.AI.GetActorPerceivers` | Which AIs sense a given actor | |
+| `UAIP.Runtime.AI.DumpAIPerceptionSystemState` | The state of the perception system of the world as a whole | |
+| `UAIP.Runtime.AI.ExplainSightPerception` | Why sight does or does not see a target, as 14 ordered steps | |
+| `UAIP.Runtime.AI.DumpAIPerceptionSenseConfigs` | The value of every property of every sense configuration on one AI's perception component | `AIPerceptionConfigDump` (needed in addition to `RuntimeInspect`) |
+| `UAIP.Runtime.AI.DumpBehaviorTreeState` | Everything the default observation may say about one actor's behavior tree | |
+| `UAIP.Runtime.AI.GetActiveBehaviorTreeNode` | The active node of one actor's behavior tree and the path from it to the root | |
+| `UAIP.Runtime.AI.ListBehaviorTreeAgents` | The actors of the play world that are running a behavior tree | |
+| `UAIP.Runtime.AI.GetBlackboardValues` | The value of every key of one actor's Blackboard | `BlackboardValueRead` (needed in addition to `RuntimeInspect`; DefaultDenied in the demo too) |
+| `UAIP.Runtime.AI.StartBehaviorTreeCapture` | Start recording how one actor's behavior tree changes over time | |
+| `UAIP.Runtime.AI.StopBehaviorTreeCapture` | Stop a behavior tree capture and return its final state | |
+| `UAIP.Runtime.AI.GetBehaviorTreeEventLog` | Read the entries of a behavior tree capture, oldest first | |
+
+### `UAIP.Runtime.ChaosDestruction.*` (read-only subset)
+
+| Command | Description |
+|---|---|
+| `UAIP.Runtime.ChaosDestruction.ListGeometryCollections` | List the Geometry Collection components of the play world and how broken each one is |
+| `UAIP.Runtime.ChaosDestruction.DumpGeometryCollectionState` | State, location and velocity of the pieces of one Geometry Collection |
+| `UAIP.Runtime.ChaosDestruction.DumpChaosFieldState` | The physics fields that act on the world |
+| `UAIP.Runtime.ChaosDestruction.StartDestructionCapture` | Start recording destruction events into a capture owned by the calling session |
+| `UAIP.Runtime.ChaosDestruction.GetDestructionEventLog` | Read the events of a capture, oldest first (still readable for a while after the play session ended) |
+| `UAIP.Runtime.ChaosDestruction.StopDestructionCapture` | Stop a capture and return its final state |
+| `UAIP.Runtime.ChaosDestruction.CaptureGeometryCollectionStrain` | The strain each piece carries on the next physics step |
+
+### `UAIP.Runtime.Navigation.*` (read-only subset)
+
+| Command | Description | Note |
+|---|---|---|
+| `UAIP.Runtime.Navigation.DumpNavigationSystemState` | The setup and state of the navigation system | |
+| `UAIP.Runtime.Navigation.FindPath` | A path between two points and whether the end point can be reached | `RuntimeNavigationExtendedSearch`, only when `MaxSearchNodes` is above 8192 |
+| `UAIP.Runtime.Navigation.IsLocationReachable` | The same question as `FindPath`, answered without the path | Same as above |
+| `UAIP.Runtime.Navigation.DumpNavMeshTiles` | The tiles of one navigation mesh | |
+| `UAIP.Runtime.Navigation.QueryNavModifiers` | The navigation modifiers that touch a box, and how the polygons there are divided among areas | |
+| `UAIP.Runtime.Navigation.GetPathFollowingState` | What the path following component of one AI is doing (play world only) | |
+| `UAIP.Runtime.Navigation.WaitForNavigationBuild` | Wait until the navigation system has finished generating | |
+
+### `UAIP.Runtime.Animation.*`
+
+| Command | Description | Note |
+|---|---|---|
+| `UAIP.Runtime.Animation.DumpAnimInstanceState` | The update state, state machines, blend weights, montages and curves of one skeletal mesh component in one capture | |
+| `UAIP.Runtime.Animation.GetAnimStateMachineStates` | The active state of each state machine, the time spent in it and the transitions in progress | |
+| `UAIP.Runtime.Animation.GetAnimBlendWeights` | The final blend weight of the playing assets, blend spaces and layered blends | |
+| `UAIP.Runtime.Animation.GetActiveMontages` | The montages that are active, a montage that is blending out included | |
+| `UAIP.Runtime.Animation.GetAnimCurveValues` | The animation curves with their values and kinds | |
+| `UAIP.Runtime.Animation.DumpAnimInstanceVariables` | The values of the variables that the project's own anim instance classes declare | `AnimInstanceVariableDump` (needed in addition to `RuntimeInspect`; DefaultDenied in the demo too) |
+
+### `UAIP.Runtime.Network.*` (read-only subset)
+
+| Command | Description | Note |
+|---|---|---|
+| `UAIP.Runtime.Network.GetNetDriverState` | The net drivers of a world with their settings and traffic totals | |
+| `UAIP.Runtime.Network.ListNetConnections` | The connections of one net driver with their round trip time, loss and traffic | `RuntimeNetConnectionAddressRead`, only when `IncludeRemoteAddress` is `true` (DefaultDenied in the demo too) |
+| `UAIP.Runtime.Network.DumpActorReplication` | How one actor is set up to replicate and what the server knows about sending it | |
 
 ### `UAIP.Runtime.Assertion.*`
 
@@ -170,12 +255,14 @@ Every command below is registered in the demo build. Where a namespace is marked
 | `UAIP.Editor.UIAutomation.ConnectGraphPins` | Connect graph pins | |
 | `UAIP.Editor.UIAutomation.AcceptDialog` | Close a dialog with OK | |
 | `UAIP.Editor.UIAutomation.CancelDialog` | Close a dialog with Cancel | |
+| `UAIP.Editor.UIAutomation.GetActiveDialog` | Read the modal dialog that is open now (title, body, buttons) | Read-only |
 | `UAIP.Editor.UIAutomation.InvokeContextMenuAction` | Invoke a context menu action | |
 | `UAIP.Editor.UIAutomation.HoverWidget` | Hover over a widget | |
 | `UAIP.Editor.UIAutomation.PressKey` | Send a key input | `EditorKeyboardInput` |
 | `UAIP.Editor.UIAutomation.WaitForWidget` | Wait for a widget to appear | |
 | `UAIP.Editor.UIAutomation.FillForm` | Auto-fill a form | |
-| `UAIP.Editor.UIAutomation.OpenPasswordTestWindow` | Open a test window with a password field (target for password-field policy tests) | |
+| `UAIP.Editor.UIAutomation.DismissMenus` | Close the open menus and popups | |
+| `UAIP.Editor.UIAutomation.OpenPasswordTestWindow` | Open a small test window with a password field (a target for password-field policy tests) | Only opens a window and changes nothing; it is in the demo as well as Pro (see [What the demo does and does not restrict](#what-the-demo-does-and-does-not-restrict)) |
 
 ### `UAIP.Editor.Assets.*` (read-only subset)
 
@@ -224,6 +311,7 @@ Every command below is registered in the demo build. Where a namespace is marked
 | `UAIP.Editor.Level.ProjectScreenToWorld` | Cast a ray from screen coordinates into the world |
 | `UAIP.Editor.Level.ListActorComponents` | List every component of an actor placed in the level |
 | `UAIP.Editor.Level.GetActorComponentProperty` | Read a property of a placed actor's component |
+| `UAIP.Editor.Level.GetTransformGizmoSize` | Report the transform gizmo size settings and which one the gizmo in use reads |
 
 ### `UAIP.Editor.Property.*` (read-only subset)
 
@@ -236,7 +324,7 @@ Every command below is registered in the demo build. Where a namespace is marked
 | `UAIP.Editor.Property.GetProjectSetting` | Get a property from a project settings object |
 | `UAIP.Editor.Property.GetDataTableRow` | Get a DataTable row property |
 
-Values of secret-looking properties are masked in the responses.
+Values of secret-looking properties are masked in the responses. The demo unlocks the plain value the same way as the Pro build, with the same three layers: the call passes `IncludeSecretValues: true`, `AllowSecretValueRead=True` is set under `[UAIP.SafetyPolicy]`, and the session holds `SecretValueRead` (DefaultDenied in the demo too — you allow it yourself with `+AllowedCapabilities=SecretValueRead`). By default none of them is given, so the values stay `***`. The same applies to the secrets of `GetAssetTags` and of the run-time dumps `DumpSubsystemState`, `DumpAnimInstanceVariables`, `GetBlackboardValues` and `DumpAIPerceptionSenseConfigs`, which also need their own capability (see [Reading secret values in plain text](safety.md#reading-secret-values-in-plain-text)).
 
 ### `UAIP.Editor.Engine.*` (read-only subset)
 
@@ -305,6 +393,17 @@ The following capture commands embed a **"UAIP Demo"** watermark in the output P
 
 The mark makes it clear that a screenshot — when it ends up shared as review or test evidence — was produced by the demo build. The Pro version emits captures without the watermark.
 
+### What the demo does and does not restrict
+
+The demo restricts which **commands** exist. It does not stop the editor from doing something once a command has acted on it. Four points follow from that:
+
+1. **No semantic editing commands.** The demo has no command that rewrites an asset, an actor, a property or a setting as a unit of meaning (creating, renaming or deleting assets, placing actors, `Set*Property`, and so on). See [Excluded commands](#excluded-commands).
+2. **Saving, shutting down and restarting stay, because observation depends on them.** `SaveAllPackages`, `ShutdownEditor` and `RestartEditor` let a session check the result of a UI operation by restarting the editor. Unless `SaveAll` is given (and `DisableSave` is left at its default of `false`), `ShutdownEditor` and `RestartEditor` save every package that has unsaved changes before they close.
+3. **UI automation can change and save assets.** `ConnectGraphPins` and `DragGraphNode` do change the asset in the open editor, and `ClickWidget` sends a real click, which can press a Save button. They need only the DefaultAllow `EditorUIAutomation` capability and do not look at `DisableSave`; only `ReadOnly=True` stops them. Do not read "the demo has no editing commands" as "the demo cannot write to your project".
+4. **`SaveAsset` is left out, but `SaveAllPackages` stays.** `SaveAsset` belongs to the editing flow that opens, changes and saves one asset, the same family as the create, rename and delete commands. `SaveAllPackages` belongs to the same `EditorLifecycle` capability as `ShutdownEditor` and `RestartEditor`, and only makes callable on its own the "save everything" that closing and restarting already do, so it adds no new way to write.
+
+`OpenPasswordTestWindow` is in the demo, and in Pro, for a different reason: it only opens a small window with a password field, as a target for checking how `InputText` and the password-field policy treat a password field. It changes no asset, setting or saved state. It was already a published command, and removing a published command would have been a breaking change.
+
 ### Excluded commands
 
 Commands that exist in Pro but are not available in the demo:
@@ -317,6 +416,19 @@ Commands that exist in Pro but are not available in the demo:
 | Commands that change the editor in the included Assets, Level, Property, Engine and Insights namespaces (`CreateAsset`, `SaveAsset`, `PlaceActorInLevel`, `AddActorComponent`, `Set*Property`, `SetPluginEnabled`, `SetSettingsValues`, `SetConsoleVariable`, `StartTrace`, …) | The demo exposes only the read-only subset listed above — `CommandNotFound` |
 | `WaitForShaderCompilation`, `RecompileGlobalShaders` and the Live Coding commands in `UAIP.Editor.Workspace` | Shader and Live Coding development — Pro only — `CommandNotFound` |
 | Trace analysis (`UAIP.Runtime.Insights.Analysis.*`) | Compiled out of the demo — `CommandNotFound` |
+| Input injection in `UAIP.Runtime.Input` (`InjectInputKey`, `InjectLegacyAction`, `InjectLegacyAxisInput`, `InjectLegacySpeechInput`, `FlushInput`, `SetInputMode`, `InjectEnhancedInputAction`, `AddMappingContext`, `RemoveMappingContext`, `ClickGameViewportWidget`, `PressGameViewportUIKey`, `TypeGameViewportText`) | They send input to the running game — Pro only — `CommandNotFound` |
+| `UAIP.Runtime.Input.EvaluateInputGateWithProjectCode` | It runs the project's own code (the overrides of the game viewport client) — Pro only — `CommandNotFound` |
+| `UAIP.Runtime.ChaosDestruction.EnableForcedDestructionNotify` and `UAIP.Runtime.Navigation.RebuildNavigation` | They change the running game (destruction notifications, navigation mesh regeneration) — Pro only — `CommandNotFound` |
+| `UAIP.Runtime.Animation.GetMotionMatchingState` | It needs the PoseSearch plugin, which the demo does not include — Pro only — `CommandNotFound` |
+| `UAIP.Runtime.Network.DumpReplicatedPropertyValues`, `UAIP.Runtime.Network.CompareReplicatedProperties`, `UAIP.Runtime.Network.SetNetworkEmulation` and `UAIP.Runtime.Network.ResetNetworkEmulation` | They read the values of replicated properties, which can include the account identifiers and names of players, or change the packet emulation of the running game — Pro only — `CommandNotFound` |
+
+When a Toolset bridge command is called in the demo, the error names the integration and its state before it says what to do, so you can tell what is missing: `This command runs through the Toolset integration 'UAIPCoreToolsetRegistry', which is not loaded (state: NotInThisEdition). The integration is not included in the free demo edition of UAIP. Its commands are available in the Pro edition on Fab.`
+
+### Capabilities the demo marks as unavailable
+
+The demo registers the capabilities of the commands it leaves out, so the capability list looks the same as in Pro. A capability that no command of the demo requires is marked **not in this edition**: `UAIP.Core.QueryCapabilities` (with `IncludeUnavailable: true`) lists it with `UnavailableReason: "NotInThisEdition"` and `IsGranted: false`, naming it in `+AllowedCapabilities` does not grant it, and the editor logs a warning at startup if you did. It is not a way to unlock anything: only the Pro edition has the commands. Not every capability a demo user cannot use is marked — one the demo does not register at all (`CommonUIProjectCodeExecution`, for example) is simply absent from the list. See [Safety & Capabilities](safety.md#capabilities-the-demo-build-does-not-ship).
+
+`EditorWindowStateControl` is not marked, because `SetEditorWindowState` is in the demo. The demo's `DefaultUAIP.ini` does not grant it, so add `+AllowedCapabilities=EditorWindowStateControl` to let an AI minimize and restore the editor main window.
 
 ### Where the demo loads
 

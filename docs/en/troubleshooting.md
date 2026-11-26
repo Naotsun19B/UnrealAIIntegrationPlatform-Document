@@ -15,8 +15,8 @@ When something fails, the response includes an `ErrorCode` and `ErrorMessage`. T
 | `CommandNotFound` | The fully-qualified command name isn't registered | Verify spelling with `uaip_list_commands(ProviderPrefix="UAIP.Core")`. For an optional-plugin command (marked 🧩), `ErrorMessage` names the integration and what to do — usually enable the plugin and restart the editor; `UAIP.Core.ListIntegrations` shows every integration's state at once |
 | `CapabilityNotAvailable` | The session lacks the required capability | Read the missing capability name from `ErrorMessage`, add it to `[UAIP.SafetyPolicy] +AllowedCapabilities=<name>` in `Config/DefaultUAIP.ini`, then restart or call `UAIP.Core.ReloadCapabilities` |
 | `PolicyViolation` | Three distinct causes: (a) a SafetyPolicy gate or missing route opt-in rejected the call, (b) the command's `IsAvailable()` is `false` because a deny-by-default SafetyPolicy flag is off (`UnavailableDetail: SafetyPolicyDisabled`), or (c) `IsAvailable()` is `false` with no more specific detail reported (`UnavailableDetail: Unspecified`, rare) | `"is denied by SafetyPolicy"` → an ini flag is off; `"is not enabled"` → a CLI opt-in flag (`-uaip-enable-scenario`, `-uaip-http-enable`, etc.) is missing at launch. For (b), the flag named in `ErrorMessage` needs to be turned on in `Config/DefaultUAIP.ini`, then restart or call `UAIP.Core.ReloadCapabilities`. For (c), call `UAIP.Core.DescribeCommand` and retry |
-| `AbilityUnavailable` | The command's `IsAvailable()` is `false` for an environment- or build-related reason: a required optional module or plugin isn't loaded, the process wasn't built with a required configuration, the running engine version doesn't support the command, or there is no implementation path to reach it at all | Call `UAIP.Core.DescribeCommand(CommandName="...")` and read `UnavailableDetail` (`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`) — the last two mean no configuration change helps; look for a Toolset bridge or native alternative instead. See [API Reference → Command availability fields](api.md#65-command-availability-fields) |
-| `InvalidParams` | Wrong / missing parameters, or (in a scenario) a `${...}` template reference that couldn't be resolved | Re-read the schema with `uaip_describe_command(CommandName="...")`. For template failures, see [Scenario Execution → Template resolution failures](scenario.md#template-resolution-failures) — this is **not** retried by `RetryCount` |
+| `AbilityUnavailable` | The command's `IsAvailable()` is `false` for an environment- or build-related reason: a required optional module or plugin isn't loaded, the process wasn't built with a required configuration, the running engine version doesn't support the command, or there is no implementation path to reach it at all | Call `uaip_describe_command(CommandName="...")` and read `UnavailableDetail` (`ExecutionEnvironment` / `OptionalPluginDisabled` / `BuildConfiguration` / `EngineVersion` / `EngineApiNotExported` / `DelegationTargetMissing`) — the last two mean no configuration change helps; look for a Toolset bridge or native alternative instead. See [API Reference → Command availability fields](api.md#65-command-availability-fields) |
+| `InvalidParams` | Wrong / missing parameters, or (in a scenario) a `${...}` template reference that couldn't be resolved | Re-fetch the schema with `{"Command": "UAIP.Core.DescribeCommand", "Params": {"Name": "<command name>"}}` over HTTP / WebSocket / CLI, or `uaip_describe_command(CommandName="<command name>")` over MCP (the argument is `Name` in the first form and `CommandName` in the second). The `ErrorMessage` of a missing or invalid parameter usually already points at `UAIP.Core.DescribeCommand` and its `ParameterSchema`. For template failures, see [Scenario Execution → Template resolution failures](scenario.md#template-resolution-failures) — this is **not** retried by `RetryCount` |
 | `NotFound` | Target asset / actor / object doesn't exist | Verify the path or name; `SearchAssets` or `ListLevelActors` to confirm |
 | `ExecutionFailed` | Runtime failure inside the command | Read `ErrorMessage` for details. In scenarios, set `RetryCount` on the step |
 | `NotAllowed` | Forbidden path (`/Engine/`) or forbidden timing (editor edits during PIE) | Pick a different target path, or wait until PIE has stopped |
@@ -94,6 +94,20 @@ This is a UE 5.7 engine defect, fixed in UE 5.8. An asset that embeds a Dataflow
 - Duplicates made with the engine's own tools (the Content Browser's Duplicate, and so on) still are. After duplicating such an asset, save it and restart the editor before deleting or unloading the duplicate: an asset loaded fresh in a new editor session does not carry the listener.
 - UE 5.8 is not affected.
 
+### "Building my C++ project prints many `does not list plugin ... as a dependency` warnings for UnrealAIIntegrationPlatform"
+
+These warnings are harmless. They look like this:
+
+```
+Warning: Plugin 'UnrealAIIntegrationPlatform' does not list plugin 'StateTree' as a dependency, but module 'UAIPRuntimeStateTree' depends on module 'StateTreeModule'.
+```
+
+UAIP integrates with many engine plugins optionally. Its source descriptor lists each of them as a disabled, optional dependency, so that UAIP never turns those plugins on in your project; an integration is loaded only when you enable its plugin yourself. When the plugin is packaged for distribution, the engine rewrites the descriptor and drops the "optional" mark from every dependency that is disabled. UnrealBuildTool then reports each module dependency on those plugins.
+
+- The build still succeeds. Which plugins are enabled, and what is loaded or linked, does not change. You do not need to enable the plugins named in the warnings.
+- They appear for editor targets (around a hundred lines) and, for a few runtime modules, for game targets. On UE 5.8 the same warnings are printed again on every build, incremental builds included.
+- Do not edit UAIP's `.uplugin` to mark those dependencies `"Enabled": true` to silence the warnings: that forces every one of those plugins on in your project.
+
 ### "No response at all while the editor is showing a dialog"
 
 Commands run inside the editor's ticker callback, and a modal dialog stops the game thread with that ticker on it. **Nothing is answered for as long as the dialog is up.** The dialog is sometimes behind another window, so from the AI's side this looks like a frozen editor.
@@ -113,6 +127,22 @@ A progress bar (slow task) is different: nothing is answered there even with the
 3. Only when `RecommendedAction` actually suggests recovering — e.g. `State` is `CRASHED` (`RETRY:`) or `PORT_OCCUPIED` (`CHECK CONFIGURATION:`) — act on it: `uaip_execute(CommandName="UAIP.Editor.Workspace.RestartEditor")` handles a clean restart for you.
 4. If MCP itself is unresponsive (not just the editor), restart only the bridge process; the editor can stay running.
 5. Only as an absolute last resort, manually `Stop-Process` the specific editor PID after closing the AI client — and only after `uaip_get_editor_status` has ruled out `UNRESPONSIVE`.
+
+### "The MCP Bridge installer says 'The deployment was refused (exit N)'"
+
+Nothing was deleted. The reason is printed just above that line. Find the exit code below.
+
+| Exit | Meaning | Fix |
+|---|---|---|
+| 13 | The UAIP plugin was not found | Place it under the `Plugins` folder shown, or pass `-UAIPPluginDir` / `--uaip-plugin-dir` with the folder that directly contains `UnrealAIIntegrationPlatform.uplugin` |
+| 14 | Two or more UAIP copies were found | Move the copies you do not use out of `Plugins`, or pass `-UAIPPluginDir` / `--uaip-plugin-dir` with one of the listed paths |
+| 15 | The extracted package and the deploy target contain one another | Extract the release zip outside the deploy target (for example into Downloads) and run the installer from there |
+| 16 | The deploy target would fall outside the search root (the plugin sits directly in `Plugins`, or directly under a drive root) | Move the plugin files into their own folder under `Plugins`, or place the plugin folder at least one level below the drive root |
+| 17 | A folder could not be read while searching | Fix the access to that folder, or pass `-UAIPPluginDir` / `--uaip-plugin-dir` to skip the search |
+| 18 | The existing deploy target is not a directory or does not look like a bridge | Check what is in that folder and move it away, then run the installer again |
+| 19 | The deploy target cannot be used safely (it is a link, overlaps the plugin, search root or project folder, or its path has unsupported characters) | If it is a link, remove only the link and run again: `cmd /c rmdir "<path>"` from PowerShell, `cmd //c rmdir "<path>"` from Git Bash, `rm "<path>"` (no trailing slash) on macOS / Linux. Do not use PowerShell's `rmdir`, which is `Remove-Item` |
+
+`-UAIPPluginDir` belongs to `install.ps1` / `install.cmd`; `--uaip-plugin-dir` belongs to `install.sh`. See [Connection Methods → MCP Bridge](connections.md#mcp-bridge).
 
 ---
 

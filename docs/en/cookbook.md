@@ -41,7 +41,7 @@ Demo OK = works on the demo binary. Others require Pro.
     { "StepName": "Settle", "CommandName": "UAIP.Runtime.Assertion.WaitSeconds",
       "Params": { "Seconds": 3 }, "AbortOnFailure": false },
     { "StepName": "Shot",   "CommandName": "UAIP.Runtime.Observation.CheckpointCapture",
-      "Params": { "Label": "after-load" }, "AbortOnFailure": false },
+      "Params": { "Label": "after_load" }, "AbortOnFailure": false },
     { "StepName": "Stop",   "CommandName": "UAIP.Runtime.PIE.StopPIE" }
   ]
 }
@@ -66,9 +66,11 @@ Demo OK = works on the demo binary. Others require Pro.
 2. Normalize the layout so the screenshot is reproducible:
    `uaip_execute(CommandName="UAIP.Editor.Workspace.NormalizeEditorLayout")`
 3. Capture the graph:
-   `uaip_execute(CommandName="UAIP.Editor.Observation.CaptureGraphViewportImage", Params={"TabId": "/Game/Blueprints/BP_PlayerCharacter"})`
-4. Dump the graph structurally:
-   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={...})`
+   `uaip_execute(CommandName="UAIP.Editor.Observation.CaptureGraphViewportImage", Params={"TabId": "BP_PlayerCharacter"})`
+4. List the graph's nodes, and read the `NodeId` (the NodeGuid) of the node you want from the artifact. Each entry also carries `NodeClass`, `NodeTitle`, and `Position`:
+   `uaip_execute(CommandName="UAIP.Editor.Observation.ListGraphNodes", Params={"TabId": "BP_PlayerCharacter"})`
+5. Dump the pins of that node:
+   `uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<NodeId read from the ListGraphNodes artifact>"})`
 
 Then ask the AI: "Review this Blueprint — look for unconnected execution pins, missing null checks on the cast nodes, and any dangling event nodes."
 
@@ -88,8 +90,8 @@ Then ask the AI: "Review this Blueprint — look for unconnected execution pins,
 uaip_execute(
   CommandName="UAIP.Editor.Assets.SearchAssets",
   Params={
-    "Path": "/Game/Characters",
-    "ClassNames": ["Blueprint"],
+    "PackagePath": "/Game/Characters",
+    "ClassNames": ["/Script/Engine.Blueprint"],
     "Recursive": true
   }
 )
@@ -116,27 +118,34 @@ For dependency-style audits (unused assets, circular references, broken referenc
     { "StepName": "AddVar", "CommandName": "UAIP.Editor.Blueprint.AddBlueprintVariable",
       "Params": {
         "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
-        "VariableName":  "Health",
-        "PinCategory":   "real",
-        "PinSubCategory":"double",
+        "VarName":       "Health",
+        "VarType":       "Float",
         "DefaultValue":  "100.0"
       } },
     { "StepName": "AddGet", "CommandName": "UAIP.Editor.Blueprint.AddGraphNode",
       "Params": {
         "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
-        "NodeKind":      "VariableGet",
-        "VariableName":  "Health",
+        "NodeType":      "VariableGet",
+        "VarName":       "Health",
         "NodeX": 0, "NodeY": 200
-      } },
-    { "StepName": "Inspect", "CommandName": "UAIP.Editor.Blueprint.ListBlueprintPins",
-      "Params": {
-        "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
-        "NodeId":        "${AddGet.Data.NodeId}"
       } },
     { "StepName": "Save",   "CommandName": "UAIP.Editor.Workspace.SaveAllPackages" }
   ]
 }
 ```
+
+`AddGraphNode` returns the new node's `NodeId` in the step's `Data` (the `Result`), and the JSON artifact carries the same field. A later step in the same scenario can therefore take it with a `${AddGet.Data.NodeId}` template. To check the node's pins, add a step after `AddGet`:
+
+```json
+{ "StepName": "PinsOfGet", "CommandName": "UAIP.Editor.Blueprint.ListBlueprintPins",
+  "Params": {
+    "BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter",
+    "NodeId":        "${AddGet.Data.NodeId}"
+  } }
+```
+
+Outside a scenario, read `NodeId` from the `Result` of the `AddGraphNode` call and pass it to the next call:
+`uaip_execute(CommandName="UAIP.Editor.Blueprint.ListBlueprintPins", Params={"BlueprintPath": "/Game/Blueprints/BP_PlayerCharacter", "NodeId": "<NodeId from the AddGraphNode Result>"})`
 
 After save, ask the AI to inspect the Blueprint graph visually with `CaptureGraphViewportImage` and confirm the wiring matches intent. A dedicated `CompileBlueprint` command with structured error retrieval is planned — see [Roadmap → Blueprint Compile & Error Retrieval](roadmap.md#blueprint-compile--error-retrieval).
 
@@ -155,22 +164,40 @@ Pro only — Blueprint editing modules are not in the demo binary.
 
 ## 5. UI automation test
 
-**Goal**: open the Project Settings dialog from the menu and confirm a specific tab appears.
+**Goal**: open the Project Settings dialog from the menu, capture the screen so the AI can check that it appeared, and take a snapshot of the UI that yields the `WidgetRef` of each widget.
 
 ```json
 {
   "ScenarioName": "OpenProjectSettings",
   "Steps": [
-    { "StepName": "Menu",  "CommandName": "UAIP.Editor.UIAutomation.SelectMenuItem",
-      "Params": { "MenuPath": "Edit/Project Settings" } },
-    { "StepName": "Wait",  "CommandName": "UAIP.Editor.UIAutomation.WaitForWidget",
-      "Params": { "WidgetPath": "Window:Project Settings", "TimeoutSeconds": 10 } },
-    { "StepName": "Shot",  "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage" }
+    { "StepName": "Menu",   "CommandName": "UAIP.Editor.UIAutomation.SelectMenuItem",
+      "Params": { "MenuPath": "Edit/Project Settings..." } },
+    { "StepName": "Settle", "CommandName": "UAIP.Runtime.Assertion.WaitSeconds",
+      "Params": { "Seconds": 2 } },
+    { "StepName": "Snap",   "CommandName": "UAIP.Editor.UIAutomation.SnapshotUI" },
+    { "StepName": "Shot",   "CommandName": "UAIP.Editor.Observation.CaptureActiveWindowImage" }
   ]
 }
 ```
 
-The AI can `Read` the screenshot to verify the dialog actually appeared. For interactive flows, chain `ClickWidget`, `InputText`, `SetComboSelection`, and `AcceptDialog`.
+The AI can `Read` the screenshot to verify the dialog actually appeared.
+
+**Waiting for a widget** takes two separate calls, because a `WidgetRef` is issued by `SnapshotUI` and cannot be spliced into the same scenario. A ref is scoped to the session (pass the same `SessionId` to both calls) and expires after 60 seconds, so make the second call soon after the first.
+
+1. Call `SnapshotUI` and read the `WidgetRef` of the widget you want from its artifact — it is the `Ref` field of that widget's entry (the `Snap` step above does this).
+2. In a separate call, pass that ref to `WaitForWidget`:
+
+```json
+{
+  "WidgetRef":          "<ref read from the SnapshotUI artifact>",
+  "ExpectedState":      "Visible",
+  "WaitTimeoutSeconds": 10
+}
+```
+
+If the ref has expired, call `SnapshotUI` again to get a fresh one.
+
+For interactive flows, chain `ClickWidget`, `InputText`, `SetComboSelection`, and `AcceptDialog`.
 
 **Capabilities**: `EditorUIAutomation` — DefaultAllow. Some sub-features need explicit opt-in: `EditorKeyboardInput` for `PressKey`, `AllowContextMenuMutation` for `InvokeContextMenuAction`. See [Safety & Capabilities](safety.md).
 
@@ -220,28 +247,36 @@ UAIP can be invoked from CI / CD pipelines via the **CLI transport** (Pro only).
 
 ### Example (PowerShell on a Windows GitHub Actions runner)
 
+Run it from the project root.
+
 ```powershell
-# 1. Write the request as JSON
+# 1. Write the request as JSON (requests are only read from under Saved/UAIP/Requests/)
+New-Item -ItemType Directory -Force Saved/UAIP/Requests, Saved/UAIP/Responses | Out-Null
 @'
 {
-  "CommandName": "UAIP.Editor.Execution.RunAutomationTest",
+  "Command": "UAIP.Editor.Execution.RunAutomationTest",
   "Params": {
     "TestName": "MyGame.Smoke.MainMenu",
     "RunAllMatching": false
   }
 }
-'@ | Set-Content cmd.json
+'@ | Set-Content Saved/UAIP/Requests/cmd.json
 
-# 2. Run the editor with the CLI transport
-& "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" `
-    "$pwd/MyGame.uproject" `
-    "-uaip-request-file=$pwd/cmd.json" `
-    "-uaip-response-file=$pwd/result.json"
+# 2. Run the editor with the CLI transport and wait for it to exit
+Start-Process -Wait -FilePath "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" -ArgumentList @(
+    "`"$pwd/MyGame.uproject`"",
+    "-uaip-request-file=Saved/UAIP/Requests/cmd.json",
+    "-uaip-response-file=Saved/UAIP/Responses/result.json"
+)
 
 # 3. Inspect the JSON result, fail the CI step if not Success
-$r = Get-Content result.json | ConvertFrom-Json
+$r = Get-Content Saved/UAIP/Responses/result.json | ConvertFrom-Json
 if (-not $r.Success) { exit 1 }
 ```
+
+- The request names the command under the key `Command` (not `CommandName`, which is the argument name of the MCP tool `uaip_execute`).
+- The request file must be under `Saved/UAIP/Requests/` and the response file under `Saved/UAIP/Responses/`. Either a relative path or an absolute path works, as long as it points inside those directories.
+- `UnrealEditor.exe` is a GUI application, so calling it with PowerShell's `&` returns without waiting for it to exit. `Start-Process -Wait` waits before the result is read.
 
 The same pattern works for `RunAutomationSpec`, `RunFunctionalTest`, and `RunGauntletTest`.
 
