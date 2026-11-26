@@ -267,7 +267,7 @@ Authorization: Bearer <token>
 
 | クエリパラメータ | 型 | 必須 | 備考 |
 |---|---|---|---|
-| `SessionId` | string | 移行期間中は省略可 | 対象をそのセッションの Artifact に絞り込む。**現在は省略しても受け付けられる**が、省略した呼び出しは、このエディタプロセスが**今回の起動中**に作った Artifact しか解決できない — 前回のセッションから見つけ直された Artifact には到達できない（[Artifacts](artifacts.md) 参照）。省略した呼び出しが**成功した**場合の応答には `Deprecation` レスポンスヘッダ（RFC 9745）と、移行手順を指す `Link; rel="deprecation"` ヘッダが付く。`SessionId` を明示した呼び出しにはどちらのヘッダも付かない。**`SessionId` は将来のメジャーバージョンでこのルートにおいて必須になります** — 移行方法は [Changelog](changelog.md#uaip-plugin-120--2026-09-29) を参照してください |
+| `SessionId` | string | 移行期間中は省略可 | 対象をそのセッションの Artifact に絞り込む。**現在は省略しても受け付けられる**が、省略した呼び出しは、このエディタプロセスが**今回の起動中**に作った Artifact しか解決できない — 前回のセッションから見つけ直された Artifact には到達できない（[Artifacts](artifacts.md) 参照）。省略した呼び出しが**成功した**場合の応答には `Deprecation` レスポンスヘッダ（RFC 9745）と、移行手順を指す `Link; rel="deprecation"` ヘッダが付く。`SessionId` を明示した呼び出しにはどちらのヘッダも付かない。**`SessionId` は 2.0.0 でこのルートにおいて必須になります**。省略した要求は 400 と `ErrorCode: InvalidParams` で拒否されます。エディタを `-uaip-require-artifact-session-id`（値を取らないコマンドラインスイッチ。1.x の間だけ提供し、2.0.0 で削除）付きで起動すると、この拒否を今から試せます。移行方法は [Changelog](changelog.md#uaip-plugin-120--2026-09-29) を参照してください |
 
 レスポンス: 生バイト列、Artifact メタの `Content-Type`。GC 済み（セッション終了または TTL 切れ）の場合、または存在しない・呼び出し側から見えない場合は、404 で `ErrorCode: NotFound`。
 
@@ -741,7 +741,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   -o capture.png
 ```
 
-> `SessionId` は現時点では省略可能です——省略すると、このエディタプロセス自身が生成した成果物のみを対象に解決され、警告が記録に残ります。*前回の*エディタセッションから見つけ直された成果物へ到達する唯一の方法でもあり（[Artifacts](artifacts.md) を参照）、**将来のメジャーバージョンでこのルートにおいて必須になります**——上記のように常に指定してください。
+> `SessionId` は現時点では省略可能です——省略すると、このエディタプロセス自身が生成した成果物のみを対象に解決され、警告が記録に残ります。*前回の*エディタセッションから見つけ直された成果物へ到達する唯一の方法でもあり（[Artifacts](artifacts.md) を参照）、**2.0.0 でこのルートにおいて必須になります**——上記のように常に指定してください。
 
 ### 10.2 HTTP — Python
 
@@ -769,7 +769,7 @@ class UAIPClient:
 
     def fetch_artifact(self, artifact_id, session_id=None):
         # SessionId は現時点では省略可能（省略時はこのエディタプロセス自身の成果物のみを
-        # 対象に解決される）だが、将来のメジャーバージョンで必須になる予定で、
+        # 対象に解決される）だが、2.0.0 で必須になり、
         # 前回のエディタセッションから見つけ直された成果物へ到達する唯一の方法でもある。
         # 取得元の SessionId は常に渡すこと。
         params = {"SessionId": session_id} if session_id else None

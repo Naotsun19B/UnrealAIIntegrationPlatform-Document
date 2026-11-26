@@ -267,7 +267,7 @@ Authorization: Bearer <token>
 
 | Query parameter | Type | Required | Notes |
 |---|---|---|---|
-| `SessionId` | string | Optional during the migration window | Scopes the lookup to that session's artifacts. **Omitting it is accepted today**, but an omitted call can only resolve artifacts this editor process itself produced during its current run — it cannot reach artifacts rediscovered from a previous session (see [Artifacts](artifacts.md)). A *successful* response to an omitted call carries a `Deprecation` response header (RFC 9745) and a `Link; rel="deprecation"` header pointing at migration guidance; a call that names `SessionId` explicitly gets neither header. **`SessionId` will become mandatory on this route in a future major version** — see [Changelog](changelog.md#uaip-plugin-120--2026-09-29) for how to migrate before then. |
+| `SessionId` | string | Optional during the migration window | Scopes the lookup to that session's artifacts. **Omitting it is accepted today**, but an omitted call can only resolve artifacts this editor process itself produced during its current run — it cannot reach artifacts rediscovered from a previous session (see [Artifacts](artifacts.md)). A *successful* response to an omitted call carries a `Deprecation` response header (RFC 9745) and a `Link; rel="deprecation"` header pointing at migration guidance; a call that names `SessionId` explicitly gets neither header. **`SessionId` becomes mandatory on this route in 2.0.0**: a request without it is then refused with 400 and `ErrorCode: InvalidParams`. Start the editor with `-uaip-require-artifact-session-id` (a command-line switch that takes no value; provided for the 1.x releases only and removed in 2.0.0) to get that refusal now. See [Changelog](changelog.md#uaip-plugin-120--2026-09-29) for how to migrate before then. |
 
 Response: the raw bytes, with `Content-Type` from the artifact's metadata. 404 with `ErrorCode: NotFound` if the artifact has been GC'd (session ended or TTL expired), or if it does not exist or is not visible to the caller.
 
@@ -741,7 +741,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   -o capture.png
 ```
 
-> `SessionId` is optional today — omitting it resolves against this editor process's own artifacts only, and logs a warning. It is the only way to reach an artifact rediscovered from a *previous* editor session (see [Artifacts](artifacts.md)), and **it will become mandatory on this route in a future major version** — always pass it, as shown above.
+> `SessionId` is optional today — omitting it resolves against this editor process's own artifacts only, and logs a warning. It is the only way to reach an artifact rediscovered from a *previous* editor session (see [Artifacts](artifacts.md)), and **it becomes mandatory on this route in 2.0.0** — always pass it, as shown above.
 
 ### 10.2 HTTP — Python
 
@@ -769,8 +769,8 @@ class UAIPClient:
 
     def fetch_artifact(self, artifact_id, session_id=None):
         # SessionId is optional today (an omitted one resolves against this editor
-        # process's own artifacts only), but it will become mandatory in a future
-        # major version and is the only way to reach an artifact rediscovered from a
+        # process's own artifacts only), but it becomes mandatory in 2.0.0 and is
+        # the only way to reach an artifact rediscovered from a
         # previous editor session — always pass the SessionId that produced it.
         params = {"SessionId": session_id} if session_id else None
         r = self.session.get(f"{self.host}/uaip/artifacts/{artifact_id}", params=params, timeout=60)
