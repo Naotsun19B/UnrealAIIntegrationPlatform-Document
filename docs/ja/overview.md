@@ -122,6 +122,7 @@ MCP Bridge は UE Editor と AI クライアントをつなぐ Python プロキ�
 | [FAQ](faq.md) | デモ/Pro・Capability・ワークフロー・CI などのよくある質問 |
 | [トラブルシューティング](troubleshooting.md) | エラーコードリファレンスと典型的な失敗パターン |
 | [用語集](glossary.md) | Capability・Artifact・Scenario・Toolset 等の定義 |
+| [2.0.0 で変わること](upcoming-2.0.md) | 2.0.0 で既存の呼び出しと設定の何が変わるか、どう備えるか |
 | [ロードマップ](roadmap.md) | 今後追加予定の機能と開発方針 |
 | [更新履歴](changelog.md) | バージョニング方針とリリースごとの変更履歴 |
 

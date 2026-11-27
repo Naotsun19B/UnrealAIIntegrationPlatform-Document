@@ -122,6 +122,7 @@ For a 5-minute walkthrough see [Quickstart](docs/en/quickstart.md); for per-clie
 | [FAQ](docs/en/faq.md) | Common questions on demo/Pro, capabilities, workflows, CI |
 | [Troubleshooting](docs/en/troubleshooting.md) | Error code reference and common failure modes |
 | [Glossary](docs/en/glossary.md) | Definitions of Capability, Artifact, Scenario, Toolset, etc. |
+| [Changes coming in 2.0.0](docs/en/upcoming-2.0.md) | What changes for existing calls and settings in 2.0.0, and how to prepare |
 | [Roadmap](docs/en/roadmap.md) | Planned features and future direction |
 | [Changelog](docs/en/changelog.md) | Versioning policy and per-release change history |
 
