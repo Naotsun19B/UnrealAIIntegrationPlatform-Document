@@ -127,7 +127,7 @@
 
 ### パラメータのジョブ ID は `JobId` です
 - **現在:** コマンドは、ジョブの ID を独自の名前で受け取ります。`AuditId`・`BuildId`・`InteractionId`・`AnalysisId`・`HLODBuildJobId` または `BuildJobId`・`AttemptId`・`CaptureId` または `RecordingId` です。
-- **2.0.0:** パラメータは `JobId` です。旧いキーは別名として残します。応答のキーも変わります（「応答の形とキー」を参照）。
+- **2.0.0:** パラメータは `JobId` です。旧いキーは別名として残します。応答のキーも変わります（「応答の形とキー」を参照）。1 つのファミリーの非推奨のコマンド（「待機・ジョブ・シナリオ」を参照）は、1.x のキーのままです。
 - **移行:** 呼び出しを動かし続けるために要ることはありません。
 
 ## 応答の形とキー
@@ -171,7 +171,7 @@
 
 ### ⚠️ 破壊的変更: 応答のジョブ ID は `JobId` です
 - **現在:** 応答は ID を `AuditId`・`BuildId`・`InteractionId`・`AnalysisId`・`HLODBuildJobId` または `BuildJobId`・`AttemptId`・`CaptureId` または `RecordingId` で返します。
-- **2.0.0:** キーは `JobId` で、両方を返す期間は設けません。
+- **2.0.0:** キーは `JobId` で、両方を返す期間は設けません。1 つのファミリーの非推奨のコマンド（「待機・ジョブ・シナリオ」を参照）は、1.x のキーのままです。
 - **移行:** 2.0.0 へ移るときに、`JobId` を読んでください。
 
 ### ⚠️ 破壊的変更: 経過時間は `ElapsedSeconds` です
@@ -305,7 +305,7 @@
 
 ### ⚠️ 破壊的変更: `TabId` は Slate のタブ ID だけを指します
 - **現在:** `TabId` は、`CaptureGraphViewportImage`・`DumpSelectionState`・`ListGraphNodes`・`DragGraphNode`・`ConnectGraphPins` ではタブ ID の一部に一致し、`FrameGraphAll`・`FrameGraphSelection`・`SetGraphSelection`・`SetGraphZoom` ではアセットパスとして読まれます。
-- **2.0.0:** `TabId` は Slate のタブ ID そのものです。アセットは `AssetPath` で渡します。
+- **2.0.0:** `TabId` は Slate のタブ ID そのものです。アセットは `AssetPath` で渡します。`DragGraphNode` と `ConnectGraphPins` は、1.x の `TabId` のままです（「グラフ編集」を参照）。
 - **移行:** タブ ID そのものを渡してください。
 
 ### ⚠️ 破壊的変更: `ActorIdentifier` はアクターのオブジェクトパスを持ちます
@@ -450,8 +450,8 @@
 
 ### `DragGraphNode` と `ConnectGraphPins` は非推奨です
 - **現在:** `DragGraphNode` はグラフのノードをピクセルの差分で動かし、`ConnectGraphPins` はグラフエディタのタブで 2 つのピンを接続します。
-- **2.0.0:** 2.0.0 で非推奨になります。名前は受け付け続けます。代わりに、各ドメインの移動と接続のコマンドを使ってください。パラメータと応答が 2.0.0 でどう変わるかは、決まり次第ここに足します。
-- **移行:** ドメインのコマンド（例: `ConnectBlueprintPins`）で接続してください。ノードを動かすには、Control Rig なら `SetNodePosition`、PCG なら `RepositionPCGNode` を使います。ほかのドメインでノードを動かすコマンドは、2.0.0 で追加されます。
+- **2.0.0:** 2.0.0 で非推奨になります。名前は受け付け続けます。代わりに、各ドメインの移動と接続のコマンドを使ってください。パラメータと応答は 1.x のままで、このページの共通のグラフのキー（`NodeId`・`Output*` と `Input*` など）と `TabId` の新しい意味は当てはまりません。非推奨になるのは、すべてのドメインが移動と接続のコマンドを持つ版で、それまでは非推奨の印を付けません。非推奨になった後は、成功した呼び出しの `DeprecationWarning` が、ドメインごとに使うコマンドを示します。`MigrationTarget` は 1 つに決まらないので置きません。
+- **移行:** 1.x 向けに書いた呼び出しは動き続けます。ドメインのコマンド（例: `ConnectBlueprintPins`）で接続してください。ノードを動かすには、Control Rig なら `SetNodePosition`、PCG なら `RepositionPCGNode` を使います。ほかのドメインでノードを動かすコマンドは、2.0.0 で追加されます。
 
 ## プロパティの読み書き
 
@@ -518,8 +518,8 @@
 ## 待機・ジョブ・シナリオ
 
 ### ⚠️ 破壊的変更: `TimedOut`・`Aborted`・`NotExecuted` は `WorkAfterTimeout` に置き換わります
-- **現在:** 期限で止まるコマンドは、それぞれの名前のキーでそう伝えます。`WaitForCondition` と `RunFunctionalTest` は `Data.TimedOut: true` を返し（1.3.0 で追加）、`RunEditorPythonScript` は中止したときに `Data.Aborted: true` を返し、キューでの待ちが尽きたコマンドは `NotExecuted: true` を返します。メッセージだけで伝えるコマンドもあります。例えば、`AcquireItems` と `WaitForPendingInteraction` です。
-- **2.0.0:** 3 つのキーを削除します。期限は、`ErrorCode: Timeout` と `Result.WorkAfterTimeout` から読みます。値は、`NotStarted`（何も始めなかった）・`Stopped`（作業を止めた、またはコマンドが待っただけ）・`StillRunning`（エディタが続けている）のいずれかです。`StillRunning` で、あとから結果を確かめられるコマンドがあるときは、`Result.SuggestedCommands` がそれを示します。期限の前に観測した値は、`Result` に入ることがあります。
+- **現在:** 期限で止まるコマンドは、それぞれの名前のキーでそう伝えます。`WaitForCondition` と `RunFunctionalTest` は `Data.TimedOut: true` を返し（1.3.0 で追加）、`RunEditorPythonScript` は中止したときに `Data.Aborted: true` を返し、キューでの待ちが尽きたコマンドは `NotExecuted: true` を返します。メッセージだけで伝えるコマンドもあります。例えば、`AcquireItems` です。
+- **2.0.0:** 3 つのキーを削除します。期限は、`ErrorCode: Timeout` と `Result.WorkAfterTimeout` から読みます。値は、`NotStarted`（何も始めなかった）・`Stopped`（作業を止めた、またはコマンドが待っただけ）・`StillRunning`（エディタが続けている）のいずれかです。`StillRunning` で、あとから結果を確かめられるコマンドがあるときは、`Result.SuggestedCommands` がそれを示します。期限の前に観測した値は、`Result` に入ることがあります。`WaitForPendingInteraction` は非推奨で、1.x の応答のままです。`WorkAfterTimeout` は `UAIP.Core.WaitForJob`（2.0.0 で追加）が返します（「1 つのファミリーのジョブを問い合わせ・取り消し・待機するコマンドは非推奨です」を参照）。
 - **移行:** `ErrorCode` で分岐してから、`WorkAfterTimeout` を読んでください。「ErrorCode と拒否」も参照してください。
 
 ### ⚠️ 破壊的変更: 応答の待ちが尽きたことは、どの経路でも同じ形で報告します
@@ -529,18 +529,18 @@
 
 ### ジョブの ID は GUID です
 - **現在:** LiveLink は録画の `RecordingId` を連番で返し、audit・PoseSearch・検証・インタラクションのジョブの ID はハイフンを持ちます。
-- **2.0.0:** ジョブの ID は、ハイフンなしの 16 進 32 桁の GUID で、ほかの識別子と同じ形です（「識別子と参照」を参照）。
+- **2.0.0:** ジョブの ID は、ハイフンなしの 16 進 32 桁の GUID で、ほかの識別子と同じ形です（「識別子と参照」を参照）。1 つのファミリーの非推奨のコマンド（下を参照）は、1.x のパラメータでこの形の ID を受け付けます。
 - **移行:** ジョブの ID は、中身を見ない文字列として扱ってください。
 
 ### ⚠️ 破壊的変更: ジョブの状態は 5 つの値のどれかです
 - **現在:** 各ファミリーが独自の状態を持ちます。例えば、audit には `Preparing`、PoseSearch には `Succeeded`、検証には `Preparing`・`Enumerating`・`Normalizing`・`Validating`・`Finalizing`・`Aborted`、インタラクションには `AwaitingUser` と `Cause`、トレース解析には `Extracting`、HLOD は `BuildStatus` を報告し、再起動には `Scheduled`・`CloseRetrying`・`Declined`・`ExitStarted`、キャプチャには `Recording` と `Stopped` があり、LiveLink は `IsRecording` を報告します。
-- **2.0.0:** `State` は `Pending`・`Running`・`Completed`・`Failed`・`Cancelled` で、最後の 3 つは終了の状態です。ファミリーごとの段階は `Phase` に載せ、`Failed` と `Cancelled` は `Reason` を持ちます。受領の応答と状態の応答は、常に `JobId`・`JobKind`（ファミリーの名前）・`State`・`StopRequired` を持ちます。
+- **2.0.0:** `State` は `Pending`・`Running`・`Completed`・`Failed`・`Cancelled` で、最後の 3 つは終了の状態です。ファミリーごとの段階は `Phase` に載せ、`Failed` と `Cancelled` は `Reason` を持ちます。受領の応答と状態の応答は、常に `JobId`・`JobKind`（ファミリーの名前）・`State`・`StopRequired` を持ちます。1 つのファミリーの非推奨のコマンド（下を参照）は、1.x の状態のままです。
 - **移行:** 2.0.0 へ移るときに、ジョブの状態を読むコードを更新してください。
 
-### 1 つのファミリーのジョブを問い合わせたり取り消したりするコマンドは非推奨です
-- **現在:** 各ファミリーが、ジョブの問い合わせと取り消しのコマンドを持ちます。例: `GetAssetAuditStatus`・`CancelValidationJob`・`GetHLODBuildStatus`・`CancelHLODBuild`。すべてのファミリーのジョブを一覧にするコマンドはありません。
-- **2.0.0:** 2.0.0 で非推奨になります。名前は受け付け続けます。代わりに、`UAIP.Core.GetJobStatus`・`UAIP.Core.CancelJob`・`UAIP.Core.ListJobs`（2.0.0 で追加）を使ってください。パラメータと応答が 2.0.0 でどう変わるかは、決まり次第ここに足します。
-- **移行:** 2.0.0 の前にすることはありません。
+### 1 つのファミリーのジョブを問い合わせ・取り消し・待機するコマンドは非推奨です
+- **現在:** 各ファミリーが、ジョブの問い合わせと取り消しのコマンドを持ち、インタラクションは待機のコマンドも持ちます。`GetAssetAuditStatus`・`GetPoseSearchDatabaseIndexBuildStatus`・`GetValidationJobStatus`・`CancelValidationJob`・`GetPendingInteractionStatus`・`CancelPendingInteraction`・`WaitForPendingInteraction`・`GetTraceAnalysisStatus`・`GetHLODBuildStatus`・`CancelHLODBuild`・`GetRestartStatus`・`CancelLiveLinkRecording` です。すべてのファミリーのジョブを一覧にするコマンドはありません。これらのコマンドの一部は、ジョブの結果（PoseSearch・インタラクション・再起動）や進み具合（audit・検証・トレース解析）も返します。
+- **2.0.0:** 2.0.0 で非推奨になります。名前は受け付け続けます。代わりに、`UAIP.Core.GetJobStatus`・`UAIP.Core.CancelJob`・`UAIP.Core.ListJobs`・`UAIP.Core.WaitForJob`（2.0.0 で追加）を使ってください。パラメータと応答は 1.x のままで、このページの共通のジョブのキーと状態は当てはまりません。ただし、ID のパラメータは、2.0.0 の開始のコマンドが返す `JobId` も受け付けます。非推奨になるのは、共通のコマンドと、PoseSearch・インタラクション・再起動ではファミリーの結果を返すコマンド（2.0.0 で追加。名前は決まり次第ここに書きます）がそろう版で、それまでは非推奨の印を付けません。`MigrationTarget` は `UAIP.Core.GetJobStatus`・`UAIP.Core.CancelJob`・`UAIP.Core.WaitForJob` のどれかで、状態のコマンドが結果を返していた 3 つのファミリーでは、`DeprecationWarning` が結果を返すコマンドも示します。`UAIP.Core.WaitForJob` は `JobId` と `TimeoutSeconds` を受け取り、ジョブが終わるまで待って、`UAIP.Core.GetJobStatus` と同じ応答を返します。待ちが尽きたときは `WorkAfterTimeout: StillRunning` を伴う `Timeout` を返し、ジョブは取り消しません。共通の状態の応答は、作業の件数を数えるファミリーでだけ `ProcessedCount` と `TotalCount` を持ちます。`GetLiveLinkRecordingStatus` は非推奨になりません。UAIP を通さずに始めた録画も報告するためです。
+- **移行:** 1.x 向けに書いた呼び出しは動き続けます。2.0.0 へ移るときに、ジョブの問い合わせ・取り消し・待機は共通のコマンドで行い、結果はファミリーのコマンドで読んでください。
 
 ### ⚠️ 破壊的変更: 別のジョブを置き換えたジョブは `ReplacedJobId` を報告します
 - **現在:** `StartValidationJob` は、ジョブを置き換えたときに `ReplacedPreviousJob: true` を返し、置き換えられたジョブは `Aborted` で終わります。
@@ -549,7 +549,7 @@
 
 ### ⚠️ 破壊的変更: 終わったジョブの取り消しと停止は成功します
 - **現在:** 例えば、終わったジョブに対して、`CancelHLODBuild` は `ExecutionFailed` を返し、LiveLink の録画のコマンドは `NotAllowed` を返します。
-- **2.0.0:** 呼び出しは成功し、実際の `State` を返します。受け付けた取り消しで、作業がまだ止まっていないときは、成功して `Running` を返します。
+- **2.0.0:** `UAIP.Core.CancelJob`（2.0.0 で追加）とファミリーの停止のコマンドは成功し、実際の `State` を返します。受け付けた取り消しで、作業がまだ止まっていないときは、成功して `Running` を返します。`CancelHLODBuild` と `CancelLiveLinkRecording` は非推奨で、1.x の振る舞いのままです（前の項目を参照）。
 - **移行:** これらの失敗で分岐しないでください。
 
 ### ⚠️ 破壊的変更: シナリオのステップの参照は、ステップの結果のキーに従います
@@ -561,6 +561,11 @@
 - **現在:** 応答は `Status`（`Completed`・`Failed`・`TimedOut`）と `AllStepsSucceeded` を持ち、シナリオ全体の失敗は、`__error__` または `__session_ended__` という名前のステップとして現れます。
 - **2.0.0:** 応答は、最上位の `Success`・`ErrorCode` と、試した順序の `Result.StepResults` を持ちます。`Status` と `AllStepsSucceeded` は削除し、`__error__` と `__session_ended__` のステップも削除します。`Success` は、すべてのステップが成功したときだけ true です。`Result.TotalStepCount` は要求したステップの数を、`Result.StoppedAtStep` は止まったステップを示します。`ErrorCode` は、`Reason: StepFailed` を伴う `ExecutionFailed`、`Reason: StepTimeout` または `ScenarioTimeout` を伴う `Timeout`、不正な要求への `InvalidParams`、別の実行が枠を持っているときの `TooManyRequests`、入口が有効でないときの `PolicyViolation`、`Reason: SessionEnded` を伴う `NotAllowed` です。各ステップの結果も、`AttemptCount`・`ElapsedSeconds`・`Result` を持ちます。
 - **移行:** 2.0.0 へ移るときに、`Status` と `AllStepsSucceeded` の代わりに `Success` と `ErrorCode` を読んでください。
+
+### ⚠️ 破壊的変更: シナリオは成果物を `ArtifactIds` ではなく `Artifacts` で返します
+- **現在:** 各ステップの結果と最上位は、成果物の ID の文字列の配列 `ArtifactIds` を持ちます。
+- **2.0.0:** 単独のコマンドの `Artifacts` と同じ要素（`ArtifactId`・`FilePath`・`Type`・`SizeBytes`）の `Artifacts` を持ち、`ArtifactIds` は削除します。両方を返す期間は設けません。ステップの参照 `${<StepName>.Artifacts[<n>]}` の形は変わりません。
+- **移行:** 2.0.0 へ移るときに、`Artifacts` の要素の `ArtifactId` を読んでください。
 
 ### 拒否されたシナリオは、どの入口でも同じ形で報告します
 - **現在:** 不正な要求は、MCP では `ErrorCode` の無い JSON-RPC エラー -32602 を返し、受け付けのときに拒否された要求は、HTTP では HTTP 200 を返します。セッション ID の読み方も、入口によって違います。
@@ -727,3 +732,4 @@
 - 2026-11-27: このページを作成しました。
 - 2026-11-27: changelog の [バージョニング方針](changelog.md#バージョニング方針) にある ⚠️ の印の基準を変えました。1.3.0 の次のリリース以降は、1.3.0 で成功していた呼び出しが基準です。
 - 2026-11-27: changelog の [Deprecation 方針](changelog.md#deprecation-方針基本削除しない)を書き直しました。例外が 2 つになりました。Epic 社がエンジン API を削除したときのコマンドの削除と、前もって告知した `Experimental` のコマンドの削除です。
+- 2026-11-27: `DragGraphNode`・`ConnectGraphPins` と、1 つのファミリーのジョブのコマンドが 2.0.0 でどう残るかを決めました。1.x の形のままで、置き換えのコマンドがそろったときに非推奨になります。`UAIP.Core.WaitForJob` と、シナリオの `ArtifactIds` から `Artifacts` への変更を足しました。
