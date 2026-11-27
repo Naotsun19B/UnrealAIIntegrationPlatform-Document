@@ -129,7 +129,7 @@ Everything here already works in 1.3.0.
 
 ### The id of a job in a parameter is `JobId`
 - **Now:** A command takes the id of a job under a name of its own: `AuditId`, `BuildId`, `InteractionId`, `AnalysisId`, `HLODBuildJobId` or `BuildJobId`, `AttemptId`, `CaptureId` or `RecordingId`.
-- **2.0.0:** The parameter is `JobId`. The old keys are kept as aliases. The keys in responses change too (see "Response shape and keys").
+- **2.0.0:** The parameter is `JobId`. The old keys are kept as aliases. The keys in responses change too (see "Response shape and keys"). The Deprecated commands of one family (see "Waiting, jobs and scenarios") keep their 1.x keys.
 - **Migrate:** None needed to keep calls working.
 
 ## Response shape and keys
@@ -173,7 +173,7 @@ Everything here already works in 1.3.0.
 
 ### ⚠️ Breaking: the id of a job in a response is `JobId`
 - **Now:** A response gives the id as `AuditId`, `BuildId`, `InteractionId`, `AnalysisId`, `HLODBuildJobId` or `BuildJobId`, `AttemptId`, `CaptureId` or `RecordingId`.
-- **2.0.0:** The key is `JobId`, with no period in which both are returned.
+- **2.0.0:** The key is `JobId`, with no period in which both are returned. The Deprecated commands of one family (see "Waiting, jobs and scenarios") keep their 1.x keys.
 - **Migrate:** Read `JobId` when you move to 2.0.0.
 
 ### ⚠️ Breaking: elapsed time is `ElapsedSeconds`
@@ -307,7 +307,7 @@ Everything here already works in 1.3.0.
 
 ### ⚠️ Breaking: `TabId` means a Slate tab id only
 - **Now:** `TabId` matches part of a tab id in `CaptureGraphViewportImage`, `DumpSelectionState`, `ListGraphNodes`, `DragGraphNode` and `ConnectGraphPins`, and is read as an asset path in `FrameGraphAll`, `FrameGraphSelection`, `SetGraphSelection` and `SetGraphZoom`.
-- **2.0.0:** `TabId` is an exact Slate tab id. An asset is given as `AssetPath`.
+- **2.0.0:** `TabId` is an exact Slate tab id. An asset is given as `AssetPath`. `DragGraphNode` and `ConnectGraphPins` keep their 1.x `TabId` (see "Graph editing").
 - **Migrate:** Pass the exact tab id.
 
 ### ⚠️ Breaking: `ActorIdentifier` holds the object path of an actor
@@ -452,8 +452,8 @@ Everything here already works in 1.3.0.
 
 ### `DragGraphNode` and `ConnectGraphPins` are Deprecated
 - **Now:** `DragGraphNode` moves a graph node by a pixel offset and `ConnectGraphPins` connects two pins on a graph editor tab.
-- **2.0.0:** Deprecated in 2.0.0; the name keeps being accepted. Use the move and connect commands of each domain instead. How its parameters and response change in 2.0.0 will be added here when it is decided.
-- **Migrate:** Connect with the command of the domain (for example `ConnectBlueprintPins`). Move a node with `SetNodePosition` for Control Rig or `RepositionPCGNode` for PCG; the commands that move a node in the other domains are added in 2.0.0.
+- **2.0.0:** Deprecated in 2.0.0; the name keeps being accepted. Use the move and connect commands of each domain instead. Their parameters and response stay as they are in 1.x; the shared graph keys on this page (such as `NodeId`, `Output*` and `Input*`) and the new meaning of `TabId` do not apply to them. They become Deprecated in the release in which every domain has its own move and connect commands; until then they are not marked Deprecated. Once they are, the `DeprecationWarning` of a successful call names the command to use for each domain, and there is no single `MigrationTarget`.
+- **Migrate:** Calls written for 1.x keep working. Connect with the command of the domain (for example `ConnectBlueprintPins`). Move a node with `SetNodePosition` for Control Rig or `RepositionPCGNode` for PCG; the commands that move a node in the other domains are added in 2.0.0.
 
 ## Property read and write
 
@@ -531,18 +531,18 @@ Everything here already works in 1.3.0.
 
 ### The id of a job is a GUID
 - **Now:** LiveLink gives the `RecordingId` of a recording as a sequence number, and the ids of audit, PoseSearch, validation and interaction jobs have hyphens.
-- **2.0.0:** A job id is a GUID of 32 hexadecimal digits without hyphens, the same form as other identifiers (see "Identifiers and references").
+- **2.0.0:** A job id is a GUID of 32 hexadecimal digits without hyphens, the same form as other identifiers (see "Identifiers and references"). The Deprecated commands of one family (see below) accept an id in this form in their 1.x parameters.
 - **Migrate:** Treat a job id as an opaque string.
 
 ### ⚠️ Breaking: the state of a job is one of five values
 - **Now:** Each family has its own states. For example, audit has `Preparing`, PoseSearch has `Succeeded`, validation has `Preparing`, `Enumerating`, `Normalizing`, `Validating`, `Finalizing` and `Aborted`, an interaction has `AwaitingUser` and `Cause`, trace analysis has `Extracting`, HLOD reports `BuildStatus`, a restart has `Scheduled`, `CloseRetrying`, `Declined` and `ExitStarted`, a capture has `Recording` and `Stopped`, and LiveLink reports `IsRecording`.
-- **2.0.0:** `State` is `Pending`, `Running`, `Completed`, `Failed` or `Cancelled`; the last three are final. A stage of a family goes in `Phase`, and `Failed` and `Cancelled` carry `Reason`. A receipt and a status response always carry `JobId`, `JobKind` (the name of the family), `State` and `StopRequired`.
+- **2.0.0:** `State` is `Pending`, `Running`, `Completed`, `Failed` or `Cancelled`; the last three are final. A stage of a family goes in `Phase`, and `Failed` and `Cancelled` carry `Reason`. A receipt and a status response always carry `JobId`, `JobKind` (the name of the family), `State` and `StopRequired`. The Deprecated commands of one family (see below) keep their 1.x states.
 - **Migrate:** Update code that reads a job's state when you move to 2.0.0.
 
-### The commands that ask about or cancel the jobs of one family are Deprecated
-- **Now:** Each family has its own commands to ask about a job and to cancel it. For example: `GetAssetAuditStatus`, `CancelValidationJob`, `GetHLODBuildStatus` and `CancelHLODBuild`. There is no command that lists the jobs of every family.
-- **2.0.0:** Deprecated in 2.0.0; the name keeps being accepted. Use `UAIP.Core.GetJobStatus`, `UAIP.Core.CancelJob` and `UAIP.Core.ListJobs` (added in 2.0.0) instead. How its parameters and response change in 2.0.0 will be added here when it is decided.
-- **Migrate:** Nothing to do before 2.0.0.
+### The commands that ask about, cancel or wait for the jobs of one family are Deprecated
+- **Now:** Each family has its own commands to ask about a job, to cancel it and, for an interaction, to wait for it: `GetAssetAuditStatus`, `GetPoseSearchDatabaseIndexBuildStatus`, `GetValidationJobStatus`, `CancelValidationJob`, `GetPendingInteractionStatus`, `CancelPendingInteraction`, `WaitForPendingInteraction`, `GetTraceAnalysisStatus`, `GetHLODBuildStatus`, `CancelHLODBuild`, `GetRestartStatus` and `CancelLiveLinkRecording`. There is no command that lists the jobs of every family. Some of these commands also return the result of the job (PoseSearch, an interaction and a restart) or how far it has got (audit, validation and trace analysis).
+- **2.0.0:** Deprecated in 2.0.0; the name keeps being accepted. Use `UAIP.Core.GetJobStatus`, `UAIP.Core.CancelJob`, `UAIP.Core.ListJobs` and `UAIP.Core.WaitForJob` (added in 2.0.0) instead. Their parameters and response stay as they are in 1.x; the shared job keys and states on this page do not apply to them, but their id parameters also accept the `JobId` that a 2.0.0 start command returns. They become Deprecated in the release in which the shared commands and, for PoseSearch, an interaction and a restart, a command that returns the result of the family (added in 2.0.0; its name will be added here) exist; until then they are not marked Deprecated. The `MigrationTarget` is `UAIP.Core.GetJobStatus`, `UAIP.Core.CancelJob` or `UAIP.Core.WaitForJob`, and for the three families whose status command returned the result, the `DeprecationWarning` also names the command that returns it. `UAIP.Core.WaitForJob` takes `JobId` and `TimeoutSeconds`, waits until the job has ended and returns the same response as `UAIP.Core.GetJobStatus`; when it runs out it returns `Timeout` with `WorkAfterTimeout: StillRunning` and does not cancel the job. The shared status response carries `ProcessedCount` and `TotalCount` only for a family that counts its work. `GetLiveLinkRecordingStatus` is not Deprecated: it also reports a recording that was not started through UAIP.
+- **Migrate:** Calls written for 1.x keep working. When you move, ask about, cancel and wait for a job with the shared commands, and read the result with the command of the family.
 
 ### ⚠️ Breaking: a job that replaces another reports `ReplacedJobId`
 - **Now:** `StartValidationJob` returns `ReplacedPreviousJob: true` when it replaces a job, and the replaced job ends as `Aborted`.
@@ -551,7 +551,7 @@ Everything here already works in 1.3.0.
 
 ### ⚠️ Breaking: cancelling or stopping a job that has ended succeeds
 - **Now:** For example, `CancelHLODBuild` returns `ExecutionFailed` and the LiveLink recording commands return `NotAllowed` for a job that has ended.
-- **2.0.0:** The call succeeds and returns the actual `State`. A cancel that was accepted while the work has not stopped yet succeeds and returns `Running`.
+- **2.0.0:** `UAIP.Core.CancelJob` (added in 2.0.0) and the stop commands of a family succeed and return the actual `State`. A cancel that was accepted while the work has not stopped yet succeeds and returns `Running`. `CancelHLODBuild` and `CancelLiveLinkRecording` are Deprecated and keep their 1.x behavior (see the item above).
 - **Migrate:** Do not branch on these failures.
 
 ### ⚠️ Breaking: a step reference in a scenario follows the keys of the step's result
@@ -563,6 +563,11 @@ Everything here already works in 1.3.0.
 - **Now:** The response has `Status` (`Completed`, `Failed` or `TimedOut`) and `AllStepsSucceeded`, and a failure of the whole scenario shows as a step named `__error__` or `__session_ended__`.
 - **2.0.0:** The response has the top-level `Success`, `ErrorCode` and `Result.StepResults`, in the order the steps were tried. `Status` and `AllStepsSucceeded` are removed, and so are the steps `__error__` and `__session_ended__`. `Success` is true only when every step succeeded. `Result.TotalStepCount` gives the number of steps requested, and `Result.StoppedAtStep` the step it stopped at. The `ErrorCode` is `ExecutionFailed` with `Reason: StepFailed`, `Timeout` with `Reason: StepTimeout` or `ScenarioTimeout`, `InvalidParams` for a request that is not valid, `TooManyRequests` when another run holds the slot, `PolicyViolation` when the entrance is not enabled, or `NotAllowed` with `Reason: SessionEnded`. Each step's result also carries `AttemptCount`, `ElapsedSeconds` and `Result`.
 - **Migrate:** Read `Success` and `ErrorCode` instead of `Status` and `AllStepsSucceeded` when you move.
+
+### ⚠️ Breaking: a scenario returns its artifacts as `Artifacts`, not `ArtifactIds`
+- **Now:** Each step's result and the top level carry `ArtifactIds`, an array of artifact id strings.
+- **2.0.0:** They carry `Artifacts`, with the same elements as the `Artifacts` of a single command (`ArtifactId`, `FilePath`, `Type` and `SizeBytes`), and `ArtifactIds` is removed, with no period in which both are returned. A step reference `${<StepName>.Artifacts[<n>]}` keeps its form.
+- **Migrate:** Read `ArtifactId` from the elements of `Artifacts` when you move to 2.0.0.
 
 ### A scenario that is refused is reported in the same form at every entrance
 - **Now:** A request that is not valid returns a JSON-RPC error -32602 through MCP, without an `ErrorCode`, and a request that is refused when it is submitted returns HTTP 200 over HTTP. How the session id is read also differs by entrance.
@@ -729,3 +734,4 @@ The 1.3.0 changelog gave notices that this page now states differently. Each ite
 - 2026-11-27: This page was created.
 - 2026-11-27: The basis of the ⚠️ mark in the [Versioning Policy](changelog.md#versioning-policy) of the changelog was changed. From the release after 1.3.0, it is the calls that succeeded in 1.3.0.
 - 2026-11-27: The [Deprecation policy](changelog.md#deprecation-policy-rarely-removed) of the changelog was rewritten. It now has two exceptions: removing a command when Epic removes an engine API, and removing an `Experimental` command that was announced beforehand.
+- 2026-11-27: How `DragGraphNode`, `ConnectGraphPins` and the job commands of one family stay in 2.0.0 was decided: they keep their 1.x form and become Deprecated when the commands that replace them exist. `UAIP.Core.WaitForJob` and the change from `ArtifactIds` to `Artifacts` in a scenario were added.
