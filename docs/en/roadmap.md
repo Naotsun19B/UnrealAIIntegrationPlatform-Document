@@ -1,5 +1,7 @@
 **[日本語](../ja/roadmap.md)** | [Back to README](../../README.md)
 
+Changes that affect existing calls in 2.0.0 are listed in [Changes coming in 2.0.0](upcoming-2.0.md).
+
 # Roadmap
 
 Items below are planned or under investigation. No specific release dates are committed and the list is subject to change based on user demand and API stability in upstream UE versions.
