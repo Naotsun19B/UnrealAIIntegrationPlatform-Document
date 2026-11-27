@@ -518,8 +518,8 @@
 ## 待機・ジョブ・シナリオ
 
 ### ⚠️ 破壊的変更: `TimedOut`・`Aborted`・`NotExecuted` は `WorkAfterTimeout` に置き換わります
-- **現在:** 期限で止まるコマンドは、それぞれの名前のキーでそう伝えます。`WaitForCondition` と `RunFunctionalTest` は `Data.TimedOut: true` を返し（1.3.0 で追加）、`RunEditorPythonScript` は中止したときに `Data.Aborted: true` を返し、キューでの待ちが尽きたコマンドは `NotExecuted: true` を返します。メッセージだけで伝えるコマンドもあります。例えば、`AcquireItems` と `WaitForPendingInteraction` です。
-- **2.0.0:** 3 つのキーを削除します。期限は、`ErrorCode: Timeout` と `Result.WorkAfterTimeout` から読みます。値は、`NotStarted`（何も始めなかった）・`Stopped`（作業を止めた、またはコマンドが待っただけ）・`StillRunning`（エディタが続けている）のいずれかです。`StillRunning` で、あとから結果を確かめられるコマンドがあるときは、`Result.SuggestedCommands` がそれを示します。期限の前に観測した値は、`Result` に入ることがあります。
+- **現在:** 期限で止まるコマンドは、それぞれの名前のキーでそう伝えます。`WaitForCondition` と `RunFunctionalTest` は `Data.TimedOut: true` を返し（1.3.0 で追加）、`RunEditorPythonScript` は中止したときに `Data.Aborted: true` を返し、キューでの待ちが尽きたコマンドは `NotExecuted: true` を返します。メッセージだけで伝えるコマンドもあります。例えば、`AcquireItems` です。
+- **2.0.0:** 3 つのキーを削除します。期限は、`ErrorCode: Timeout` と `Result.WorkAfterTimeout` から読みます。値は、`NotStarted`（何も始めなかった）・`Stopped`（作業を止めた、またはコマンドが待っただけ）・`StillRunning`（エディタが続けている）のいずれかです。`StillRunning` で、あとから結果を確かめられるコマンドがあるときは、`Result.SuggestedCommands` がそれを示します。期限の前に観測した値は、`Result` に入ることがあります。`WaitForPendingInteraction` は非推奨で、1.x の応答のままです。`WorkAfterTimeout` は `UAIP.Core.WaitForJob`（2.0.0 で追加）が返します（「1 つのファミリーのジョブを問い合わせ・取り消し・待機するコマンドは非推奨です」を参照）。
 - **移行:** `ErrorCode` で分岐してから、`WorkAfterTimeout` を読んでください。「ErrorCode と拒否」も参照してください。
 
 ### ⚠️ 破壊的変更: 応答の待ちが尽きたことは、どの経路でも同じ形で報告します
